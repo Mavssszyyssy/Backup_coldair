@@ -176,6 +176,7 @@ export const UserProvider = ({ children }) => {
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
     setIsAuthenticated(true);
+
     return result.user;
   };
 
@@ -184,6 +185,7 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify(userData),
     });
+
     return result.user;
   };
 

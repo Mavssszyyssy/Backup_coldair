@@ -168,6 +168,21 @@ export function UserProvider({ children }) {
     setUsers([]);
   };
 
+  /**
+   * Handle successful authentication from WebView
+   */
+  const handleWebViewAuthSuccess = async (newToken, userObj) => {
+    try {
+      const normalized = normalizeUser(userObj);
+      await storeToken(newToken);
+      setCurrent(normalized);
+      return { success: true, user: normalized };
+    } catch (e) {
+      console.error(e);
+      return { success: false };
+    }
+  };
+
   // ── User management ───────────────────────────────────────────────────
 
   /**
@@ -331,6 +346,7 @@ export function UserProvider({ children }) {
       login,
       register,
       logout,
+      handleWebViewAuthSuccess,
 
       // User management
       fetchUsers,

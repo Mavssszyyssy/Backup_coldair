@@ -22,6 +22,14 @@ const orderSchema = new mongoose.Schema(
       postalCode: { type: String, default: "" },
     },
     paymentMethod: { type: String, default: "cod" },
+    proofOfPayment: {
+      imageUrl: { type: String, default: "" },
+      status: {
+        type: String,
+        enum: ["none", "pending", "confirmed", "rejected"],
+        default: "none",
+      },
+    },
     trackingNumber: { type: String, default: "" },
     estimatedDelivery: { type: String, default: "" },
     estimatedArrival: { type: String, default: "" },
@@ -48,7 +56,7 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 orderSchema.set("toJSON", {
