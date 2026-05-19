@@ -7,8 +7,12 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 export default function RegisterEmailStep({
   formData,
@@ -97,13 +101,20 @@ export default function RegisterEmailStep({
   };
 
   return (
-    <div className="bq-reg-step bq-fade-in">
-      <div className="bq-reg-header">
-        <h3 className="bq-reg-title">Email Verification</h3>
-        <p className="bq-reg-desc">
+    <BoutiqueStack gap={24} className="bq-reg-step bq-fade-in" height="100%">
+      <BoutiqueBox className="bq-reg-header">
+        <BoutiqueText variant="h2" className="bq-reg-title">
+          Email Verification
+        </BoutiqueText>
+        <BoutiqueText
+          variant="body"
+          className="bq-reg-desc"
+          margin="8px 0 0"
+          style={{ opacity: 0.8 }}
+        >
           Verify your email to receive your security secret.
-        </p>
-      </div>
+        </BoutiqueText>
+      </BoutiqueBox>
 
       <BoutiqueInput
         label="Email Address"
@@ -120,9 +131,13 @@ export default function RegisterEmailStep({
         errorMessage={finalEmailError}
         inlineAction={
           isVerified ? (
-            <div className="bq-verified-badge">
+            <BoutiqueBox
+              className="bq-verified-badge"
+              direction="row"
+              align="center"
+            >
               <ShieldCheck size={18} weight="fill" />
-            </div>
+            </BoutiqueBox>
           ) : (
             !hasSecret && (
               <button
@@ -140,11 +155,21 @@ export default function RegisterEmailStep({
 
       {/* TOTP SETUP PANE */}
       {hasSecret && !isVerified && (
-        <div className="bq-otp-pane bq-slide-down">
-          <p className="bq-otp-instruction">
+        <BoutiqueStack
+          gap={24}
+          padding={24}
+          background="#f8fafc"
+          className="bq-otp-pane bq-slide-down"
+          style={{ borderRadius: "20px", border: "1.5px solid #e2e8f0" }}
+        >
+          <BoutiqueText
+            variant="caption"
+            color={BQ_COLORS.inkMuted}
+            style={{ lineHeight: 1.6 }}
+          >
             Enter the 6-digit security code from your authenticator app to
             complete verification.
-          </p>
+          </BoutiqueText>
 
           <BoutiqueInput
             label="Enter 6-Digit Code"
@@ -167,50 +192,63 @@ export default function RegisterEmailStep({
             }}
             inlineAction={
               loading && (
-                <div className="bq-verified-badge">
+                <BoutiqueBox
+                  className="bq-verified-badge"
+                  direction="row"
+                  align="center"
+                >
                   <Spinner className="bq-spin" size={18} />
-                </div>
+                </BoutiqueBox>
               )
             }
           />
 
-          <button
-            type="button"
-            className="bq-otp-cancel"
-            onClick={() => {
-              onFieldChange("registrationSecret", "");
-              onFieldChange("provisioningUri", "");
-              setOtpError("");
-            }}
-          >
-            Change Email
-          </button>
-        </div>
+          <BoutiqueBox align="center">
+            <button
+              type="button"
+              className="bq-otp-cancel"
+              onClick={() => {
+                onFieldChange("registrationSecret", "");
+                onFieldChange("provisioningUri", "");
+                setOtpError("");
+              }}
+            >
+              Change Email
+            </button>
+          </BoutiqueBox>
+        </BoutiqueStack>
       )}
 
       {detectedRole !== "customer" && (
-        <div className="bq-reg-role-pill">
-          Role detected: <strong>{detectedRoleLabel}</strong>
-        </div>
+        <BoutiqueBox
+          padding="12px 20px"
+          background="#f1f5f9"
+          style={{ borderRadius: "12px", opacity: 0.8 }}
+        >
+          <BoutiqueText size="14px">
+            Role detected: <strong>{detectedRoleLabel}</strong>
+          </BoutiqueText>
+        </BoutiqueBox>
       )}
 
-      <div className="bq-reg-actions">
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        justify="space-between"
+        margin="auto 0 0"
+        className="bq-reg-actions"
+      >
         <BoutiqueButton variant="ghost" onClick={onBack} disabled={loading}>
           <ArrowLeft size={18} weight="bold" /> Back
         </BoutiqueButton>
         <BoutiqueButton onClick={onNext} disabled={loading || !isVerified}>
           Continue <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-reg-step { display: flex; flex-direction: column; gap: 24px; width: 100%; height: 100%; }
-        .bq-reg-header { margin-bottom: 8px; }
-        .bq-reg-title { font-size: 24px; font-weight: 800; margin: 0; }
-        .bq-reg-desc { font-size: 15px; margin-top: 8px; opacity: 0.8; }
-
         .bq-reg-inline-btn {
           padding: 8px 16px; background: var(--field-accent); color: white;
           border: none; border-radius: 50px; font-size: 11px;
@@ -219,24 +257,14 @@ export default function RegisterEmailStep({
         }
         .bq-reg-inline-btn:hover:not(:disabled) { filter: brightness(1.1); transform: scale(1.05); }
 
-        .bq-otp-pane {
-          background: #f8fafc; padding: 24px; border-radius: 20px;
-          display: flex; flex-direction: column; gap: 24px; border: 1.5px solid #e2e8f0;
-        }
-
-        .bq-otp-instruction { font-size: 13px; line-height: 1.6; margin: 0; opacity: 0.7; }
         .bq-otp-cancel { background: none; border: none; font-size: 12px; cursor: pointer; text-decoration: underline; opacity: 0.6; }
         .bq-otp-cancel:hover { opacity: 1; }
 
-        .bq-reg-role-pill {
-          background: #f1f5f9; padding: 12px 20px; border-radius: 12px;
-          font-size: 14px; opacity: 0.8;
-        }
-
-        .bq-reg-actions { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+        .bq-spin { animation: bq-spin 1s linear infinite; color: ${BQ_COLORS.accent}; }
+        @keyframes bq-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `,
         }}
       />
-    </div>
+    </BoutiqueStack>
   );
 }

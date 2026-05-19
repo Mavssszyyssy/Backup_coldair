@@ -369,6 +369,20 @@ const startRegistration = async (req, res) => {
     req.session.tempRegistrationSecret = finalSecret;
     req.session.tempProvisioningUri = finalUri;
     req.session.tempRegistrationEmail = email;
+
+    // 3. Proactively DISPATCH the secret to the user's email if possible
+    if (canSendEmail()) {
+      try {
+        await sendEmail({
+          to: email,
+          subject: "Your AeroPulse Security Secret",
+          text: `Your boutique security secret is: ${finalSecret}\n\nEnter this code into your authenticator app or manually on the registration screen.`,
+          html: `<p>Your boutique security secret is: <strong>${finalSecret}</strong></p><p>Enter this code into your authenticator app or manually on the registration screen.</p>`,
+        });
+      } catch (err) {
+        console.error("[BOUTIQUE] Secret dispatch failed:", err.message);
+      }
+    }
   }
 
   const currentToken = speakeasy.totp({

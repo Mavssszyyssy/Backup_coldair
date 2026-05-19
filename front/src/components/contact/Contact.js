@@ -1,11 +1,19 @@
+import { MapPin, ShieldCheck, User } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
-import Footer from "../home/Footer";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueCard from "../common/boutique/BoutiqueCard";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import "./Contact.css";
 import ContactForm from "./ContactForm";
 import ContactInfo from "./ContactInfo";
 import ServicesSupport from "./ServicesSupport";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
 
 function Contact() {
   const navigate = useNavigate();
@@ -19,73 +27,125 @@ function Contact() {
   };
 
   return (
-    <div className="contact-container">
-      <div className="contact-header">
-        <div className="contact-header-content">
-          <button className="back-btn" onClick={handleBack}>
-            ←
-          </button>
-          <h1 className="contact-title">Contact Us</h1>
-        </div>
-      </div>
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+      <BoutiqueHeader
+        title="Customer Support"
+        leftAction="back"
+        onLeftAction={handleBack}
+      />
 
-      <div className="contact-hero">
-        <h1>We're Here to Help</h1>
-        <p>
-          Have questions about our services? Need assistance with your AC? Get
-          in touch with our friendly team.
-        </p>
-      </div>
+      <BoutiqueBox
+        direction="column"
+        flex={1}
+        width="100%"
+        padding="40px 24px"
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+      >
+        <BoutiqueStack gap={40}>
+          {/* HERO SECTION */}
+          <BoutiqueBox align="center" margin="0 0 16px">
+            <BoutiqueText variant="h1" align="center">
+              We're Here to Help
+            </BoutiqueText>
+            <BoutiqueText
+              color={BQ_COLORS.inkMuted}
+              align="center"
+              weight={500}
+              margin="8px 0 0"
+              style={{ maxWidth: "600px", lineHeight: 1.6 }}
+            >
+              Have questions about our services or need technical assistance
+              with your AC? Our boutique support team is dedicated to your
+              comfort.
+            </BoutiqueText>
+          </BoutiqueBox>
 
-      <div className="contact-main">
-        <div className="cta-section">
-          <div className="cta-content">
-            <h2>Need Expert Consultation?</h2>
-            <p>
-              Let our specialists help you choose the perfect AC solution for
-              your space. We offer free consultations and site visits.
-            </p>
-            <div className="cta-features">
-              <div className="cta-feature">
-                <span>
-                  <img src={icons.visit} alt="" className="inline-icon" />
-                </span>
-                <span>Free Site Visit</span>
-              </div>
-              <div className="cta-feature">
-                <span>
-                  <img
-                    src={icons.cartShoppingFast}
-                    alt=""
-                    className="inline-icon"
-                  />
-                </span>
-                <span>Best Price Guarantee</span>
-              </div>
-              <div className="cta-feature">
-                <span>
-                  <img src={icons.tools} alt="" className="inline-icon" />
-                </span>
-                <span>Expert Technicians</span>
-              </div>
-            </div>
-          </div>
-          <div>
-            <button className="cta-btn" onClick={handleConsultation}>
-              Request Consultation →
-            </button>
-          </div>
-        </div>
+          {/* CTA SECTION */}
+          <BoutiqueCard
+            padding={48}
+            background={BQ_COLORS.brand}
+            style={{ color: "white", overflow: "hidden", position: "relative" }}
+          >
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              justify="space-between"
+              className="cta-flex"
+            >
+              <BoutiqueStack gap={24} flex={1} style={{ maxWidth: "600px" }}>
+                <BoutiqueStack gap={12}>
+                  <BoutiqueText variant="h2" color="white">
+                    Need Expert Consultation?
+                  </BoutiqueText>
+                  <BoutiqueText
+                    color="rgba(255,255,255,0.8)"
+                    size="15px"
+                    style={{ lineHeight: 1.6 }}
+                  >
+                    Let our specialists help you design the perfect climate
+                    solution for your space. We offer premium site visits and
+                    technical inspections.
+                  </BoutiqueText>
+                </BoutiqueStack>
+                <BoutiqueBox direction="row" gap={32} wrap="wrap">
+                  {[
+                    { icon: MapPin, text: "Free Site Visit" },
+                    { icon: ShieldCheck, text: "Official Warranty" },
+                    { icon: User, text: "Expert Advice" },
+                  ].map((feat, i) => (
+                    <BoutiqueBox
+                      key={i}
+                      direction="row"
+                      align="center"
+                      gap={10}
+                    >
+                      <feat.icon size={20} weight="bold" />
+                      <BoutiqueText size="13px" weight={700} color="white">
+                        {feat.text}
+                      </BoutiqueText>
+                    </BoutiqueBox>
+                  ))}
+                </BoutiqueBox>
+              </BoutiqueStack>
+              <BoutiqueButton
+                variant="outline"
+                size="lg"
+                onClick={handleConsultation}
+                style={{
+                  background: "white",
+                  color: BQ_COLORS.brand,
+                  border: "none",
+                  padding: "16px 32px",
+                }}
+              >
+                Request Appointment
+              </BoutiqueButton>
+            </BoutiqueBox>
+          </BoutiqueCard>
 
-        <div className="contact-grid">
-          <ContactForm />
-          <ContactInfo />
-        </div>
+          {/* CONTACT GRID */}
+          <BoutiqueGrid columns="1.5fr 1fr" gap={32}>
+            <ContactForm />
+            <ContactInfo />
+          </BoutiqueGrid>
 
-        <ServicesSupport />
-      </div>
-      <Footer />
-    </div>
+          <ServicesSupport />
+        </BoutiqueStack>
+      </BoutiqueBox>
+
+      <BoutiqueFooter />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @media (max-width: 900px) {
+          .cta-flex { flex-direction: column !important; align-items: flex-start !important; gap: 32px !important; }
+          .bq-grid-primitive { grid-template-columns: 1fr !important; }
+        }
+      `,
+        }}
+      />
+    </BoutiqueScreen>
   );
 }
 

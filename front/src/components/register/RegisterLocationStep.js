@@ -15,13 +15,13 @@ import {
   getProvincesByRegion,
   getRegions,
 } from "../../domain/location/addressSelectors";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_SHADOWS,
-} from "../common/boutique/BoutiqueTheme";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
 const INITIAL_ADDRESS = {
   region: "",
@@ -175,30 +175,73 @@ export default function RegisterLocationStep({
   };
 
   return (
-    <div className="bq-location-flow bq-fade-in">
-      <div className="bq-flow-header">
-        <h3 className="bq-flow-title">Facility Hub</h3>
-        <p className="bq-flow-desc">
+    <BoutiqueStack
+      gap={40}
+      className="bq-location-flow bq-fade-in"
+      height="100%"
+    >
+      <BoutiqueBox className="bq-flow-header">
+        <BoutiqueText
+          variant="h1"
+          className="bq-flow-title"
+          style={{ letterSpacing: "-0.02em" }}
+        >
+          Facility Hub
+        </BoutiqueText>
+        <BoutiqueText
+          variant="body"
+          className="bq-flow-desc"
+          margin="8px 0 0"
+          color={BQ_COLORS.inkMuted}
+          weight={500}
+          style={{ opacity: 0.8 }}
+        >
           Register one or more locations for optimized service logistics.
-        </p>
-      </div>
+        </BoutiqueText>
+      </BoutiqueBox>
 
       {/* LIST OF ADDED LOCATIONS */}
       {locations.length > 0 && (
-        <div className="bq-loc-list">
+        <BoutiqueStack gap={12} className="bq-loc-list">
           {locations.map((loc, i) => (
-            <div key={i} className="bq-loc-item bq-slide-down">
-              <div className="bq-loc-item-info">
+            <BoutiqueBox
+              key={i}
+              direction="row"
+              align="center"
+              justify="space-between"
+              padding="16px 24px"
+              background="white"
+              className="bq-loc-item bq-slide-down"
+              style={{
+                border: `1px solid ${BQ_COLORS.border}`,
+                borderRadius: "20px",
+                boxShadow: BQ_SHADOWS.soft,
+              }}
+            >
+              <BoutiqueBox
+                direction="row"
+                align="center"
+                gap={16}
+                className="bq-loc-item-info"
+              >
                 <MapPin size={20} weight="fill" color={BQ_COLORS.accent} />
-                <div className="bq-loc-item-text">
-                  <span className="bq-loc-item-city">
+                <BoutiqueBox className="bq-loc-item-text">
+                  <BoutiqueText
+                    size="14px"
+                    weight={700}
+                    className="bq-loc-item-city"
+                  >
                     {loc.address.city}, {loc.address.barangay}
-                  </span>
-                  <span className="bq-loc-item-street">
+                  </BoutiqueText>
+                  <BoutiqueText
+                    size="12px"
+                    color={BQ_COLORS.inkMuted}
+                    className="bq-loc-item-street"
+                  >
                     {loc.address.street}
-                  </span>
-                </div>
-              </div>
+                  </BoutiqueText>
+                </BoutiqueBox>
+              </BoutiqueBox>
               <button
                 type="button"
                 className="bq-loc-item-remove"
@@ -206,7 +249,7 @@ export default function RegisterLocationStep({
               >
                 <Trash size={18} weight="bold" />
               </button>
-            </div>
+            </BoutiqueBox>
           ))}
 
           {!showAddForm && (
@@ -218,18 +261,53 @@ export default function RegisterLocationStep({
               <Plus size={16} weight="bold" /> Add Another Facility
             </button>
           )}
-        </div>
+        </BoutiqueStack>
       )}
 
       {/* ADD FORM */}
       {showAddForm && (
-        <div className="bq-loc-add-form bq-fade-in">
-          <div className="bq-gps-hub">
-            <div className="bq-hub-content">
-              <div className="bq-hub-text">
-                <span className="bq-hub-label">Technical Assist</span>
-                <h4 className="bq-hub-value">GPS Auto-Capture</h4>
-              </div>
+        <BoutiqueStack
+          gap={24}
+          padding={32}
+          background={BQ_COLORS.bgAlt}
+          className="bq-loc-add-form bq-fade-in"
+          style={{
+            borderRadius: "28px",
+            border: `1.5px solid ${BQ_COLORS.border}`,
+          }}
+        >
+          <BoutiqueBox
+            padding={20}
+            background="white"
+            className="bq-gps-hub"
+            style={{
+              border: `1px solid ${BQ_COLORS.border}`,
+              borderRadius: "16px",
+              boxShadow: BQ_SHADOWS.soft,
+            }}
+          >
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              justify="space-between"
+              className="bq-hub-content"
+            >
+              <BoutiqueBox className="bq-hub-text">
+                <BoutiqueText
+                  variant="label"
+                  color={BQ_COLORS.accent}
+                  className="bq-hub-label"
+                >
+                  Technical Assist
+                </BoutiqueText>
+                <BoutiqueText
+                  variant="h3"
+                  className="bq-hub-value"
+                  margin="4px 0 0"
+                >
+                  GPS Auto-Capture
+                </BoutiqueText>
+              </BoutiqueBox>
               <BoutiqueButton
                 type="button"
                 variant={currentLoc.source === "gps" ? "outline" : "primary"}
@@ -244,15 +322,24 @@ export default function RegisterLocationStep({
                 )}
                 {isCapturing ? "Acquiring..." : "Sync Position"}
               </BoutiqueButton>
-            </div>
+            </BoutiqueBox>
             {error && (
-              <div className="bq-hub-error">
-                <WarningDiamond size={14} weight="bold" /> {error}
-              </div>
+              <BoutiqueBox
+                direction="row"
+                align="center"
+                gap={6}
+                margin="12px 0 0"
+                className="bq-hub-error"
+              >
+                <WarningDiamond size={14} weight="bold" />
+                <BoutiqueText size="12px" weight={700} color={BQ_COLORS.danger}>
+                  {error}
+                </BoutiqueText>
+              </BoutiqueBox>
             )}
-          </div>
+          </BoutiqueBox>
 
-          <div className="bq-address-grid">
+          <BoutiqueGrid columns="1fr 1fr" gap={20} className="bq-address-grid">
             <BoutiqueInput
               label="Region"
               type="select"
@@ -288,17 +375,23 @@ export default function RegisterLocationStep({
               options={barangays.map((b) => ({ value: b, label: b }))}
               placeholder="Select Barangay"
             />
-            <div className="bq-grid-full">
+            <BoutiqueBox style={{ gridColumn: "span 2" }}>
               <BoutiqueInput
                 label="Street Address"
                 placeholder="House No., Building, Street"
                 value={currentLoc.address.street}
                 onChange={(e) => updateField("street", e.target.value)}
               />
-            </div>
-          </div>
+            </BoutiqueBox>
+          </BoutiqueGrid>
 
-          <div className="bq-add-form-actions">
+          <BoutiqueBox
+            direction="row"
+            justify="flex-end"
+            gap={12}
+            margin="8px 0 0"
+            className="bq-add-form-actions"
+          >
             <BoutiqueButton
               type="button"
               variant="outline"
@@ -311,11 +404,19 @@ export default function RegisterLocationStep({
             <BoutiqueButton type="button" size="sm" onClick={addLocation}>
               Save Facility
             </BoutiqueButton>
-          </div>
-        </div>
+          </BoutiqueBox>
+        </BoutiqueStack>
       )}
 
-      <div className="bq-flow-actions">
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        gap={16}
+        margin="auto 0 0"
+        padding="32px 0 0"
+        style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
+        className="bq-flow-actions"
+      >
         <BoutiqueButton
           type="button"
           variant="ghost"
@@ -337,56 +438,33 @@ export default function RegisterLocationStep({
           {locations.length === 0 ? "Skip for now" : "Complete Setup"}{" "}
           <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-location-flow { display: flex; flex-direction: column; gap: 40px; width: 100%; }
-        .bq-flow-header { margin-bottom: 8px; }
-        .bq-flow-title { font-family: ${BQ_FONTS.heading}; font-size: 32px; font-weight: 800; color: ${BQ_COLORS.ink}; margin: 0; letter-spacing: -0.02em; }
-        .bq-flow-desc { font-size: 16px; color: ${BQ_COLORS.inkMuted}; margin-top: 8px; font-weight: 500; opacity: 0.8; }
-
-        .bq-loc-list { display: flex; flex-direction: column; gap: 12px; }
-        .bq-loc-item {
-            background: white; border: 1px solid ${BQ_COLORS.border}; border-radius: 20px;
-            padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
-            box-shadow: ${BQ_SHADOWS.soft};
-        }
-        .bq-loc-item-info { display: flex; align-items: center; gap: 16px; }
-        .bq-loc-item-text { display: flex; flex-direction: column; }
-        .bq-loc-item-city { font-weight: 700; font-size: 14px; color: ${BQ_COLORS.ink}; }
-        .bq-loc-item-street { font-size: 12px; color: ${BQ_COLORS.inkMuted}; }
         .bq-loc-item-remove { background: none; border: none; color: ${BQ_COLORS.danger}; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; }
         .bq-loc-item-remove:hover { opacity: 1; }
 
         .bq-add-another-btn {
             background: ${BQ_COLORS.bg}; border: 1px dashed ${BQ_COLORS.border}; border-radius: 20px;
-            padding: 16px; color: ${BQ_COLORS.inkMuted}; font-family: ${BQ_FONTS.heading};
+            padding: 16px; color: ${BQ_COLORS.inkMuted}; font-family: inherit;
             font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center;
             justify-content: center; gap: 8px; transition: all 0.3s;
         }
         .bq-add-another-btn:hover { border-color: ${BQ_COLORS.accent}; color: ${BQ_COLORS.accent}; background: white; }
 
-        .bq-loc-add-form { display: flex; flex-direction: column; gap: 24px; padding: 32px; background: ${BQ_COLORS.bgAlt}; border-radius: 28px; border: 1.5px solid ${BQ_COLORS.border}; }
-        .bq-gps-hub { background: white; border: 1px solid ${BQ_COLORS.border}; border-radius: 16px; padding: 20px; box-shadow: ${BQ_SHADOWS.soft}; }
-        .bq-hub-content { display: flex; align-items: center; justify-content: space-between; }
-        .bq-hub-label { font-size: 9px; font-weight: 800; color: ${BQ_COLORS.accent}; text-transform: uppercase; letter-spacing: 0.1em; }
-        .bq-hub-value { font-size: 16px; font-weight: 700; margin: 4px 0 0; }
-        .bq-hub-error { margin-top: 12px; font-size: 12px; color: ${BQ_COLORS.danger}; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-
-        .bq-address-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .bq-grid-full { grid-column: span 2; }
-        .bq-add-form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
-
-        .bq-flow-actions { display: flex; align-items: center; gap: 16px; margin-top: 16px; padding-top: 32px; border-top: 1px solid ${BQ_COLORS.border}; }
-
         .bq-spin { animation: bq-spin 1s linear infinite; }
         @keyframes bq-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes bq-slide-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 640px) {
+          .bq-address-grid { grid-template-columns: 1fr !important; }
+          .bq-address-grid > * { grid-column: span 1 !important; }
+        }
       `,
         }}
       />
-    </div>
+    </BoutiqueStack>
   );
 }

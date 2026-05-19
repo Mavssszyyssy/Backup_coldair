@@ -1,16 +1,10 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  MessengerLogo,
-  Phone,
-} from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Phone } from "@phosphor-icons/react";
 import { validatePhMobileHeuristic } from "../../utils/phMobileValidation";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_WEIGHTS,
-} from "../common/boutique/BoutiqueTheme";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import BoutiqueVerifyInput from "../common/boutique/BoutiqueVerifyInput";
 
 /**
@@ -38,15 +32,23 @@ export default function RegisterContactStep({
   const isComplete = formData.phoneVerified;
 
   return (
-    <div className="bq-reg-step bq-fade-in">
-      <div className="bq-reg-header">
-        <h3 className="bq-reg-title">Contact Verification</h3>
-        <p className="bq-reg-desc">
+    <BoutiqueStack gap={32} className="bq-reg-step bq-fade-in" height="100%">
+      <BoutiqueBox className="bq-reg-header">
+        <BoutiqueText variant="h2" className="bq-reg-title">
+          Contact Verification
+        </BoutiqueText>
+        <BoutiqueText
+          variant="body"
+          className="bq-reg-desc"
+          margin="8px 0 0"
+          color={BQ_COLORS.inkMuted}
+          weight={500}
+        >
           Verify your identity across multiple channels to secure your account.
-        </p>
-      </div>
+        </BoutiqueText>
+      </BoutiqueBox>
 
-      <div className="bq-reg-contact-fields">
+      <BoutiqueStack gap={32} className="bq-reg-contact-fields">
         {/* PHONE VERIFICATION - MANDATORY */}
         <BoutiqueVerifyInput
           label="Phone Number"
@@ -65,7 +67,7 @@ export default function RegisterContactStep({
         />
 
         {/* MESSENGER VERIFICATION - OPTIONAL */}
-        <BoutiqueVerifyInput
+        {/* <BoutiqueVerifyInput
           label="FB Messenger Handle (Optional)"
           icon={MessengerLogo}
           placeholder="username"
@@ -76,33 +78,23 @@ export default function RegisterContactStep({
           action="register_messenger"
           channel="messenger"
           validator={validateMessengerHeuristic}
-        />
-      </div>
+        />*/}
+      </BoutiqueStack>
 
-      <div className="bq-reg-actions">
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        justify="space-between"
+        margin="auto 0 0"
+        className="bq-reg-actions"
+      >
         <BoutiqueButton variant="ghost" onClick={onBack}>
           <ArrowLeft size={18} weight="bold" /> Back
         </BoutiqueButton>
         <BoutiqueButton onClick={onNext} disabled={!isComplete}>
           Continue <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
-      </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-reg-step { display: flex; flex-direction: column; gap: 32px; width: 100%; }
-
-        .bq-reg-header { margin-bottom: 8px; }
-        .bq-reg-title { font-family: ${BQ_FONTS.heading}; font-size: 28px; font-weight: ${BQ_WEIGHTS.bold}; color: ${BQ_COLORS.ink}; margin: 0; }
-        .bq-reg-desc { font-size: 16px; color: ${BQ_COLORS.inkMuted}; margin-top: 8px; font-weight: ${BQ_WEIGHTS.medium}; }
-
-        .bq-reg-contact-fields { display: flex; flex-direction: column; gap: 32px; }
-
-        .bq-reg-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
-      `,
-        }}
-      />
-    </div>
+      </BoutiqueBox>
+    </BoutiqueStack>
   );
 }

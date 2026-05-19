@@ -8,7 +8,10 @@ const { canSendEmail, sendEmail } = require("../utils/email");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
 const NOTIFICATION_TYPES = ["account", "order", "system"];
-const PASSWORD_RESET_MINUTES = Math.max(15, Math.min(30, Number(env.passwordResetTokenTtlMinutes || 20)));
+const PASSWORD_RESET_MINUTES = Math.max(
+  15,
+  Math.min(30, Number(env.passwordResetTokenTtlMinutes || 20)),
+);
 
 const generatePasswordResetToken = () => {
   const nonce = crypto.randomBytes(24).toString("hex");
@@ -31,21 +34,32 @@ const canonicalizePhMobile = (phone = "") => {
   }
   return digits;
 };
-const isValidPhMobile = (phone = "") => /^09\d{9}$/.test(canonicalizePhMobile(phone));
-const sanitizeText = (value = "", maxLength = 120) => String(value || "").trim().slice(0, maxLength);
-const sanitizeOptionalUsername = (value = "") => String(value || "").trim().toLowerCase();
-const isValidUsername = (value = "") => !value || /^[a-z0-9_.-]{3,30}$/.test(value);
+const isValidPhMobile = (phone = "") =>
+  /^09\d{9}$/.test(canonicalizePhMobile(phone));
+const sanitizeText = (value = "", maxLength = 120) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+const sanitizeOptionalUsername = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const isValidUsername = (value = "") =>
+  !value || /^[a-z0-9_.-]{3,30}$/.test(value);
 const isAllowedAvatarUrl = (value = "") => {
   const avatar = String(value || "").trim();
   if (!avatar) return true;
   if (avatar.length > 2_000_000) return false;
   if (/^https?:\/\//i.test(avatar)) return true;
-  if (/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(avatar)) return true;
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(avatar))
+    return true;
   return false;
 };
 const sanitizeAddressPayload = (payload = {}) => {
   const label = sanitizeText(payload.label, 80);
-  const type = ["home", "office", "other"].includes(payload.type) ? payload.type : "other";
+  const type = ["home", "office", "other"].includes(payload.type)
+    ? payload.type
+    : "other";
   const name = sanitizeText(payload.name, 120);
   const region = sanitizeText(payload.region, 120);
   const province = sanitizeText(payload.province, 120);
@@ -107,20 +121,28 @@ const normalizeDefaultAddress = (addresses = []) => {
     item.isDefault = index === defaultIndex;
   });
 };
-const formatAddressLine = (address = {}) => ([
-  address.street,
-  address.barangay,
-  address.city,
-  address.province,
-  address.region,
-]
-  .map((part) => sanitizeText(part, 180))
-  .filter(Boolean)
-  .join(", "));
+const formatAddressLine = (address = {}) =>
+  [
+    address.street,
+    address.barangay,
+    address.city,
+    address.province,
+    address.region,
+  ]
+    .map((part) => sanitizeText(part, 180))
+    .filter(Boolean)
+    .join(", ");
 const syncPrimaryAddressFromDefault = (user, addresses = []) => {
-  const defaultAddress = addresses.find((item) => item.isDefault) || addresses[0] || null;
+  const defaultAddress =
+    addresses.find((item) => item.isDefault) || addresses[0] || null;
   if (!defaultAddress) {
-    user.billingAddress = { region: "", province: "", city: "", barangay: "", street: "" };
+    user.billingAddress = {
+      region: "",
+      province: "",
+      city: "",
+      barangay: "",
+      street: "",
+    };
     user.address = "";
     return;
   }
@@ -137,9 +159,12 @@ const syncPrimaryAddressFromDefault = (user, addresses = []) => {
 
 const normalizePreferences = (current, payload = {}) => {
   const next = { ...current };
-  if (payload.language !== undefined) next.language = sanitizeText(payload.language, 40) || "English";
-  if (payload.currency !== undefined) next.currency = sanitizeText(payload.currency, 10) || "PHP";
-  if (payload.timezone !== undefined) next.timezone = sanitizeText(payload.timezone, 80) || "Asia/Manila";
+  if (payload.language !== undefined)
+    next.language = sanitizeText(payload.language, 40) || "English";
+  if (payload.currency !== undefined)
+    next.currency = sanitizeText(payload.currency, 10) || "PHP";
+  if (payload.timezone !== undefined)
+    next.timezone = sanitizeText(payload.timezone, 80) || "Asia/Manila";
   if (payload.autoBook !== undefined) next.autoBook = Boolean(payload.autoBook);
   if (payload.darkMode !== undefined) {
     next.darkMode = Boolean(payload.darkMode);
@@ -159,12 +184,18 @@ const normalizePrivacy = (current, payload = {}) => {
   const next = { ...current };
   if (payload.profileVisibility !== undefined) {
     const visibility = String(payload.profileVisibility || "").toLowerCase();
-    next.profileVisibility = PROFILE_VISIBILITY_VALUES.includes(visibility) ? visibility : current.profileVisibility;
+    next.profileVisibility = PROFILE_VISIBILITY_VALUES.includes(visibility)
+      ? visibility
+      : current.profileVisibility;
   }
-  if (payload.dataSharing !== undefined) next.dataSharing = Boolean(payload.dataSharing);
-  if (payload.showEmail !== undefined) next.showEmail = Boolean(payload.showEmail);
-  if (payload.showPhone !== undefined) next.showPhone = Boolean(payload.showPhone);
-  if (payload.activityStatus !== undefined) next.activityStatus = Boolean(payload.activityStatus);
+  if (payload.dataSharing !== undefined)
+    next.dataSharing = Boolean(payload.dataSharing);
+  if (payload.showEmail !== undefined)
+    next.showEmail = Boolean(payload.showEmail);
+  if (payload.showPhone !== undefined)
+    next.showPhone = Boolean(payload.showPhone);
+  if (payload.activityStatus !== undefined)
+    next.activityStatus = Boolean(payload.activityStatus);
   return next;
 };
 
@@ -213,20 +244,55 @@ const canManageTargetProfile = (manager, target) => {
   return false;
 };
 
-const applyProfileUpdate = async (user, payload = {}, { allowEmailChange = false } = {}) => {
+const applyProfileUpdate = async (
+  user,
+  payload = {},
+  { allowEmailChange = false } = {},
+) => {
   if (payload.name !== undefined) user.name = sanitizeText(payload.name, 120);
-  if (payload.name_first !== undefined) user.name_first = sanitizeText(payload.name_first, 80);
-  if (payload.name_last !== undefined) user.name_last = sanitizeText(payload.name_last, 80);
+  if (payload.name_first !== undefined)
+    user.name_first = sanitizeText(payload.name_first, 80);
+  if (payload.name_last !== undefined)
+    user.name_last = sanitizeText(payload.name_last, 80);
+  if (payload.alias !== undefined) {
+    const alias = String(payload.alias || "")
+      .trim()
+      .toLowerCase();
+    if (alias) {
+      const existing = await User.findOne({
+        alias,
+        _id: { $ne: user._id },
+      }).select("_id");
+      if (existing) {
+        return { ok: false, status: 409, message: "Alias is already taken." };
+      }
+      user.alias = alias;
+    } else {
+      user.alias = undefined;
+    }
+  }
   if (payload.username !== undefined) {
     const username = sanitizeOptionalUsername(payload.username);
     if (!isValidUsername(username)) {
-      return { ok: false, status: 400, message: "Username must be 3-30 chars and can only contain letters, numbers, _, ., -" };
+      return {
+        ok: false,
+        status: 400,
+        message:
+          "Username must be 3-30 chars and can only contain letters, numbers, _, ., -",
+      };
     }
 
     if (username) {
-      const existing = await User.findOne({ username, _id: { $ne: user._id } }).select("_id");
+      const existing = await User.findOne({
+        username,
+        _id: { $ne: user._id },
+      }).select("_id");
       if (existing) {
-        return { ok: false, status: 409, message: "Username is already taken." };
+        return {
+          ok: false,
+          status: 409,
+          message: "Username is already taken.",
+        };
       }
       user.username = username;
     } else {
@@ -236,12 +302,23 @@ const applyProfileUpdate = async (user, payload = {}, { allowEmailChange = false
 
   if (payload.phone !== undefined) {
     if (!isValidPhMobile(payload.phone)) {
-      return { ok: false, status: 400, message: "Invalid phone number format. Use 09XXXXXXXXX." };
+      return {
+        ok: false,
+        status: 400,
+        message: "Invalid phone number format. Use 09XXXXXXXXX.",
+      };
     }
     const normalizedPhone = canonicalizePhMobile(payload.phone);
-    const existingPhoneUser = await User.findOne({ phone: normalizedPhone, _id: { $ne: user._id } }).select("_id");
+    const existingPhoneUser = await User.findOne({
+      phone: normalizedPhone,
+      _id: { $ne: user._id },
+    }).select("_id");
     if (existingPhoneUser) {
-      return { ok: false, status: 409, message: "Phone number is already in use." };
+      return {
+        ok: false,
+        status: 409,
+        message: "Phone number is already in use.",
+      };
     }
     user.phone = normalizedPhone;
   }
@@ -249,7 +326,11 @@ const applyProfileUpdate = async (user, payload = {}, { allowEmailChange = false
   if (payload.avatarUrl !== undefined) {
     const avatar = String(payload.avatarUrl || "").trim();
     if (!isAllowedAvatarUrl(avatar)) {
-      return { ok: false, status: 400, message: "Invalid profile picture format." };
+      return {
+        ok: false,
+        status: 400,
+        message: "Invalid profile picture format.",
+      };
     }
     user.avatarUrl = avatar;
   }
@@ -258,7 +339,11 @@ const applyProfileUpdate = async (user, payload = {}, { allowEmailChange = false
     user.address = sanitizeText(payload.address, 220);
   }
 
-  if (payload.billingAddress !== undefined && payload.billingAddress && typeof payload.billingAddress === "object") {
+  if (
+    payload.billingAddress !== undefined &&
+    payload.billingAddress &&
+    typeof payload.billingAddress === "object"
+  ) {
     const normalizedBillingAddress = {
       region: sanitizeText(payload.billingAddress.region, 120),
       province: sanitizeText(payload.billingAddress.province, 120),
@@ -324,7 +409,9 @@ const updateProfileById = async (req, res) => {
 };
 
 const listAddresses = async (req, res) => {
-  const addresses = Array.isArray(req.authUser.addresses) ? req.authUser.addresses : [];
+  const addresses = Array.isArray(req.authUser.addresses)
+    ? req.authUser.addresses
+    : [];
   return res.json({ addresses });
 };
 
@@ -336,8 +423,11 @@ const addAddress = async (req, res) => {
   }
 
   const user = req.authUser;
-  const nextAddresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
-  const shouldSetDefault = normalizedAddress.isDefault || nextAddresses.length === 0;
+  const nextAddresses = Array.isArray(user.addresses)
+    ? [...user.addresses]
+    : [];
+  const shouldSetDefault =
+    normalizedAddress.isDefault || nextAddresses.length === 0;
   nextAddresses.push({ ...normalizedAddress, isDefault: shouldSetDefault });
   normalizeDefaultAddress(nextAddresses);
   user.addresses = nextAddresses;
@@ -350,8 +440,12 @@ const addAddress = async (req, res) => {
 const updateAddress = async (req, res) => {
   const addressId = String(req.params.addressId || "").trim();
   const user = req.authUser;
-  const nextAddresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
-  const index = nextAddresses.findIndex((item) => String(item._id) === addressId);
+  const nextAddresses = Array.isArray(user.addresses)
+    ? [...user.addresses]
+    : [];
+  const index = nextAddresses.findIndex(
+    (item) => String(item._id) === addressId,
+  );
   if (index < 0) {
     return res.status(404).json({ message: "Address not found" });
   }
@@ -378,7 +472,9 @@ const deleteAddress = async (req, res) => {
   const addressId = String(req.params.addressId || "").trim();
   const user = req.authUser;
   const current = Array.isArray(user.addresses) ? user.addresses : [];
-  const nextAddresses = current.filter((item) => String(item._id) !== addressId);
+  const nextAddresses = current.filter(
+    (item) => String(item._id) !== addressId,
+  );
 
   if (nextAddresses.length === current.length) {
     return res.status(404).json({ message: "Address not found." });
@@ -394,7 +490,9 @@ const deleteAddress = async (req, res) => {
 const setDefaultAddress = async (req, res) => {
   const addressId = String(req.params.addressId || "").trim();
   const user = req.authUser;
-  const nextAddresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
+  const nextAddresses = Array.isArray(user.addresses)
+    ? [...user.addresses]
+    : [];
   const exists = nextAddresses.some((item) => String(item._id) === addressId);
   if (!exists) {
     return res.status(404).json({ message: "Address not found." });
@@ -415,11 +513,19 @@ const updateSettings = async (req, res) => {
   const privacyPayload = payload.privacy || payload;
   const notificationsPayload = payload.notifications || payload;
 
-  req.authUser.preferences = normalizePreferences(req.authUser.preferences?.toObject?.() || req.authUser.preferences || {}, preferencesPayload);
-  req.authUser.privacy = normalizePrivacy(req.authUser.privacy?.toObject?.() || req.authUser.privacy || {}, privacyPayload);
+  req.authUser.preferences = normalizePreferences(
+    req.authUser.preferences?.toObject?.() || req.authUser.preferences || {},
+    preferencesPayload,
+  );
+  req.authUser.privacy = normalizePrivacy(
+    req.authUser.privacy?.toObject?.() || req.authUser.privacy || {},
+    privacyPayload,
+  );
   req.authUser.notifications = normalizeNotifications(
-    req.authUser.notifications?.toObject?.() || req.authUser.notifications || {},
-    notificationsPayload
+    req.authUser.notifications?.toObject?.() ||
+      req.authUser.notifications ||
+      {},
+    notificationsPayload,
   );
 
   await req.authUser.save();
@@ -427,21 +533,29 @@ const updateSettings = async (req, res) => {
 };
 
 const updatePreferences = async (req, res) => {
-  req.authUser.preferences = normalizePreferences(req.authUser.preferences?.toObject?.() || req.authUser.preferences || {}, req.body || {});
+  req.authUser.preferences = normalizePreferences(
+    req.authUser.preferences?.toObject?.() || req.authUser.preferences || {},
+    req.body || {},
+  );
   await req.authUser.save();
   return res.json({ user: req.authUser.toJSON() });
 };
 
 const updatePrivacy = async (req, res) => {
-  req.authUser.privacy = normalizePrivacy(req.authUser.privacy?.toObject?.() || req.authUser.privacy || {}, req.body || {});
+  req.authUser.privacy = normalizePrivacy(
+    req.authUser.privacy?.toObject?.() || req.authUser.privacy || {},
+    req.body || {},
+  );
   await req.authUser.save();
   return res.json({ user: req.authUser.toJSON() });
 };
 
 const updateNotifications = async (req, res) => {
   req.authUser.notifications = normalizeNotifications(
-    req.authUser.notifications?.toObject?.() || req.authUser.notifications || {},
-    req.body || {}
+    req.authUser.notifications?.toObject?.() ||
+      req.authUser.notifications ||
+      {},
+    req.body || {},
   );
   await req.authUser.save();
   return res.json({ user: req.authUser.toJSON() });
@@ -454,36 +568,57 @@ const changePassword = async (req, res) => {
   }
 
   // First login: allow password change without current password
-  if (req.authUser.isFirstLogin && ["admin", "technician"].includes(req.authUser.role)) {
+  if (
+    req.authUser.isFirstLogin &&
+    ["admin", "technician"].includes(req.authUser.role)
+  ) {
     if (!isStrongPassword(newPassword)) {
       return res.status(400).json({
-        message: "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+        message:
+          "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
       });
     }
     req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
     req.authUser.isFirstLogin = false;
     await req.authUser.save();
-    return res.json({ message: "Password changed successfully. You may now log in." });
+    return res.json({
+      message: "Password changed successfully. You may now log in.",
+    });
   }
 
   // Normal password change
   if (!currentPassword) {
-    return res.status(400).json({ message: "Current password and new password are required" });
+    return res
+      .status(400)
+      .json({ message: "Current password and new password are required" });
   }
   if (!req.authUser.passwordHash) {
-    return res.status(400).json({ message: "This account uses OAuth. Set a local password from account recovery flow." });
+    return res
+      .status(400)
+      .json({
+        message:
+          "This account uses OAuth. Set a local password from account recovery flow.",
+      });
   }
-  const valid = await bcrypt.compare(String(currentPassword), req.authUser.passwordHash);
+  const valid = await bcrypt.compare(
+    String(currentPassword),
+    req.authUser.passwordHash,
+  );
   if (!valid) {
     return res.status(400).json({ message: "Current password is incorrect" });
   }
   if (!isStrongPassword(newPassword)) {
     return res.status(400).json({
-      message: "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+      message:
+        "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
     });
   }
   if (String(currentPassword) === String(newPassword)) {
-    return res.status(400).json({ message: "New password must be different from current password" });
+    return res
+      .status(400)
+      .json({
+        message: "New password must be different from current password",
+      });
   }
   req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
   await req.authUser.save();
@@ -492,12 +627,16 @@ const changePassword = async (req, res) => {
 
 const requestPasswordChangeEmail = async (req, res) => {
   if (!canSendEmail()) {
-    return res.status(500).json({ message: "Email service is not configured." });
+    return res
+      .status(500)
+      .json({ message: "Email service is not configured." });
   }
 
   const { token, tokenHash } = generatePasswordResetToken();
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + PASSWORD_RESET_MINUTES * 60 * 1000);
+  const expiresAt = new Date(
+    now.getTime() + PASSWORD_RESET_MINUTES * 60 * 1000,
+  );
 
   req.authUser.passwordReset = {
     tokenHash,
@@ -541,29 +680,41 @@ const anonymizeRelatedData = async (userId) => {
         "address.name": maskedName,
         "address.phone": "",
       },
-    }
+    },
   );
   await Notification.deleteMany({ user: userId });
 };
 
 const deleteAccount = async (req, res) => {
   const { password, confirmText } = req.body || {};
-  const confirmation = String(confirmText || "").trim().toUpperCase();
+  const confirmation = String(confirmText || "")
+    .trim()
+    .toUpperCase();
   if (confirmation !== "DELETE") {
-    return res.status(400).json({ message: "Please type DELETE to confirm account deletion." });
+    return res
+      .status(400)
+      .json({ message: "Please type DELETE to confirm account deletion." });
   }
 
   if (req.authUser.passwordHash) {
     if (!password) {
-      return res.status(400).json({ message: "Password is required to delete your account." });
+      return res
+        .status(400)
+        .json({ message: "Password is required to delete your account." });
     }
-    const valid = await bcrypt.compare(String(password), req.authUser.passwordHash);
+    const valid = await bcrypt.compare(
+      String(password),
+      req.authUser.passwordHash,
+    );
     if (!valid) {
       return res.status(401).json({ message: "Incorrect password." });
     }
   }
 
-  const mode = String(env.accountDeleteMode || "soft").toLowerCase() === "hard" ? "hard" : "soft";
+  const mode =
+    String(env.accountDeleteMode || "soft").toLowerCase() === "hard"
+      ? "hard"
+      : "soft";
   const userId = req.authUser._id;
 
   if (mode === "hard") {
@@ -582,26 +733,38 @@ const deleteAccount = async (req, res) => {
   req.authUser.passwordHash = "";
   req.authUser.avatarUrl = "";
   req.authUser.address = "";
-  req.authUser.billingAddress = { region: "", province: "", city: "", barangay: "", street: "" };
+  req.authUser.billingAddress = {
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    street: "",
+  };
   req.authUser.addresses = [];
-  req.authUser.privacy = normalizePrivacy(req.authUser.privacy?.toObject?.() || {}, {
-    profileVisibility: "private",
-    showEmail: false,
-    showPhone: false,
-    activityStatus: false,
-    dataSharing: false,
-  });
-  req.authUser.notifications = normalizeNotifications(req.authUser.notifications?.toObject?.() || {}, {
-    email: false,
-    inApp: false,
-    push: false,
-    sms: false,
-    accountUpdates: false,
-    orderUpdates: false,
-    systemAlerts: false,
-    promotions: false,
-    serviceUpdates: false,
-  });
+  req.authUser.privacy = normalizePrivacy(
+    req.authUser.privacy?.toObject?.() || {},
+    {
+      profileVisibility: "private",
+      showEmail: false,
+      showPhone: false,
+      activityStatus: false,
+      dataSharing: false,
+    },
+  );
+  req.authUser.notifications = normalizeNotifications(
+    req.authUser.notifications?.toObject?.() || {},
+    {
+      email: false,
+      inApp: false,
+      push: false,
+      sms: false,
+      accountUpdates: false,
+      orderUpdates: false,
+      systemAlerts: false,
+      promotions: false,
+      serviceUpdates: false,
+    },
+  );
   req.authUser.accountStatus = "deleted";
   req.authUser.isDeleted = true;
   req.authUser.deletedAt = new Date();
@@ -621,7 +784,10 @@ const deleteUserById = async (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  const mode = String(env.accountDeleteMode || "soft").toLowerCase() === "hard" ? "hard" : "soft";
+  const mode =
+    String(env.accountDeleteMode || "soft").toLowerCase() === "hard"
+      ? "hard"
+      : "soft";
   const userId = target._id;
 
   if (mode === "hard") {
@@ -640,7 +806,13 @@ const deleteUserById = async (req, res) => {
   target.passwordHash = "";
   target.avatarUrl = "";
   target.address = "";
-  target.billingAddress = { region: "", province: "", city: "", barangay: "", street: "" };
+  target.billingAddress = {
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    street: "",
+  };
   target.addresses = [];
   target.privacy = normalizePrivacy(target.privacy?.toObject?.() || {}, {
     profileVisibility: "private",
@@ -649,17 +821,20 @@ const deleteUserById = async (req, res) => {
     activityStatus: false,
     dataSharing: false,
   });
-  target.notifications = normalizeNotifications(target.notifications?.toObject?.() || {}, {
-    email: false,
-    inApp: false,
-    push: false,
-    sms: false,
-    accountUpdates: false,
-    orderUpdates: false,
-    systemAlerts: false,
-    promotions: false,
-    serviceUpdates: false,
-  });
+  target.notifications = normalizeNotifications(
+    target.notifications?.toObject?.() || {},
+    {
+      email: false,
+      inApp: false,
+      push: false,
+      sms: false,
+      accountUpdates: false,
+      orderUpdates: false,
+      systemAlerts: false,
+      promotions: false,
+      serviceUpdates: false,
+    },
+  );
   target.accountStatus = "deleted";
   target.isDeleted = true;
   target.deletedAt = new Date();
@@ -715,7 +890,9 @@ const updateUserStatus = async (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  const nextStatus = String(req.body?.status || "").trim().toLowerCase();
+  const nextStatus = String(req.body?.status || "")
+    .trim()
+    .toLowerCase();
   if (!nextStatus || !["active", "disabled"].includes(nextStatus)) {
     return res.status(400).json({ message: "Invalid status" });
   }
@@ -727,10 +904,13 @@ const updateUserStatus = async (req, res) => {
 
 const shouldCreateInAppNotification = (user, type = "system") => {
   if (!user) return false;
-  const notifications = user.notifications?.toObject?.() || user.notifications || {};
-  if (notifications.inApp === false || notifications.push === false) return false;
+  const notifications =
+    user.notifications?.toObject?.() || user.notifications || {};
+  if (notifications.inApp === false || notifications.push === false)
+    return false;
   if (!NOTIFICATION_TYPES.includes(type)) return true;
-  if (type === "account" && notifications.accountUpdates === false) return false;
+  if (type === "account" && notifications.accountUpdates === false)
+    return false;
   if (type === "order" && notifications.orderUpdates === false) return false;
   if (type === "system" && notifications.systemAlerts === false) return false;
   return true;
@@ -738,41 +918,57 @@ const shouldCreateInAppNotification = (user, type = "system") => {
 
 const updateLocation = async (req, res) => {
   const location = req.body?.location;
-  if (!location || typeof location !== 'object') {
-    return res.status(400).json({ message: 'Location data is required' });
+  if (!location || typeof location !== "object") {
+    return res.status(400).json({ message: "Location data is required" });
   }
 
   // Validate coordinates if provided
   if (location.coordinates) {
     const { latitude, longitude, accuracy } = location.coordinates;
     if (latitude !== null && (latitude < -90 || latitude > 90)) {
-      return res.status(400).json({ message: 'Invalid latitude. Must be between -90 and 90 degrees.' });
+      return res
+        .status(400)
+        .json({
+          message: "Invalid latitude. Must be between -90 and 90 degrees.",
+        });
     }
     if (longitude !== null && (longitude < -180 || longitude > 180)) {
-      return res.status(400).json({ message: 'Invalid longitude. Must be between -180 and 180 degrees.' });
+      return res
+        .status(400)
+        .json({
+          message: "Invalid longitude. Must be between -180 and 180 degrees.",
+        });
     }
     if (accuracy !== null && accuracy < 0) {
-      return res.status(400).json({ message: 'Invalid accuracy. Must be non-negative.' });
+      return res
+        .status(400)
+        .json({ message: "Invalid accuracy. Must be non-negative." });
     }
   }
 
   // Normalize location data
   const normalizedLocation = {
-    coordinates: location.coordinates ? {
-      latitude: location.coordinates.latitude,
-      longitude: location.coordinates.longitude,
-      accuracy: location.coordinates.accuracy,
-      timestamp: location.coordinates.timestamp || new Date().toISOString(),
-    } : undefined,
-    address: location.address ? {
-      region: sanitizeText(location.address.region, 120),
-      province: sanitizeText(location.address.province, 120),
-      city: sanitizeText(location.address.city, 120),
-      barangay: sanitizeText(location.address.barangay, 120),
-      street: sanitizeText(location.address.street, 180),
-      postalCode: sanitizeText(location.address.postalCode, 10),
-    } : undefined,
-    source: ['gps', 'manual', 'ip'].includes(location.source) ? location.source : 'manual',
+    coordinates: location.coordinates
+      ? {
+          latitude: location.coordinates.latitude,
+          longitude: location.coordinates.longitude,
+          accuracy: location.coordinates.accuracy,
+          timestamp: location.coordinates.timestamp || new Date().toISOString(),
+        }
+      : undefined,
+    address: location.address
+      ? {
+          region: sanitizeText(location.address.region, 120),
+          province: sanitizeText(location.address.province, 120),
+          city: sanitizeText(location.address.city, 120),
+          barangay: sanitizeText(location.address.barangay, 120),
+          street: sanitizeText(location.address.street, 180),
+          postalCode: sanitizeText(location.address.postalCode, 10),
+        }
+      : undefined,
+    source: ["gps", "manual", "ip"].includes(location.source)
+      ? location.source
+      : "manual",
     capturedAt: new Date(),
   };
 
@@ -787,9 +983,9 @@ const updateLocation = async (req, res) => {
   req.authUser.location = normalizedLocation;
   await req.authUser.save();
 
-  return res.json({ 
-    message: 'Location updated successfully',
-    location: req.authUser.location 
+  return res.json({
+    message: "Location updated successfully",
+    location: req.authUser.location,
   });
 };
 

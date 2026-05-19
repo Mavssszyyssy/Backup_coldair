@@ -1,17 +1,13 @@
 import { Eye, EyeSlash, WarningDiamond } from "@phosphor-icons/react";
 import { useState } from "react";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_GEOMETRY,
-  BQ_SHADOWS,
-  BQ_WEIGHTS,
-} from "./BoutiqueTheme";
+import BoutiqueBox from "./BoutiqueBox";
+import BoutiqueStack from "./BoutiqueStack";
+import BoutiqueText from "./BoutiqueText";
+import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
 
 /**
  * BOUTIQUE INPUT
  * Unified field element for text, password, tel, number, and select.
- * Handles dynamic icon/border color synchronization using CSS variables.
  */
 export default function BoutiqueInput({
   label,
@@ -36,10 +32,30 @@ export default function BoutiqueInput({
   };
 
   return (
-    <div className={`bq-input-group ${getStatusClass()}`}>
-      {label && <label className="bq-input-label">{label}</label>}
+    <BoutiqueStack
+      gap={8}
+      width="100%"
+      className={`bq-input-group ${getStatusClass()}`}
+      style={{ "--field-accent": BQ_COLORS.inkFaint }}
+    >
+      {label && (
+        <BoutiqueText
+          variant="label"
+          className="bq-input-label"
+          color={BQ_COLORS.ink}
+        >
+          {label}
+        </BoutiqueText>
+      )}
 
-      <div className="bq-input-field-area">
+      <BoutiqueBox
+        className="bq-input-field-area"
+        style={{
+          position: "relative",
+          width: "100%",
+          transition: "all 0.3s ease",
+        }}
+      >
         {Icon && <Icon size={18} weight="bold" className="bq-input-icon" />}
 
         {type === "select" ? (
@@ -63,7 +79,19 @@ export default function BoutiqueInput({
         )}
 
         {/* Right-side overlays */}
-        <div className="bq-input-overlays">
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          gap={8}
+          className="bq-input-overlays"
+          style={{
+            position: "absolute",
+            right: "12px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 10,
+          }}
+        >
           {isPassword && (
             <button
               type="button"
@@ -75,47 +103,45 @@ export default function BoutiqueInput({
             </button>
           )}
           {inlineAction}
-        </div>
-      </div>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       {children}
 
       {status === "error" && errorMessage && (
-        <div className="bq-input-error-msg bq-slide-down">
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          gap={6}
+          margin="4px 0 0"
+          padding="0 0 0 4px"
+          className="bq-input-error-msg bq-slide-down"
+        >
           <WarningDiamond size={14} weight="bold" />
-          <span>{errorMessage}</span>
-        </div>
+          <BoutiqueText size="12px" weight={700} color={BQ_COLORS.danger}>
+            {errorMessage}
+          </BoutiqueText>
+        </BoutiqueBox>
       )}
 
-      {hint && <p className="bq-input-hint">{hint}</p>}
+      {hint && (
+        <BoutiqueText
+          size="11px"
+          weight={600}
+          color={BQ_COLORS.inkMuted}
+          margin="4px 0 0"
+          className="bq-input-hint"
+        >
+          {hint}
+        </BoutiqueText>
+      )}
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-input-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          width: 100%;
-          --field-accent: ${BQ_COLORS.inkFaint};
-        }
-
-        .bq-input-label {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 13px;
-          font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.ink};
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .bq-input-field-area {
-          position: relative;
-          display: flex;
-          align-items: center;
-          width: 100%;
-          transition: all 0.3s ease;
-        }
+        .bq-input-group:focus-within { --field-accent: ${BQ_COLORS.brand}; }
+        .bq-input--error { --field-accent: ${BQ_COLORS.danger} !important; }
+        .bq-input--success { --field-accent: ${BQ_COLORS.success} !important; }
 
         .bq-input-field {
           width: 100%;
@@ -125,7 +151,7 @@ export default function BoutiqueInput({
           background: ${BQ_COLORS.surfaceAlt};
           border: 1.5px solid var(--field-accent);
           border-radius: ${BQ_GEOMETRY.radiusMd};
-          font-family: ${BQ_FONTS.body};
+          font-family: inherit;
           font-size: 15px;
           color: ${BQ_COLORS.ink};
           transition: all 0.3s ease;
@@ -144,21 +170,6 @@ export default function BoutiqueInput({
           color: var(--field-accent); z-index: 5; transition: color 0.3s ease;
         }
 
-        .bq-input-overlays {
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          z-index: 10;
-        }
-
-        .bq-input-group:focus-within { --field-accent: ${BQ_COLORS.brand}; }
-        .bq-input--error { --field-accent: ${BQ_COLORS.danger} !important; }
-        .bq-input--success { --field-accent: ${BQ_COLORS.success} !important; }
-
         .bq-input--error .bq-input-field { background: #fffafb; }
         .bq-input--success .bq-input-field { background: #fafffb; }
 
@@ -168,13 +179,6 @@ export default function BoutiqueInput({
           transition: all 0.2s; width: 32px; height: 32px;
         }
         .bq-input-pass-toggle:hover { filter: brightness(0.8); transform: scale(1.1); }
-
-        .bq-input-error-msg {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 12px; color: ${BQ_COLORS.danger}; font-weight: ${BQ_WEIGHTS.bold}; margin-top: 4px; padding-left: 4px;
-        }
-
-        .bq-input-hint { font-size: 11px; color: ${BQ_COLORS.inkMuted}; margin-top: 4px; font-weight: ${BQ_WEIGHTS.semibold}; }
 
         /* Unified status badge styles used by VerifyInput and Steps */
         .bq-verified-badge {
@@ -186,6 +190,6 @@ export default function BoutiqueInput({
       `,
         }}
       />
-    </div>
+    </BoutiqueStack>
   );
 }

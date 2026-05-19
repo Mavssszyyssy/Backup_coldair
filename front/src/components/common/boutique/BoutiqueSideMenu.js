@@ -10,8 +10,11 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
-import { BQ_COLORS, BQ_FONTS, BQ_SHADOWS } from "./BoutiqueTheme";
+import BoutiqueStack from "./BoutiqueStack";
+import BoutiqueText from "./BoutiqueText";
+import { BQ_COLORS, BQ_SHADOWS } from "./BoutiqueTheme";
 
 export default function BoutiqueSideMenu({
   isOpen,
@@ -56,30 +59,59 @@ export default function BoutiqueSideMenu({
 
   return (
     <BoutiqueDrawer isOpen={isOpen} onClose={onClose} side="left" width="360px">
-      <div className="bq-menu-wrapper">
-        <div className="bq-user-block">
-          <div className="bq-avatar">
+      <BoutiqueBox className="bq-menu-wrapper" height="100%">
+        <BoutiqueStack gap={16} padding="40px 32px" className="bq-user-block">
+          <BoutiqueBox
+            width={64}
+            height={64}
+            background={BQ_COLORS.bgAlt}
+            align="center"
+            justify="center"
+            className="bq-avatar"
+            style={{
+              borderRadius: "20px",
+              overflow: "hidden",
+              color: BQ_COLORS.brand,
+              boxShadow: BQ_SHADOWS.soft,
+            }}
+          >
             {user?.avatarUrl && !avatarBroken ? (
               <img
                 src={user.avatarUrl}
                 alt="Me"
                 onError={() => setAvatarBroken(true)}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : isAuthenticated ? (
-              <span className="bq-initial">{getUserInitial()}</span>
+              <BoutiqueText variant="h2" weight={900} className="bq-initial">
+                {getUserInitial()}
+              </BoutiqueText>
             ) : (
               <User size={32} weight="bold" />
             )}
-          </div>
-          <div className="bq-user-info">
-            <span className="bq-greeting">
+          </BoutiqueBox>
+          <BoutiqueStack gap={0} className="bq-user-info">
+            <BoutiqueText
+              size="13px"
+              weight={600}
+              color={BQ_COLORS.inkMuted}
+              className="bq-greeting"
+            >
               {isAuthenticated ? "Welcome back," : "Hello,"}
-            </span>
-            <h3 className="bq-username">{getUserDisplayName()}</h3>
-          </div>
-        </div>
+            </BoutiqueText>
+            <BoutiqueText variant="h3" weight={800} className="bq-username">
+              {getUserDisplayName()}
+            </BoutiqueText>
+          </BoutiqueStack>
+        </BoutiqueStack>
 
-        <nav className="bq-menu-nav">
+        <BoutiqueStack
+          tag="nav"
+          gap={8}
+          padding="0 16px"
+          flex={1}
+          className="bq-menu-nav"
+        >
           {menuItems.map((item) => {
             const active = location.pathname === item.path;
             return (
@@ -94,7 +126,12 @@ export default function BoutiqueSideMenu({
             );
           })}
 
-          <div className="bq-menu-divider" />
+          <BoutiqueBox
+            height={1}
+            background={BQ_COLORS.border}
+            margin={16}
+            className="bq-menu-divider"
+          />
 
           {isAuthenticated ? (
             <button
@@ -121,33 +158,28 @@ export default function BoutiqueSideMenu({
               <span>Sign In</span>
             </button>
           )}
-        </nav>
+        </BoutiqueStack>
 
-        <div className="bq-menu-footer">
-          <span className="bq-version">AeroPulse v1.0.0</span>
-        </div>
-      </div>
+        <BoutiqueBox
+          padding={32}
+          className="bq-menu-footer"
+          style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
+        >
+          <BoutiqueText
+            size="12px"
+            weight={700}
+            color={BQ_COLORS.inkFaint}
+            className="bq-version"
+            style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
+          >
+            AeroPulse v1.0.0
+          </BoutiqueText>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-menu-wrapper { display: flex; flex-direction: column; height: 100%; }
-
-        .bq-user-block { padding: 40px 32px; display: flex; flex-direction: column; gap: 16px; }
-        .bq-avatar {
-          width: 64px; height: 64px; background: ${BQ_COLORS.bgAlt};
-          border-radius: 20px; display: flex; align-items: center; justify-content: center;
-          overflow: hidden; color: ${BQ_COLORS.brand}; box-shadow: ${BQ_SHADOWS.soft};
-        }
-        .bq-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .bq-initial { font-family: ${BQ_FONTS.heading}; font-size: 24px; font-weight: 900; }
-
-        .bq-user-info { display: flex; flex-direction: column; }
-        .bq-greeting { font-size: 13px; font-weight: 600; color: ${BQ_COLORS.inkMuted}; }
-        .bq-username { font-family: ${BQ_FONTS.heading}; font-size: 20px; font-weight: 800; color: ${BQ_COLORS.ink}; margin: 0; }
-
-        .bq-menu-nav { flex: 1; padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
-
         .bq-nav-item {
           display: flex; align-items: center; gap: 16px; padding: 16px;
           background: transparent; border: none; border-radius: 20px;
@@ -157,13 +189,8 @@ export default function BoutiqueSideMenu({
         .bq-nav-item:hover { background: ${BQ_COLORS.bgAlt}; color: ${BQ_COLORS.ink}; }
         .bq-nav-item.active { background: ${BQ_COLORS.brand}; color: white; box-shadow: ${BQ_SHADOWS.float}; }
 
-        .bq-menu-divider { height: 1px; background: ${BQ_COLORS.border}; margin: 16px; }
-
         .bq-logout-btn { color: ${BQ_COLORS.danger}; }
         .bq-logout-btn:hover { background: #fef2f2; color: ${BQ_COLORS.danger}; }
-
-        .bq-menu-footer { padding: 32px; border-top: 1px solid ${BQ_COLORS.border}; }
-        .bq-version { font-size: 12px; font-weight: 700; color: ${BQ_COLORS.inkFaint}; text-transform: uppercase; letter-spacing: 0.05em; }
       `,
         }}
       />

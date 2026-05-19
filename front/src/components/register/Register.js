@@ -9,6 +9,8 @@ import {
 } from "../../utils/secureStorage";
 import BoutiqueAuthHeader from "../common/boutique/BoutiqueAuthHeader";
 import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import RegisterContactStep from "./RegisterContactStep";
 import RegisterEmailStep from "./RegisterEmailStep";
@@ -188,17 +190,34 @@ export default function Register() {
   return (
     <BoutiqueAuthLayout>
       <BoutiqueAuthHeader title="Join AeroPulse">
-        <div className="bq-reg-progress">
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          gap={6}
+          className="bq-reg-progress"
+        >
           {STEPS.map((s, i) => (
-            <div
+            <BoutiqueBox
               key={s}
+              height={4}
+              style={{
+                width: i === stepIndex ? "32px" : "12px",
+                borderRadius: "2px",
+                background:
+                  i <= stepIndex
+                    ? i === stepIndex
+                      ? BQ_COLORS.accent
+                      : BQ_COLORS.ink
+                    : BQ_COLORS.border,
+                transition: "all 0.4s ease",
+              }}
               className={`bq-progress-bar ${i === stepIndex ? "active" : ""} ${i < stepIndex ? "done" : ""}`}
             />
           ))}
-        </div>
+        </BoutiqueBox>
       </BoutiqueAuthHeader>
 
-      <div className="bq-reg-step-container">
+      <BoutiqueBox className="bq-reg-step-container" width="100%" height="100%">
         {step === "legal" && (
           <RegisterLegalConsentsStep
             formData={formData}
@@ -249,37 +268,35 @@ export default function Register() {
         )}
 
         {submissionError && (
-          <div className="bq-reg-submit-error">{submissionError}</div>
+          <BoutiqueBox
+            margin="24px 0 0"
+            padding={16}
+            background="#fff1f2"
+            align="center"
+            className="bq-reg-submit-error"
+            style={{
+              border: `1.5px solid ${BQ_COLORS.danger}`,
+              borderRadius: "12px",
+            }}
+          >
+            <BoutiqueText color={BQ_COLORS.danger} size="14px" weight={700}>
+              {submissionError}
+            </BoutiqueText>
+          </BoutiqueBox>
         )}
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
         .bq-reg-step-container {
-          width: 100%;
-          height: 100%;
           animation: bq-step-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes bq-step-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .bq-reg-progress {
-          display: flex; gap: 6px; align-items: center;
-        }
-
-        .bq-progress-bar {
-          width: 12px; height: 4px; border-radius: 2px;
-          background: ${BQ_COLORS.border}; transition: all 0.4s ease;
-        }
-        .bq-progress-bar.active { width: 32px; background: ${BQ_COLORS.accent}; }
-        .bq-progress-bar.done { background: ${BQ_COLORS.ink}; }
-
         .bq-reg-submit-error {
-          margin-top: 24px; padding: 16px; background: #fff1f2;
-          border: 1.5px solid ${BQ_COLORS.danger}; border-radius: 12px;
-          color: ${BQ_COLORS.danger}; font-size: 14px; font-weight: 700;
-          text-align: center; animation: bq-shake 0.4s ease;
+          animation: bq-shake 0.4s ease;
         }
 
         @keyframes bq-shake {

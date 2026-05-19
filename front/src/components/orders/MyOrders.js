@@ -1,13 +1,26 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { apiRequest } from '../../config/api';
-import './MyOrders.css';
-import OrderCard from './OrderCard';
-import TrackOrderModal from './TrackOrderModal';
-import Footer from '../home/Footer';
+import { ShoppingBag, WarningDiamond } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { apiRequest } from "../../config/api";
+import { useCart } from "../../context/CartContext";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
+import OrderCard from "./OrderCard";
+import TrackOrderModal from "./TrackOrderModal";
 
-const VALID_ORDER_STATUSES = ['all', 'to_pay', 'to_deliver', 'to_install', 'complete'];
+const VALID_ORDER_STATUSES = [
+  "all",
+  "to_pay",
+  "to_deliver",
+  "to_install",
+  "complete",
+];
 
 function MyOrders() {
   const navigate = useNavigate();
@@ -16,17 +29,17 @@ function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredOrders = useMemo(() => {
-    if (statusFilter === 'all') return orders;
+    if (statusFilter === "all") return orders;
     return orders.filter((order) => order.status === statusFilter);
   }, [orders, statusFilter]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const status = params.get('status') || 'all';
-    setStatusFilter(VALID_ORDER_STATUSES.includes(status) ? status : 'all');
+    const status = params.get("status") || "all";
+    setStatusFilter(VALID_ORDER_STATUSES.includes(status) ? status : "all");
   }, [location.search]);
 
   useEffect(() => {
@@ -43,18 +56,18 @@ function MyOrders() {
           total: order.totalAmount || order.total || 0,
           status: order.workflowStatus || order.status,
           items: order.items || [],
-          trackingNumber: order.trackingNumber || 'Pending',
-          estimatedDelivery: order.estimatedDelivery || '',
-          estimatedArrival: order.estimatedArrival || '',
-          installationDate: order.installationDate || '',
-          assignedTechnician: order.assignedTechnician || '',
+          trackingNumber: order.trackingNumber || "Pending",
+          estimatedDelivery: order.estimatedDelivery || "",
+          estimatedArrival: order.estimatedArrival || "",
+          installationDate: order.installationDate || "",
+          assignedTechnician: order.assignedTechnician || "",
           receipt: order.receipt || null,
         }));
         setOrders(normalized);
       } catch (_error) {
         if (!mounted) return;
-        if (!localStorage.getItem('accessToken')) {
-          const savedOrders = localStorage.getItem('orders');
+        if (!localStorage.getItem("accessToken")) {
+          const savedOrders = localStorage.getItem("orders");
           if (savedOrders) setOrders(JSON.parse(savedOrders));
         }
       }
@@ -64,14 +77,14 @@ function MyOrders() {
     const pollId = window.setInterval(loadOrders, 25000);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') loadOrders();
+      if (document.visibilityState === "visible") loadOrders();
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       mounted = false;
       window.clearInterval(pollId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -81,71 +94,165 @@ function MyOrders() {
   };
 
   const handleReorder = (order) => {
-    order.items.forEach(item => {
-      addToCart({
-        id: item.productId || item.id,
-        name: item.name,
-        icon: item.icon,
-        price: item.price,
-        specs: item.specs,
-        category: item.category || 'product'
-      }, item.quantity);
+    order.items.forEach((item) => {
+      addToCart(
+        {
+          id: item.productId || item.id,
+          name: item.name,
+          icon: item.icon,
+          price: item.price,
+          specs: item.specs,
+          category: item.category || "product",
+        },
+        item.quantity,
+      );
     });
-    alert('Items added to cart!');
-    navigate('/shop');
+    alert("Items added to cart!");
+    navigate("/shop");
   };
 
   const handleBack = () => {
-    navigate('/home');
+    navigate("/home");
   };
 
   return (
-    <div className="orders-container">
-      <div className="orders-header">
-        <div className="orders-header-content">
-          <button className="back-btn" onClick={handleBack}>←</button>
-          <h1 className="orders-title">My Orders</h1>
-        </div>
-      </div>
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+      <BoutiqueHeader
+        title="My Orders"
+        leftAction="back"
+        onLeftAction={handleBack}
+      />
 
-      <div className="orders-filter-bar">
-        {['all', 'to_pay', 'to_deliver', 'to_install', 'complete'].map((status) => (
-          <button
-            key={status}
-            type="button"
-            className={`orders-filter-btn ${statusFilter === status ? 'active' : ''}`}
-            onClick={() => setStatusFilter(status)}
-          >
-            {status === 'all' ? 'All' : status.replace('_', ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())}
-          </button>
-        ))}
-      </div>
+      <BoutiqueBox
+        direction="column"
+        flex={1}
+        width="100%"
+        padding="40px 24px"
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+      >
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          justify="space-between"
+          margin="0 0 32px"
+        >
+          <BoutiqueStack gap={4}>
+            <BoutiqueText variant="h2">Purchase History</BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
+              Review and track your boutique orders.
+            </BoutiqueText>
+          </BoutiqueStack>
+        </BoutiqueBox>
 
-      <div className="orders-main">
-        {orders.length === 0 ? (
-          <div className="empty-orders">
-            <h3>No Orders Yet</h3>
-            <p>You haven't placed any orders yet. Start shopping now!</p>
-            <button className="shop-now-btn" onClick={() => navigate('/shop')}>
-              Shop Now →
-            </button>
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="empty-orders">
-            <h3>No Orders Match</h3>
-            <p>No orders match the selected status. Try a different filter.</p>
-          </div>
-        ) : (
-          filteredOrders.map(order => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onTrack={handleTrack}
-              onReorder={handleReorder}
-            />
-          ))
-        )}
-      </div>
+        <BoutiqueBox
+          direction="row"
+          gap={8}
+          margin="0 0 40px"
+          padding="4px"
+          background={BQ_COLORS.surfaceAlt}
+          style={{ borderRadius: BQ_GEOMETRY.radiusPill, overflowX: "auto" }}
+          className="bq-hide-scrollbar"
+        >
+          {["all", "to_pay", "to_deliver", "to_install", "complete"].map(
+            (status) => (
+              <button
+                key={status}
+                type="button"
+                className={`bq-filter-pill ${statusFilter === status ? "active" : ""}`}
+                onClick={() => setStatusFilter(status)}
+                style={{
+                  padding: "10px 24px",
+                  border: "none",
+                  background: statusFilter === status ? "white" : "transparent",
+                  color:
+                    statusFilter === status
+                      ? BQ_COLORS.brand
+                      : BQ_COLORS.inkMuted,
+                  borderRadius: BQ_GEOMETRY.radiusPill,
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  whiteSpace: "nowrap",
+                  boxShadow:
+                    statusFilter === status
+                      ? "0 4px 12px rgba(0,0,0,0.05)"
+                      : "none",
+                }}
+              >
+                {status === "all"
+                  ? "All Orders"
+                  : status
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (ch) => ch.toUpperCase())}
+              </button>
+            ),
+          )}
+        </BoutiqueBox>
+
+        <BoutiqueStack gap={24} className="orders-main">
+          {orders.length === 0 ? (
+            <BoutiqueBox
+              align="center"
+              justify="center"
+              padding={60}
+              background="white"
+              style={{
+                borderRadius: "24px",
+                border: `1px dashed ${BQ_COLORS.border}`,
+              }}
+            >
+              <BoutiqueStack gap={20} align="center">
+                <ShoppingBag
+                  size={64}
+                  weight="bold"
+                  color={BQ_COLORS.inkFaint}
+                />
+                <BoutiqueText variant="h3">No Orders Yet</BoutiqueText>
+                <BoutiqueText
+                  color={BQ_COLORS.inkMuted}
+                  align="center"
+                  style={{ maxWidth: "320px" }}
+                >
+                  Start your boutique experience by exploring our premium AC
+                  collections.
+                </BoutiqueText>
+                <BoutiqueButton
+                  variant="primary"
+                  onClick={() => navigate("/shop")}
+                  style={{ width: "auto", marginTop: "12px" }}
+                >
+                  Start Shopping
+                </BoutiqueButton>
+              </BoutiqueStack>
+            </BoutiqueBox>
+          ) : filteredOrders.length === 0 ? (
+            <BoutiqueBox
+              align="center"
+              justify="center"
+              padding={60}
+              color={BQ_COLORS.inkMuted}
+            >
+              <WarningDiamond size={48} weight="bold" />
+              <BoutiqueText variant="h3" margin="16px 0 8px">
+                No matching orders
+              </BoutiqueText>
+              <BoutiqueText>
+                Try a different filter to see your other purchases.
+              </BoutiqueText>
+            </BoutiqueBox>
+          ) : (
+            filteredOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onTrack={handleTrack}
+                onReorder={handleReorder}
+              />
+            ))
+          )}
+        </BoutiqueStack>
+      </BoutiqueBox>
 
       {showTrackModal && selectedOrder && (
         <TrackOrderModal
@@ -156,8 +263,18 @@ function MyOrders() {
           }}
         />
       )}
-      <Footer />
-    </div>
+      <BoutiqueFooter />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .bq-hide-scrollbar::-webkit-scrollbar { display: none; }
+        .bq-hide-scrollbar { scrollbar-width: none; }
+        .bq-filter-pill:hover:not(.active) { color: ${BQ_COLORS.brand} !important; }
+      `,
+        }}
+      />
+    </BoutiqueScreen>
   );
 }
 

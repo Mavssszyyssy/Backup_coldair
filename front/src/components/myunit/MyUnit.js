@@ -1,8 +1,17 @@
+import { Plus, Snowflake } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
-import Footer from "../home/Footer";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import AddUnitModal from "./AddUnitModal";
 import "./MyUnit.css";
 import RegisterQrUnitModal from "./RegisterQrUnitModal";
@@ -227,47 +236,79 @@ function MyUnit() {
   };
 
   return (
-    <div className="myunit-container">
-      <div className="myunit-header">
-        <div className="myunit-header-content">
-          <button className="back-btn" onClick={handleBack}>
-            ←
-          </button>
-          <h1 className="myunit-title">My AC Units</h1>
-          <button
-            className="add-unit-btn"
-            onClick={() => setShowAddModal(true)}
-          >
-            + Add New Unit
-          </button>
-        </div>
-      </div>
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+      <BoutiqueHeader
+        title="My AC Units"
+        leftAction="back"
+        onLeftAction={() => navigate("/home")}
+      />
 
-      <div className="myunit-main">
+      <BoutiqueBox
+        direction="column"
+        flex={1}
+        width="100%"
+        padding="40px 24px"
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+      >
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          justify="space-between"
+          margin="0 0 32px"
+        >
+          <BoutiqueStack gap={4}>
+            <BoutiqueText variant="h2">My Facilities</BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
+              Track maintenance and service history for your units.
+            </BoutiqueText>
+          </BoutiqueStack>
+          <BoutiqueButton
+            variant="primary"
+            size="md"
+            onClick={() => setShowAddModal(true)}
+            style={{ width: "auto" }}
+          >
+            <Plus size={18} weight="bold" /> Add New Unit
+          </BoutiqueButton>
+        </BoutiqueBox>
+
         {units.length === 0 ? (
-          <div className="empty-units">
-            <div className="empty-icon">
-              <img
-                src={icons.temperatureFrigid}
-                alt=""
-                className="inline-icon"
-                style={{ width: 48, height: 48 }}
-              />
-            </div>
-            <div className="empty-title">No AC Units Added</div>
-            <div className="empty-text">
-              Add your AC units to track maintenance and service history
-            </div>
-            <button
-              className="add-unit-btn"
-              onClick={() => setShowAddModal(true)}
-              style={{ marginTop: "20px" }}
-            >
-              + Add New Unit
-            </button>
-          </div>
+          <BoutiqueBox
+            flex={1}
+            align="center"
+            justify="center"
+            padding={60}
+            background="white"
+            style={{
+              borderRadius: "24px",
+              border: `1px dashed ${BQ_COLORS.border}`,
+            }}
+          >
+            <BoutiqueStack gap={20} align="center">
+              <Snowflake size={64} weight="bold" color={BQ_COLORS.inkFaint} />
+              <BoutiqueText variant="h3">No AC Units Added</BoutiqueText>
+              <BoutiqueText
+                color={BQ_COLORS.inkMuted}
+                align="center"
+                style={{ maxWidth: "320px" }}
+              >
+                Add your AC units to track maintenance and receive service
+                reminders.
+              </BoutiqueText>
+              <BoutiqueButton
+                variant="outline"
+                onClick={() => setShowAddModal(true)}
+                style={{ width: "auto", marginTop: "12px" }}
+              >
+                + Add Your First Unit
+              </BoutiqueButton>
+            </BoutiqueStack>
+          </BoutiqueBox>
         ) : (
-          <div className="units-grid">
+          <BoutiqueGrid
+            columns="repeat(auto-fill, minmax(320px, 1fr))"
+            gap={24}
+          >
             {units.map((unit) => (
               <UnitCard
                 key={unit.id}
@@ -280,9 +321,9 @@ function MyUnit() {
                 onReportIssue={handleReportIssue}
               />
             ))}
-          </div>
+          </BoutiqueGrid>
         )}
-      </div>
+      </BoutiqueBox>
 
       {showAddModal && (
         <AddUnitModal
@@ -351,8 +392,8 @@ function MyUnit() {
           onRegister={handleQrRegister}
         />
       )}
-      <Footer />
-    </div>
+      <BoutiqueFooter />
+    </BoutiqueScreen>
   );
 }
 

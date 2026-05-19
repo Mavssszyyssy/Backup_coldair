@@ -6,7 +6,10 @@ import {
   WarningDiamond,
 } from "@phosphor-icons/react";
 import coldAirLogo from "../images/Cold Air Logo.jpg";
-import { BQ_COLORS, BQ_FONTS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
+import BoutiqueBox from "./BoutiqueBox";
+import BoutiqueStack from "./BoutiqueStack";
+import BoutiqueText from "./BoutiqueText";
+import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
 
 export default function BoutiqueHeader({
   variant = "text", // "text" for Shop, "logo" for Home
@@ -21,10 +24,37 @@ export default function BoutiqueHeader({
   scrolled = false,
 }) {
   return (
-    <header className={`bq-header ${scrolled ? "scrolled" : ""}`}>
-      <div className="bq-header-content">
+    <BoutiqueBox
+      tag="header"
+      height={scrolled ? "72px" : BQ_GEOMETRY.headerHeight}
+      background="rgba(255, 255, 255, 0.9)"
+      justify="center"
+      className={`bq-header ${scrolled ? "scrolled" : ""}`}
+      style={{
+        backdropFilter: "blur(20px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 1100,
+        flexShrink: 0,
+        boxShadow: BQ_SHADOWS.glass,
+        transition: "all 0.3s ease",
+      }}
+    >
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        justify="space-between"
+        padding="0 32px"
+        width="100%"
+        className="bq-header-content"
+      >
         {/* LEFT: Action + Identity */}
-        <div className="bq-header-left">
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          gap={20}
+          className="bq-header-left"
+        >
           <button className="bq-action-btn" onClick={onLeftAction}>
             {leftAction === "back" ? (
               <ArrowLeft size={18} weight="bold" />
@@ -34,32 +64,78 @@ export default function BoutiqueHeader({
           </button>
 
           {variant === "logo" ? (
-            <div className="bq-logo-group">
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              gap={12}
+              className="bq-logo-group"
+            >
               <img src={coldAirLogo} alt="Cold Air" className="bq-logo-img" />
-              <div className="bq-logo-text">
-                <span className="bq-logo-main">COLD AIR</span>
-                <span className="bq-logo-sub">Airconditioning Trading</span>
-              </div>
-            </div>
+              <BoutiqueStack gap={0} className="bq-logo-text">
+                <BoutiqueText
+                  weight={900}
+                  size="18px"
+                  className="bq-logo-main"
+                  style={{ letterSpacing: "-0.02em", lineHeight: 1 }}
+                >
+                  COLD AIR
+                </BoutiqueText>
+                <BoutiqueText
+                  weight={700}
+                  size="10px"
+                  color={BQ_COLORS.inkMuted}
+                  className="bq-logo-sub"
+                  style={{
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Airconditioning Trading
+                </BoutiqueText>
+              </BoutiqueStack>
+            </BoutiqueBox>
           ) : (
-            <h1 className="bq-title-text">{title}</h1>
+            <BoutiqueText
+              variant="h2"
+              className="bq-title-text"
+              style={{ letterSpacing: "-0.04em" }}
+            >
+              {title}
+            </BoutiqueText>
           )}
-        </div>
+        </BoutiqueBox>
 
         {/* CENTER: Status (Hidden on mobile usually) */}
         {!isAuthenticated && (
-          <div className="bq-header-center">
-            <div className="bq-status-pill">
+          <BoutiqueBox flex={1} justify="center" className="bq-header-center">
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              gap={12}
+              background="#fffbeb"
+              padding="10px 24px"
+              className="bq-status-pill"
+              style={{
+                borderRadius: BQ_GEOMETRY.radiusPill,
+                color: "#92400e",
+                boxShadow: BQ_SHADOWS.soft,
+              }}
+            >
               <WarningDiamond size={18} weight="bold" />
-              <span>
+              <BoutiqueText size="13px" weight={600}>
                 Guest Mode. <strong>Login to checkout.</strong>
-              </span>
-            </div>
-          </div>
+              </BoutiqueText>
+            </BoutiqueBox>
+          </BoutiqueBox>
         )}
 
         {/* RIGHT: Global Actions */}
-        <div className="bq-header-right">
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          gap={16}
+          className="bq-header-right"
+        >
           {isAuthenticated && onNotificationClick && (
             <button
               className="bq-action-btn bq-notif-btn"
@@ -80,41 +156,12 @@ export default function BoutiqueHeader({
               <span className="bq-badge bq-badge--cart">{cartCount}</span>
             )}
           </button>
-        </div>
-      </div>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-header {
-          height: ${BQ_GEOMETRY.headerHeight};
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(20px);
-          position: sticky;
-          top: 0;
-          z-index: 1100;
-          flex-shrink: 0;
-          box-shadow: ${BQ_SHADOWS.glass};
-          display: flex;
-          align-items: center;
-          transition: all 0.3s ease;
-        }
-
-        .bq-header.scrolled {
-          background: rgba(255, 255, 255, 0.98);
-          height: 72px;
-        }
-
-        .bq-header-content {
-          width: 100%;
-          padding: 0 32px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .bq-header-left { display: flex; align-items: center; gap: 20px; }
-
         .bq-action-btn {
           background: ${BQ_COLORS.surface};
           border: none;
@@ -136,34 +183,7 @@ export default function BoutiqueHeader({
           box-shadow: ${BQ_SHADOWS.float};
         }
 
-        .bq-logo-group { display: flex; align-items: center; gap: 12px; }
         .bq-logo-img { height: 40px; width: 40px; border-radius: 8px; object-fit: cover; }
-        .bq-logo-text { display: flex; flex-direction: column; }
-        .bq-logo-main {
-          font-family: ${BQ_FONTS.heading}; font-size: 18px; font-weight: 900;
-          letter-spacing: -0.02em; color: ${BQ_COLORS.ink}; line-height: 1;
-        }
-        .bq-logo-sub { font-size: 10px; font-weight: 700; color: ${BQ_COLORS.inkMuted}; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        .bq-title-text {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 24px; font-weight: 800;
-          letter-spacing: -0.04em; margin: 0;
-          color: ${BQ_COLORS.ink};
-        }
-
-        .bq-header-center { flex: 1; display: flex; justify-content: center; }
-
-        .bq-status-pill {
-          background: #fffbeb;
-          padding: 10px 24px;
-          border-radius: ${BQ_GEOMETRY.radiusPill};
-          display: flex; align-items: center; gap: 12px;
-          color: #92400e; font-size: 13px; font-family: ${BQ_FONTS.heading};
-          font-weight: 600; box-shadow: ${BQ_SHADOWS.soft};
-        }
-
-        .bq-header-right { display: flex; align-items: center; gap: 16px; }
 
         .bq-cart-trigger {
           position: relative;
@@ -185,7 +205,7 @@ export default function BoutiqueHeader({
           position: absolute;
           top: -4px; right: -4px;
           color: white; font-size: 10px;
-          font-family: ${BQ_FONTS.heading}; font-weight: 800;
+          font-weight: 800;
           min-width: 20px; height: 20px;
           display: flex; align-items: center; justify-content: center;
           border-radius: ${BQ_GEOMETRY.radiusPill};
@@ -195,12 +215,12 @@ export default function BoutiqueHeader({
         .bq-badge--cart { background: ${BQ_COLORS.danger}; }
 
         @media (max-width: 900px) {
-          .bq-header-center { display: none; }
-          .bq-logo-sub { display: none; }
+          .bq-header-center { display: none !important; }
+          .bq-logo-sub { display: none !important; }
         }
       `,
         }}
       />
-    </header>
+    </BoutiqueBox>
   );
 }

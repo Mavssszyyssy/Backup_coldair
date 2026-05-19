@@ -1,8 +1,11 @@
 import { ShoppingCartSimple, Snowflake, Trash } from "@phosphor-icons/react";
 import { useState } from "react";
+import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueNumberInput from "./BoutiqueNumberInput";
-import { BQ_COLORS, BQ_FONTS, BQ_GEOMETRY } from "./BoutiqueTheme";
+import BoutiqueStack from "./BoutiqueStack";
+import BoutiqueText from "./BoutiqueText";
+import { BQ_COLORS, BQ_GEOMETRY } from "./BoutiqueTheme";
 
 import { getBrandLogo } from "../../../config/brandLogos";
 
@@ -20,6 +23,7 @@ function CartItemImage({ item }) {
         src={item.imageUrl}
         alt={item.name}
         onError={() => setBroken(true)}
+        style={{ width: "100%", height: "100%", objectFit: "contain" }}
       />
     );
   }
@@ -32,13 +36,19 @@ function CartItemImage({ item }) {
         alt={item.brand}
         onError={() => setBrandBroken(true)}
         className="bq-cart-brand-fallback"
+        style={{ width: "100%", height: "100%", objectFit: "contain" }}
       />
     );
   }
 
   // 3. Ultimate Fallback: Icon
   return (
-    <Snowflake size={32} weight="bold" className="bq-cart-icon-fallback" />
+    <Snowflake
+      size={32}
+      weight="bold"
+      className="bq-cart-icon-fallback"
+      style={{ color: BQ_COLORS.inkFaint, opacity: 0.2 }}
+    />
   );
 }
 
@@ -59,36 +69,114 @@ export default function BoutiqueCart({
       width="440px"
       title="Your Cart"
     >
-      <div className="bq-cart-wrapper">
-        <div className="bq-cart-items">
+      <BoutiqueBox className="bq-cart-wrapper" direction="column" height="100%">
+        <BoutiqueStack
+          gap={32}
+          padding={32}
+          className="bq-cart-items"
+          style={{ flex: 1, overflowY: "auto" }}
+        >
           {cart.length === 0 ? (
-            <div className="bq-cart-empty">
+            <BoutiqueBox
+              flex={1}
+              align="center"
+              justify="center"
+              padding="60px 0"
+              color={BQ_COLORS.inkFaint}
+              className="bq-cart-empty"
+            >
               <ShoppingCartSimple size={64} weight="bold" />
-              <p>Your cart is empty.</p>
-            </div>
+              <BoutiqueText variant="h3" margin="16px 0 0" weight={700}>
+                Your cart is empty.
+              </BoutiqueText>
+            </BoutiqueBox>
           ) : (
             cart.map((item) => (
-              <div key={item.id} className="bq-cart-item">
-                <div className="bq-item-img-wrap">
+              <BoutiqueBox
+                key={item.id}
+                direction="row"
+                gap={20}
+                className="bq-cart-item"
+              >
+                <BoutiqueBox
+                  width={80}
+                  height={80}
+                  background={BQ_COLORS.surfaceAlt}
+                  align="center"
+                  justify="center"
+                  padding={12}
+                  className="bq-item-img-wrap"
+                  style={{
+                    borderRadius: "16px",
+                    flexShrink: 0,
+                    border: `1px solid ${BQ_COLORS.border}`,
+                  }}
+                >
                   <CartItemImage item={item} />
-                </div>
-                <div className="bq-item-info">
-                  <h4 className="bq-item-name">{item.name}</h4>
+                </BoutiqueBox>
+                <BoutiqueBox flex={1} className="bq-item-info">
+                  <BoutiqueText
+                    variant="h3"
+                    size="16px"
+                    weight={700}
+                    margin="0 0 2px"
+                    className="bq-item-name"
+                  >
+                    {item.name}
+                  </BoutiqueText>
                   {item.model && (
-                    <span className="bq-item-model">{item.model}</span>
+                    <BoutiqueText
+                      variant="label"
+                      size="11px"
+                      weight={600}
+                      color={BQ_COLORS.inkFaint}
+                      margin="0 0 6px"
+                      className="bq-item-model"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                      }}
+                    >
+                      {item.model}
+                    </BoutiqueText>
                   )}
-                  <div className="bq-item-price-group">
-                    <span className="bq-item-price">
+                  <BoutiqueBox
+                    direction="row"
+                    align="baseline"
+                    gap={10}
+                    className="bq-item-price-group"
+                  >
+                    <BoutiqueText
+                      weight={600}
+                      size="18px"
+                      color={BQ_COLORS.inkMuted}
+                      className="bq-item-price"
+                    >
                       ₱{(item.price * item.quantity).toLocaleString()}
-                    </span>
+                    </BoutiqueText>
                     {item.quantity > 1 && (
-                      <span className="bq-item-unit-price">
+                      <BoutiqueText
+                        weight={600}
+                        size="12px"
+                        color={BQ_COLORS.inkFaint}
+                        className="bq-item-unit-price"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
                         ₱{item.price.toLocaleString()} ea.
-                      </span>
+                      </BoutiqueText>
                     )}
-                  </div>
+                  </BoutiqueBox>
 
-                  <div className="bq-qty-controls">
+                  <BoutiqueBox
+                    direction="row"
+                    align="center"
+                    justify="space-between"
+                    margin="12px 0 0"
+                    className="bq-qty-controls"
+                  >
                     <BoutiqueNumberInput
                       size="sm"
                       value={item.quantity}
@@ -102,73 +190,64 @@ export default function BoutiqueCart({
                     >
                       <Trash size={18} weight="bold" />
                     </button>
-                  </div>
-                </div>
-              </div>
+                  </BoutiqueBox>
+                </BoutiqueBox>
+              </BoutiqueBox>
             ))
           )}
-        </div>
+        </BoutiqueStack>
 
         {cart.length > 0 && (
-          <div className="bq-cart-footer">
-            <div className="bq-cart-total">
-              <span>Subtotal</span>
-              <span className="bq-total-amount">
+          <BoutiqueBox
+            padding={32}
+            background={BQ_COLORS.surfaceAlt}
+            className="bq-cart-footer"
+            style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
+          >
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              justify="space-between"
+              margin="0 0 24px"
+              className="bq-cart-total"
+            >
+              <BoutiqueText
+                variant="h3"
+                weight={700}
+                color={BQ_COLORS.inkMuted}
+              >
+                Subtotal
+              </BoutiqueText>
+              <BoutiqueText
+                weight={800}
+                size="28px"
+                className="bq-total-amount"
+                style={{ letterSpacing: "-0.04em" }}
+              >
                 ₱{getCartTotal().toLocaleString()}
-              </span>
-            </div>
+              </BoutiqueText>
+            </BoutiqueBox>
             <button className="bq-checkout-btn" onClick={onCheckout}>
               Checkout Now
             </button>
-          </div>
+          </BoutiqueBox>
         )}
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-cart-wrapper { display: flex; flex-direction: column; height: 100%; }
-
-        .bq-cart-items { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 32px; }
-
-        .bq-cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: ${BQ_COLORS.inkFaint}; padding-top: 60px; }
-        .bq-cart-empty p { font-family: ${BQ_FONTS.heading}; font-weight: 700; margin-top: 16px; }
-
-        .bq-cart-item { display: flex; gap: 20px; }
-        .bq-item-img-wrap { width: 115px; height: 115px; background: ${BQ_COLORS.bg}; border-radius: 16px; padding: 10px; flex-shrink: 0; }
-        .bq-item-img-wrap {
-          width: 80px; height: 80px; background: ${BQ_COLORS.surfaceAlt};
-          border-radius: 16px; padding: 12px; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center;
-          border: 1px solid ${BQ_COLORS.border};
-        }
-        .bq-item-img-wrap img { width: 100%; height: 100%; object-fit: contain; }
+        .bq-cart-items::-webkit-scrollbar { display: none; }
+        .bq-cart-items { scrollbar-width: none; }
 
         .bq-cart-brand-fallback { opacity: 0.8; filter: grayscale(1) contrast(1.2); }
-        .bq-cart-icon-fallback { color: ${BQ_COLORS.inkFaint}; opacity: 0.2; }
-
-        .bq-item-info { flex: 1; }
-        .bq-item-name { font-family: ${BQ_FONTS.heading}; font-size: 16px; font-weight: 700; color: ${BQ_COLORS.ink}; margin-bottom: 2px; }
-        .bq-item-model { display: block; font-size: 11px; font-weight: 600; color: ${BQ_COLORS.inkFaint}; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-
-        .bq-item-price-group { display: flex; align-items: baseline; gap: 10px; }
-        .bq-item-price { font-family: ${BQ_FONTS.heading}; font-size: 18px; font-weight: 600; color: ${BQ_COLORS.inkMuted}; }
-        .bq-item-unit-price { font-family: ${BQ_FONTS.heading}; font-size: 12px; font-weight: 600; color: ${BQ_COLORS.inkFaint}; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        .bq-qty-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
-
 
         .bq-item-remove { background: transparent; border: none; color: ${BQ_COLORS.danger}; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; }
         .bq-item-remove:hover { opacity: 1; }
 
-        .bq-cart-footer { padding: 32px; border-top: 1px solid ${BQ_COLORS.border}; background: ${BQ_COLORS.surfaceAlt}; }
-        .bq-cart-total { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-        .bq-cart-total span { font-family: ${BQ_FONTS.heading}; font-size: 18px; font-weight: 700; color: ${BQ_COLORS.inkMuted}; }
-        .bq-total-amount { font-size: 28px !important; !important; color: ${BQ_COLORS.ink} !important; letter-spacing: -0.04em; }
-
         .bq-checkout-btn {
           width: 100%; padding: 20px; background: ${BQ_COLORS.brand}; color: white;
-          border: none; border-radius: ${BQ_GEOMETRY.radiusPill}; font-family: ${BQ_FONTS.heading};
+          border: none; border-radius: ${BQ_GEOMETRY.radiusPill}; font-family: inherit;
           font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 0.1em;
           cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: all 0.3s;
         }

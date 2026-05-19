@@ -1,11 +1,9 @@
 import { WarningDiamond } from "@phosphor-icons/react";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueSelect from "../common/boutique/BoutiqueSelect";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_GEOMETRY,
-  BQ_WEIGHTS,
-} from "../common/boutique/BoutiqueTheme";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import ProductCard from "./ProductCard";
 
 export default function ShopCatalogue({
@@ -26,26 +24,76 @@ export default function ShopCatalogue({
   ];
 
   return (
-    <section className="bq-catalogue">
-      <div className="bq-scrollview">
-        <div className="bq-catalogue-header">
-          <div className="bq-results-count">
+    <BoutiqueBox
+      tag="section"
+      className="bq-catalogue"
+      flex={1}
+      background="white"
+      style={{
+        height: `calc(100vh - ${BQ_GEOMETRY.headerHeight})`,
+        position: "sticky",
+        top: BQ_GEOMETRY.headerHeight,
+      }}
+    >
+      <BoutiqueBox
+        className="bq-scrollview"
+        flex={1}
+        padding={32}
+        style={{
+          overflowY: "auto",
+          borderLeft: `1px solid ${BQ_COLORS.border}`,
+        }}
+      >
+        <BoutiqueBox
+          direction="row"
+          align="center"
+          justify="space-between"
+          padding="24px 0 12px"
+          margin="-32px 0 32px"
+          background="white"
+          className="bq-catalogue-header"
+          style={{
+            position: "sticky",
+            top: "-32px",
+            zIndex: 100,
+            borderBottom: "1px solid rgba(0,0,0,0.03)",
+          }}
+        >
+          <BoutiqueText
+            className="bq-results-count"
+            size="14px"
+            weight={700}
+            color={BQ_COLORS.inkMuted}
+            style={{
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              opacity: 0.6,
+            }}
+          >
             Found {products.length} products
-          </div>
+          </BoutiqueText>
           <BoutiqueSelect
             options={sortOptions}
             value={sortBy}
             onChange={onSortChange}
           />
-        </div>
+        </BoutiqueBox>
 
         {products.length === 0 ? (
-          <div className="bq-empty-state">
+          <BoutiqueBox
+            className="bq-empty-state"
+            align="center"
+            justify="center"
+            padding="100px 20px"
+            color={BQ_COLORS.inkFaint}
+          >
             <WarningDiamond size={64} weight="bold" />
-            <p>No products found matching your filters.</p>
-          </div>
+            <BoutiqueText variant="h3" margin="16px 0 0">
+              No products found matching your filters.
+            </BoutiqueText>
+          </BoutiqueBox>
         ) : (
-          <div className="bq-grid">
+          <BoutiqueGrid className="bq-grid">
             {products.map((product) => (
               <ProductCard
                 key={product.id}
@@ -55,71 +103,18 @@ export default function ShopCatalogue({
                 onClick={onProductClick}
               />
             ))}
-          </div>
+          </BoutiqueGrid>
         )}
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-catalogue {
-          flex: 1;
-          height: calc(100vh - ${BQ_GEOMETRY.headerHeight});
-          position: sticky;
-          top: ${BQ_GEOMETRY.headerHeight};
-          display: flex;
-          flex-direction: column;
-          background: white;
-        }
-
-        .bq-scrollview {
-          flex: 1;
-          overflow-y: auto;
-          padding: 32px;
-          scrollbar-width: none;
-          border-left: 1px solid ${BQ_COLORS.border};
-        }
         .bq-scrollview::-webkit-scrollbar { display: none; }
-
-        .bq-catalogue-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          position: sticky;
-          top: -32px;
-          background: white;
-          z-index: 100;
-          padding: 24px 0 12px;
-          margin-top: -32px;
-          border-bottom: 1px solid rgba(0,0,0,0.03);
-        }
-
-        .bq-results-count {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 14px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.inkMuted};
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          opacity: 0.6;
-        }
-
-        .bq-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 24px;
-        }
-
-        .bq-empty-state {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 100px 20px; color: ${BQ_COLORS.inkFaint};
-        }
-        .bq-empty-state p {
-          font-family: ${BQ_FONTS.heading}; font-weight: ${BQ_WEIGHTS.bold}; font-size: 18px; margin-top: 16px;
-        }
+        .bq-scrollview { scrollbar-width: none; }
       `,
         }}
       />
-    </section>
+    </BoutiqueBox>
   );
 }

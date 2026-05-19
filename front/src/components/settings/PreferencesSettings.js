@@ -1,7 +1,13 @@
+import { Globe } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { translateText } from "../../utils/customerI18n";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueCard from "../common/boutique/BoutiqueCard";
+import BoutiqueInput from "../common/boutique/BoutiqueInput";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
   const [preferences, setPreferences] = useState({
@@ -49,100 +55,114 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
   };
 
   return (
-    <div className="settings-section">
-      <div className="section-title">
-        <span className="section-icon">
-          <img
-            src={icons.customize}
-            alt=""
-            className="inline-icon inline-icon--md"
-          />
-        </span>
-        <h2>{t("Preferences")}</h2>
-      </div>
-      <div className="settings-list">
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">{t("Theme")}</div>
-            <div className="setting-description">
-              Choose your app appearance.
-            </div>
-          </div>
-          <select
+    <BoutiqueCard padding={32}>
+      <BoutiqueStack gap={32}>
+        <BoutiqueBox direction="row" align="center" gap={12}>
+          <BoutiqueBox
+            width={40}
+            height={40}
+            background={BQ_COLORS.bg}
+            align="center"
+            justify="center"
+            style={{ borderRadius: "12px", color: BQ_COLORS.brand }}
+          >
+            <Globe size={20} weight="bold" />
+          </BoutiqueBox>
+          <BoutiqueText variant="h2">{t("Preferences")}</BoutiqueText>
+        </BoutiqueBox>
+
+        <BoutiqueStack gap={24}>
+          <BoutiqueInput
+            label={t("Theme")}
+            type="select"
             value={preferences.theme}
-            onChange={(event) => updateField("theme", event.target.value)}
-            className="setting-select"
-          >
-            <option value="light">{t("Light")}</option>
-            <option value="dark">{t("Dark")}</option>
-          </select>
-        </div>
+            onChange={(e) => updateField("theme", e.target.value)}
+            options={[
+              { value: "light", label: t("Light") },
+              { value: "dark", label: t("Dark") },
+            ]}
+            hint="Choose your app appearance."
+          />
 
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">{t("Language")}</div>
-            <div className="setting-description">
-              Choose your preferred language.
-            </div>
-          </div>
-          <select
+          <BoutiqueInput
+            label={t("Language")}
+            type="select"
             value={preferences.language}
-            onChange={(event) => updateField("language", event.target.value)}
-            className="setting-select"
-          >
-            <option value="English">English</option>
-            <option value="Filipino">Filipino</option>
-          </select>
-        </div>
+            onChange={(e) => updateField("language", e.target.value)}
+            options={[
+              { value: "English", label: "English" },
+              { value: "Filipino", label: "Filipino" },
+            ]}
+            hint="Choose your preferred language."
+          />
 
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">{t("Timezone")}</div>
-            <div className="setting-description">
-              Use your locale for schedules and logs.
-            </div>
-          </div>
-          <select
+          <BoutiqueInput
+            label={t("Timezone")}
+            type="select"
             value={preferences.timezone}
-            onChange={(event) => updateField("timezone", event.target.value)}
-            className="setting-select"
-          >
-            <option value="Asia/Manila">Asia/Manila</option>
-            <option value="UTC">UTC</option>
-            <option value="America/New_York">America/New_York</option>
-            <option value="Europe/London">Europe/London</option>
-          </select>
-        </div>
+            onChange={(e) => updateField("timezone", e.target.value)}
+            options={[
+              { value: "Asia/Manila", label: "Asia/Manila" },
+              { value: "UTC", label: "UTC" },
+              { value: "America/New_York", label: "America/New_York" },
+              { value: "Europe/London", label: "Europe/London" },
+            ]}
+            hint="Use your locale for schedules and logs."
+          />
 
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">{t("Auto-booking")}</div>
-            <div className="setting-description">
-              Automatically schedule recurring services.
-            </div>
-          </div>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={preferences.autoBook}
-              onChange={() => updateField("autoBook", !preferences.autoBook)}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-
-        <div className="setting-item">
-          <button
-            type="button"
-            className="modal-btn modal-btn-primary"
-            onClick={handleSave}
-            disabled={saving}
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            justify="space-between"
+            padding="16px 0"
           >
-            {saving ? "Saving..." : t("Save Preferences")}
-          </button>
-        </div>
-      </div>
-    </div>
+            <BoutiqueStack gap={4}>
+              <BoutiqueText weight={700}>{t("Auto-booking")}</BoutiqueText>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                Automatically schedule recurring services.
+              </BoutiqueText>
+            </BoutiqueStack>
+            <label className="bq-toggle">
+              <input
+                type="checkbox"
+                checked={preferences.autoBook}
+                onChange={() => updateField("autoBook", !preferences.autoBook)}
+              />
+              <span className="bq-toggle-slider" />
+            </label>
+          </BoutiqueBox>
+
+          <BoutiqueBox margin="12px 0 0">
+            <BoutiqueButton
+              onClick={handleSave}
+              loading={saving}
+              style={{ width: "auto", minWidth: "200px" }}
+            >
+              {t("Save Preferences")}
+            </BoutiqueButton>
+          </BoutiqueBox>
+        </BoutiqueStack>
+      </BoutiqueStack>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .bq-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .bq-toggle input { opacity: 0; width: 0; height: 0; }
+        .bq-toggle-slider {
+          position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+          background-color: ${BQ_COLORS.border}; transition: .4s; border-radius: 24px;
+        }
+        .bq-toggle-slider:before {
+          position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+          background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .bq-toggle-slider { background-color: ${BQ_COLORS.brand}; }
+        input:checked + .bq-toggle-slider:before { transform: translateX(20px); }
+      `,
+        }}
+      />
+    </BoutiqueCard>
   );
 }
 

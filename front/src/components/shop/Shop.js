@@ -7,6 +7,8 @@ import {
   deduplicateProducts,
   mergeProductLists,
 } from "../../utils/productDeduplication";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import ProductModal from "./ProductModal";
 
 // Modular Boutique Components
@@ -15,7 +17,6 @@ import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
-import { BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import ShopCatalogue from "./ShopCatalogue";
 import ShopSidebar from "./ShopSidebar";
 
@@ -609,7 +610,7 @@ const Shop = () => {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <div className="bq-shop-layout">
+    <BoutiqueScreen withHeader padding={0}>
       <BoutiqueHeader
         title="Shop AC Units"
         onLeftAction={() => setSidebarOpen(true)}
@@ -629,7 +630,12 @@ const Shop = () => {
         onMarkAllAsRead={handleMarkAllAsRead}
       />
 
-      <main className="bq-shop-main">
+      <BoutiqueBox
+        direction="row"
+        flex={1}
+        width="100%"
+        className="bq-shop-main"
+      >
         <ShopSidebar
           categories={categories}
           selectedCategory={selectedCategory}
@@ -669,7 +675,7 @@ const Shop = () => {
           onCheckout={handleCheckout}
           getCartTotal={getCartTotal}
         />
-      </main>
+      </BoutiqueBox>
 
       <BoutiqueFooter />
 
@@ -688,31 +694,7 @@ const Shop = () => {
           onAddToCart={handleAddToCart}
         />
       )}
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-shop-layout {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-          background: white;
-        }
-
-        .bq-shop-main {
-          flex: 1;
-          display: flex;
-          background: white;
-          width: 100%;
-          min-height: calc(100vh - ${BQ_GEOMETRY.headerHeight});
-          position: relative;
-        }
-
-        * { box-sizing: border-box; }
-      `,
-        }}
-      />
-    </div>
+    </BoutiqueScreen>
   );
 };
 

@@ -1,29 +1,50 @@
+import {
+  Bell,
+  Fingerprint,
+  Globe,
+  MapPin,
+  ShieldCheck,
+  SignOut,
+  UserCircle,
+} from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
-import Footer from "../home/Footer";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import {
+  BQ_COLORS,
+  BQ_GEOMETRY,
+  BQ_SHADOWS,
+} from "../common/boutique/BoutiqueTheme";
 import AccountSettings from "./AccountSettings";
+import GeneralProfileSettings from "./GeneralProfileSettings";
+import MyAddressesSettings from "./MyAddressesSettings";
 import NotificationSettings from "./NotificationSettings";
 import PreferencesSettings from "./PreferencesSettings";
 import PrivacySettings from "./PrivacySettings";
-import MyAddressesSettings from "./ProfileSettings";
 import "./Settings.css";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
 
 const SETTINGS_TABS = [
-  { id: "preferences", title: "Preferences", icon: icons.customize },
-  { id: "addresses", title: "My Addresses", icon: icons.marker },
-  { id: "privacy", title: "Privacy", icon: icons.shieldKeyhole },
-  { id: "notifications", title: "Notifications", icon: icons.visit },
-  { id: "security", title: "Security", icon: icons.lock },
+  { id: "profile", title: "Profile", icon: UserCircle },
+  { id: "preferences", title: "Preferences", icon: Globe },
+  { id: "addresses", title: "My Addresses", icon: MapPin },
+  { id: "privacy", title: "Privacy", icon: ShieldCheck },
+  { id: "notifications", title: "Notifications", icon: Bell },
+  { id: "security", title: "Security", icon: Fingerprint },
 ];
 
 function Settings() {
   const {
     user,
     currentTheme,
+    updateProfile,
     updatePreferences,
     updatePrivacy,
     updateNotifications,
@@ -34,9 +55,7 @@ function Settings() {
   } = useUser();
   const navigate = useNavigate();
 
-  const isDark = currentTheme === "dark";
-
-  const [activeTab, setActiveTab] = useState("preferences");
+  const [activeTab, setActiveTab] = useState("profile");
   const [toast, setToast] = useState(null);
 
   const formattedUser = useMemo(() => {
@@ -77,6 +96,9 @@ function Settings() {
     }
   };
 
+  const handleUpdateProfile = (payload) =>
+    callWithToast(() => updateProfile(payload), "Profile updated.");
+
   const handleUpdatePreferences = (payload) =>
     callWithToast(() => updatePreferences(payload), "Preferences saved.");
 
@@ -113,115 +135,193 @@ function Settings() {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate("/home", { replace: true });
+    if (window.confirm("Are you sure you want to sign out?")) {
+      logout();
+      navigate("/home", { replace: true });
+    }
   };
 
   return (
-    <div className={`settings-container ${isDark ? "dark" : ""}`}>
-      <div className="settings-header">
-        <button
-          className="back-btn"
-          onClick={handleBack}
-          aria-label="Go back"
-          type="button"
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+      <BoutiqueHeader
+        title={t("Account Settings")}
+        leftAction="back"
+        onLeftAction={handleBack}
+      />
+
+      <BoutiqueBox
+        direction="row"
+        flex={1}
+        width="100%"
+        padding="40px 24px"
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+        className="settings-layout"
+      >
+        {/* NAV SIDEBAR */}
+        <BoutiqueBox
+          tag="aside"
+          width={320}
+          padding="0 32px 0 0"
+          className="settings-sidebar"
         >
-          ←
-        </button>
-        <h1>{t("Account Settings")}</h1>
-        <button type="button" className="logout-btn" onClick={handleLogout}>
-          <img
-            src={icons.signOutAlt}
-            alt=""
-            className="inline-icon inline-icon--md"
-          />{" "}
-          {t("Logout")}
-        </button>
-      </div>
-
-      <div className="settings-content settings-content--layout">
-        <aside className="settings-nav-card">
-          <div className="settings-user-badge">
-            <div className="settings-user-avatar">
-              {formattedUser?.avatarUrl ? (
-                <img src={formattedUser.avatarUrl} alt="Profile" />
-              ) : (
-                <span>
-                  {(formattedUser?.name || "U").charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div>
-              <h3>{formattedUser?.name || "User"}</h3>
-              <p>{formattedUser?.email || ""}</p>
-              <small>{(formattedUser?.role || "").toUpperCase()}</small>
-            </div>
-          </div>
-
-          <nav className="settings-nav-list" aria-label="Settings sections">
-            {SETTINGS_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`settings-nav-item ${activeTab === tab.id ? "active" : ""}`}
-                onClick={() => setActiveTab(tab.id)}
+          <BoutiqueStack gap={32}>
+            <BoutiqueBox direction="row" align="center" gap={16}>
+              <BoutiqueBox
+                width={56}
+                height={56}
+                background={BQ_COLORS.bgAlt}
+                align="center"
+                justify="center"
+                style={{
+                  borderRadius: "16px",
+                  color: BQ_COLORS.brand,
+                  border: `1px solid ${BQ_COLORS.border}`,
+                }}
               >
-                <img src={tab.icon} alt="" className="inline-icon" />
-                <span>{t(tab.title)}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
+                <BoutiqueText weight={900} size="20px">
+                  {(formattedUser?.name || "U").charAt(0).toUpperCase()}
+                </BoutiqueText>
+              </BoutiqueBox>
+              <BoutiqueStack gap={0}>
+                <BoutiqueText weight={800} size="16px">
+                  {formattedUser?.name}
+                </BoutiqueText>
+                <BoutiqueText size="12px" color={BQ_COLORS.inkMuted}>
+                  {formattedUser?.email}
+                </BoutiqueText>
+              </BoutiqueStack>
+            </BoutiqueBox>
 
-        <section className="settings-panel-stack">
-          {activeTab === "preferences" ? (
-            <PreferencesSettings
-              user={formattedUser}
-              onUpdatePreferences={handleUpdatePreferences}
-              onUpdateSettings={handleBulkUpdateSettings}
-            />
-          ) : null}
+            <BoutiqueStack gap={8} tag="nav">
+              {SETTINGS_TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`bq-nav-item ${isActive ? "active" : ""}`}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "16px",
+                      padding: "16px 20px",
+                      border: "none",
+                      background: isActive ? "white" : "transparent",
+                      color: isActive ? BQ_COLORS.brand : BQ_COLORS.inkMuted,
+                      borderRadius: BQ_GEOMETRY.radiusMd,
+                      fontWeight: isActive ? 700 : 600,
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      boxShadow: isActive ? BQ_SHADOWS.soft : "none",
+                      textAlign: "left",
+                    }}
+                  >
+                    <tab.icon size={20} weight={isActive ? "fill" : "bold"} />
+                    <span>{t(tab.title)}</span>
+                  </button>
+                );
+              })}
+            </BoutiqueStack>
 
-          {activeTab === "privacy" ? (
-            <PrivacySettings
-              user={formattedUser}
-              onUpdatePrivacy={handleUpdatePrivacy}
-              onUpdateSettings={handleBulkUpdateSettings}
-            />
-          ) : null}
+            <BoutiqueBox
+              padding="32px 0 0"
+              style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
+            >
+              <BoutiqueButton
+                variant="cancel"
+                size="sm"
+                fullWidth
+                onClick={handleLogout}
+              >
+                <SignOut size={18} weight="bold" /> {t("Logout")}
+              </BoutiqueButton>
+            </BoutiqueBox>
+          </BoutiqueStack>
+        </BoutiqueBox>
 
-          {activeTab === "notifications" ? (
-            <NotificationSettings
-              user={formattedUser}
-              onUpdateNotifications={handleUpdateNotifications}
-              onUpdateSettings={handleBulkUpdateSettings}
-            />
-          ) : null}
+        {/* CONTENT AREA */}
+        <BoutiqueBox flex={1} className="settings-panel">
+          <BoutiqueStack gap={24}>
+            {activeTab === "profile" && (
+              <GeneralProfileSettings
+                user={formattedUser}
+                onUpdateProfile={handleUpdateProfile}
+              />
+            )}
+            {activeTab === "preferences" && (
+              <PreferencesSettings
+                user={formattedUser}
+                onUpdatePreferences={handleUpdatePreferences}
+                onUpdateSettings={handleBulkUpdateSettings}
+              />
+            )}
+            {activeTab === "privacy" && (
+              <PrivacySettings
+                user={formattedUser}
+                onUpdatePrivacy={handleUpdatePrivacy}
+                onUpdateSettings={handleBulkUpdateSettings}
+              />
+            )}
+            {activeTab === "notifications" && (
+              <NotificationSettings
+                user={formattedUser}
+                onUpdateNotifications={handleUpdateNotifications}
+                onUpdateSettings={handleBulkUpdateSettings}
+              />
+            )}
+            {activeTab === "addresses" && (
+              <MyAddressesSettings user={formattedUser} />
+            )}
+            {activeTab === "security" && (
+              <AccountSettings
+                user={formattedUser}
+                onRequestPasswordChangeEmail={handleRequestPasswordChangeEmail}
+                onDeleteAccount={handleDeleteAccount}
+              />
+            )}
+          </BoutiqueStack>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
-          {activeTab === "addresses" ? (
-            <MyAddressesSettings user={formattedUser} />
-          ) : null}
-
-          {activeTab === "security" ? (
-            <AccountSettings
-              user={formattedUser}
-              onRequestPasswordChangeEmail={handleRequestPasswordChangeEmail}
-              onDeleteAccount={handleDeleteAccount}
-            />
-          ) : null}
-        </section>
-      </div>
-
-      {toast ? (
-        <div
-          className={`settings-toast ${toast.type === "error" ? "settings-toast--error" : ""}`}
+      {toast && (
+        <BoutiqueBox
+          padding="12px 24px"
+          background={
+            toast.type === "error" ? BQ_COLORS.danger : BQ_COLORS.brand
+          }
+          color="white"
+          style={{
+            position: "fixed",
+            bottom: "40px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            borderRadius: "50px",
+            boxShadow: BQ_SHADOWS.float,
+            zIndex: 10000,
+          }}
+          className="bq-slide-up"
         >
-          {toast.message}
-        </div>
-      ) : null}
+          <BoutiqueText weight={700} color="white">
+            {toast.message}
+          </BoutiqueText>
+        </BoutiqueBox>
+      )}
 
-      <Footer />
-    </div>
+      <BoutiqueFooter />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .bq-nav-item:hover:not(.active) { color: ${BQ_COLORS.brand} !important; background: rgba(0,0,0,0.02) !important; }
+        @media (max-width: 900px) {
+          .settings-layout { flex-direction: column !important; }
+          .settings-sidebar { width: 100% !important; padding: 0 0 40px 0 !important; }
+        }
+      `,
+        }}
+      />
+    </BoutiqueScreen>
   );
 }
 

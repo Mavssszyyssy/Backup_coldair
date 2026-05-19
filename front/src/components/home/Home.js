@@ -5,10 +5,12 @@ import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 
 // Modular Boutique Components
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueCart from "../common/boutique/BoutiqueCart";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
@@ -161,7 +163,7 @@ function Home() {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <div className="bq-home-layout">
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg} padding={0}>
       <BoutiqueHeader
         variant="logo"
         leftAction="menu"
@@ -200,38 +202,22 @@ function Home() {
         onMarkAllAsRead={handleMarkAllAsRead}
       />
 
-      <main className="bq-home-main">
+      <BoutiqueBox
+        tag="main"
+        flex={1}
+        direction="column"
+        className="bq-home-main"
+      >
         <HomeHero
           onBookNow={() => navigate("/services")}
           onShop={() => navigate("/shop")}
         />
         <HomeBrands brands={brands} />
         <HomeInfo />
-      </main>
+      </BoutiqueBox>
 
       <BoutiqueFooter />
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-home-layout {
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          background: ${BQ_COLORS.bg};
-        }
-
-        .bq-home-main {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-        }
-
-        * { box-sizing: border-box; }
-      `,
-        }}
-      />
-    </div>
+    </BoutiqueScreen>
   );
 }
 

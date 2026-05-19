@@ -1,10 +1,26 @@
+import {
+  ChatCircleText,
+  Clock,
+  Package,
+  Question,
+  Receipt,
+  Truck,
+  Wrench,
+} from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
-import "./ProfileCenter.css";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueCard from "../common/boutique/BoutiqueCard";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
 const normalizeOrder = (order = {}) => ({
   id: String(order.id || order.orderCode || ""),
@@ -20,23 +36,23 @@ const normalizeOrder = (order = {}) => ({
 const orderCategoryConfig = {
   to_pay: {
     label: "To Pay",
-    icon: icons.cartShoppingFast,
+    icon: Receipt,
     description: "Unpaid orders",
   },
   to_deliver: {
     label: "To Deliver",
-    icon: icons.boxOpen,
-    description: "Pending delivery items",
+    icon: Truck,
+    description: "Pending delivery",
   },
   to_install: {
     label: "To Install",
-    icon: icons.tools,
+    icon: Wrench,
     description: "Awaiting installation",
   },
   complete: {
     label: "Completed",
-    icon: icons.checkCircle,
-    description: "Finished or archived orders",
+    icon: Package,
+    description: "Finished orders",
   },
 };
 
@@ -117,132 +133,171 @@ function ProfileCenter() {
     [orders],
   );
 
-  const displayName = user?.name || user?.email || "User";
+  const displayName = user?.name || user?.email?.split("@")[0] || "User";
 
   return (
-    <div className="profile-page">
-      <div className="profile-header">
-        <div className="header-left">
-          <button
-            className="back-btn"
-            onClick={() => navigate("/home")}
-            type="button"
-          >
-            ←
-          </button>
-          <div>
-            <h1>{displayName}</h1>
-            <p>Review your purchase status and contact support if needed.</p>
-          </div>
-        </div>
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+      <BoutiqueHeader
+        title="Profile Center"
+        leftAction="back"
+        onLeftAction={() => navigate("/home")}
+      />
 
-        <button
-          type="button"
-          className="header-action"
-          onClick={() => navigate("/my-orders")}
-        >
-          View Orders
-        </button>
-      </div>
-
-      <div className="profile-layout">
-        <div className="profile-left">
-          <div className="card profile-hero-card">
-            <div
-              className="profile-hero-top"
-              style={{ alignItems: "flex-start", gap: "24px" }}
+      <BoutiqueBox
+        direction="column"
+        flex={1}
+        width="100%"
+        padding="40px 24px"
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+      >
+        <BoutiqueStack gap={40}>
+          {/* HERO SECTION */}
+          <BoutiqueCard padding={40}>
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              gap={32}
+              className="profile-hero"
             >
-              <div className="avatar-large">
-                <span>{displayName.charAt(0).toUpperCase()}</span>
-              </div>
-              <div className="profile-identity">
-                <div className="profile-kicker">Account profile</div>
-                <h2 className="profile-name">{displayName}</h2>
-                <p className="profile-phone">
-                  Tap a purchase status to inspect orders or contact support.
-                </p>
-                <div
-                  className="profile-hero-actions"
-                  style={{ marginTop: "20px" }}
-                >
-                  <button
-                    type="button"
-                    className="ghost-btn"
+              <BoutiqueBox
+                width={100}
+                height={100}
+                background={BQ_COLORS.bg}
+                align="center"
+                justify="center"
+                style={{
+                  borderRadius: "30px",
+                  boxShadow: BQ_SHADOWS.soft,
+                  color: BQ_COLORS.brand,
+                }}
+              >
+                <BoutiqueText size="40px" weight={900}>
+                  {displayName.charAt(0).toUpperCase()}
+                </BoutiqueText>
+              </BoutiqueBox>
+              <BoutiqueBox flex={1}>
+                <BoutiqueText variant="label" color={BQ_COLORS.accent}>
+                  Boutique Account
+                </BoutiqueText>
+                <BoutiqueText variant="h1" margin="4px 0 8px">
+                  {displayName}
+                </BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} weight={500}>
+                  Manage your orders, installations, and support requests.
+                </BoutiqueText>
+                <BoutiqueBox direction="row" gap={12} margin="24px 0 0">
+                  <BoutiqueButton
+                    variant="outline"
+                    size="sm"
                     onClick={() => navigate("/contact")}
                   >
-                    Help Center
-                  </button>
-                  <button
-                    type="button"
-                    className="primary-btn"
+                    <Question size={18} weight="bold" /> Help Center
+                  </BoutiqueButton>
+                  <BoutiqueButton
+                    variant="primary"
+                    size="sm"
                     onClick={() => navigate("/contact")}
                   >
-                    Chat with Cold Air
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+                    <ChatCircleText size={18} weight="bold" /> Chat Support
+                  </BoutiqueButton>
+                </BoutiqueBox>
+              </BoutiqueBox>
+            </BoutiqueBox>
+          </BoutiqueCard>
 
-          <div className="card profile-orders-card">
-            <div className="section-head section-head--spaced">
-              <div>
-                <div className="profile-kicker">My Purchases</div>
-                <p className="section-subtitle">
-                  Tap a status to inspect orders
-                </p>
-              </div>
-              <button
-                type="button"
-                className="ghost-btn"
+          {/* PURCHASES SECTION */}
+          <BoutiqueStack gap={24}>
+            <BoutiqueBox direction="row" align="center" justify="space-between">
+              <BoutiqueStack gap={4}>
+                <BoutiqueText variant="h2">My Purchases</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
+                  Real-time status of your boutique orders
+                </BoutiqueText>
+              </BoutiqueStack>
+              <BoutiqueButton
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate("/my-orders")}
               >
                 View all orders
-              </button>
-            </div>
+              </BoutiqueButton>
+            </BoutiqueBox>
 
-            <div
-              className="order-stats-grid"
-              role="tablist"
-              aria-label="Order status filters"
-              style={{ marginTop: "24px" }}
+            <BoutiqueGrid
+              columns="repeat(auto-fit, minmax(240px, 1fr))"
+              gap={20}
             >
               {orderStats.map((stat) => (
-                <button
+                <BoutiqueCard
                   key={stat.key}
-                  type="button"
+                  padding={24}
+                  style={{ cursor: "pointer", transition: "all 0.3s ease" }}
                   className="order-stat-card"
                   onClick={() => navigate(`/my-orders?status=${stat.key}`)}
-                  aria-label={`${stat.label}, ${stat.count} orders`}
-                  title={stat.description}
-                  style={{ minHeight: "120px" }}
                 >
-                  <span className="order-stat-icon-wrap">
-                    <img
-                      src={stat.icon}
-                      alt=""
-                      className="order-stat-icon"
-                      aria-hidden="true"
-                    />
-                  </span>
-                  <span className="order-stat-copy">
-                    <span className="order-stat-label">{stat.label}</span>
-                    <span className="order-stat-count">{stat.count}</span>
-                    <span className="order-stat-desc">{stat.description}</span>
-                  </span>
-                </button>
+                  <BoutiqueBox direction="row" align="center" gap={16}>
+                    <BoutiqueBox
+                      width={48}
+                      height={48}
+                      background={BQ_COLORS.bg}
+                      align="center"
+                      justify="center"
+                      style={{ borderRadius: "14px", color: BQ_COLORS.brand }}
+                    >
+                      <stat.icon size={24} weight="bold" />
+                    </BoutiqueBox>
+                    <BoutiqueBox flex={1}>
+                      <BoutiqueText
+                        size="13px"
+                        weight={700}
+                        color={BQ_COLORS.inkMuted}
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {stat.label}
+                      </BoutiqueText>
+                      <BoutiqueText variant="h2">{stat.count}</BoutiqueText>
+                    </BoutiqueBox>
+                  </BoutiqueBox>
+                </BoutiqueCard>
               ))}
-            </div>
+            </BoutiqueGrid>
 
-            {ordersLoading ? (
-              <p className="profile-empty-state" style={{ marginTop: "24px" }}>
-                Loading orders...
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </div>
+            {ordersLoading && (
+              <BoutiqueBox
+                direction="row"
+                align="center"
+                justify="center"
+                padding={40}
+                gap={12}
+                color={BQ_COLORS.inkMuted}
+              >
+                <Clock size={20} weight="bold" />
+                <BoutiqueText weight={600}>
+                  Syncing order status...
+                </BoutiqueText>
+              </BoutiqueBox>
+            )}
+          </BoutiqueStack>
+        </BoutiqueStack>
+      </BoutiqueBox>
+
+      <BoutiqueFooter />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .order-stat-card:hover { transform: translateY(-4px); border-color: ${BQ_COLORS.brand}; box-shadow: ${BQ_SHADOWS.hover}; }
+
+        @media (max-width: 768px) {
+          .profile-hero { flex-direction: column !important; align-items: flex-start !important; }
+        }
+      `,
+        }}
+      />
+    </BoutiqueScreen>
   );
 }
 

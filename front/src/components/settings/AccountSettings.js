@@ -1,7 +1,13 @@
+import { Fingerprint, WarningDiamond } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueCard from "../common/boutique/BoutiqueCard";
+import BoutiqueInput from "../common/boutique/BoutiqueInput";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 function AccountSettings({
   user,
@@ -51,135 +57,186 @@ function AccountSettings({
   };
 
   return (
-    <div className="settings-section">
-      <div className="section-title">
-        <span className="section-icon">
-          <img
-            src={icons.lock}
-            alt=""
-            className="inline-icon inline-icon--md"
-          />
-        </span>
-        <h2>Security</h2>
-      </div>
-      <div className="settings-list">
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">Change Password</div>
-            <div className="setting-description">
-              Send a secure password change link to your registered email.
-            </div>
-          </div>
-          <button
-            type="button"
-            className="modal-btn modal-btn-secondary"
-            onClick={handleRequestViaEmail}
-            disabled={loadingEmailRequest}
+    <BoutiqueCard padding={32}>
+      <BoutiqueStack gap={32}>
+        <BoutiqueBox direction="row" align="center" gap={12}>
+          <BoutiqueBox
+            width={40}
+            height={40}
+            background={BQ_COLORS.bg}
+            align="center"
+            justify="center"
+            style={{ borderRadius: "12px", color: BQ_COLORS.brand }}
           >
-            {loadingEmailRequest ? "Sending..." : "Send Link"}
-          </button>
-        </div>
+            <Fingerprint size={20} weight="bold" />
+          </BoutiqueBox>
+          <BoutiqueText variant="h2">Security</BoutiqueText>
+        </BoutiqueBox>
 
-        <div className="setting-item">
-          <div className="setting-info">
-            <div className="setting-label">Forgot Password</div>
-            <div className="setting-description">
-              Use recovery screen if you are logged out.
-            </div>
-          </div>
-          <Link className="modal-btn modal-btn-secondary" to="/forgot-password">
-            Open
-          </Link>
-        </div>
+        <BoutiqueStack gap={16}>
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            justify="space-between"
+            padding="20px"
+            background={BQ_COLORS.bgAlt}
+            style={{ borderRadius: "16px" }}
+          >
+            <BoutiqueStack gap={4}>
+              <BoutiqueText weight={700}>Change Password</BoutiqueText>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                Send a secure password change link to your email.
+              </BoutiqueText>
+            </BoutiqueStack>
+            <BoutiqueButton
+              variant="outline"
+              size="sm"
+              onClick={handleRequestViaEmail}
+              loading={loadingEmailRequest}
+              style={{ width: "auto" }}
+            >
+              Send Link
+            </BoutiqueButton>
+          </BoutiqueBox>
 
-        <div
-          className="setting-item danger"
-          onClick={() => setShowDeleteModal(true)}
-        >
-          <div className="setting-info">
-            <div className="setting-label">Delete Account</div>
-            <div className="setting-description">
-              This action is irreversible. Your profile will be removed or
-              anonymized.
-            </div>
-          </div>
-          <span className="chevron" style={{ color: "#f44336" }}>
-            →
-          </span>
-        </div>
-      </div>
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            justify="space-between"
+            padding="20px"
+            background={BQ_COLORS.bgAlt}
+            style={{ borderRadius: "16px" }}
+          >
+            <BoutiqueStack gap={4}>
+              <BoutiqueText weight={700}>Forgot Password</BoutiqueText>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                Use recovery screen if you are logged out.
+              </BoutiqueText>
+            </BoutiqueStack>
+            <Link to="/forgot-password" style={{ textDecoration: "none" }}>
+              <BoutiqueButton
+                variant="ghost"
+                size="sm"
+                style={{ width: "auto" }}
+              >
+                Open
+              </BoutiqueButton>
+            </Link>
+          </BoutiqueBox>
 
-      {showDeleteModal ? (
-        <div
-          className="settings-modal-overlay"
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            justify="space-between"
+            padding="20px"
+            background="#fff1f2"
+            style={{
+              borderRadius: "16px",
+              cursor: "pointer",
+              border: "1px solid #fee2e2",
+            }}
+            onClick={() => setShowDeleteModal(true)}
+          >
+            <BoutiqueStack gap={4}>
+              <BoutiqueText weight={700} color={BQ_COLORS.danger}>
+                Delete Account
+              </BoutiqueText>
+              <BoutiqueText size="13px" color="#991b1b">
+                This action is irreversible. Your profile will be removed.
+              </BoutiqueText>
+            </BoutiqueStack>
+            <BoutiqueText weight={800} color={BQ_COLORS.danger}>
+              →
+            </BoutiqueText>
+          </BoutiqueBox>
+        </BoutiqueStack>
+      </BoutiqueStack>
+
+      {showDeleteModal && (
+        <BoutiqueBox
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(4px)",
+          }}
+          align="center"
+          justify="center"
           onClick={() => setShowDeleteModal(false)}
         >
-          <div
-            className="settings-modal"
-            onClick={(event) => event.stopPropagation()}
+          <BoutiqueCard
+            width="100%"
+            style={{ maxWidth: "440px" }}
+            padding={40}
+            onClick={(e) => e.stopPropagation()}
+            className="bq-slide-up"
           >
-            <div className="modal-header">
-              <h3>Delete Account</h3>
-              <button
-                className="close-modal"
-                onClick={() => setShowDeleteModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ marginTop: 0, color: "#b91c1c", fontWeight: 600 }}>
-                This action is irreversible.
-              </p>
-              {usesLocalPassword ? (
-                <div className="form-group">
-                  <label>Current Password</label>
-                  <input
+            <BoutiqueStack gap={24}>
+              <BoutiqueBox direction="row" align="center" gap={12}>
+                <WarningDiamond
+                  size={24}
+                  weight="fill"
+                  color={BQ_COLORS.danger}
+                />
+                <BoutiqueText variant="h2">Delete Account</BoutiqueText>
+              </BoutiqueBox>
+
+              <BoutiqueText color="#991b1b" weight={600}>
+                Warning: This action is permanent and cannot be undone.
+              </BoutiqueText>
+
+              <BoutiqueStack gap={20}>
+                {usesLocalPassword && (
+                  <BoutiqueInput
+                    label="Current Password"
                     type="password"
                     value={deleteData.password}
-                    onChange={(event) =>
+                    onChange={(e) =>
                       setDeleteData((prev) => ({
                         ...prev,
-                        password: event.target.value,
+                        password: e.target.value,
                       }))
                     }
+                    required
                   />
-                </div>
-              ) : null}
-              <div className="form-group">
-                <label>Type DELETE to confirm</label>
-                <input
-                  type="text"
+                )}
+                <BoutiqueInput
+                  label="Type DELETE to confirm"
+                  placeholder="DELETE"
                   value={deleteData.confirmText}
-                  onChange={(event) =>
+                  onChange={(e) =>
                     setDeleteData((prev) => ({
                       ...prev,
-                      confirmText: event.target.value,
+                      confirmText: e.target.value,
                     }))
                   }
-                  placeholder="DELETE"
+                  required
                 />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="modal-btn modal-btn-secondary"
-                onClick={() => setShowDeleteModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="modal-btn modal-btn-danger"
-                onClick={handleDeleteAccount}
-                disabled={loadingDelete}
-              >
-                {loadingDelete ? "Deleting..." : "Delete Account"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+              </BoutiqueStack>
+
+              <BoutiqueBox direction="row" gap={12} margin="12px 0 0">
+                <BoutiqueButton
+                  variant="outline"
+                  flex={1}
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </BoutiqueButton>
+                <BoutiqueButton
+                  variant="cancel"
+                  flex={1}
+                  onClick={handleDeleteAccount}
+                  loading={loadingDelete}
+                >
+                  Delete Account
+                </BoutiqueButton>
+              </BoutiqueBox>
+            </BoutiqueStack>
+          </BoutiqueCard>
+        </BoutiqueBox>
+      )}
+    </BoutiqueCard>
   );
 }
 

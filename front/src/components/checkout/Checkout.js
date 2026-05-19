@@ -1,3 +1,4 @@
+import { Buildings, Spinner } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
@@ -11,7 +12,14 @@ import {
   saveOrdersToStorage,
 } from "../../domain/purchase/ordersStorage";
 import { DEFAULT_SERVICE_AREA_ID } from "../../domain/purchase/serviceAreas";
-import Footer from "../home/Footer";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
+import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import AddAddressModal from "./AddAddressModal";
 import "./Checkout.css";
 import DeliveryAddress from "./DeliveryAddress";
@@ -413,121 +421,159 @@ function Checkout() {
 
   if (cart.length === 0) {
     return (
-      <div className="checkout-container">
-        <div className="checkout-header">
-          <div className="checkout-header-content">
-            <button
-              type="button"
-              className="back-btn"
+      <BoutiqueScreen withHeader={false} background="white">
+        <BoutiqueHeader
+          title="Checkout"
+          leftAction="back"
+          onLeftAction={() => navigate("/shop")}
+        />
+        <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
+          <BoutiqueStack gap={20} align="center">
+            <BoutiqueText variant="h2">Your cart is empty</BoutiqueText>
+            <BoutiqueButton
               onClick={() => navigate("/shop")}
+              size="lg"
+              style={{ width: "auto", padding: "12px 40px" }}
             >
-              ←
-            </button>
-            <h1 className="checkout-title">Checkout</h1>
-          </div>
-        </div>
-        <div style={{ textAlign: "center", padding: "60px" }}>
-          <h2>Your cart is empty</h2>
-          <button
-            type="button"
-            onClick={() => navigate("/shop")}
-            className="place-order-btn"
-            style={{ width: "auto", padding: "12px 30px", marginTop: "20px" }}
-          >
-            Continue Shopping
-          </button>
-        </div>
-        <Footer />
-      </div>
+              Continue Shopping
+            </BoutiqueButton>
+          </BoutiqueStack>
+        </BoutiqueBox>
+        <BoutiqueFooter />
+      </BoutiqueScreen>
     );
   }
 
   return (
-    <div className="checkout-container">
+    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       {isProcessingPayment && (
-        <div className="payment-processing-overlay">
-          <div className="payment-modal">
-            <div className="spinner spinner--lg"></div>
-            <h2>Processing Payment</h2>
-            <p>
+        <BoutiqueBox
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 3000,
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(4px)",
+          }}
+          align="center"
+          justify="center"
+        >
+          <BoutiqueBox
+            padding={40}
+            background="white"
+            align="center"
+            gap={20}
+            style={{
+              borderRadius: "24px",
+              boxShadow: BQ_SHADOWS.float,
+              maxWidth: "400px",
+            }}
+          >
+            <Spinner
+              className="bq-spin"
+              size={48}
+              weight="bold"
+              color={BQ_COLORS.brand}
+            />
+            <BoutiqueText variant="h2">Processing Payment</BoutiqueText>
+            <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>
               Please do not close this window while we secure your transaction
               with {selectedPayment === "gcash" ? "GCash" : "your bank"}...
-            </p>
-          </div>
-        </div>
+            </BoutiqueText>
+          </BoutiqueBox>
+        </BoutiqueBox>
       )}
-      <div className="checkout-header">
-        <div className="checkout-header-content">
-          <button
-            type="button"
-            className="back-btn"
-            onClick={() => navigate("/shop")}
-          >
-            ←
-          </button>
-          <h1 className="checkout-title">Checkout</h1>
-        </div>
-      </div>
 
-      <div className="checkout-main">
-        <div className="checkout-left">
-          <DeliveryAddress
-            addresses={addresses}
-            selectedAddress={selectedAddress}
-            onSelectAddress={setSelectedAddress}
-            onAddAddress={() => {
-              setEditingAddress(null);
-              setShowAddressModal(true);
-            }}
-            onEditAddress={(address) => {
-              setEditingAddress(address);
-              setShowAddressModal(true);
-            }}
-            onDeleteAddress={handleDeleteAddress}
-            onSetDefaultAddress={handleSetDefaultAddress}
-            isBusy={addressBusy}
+      <BoutiqueHeader
+        title="Checkout"
+        leftAction="back"
+        onLeftAction={() => navigate("/shop")}
+      />
+
+      <BoutiqueBox
+        direction="row"
+        flex={1}
+        width="100%"
+        className="checkout-main"
+        style={{ maxWidth: "1400px", margin: "0 auto" }}
+      >
+        <BoutiqueBox flex={1} padding="32px" className="checkout-left">
+          <BoutiqueStack gap={32}>
+            <DeliveryAddress
+              addresses={addresses}
+              selectedAddress={selectedAddress}
+              onSelectAddress={setSelectedAddress}
+              onAddAddress={() => {
+                setEditingAddress(null);
+                setShowAddressModal(true);
+              }}
+              onEditAddress={(address) => {
+                setEditingAddress(address);
+                setShowAddressModal(true);
+              }}
+              onDeleteAddress={handleDeleteAddress}
+              onSetDefaultAddress={handleSetDefaultAddress}
+              isBusy={addressBusy}
+            />
+
+            {assignedBranch && (
+              <BoutiqueBox
+                padding={24}
+                background={BQ_COLORS.bgAlt}
+                style={{
+                  borderRadius: "20px",
+                  border: `1.5px dashed ${BQ_COLORS.border}`,
+                }}
+              >
+                <BoutiqueBox
+                  direction="row"
+                  align="center"
+                  gap={10}
+                  margin="0 0 16px"
+                >
+                  <Buildings size={20} weight="fill" color={BQ_COLORS.accent} />
+                  <BoutiqueText variant="label">Order Fulfillment</BoutiqueText>
+                </BoutiqueBox>
+                <BoutiqueStack gap={4}>
+                  <BoutiqueText variant="h3">
+                    {assignedBranch} Branch
+                  </BoutiqueText>
+                  <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                    Routed based on your location in{" "}
+                    <strong>{selectedAddress?.city}</strong>.
+                  </BoutiqueText>
+                </BoutiqueStack>
+              </BoutiqueBox>
+            )}
+
+            <PaymentMethod
+              selectedMethod={selectedPayment}
+              onSelectMethod={setSelectedPayment}
+              branchHint={
+                assignedBranch
+                  ? `This order will be routed from the ${assignedBranch} branch based on the selected delivery address.`
+                  : "The branch assignment will be determined once you choose a delivery address."
+              }
+            />
+          </BoutiqueStack>
+        </BoutiqueBox>
+
+        <BoutiqueBox
+          width={440}
+          padding="32px"
+          className="checkout-right"
+          style={{ position: "sticky", top: "80px", height: "fit-content" }}
+        >
+          <OrderSummary
+            cart={cart}
+            selectedPayment={selectedPayment}
+            totals={totals}
+            onPlaceOrder={handlePlaceOrder}
+            stockIssues={stockIssues}
+            stockCheckedAt={stockCheckedAt}
           />
-
-          {assignedBranch && (
-            <div className="checkout-branch-assignment">
-              <div className="branch-assignment-card">
-                <div className="branch-assignment-label">
-                  ORDER FULFILLMENT BRANCH
-                </div>
-                <div className="branch-assignment-main">
-                  <div className="branch-name">{assignedBranch}</div>
-                  <div className="branch-location">
-                    {selectedAddress?.city || "City not specified"}
-                  </div>
-                </div>
-                <div className="branch-assignment-note">
-                  This order will be fulfilled from the {assignedBranch} branch
-                  based on your delivery address.
-                </div>
-              </div>
-            </div>
-          )}
-
-          <PaymentMethod
-            selectedMethod={selectedPayment}
-            onSelectMethod={setSelectedPayment}
-            branchHint={
-              assignedBranch
-                ? `This order will be routed from the ${assignedBranch} branch based on the selected delivery address.`
-                : "The branch assignment will be determined once you choose a delivery address."
-            }
-          />
-        </div>
-
-        <OrderSummary
-          cart={cart}
-          selectedPayment={selectedPayment}
-          totals={totals}
-          onPlaceOrder={handlePlaceOrder}
-          stockIssues={stockIssues}
-          stockCheckedAt={stockCheckedAt}
-        />
-      </div>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       {showAddressModal && (
         <AddAddressModal
@@ -539,8 +585,23 @@ function Checkout() {
           isSaving={addressBusy}
         />
       )}
-      <Footer />
-    </div>
+
+      <BoutiqueFooter />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .bq-spin { animation: bq-spin 1s linear infinite; }
+        @keyframes bq-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 1024px) {
+          .checkout-main { flex-direction: column !important; }
+          .checkout-right { width: 100% !important; position: static !important; }
+        }
+      `,
+        }}
+      />
+    </BoutiqueScreen>
   );
 }
 

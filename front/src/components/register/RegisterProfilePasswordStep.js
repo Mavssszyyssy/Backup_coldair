@@ -15,8 +15,12 @@ import { apiRequest } from "../../config/api";
 import { BRANCHES } from "../../domain/branches/branches";
 import { defaultAliasFromEmail } from "../../domain/register/defaultAliasFromEmail";
 import { validateProfileAndSecurityStep } from "../../domain/register/validateRegistrationProfile";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 export default function RegisterProfilePasswordStep({
@@ -138,15 +142,28 @@ export default function RegisterProfilePasswordStep({
   };
 
   return (
-    <form className="bq-reg-step bq-fade-in" onSubmit={handleSubmit}>
-      <div className="bq-reg-header">
-        <h3 className="bq-reg-title">Profile & Security</h3>
-        <p className="bq-reg-desc">
+    <BoutiqueStack
+      tag="form"
+      gap={24}
+      className="bq-reg-step bq-fade-in"
+      height="100%"
+      onSubmit={handleSubmit}
+    >
+      <BoutiqueBox className="bq-reg-header">
+        <BoutiqueText variant="h2" className="bq-reg-title">
+          Profile & Security
+        </BoutiqueText>
+        <BoutiqueText
+          variant="body"
+          className="bq-reg-desc"
+          margin="8px 0 0"
+          style={{ opacity: 0.8 }}
+        >
           Set your account details and contact information.
-        </p>
-      </div>
+        </BoutiqueText>
+      </BoutiqueBox>
 
-      <div className="bq-reg-form-grid">
+      <BoutiqueGrid columns="1fr 1fr" gap={24} className="bq-reg-form-grid">
         <BoutiqueInput
           label="First Name"
           icon={User}
@@ -169,7 +186,7 @@ export default function RegisterProfilePasswordStep({
           required
         />
 
-        <div className="full-width">
+        <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
             label="Sign-In Alias"
             icon={UserCircle}
@@ -204,15 +221,24 @@ export default function RegisterProfilePasswordStep({
           >
             {/* Real-time Availability Indicator */}
             {aliasStatus === "available" && (
-              <div className="bq-match-indicator success">
-                <ShieldCheck size={14} weight="fill" /> Username available
-              </div>
+              <BoutiqueBox
+                direction="row"
+                align="center"
+                gap={6}
+                margin="8px 0 0"
+                className="bq-match-indicator success"
+              >
+                <ShieldCheck size={14} weight="fill" />
+                <BoutiqueText variant="caption" weight={700}>
+                  Username available
+                </BoutiqueText>
+              </BoutiqueBox>
             )}
           </BoutiqueInput>
-        </div>
+        </BoutiqueBox>
 
         {detectedRole !== "customer" && (
-          <div className="full-width">
+          <BoutiqueBox style={{ gridColumn: "span 2" }}>
             <BoutiqueInput
               label="Branch Assignment"
               icon={Buildings}
@@ -233,10 +259,10 @@ export default function RegisterProfilePasswordStep({
               errorMessage={errors.branch}
               required
             />
-          </div>
+          </BoutiqueBox>
         )}
 
-        <div className="full-width">
+        <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
             label="Password"
             icon={LockKey}
@@ -263,9 +289,9 @@ export default function RegisterProfilePasswordStep({
             style={{ fontFamily: "monospace" }}
             required
           />
-        </div>
+        </BoutiqueBox>
 
-        <div className="full-width">
+        <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
             label="Confirm Password"
             icon={LockKey}
@@ -293,53 +319,84 @@ export default function RegisterProfilePasswordStep({
             required
           >
             {/* Password Strength Meter */}
-            <div className="bq-password-strength">
-              <div className="bq-strength-meta">
-                <span className="bq-strength-label">
+            <BoutiqueStack
+              gap={8}
+              margin="12px 0 0"
+              className="bq-password-strength"
+            >
+              <BoutiqueBox
+                direction="row"
+                justify="space-between"
+                align="center"
+              >
+                <BoutiqueText variant="label" color="#64748b">
                   Strength:{" "}
                   <strong style={{ color: passwordStrength.color }}>
                     {passwordStrength.label}
                   </strong>
-                </span>
-                <span className="bq-strength-score">
+                </BoutiqueText>
+                <BoutiqueText size="12px" weight={700} color="#94a3b8">
                   {passwordStrength.score} / 100
-                </span>
-              </div>
-              <div className="bq-strength-bar-bg">
-                <div
-                  className="bq-strength-bar-fill"
+                </BoutiqueText>
+              </BoutiqueBox>
+              <BoutiqueBox
+                height={6}
+                background="#f1f5f9"
+                style={{ borderRadius: "3px", overflow: "hidden" }}
+              >
+                <BoutiqueBox
+                  height="100%"
                   style={{
                     width: `${Math.min(100, Math.max(5, passwordStrength.score))}%`,
                     backgroundColor: passwordStrength.color,
+                    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                    borderRadius: "3px",
                   }}
                 />
-              </div>
-            </div>
+              </BoutiqueBox>
+            </BoutiqueStack>
 
             {/* Real-time Match Indicator */}
             {formData.confirmPassword &&
               passwordsMatch !== null &&
               !errors.confirmPassword && (
-                <div
+                <BoutiqueBox
+                  direction="row"
+                  align="center"
+                  gap={6}
+                  margin="8px 0 0"
                   className={`bq-match-indicator ${passwordsMatch ? "success" : "error"}`}
                 >
                   {passwordsMatch ? (
                     <>
-                      <ShieldCheck size={14} weight="fill" /> Passwords match
+                      <ShieldCheck size={14} weight="fill" />
+                      <BoutiqueText variant="caption" weight={700}>
+                        Passwords match
+                      </BoutiqueText>
                     </>
                   ) : (
                     <>
-                      <WarningDiamond size={14} weight="bold" /> Passwords do
-                      not match
+                      <WarningDiamond size={14} weight="bold" />
+                      <BoutiqueText variant="caption" weight={700}>
+                        Passwords do not match
+                      </BoutiqueText>
                     </>
                   )}
-                </div>
+                </BoutiqueBox>
               )}
           </BoutiqueInput>
-        </div>
-      </div>
+        </BoutiqueBox>
+      </BoutiqueGrid>
 
-      <div className="bq-reg-actions">
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        justify="space-between"
+        margin="auto 0 0"
+        padding="32px 0 0"
+        style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
+        className="bq-reg-actions"
+      >
         <BoutiqueButton type="button" variant="cancel" onClick={onCancel}>
           <X size={18} weight="bold" /> Cancel
         </BoutiqueButton>
@@ -349,34 +406,17 @@ export default function RegisterProfilePasswordStep({
         >
           Continue <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-reg-step { display: flex; flex-direction: column; gap: 24px; width: 100%; height: 100%; }
-        .bq-reg-header { margin-bottom: 8px; }
-        .bq-reg-title { font-size: 24px; font-weight: 800; margin: 0; }
-        .bq-reg-desc { font-size: 15px; margin-top: 8px; opacity: 0.8; }
-        .bq-reg-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .bq-reg-form-grid .full-width { grid-column: span 2; }
-
-        .bq-password-strength { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-        .bq-strength-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; }
-        .bq-strength-label { color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-        .bq-strength-score { color: #94a3b8; }
-        .bq-strength-bar-bg { height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
-        .bq-strength-bar-fill { height: 100%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 3px; }
-
-        .bq-match-indicator { margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; transition: all 0.3s ease; }
         .bq-match-indicator.success { color: #10b981; }
         .bq-match-indicator.error { color: #ef4444; }
 
-        .bq-reg-actions { display: flex; align-items: center; justify-content: space-between; margin-top: auto; border-top: 1px solid ${BQ_COLORS.border}; padding-top: 32px; }
-
         @media (max-width: 640px) {
-          .bq-reg-form-grid { grid-template-columns: 1fr; }
-          .bq-reg-form-grid .full-width { grid-column: span 1; }
+          .bq-reg-form-grid { grid-template-columns: 1fr !important; }
+          .bq-reg-form-grid > * { grid-column: span 1 !important; }
         }
 
         .bq-spin { animation: bq-spin 1s linear infinite; color: ${BQ_COLORS.accent}; }
@@ -384,6 +424,6 @@ export default function RegisterProfilePasswordStep({
       `,
         }}
       />
-    </form>
+    </BoutiqueStack>
   );
 }

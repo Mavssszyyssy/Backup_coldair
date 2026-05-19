@@ -4,6 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import BoutiqueAuthHeader from "../common/boutique/BoutiqueAuthHeader";
 import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LockoutWarning from "./LockOutWarning";
 import LoginForm from "./LoginForm";
@@ -116,14 +119,23 @@ function Login() {
         subtitle="Sign in to your boutique account"
       />
 
-      <div className="bq-login-form-inner">
+      <BoutiqueStack gap={24} className="bq-login-form-inner">
         <LockoutWarning lockoutInfo={lockoutInfo} secondsLeft={secondsLeft} />
 
         {authMessage && (
-          <div className="bq-auth-banner">
+          <BoutiqueBox
+            padding="16px 20px"
+            background={BQ_COLORS.bgAlt}
+            direction="row"
+            align="center"
+            gap={12}
+            style={{ borderRadius: "12px" }}
+          >
             <Info size={18} weight="bold" />
-            <span>{authMessage}</span>
-          </div>
+            <BoutiqueText weight={600} size="14px">
+              {authMessage}
+            </BoutiqueText>
+          </BoutiqueBox>
         )}
 
         <LoginForm
@@ -138,33 +150,67 @@ function Login() {
           onForgotPassword={() => navigate("/forgot-password")}
         />
 
-        <div className="bq-login-footer-actions">
-          <p className="bq-signup-prompt">
+        <BoutiqueBox align="center" margin="8px 0 0">
+          <BoutiqueText color={BQ_COLORS.inkMuted} weight={500}>
             New to AeroPulse?{" "}
-            <button onClick={() => navigate("/register")}>
+            <button
+              className="bq-signup-link"
+              onClick={() => navigate("/register")}
+            >
               Create Account
             </button>
-          </p>
-        </div>
+          </BoutiqueText>
+        </BoutiqueBox>
 
-        <div className="bq-security-tips">
-          <div className="bq-tips-header">
+        <BoutiqueBox
+          padding={24}
+          background={BQ_COLORS.bgAlt}
+          style={{
+            borderRadius: "20px",
+            border: `1.5px dashed ${BQ_COLORS.border}`,
+          }}
+        >
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            gap={10}
+            margin="0 0 16px"
+          >
             <ShieldCheck size={20} weight="fill" />
-            <span>Boutique Security</span>
-          </div>
-          <ul className="bq-tips-list">
-            <li>Automatic lockout after 3 failed attempts</li>
-            <li>Encrypted session management</li>
-            <li>Assigned branch auto-routing enabled</li>
-          </ul>
-        </div>
-      </div>
+            <BoutiqueText variant="label">Boutique Security</BoutiqueText>
+          </BoutiqueBox>
+          <BoutiqueStack gap={10} tag="ul" className="bq-tips-list">
+            <BoutiqueText
+              tag="li"
+              size="13px"
+              color={BQ_COLORS.inkMuted}
+              weight={600}
+            >
+              Automatic lockout after 3 failed attempts
+            </BoutiqueText>
+            <BoutiqueText
+              tag="li"
+              size="13px"
+              color={BQ_COLORS.inkMuted}
+              weight={600}
+            >
+              Encrypted session management
+            </BoutiqueText>
+            <BoutiqueText
+              tag="li"
+              size="13px"
+              color={BQ_COLORS.inkMuted}
+              weight={600}
+            >
+              Assigned branch auto-routing enabled
+            </BoutiqueText>
+          </BoutiqueStack>
+        </BoutiqueBox>
+      </BoutiqueStack>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-login-form-inner { display: flex; flex-direction: column; gap: 24px; }
-
         .bq-login-back-btn {
           position: absolute; top: 40px; left: 40px;
           background: white; border: none;
@@ -176,19 +222,10 @@ function Login() {
         }
         .bq-login-back-btn:hover { transform: translateX(-4px); box-shadow: ${BQ_SHADOWS.float}; }
 
-        .bq-auth-banner { padding: 16px 20px; background: ${BQ_COLORS.bgAlt}; color: ${BQ_COLORS.ink}; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; }
+        .bq-signup-link { background: none; border: none; color: ${BQ_COLORS.brand}; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0 4px; font-size: 15px; }
 
-        .bq-login-footer-actions { margin-top: 8px; text-align: center; }
-        .bq-signup-prompt { font-size: 15px; color: ${BQ_COLORS.inkMuted}; font-weight: 500; }
-        .bq-signup-prompt button { background: none; border: none; color: ${BQ_COLORS.brand}; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0 4px; }
-
-        .bq-security-tips {
-          margin-top: 24px; padding: 24px; background: ${BQ_COLORS.bgAlt};
-          border-radius: 20px; border: 1.5px dashed ${BQ_COLORS.border};
-        }
-        .bq-tips-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: ${BQ_COLORS.ink}; font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em; }
-        .bq-tips-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-        .bq-tips-list li { font-size: 13px; color: ${BQ_COLORS.inkMuted}; font-weight: 600; position: relative; padding-left: 18px; }
+        .bq-tips-list { list-style: none; padding: 0; margin: 0; }
+        .bq-tips-list li { position: relative; padding-left: 18px; }
         .bq-tips-list li::before { content: "•"; position: absolute; left: 0; color: ${BQ_COLORS.accent}; font-weight: 900; }
 
         @media (max-width: 1024px) {

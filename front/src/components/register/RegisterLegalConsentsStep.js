@@ -1,7 +1,10 @@
 import { ArrowRight, X } from "@phosphor-icons/react";
 import { useMemo } from "react";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 export default function RegisterLegalConsentsStep({
@@ -46,15 +49,27 @@ export default function RegisterLegalConsentsStep({
   };
 
   return (
-    <form className="bq-reg-step bq-fade-in" onSubmit={handleSubmit}>
-      <div className="bq-reg-header">
-        <h3 className="bq-reg-title">Terms & Privacy</h3>
-        <p className="bq-reg-desc">
+    <BoutiqueBox
+      tag="form"
+      className="bq-reg-step bq-fade-in"
+      height="100%"
+      onSubmit={handleSubmit}
+    >
+      <BoutiqueBox margin="0 0 8px" className="bq-reg-header">
+        <BoutiqueText variant="h2" className="bq-reg-title">
+          Terms & Privacy
+        </BoutiqueText>
+        <BoutiqueText
+          variant="body"
+          className="bq-reg-desc"
+          margin="8px 0 0"
+          style={{ opacity: 0.8 }}
+        >
           Please review and accept our policies to continue.
-        </p>
-      </div>
+        </BoutiqueText>
+      </BoutiqueBox>
 
-      <div className="bq-reg-consent-list">
+      <BoutiqueStack gap={20} className="bq-reg-consent-list">
         {consents.map((c) => (
           <BoutiqueCheckbox
             key={c.id}
@@ -62,7 +77,7 @@ export default function RegisterLegalConsentsStep({
             onChange={(val) => onFieldChange(c.id, val)}
             error={errors[c.id]}
           >
-            <span>
+            <BoutiqueText size="14px">
               I agree to the{" "}
               <a
                 href={c.link}
@@ -72,38 +87,34 @@ export default function RegisterLegalConsentsStep({
               >
                 {c.linkText}
               </a>
-            </span>
+            </BoutiqueText>
           </BoutiqueCheckbox>
         ))}
-      </div>
+      </BoutiqueStack>
 
-      <div className="bq-reg-actions">
+      <BoutiqueBox
+        direction="row"
+        align="center"
+        justify="space-between"
+        margin="auto 0 0"
+        className="bq-reg-actions"
+      >
         <BoutiqueButton type="button" variant="cancel" onClick={onBack}>
           <X size={18} weight="bold" /> Cancel
         </BoutiqueButton>
         <BoutiqueButton type="submit" disabled={!allChecked}>
           Continue <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
-      </div>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .bq-reg-step { display: flex; flex-direction: column; gap: 24px; width: 100%; height: 100%; }
-
-        .bq-reg-header { margin-bottom: 8px; }
-        .bq-reg-title { font-size: 24px; font-weight: 800; margin: 0; }
-        .bq-reg-desc { font-size: 15px; margin-top: 8px; opacity: 0.8; }
-
-        .bq-reg-consent-list { display: flex; flex-direction: column; gap: 20px; }
-
         .bq-reg-link { color: ${BQ_COLORS.brand}; text-decoration: none; font-weight: 700; transition: all 0.2s; }
         .bq-reg-link:hover { text-decoration: underline; opacity: 0.8; }
-
-        .bq-reg-actions { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
       `,
         }}
       />
-    </form>
+    </BoutiqueBox>
   );
 }

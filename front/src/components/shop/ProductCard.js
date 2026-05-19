@@ -10,14 +10,15 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { getBrandLogo } from "../../config/brandLogos";
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueTechnicalCard from "../common/boutique/BoutiqueTechnicalCard";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 import {
   BQ_COLORS,
-  BQ_FONTS,
   BQ_GEOMETRY,
   BQ_SHADOWS,
-  BQ_WEIGHTS,
 } from "../common/boutique/BoutiqueTheme";
 
 function productPlaceholderIcon(product) {
@@ -49,11 +50,20 @@ export default function ProductCard({
   const brandLogoUrl = getBrandLogo(product.brand);
 
   return (
-    <div
+    <BoutiqueBox
       className={`bq-card ${product.featured ? "featured" : ""}`}
       onClick={() => onClick(product)}
+      tag="div"
     >
-      <div className="bq-card-image">
+      <BoutiqueBox
+        className="bq-card-image"
+        height={220}
+        background={BQ_COLORS.bg}
+        align="center"
+        justify="center"
+        padding={24}
+        style={{ position: "relative" }}
+      >
         {product.imageUrl && !imgBroken ? (
           <img
             src={product.imageUrl}
@@ -62,63 +72,110 @@ export default function ProductCard({
             className="bq-img"
           />
         ) : (
-          <div className="bq-img-fallback">
+          <BoutiqueBox className="bq-img-fallback">
             <IconComp size={64} weight="bold" />
-          </div>
+          </BoutiqueBox>
         )}
 
         {product.featured && (
-          <div className="bq-card-badge-left">
+          <BoutiqueBox className="bq-card-badge-left">
             <BoutiqueTechnicalCard variant="brand" size="sm" icon={Star}>
               Featured
             </BoutiqueTechnicalCard>
-          </div>
+          </BoutiqueBox>
         )}
 
         {product.discount > 0 && (
-          <div className="bq-card-badge-right">
+          <BoutiqueBox className="bq-card-badge-right">
             <BoutiqueTechnicalCard variant="danger" size="sm">
               {product.discount}% OFF
             </BoutiqueTechnicalCard>
-          </div>
+          </BoutiqueBox>
         )}
-      </div>
+      </BoutiqueBox>
 
-      <div className="bq-card-info">
-        <div className="bq-details-top">
-          <div className="bq-brand-row">
-            <div className="bq-brand-logo">
+      <BoutiqueBox className="bq-card-info" padding={24} flex={1}>
+        <BoutiqueBox className="bq-details-top" margin="0 0 20px">
+          <BoutiqueBox direction="row" align="flex-start" gap={12}>
+            <BoutiqueBox
+              className="bq-brand-logo"
+              width={34}
+              height={34}
+              background={BQ_COLORS.bg}
+              align="center"
+              justify="center"
+              padding={5}
+              style={{
+                borderRadius: "8px",
+                border: `1px solid ${BQ_COLORS.border}`,
+              }}
+            >
               <img src={brandLogoUrl} alt={product.brand} />
-            </div>
-            <div className="bq-title-stack">
-              <span className="bq-model-label">{product.model || "MODEL"}</span>
-              <div className="bq-name-group">
-                <h3 className="bq-name">{displayName}</h3>
+            </BoutiqueBox>
+            <BoutiqueStack gap={2} flex={1}>
+              <BoutiqueText
+                variant="label"
+                color={BQ_COLORS.inkMuted}
+                style={{ opacity: 0.9 }}
+              >
+                {product.model || "MODEL"}
+              </BoutiqueText>
+              <BoutiqueBox
+                direction="row"
+                align="center"
+                justify="space-between"
+                gap={12}
+                width="100%"
+              >
+                <BoutiqueText
+                  variant="h3"
+                  className="bq-name"
+                  style={{ flex: 1 }}
+                >
+                  {displayName}
+                </BoutiqueText>
                 {horsepower && (
-                  <div className="bq-hp-card-wrap">
+                  <BoutiqueBox style={{ flexShrink: 0 }}>
                     <BoutiqueTechnicalCard variant="blue" size="sm">
                       {horsepower}
                     </BoutiqueTechnicalCard>
-                  </div>
+                  </BoutiqueBox>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
+              </BoutiqueBox>
+            </BoutiqueStack>
+          </BoutiqueBox>
+        </BoutiqueBox>
 
-        <div className="bq-interactive-wrapper">
-          <div className="bq-reveal-group">
-            <div className="bq-price-stock-row">
-              <div className="bq-price-row">
-                <span className="bq-current-price">
+        <BoutiqueBox
+          className="bq-interactive-wrapper"
+          margin="auto 0 0"
+          height={100}
+          justify="flex-end"
+          style={{ position: "relative", overflow: "hidden" }}
+        >
+          <BoutiqueStack gap={12} className="bq-reveal-group">
+            <BoutiqueBox
+              direction="row"
+              align="center"
+              justify="space-between"
+              height={44}
+              width="100%"
+            >
+              <BoutiqueBox direction="row" align="baseline" gap={6}>
+                <BoutiqueText variant="h2" className="bq-current-price">
                   ₱{product.price.toLocaleString()}
-                </span>
+                </BoutiqueText>
                 {product.oldPrice && (
-                  <span className="bq-old-price">
+                  <BoutiqueText
+                    variant="caption"
+                    className="bq-old-price"
+                    weight={600}
+                    style={{ textDecoration: "line-through" }}
+                  >
                     ₱{product.oldPrice.toLocaleString()}
-                  </span>
+                  </BoutiqueText>
                 )}
-              </div>
+              </BoutiqueBox>
 
               <BoutiqueTechnicalCard
                 variant={product.stock > 0 ? "success" : "danger"}
@@ -126,9 +183,9 @@ export default function ProductCard({
               >
                 {product.stock > 0 ? `${product.stock} Units` : "Out of Stock"}
               </BoutiqueTechnicalCard>
-            </div>
+            </BoutiqueBox>
 
-            <div className="bq-buy-now-row">
+            <BoutiqueBox width="100%">
               <BoutiqueButton
                 variant="outline"
                 size="sm"
@@ -141,10 +198,15 @@ export default function ProductCard({
               >
                 Buy Now <Lightning size={18} weight="fill" />
               </BoutiqueButton>
-            </div>
-          </div>
+            </BoutiqueBox>
+          </BoutiqueStack>
 
-          <div className="bq-anchor-action">
+          <BoutiqueBox
+            className="bq-anchor-action"
+            margin="12px 0 0"
+            height={44}
+            style={{ position: "relative", zIndex: 2 }}
+          >
             <BoutiqueButton
               variant="primary"
               size="sm"
@@ -157,32 +219,38 @@ export default function ProductCard({
             >
               Add to Cart <ShoppingCart size={18} weight="bold" />
             </BoutiqueButton>
-          </div>
-        </div>
+          </BoutiqueBox>
+        </BoutiqueBox>
 
-        <div className="bq-warranty">
-          <ShieldCheck size={14} weight="bold" /> {product.warranty}
-        </div>
-      </div>
+        <BoutiqueBox
+          className="bq-warranty"
+          direction="row"
+          align="center"
+          gap={6}
+          margin="16px 0 0"
+          padding="16px 0 0"
+          style={{ borderTop: "1px solid rgba(0,0,0,0.03)" }}
+        >
+          <ShieldCheck size={14} weight="bold" />
+          <BoutiqueText variant="caption" weight={600}>
+            {product.warranty}
+          </BoutiqueText>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
         .bq-card {
-          background: white;
           border-radius: ${BQ_GEOMETRY.radiusCard};
           overflow: hidden;
           transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-          display: flex;
-          flex-direction: column;
           position: relative;
           box-shadow: ${BQ_SHADOWS.soft};
           cursor: pointer;
           animation: bq-fade-in 0.6s ease;
           border: 1px solid ${BQ_COLORS.border};
           min-height: 540px;
-          font-family: ${BQ_FONTS.body};
-          width: 100%;
         }
 
         @keyframes bq-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -193,15 +261,7 @@ export default function ProductCard({
           border-color: transparent;
         }
 
-        .bq-card-image {
-          height: 220px;
-          background: ${BQ_COLORS.bg};
-          display: flex; align-items: center; justify-content: center;
-          position: relative;
-          padding: 24px;
-          transition: all 0.5s ease;
-        }
-        .bq-card:hover .bq-card-image { background: white; }
+        .bq-card:hover .bq-card-image { background: white !important; }
 
         .bq-img {
           width: 100%; height: 100%; object-fit: contain;
@@ -214,69 +274,13 @@ export default function ProductCard({
         .bq-card-badge-left { position: absolute; top: 12px; left: 12px; z-index: 10; }
         .bq-card-badge-right { position: absolute; top: 12px; right: 12px; z-index: 10; }
 
-        .bq-card-info {
-          padding: 24px;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-        }
-
-        .bq-details-top { margin-bottom: 20px; }
-
-        .bq-brand-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
-
-        .bq-brand-logo {
-          width: 34px; height: 34px;
-          background: ${BQ_COLORS.bg};
-          border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-          padding: 5px;
-          flex-shrink: 0;
-          border: 1px solid ${BQ_COLORS.border};
-        }
         .bq-brand-logo img { width: 100%; height: 100%; object-fit: contain; }
 
-        .bq-title-stack { display: flex; flex-direction: column; flex: 1; }
-
-        .bq-model-label {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 11px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.inkMuted};
-          text-transform: uppercase;
-          letter-spacing: 0.12em;
-          margin-bottom: 2px;
-          display: block;
-          opacity: 0.9;
-        }
-
-        .bq-name-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
-
         .bq-name {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 19px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.ink};
           line-height: 1.15; letter-spacing: -0.02em;
-          margin: 0;
-          flex: 1;
-        }
-
-        .bq-hp-card-wrap { flex-shrink: 0; }
-
-        .bq-interactive-wrapper {
-          margin-top: auto;
-          position: relative;
-          height: 100px;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-end;
         }
 
         .bq-reveal-group {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
           transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
           transform: translateY(56px);
           position: relative;
@@ -287,52 +291,17 @@ export default function ProductCard({
           transform: translateY(0);
         }
 
-        .bq-price-stock-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 44px;
-            width: 100%;
-        }
-
-        .bq-price-row { display: flex; align-items: baseline; gap: 6px; }
-
         .bq-current-price {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 24px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.ink};
           letter-spacing: -0.05em;
           line-height: 1;
         }
 
         .bq-old-price {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 14px;
-          color: ${BQ_COLORS.inkFaint};
-          text-decoration: line-through;
-          font-weight: ${BQ_WEIGHTS.semibold};
           line-height: 1;
-        }
-
-        .bq-anchor-action {
-            margin-top: 12px;
-            position: relative;
-            z-index: 2;
-            height: 44px;
-            display: flex;
-        }
-
-        .bq-warranty {
-          font-family: ${BQ_FONTS.heading};
-          font-size: 11px; color: ${BQ_COLORS.inkFaint};
-          margin-top: 16px; padding-top: 16px;
-          border-top: 1px solid rgba(0,0,0,0.03);
-          display: flex; align-items: center; gap: 6px;
-          font-weight: ${BQ_WEIGHTS.semibold};
         }
       `,
         }}
       />
-    </div>
+    </BoutiqueBox>
   );
 }

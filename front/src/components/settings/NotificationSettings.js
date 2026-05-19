@@ -1,6 +1,11 @@
+import { Bell } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
+import BoutiqueCard from "../common/boutique/BoutiqueCard";
+import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueText from "../common/boutique/BoutiqueText";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 function NotificationSettings({
   user,
@@ -94,47 +99,80 @@ function NotificationSettings({
   };
 
   return (
-    <div className="settings-section">
-      <div className="section-title">
-        <span className="section-icon">
-          <img
-            src={icons.visit}
-            alt=""
-            className="inline-icon inline-icon--md"
-          />
-        </span>
-        <h2>Notification Settings</h2>
-      </div>
-      <div className="settings-list">
-        {rows.map((row) => (
-          <div className="setting-item" key={row.key}>
-            <div className="setting-info">
-              <div className="setting-label">{row.label}</div>
-              <div className="setting-description">{row.description}</div>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={Boolean(notifications[row.key])}
-                onChange={() => toggle(row.key)}
-              />
-              <span className="toggle-slider" />
-            </label>
-          </div>
-        ))}
-
-        <div className="setting-item">
-          <button
-            type="button"
-            className="modal-btn modal-btn-primary"
-            onClick={handleSave}
-            disabled={saving}
+    <BoutiqueCard padding={32}>
+      <BoutiqueStack gap={32}>
+        <BoutiqueBox direction="row" align="center" gap={12}>
+          <BoutiqueBox
+            width={40}
+            height={40}
+            background={BQ_COLORS.bg}
+            align="center"
+            justify="center"
+            style={{ borderRadius: "12px", color: BQ_COLORS.brand }}
           >
-            {saving ? "Saving..." : "Save Notification Settings"}
-          </button>
-        </div>
-      </div>
-    </div>
+            <Bell size={20} weight="bold" />
+          </BoutiqueBox>
+          <BoutiqueText variant="h2">Notification Settings</BoutiqueText>
+        </BoutiqueBox>
+
+        <BoutiqueStack gap={12}>
+          {rows.map((row) => (
+            <BoutiqueBox
+              key={row.key}
+              direction="row"
+              align="center"
+              justify="space-between"
+              padding="16px 0"
+              style={{ borderBottom: `1px solid ${BQ_COLORS.border}` }}
+            >
+              <BoutiqueStack gap={4}>
+                <BoutiqueText weight={700}>{row.label}</BoutiqueText>
+                <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                  {row.description}
+                </BoutiqueText>
+              </BoutiqueStack>
+              <label className="bq-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(notifications[row.key])}
+                  onChange={() => toggle(row.key)}
+                />
+                <span className="bq-toggle-slider" />
+              </label>
+            </BoutiqueBox>
+          ))}
+        </BoutiqueStack>
+
+        <BoutiqueBox margin="12px 0 0">
+          <BoutiqueButton
+            onClick={handleSave}
+            loading={saving}
+            style={{ width: "auto", minWidth: "250px" }}
+          >
+            Save Notification Settings
+          </BoutiqueButton>
+        </BoutiqueBox>
+      </BoutiqueStack>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .bq-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .bq-toggle input { opacity: 0; width: 0; height: 0; }
+        .bq-toggle-slider {
+          position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+          background-color: ${BQ_COLORS.border}; transition: .4s; border-radius: 24px;
+        }
+        .bq-toggle-slider:before {
+          position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+          background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .bq-toggle-slider { background-color: ${BQ_COLORS.brand}; }
+        input:checked + .bq-toggle-slider:before { transform: translateX(20px); }
+      `,
+        }}
+      />
+    </BoutiqueCard>
   );
 }
 

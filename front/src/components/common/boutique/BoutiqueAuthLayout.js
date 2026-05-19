@@ -1,4 +1,5 @@
 import RegisterBrandSection from "../../register/RegisterBrandSection";
+import BoutiqueBox from "./BoutiqueBox";
 import { BQ_COLORS } from "./BoutiqueTheme";
 
 /**
@@ -8,18 +9,41 @@ import { BQ_COLORS } from "./BoutiqueTheme";
  */
 export default function BoutiqueAuthLayout({ children }) {
   return (
-    <div className="bq-auth-layout">
-      <div className="bq-auth-flex">
+    <BoutiqueBox className="bq-auth-layout" width="100%" height="100vh">
+      <BoutiqueBox
+        className="bq-auth-flex"
+        direction="row"
+        flex={1}
+        width="100%"
+      >
         {/* BRAND PANEL AREA */}
-        <div className="bq-auth-brand-area">
+        <BoutiqueBox
+          className="bq-auth-brand-area"
+          flex={1}
+          background={BQ_COLORS.brand}
+        >
           <RegisterBrandSection />
-        </div>
+        </BoutiqueBox>
 
         {/* FORM PANEL AREA */}
-        <div className="bq-auth-form-area">
-          <div className="bq-auth-form-constraint">{children}</div>
-        </div>
-      </div>
+        <BoutiqueBox
+          className="bq-auth-form-area"
+          flex={1}
+          background="white"
+          align="center"
+          style={{ overflowY: "auto" }}
+        >
+          <BoutiqueBox
+            className="bq-auth-form-constraint"
+            width="100%"
+            height="100%"
+            style={{ maxWidth: "480px" }}
+            padding="60px 20px"
+          >
+            {children}
+          </BoutiqueBox>
+        </BoutiqueBox>
+      </BoutiqueBox>
 
       <style
         dangerouslySetInnerHTML={{
@@ -30,49 +54,10 @@ export default function BoutiqueAuthLayout({ children }) {
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .bq-auth-layout {
-          min-height: 100vh;
-          background: white;
-          display: flex;
-          width: 100%;
           overflow-x: hidden;
         }
 
-        .bq-auth-flex {
-          display: flex;
-          width: 100%;
-          min-height: 100vh;
-          flex-direction: row; /* Force horizontal on landscape */
-        }
-
-        /* 50/50 Flex Partitioning */
-        .bq-auth-brand-area {
-          flex: 1;
-          min-width: 0;
-          background: ${BQ_COLORS.brand};
-          display: flex;
-          flex-direction: column;
-        }
-
-        .bq-auth-form-area {
-          flex: 1;
-          min-width: 0;
-          background: white;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 0;
-          overflow-y: auto;
-          position: relative;
-        }
-
-        /* The real container that keeps inputs at a readable width */
         .bq-auth-form-constraint {
-          width: 100%;
-          height: 100%;
-          max-width: 480px;
-          display: flex;
-          flex-direction: column;
-          padding: 60px 20px;
           animation: fadeIn 0.6s ease;
         }
 
@@ -82,13 +67,13 @@ export default function BoutiqueAuthLayout({ children }) {
 
         /* RESPONSIVE STACKING */
         @media (max-width: 1024px) {
-          .bq-auth-flex { flex-direction: column; }
-          .bq-auth-brand-area { flex: none; height: fit-content; }
-          .bq-auth-form-area { flex: none; min-height: 60vh; padding: 32px 24px; }
+          .bq-auth-flex { flex-direction: column !important; }
+          .bq-auth-brand-area { flex: none !important; height: fit-content; }
+          .bq-auth-form-area { flex: none !important; min-height: 60vh; padding: 32px 24px; }
         }
       `,
         }}
       />
-    </div>
+    </BoutiqueBox>
   );
 }
