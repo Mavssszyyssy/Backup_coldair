@@ -14,6 +14,7 @@ import AdminOrders from "./components/ADMIN/Orders/AdminOrders";
 import AdminProfile from "./components/ADMIN/Profile/AdminProfile";
 import AdminReoder from "./components/ADMIN/Reorder/AdminReoder";
 import AdminReports from "./components/ADMIN/Reports/AdminReports";
+import AdminSerialQr from "./components/ADMIN/SerialQr/AdminSerialQr";
 import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
 import AdminStoreOperations from "./components/ADMIN/Store/AdminStoreOperations";
 import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
@@ -301,6 +302,14 @@ function AppContent() {
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminReports />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/serial-qrs"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <AdminSerialQr />
             </RoleRoute>
           }
         />

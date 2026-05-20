@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const Order = require("../models/Order");
 const { BRANCHES } = require("../domain/branchRouting");
 const { validateProductUniqueness } = require("../utils/productValidation");
 
@@ -342,6 +343,286 @@ const getBranchTotal = (product) =>
     0,
   );
 
+const randomSerialToken = () =>
+  Math.random().toString(36).slice(2, 8).toUpperCase();
+
+const buildSerialNumber = (product) => {
+  const skuPart = String(product?.sku || "AC")
+    .replace(/[^a-z0-9]/gi, "")
+    .slice(0, 8)
+    .toUpperCase();
+  const timePart = Date.now().toString(36).toUpperCase();
+  return `CAACT-${skuPart || "AC"}-${timePart}-${randomSerialToken()}`;
+};
+
+const buildSerialQrCode = (product, serialNumber) =>
+  [
+    `AC_UNIT:${serialNumber}`,
+    `PRODUCT:${product?._id || product?.id || ""}`,
+    `SKU:${product?.sku || ""}`,
+  ].join("|");
+
+const normalizeSerialLookupValue = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      const serial = String(parsed.serialNumber || parsed.serial || "").trim();
+      if (serial) return serial;
+    } catch (_error) {
+      // Fall through to tag parsing.
+    }
+  }
+
+  const urlSerial = raw.match(/[?&](?:serialNumber|serial)=([^&#]+)/i);
+  if (urlSerial?.[1]) {
+    return decodeURIComponent(urlSerial[1]).trim();
+  }
+
+  const pathSerial = raw.match(/\/serial\/([^/?#]+)/i);
+  if (pathSerial?.[1]) {
+    return decodeURIComponent(pathSerial[1]).trim();
+  }
+
+  const acUnitPart = raw
+    .split("|")
+    .map((part) => part.trim())
+    .find((part) => part.toUpperCase().startsWith("AC_UNIT:"));
+
+  if (acUnitPart) {
+    return acUnitPart.slice("AC_UNIT:".length).trim();
+  }
+
+  const serialPart = raw
+    .split("|")
+    .map((part) => part.trim())
+    .find((part) => part.toUpperCase().startsWith("SERIAL:"));
+
+  if (serialPart) {
+    return serialPart.slice("SERIAL:".length).trim();
+  }
+
+  if (raw.toUpperCase().startsWith("AC_UNIT:")) {
+    return raw.slice("AC_UNIT:".length).trim();
+  }
+
+  if (raw.toUpperCase().startsWith("SERIAL:")) {
+    return raw.slice("SERIAL:".length).trim();
+  }
+
+  return raw;
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isOrderOngoing = (status = "") =>
+  ["to_pay", "to_deliver", "to_install"].includes(String(status || ""));
+
+const fulfillmentLabel = (state) => {
+  switch (state) {
+    case "ongoing_order":
+      return "Reserved for an ongoing order";
+    case "fulfilled_registered_order":
+      return "Fulfilled / registered order";
+    default:
+      return "Available branch stock";
+  }
+};
+
+const buildOrderSummary = (order, serialNumber) => {
+  if (!order) return null;
+  const orderJson = order.toJSON();
+  const matchedItem = (order.items || []).find((item) =>
+    (item.serialNumbers || []).some(
+      (serial) =>
+        String(serial || "").toLowerCase() ===
+        String(serialNumber || "").toLowerCase(),
+    ),
+  );
+
+  return {
+    id: orderJson.id,
+    orderCode: order.orderCode,
+    workflowStatus: order.workflowStatus,
+    status: order.status,
+    customerName: order.customerName,
+    customerId: String(order.customer || ""),
+    stockSourceBranch: order.stockSourceBranch || "",
+    installationDate: order.installationDate || "",
+    estimatedDelivery: order.estimatedDelivery || "",
+    item: matchedItem
+      ? {
+          name: matchedItem.name,
+          specs: matchedItem.specs || "",
+          quantity: matchedItem.quantity,
+        }
+      : null,
+  };
+};
+
+const resolveSerialOrderFulfillment = async (serialUnit, serialNumber) => {
+  const conditions = [{ "items.serialNumbers": serialNumber }];
+  if (serialUnit.assignedOrderCode) {
+    conditions.push({ orderCode: serialUnit.assignedOrderCode });
+  }
+
+  const order = await Order.findOne({ $or: conditions })
+    .sort({ createdAt: -1 })
+    .select(
+      "orderCode customer customerName items workflowStatus status stockSourceBranch installationDate estimatedDelivery createdAt",
+    );
+
+  if (order && isOrderOngoing(order.workflowStatus)) {
+    return {
+      state: "ongoing_order",
+      label: fulfillmentLabel("ongoing_order"),
+      isAvailableStock: false,
+      isOrderLinked: true,
+      isRegistered: false,
+      order: buildOrderSummary(order, serialNumber),
+    };
+  }
+
+  if (
+    order?.workflowStatus === "complete" ||
+    serialUnit.status === "sold" ||
+    serialUnit.registeredAt
+  ) {
+    return {
+      state: "fulfilled_registered_order",
+      label: fulfillmentLabel("fulfilled_registered_order"),
+      isAvailableStock: false,
+      isOrderLinked: Boolean(order),
+      isRegistered: true,
+      registeredAt: serialUnit.registeredAt || "",
+      order: buildOrderSummary(order, serialNumber),
+    };
+  }
+
+  return {
+    state: "available_stock",
+    label: fulfillmentLabel("available_stock"),
+    isAvailableStock: true,
+    isOrderLinked: false,
+    isRegistered: false,
+    order: null,
+  };
+};
+
+const getDesiredSerialBranches = (product, targetCount) => {
+  const branchEntries = BRANCHES.flatMap((branch) =>
+    Array.from(
+      { length: Math.max(0, getBranchValue(product.branchStock, branch)) },
+      () => branch,
+    ),
+  );
+
+  if (branchEntries.length > 0) {
+    return branchEntries.slice(0, targetCount);
+  }
+
+  return Array.from({ length: targetCount }, () => "");
+};
+
+const generateUniqueSerialNumber = async (product, seen) => {
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const serialNumber = buildSerialNumber(product);
+    if (seen.has(serialNumber)) continue;
+    const exists = await Product.exists({
+      "serialUnits.serialNumber": serialNumber,
+    });
+    if (!exists) {
+      seen.add(serialNumber);
+      return serialNumber;
+    }
+  }
+  throw new Error("Unable to generate a unique serial number");
+};
+
+const ensureProductSerialUnits = async (product, targetCount = null) => {
+  const desiredCount = Math.max(
+    0,
+    Math.floor(
+      targetCount === null
+        ? Math.max(getBranchTotal(product), Number(product.stock) || 0)
+        : Number(targetCount) || 0,
+    ),
+  );
+
+  if (!Array.isArray(product.serialUnits)) {
+    product.serialUnits = [];
+  }
+
+  const desiredBranches = getDesiredSerialBranches(product, desiredCount);
+  const branchCounts = BRANCHES.reduce((acc, branch) => {
+    acc[branch] = 0;
+    return acc;
+  }, {});
+  let blankCount = 0;
+  const seen = new Set();
+  let changed = false;
+
+  product.serialUnits.forEach((unit, index) => {
+    if (!unit.serialNumber) return;
+    seen.add(unit.serialNumber);
+    if (!unit.qrCode) {
+      unit.qrCode = buildSerialQrCode(product, unit.serialNumber);
+      changed = true;
+    }
+    if (!unit.branch && desiredBranches[index]) {
+      unit.branch = desiredBranches[index];
+      changed = true;
+    }
+    if (BRANCHES.includes(unit.branch)) {
+      branchCounts[unit.branch] = (branchCounts[unit.branch] || 0) + 1;
+    } else {
+      blankCount += 1;
+    }
+  });
+
+  const getNextBranch = () => {
+    const countsNeeded = BRANCHES.reduce((acc, branch) => {
+      acc[branch] = desiredBranches.filter((item) => item === branch).length;
+      return acc;
+    }, {});
+    const branch = BRANCHES.find(
+      (name) => (branchCounts[name] || 0) < (countsNeeded[name] || 0),
+    );
+    if (branch) {
+      branchCounts[branch] = (branchCounts[branch] || 0) + 1;
+      return branch;
+    }
+    blankCount += 1;
+    return desiredBranches[blankCount - 1] || "";
+  };
+
+  while (product.serialUnits.length < desiredCount) {
+    const serialNumber = await generateUniqueSerialNumber(product, seen);
+    product.serialUnits.push({
+      serialNumber,
+      qrCode: buildSerialQrCode(product, serialNumber),
+      branch: getNextBranch(),
+      status: "available",
+    });
+    changed = true;
+  }
+
+  if (changed) {
+    await product.save();
+  }
+
+  return changed;
+};
+
+const ensureSerialUnitsForProducts = async (products) => {
+  await Promise.all(
+    products.map((product) => ensureProductSerialUnits(product)),
+  );
+};
+
 const applyBranchStock = (product, stockByBranch) => {
   BRANCHES.forEach((branch) => {
     const value = Math.max(0, Number(stockByBranch?.[branch] || 0));
@@ -363,6 +644,7 @@ const createSampleDoc = (item) => {
     ...item,
     stock: total,
     branchStock,
+    serialUnits: [],
     features: [],
   };
 };
@@ -444,6 +726,11 @@ const ensureSampleInventory = async () => {
       await Product.insertMany(docsToInsert, { ordered: false });
     }
 
+    const seededSamples = await Product.find({
+      sku: { $in: Array.from(sampleBySku.keys()) },
+    });
+    await ensureSerialUnitsForProducts(seededSamples);
+
     if (process.env.NODE_ENV !== "production") {
       const globallyDepleted = await Product.find({ stock: { $lte: 0 } });
       await Promise.all(
@@ -470,7 +757,7 @@ const toBranchStockObject = (product) =>
 const toRoleAwareProduct = (product, req) => {
   const base = product.toJSON();
   const branchStock = toBranchStockObject(product);
-  if (req.authUser.role === "superadmin") {
+  if (req.authUser.role === "superadmin" || req.authUser.role === "technician") {
     return { ...base, branchStock };
   }
   const branch = req.activeBranch;
@@ -479,6 +766,9 @@ const toRoleAwareProduct = (product, req) => {
     activeBranch: branch,
     stock: Number(branchStock[branch] || 0),
     branchStock: { [branch]: Number(branchStock[branch] || 0) },
+    serialUnits: (base.serialUnits || []).filter(
+      (unit) => !unit.branch || unit.branch === branch,
+    ),
   };
 };
 
@@ -495,6 +785,7 @@ const listProducts = async (req, res) => {
   const products = await Product.find({})
     .select("-imageData")
     .sort({ createdAt: -1 });
+  await ensureSerialUnitsForProducts(products);
   return res.json({
     products: products.map((p) => toRoleAwareProduct(p, req)),
   });
@@ -595,6 +886,7 @@ const createProduct = async (req, res) => {
       threshold: Number(threshold) || 0,
       price: Number(price) || 0,
     });
+    await ensureProductSerialUnits(product);
     return res.status(201).json({ product: product.toJSON() });
   } catch (e) {
     // Handle database-level unique constraint violations
@@ -667,6 +959,7 @@ const restockProduct = async (req, res) => {
     0,
   );
   product.stock = summedStock;
+  await ensureProductSerialUnits(product, summedStock);
   await product.save();
 
   return res.json({ product: toRoleAwareProduct(product, req) });
@@ -710,9 +1003,77 @@ const updateBranchStock = async (req, res) => {
     0,
   );
   product.stock = summedStock;
+  await ensureProductSerialUnits(product, summedStock);
   await product.save();
 
   return res.json({ product: toRoleAwareProduct(product, req) });
+};
+
+const getProductSerialUnit = async (req, res) => {
+  const { serialNumber } = req.params;
+  const normalizedSerial = normalizeSerialLookupValue(serialNumber);
+
+  if (!normalizedSerial) {
+    return res.status(400).json({ message: "Serial number is required" });
+  }
+
+  await ensureSampleInventory();
+
+  const serialRegex = new RegExp(`^${escapeRegExp(normalizedSerial)}$`, "i");
+  const product = await Product.findOne({
+    serialUnits: { $elemMatch: { serialNumber: serialRegex } },
+  }).select("-imageData");
+
+  if (!product) {
+    return res.status(404).json({ message: "AC unit serial not found" });
+  }
+
+  await ensureProductSerialUnits(product);
+
+  const serialUnit = (product.serialUnits || []).find(
+    (unit) =>
+      String(unit.serialNumber || "").toLowerCase() ===
+      normalizedSerial.toLowerCase(),
+  );
+
+  if (!serialUnit) {
+    return res.status(404).json({ message: "AC unit serial not found" });
+  }
+
+  const productJson = product.toJSON();
+  const model = [product.specs, product.sku].filter(Boolean).join(" / ");
+  const orderFulfillment = await resolveSerialOrderFulfillment(
+    serialUnit,
+    serialUnit.serialNumber,
+  );
+
+  return res.json({
+    unit: {
+      id: serialUnit.serialNumber,
+      unitName: [product.name, product.specs].filter(Boolean).join(" "),
+      brand: product.brand || "",
+      model: model || product.sku || "",
+      serialNumber: serialUnit.serialNumber,
+      status: serialUnit.status || "available",
+      inventoryStatus: serialUnit.status || "available",
+      orderFulfillmentStatus: orderFulfillment.state,
+      orderFulfillmentLabel: orderFulfillment.label,
+      orderFulfillment,
+      placementArea: serialUnit.branch
+        ? `${serialUnit.branch} branch inventory`
+        : "Inventory",
+      installationDate: "",
+      lastMaintenanceDate: "",
+      productId: productJson.id,
+      productSku: product.sku,
+      productName: product.name,
+      category: product.category,
+      price: product.price,
+      qrCode:
+        serialUnit.qrCode || buildSerialQrCode(product, serialUnit.serialNumber),
+    },
+    product: productJson,
+  });
 };
 
 const updateProduct = async (req, res) => {
@@ -836,6 +1197,7 @@ module.exports = {
   listPublicProducts,
   listLowStockProducts,
   getProductImage,
+  getProductSerialUnit,
   createProduct,
   restockProduct,
   updateBranchStock,

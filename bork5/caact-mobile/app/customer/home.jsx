@@ -16,7 +16,6 @@ import StatusChip from "../../components/ui/StatusChip";
 import { COLD_AIR_WEBSITE } from "../../constants/company";
 import { COLORS, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import { fetchMyOrders } from "../../services/api";
 import {
   getCustomerServiceHistory,
   getCustomerServiceStats,
@@ -34,7 +33,7 @@ import {
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
-  const { current, token } = useUserContext();
+  const { current } = useUserContext();
   const [units, setUnits] = useState([]);
   const [healthMap, setHealthMap] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
@@ -44,17 +43,11 @@ export default function CustomerHomeScreen() {
     useCallback(() => {
       let active = true;
 
-      const load = async () => {
-        const [nextUnits, ordersResult, history] = await Promise.all([
-          ensureSeededCustomerUnit(current).then(() => getUnitsByUser(current?.id)),
-          token ? fetchMyOrders(token) : Promise.resolve({ success: false, orders: [] }),
-          getCustomerServiceHistory(current?.id),
-        ]);
-
-        const fallbackOrders = ordersResult.success
-          ? ordersResult.orders
-          : await getOrdersByUser(current);
-
+      Promise.all([
+        ensureSeededCustomerUnit(current).then(() => getUnitsByUser(current?.id)),
+        getOrdersByUser(current),
+        getCustomerServiceHistory(current?.id),
+      ]).then(([nextUnits, nextOrders, history]) => {
         if (!active) return;
         setUnits(nextUnits);
         setHealthMap(
@@ -64,18 +57,16 @@ export default function CustomerHomeScreen() {
             history.linkedTasks,
           ),
         );
-        setRecentOrders(fallbackOrders.slice(0, 3));
+        setRecentOrders(nextOrders.slice(0, 3));
         setRequestStats(
           getCustomerServiceStats(history.requests, history.completedServices),
         );
-      };
-
-      load();
+      });
 
       return () => {
         active = false;
       };
-    }, [current, token]),
+    }, [current]),
   );
 
   return (
@@ -105,12 +96,6 @@ export default function CustomerHomeScreen() {
             leftIcon={<Ionicons name="globe-sharp" size={18} color={COLORS.primary} />}
           />
         </View>
-        <Button
-          title="Scan QR"
-          onPress={() => router.push("/customer/scan-qr")}
-          style={{ marginTop: SPACING.sm }}
-          leftIcon={<Ionicons name="qr-code-sharp" size={18} color={COLORS.surface} />}
-        />
       </AppHero>
 
       <View

@@ -1,20 +1,13 @@
-// app/manager/_layout.jsx
-// Manager portal — login works but the portal is not yet implemented.
 import { Redirect } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { ActivityIndicator, View } from "react-native";
 
 import { COLORS } from "../../constants/theme";
-import { useRoleGuard } from "../../hooks/useRoleGuard";
+import { useUserContext } from "../../context/UserContext";
 
 export default function ManagerLayout() {
-  const { initialized, allowed, redirectHref } = useRoleGuard([
-    "manager",
-    "owner",
-    "admin",
-    "super_admin",
-    "super-admin",
-  ]);
+  const { current, initialized, resolveHomeRoute } = useUserContext();
+  const targetHref = current ? resolveHomeRoute(current) : "/sign-in";
 
   if (!initialized) {
     return (
@@ -31,8 +24,8 @@ export default function ManagerLayout() {
     );
   }
 
-  if (!allowed) {
-    return <Redirect href={redirectHref} />;
+  if (targetHref !== "/manager") {
+    return <Redirect href={targetHref} />;
   }
 
   return (

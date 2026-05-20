@@ -24,6 +24,27 @@ const productSchema = new mongoose.Schema(
       of: Number,
       default: {},
     },
+    serialUnits: [
+      {
+        serialNumber: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        qrCode: { type: String, default: "", trim: true },
+        branch: { type: String, default: "", trim: true },
+        status: {
+          type: String,
+          enum: ["available", "assigned", "sold", "service", "retired"],
+          default: "available",
+        },
+        assignedOrderId: { type: String, default: "", trim: true },
+        assignedOrderCode: { type: String, default: "", trim: true },
+        assignedAt: { type: Date, default: null },
+        registeredAt: { type: Date, default: null },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     threshold: { type: Number, default: 0 },
     branchThresholds: {
       type: Map,
@@ -71,5 +92,13 @@ productSchema.index({ category: 1, isActive: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ stock: 1 });
+productSchema.index(
+  { "serialUnits.serialNumber": 1 },
+  {
+    unique: true,
+    sparse: true,
+    name: "idx_serial_units_serial_number_unique",
+  },
+);
 
 module.exports = mongoose.model("Product", productSchema);

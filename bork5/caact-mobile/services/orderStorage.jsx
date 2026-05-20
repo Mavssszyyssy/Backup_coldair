@@ -58,7 +58,9 @@ function normalizeOrder(order = {}) {
     userId: order.userId || "",
     customerEmail: order.customerEmail || "",
     customerName: order.customerName || "",
+    trackingNumber: order.trackingNumber || "",
     items,
+    address: order.address || null,
     paymentMethod: order.paymentMethod || "COD",
     status: order.status || ORDER_STATUS.PENDING,
     deliveryStatus:
@@ -66,6 +68,10 @@ function normalizeOrder(order = {}) {
     paymentStatus:
       order.paymentStatus || ORDER_PAYMENT_STATUS.NOT_REQUIRED,
     serviceRequestId: order.serviceRequestId || "",
+    subtotal: Number(order.subtotal || subtotal),
+    vatAmount: Number(order.vatAmount || 0),
+    shippingFee: Number(order.shippingFee || order.deliveryFee || 0),
+    discountAmount: Number(order.discountAmount || 0),
     total: Number(order.total || subtotal),
     createdAt,
     updatedAt: order.updatedAt || createdAt,

@@ -3,7 +3,7 @@ const env = require("../config/env");
 const User = require("../models/User");
 const { BRANCHES } = require("../domain/branchRouting");
 
-const requireAuth = async (req, res, next) => {
+const authenticate = async (req, res, next, options = {}) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -22,6 +22,7 @@ const requireAuth = async (req, res, next) => {
     }
 
     req.authUser = user;
+    req.user = payload;
     const headerBranch = typeof req.headers["x-branch"] === "string" ? req.headers["x-branch"].trim() : "";
     const isBranchScopedRole = user.role === "admin" || user.role === "technician";
     req.activeBranch = "";
@@ -29,6 +30,10 @@ const requireAuth = async (req, res, next) => {
       const effectiveBranch = BRANCHES.includes(headerBranch)
         ? headerBranch
         : (BRANCHES.includes(user.activeBranch) ? user.activeBranch : user.assignedBranch);
+      if (options.requireBranch === false) {
+        req.activeBranch = BRANCHES.includes(effectiveBranch) ? effectiveBranch : "";
+        return next();
+      }
       if (!effectiveBranch || !BRANCHES.includes(effectiveBranch)) {
         return res.status(400).json({ message: "Branch is required for this account." });
       }
@@ -40,6 +45,11 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
+const requireAuth = (req, res, next) => authenticate(req, res, next);
+
+const requireAuthNoBranch = (req, res, next) =>
+  authenticate(req, res, next, { requireBranch: false });
+
 const allowRoles = (...allowedRoles) => (req, res, next) => {
   if (!req.authUser) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -50,4 +60,4 @@ const allowRoles = (...allowedRoles) => (req, res, next) => {
   return next();
 };
 
-module.exports = { requireAuth, allowRoles };
+module.exports = { requireAuth, requireAuthNoBranch, allowRoles };

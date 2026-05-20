@@ -1,53 +1,255 @@
 // services/qrLookupService.js
+import { API_BASE } from "../constants/config";
+import { getStoredToken } from "./api";
 import { getAllUnits } from "./unitStorage";
 import { getAllServiceRequests } from "./serviceRequestStorage";
 import { getAllTasks } from "./taskStorage";
 import { calculateUnitHealthScore } from "./acHealthScoreService";
-import { getUnitHealthInsight } from "./api";
 
 export function buildUnitQrCode(unit) {
   if (!unit) return "";
   return `UNIT:${unit.id}|SERIAL:${unit.serialNumber || ""}|NAME:${unit.unitName || ""}`;
 }
 
-function parseQrTags(rawValue = "") {
-  const value = String(rawValue || "").trim();
-  const tags = {};
+function parseQrJson(value) {
+  if (!value.startsWith("{")) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
 
-  value.split("|").forEach((segment) => {
-    const index = segment.indexOf(":");
-    if (index < 0) return;
+function parseQrParts(value) {
+  return String(value || "")
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
-    const key = segment.slice(0, index).trim().toUpperCase();
-    const tagValue = segment.slice(index + 1).trim();
-    if (key) {
-      tags[key] = tagValue;
-    }
+function getPartValue(parts, prefix) {
+  const matched = parts.find((item) =>
+    item.toUpperCase().startsWith(prefix.toUpperCase()),
+  );
+  return matched ? matched.slice(prefix.length).trim() : "";
+}
+
+export function parseLookupTarget(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return { lookupValue: "", serialNumber: "", unitId: "" };
+
+  const json = parseQrJson(value);
+  if (json) {
+    const serialNumber = String(json.serialNumber || json.serial || "").trim();
+    const unitId = String(json.unitId || json.unit || json.id || "").trim();
+    return {
+      lookupValue: serialNumber || unitId,
+      serialNumber,
+      unitId,
+    };
+  }
+
+  const urlSerial = value.match(/[?&](?:serialNumber|serial)=([^&#]+)/i);
+  if (urlSerial?.[1]) {
+    const serialNumber = decodeURIComponent(urlSerial[1]).trim();
+    return { lookupValue: serialNumber, serialNumber, unitId: "" };
+  }
+
+  const pathSerial = value.match(/\/serial\/([^/?#]+)/i);
+  if (pathSerial?.[1]) {
+    const serialNumber = decodeURIComponent(pathSerial[1]).trim();
+    return { lookupValue: serialNumber, serialNumber, unitId: "" };
+  }
+
+  const upperValue = value.toUpperCase();
+  const parts = parseQrParts(value);
+
+  const acUnitSerial = getPartValue(parts, "AC_UNIT:");
+  const explicitSerial = getPartValue(parts, "SERIAL:");
+  const unitId = getPartValue(parts, "UNIT:");
+  const serialNumber = acUnitSerial || explicitSerial;
+
+  if (serialNumber || unitId) {
+    return {
+      lookupValue: serialNumber || unitId,
+      serialNumber,
+      unitId,
+    };
+  }
+
+  if (upperValue.startsWith("AC_UNIT:")) {
+    const serial = value.replace(/^AC_UNIT:/i, "").trim();
+    return { lookupValue: serial, serialNumber: serial, unitId: "" };
+  }
+
+  if (upperValue.startsWith("SERIAL:")) {
+    const serial = value.replace(/^SERIAL:/i, "").trim();
+    return { lookupValue: serial, serialNumber: serial, unitId: "" };
+  }
+
+  return { lookupValue: value, serialNumber: value, unitId: "" };
+}
+
+function buildUnitFromProductSerial(product, serialUnit) {
+  const serialNumber = serialUnit?.serialNumber || "";
+  return {
+    id: serialNumber,
+    unitName: [product?.name, product?.specs].filter(Boolean).join(" "),
+    brand: product?.brand || "",
+    model: [product?.specs, product?.sku].filter(Boolean).join(" / "),
+    serialNumber,
+    status: serialUnit?.status || "available",
+    inventoryStatus: serialUnit?.status || "available",
+    placementArea: serialUnit?.branch
+      ? `${serialUnit.branch} branch inventory`
+      : "Inventory",
+    installationDate: "",
+    lastMaintenanceDate: "",
+    productId: product?.id || product?._id || "",
+    productSku: product?.sku || "",
+    productName: product?.name || "",
+    category: product?.category || "",
+    price: product?.price || 0,
+    qrCode: serialUnit?.qrCode || "",
+    orderFulfillmentStatus: "available_stock",
+    orderFulfillmentLabel: "Available branch stock",
+    orderFulfillment: {
+      state: "available_stock",
+      label: "Available branch stock",
+      isAvailableStock: true,
+      isOrderLinked: false,
+      isRegistered: false,
+      order: null,
+    },
+  };
+}
+
+async function lookupSerialInProductCatalog(rawValue, token) {
+  const target = parseLookupTarget(rawValue);
+  const serialNeedle = String(target.serialNumber || target.lookupValue || "")
+    .trim()
+    .toLowerCase();
+  const rawNeedle = String(rawValue || "").trim().toLowerCase();
+  if (!serialNeedle || !token) return null;
+
+  const response = await fetch(`${API_BASE}/products`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
   });
 
-  if (!tags.UNIT && value.startsWith("UNIT:")) {
-    tags.UNIT = value.replace(/^UNIT:/i, "").split("|")[0].trim();
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const products = Array.isArray(data?.products) ? data.products : [];
+  for (const product of products) {
+    const serialUnit = (product.serialUnits || []).find((unit) => {
+      const unitSerial = String(unit.serialNumber || "").trim().toLowerCase();
+      const unitQr = String(unit.qrCode || "").trim().toLowerCase();
+      return (
+        unitSerial === serialNeedle ||
+        unitQr === rawNeedle ||
+        unitQr.includes(`ac_unit:${serialNeedle}`)
+      );
+    });
+
+    if (serialUnit) {
+      return { unit: buildUnitFromProductSerial(product, serialUnit) };
+    }
   }
 
-  return tags;
+  return null;
 }
 
-function parseLookupValue(raw) {
-  const value = String(raw || "").trim();
-  if (!value) return "";
+async function lookupBackendSerialUnit(rawValue) {
+  const { serialNumber } = parseLookupTarget(rawValue);
+  if (!serialNumber) return { unit: null, error: "No serial number was found in the QR code." };
 
-  if (value.startsWith("UNIT:")) {
-    const parts = value.split("|");
-    const unitPart = parts.find((item) => item.startsWith("UNIT:"));
-    return String(unitPart || "").replace("UNIT:", "").trim();
+  const token = await getStoredToken();
+  if (!token) {
+    return {
+      unit: null,
+      error: "Technician session token is missing. Log in again before scanning.",
+    };
   }
 
-  return value;
+  try {
+    const response = await fetch(
+      `${API_BASE}/products/serial/${encodeURIComponent(serialNumber)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        const catalogResult = await lookupSerialInProductCatalog(rawValue, token);
+        if (catalogResult?.unit) return catalogResult;
+      }
+
+      return {
+        unit: null,
+        status: response.status,
+        serialNumber,
+        error:
+          data?.message ||
+          `Backend rejected serial lookup (${response.status}).`,
+      };
+    }
+
+    return data;
+  } catch (error) {
+    return {
+      unit: null,
+      serialNumber,
+      error: error?.message || "Backend serial lookup failed.",
+    };
+  }
 }
 
-export async function lookupUnitContext(rawValue, { token } = {}) {
-  const value = parseLookupValue(rawValue).toLowerCase();
-  const tags = parseQrTags(rawValue);
+export async function lookupUnitContext(rawValue) {
+  const target = parseLookupTarget(rawValue);
+  const value = target.lookupValue.toLowerCase();
+  const serialValue = target.serialNumber.toLowerCase();
+  const unitIdValue = target.unitId.toLowerCase();
+
+  if (target.serialNumber) {
+    const backendResult = await lookupBackendSerialUnit(rawValue);
+    if (backendResult?.unit) {
+      return {
+        unit: backendResult.unit,
+        requests: [],
+        tasks: [],
+        health: calculateUnitHealthScore({
+          unit: backendResult.unit,
+          requests: [],
+          tasks: [],
+        }),
+      };
+    }
+    if (backendResult?.error && backendResult?.status !== 404) {
+      return {
+        unit: null,
+        requests: [],
+        tasks: [],
+        lookupError: backendResult.error,
+        lookupStatus: backendResult.status || 0,
+        lookupSerialNumber: backendResult.serialNumber || target.serialNumber,
+      };
+    }
+  }
+
   const [units, requests, tasks] = await Promise.all([
     getAllUnits(),
     getAllServiceRequests(),
@@ -55,112 +257,60 @@ export async function lookupUnitContext(rawValue, { token } = {}) {
   ]);
 
   const matchedUnit =
-    units.find((unit) => String(unit.id || "").toLowerCase() === String(tags.UNIT || "").toLowerCase()) ||
-    units.find((unit) => String(unit.id || "").toLowerCase() === value) ||
+    units.find((unit) => String(unit.serialNumber || "").toLowerCase() === serialValue) ||
+    units.find((unit) => String(unit.id || "").toLowerCase() === unitIdValue) ||
     units.find((unit) => String(unit.serialNumber || "").toLowerCase() === value) ||
+    units.find((unit) => String(unit.id || "").toLowerCase() === value) ||
     units.find((unit) => String(unit.unitName || "").toLowerCase() === value);
 
-  const matchedRequest =
-    requests.find((request) => String(request.id || "").toLowerCase() === String(tags.REQUEST || "").toLowerCase()) ||
-    null;
+  if (!matchedUnit) {
+    const backendResult = await lookupBackendSerialUnit(rawValue);
+    if (backendResult?.unit) {
+      return {
+        unit: backendResult.unit,
+        requests: [],
+        tasks: [],
+        health: calculateUnitHealthScore({
+          unit: backendResult.unit,
+          requests: [],
+          tasks: [],
+        }),
+      };
+    }
 
-  const matchedTask =
-    tasks.find((task) => String(task.id || "").toLowerCase() === String(tags.TASK || "").toLowerCase()) ||
-    (matchedRequest?.linkedTaskId
-      ? tasks.find((task) => String(task.id || "") === String(matchedRequest.linkedTaskId))
-      : null) ||
-    null;
-
-  const unitFromTask = matchedTask?.unitId
-    ? units.find((unit) => String(unit.id || "") === String(matchedTask.unitId))
-    : null;
-
-  const resolvedUnit = matchedUnit || unitFromTask || null;
-
-  if (!resolvedUnit) {
     return {
       unit: null,
       requests: [],
       tasks: [],
-      matchedRequest,
-      matchedTask,
-      scanContext: tags,
+      lookupError: backendResult?.error || "",
+      lookupStatus: backendResult?.status || 0,
+      lookupSerialNumber: backendResult?.serialNumber || target.serialNumber || "",
     };
   }
 
   const relatedRequests = requests.filter(
     (request) =>
-      String(request.unitId || "") === String(resolvedUnit.id) ||
-      String(request.unitName || "").toLowerCase() === String(resolvedUnit.unitName || "").toLowerCase() ||
-      String(request.id || "").toLowerCase() === String(tags.REQUEST || "").toLowerCase()
+      String(request.unitId || "") === String(matchedUnit.id) ||
+      String(request.unitName || "").toLowerCase() === String(matchedUnit.unitName || "").toLowerCase()
   );
 
   const relatedRequestIds = new Set(relatedRequests.map((request) => String(request.id)));
 
   const relatedTasks = tasks.filter(
     (task) =>
-      String(task.unitId || "") === String(resolvedUnit.id) ||
-      String(task.unitName || "").toLowerCase() === String(resolvedUnit.unitName || "").toLowerCase() ||
-      relatedRequestIds.has(String(task.requestId || "")) ||
-      String(task.id || "").toLowerCase() === String(tags.TASK || "").toLowerCase()
+      String(task.unitId || "") === String(matchedUnit.id) ||
+      String(task.unitName || "").toLowerCase() === String(matchedUnit.unitName || "").toLowerCase() ||
+      relatedRequestIds.has(String(task.requestId || ""))
   );
 
-  const localHealth = calculateUnitHealthScore({
-    unit: resolvedUnit,
+  return {
+    unit: matchedUnit,
     requests: relatedRequests,
     tasks: relatedTasks,
-  });
-
-  let health = localHealth;
-  if (token) {
-    const remote = await getUnitHealthInsight(token, {
-      unit: resolvedUnit,
+    health: calculateUnitHealthScore({
+      unit: matchedUnit,
       requests: relatedRequests,
       tasks: relatedTasks,
-      baseline: localHealth,
-    });
-
-    if (remote.success && remote.insight) {
-      const insight = remote.insight || {};
-      health = {
-        ...localHealth,
-        score: Number.isFinite(Number(insight.score))
-          ? Math.max(0, Math.min(100, Math.round(Number(insight.score))))
-          : localHealth.score,
-        label: insight.label || localHealth.label,
-        recommendation: insight.recommendation || localHealth.recommendation,
-        aiPrediction: {
-          ...localHealth.aiPrediction,
-          model: remote.provider === "openai" ? "OpenAI" : localHealth.aiPrediction.model,
-          lifecycleLabel: insight.lifecycleLabel || localHealth.aiPrediction.lifecycleLabel,
-          estimatedRemainingMonths: Number.isFinite(Number(insight.estimatedRemainingMonths))
-            ? Number(insight.estimatedRemainingMonths)
-            : localHealth.aiPrediction.estimatedRemainingMonths,
-          estimatedRemainingYears: Number.isFinite(Number(insight.estimatedRemainingYears))
-            ? Number(insight.estimatedRemainingYears)
-            : localHealth.aiPrediction.estimatedRemainingYears,
-          maintenanceIntervalMonths: Number.isFinite(Number(insight.maintenanceIntervalMonths))
-            ? Number(insight.maintenanceIntervalMonths)
-            : localHealth.aiPrediction.maintenanceIntervalMonths,
-          nextMaintenanceDate: insight.nextMaintenanceDate || localHealth.aiPrediction.nextMaintenanceDate,
-          riskFactors: Array.isArray(insight.riskFactors) && insight.riskFactors.length > 0
-            ? insight.riskFactors
-            : localHealth.aiPrediction.riskFactors,
-          predictionSummary: insight.summary || localHealth.aiPrediction.predictionSummary,
-          source: remote.provider,
-          generatedAt: remote.generatedAt,
-        },
-      };
-    }
-  }
-
-  return {
-    unit: resolvedUnit,
-    requests: relatedRequests,
-    tasks: relatedTasks,
-    matchedRequest,
-    matchedTask,
-    scanContext: tags,
-    health,
+    }),
   };
 }

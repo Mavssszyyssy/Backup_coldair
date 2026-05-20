@@ -1,20 +1,13 @@
 // app/(auth)/_layout.jsx
-import { Redirect, useRouter } from "expo-router";
+// Guest guard: anyone with a valid session is bounced to their home screen.
+import { Redirect, Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 
 import { COLORS } from "../../constants/theme";
-import { useUserContext } from "../../context/UserContext";
 import { useGuestGuard } from "../../hooks/useGuestGuard";
-
-const WEB_APP_URL =
-  Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
 
 export default function AuthLayout() {
   const { current, initialized, redirectHref } = useGuestGuard();
-  const { handleWebViewAuthSuccess, resolveHomeRoute } = useUserContext();
-  const router = useRouter();
 
   if (!initialized) {
     return (
@@ -35,28 +28,26 @@ export default function AuthLayout() {
     return <Redirect href={redirectHref} />;
   }
 
-  const handleMessage = async (event) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === "AUTH_SUCCESS") {
-        const result = await handleWebViewAuthSuccess(data.token, data.user);
-        if (result.success) {
-          router.replace(resolveHomeRoute(result.user));
-        }
-      }
-    } catch (e) {
-      console.error("WebView message parse error:", e);
-    }
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <WebView
-        source={{ uri: `${WEB_APP_URL}/login` }}
-        onMessage={handleMessage}
-        style={{ flex: 1 }}
-        javaScriptEnabled={true}
+    <Stack screenOptions={{ headerShown: false }} initialRouteName="sign-in">
+      <Stack.Screen name="sign-in" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="sign-up" />
+      <Stack.Screen name="sign-up/step/0" />
+      <Stack.Screen name="sign-up/step/1" />
+      <Stack.Screen name="sign-up/step/2" />
+      <Stack.Screen name="recover" />
+      <Stack.Screen
+        name="recover/factor"
+        options={{
+          presentation: "transparentModal",
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
       />
-    </SafeAreaView>
+      <Stack.Screen name="recover/factor/0" />
+      <Stack.Screen name="recover/factor/1" />
+      <Stack.Screen name="recover/factor/2" />
+    </Stack>
   );
 }

@@ -1,5 +1,6 @@
 // Load .env from the backend folder (one level up from src)
 const path = require("path");
+const os = require("os");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const app = require("./app");
@@ -27,8 +28,21 @@ const start = async () => {
     await seedDemoUsers();
     await seedDashboardData();
 
-    const server = app.listen(env.port, () => {
+    const server = app.listen(env.port, env.host, () => {
+      const lanAddresses = Object.values(os.networkInterfaces())
+        .flat()
+        .filter(
+          (networkInterface) =>
+            networkInterface &&
+            networkInterface.family === "IPv4" &&
+            !networkInterface.internal,
+        )
+        .map((networkInterface) => networkInterface.address);
+
       console.log(`Backend running on http://localhost:${env.port}`);
+      lanAddresses.forEach((address) => {
+        console.log(`Backend LAN URL: http://${address}:${env.port}`);
+      });
     });
 
     // Handle server errors
@@ -40,7 +54,7 @@ const start = async () => {
         console.error("Attempting to use alternative port...");
         // Try alternative port
         const altPort = parseInt(env.port) + 1;
-        const altServer = app.listen(altPort, () => {
+        const altServer = app.listen(altPort, env.host, () => {
           console.log(
             `Backend running on http://localhost:${altPort} (alternative port)`,
           );

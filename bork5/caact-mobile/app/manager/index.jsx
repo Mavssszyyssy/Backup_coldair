@@ -1,41 +1,65 @@
-// app/manager/index.jsx
-// Placeholder screen for the manager/owner portal.
-import { Alert, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useRouter } from "expo-router";
 import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 
 export default function ManagerIndexScreen() {
   const { current, logout } = useUserContext();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert("Sign Out", "Sign out of your account?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/sign-in");
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    router.replace("/sign-in");
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: "center", alignItems: "center", padding: SPACING.lg }}>
-      <View style={{ alignItems: "center" }}>
-        <Text style={{ fontSize: FONT.xxl, fontWeight: FONT.black, color: COLORS.textPrimary, marginBottom: SPACING.sm, textAlign: "center" }}>
-          Manager Dashboard Coming Soon
-        </Text>
-        <Text style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: SPACING.lg }}>
-          Signed in as {current?.role} — {current?.email}
-        </Text>
-        <Button title="Sign Out" onPress={handleLogout} variant="danger" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          padding: SPACING.lg,
+        }}
+      >
+        <Card>
+          <Text
+            style={{
+              color: COLORS.textPrimary,
+              fontSize: FONT.xxl,
+              fontWeight: FONT.black,
+              marginBottom: SPACING.sm,
+              textAlign: "center",
+            }}
+          >
+            You should use the web app instead.
+          </Text>
+          <Text
+            style={{
+              color: COLORS.textSecondary,
+              fontSize: FONT.base,
+              lineHeight: 22,
+              marginBottom: SPACING.lg,
+              textAlign: "center",
+            }}
+          >
+            This mobile app is only for customer and technician accounts.
+            {current?.email ? ` Signed in as ${current.email}.` : ""}
+          </Text>
+          <Button
+            title={loggingOut ? "Logging out..." : "Logout"}
+            onPress={handleLogout}
+            variant="danger"
+            loading={loggingOut}
+          />
+        </Card>
       </View>
     </SafeAreaView>
   );

@@ -25,24 +25,24 @@ export default function BottomNav() {
       />
 
       <NavButton
-        href="/customer/orders"
+        href="/customer/shop"
         icon={require("../../images/order.png")}
-        label="Orders"
+        label="Shop"
       />
 
       <NavButton
-        href="/customer/shop"
-        icon={require("../../images/shopping.png")}
-        label="Shop"
+        href="/customer/services"
+        icon={require("../../images/maintenance.png")}
+        label="Services"
         elevated
         color="#FFFFFF"
         flex={1.2}
       />
 
       <NavButton
-        href="/customer/faq"
-        icon={require("../../images/faq.png")}
-        label="FAQ"
+        href="/customer/orders"
+        icon={require("../../images/service.png")}
+        label="Orders"
       />
 
       <NavButton

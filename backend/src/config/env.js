@@ -2,9 +2,18 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+const DEFAULT_CORS_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:8081",
+  "http://127.0.0.1:8081",
+  "http://localhost:19006",
+  "http://127.0.0.1:19006",
+];
+
 const parseCorsOrigins = (value = "") => {
   if (!value || !String(value).trim()) {
-    return ["http://localhost:3000", "http://localhost:8081"];
+    return [];
   }
   return String(value)
     .split(",")
@@ -12,13 +21,33 @@ const parseCorsOrigins = (value = "") => {
     .filter(Boolean);
 };
 
+const isPrivateLanOrigin = (origin = "") =>
+  /^https?:\/\/(?:(?:localhost|127\.0\.0\.1)|(?:10\.)|(?:192\.168\.)|(?:172\.(?:1[6-9]|2\d|3[01])\.))[^/]*$/i.test(
+    origin,
+  );
+
+const buildCorsOrigin = () => {
+  const configuredOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+  return (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (
+      configuredOrigins.includes(origin) ||
+      DEFAULT_CORS_ORIGINS.includes(origin) ||
+      isPrivateLanOrigin(origin)
+    ) {
+      return callback(null, origin);
+    }
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  };
+};
+
 const env = {
+  nodeEnv: process.env.NODE_ENV || "development",
+  host: process.env.HOST || "0.0.0.0",
   port: process.env.PORT || 5000,
   mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/aeropulse",
   jwtSecret: process.env.JWT_SECRET || "dev-secret",
-  corsOrigin: parseCorsOrigins(
-    process.env.CORS_ORIGIN || "http://localhost:3000",
-  ),
+  corsOrigin: buildCorsOrigin(),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
   openAiApiKey: process.env.OPENAI_API_KEY || "",
   openAiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
