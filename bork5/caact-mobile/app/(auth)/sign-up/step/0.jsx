@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -10,132 +10,378 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
+import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
 import Button from "../../../../components/ui/Button";
 import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
+import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
+import { getCurrentLocationSnapshot } from "../../../../services/locationService";
+import {
+  getBarangaysByLocality,
+  getPhilippineLocalities,
+} from "../../../../services/philippineAddressService";
+import { validatePersonName } from "../../../../utils/authValidation";
 
 export default function SignUpStep0() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [form, setForm] = useState({
+    name_first: "",
+    name_last: "",
+    suffix: "",
+    municipality: "",
+    municipalityCode: "",
+    submunicipality: "",
+    submunicipalityCode: "",
+    thoroughfare: "",
+    propertyBlockLot: "",
+    apartmentUnit: "",
+    landmark: "",
+    plusCode: "",
+    locationAddress: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [localities, setLocalities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [localitiesLoading, setLocalitiesLoading] = useState(true);
+  const [barangaysLoading, setBarangaysLoading] = useState(false);
 
-  const roles = [
-    {
-      id: "customer",
-      title: "Customer",
-      description: "Access customer features like ordering products, tracking deliveries, and managing your account.",
-      icon: "person-outline",
-    },
-    {
-      id: "technician",
-      title: "Technician",
-      description: "Access technician features like managing service requests, inventory, and maintenance tasks.",
-      icon: "construct-outline",
-    },
-  ];
+  useEffect(() => {
+    let active = true;
+    getPhilippineLocalities()
+      .then((items) => {
+        if (active) setLocalities(items);
+      })
+      .finally(() => {
+        if (active) setLocalitiesLoading(false);
+      });
 
-  const handleRoleSelect = (roleId) => {
-    setSelectedRole(roleId);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!form.municipalityCode) {
+      setBarangays([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    setBarangaysLoading(true);
+    getBarangaysByLocality(form.municipalityCode)
+      .then((items) => {
+        if (active) setBarangays(items);
+      })
+      .finally(() => {
+        if (active) setBarangaysLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [form.municipalityCode]);
+
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
-  const handleContinue = () => {
-    if (!selectedRole) {
-      Alert.alert("Role Required", "Please select your role to continue.");
+  const updateNameField = (key, value) => {
+    updateField(key, String(value || "").replace(/[0-9]/g, ""));
+  };
+
+  const handleMunicipalitySelect = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      municipality: item.displayName || item.name,
+      municipalityCode: item.code,
+      submunicipality: "",
+      submunicipalityCode: "",
+    }));
+    setErrors((prev) => ({ ...prev, municipality: "", submunicipality: "" }));
+  };
+
+  const handleBarangaySelect = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      submunicipality: item.displayName || item.name,
+      submunicipalityCode: item.code,
+    }));
+    setErrors((prev) => ({ ...prev, submunicipality: "" }));
+  };
+
+  const handleGetLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const snapshot = await getCurrentLocationSnapshot();
+      setForm((prev) => ({
+        ...prev,
+        plusCode: snapshot.plusCode || "",
+        locationAddress: snapshot.displayAddress || "",
+      }));
+
+      if (snapshot.plusCode) {
+        Alert.alert("Location Found", `Plus Code: ${snapshot.plusCode}`);
+      }
+    } catch (error) {
+      Alert.alert(
+        "Location Error",
+        error?.message || "Unable to get location.",
+      );
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleNext = () => {
+    const nextErrors = {};
+
+    const firstNameError = validatePersonName(form.name_first, "First name");
+    const lastNameError = validatePersonName(form.name_last, "Last name", {
+      required: false,
+    });
+
+    if (firstNameError) nextErrors.name_first = firstNameError;
+    if (lastNameError) nextErrors.name_last = lastNameError;
+
+    if (!form.municipality.trim()) {
+      nextErrors.municipality = "Municipality is required.";
+    }
+
+    if (!form.submunicipality.trim()) {
+      nextErrors.submunicipality = "Submunicipality is required.";
+    }
+
+    if (!form.thoroughfare.trim()) {
+      nextErrors.thoroughfare = "Thoroughfare is required.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
-    // Store the selected role in router params or global state
+    const address = [
+      form.apartmentUnit.trim(),
+      form.propertyBlockLot.trim(),
+      form.thoroughfare.trim(),
+      form.submunicipality.trim(),
+      form.municipality.trim(),
+    ]
+      .filter(Boolean)
+      .join(", ");
+
     router.push({
-      pathname: "/(auth)/sign-up/step/1",
-      params: { role: selectedRole },
+      pathname: "/sign-up/step/1",
+      params: {
+        name_first: form.name_first.trim(),
+        name_last: form.name_last.trim(),
+        suffix: form.suffix.trim(),
+        address,
+        municipality: form.municipality.trim(),
+        submunicipality: form.submunicipality.trim(),
+        thoroughfare: form.thoroughfare.trim(),
+        propertyBlockLot: form.propertyBlockLot.trim(),
+        apartmentUnit: form.apartmentUnit.trim(),
+        landmark: form.landmark.trim(),
+        plusCode: form.plusCode.trim(),
+        municipalityCode: form.municipalityCode,
+        submunicipalityCode: form.submunicipalityCode,
+      },
     });
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <PageHeader
-        title="Choose Your Role"
-        subtitle="Select how you'll be using the app"
-        showBack={true}
-        onBack={() => router.push("/sign-in")}
-      />
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: SPACING.medium }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
+          padding: SPACING.md,
+          paddingBottom: 112,
+        }}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={{ gap: SPACING.medium }}>
-          {roles.map((role) => (
-            <TouchableOpacity
-              key={role.id}
-              onPress={() => handleRoleSelect(role.id)}
+        <PageHeader
+          title="Create Account"
+          subtitle="Step 1 of 3: Your Name & Address"
+          color={COLORS.primary}
+          onBack={() => router.push("/sign-in")}
+        />
+
+        <Card>
+            <TextField
+              label="First Name"
+              value={form.name_first}
+              onChangeText={(value) => updateNameField("name_first", value)}
+              placeholder="First name"
+              error={errors.name_first}
+            />
+            <TextField
+              label="Last Name (optional)"
+              value={form.name_last}
+              onChangeText={(value) => updateNameField("name_last", value)}
+            placeholder="Last name"
+            error={errors.name_last}
+          />
+          <TextField
+            label="Suffix (optional)"
+            value={form.suffix}
+            onChangeText={(value) => updateField("suffix", value)}
+            placeholder="Jr., Sr., III, etc."
+          />
+        </Card>
+
+        <Card>
+          <BottomSheetSelect
+            label="Municipality"
+            value={form.municipality}
+            placeholder="City or municipality"
+            items={localities}
+            loading={localitiesLoading}
+            error={errors.municipality}
+            emptyMessage="No city or municipality matched your search."
+            onSelect={handleMunicipalitySelect}
+          />
+          <BottomSheetSelect
+            label="Submunicipality"
+            value={form.submunicipality}
+            placeholder="Barangay or district"
+            items={barangays}
+            loading={barangaysLoading}
+            disabled={!form.municipalityCode}
+            error={errors.submunicipality}
+            emptyMessage={
+              form.municipalityCode
+                ? "No barangays matched your search."
+                : "Select a municipality first."
+            }
+            onSelect={handleBarangaySelect}
+          />
+          <TextField
+            label="Thoroughfare"
+            value={form.thoroughfare}
+            onChangeText={(value) => updateField("thoroughfare", value)}
+            placeholder="Street name"
+            error={errors.thoroughfare}
+          />
+          <TextField
+            label="Property, Block, or Lot"
+            value={form.propertyBlockLot}
+            onChangeText={(value) => updateField("propertyBlockLot", value)}
+            placeholder="Block 5, Lot 12"
+          />
+          <TextField
+            label="Apartment Unit"
+            value={form.apartmentUnit}
+            onChangeText={(value) => updateField("apartmentUnit", value)}
+            placeholder="Unit 101"
+          />
+          <TextField
+            label="Landmark(s) (optional)"
+            value={form.landmark}
+            onChangeText={(value) => updateField("landmark", value)}
+            placeholder="Near the church"
+          />
+
+          {form.plusCode ? (
+            <View
+              style={{
+                backgroundColor: COLORS.primaryLight,
+                borderRadius: 8,
+                padding: SPACING.md,
+                marginTop: SPACING.sm,
+              }}
             >
-              <Card
+              <View
                 style={{
-                  borderColor: selectedRole === role.id ? COLORS.primary : COLORS.border,
-                  borderWidth: selectedRole === role.id ? 2 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: SPACING.xs,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.medium }}>
-                  <View
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 25,
-                      backgroundColor: selectedRole === role.id ? COLORS.primary : COLORS.lightGray,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name={role.icon}
-                      size={24}
-                      color={selectedRole === role.id ? COLORS.white : COLORS.gray}
-                    />
-                  </View>
+                <Ionicons name="location" size={20} color={COLORS.primary} />
+                <Text
+                  style={{
+                    fontSize: FONT.lg,
+                    fontWeight: "800",
+                    color: COLORS.textPrimary,
+                    marginLeft: SPACING.xs,
+                  }}
+                >
+                  {form.plusCode}
+                </Text>
+              </View>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
+                {form.locationAddress || "Location found"}
+              </Text>
+              <TouchableOpacity
+                onPress={handleGetLocation}
+                disabled={locationLoading}
+                activeOpacity={0.7}
+                style={{
+                  marginTop: SPACING.sm,
+                  paddingVertical: SPACING.xs,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons
+                  name="location-sharp"
+                  size={16}
+                  color={COLORS.primary}
+                />
+                <Text
+                  style={{
+                    color: COLORS.primary,
+                    fontSize: 12,
+                    marginLeft: SPACING.xs,
+                  }}
+                >
+                  Refresh Location
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Button
+              title={locationLoading ? "Getting location..." : "Get Location"}
+              onPress={handleGetLocation}
+              variant="secondary"
+              loading={locationLoading}
+              disabled={locationLoading}
+              style={{ marginTop: SPACING.sm }}
+              leftIcon={
+                <Ionicons
+                  name="location-sharp"
+                  size={18}
+                  color={COLORS.primary}
+                />
+              }
+            />
+          )}
+        </Card>
 
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        ...FONT.bodyLarge,
-                        fontWeight: "600",
-                        color: COLORS.text,
-                        marginBottom: SPACING.small / 2,
-                      }}
-                    >
-                      {role.title}
-                    </Text>
-                    <Text
-                      style={{
-                        ...FONT.bodySmall,
-                        color: COLORS.textSecondary,
-                      }}
-                    >
-                      {role.description}
-                    </Text>
-                  </View>
-
-                  {selectedRole === role.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={COLORS.primary}
-                    />
-                  )}
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <TouchableOpacity
+          onPress={() => router.push("/sign-in")}
+          style={{ alignItems: "center", marginTop: SPACING.md }}
+        >
+          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+            Already have an account? Sign in
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
-
       <StickyActionBar>
         <Button
-          title="Continue"
-          onPress={handleContinue}
-          disabled={!selectedRole}
-          style={{ opacity: selectedRole ? 1 : 0.5 }}
+          title="Next"
+          onPress={handleNext}
+          variant="primary"
+          leftIcon={<Ionicons name="arrow-forward-sharp" size={18} color={COLORS.surface} />}
         />
       </StickyActionBar>
     </SafeAreaView>

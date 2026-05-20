@@ -4,6 +4,7 @@ import {
   House,
   Lock,
   Package,
+  QrCode,
   ShoppingCart,
   SignOut,
   Users,
@@ -18,6 +19,7 @@ import "./styles.css";
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: ClipboardText },
   { to: "/admin/inventory", label: "Inventory", icon: Package },
+  { to: "/admin/serial-qrs", label: "Serial QR", icon: QrCode },
   { to: "/admin/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/admin/technicians", label: "Technicians", icon: Users },
   { to: "/admin/orders", label: "Orders", icon: ClipboardText },

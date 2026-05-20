@@ -20,7 +20,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.maviitootie.Coldair",
+      "usesCleartextTraffic": true
     },
     "scheme": "coldair",
     "web": {
@@ -35,6 +41,12 @@
           "cameraPermission": "Allow Coldair to use the camera to scan unit QR codes."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fc3e017a-abda-46d6-8a37-7e678451eb7a"
+      }
+    }
   }
 }

@@ -63,6 +63,149 @@ const resolveProductForOrderItem = async (item, session = null) => {
   return null;
 };
 
+const randomSerialToken = () =>
+  Math.random().toString(36).slice(2, 8).toUpperCase();
+
+const buildSerialNumber = (product) => {
+  const skuPart = String(product?.sku || "AC")
+    .replace(/[^a-z0-9]/gi, "")
+    .slice(0, 8)
+    .toUpperCase();
+  const timePart = Date.now().toString(36).toUpperCase();
+  return `CAACT-${skuPart || "AC"}-${timePart}-${randomSerialToken()}`;
+};
+
+const buildSerialQrCode = (product, serialNumber) =>
+  [
+    `AC_UNIT:${serialNumber}`,
+    `PRODUCT:${product?._id || product?.id || ""}`,
+    `SKU:${product?.sku || ""}`,
+  ].join("|");
+
+const generateUniqueSerialNumber = async (product, seen, session = null) => {
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const serialNumber = buildSerialNumber(product);
+    if (seen.has(serialNumber)) continue;
+    const exists = await Product.exists({
+      "serialUnits.serialNumber": serialNumber,
+    }).session(session);
+    if (!exists) {
+      seen.add(serialNumber);
+      return serialNumber;
+    }
+  }
+  throw new Error("Unable to generate a unique serial number");
+};
+
+const ensureAvailableSerialUnits = async (
+  product,
+  branch,
+  quantityNeeded,
+  session = null,
+) => {
+  if (!Array.isArray(product.serialUnits)) {
+    product.serialUnits = [];
+  }
+
+  const matchesBranch = (unit) => !branch || !unit.branch || unit.branch === branch;
+  const available = product.serialUnits.filter(
+    (unit) => unit.status === "available" && matchesBranch(unit),
+  );
+  const missing = Math.max(0, Number(quantityNeeded || 0) - available.length);
+  if (missing <= 0) return;
+
+  const seen = new Set(
+    product.serialUnits
+      .map((unit) => String(unit.serialNumber || "").trim())
+      .filter(Boolean),
+  );
+
+  for (let index = 0; index < missing; index += 1) {
+    const serialNumber = await generateUniqueSerialNumber(product, seen, session);
+    product.serialUnits.push({
+      serialNumber,
+      qrCode: buildSerialQrCode(product, serialNumber),
+      branch,
+      status: "available",
+    });
+  }
+};
+
+const reserveSerialUnitsForOrder = async (
+  product,
+  branch,
+  quantityNeeded,
+  orderCode,
+  session = null,
+) => {
+  await ensureAvailableSerialUnits(product, branch, quantityNeeded, session);
+  const reservedAt = new Date();
+  const reserved = [];
+
+  for (const unit of product.serialUnits || []) {
+    if (reserved.length >= quantityNeeded) break;
+    const matchesBranch = !branch || !unit.branch || unit.branch === branch;
+    if (unit.status !== "available" || !matchesBranch) continue;
+
+    unit.status = "assigned";
+    unit.assignedOrderCode = orderCode;
+    unit.assignedAt = reservedAt;
+    unit.registeredAt = null;
+    reserved.push(unit.serialNumber);
+  }
+
+  if (reserved.length < quantityNeeded) {
+    throw new HttpError(
+      409,
+      `Insufficient serial-numbered stock for ${product.name}.`,
+    );
+  }
+
+  return reserved;
+};
+
+const updateSerialUnitsForOrder = async (order, nextStatus) => {
+  const serialNumbers = (order.items || []).flatMap((item) =>
+    Array.isArray(item.serialNumbers) ? item.serialNumbers : [],
+  );
+  if (serialNumbers.length === 0) return;
+
+  const products = await Product.find({
+    "serialUnits.serialNumber": { $in: serialNumbers },
+  });
+  const now = new Date();
+
+  await Promise.all(
+    products.map(async (product) => {
+      let changed = false;
+      for (const unit of product.serialUnits || []) {
+        if (!serialNumbers.includes(unit.serialNumber)) continue;
+
+        if (nextStatus === "complete") {
+          unit.status = "sold";
+          unit.registeredAt = unit.registeredAt || now;
+        } else if (nextStatus === "cancelled") {
+          unit.status = "available";
+          unit.assignedOrderId = "";
+          unit.assignedOrderCode = "";
+          unit.assignedAt = null;
+          unit.registeredAt = null;
+        } else {
+          unit.status = "assigned";
+          unit.assignedOrderId = String(order._id || order.id || "");
+          unit.assignedOrderCode = order.orderCode;
+          unit.assignedAt = unit.assignedAt || now;
+        }
+        changed = true;
+      }
+
+      if (changed) {
+        await product.save();
+      }
+    }),
+  );
+};
+
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -310,6 +453,13 @@ const createOrder = async (req, res) => {
           const remainingBranchStock = hasBranchSnapshot
             ? Math.max(0, currentBranchStock - quantityNeeded)
             : Math.max(0, Number(product.stock || 0) - quantityNeeded);
+          const serialNumbers = await reserveSerialUnitsForOrder(
+            product,
+            finalBranch,
+            quantityNeeded,
+            orderCode,
+            session,
+          );
           product.branchStock.set(finalBranch, remainingBranchStock);
           product.stock = Array.from(product.branchStock.values()).reduce(
             (sum, val) => sum + Number(val || 0),
@@ -323,6 +473,7 @@ const createOrder = async (req, res) => {
             price: Number(item.price) || Number(product.price || 0),
             quantity: quantityNeeded,
             specs: item.specs || product.specs || "",
+            serialNumbers,
             sourceBranch: finalBranch,
           });
         }
@@ -469,6 +620,7 @@ const approveOrder = async (req, res) => {
   if (estimatedArrival) order.estimatedArrival = estimatedArrival;
   if (installationDate) order.installationDate = installationDate;
   await order.save();
+  await updateSerialUnitsForOrder(order, order.workflowStatus);
 
   await createTaskForOrder(order);
 
@@ -605,6 +757,7 @@ const processOrder = async (req, res) => {
   }
 
   await order.save();
+  await updateSerialUnitsForOrder(order, order.workflowStatus);
 
   if (action === "approve") {
     await createTaskForOrder(order);

@@ -1,6 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 
 import QrCameraScanner from "../../components/technician/QrCameraScanner";
@@ -11,8 +10,7 @@ import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
 import TextField from "../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
-import { useUserContext } from "../../context/UserContext";
-import { lookupUnitContext } from "../../services/qrLookupService";
+import { lookupUnitContext, parseLookupTarget } from "../../services/qrLookupService";
 import { TASK_STATUS } from "../../services/taskStorage";
 import {
   ensureSeededScannerUnit,
@@ -76,13 +74,13 @@ function SectionTitle({ icon, title, count }) {
 }
 
 export default function ScanScreen() {
-  const router = useRouter();
-  const { token } = useUserContext();
   const [code, setCode] = useState("");
   const [lastScannedCode, setLastScannedCode] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scannerActive, setScannerActive] = useState(true);
+  const inFlightRef = useRef(false);
+  const lastNoticeRef = useRef({ value: "", time: 0 });
 
   useEffect(() => {
     ensureSeededScannerUnit().catch(() => {});
@@ -94,26 +92,39 @@ export default function ScanScreen() {
       Alert.alert("Missing Input", "Enter or scan a serial number or AC unit code.");
       return;
     }
+    if (inFlightRef.current) return;
 
+    const target = parseLookupTarget(value);
+
+    inFlightRef.current = true;
     setLoading(true);
     try {
-      const data = await lookupUnitContext(value, { token });
+      const data = await lookupUnitContext(value);
       setResult(data);
-      setCode(value);
+      setCode(target.serialNumber || target.lookupValue || value);
       if (options.fromCamera) {
         setLastScannedCode(value);
         setScannerActive(false);
       }
-      if (
-        data.matchedTask &&
-        String(data.matchedTask.status || "").toLowerCase() === TASK_STATUS.IN_PROGRESS
-      ) {
-        router.push(`/technician/task/${data.matchedTask.id}/unit/log/select`);
+      if (!data.unit) {
+        const now = Date.now();
+        const noticeKey = target.serialNumber || target.lookupValue || value;
+        const shouldShowNotice =
+          lastNoticeRef.current.value !== noticeKey ||
+          now - lastNoticeRef.current.time > 2500;
+        if (shouldShowNotice) {
+          lastNoticeRef.current = { value: noticeKey, time: now };
+          Alert.alert(
+            data.lookupError ? "QR lookup failed" : "Not Found",
+            data.lookupError ||
+              `No AC unit matched serial ${target.serialNumber || target.lookupValue || value}.`,
+          );
+        }
       }
-      if (!data.unit) Alert.alert("Not Found", "No AC unit matched that code.");
     } catch {
       Alert.alert("Error", "AC unit search failed.");
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -254,16 +265,16 @@ export default function ScanScreen() {
                 </Text>
               </View>
             ) : null}
-            {result.matchedTask && String(result.matchedTask.status || "").toLowerCase() === TASK_STATUS.IN_PROGRESS ? (
-              <TechButton
-                title="Open Log Form"
-                onPress={() => router.push(`/technician/task/${result.matchedTask.id}/unit/log/select`)}
-                style={{ marginTop: SPACING.sm }}
-                leftIcon={<Ionicons name="document-text-sharp" size={18} color={COLORS.surface} />}
-              />
-            ) : null}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
               <DetailPair label="Serial" value={result.unit.serialNumber || "Not provided"} />
+              <DetailPair
+                label="Order Status"
+                value={result.unit.orderFulfillmentLabel}
+              />
+              <DetailPair
+                label="Order Code"
+                value={result.unit.orderFulfillment?.order?.orderCode}
+              />
               <DetailPair label="Installed" value={result.unit.installationDate} />
               <DetailPair label="Placement" value={result.unit.placementArea || "Not provided"} />
               <DetailPair

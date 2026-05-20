@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import TechButton from "./TechButton";
@@ -11,20 +11,25 @@ export default function QrCameraScanner({ active = true, onScanned }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [locked, setLocked] = useState(false);
   const [testValue, setTestValue] = useState(SEEDED_SCANNER_UNIT_QR);
+  const lockedRef = useRef(false);
 
   const granted = permission?.granted;
 
   const handleBarcodeScanned = (result) => {
-    if (locked || !active) return;
+    if (lockedRef.current || locked || !active) return;
 
     const data = result?.data || result?.nativeEvent?.data || "";
     if (!data) return;
 
+    lockedRef.current = true;
     setLocked(true);
     onScanned?.(data);
   };
 
-  const resetScan = () => setLocked(false);
+  const resetScan = () => {
+    lockedRef.current = false;
+    setLocked(false);
+  };
 
   if (Platform.OS === "web") {
     return (

@@ -12,6 +12,8 @@ const orderSchema = new mongoose.Schema(
         price: { type: Number, required: true, min: 0 },
         quantity: { type: Number, required: true, min: 1 },
         specs: { type: String, default: "" },
+        sourceBranch: { type: String, default: "" },
+        serialNumbers: [{ type: String, trim: true }],
       },
     ],
     address: {

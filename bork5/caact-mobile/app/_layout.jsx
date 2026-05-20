@@ -3,13 +3,16 @@
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { CartProvider } from "../context/CartContext";
 import { UserProvider } from "../context/UserContext";
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <UserProvider>
-        <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+        <CartProvider>
+          <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+        </CartProvider>
       </UserProvider>
     </SafeAreaProvider>
   );

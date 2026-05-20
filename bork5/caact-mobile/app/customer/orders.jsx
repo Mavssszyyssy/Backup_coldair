@@ -1,128 +1,132 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { View } from "react-native";
 
-import CustomerScreen from "../../components/customer/CustomerScreen";
-import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
-import AppHero from "../../components/ui/AppHero";
-import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
-import EmptyState from "../../components/ui/EmptyState";
-import IconRow from "../../components/ui/IconRow";
-import StatusChip from "../../components/ui/StatusChip";
-import { COLD_AIR_WEBSITE } from "../../constants/company";
-import { COLORS, SPACING } from "../../constants/theme";
+import {
+  BoutiqueButton,
+  BoutiqueCard,
+  BoutiqueChip,
+  BoutiqueHeader,
+  BoutiqueScreen,
+  BoutiqueText,
+  BQ_COLORS,
+  BQ_SPACING,
+} from "../../components/boutique";
 import { useUserContext } from "../../context/UserContext";
-import { fetchMyOrders } from "../../services/api";
+import { formatPeso } from "../../services/ecommerceService";
 import { getOrdersByUser } from "../../services/orderStorage";
 
-function statusColor(status = "") {
+function statusVariant(status = "") {
   const value = status.toLowerCase();
-  if (value.includes("approved") || value.includes("released") || value.includes("delivered")) {
-    return COLORS.success;
-  }
-  if (value.includes("rejected") || value.includes("cancelled") || value.includes("failed")) {
-    return COLORS.danger;
-  }
-  return COLORS.warning;
+  if (value.includes("approved") || value.includes("released") || value.includes("delivered")) return "success";
+  if (value.includes("rejected") || value.includes("cancelled") || value.includes("failed")) return "danger";
+  return "warning";
+}
+
+function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.md }}>
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: BQ_COLORS.bgAlt,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <BoutiqueText variant="h3">{title}</BoutiqueText>
+        <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
+          {subtitle}
+        </BoutiqueText>
+      </View>
+    </View>
+  );
 }
 
 export default function CustomerOrdersScreen() {
-  const { current, token } = useUserContext();
+  const router = useRouter();
+  const { current } = useUserContext();
   const [orders, setOrders] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      const load = async () => {
-        const result = token
-          ? await fetchMyOrders(token)
-          : { success: false, orders: [] };
-
-        const nextOrders = result.success
-          ? result.orders
-          : await getOrdersByUser(current);
-
-        if (active) setOrders(nextOrders);
-      };
-
-      load();
+      getOrdersByUser(current).then((items) => {
+        if (active) setOrders(items);
+      });
       return () => {
         active = false;
       };
-    }, [current, token]),
+    }, [current]),
   );
 
   return (
-    <CustomerScreen title="Orders" subtitle="Website purchases and delivery updates">
-      <AppHero
-        eyebrow="Order Center"
-        title={`${orders.length} website order${orders.length === 1 ? "" : "s"}`}
-        subtitle="Track payment, delivery, and related service requests."
-        icon="receipt-sharp"
-        color={COLORS.primaryDark}
-      />
+    <>
+      <BoutiqueHeader title="Orders" subtitle="Purchases and delivery updates" onBack={() => router.replace("/customer/home")} />
+      <BoutiqueScreen>
+        <BoutiqueCard style={{ gap: BQ_SPACING.md, backgroundColor: BQ_COLORS.brand }}>
+          <BoutiqueText variant="label" color="rgba(255,255,255,0.72)">
+            Order Center
+          </BoutiqueText>
+          <BoutiqueText variant="h1" color="#fff">
+            {orders.length} order{orders.length === 1 ? "" : "s"}
+          </BoutiqueText>
+          <BoutiqueText color="rgba(255,255,255,0.76)">
+            Track stock approval, payment review, and fulfillment progress from mobile checkout.
+          </BoutiqueText>
+        </BoutiqueCard>
 
-      {orders.length === 0 ? (
-        <Card>
-          <EmptyState
-            title="No orders yet"
-            message="You have not placed any website orders yet. Visit coldair-act.online to buy your next AC unit."
-            icon="cart-sharp"
-            iconColor={COLORS.primary}
-            action={
-              <Button
-                title="Buy at coldair-act.online"
-                onPress={() => Linking.openURL(COLD_AIR_WEBSITE)}
-                leftIcon={<Ionicons name="globe-sharp" size={18} color={COLORS.surface} />}
-              />
-            }
-          />
-        </Card>
-      ) : (
-        orders.map((order) => {
-          const color = statusColor(`${order.status} ${order.deliveryStatus}`);
-          return (
-            <Card key={order.id}>
-              <CustomerSectionHeader
-                title={`Order #${String(order.id).slice(-6).toUpperCase()}`}
-                right={<StatusChip label={order.status} color={color} />}
-              />
-              <View style={{ marginBottom: SPACING.sm }}>
-                  <Text
-                    style={{
-                      color: COLORS.textSecondary,
-                    }}
-                  >
-                    PHP {Number(order.total || 0).toFixed(2)}
-                  </Text>
-              </View>
+        {orders.length === 0 ? (
+          <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
+            <Ionicons name="receipt-outline" size={52} color={BQ_COLORS.inkFaint} />
+            <BoutiqueText variant="h2" align="center">
+              No orders yet
+            </BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted} align="center">
+              Browse the mobile boutique catalogue and your submitted orders will appear here.
+            </BoutiqueText>
+            <BoutiqueButton title="Shop AC Units" onPress={() => router.push("/customer/shop")} />
+          </BoutiqueCard>
+        ) : (
+          orders.map((order) => {
+            const variant = statusVariant(`${order.status} ${order.deliveryStatus}`);
+            const itemCount = order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
-              <IconRow
-                icon="bicycle-sharp"
-                title="Delivery"
-                subtitle={order.deliveryStatus}
-                color={COLORS.primary}
-              />
-              <IconRow
-                icon="card-sharp"
-                title="Payment"
-                subtitle={order.paymentStatus}
-                color={COLORS.success}
-              />
-              {order.serviceRequestId ? (
-                <IconRow
-                  icon="construct-sharp"
-                  title="Related service request"
-                  subtitle={order.serviceRequestId}
-                  color={COLORS.warning}
-                />
-              ) : null}
-            </Card>
-          );
-        })
-      )}
-    </CustomerScreen>
+            return (
+              <BoutiqueCard key={order.id} style={{ gap: BQ_SPACING.md }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
+                  <View style={{ flex: 1 }}>
+                    <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
+                      Order #{String(order.id).slice(-8).toUpperCase()}
+                    </BoutiqueText>
+                    <BoutiqueText variant="h2">{formatPeso(order.total)}</BoutiqueText>
+                  </View>
+                  <BoutiqueChip label={order.status} variant={variant} />
+                </View>
+
+                <BoutiqueText color={BQ_COLORS.inkMuted}>
+                  {itemCount} item{itemCount === 1 ? "" : "s"} submitted{" "}
+                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
+                </BoutiqueText>
+
+                <View style={{ gap: BQ_SPACING.md }}>
+                  <OrderProgressRow icon="bicycle-sharp" title="Delivery" subtitle={order.deliveryStatus} />
+                  <OrderProgressRow icon="card-sharp" title="Payment" subtitle={order.paymentStatus} color={BQ_COLORS.success} />
+                  {order.trackingNumber ? (
+                    <OrderProgressRow icon="navigate-sharp" title="Tracking" subtitle={order.trackingNumber} color={BQ_COLORS.warning} />
+                  ) : null}
+                </View>
+              </BoutiqueCard>
+            );
+          })
+        )}
+      </BoutiqueScreen>
+    </>
   );
 }

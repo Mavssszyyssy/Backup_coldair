@@ -5,8 +5,19 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import * as api from "../services/api";
 
 const TOKEN_KEY = "auth_token";
+const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
+const SESSION_HYDRATE_TIMEOUT_MS = 10000;
 
 const UserContext = createContext(null);
+
+const withTimeout = (promise, timeoutMs, fallback) =>
+  new Promise((resolve) => {
+    const timeoutId = setTimeout(() => resolve(fallback), timeoutMs);
+    Promise.resolve(promise)
+      .then(resolve)
+      .catch(() => resolve(fallback))
+      .finally(() => clearTimeout(timeoutId));
+  });
 
 // ---------------------------------------------------------------------------
 // Normalisation — keeps user objects consistent across the app
@@ -15,8 +26,13 @@ const UserContext = createContext(null);
 function normalizeUser(user = {}) {
   if (!user) return null;
 
-  const rawRole = user.role || (user.isTechnician ? "technician" : "customer");
-  const role = String(rawRole).trim().replace(/-/g, "_").toLowerCase();
+  const rawRole =
+    user.role ||
+    user.accountType ||
+    user.account_type ||
+    user.type ||
+    (user.isTechnician ? "technician" : "customer");
+  const role = String(rawRole).trim().toLowerCase().replace(/-/g, "_");
 
   return {
     ...user,
@@ -85,7 +101,11 @@ export function UserProvider({ children }) {
     try {
       const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
       if (storedToken) {
-        const result = await api.me(storedToken);
+        const result = await withTimeout(
+          api.me(storedToken),
+          SESSION_HYDRATE_TIMEOUT_MS,
+          { success: false },
+        );
         if (result.success) {
           setToken(storedToken);
           setCurrent(normalizeUser(result.user));
@@ -166,21 +186,6 @@ export function UserProvider({ children }) {
     await storeToken(null);
     setCurrent(null);
     setUsers([]);
-  };
-
-  /**
-   * Handle successful authentication from WebView
-   */
-  const handleWebViewAuthSuccess = async (newToken, userObj) => {
-    try {
-      const normalized = normalizeUser(userObj);
-      await storeToken(newToken);
-      setCurrent(normalized);
-      return { success: true, user: normalized };
-    } catch (e) {
-      console.error(e);
-      return { success: false };
-    }
   };
 
   // ── User management ───────────────────────────────────────────────────
@@ -317,16 +322,11 @@ export function UserProvider({ children }) {
     if (String(normalized.status || "active").toLowerCase() !== "active") {
       return "/sign-in";
     }
+    if (!MOBILE_ACCOUNT_ROLES.includes(normalized.role)) return "/manager";
     switch (normalized.role) {
       case "technician":
         if (!normalized.technicianOnboardedAt) return "/technician/oobe";
         return "/technician";
-      case "owner":
-      case "manager":
-      case "admin":
-      case "superadmin":
-      case "super_admin":
-        return "/manager";
       default:
         if (!normalized.customerOnboardedAt) return "/customer/oobe";
         return "/customer/home";
@@ -346,7 +346,6 @@ export function UserProvider({ children }) {
       login,
       register,
       logout,
-      handleWebViewAuthSuccess,
 
       // User management
       fetchUsers,

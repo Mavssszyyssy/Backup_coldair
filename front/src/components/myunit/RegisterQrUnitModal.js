@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiRequest } from '../../config/api';
 import { parseQrInstallPayload } from '../../domain/myunit/parseQrInstallPayload';
 import { estimateNextServiceWindow } from '../../domain/myunit/ampereNextService';
 
@@ -26,8 +27,24 @@ function buildUnitFromQrPayload(data) {
     failedRepairsCount: data.failedRepairsCount ?? 0,
     failedRepairsThreshold: data.failedRepairsThreshold ?? 3,
     recallActive: !!data.recallActive,
-    warrantyRevoked: !!data.warrantyRevoked
+    warrantyRevoked: !!data.warrantyRevoked,
+    inventoryStatus: data.inventoryStatus || '',
+    orderFulfillmentStatus: data.orderFulfillmentStatus || data.orderFulfillment?.state || '',
+    orderFulfillmentLabel: data.orderFulfillmentLabel || data.orderFulfillment?.label || '',
+    orderFulfillment: data.orderFulfillment || null,
+    placementArea: data.placementArea || ''
   };
+}
+
+function buildUnitFromBackendUnit(unit) {
+  return buildUnitFromQrPayload({
+    ...unit,
+    model: unit.model || unit.productSku || '—',
+    conditionRating: 'good',
+    installationDate:
+      unit.installationDate || new Date().toISOString().split('T')[0],
+    status: 'Good'
+  });
 }
 
 function RegisterQrUnitModal({ onClose, onRegister }) {
@@ -49,7 +66,7 @@ function RegisterQrUnitModal({ onClose, onRegister }) {
     setPreview(buildUnitFromQrPayload(sample));
   };
 
-  const parse = () => {
+  const parse = async () => {
     const parsed = parseQrInstallPayload(raw);
     if (!parsed.ok) {
       setError(parsed.error);
@@ -57,10 +74,22 @@ function RegisterQrUnitModal({ onClose, onRegister }) {
       return;
     }
     setError('');
+    const serial = parsed.data.serialNumber || parsed.data.serial;
+
+    try {
+      const result = await apiRequest(`/products/serial/${encodeURIComponent(serial)}`);
+      if (result.unit) {
+        setPreview(buildUnitFromBackendUnit(result.unit));
+        return;
+      }
+    } catch (error) {
+      setError(error.message || 'Unable to verify this QR with the backend.');
+    }
+
     setPreview(buildUnitFromQrPayload(parsed.data));
   };
 
-  const confirm = () => {
+  const confirm = async () => {
     let unitToSave = preview;
     if (!unitToSave) {
       const parsed = parseQrInstallPayload(raw);
@@ -68,7 +97,16 @@ function RegisterQrUnitModal({ onClose, onRegister }) {
         setError(parsed.error);
         return;
       }
-      unitToSave = buildUnitFromQrPayload(parsed.data);
+      const serial = parsed.data.serialNumber || parsed.data.serial;
+      try {
+        const result = await apiRequest(`/products/serial/${encodeURIComponent(serial)}`);
+        unitToSave = result.unit
+          ? buildUnitFromBackendUnit(result.unit)
+          : buildUnitFromQrPayload(parsed.data);
+      } catch (error) {
+        setError(error.message || 'Unable to verify this QR with the backend.');
+        return;
+      }
     }
     onRegister(unitToSave);
     onClose();
@@ -107,6 +145,13 @@ function RegisterQrUnitModal({ onClose, onRegister }) {
               <p>
                 {preview.brand} {preview.model} — S/N {preview.serialNumber}
               </p>
+              {preview.placementArea && <p>Location: {preview.placementArea}</p>}
+              {preview.orderFulfillmentLabel && (
+                <p>Order status: {preview.orderFulfillmentLabel}</p>
+              )}
+              {preview.orderFulfillment?.order?.orderCode && (
+                <p>Order: {preview.orderFulfillment.order.orderCode}</p>
+              )}
               <p>AMPERE next service: {preview.ampereNextServiceLabel}</p>
               {preview.installEnvironmentNotes && <p>Install environment: {preview.installEnvironmentNotes}</p>}
             </div>
