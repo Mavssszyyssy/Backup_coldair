@@ -23,6 +23,36 @@ export function getRoleLabel(user) {
 }
 
 export function buildEditableProfile(user) {
+  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
+  const defaultAddress =
+    addresses.find((item) => item?.isDefault) || addresses[0] || {};
+  const serviceAddress =
+    user?.billingAddress ||
+    user?.billing_address ||
+    user?.location?.address ||
+    defaultAddress ||
+    {};
+  const serviceMunicipality =
+    user?.municipality || serviceAddress.city || defaultAddress.city || "";
+  const serviceSubmunicipality =
+    user?.submunicipality ||
+    serviceAddress.barangay ||
+    defaultAddress.barangay ||
+    "";
+  const serviceStreet =
+    user?.thoroughfare || serviceAddress.street || defaultAddress.street || "";
+  const serviceAddressLine =
+    user?.address ||
+    [
+      serviceStreet,
+      serviceSubmunicipality,
+      serviceMunicipality,
+      serviceAddress.province || defaultAddress.province,
+      serviceAddress.region || defaultAddress.region,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
   return {
     name_first: user?.name_first || "",
     name_last: user?.name_last || "",
@@ -32,13 +62,13 @@ export function buildEditableProfile(user) {
     email: user?.email || "",
     phone: user?.phone || "",
     profilePhoto: user?.profilePhoto || null,
-    address: user?.address || "",
-    municipality: user?.municipality || "",
+    address: serviceAddressLine || "",
+    municipality: serviceMunicipality,
     municipalityCode: user?.municipalityCode || user?.municipality_code || "",
-    submunicipality: user?.submunicipality || "",
+    submunicipality: serviceSubmunicipality,
     submunicipalityCode:
       user?.submunicipalityCode || user?.submunicipality_code || "",
-    thoroughfare: user?.thoroughfare || "",
+    thoroughfare: serviceStreet,
     propertyBlockLot: user?.propertyBlockLot || user?.property_block_lot || "",
     apartmentUnit: user?.apartmentUnit || user?.apartment_unit || "",
     customerOnboardedAt:

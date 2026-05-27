@@ -7,6 +7,22 @@ export function parseQrInstallPayload(raw) {
   const trimmed = String(raw || '').trim();
   if (!trimmed) return { ok: false, error: 'Empty QR payload' };
 
+  const readUrlParam = (name) => {
+    const match = trimmed.match(new RegExp(`[?&]${name}=([^&#]+)`, 'i'));
+    return match?.[1] ? decodeURIComponent(match[1]).trim() : '';
+  };
+
+  const urlSerial = readUrlParam('serialNumber') || readUrlParam('serial');
+  if (urlSerial) {
+    return {
+      ok: true,
+      data: {
+        serialNumber: urlSerial,
+        qrCode: trimmed
+      }
+    };
+  }
+
   if (!trimmed.startsWith('{')) {
     const acUnitPart = trimmed
       .split('|')

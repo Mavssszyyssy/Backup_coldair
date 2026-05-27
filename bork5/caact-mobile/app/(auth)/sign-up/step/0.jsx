@@ -143,9 +143,7 @@ export default function SignUpStep0() {
     const nextErrors = {};
 
     const firstNameError = validatePersonName(form.name_first, "First name");
-    const lastNameError = validatePersonName(form.name_last, "Last name", {
-      required: false,
-    });
+    const lastNameError = validatePersonName(form.name_last, "Last name");
 
     if (firstNameError) nextErrors.name_first = firstNameError;
     if (lastNameError) nextErrors.name_last = lastNameError;
@@ -224,7 +222,7 @@ export default function SignUpStep0() {
               error={errors.name_first}
             />
             <TextField
-              label="Last Name (optional)"
+              label="Last Name"
               value={form.name_last}
               onChangeText={(value) => updateNameField("name_last", value)}
             placeholder="Last name"

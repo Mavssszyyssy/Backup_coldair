@@ -5,6 +5,16 @@ const { validateProductUniqueness } = require("../utils/productValidation");
 
 const SAMPLE_PRODUCTS = [
   {
+    name: "PayMongo Test AC",
+    sku: "TEST-PAYMONGO-001",
+    brand: "AeroPulse Test",
+    category: "split",
+    specs: "Test Unit",
+    price: 1,
+    threshold: 1,
+    stock: 6,
+  },
+  {
     name: "American Home Inverter AC",
     sku: "AHAC-MINV1023EHW",
     brand: "American Home",
@@ -498,6 +508,8 @@ const resolveSerialOrderFulfillment = async (serialUnit, serialNumber) => {
       isOrderLinked: Boolean(order),
       isRegistered: true,
       registeredAt: serialUnit.registeredAt || "",
+      ampRegistration: serialUnit.ampRegistration || null,
+      defectHold: serialUnit.defectHold || null,
       order: buildOrderSummary(order, serialNumber),
     };
   }
@@ -1069,6 +1081,9 @@ const getProductSerialUnit = async (req, res) => {
       productName: product.name,
       category: product.category,
       price: product.price,
+      registeredAt: serialUnit.registeredAt || "",
+      ampRegistration: serialUnit.ampRegistration || null,
+      defectHold: serialUnit.defectHold || null,
       qrCode:
         serialUnit.qrCode || buildSerialQrCode(product, serialUnit.serialNumber),
     },
@@ -1193,6 +1208,7 @@ const getProductImage = async (req, res) => {
 };
 
 module.exports = {
+  ensureSampleInventory,
   listProducts,
   listPublicProducts,
   listLowStockProducts,

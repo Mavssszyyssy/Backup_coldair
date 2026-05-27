@@ -51,7 +51,7 @@ function OrderSummary({
         Orders are sent to <strong>Super Admin</strong> for stock confirmation
         and edits before fulfillment.
         {selectedPayment === "gcash" || selectedPayment === "credit"
-          ? " You will complete payment in the gateway after approval where applicable."
+          ? " You will be redirected to PayMongo after placing the order."
           : " Payment stays in processing for COD or pay-on-installation until the milestone is reached."}
       </p>
 

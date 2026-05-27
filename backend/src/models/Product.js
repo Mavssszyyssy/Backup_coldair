@@ -42,6 +42,14 @@ const productSchema = new mongoose.Schema(
         assignedOrderCode: { type: String, default: "", trim: true },
         assignedAt: { type: Date, default: null },
         registeredAt: { type: Date, default: null },
+        ampRegistration: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+        defectHold: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
         createdAt: { type: Date, default: Date.now },
       },
     ],

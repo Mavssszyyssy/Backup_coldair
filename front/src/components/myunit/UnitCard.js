@@ -1,3 +1,4 @@
+import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitKebabMenu from "./UnitKebabMenu";
 
 // import icons from '../common/icons';
@@ -71,6 +72,7 @@ function UnitCard({
             </div>
           )}
         </div>
+        <DynamicServiceSticker unit={unit} onBookNow={onScheduleService} />
       </div>
       <div className="unit-footer">
         <button

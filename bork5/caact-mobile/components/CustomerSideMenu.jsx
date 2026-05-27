@@ -11,6 +11,7 @@ import { confirmAction } from "../utils/confirmAction";
 
 const MENU_ITEMS = [
   { label: "Home", href: "/customer/home", icon: "home-sharp" },
+  { label: "Notifications", href: "/customer/notifications", icon: "notifications-sharp" },
   { label: "Orders", href: "/customer/orders", icon: "receipt-sharp" },
   { label: "Service Requests", href: "/customer/requests", icon: "construct-sharp" },
   { label: "Services", href: "/customer/services", icon: "calendar-sharp" },

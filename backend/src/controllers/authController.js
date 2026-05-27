@@ -453,7 +453,19 @@ const register = async (req, res) => {
     email,
     phone,
     password,
+    address,
+    municipality,
+    municipality_code,
+    submunicipality,
+    submunicipality_code,
+    thoroughfare,
+    property_block_lot,
+    apartment_unit,
+    landmark,
+    plus_code,
+    contact_method,
     messenger_handle,
+    delivery_instructions,
     locations = [],
     role,
     branch,
@@ -485,8 +497,19 @@ const register = async (req, res) => {
       role: role || "customer",
       assignedBranch: branch || "",
       address: addressString,
+      municipality: municipality || primaryLoc?.address?.city || "",
+      municipality_code: municipality_code || "",
+      submunicipality: submunicipality || primaryLoc?.address?.barangay || "",
+      submunicipality_code: submunicipality_code || "",
+      thoroughfare: thoroughfare || "",
+      property_block_lot: property_block_lot || "",
+      apartment_unit: apartment_unit || "",
+      landmark: landmark || "",
+      plus_code: plus_code || "",
+      contact_method: contact_method || "",
       billingAddress: primaryLoc ? primaryLoc.address : {},
       location: primaryLoc || { address: {}, coordinates: {} },
+      delivery_instructions: delivery_instructions || "",
       addresses: locations.map((loc, idx) => ({
         ...loc.address,
         label: `Facility ${idx + 1}`,
@@ -510,14 +533,18 @@ const login = async (req, res) => {
   const { identifier, password } = req.body;
   try {
     const normalizedIdentifier = normalizeIdentifier(identifier);
+    const normalizedPhone = normalizePhone(identifier);
+    const lookupConditions = [
+      { email: normalizedIdentifier },
+      { alias: normalizedIdentifier },
+      { username: normalizedIdentifier },
+    ];
+    if (normalizedPhone) {
+      lookupConditions.push({ phone: normalizedPhone });
+    }
     // STRICT ALIAS LOGIN: Email is excluded to prioritize technical identity
     const user = await User.findOne({
-      $or: [
-        { email: normalizedIdentifier },
-        { phone: normalizePhone(identifier) },
-        { alias: normalizedIdentifier },
-        { username: normalizedIdentifier },
-      ],
+      $or: lookupConditions,
     });
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {

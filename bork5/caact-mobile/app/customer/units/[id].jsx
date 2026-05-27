@@ -180,8 +180,13 @@ export default function CustomerUnitDetailsScreen() {
         </View>
 
         <DetailRow label="Serial Number" value={unit?.serialNumber} />
+        <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
         <DetailRow label="Installation Date" value={unit?.installationDate} />
         <DetailRow label="Last Maintenance" value={unit?.lastMaintenanceDate} />
+        <DetailRow
+          label="AMP Service Window"
+          value={unit?.nextIdealServicePeriod || "Not calculated"}
+        />
       </Card>
 
       <CustomerHealthPanel health={health} />

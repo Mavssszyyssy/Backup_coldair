@@ -1,15 +1,21 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../../components/ui/Button";
 import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import PasswordField from "../../../../components/ui/PasswordField";
+import QrCodeMatrix from "../../../../components/ui/QrCodeMatrix";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
+import {
+  checkAliasAvailability,
+  startRegistration,
+  verifyRegistrationCode,
+} from "../../../../services/api";
 import {
   normalizeEmail,
   validateConfirmPassword,
@@ -17,67 +23,34 @@ import {
   validatePasswordStrength,
 } from "../../../../utils/authValidation";
 
-function generateTotpSecret() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let secret = "";
-
-  for (let index = 0; index < 16; index += 1) {
-    secret += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-
-  return secret;
+function readParam(value) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
 }
 
-function buildOtpAuthUrl(secret, email) {
-  const issuer = encodeURIComponent("CAACT Mobile");
-  const accountName = encodeURIComponent(email || "new-user");
-  return `otpauth://totp/${issuer}:${accountName}?secret=${secret}&issuer=${issuer}`;
+function defaultAliasFromEmail(email) {
+  const normalized = normalizeEmail(email);
+  if (!normalized.includes("@")) return "";
+  return normalized.split("@")[0].slice(0, 48);
 }
 
-function base32Decode(encoded) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = 0;
-  let value = 0;
-  const output = [];
-  for (const char of encoded.toUpperCase().replace(/=+$/, "")) {
-    const idx = alphabet.indexOf(char);
-    if (idx === -1) continue;
-    value = (value << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      output.push((value >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-  return new Uint8Array(output);
+function detectRole(email) {
+  const normalized = normalizeEmail(email);
+  if (normalized.includes("superadmin")) return "superadmin";
+  if (normalized.includes("admin")) return "admin";
+  if (normalized.includes("technician")) return "technician";
+  return "customer";
 }
 
-async function generateTotpCode(secret, timeStep = 30) {
-  const counter = Math.floor(Date.now() / 1000 / timeStep);
-  const keyBytes = base32Decode(secret);
-  const counterBytes = new Uint8Array(8);
-  let c = counter;
-  for (let i = 7; i >= 0; i--) {
-    counterBytes[i] = c & 0xff;
-    c = Math.floor(c / 256);
+function validateAlias(value) {
+  const alias = String(value || "").trim();
+  if (!alias) return "";
+  if (alias.length < 6) return "Alias must be at least 6 characters.";
+  if (alias.length > 36) return "Alias must not exceed 36 characters.";
+  if (!/^[a-zA-Z0-9._-]+$/.test(alias)) {
+    return "Alias may only use letters, numbers, dot, underscore, and hyphen.";
   }
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", cryptoKey, counterBytes);
-  const hmac = new Uint8Array(sig);
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const code =
-    (((hmac[offset] & 0x7f) << 24) |
-      ((hmac[offset + 1] & 0xff) << 16) |
-      ((hmac[offset + 2] & 0xff) << 8) |
-      (hmac[offset + 3] & 0xff)) %
-    1000000;
-  return String(code).padStart(6, "0");
+  return "";
 }
 
 export default function SignUpStep1() {
@@ -91,9 +64,24 @@ export default function SignUpStep1() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
-  const [totpSecret, setTotpSecret] = useState("");
-  const [totpSent, setTotpSent] = useState(false);
-  const [totpInput, setTotpInput] = useState("");
+  const [aliasStatus, setAliasStatus] = useState(null);
+  const [registrationSecret, setRegistrationSecret] = useState("");
+  const [provisioningUri, setProvisioningUri] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationInput, setVerificationInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  const normalizedEmail = useMemo(() => normalizeEmail(form.email), [form.email]);
+  const aliasPlaceholder = useMemo(
+    () => defaultAliasFromEmail(normalizedEmail) || "juan.dc",
+    [normalizedEmail],
+  );
+  const finalAlias = useMemo(
+    () => (form.alias.trim() || aliasPlaceholder).toLowerCase(),
+    [aliasPlaceholder, form.alias],
+  );
+  const detectedRole = useMemo(() => detectRole(normalizedEmail), [normalizedEmail]);
 
   const passwordScore = useMemo(() => {
     if (!form.password) return null;
@@ -103,6 +91,14 @@ export default function SignUpStep1() {
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: "" }));
+    if (key === "alias") setAliasStatus(null);
+    if (key === "email") {
+      setRegistrationSecret("");
+      setProvisioningUri("");
+      setEmailVerified(false);
+      setVerificationInput("");
+      setAliasStatus(null);
+    }
   };
 
   const getScoreLabel = (score) => {
@@ -123,108 +119,178 @@ export default function SignUpStep1() {
     return "#059669";
   };
 
-  const handleGenerateTotp = () => {
+  const validateProfileSecurity = () => {
     const nextErrors = {};
-    const normalizedEmail = normalizeEmail(form.email);
-
-    if (!form.alias.trim()) {
-      nextErrors.alias = "Sign-in alias is required.";
-    } else if (form.alias.trim().length < 3) {
-      nextErrors.alias = "Alias must be at least 3 characters.";
-    }
-
     const emailError = validateEmail(normalizedEmail);
-    if (emailError) {
-      nextErrors.email = emailError;
-    }
-
-    if (!form.password) {
-      nextErrors.password = "Password is required.";
-    } else if ((passwordScore ?? 0) < 65) {
-      nextErrors.password =
-        "Password is too weak. Please choose a stronger password.";
-    }
-
+    const aliasError = validateAlias(form.alias);
     const confirmPasswordError = validateConfirmPassword(
       form.password,
       form.confirmPassword,
     );
-    if (confirmPasswordError) {
-      nextErrors.confirmPassword = confirmPasswordError;
-    }
 
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
+    if (aliasError) nextErrors.alias = aliasError;
+    if (emailError) nextErrors.email = emailError;
+    if (!form.password) {
+      nextErrors.password = "Password is required.";
+    } else if (form.password.length < 12) {
+      nextErrors.password = "Password must be at least 12 characters.";
+    } else if (form.password.length > 72) {
+      nextErrors.password = "Password must not exceed 72 characters.";
+    } else if ((passwordScore ?? 0) < 65) {
+      nextErrors.password =
+        "Password is not strong enough. Aim for Good strength.";
     }
+    if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
 
-    const secret = generateTotpSecret();
-    setTotpSecret(secret);
-    setTotpSent(true);
-    Alert.alert(
-      "Authenticator Setup Started",
-      "Use the debug card below to complete step 2 of 3.",
-    );
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleVerifyTotp = async () => {
-    if (!/^\d{6}$/.test(totpInput.trim())) {
-      Alert.alert("Invalid Code", "Enter the 6-digit code from your authenticator app.");
-      return;
+  const handleAliasBlur = async () => {
+    if (!finalAlias || finalAlias.length < 2) {
+      setAliasStatus(null);
+      return true;
     }
 
-    // Validate against current and previous window to allow for clock drift
-    const [current, previous] = await Promise.all([
-      generateTotpCode(totpSecret, 30),
-      generateTotpCode(totpSecret, 30).then(() =>
-        (async () => {
-          const counter = Math.floor(Date.now() / 1000 / 30) - 1;
-          const keyBytes = base32Decode(totpSecret);
-          const counterBytes = new Uint8Array(8);
-          let c = counter;
-          for (let i = 7; i >= 0; i--) {
-            counterBytes[i] = c & 0xff;
-            c = Math.floor(c / 256);
-          }
-          const cryptoKey = await crypto.subtle.importKey(
-            "raw",
-            keyBytes,
-            { name: "HMAC", hash: "SHA-1" },
-            false,
-            ["sign"],
-          );
-          const sig = await crypto.subtle.sign("HMAC", cryptoKey, counterBytes);
-          const hmac = new Uint8Array(sig);
-          const offset = hmac[hmac.length - 1] & 0x0f;
-          const code =
-            (((hmac[offset] & 0x7f) << 24) |
-              ((hmac[offset + 1] & 0xff) << 16) |
-              ((hmac[offset + 2] & 0xff) << 8) |
-              (hmac[offset + 3] & 0xff)) %
-            1000000;
-          return String(code).padStart(6, "0");
-        })(),
-      ),
-    ]);
+    setAliasStatus("checking");
+    let result;
+    try {
+      result = await checkAliasAvailability(finalAlias);
+    } catch {
+      setAliasStatus(null);
+      return true;
+    }
+    if (!result.success) {
+      setAliasStatus(null);
+      return true;
+    }
 
-    if (totpInput.trim() !== current && totpInput.trim() !== previous) {
+    setAliasStatus(result.available ? "available" : "taken");
+    if (!result.available) {
+      setErrors((prev) => ({
+        ...prev,
+        alias: "This alias is already taken. Please choose another.",
+      }));
+      return false;
+    }
+    return true;
+  };
+
+  const handleStartVerification = async () => {
+    if (!validateProfileSecurity()) return;
+
+    setLoading(true);
+    try {
+      const aliasAvailable = await handleAliasBlur();
+      if (!aliasAvailable) return;
+
+      let response;
+      try {
+        response = await startRegistration(normalizedEmail);
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          email: error?.message || "Unable to start email verification.",
+        }));
+        return;
+      }
+      if (!response.success) {
+        setErrors((prev) => ({
+          ...prev,
+          email: response.error || "Unable to start email verification.",
+        }));
+        return;
+      }
+
+      setRegistrationSecret(response.secret);
+      setProvisioningUri(response.provisioningUri);
+      setEmailVerified(Boolean(response.verifiedCode));
       Alert.alert(
-        "Incorrect Code",
-        "The authenticator code is incorrect. Check your authenticator app and try again.",
+        "Email Verification Started",
+        "Use your authenticator app to scan or enter the security secret.",
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const code = verificationInput.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setErrors((prev) => ({
+        ...prev,
+        verification: "Enter the 6-digit authenticator code.",
+      }));
       return;
     }
 
+    setVerifying(true);
+    setErrors((prev) => ({ ...prev, verification: "" }));
+    try {
+      let result;
+      try {
+        result = await verifyRegistrationCode({
+          email: normalizedEmail,
+          code,
+          secret: registrationSecret,
+        });
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          verification: error?.message || "Verification failed.",
+        }));
+        setVerificationInput("");
+        return;
+      }
+
+      if (!result.success) {
+        setErrors((prev) => ({
+          ...prev,
+          verification: result.error || "Verification failed.",
+        }));
+        setVerificationInput("");
+        return;
+      }
+
+      setEmailVerified(true);
+      setVerificationInput("");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      verificationInput.length === 6 &&
+      registrationSecret &&
+      !emailVerified &&
+      !verifying
+    ) {
+      handleVerifyCode();
+    }
+  }, [verificationInput]);
+
+  const handleContinue = () => {
     router.push({
       pathname: "/sign-up/step/2",
       params: {
         ...params,
-        alias: form.alias.trim(),
-        email: normalizeEmail(form.email),
+        alias: finalAlias,
+        email: normalizedEmail,
         password: form.password,
-        totpSecret,
+        registrationSecret,
+        provisioningUri,
+        role: detectedRole,
       },
     });
+  };
+
+  const resetEmailVerification = () => {
+    setRegistrationSecret("");
+    setProvisioningUri("");
+    setEmailVerified(false);
+    setVerificationInput("");
+    setErrors((prev) => ({ ...prev, verification: "" }));
   };
 
   return (
@@ -234,25 +300,18 @@ export default function SignUpStep1() {
           padding: SPACING.md,
           paddingBottom: 112,
         }}
+        keyboardShouldPersistTaps="handled"
       >
         <PageHeader
           title="Create Account"
-          subtitle="Step 2 of 3: Sign-in and authenticator app"
+          subtitle="Step 2 of 3: Email, profile, and security"
           color={COLORS.primary}
           onBack={() => router.back()}
         />
 
-        {!totpSent ? (
+        {!registrationSecret ? (
           <>
             <Card>
-              <TextField
-                label="Sign-in Alias"
-                value={form.alias}
-                onChangeText={(value) => updateField("alias", value)}
-                placeholder="Choose a unique alias"
-                error={errors.alias}
-                autoCapitalize="none"
-              />
               <TextField
                 label="Email"
                 value={form.email}
@@ -262,7 +321,38 @@ export default function SignUpStep1() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              <TextField
+                label="Sign-in Alias"
+                value={form.alias}
+                onChangeText={(value) =>
+                  updateField("alias", value.toLowerCase().trim())
+                }
+                onBlur={handleAliasBlur}
+                placeholder={aliasPlaceholder}
+                error={errors.alias}
+                autoCapitalize="none"
+              />
+              {aliasStatus === "checking" ? (
+                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
+                  Checking alias...
+                </Text>
+              ) : aliasStatus === "available" ? (
+                <Text style={{ color: COLORS.success, fontSize: FONT.sm }}>
+                  Alias available
+                </Text>
+              ) : null}
             </Card>
+
+            {detectedRole !== "customer" ? (
+              <Card>
+                <Text style={{ color: COLORS.textSecondary }}>
+                  Role detected:{" "}
+                  <Text style={{ fontWeight: FONT.bold }}>
+                    {detectedRole.toUpperCase()}
+                  </Text>
+                </Text>
+              </Card>
+            ) : null}
 
             <Card>
               <PasswordField
@@ -310,86 +400,116 @@ export default function SignUpStep1() {
           </>
         ) : (
           <>
-            {__DEV__ ? (
-              <Card
-                style={{
-                  backgroundColor: COLORS.primaryLight,
-                  borderColor: COLORS.primary,
-                  borderWidth: 1,
-                  marginBottom: SPACING.md,
-                }}
-              >
-                <Text
-                  style={{
-                    fontWeight: FONT.bold,
-                    color: COLORS.primary,
-                    marginBottom: SPACING.xs,
-                  }}
-                >
-                  Debug: Authenticator Secret
-                </Text>
-                <Text
-                  style={{
-                    fontSize: FONT.lg,
-                    fontWeight: "800",
-                    color: COLORS.textPrimary,
-                    marginBottom: SPACING.sm,
-                  }}
-                >
-                  {totpSecret}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: FONT.sm,
-                    color: COLORS.textSecondary,
-                    marginBottom: SPACING.sm,
-                  }}
-                >
-                  Authenticator QR Code URL
-                </Text>
-                <Text
-                  style={{
-                    fontSize: FONT.sm,
-                    color: COLORS.textPrimary,
-                    fontFamily: "monospace",
-                    backgroundColor: COLORS.surface,
-                    padding: SPACING.sm,
-                    borderRadius: RADIUS.sm,
-                  }}
-                >
-                  {buildOtpAuthUrl(totpSecret, normalizeEmail(form.email))}
-                </Text>
-              </Card>
-            ) : null}
-
             <Card>
               <Text
                 style={{
                   color: COLORS.textSecondary,
-                  marginBottom: SPACING.sm,
+                  marginBottom: SPACING.md,
                 }}
               >
-                Enter the 6-digit code from your authenticator app to continue.
+                Scan the QR code or enter the secret in your authenticator app,
+                then provide the 6-digit code.
               </Text>
-              <TextField
-                label="Authenticator Code"
-                value={totpInput}
-                onChangeText={setTotpInput}
-                placeholder="Enter 6-digit code"
-                keyboardType="number-pad"
-                autoCapitalize="none"
-                maxLength={6}
-              />
+
+              {provisioningUri ? (
+                <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
+                  <QrCodeMatrix value={provisioningUri} size={184} />
+                </View>
+              ) : null}
+
+              {__DEV__ ? (
+                <View
+                  style={{
+                    backgroundColor: COLORS.primaryLight,
+                    borderColor: COLORS.primary,
+                    borderWidth: 1,
+                    borderRadius: RADIUS.md,
+                    padding: SPACING.md,
+                    marginBottom: SPACING.md,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: FONT.bold,
+                      color: COLORS.primary,
+                      marginBottom: SPACING.xs,
+                    }}
+                  >
+                    Debug: Authenticator Secret
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: FONT.lg,
+                      fontWeight: "800",
+                      color: COLORS.textPrimary,
+                    }}
+                  >
+                    {registrationSecret}
+                  </Text>
+                </View>
+              ) : null}
+
+              {emailVerified ? (
+                <View
+                  style={{
+                    backgroundColor: COLORS.successLight,
+                    borderRadius: RADIUS.md,
+                    padding: SPACING.md,
+                  }}
+                >
+                  <Text style={{ color: COLORS.success, fontWeight: FONT.bold }}>
+                    Email verified
+                  </Text>
+                </View>
+              ) : (
+                <TextField
+                  label="Authenticator Code"
+                  value={verificationInput}
+                  onChangeText={(value) => {
+                    setVerificationInput(value.replace(/\D/g, "").slice(0, 6));
+                    setErrors((prev) => ({ ...prev, verification: "" }));
+                  }}
+                  placeholder="Enter 6-digit code"
+                  keyboardType="number-pad"
+                  autoCapitalize="none"
+                  maxLength={6}
+                  error={errors.verification}
+                />
+              )}
+
+              <TouchableOpacity
+                onPress={resetEmailVerification}
+                style={{ alignItems: "center", marginTop: SPACING.md }}
+              >
+                <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                  Change email
+                </Text>
+              </TouchableOpacity>
             </Card>
           </>
         )}
       </ScrollView>
+
       <StickyActionBar>
-        <Button
-          title={totpSent ? "Verify Authenticator Code" : "Next"}
-          onPress={totpSent ? handleVerifyTotp : handleGenerateTotp}
-          variant="primary"
-        />
+        {!registrationSecret ? (
+          <Button
+            title={loading ? "Starting Verification..." : "Start Verification"}
+            onPress={handleStartVerification}
+            variant="primary"
+            loading={loading}
+            disabled={loading || aliasStatus === "checking"}
+          />
+        ) : emailVerified ? (
+          <Button title="Continue" onPress={handleContinue} variant="primary" />
+        ) : (
+          <Button
+            title={verifying ? "Verifying..." : "Verify Authenticator Code"}
+            onPress={handleVerifyCode}
+            variant="primary"
+            loading={verifying}
+            disabled={verifying}
+          />
+        )}
       </StickyActionBar>
     </SafeAreaView>
   );

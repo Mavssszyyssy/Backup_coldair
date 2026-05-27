@@ -10,6 +10,12 @@ const getUnitLabel = (product, unit, index) =>
     unit.branch ? `(${unit.branch})` : ""
   }`.trim();
 
+const getTechnicianQrValue = (unit) => {
+  const serial = encodeURIComponent(unit.serialNumber || "");
+  if (typeof window === "undefined") return unit.qrCode || unit.serialNumber;
+  return `${window.location.origin}/tech/field-registration?serial=${serial}`;
+};
+
 const AdminSerialQr = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +115,7 @@ const AdminSerialQr = () => {
                     <article className="serialqr-card" key={unit.serialNumber}>
                       <div className="serialqr-codebox">
                         <QRCodeCanvas
-                          value={unit.qrCode || unit.serialNumber}
+                          value={getTechnicianQrValue(unit)}
                           size={132}
                           level="M"
                           includeMargin

@@ -12,13 +12,13 @@ function PaymentMethod({ selectedMethod, onSelectMethod, branchHint }) {
     {
       id: "gcash",
       name: "GCash",
-      description: "Payment gateway — complete after order submit",
+      description: "Pay securely through PayMongo hosted checkout",
       iconSrc: icons.customize,
     },
     {
       id: "credit",
       name: "Credit / debit card",
-      description: "Payment gateway (Visa, Mastercard, JCB)",
+      description: "Visa or Mastercard through PayMongo",
       iconSrc: icons.shieldKeyhole,
     },
     {

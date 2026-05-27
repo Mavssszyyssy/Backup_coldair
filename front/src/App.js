@@ -19,6 +19,14 @@ import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
 import AdminStoreOperations from "./components/ADMIN/Store/AdminStoreOperations";
 import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
 import AdminUnlockUsers from "./components/ADMIN/Users/AdminUnlockUsers";
+import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
+import OwnerAmpDashboard from "./components/AMP/OwnerAmpDashboard";
+import TechMainScreen from "./components/TECH/Dashboard/TechMainScreen";
+import ProfileTechnicianScreen from "./components/TECH/Profile/ProfileTechnicianScreen";
+import TechEditProfile from "./components/TECH/Profile/TechEditProfile";
+import FieldServiceRegistration from "./components/TECH/Tasks/FieldServiceRegistration";
+import TaskDetails from "./components/TECH/Tasks/TaskDetails";
+import TaskScreens from "./components/TECH/Tasks/TaskScreens";
 import SuperAdminAlerts from "./components/SUPERADMIN/Dashboard/SuperAdminAlerts";
 import SuperAdminBranches from "./components/SUPERADMIN/Dashboard/SuperAdminBranches";
 import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDashboard";
@@ -37,6 +45,7 @@ import Login from "./components/login/Login";
 import MyUnit from "./components/myunit/MyUnit";
 import MyOrders from "./components/orders/MyOrders";
 import ProfileCenter from "./components/profile/ProfileCenter";
+import ReceiptView from "./components/receipt/ReceiptView";
 import ForgotPassword from "./components/recover/ForgotPassword";
 import ResetPassword from "./components/recover/ResetPassword";
 import Register from "./components/register/Register";
@@ -49,6 +58,12 @@ import { UserProvider, useUser } from "./context/UserContext";
 
 const getRoleHomePath = (role) => {
   switch (role) {
+    case "technician":
+      return "/tech/dashboard";
+    case "manager":
+      return "/manager/amp";
+    case "owner":
+      return "/owner/amp";
     case "admin":
       return "/admin/dashboard";
     case "superadmin":
@@ -249,6 +264,14 @@ function AppContent() {
           }
         />{" "}
         <Route
+          path="/receipt/:orderId"
+          element={
+            <ProtectedRoute>
+              <ReceiptView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/faq"
           element={
             <ProtectedRoute>
@@ -358,6 +381,70 @@ function AppContent() {
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminStoreOperations />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/dashboard"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <TechMainScreen />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/tasks"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <TaskScreens />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/tasks/:taskId"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <TaskDetails />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/field-registration"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <FieldServiceRegistration />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/profile"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <ProfileTechnicianScreen />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/tech/profile/edit"
+          element={
+            <RoleRoute allowedRoles={["technician"]}>
+              <TechEditProfile />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/manager/amp"
+          element={
+            <RoleRoute allowedRoles={["manager", "owner", "admin", "superadmin"]}>
+              <ManagerAmpDashboard />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/owner/amp"
+          element={
+            <RoleRoute allowedRoles={["owner", "superadmin"]}>
+              <OwnerAmpDashboard />
             </RoleRoute>
           }
         />

@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -44,7 +44,11 @@ export default function CustomerHomeScreen() {
       let active = true;
 
       Promise.all([
-        ensureSeededCustomerUnit(current).then(() => getUnitsByUser(current?.id)),
+        getUnitsByUser(current?.id).then(async (items) => {
+          if (items.length > 0) return items;
+          await ensureSeededCustomerUnit(current);
+          return getUnitsByUser(current?.id);
+        }),
         getOrdersByUser(current),
         getCustomerServiceHistory(current?.id),
       ]).then(([nextUnits, nextOrders, history]) => {
@@ -73,6 +77,11 @@ export default function CustomerHomeScreen() {
     <CustomerScreen
       title="Home"
       subtitle={`Welcome back, ${getDisplayName(current)}`}
+      right={
+        <Pressable onPress={() => router.push("/customer/notifications")} hitSlop={12}>
+          <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />
+        </Pressable>
+      }
     >
       <AppHero
         eyebrow="Cold Air ACT"

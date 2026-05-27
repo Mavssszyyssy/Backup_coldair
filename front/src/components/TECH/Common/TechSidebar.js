@@ -1,4 +1,4 @@
-import { ClipboardText, SignOut, Users, Wrench } from "@phosphor-icons/react";
+import { ClipboardText, QrCode, SignOut, Users, Wrench } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmDialog } from "../../../utils/dialog";
@@ -6,6 +6,7 @@ import { confirmDialog } from "../../../utils/dialog";
 const items = [
   { to: "/tech/dashboard", label: "Dashboard", icon: ClipboardText },
   { to: "/tech/tasks", label: "Tasks", icon: Wrench },
+  { to: "/tech/field-registration", label: "QR Registration", icon: QrCode },
   { to: "/tech/profile", label: "Profile", icon: Users },
 ];
 

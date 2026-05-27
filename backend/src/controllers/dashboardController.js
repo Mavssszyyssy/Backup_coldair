@@ -28,7 +28,9 @@ const getTechnicianDashboard = async (activeBranch = "") => {
   return {
     stats: {
       pendingTasks: tasks.filter((t) => t.status === "pending").length,
+      processingTasks: tasks.filter((t) => t.status === "pending").length,
       inProgressTasks: tasks.filter((t) => t.status === "in-progress").length,
+      onHoldTasks: tasks.filter((t) => t.status === "on-hold").length,
       completedToday: tasks.filter((t) => t.completedAt && t.completedAt >= today).length,
       totalTasks: tasks.length,
       branchLabel: activeBranch || "All branches",
@@ -187,7 +189,10 @@ const getTechnicianKPIs = async (activeBranch = "") => {
 };
 
 const getAdminDashboard = async (activeBranch = "") => {
-  const orderQuery = { status: { $ne: "cancelled" } };
+  const orderQuery = {
+    status: { $ne: "cancelled" },
+    workflowStatus: { $ne: "cancelled" },
+  };
   if (activeBranch) {
     orderQuery.$or = [
       { customerBranch: activeBranch },

@@ -339,6 +339,25 @@ const applyProfileUpdate = async (
     user.address = sanitizeText(payload.address, 220);
   }
 
+  [
+    ["municipality", 120],
+    ["municipality_code", 40],
+    ["submunicipality", 120],
+    ["submunicipality_code", 40],
+    ["thoroughfare", 180],
+    ["property_block_lot", 120],
+    ["apartment_unit", 120],
+    ["landmark", 180],
+    ["plus_code", 80],
+    ["contact_method", 60],
+    ["messenger_handle", 120],
+    ["delivery_instructions", 220],
+  ].forEach(([field, maxLength]) => {
+    if (payload[field] !== undefined) {
+      user[field] = sanitizeText(payload[field], maxLength);
+    }
+  });
+
   if (
     payload.billingAddress !== undefined &&
     payload.billingAddress &&

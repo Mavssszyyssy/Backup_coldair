@@ -21,6 +21,8 @@ const inventoryChangeRequestRoutes = require("./routes/inventoryChangeRequestRou
 const restockOrderRoutes = require("./routes/restockOrderRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const ampRoutes = require("./routes/ampRoutes");
+const predictionRoutes = require("./routes/predictionRoutes");
 
 const app = express();
 
@@ -54,7 +56,11 @@ app.use(cookieParser(env.jwtSecret));
 app.use(express.json({ limit: "5mb" }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({
+    status: "ok",
+    build: "mobile-order-bridge-2026-05-25",
+    cwd: process.cwd(),
+  });
 });
 
 app.use("/api/auth", authRoutes);
@@ -70,6 +76,8 @@ app.use("/api/inventory-change-requests", inventoryChangeRequestRoutes);
 app.use("/api/restock-orders", restockOrderRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/amp", ampRoutes);
+app.use("/api/predictions", predictionRoutes);
 
 const buildPath = path.resolve(__dirname, "..", "..", "front", "build");
 const indexHtml = path.join(buildPath, "index.html");

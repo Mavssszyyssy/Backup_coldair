@@ -18,7 +18,7 @@ const taskSchema = new mongoose.Schema(
     assignedTechnicianName: { type: String, default: "" },
     status: {
       type: String,
-      enum: ["pending", "in-progress", "completed"],
+      enum: ["pending", "in-progress", "on-hold", "completed"],
       default: "pending",
     },
     priority: {
@@ -31,6 +31,14 @@ const taskSchema = new mongoose.Schema(
     assignedRole: { type: String, default: "technician" },
     branch: { type: String, default: "", index: true },
     completedAt: { type: Date, default: null },
+    proof: {
+      beforePhotos: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      afterPhotos: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      customerSignature: { type: mongoose.Schema.Types.Mixed, default: {} },
+      technicianName: { type: String, default: "" },
+      submittedAt: { type: Date, default: null },
+      notes: { type: String, default: "" },
+    },
     payload: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }

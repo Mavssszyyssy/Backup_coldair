@@ -2,6 +2,7 @@ import {
   Calendar,
   Clock,
   Package,
+  Receipt,
   Snowflake,
   Truck,
   Wrench,
@@ -13,7 +14,21 @@ import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
-function OrderCard({ order, onTrack, onReorder }) {
+const refundStatusLabel = (status = "") => {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "completed") return "Refund completed";
+  if (normalized === "reviewed") return "Refund reviewed";
+  return "Refund review pending";
+};
+
+const cancellationStatusLabel = (order = {}) => {
+  if (order.refundReview?.required) return refundStatusLabel(order.refundReview.status);
+  if (order.cancellationRequest?.status === "approved") return "Cancellation approved";
+  if (order.cancellationRequest?.requested) return "Cancellation requested";
+  return "";
+};
+
+function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case "to_pay":
@@ -65,6 +80,10 @@ function OrderCard({ order, onTrack, onReorder }) {
   };
 
   const statusCfg = getStatusConfig(order.status);
+  const canRequestCancel =
+    ["to_pay", "to_deliver"].includes(String(order.status || "").toLowerCase()) &&
+    !order.cancellationRequest?.requested;
+  const cancellationLabel = cancellationStatusLabel(order);
 
   return (
     <BoutiqueCard padding={0} style={{ overflow: "hidden" }}>
@@ -121,6 +140,34 @@ function OrderCard({ order, onTrack, onReorder }) {
         <BoutiqueStack gap={20}>
           {/* META INFO */}
           <BoutiqueBox direction="row" gap={32} wrap="wrap">
+            {order.refundReview?.required && (
+              <BoutiqueStack gap={2}>
+                <BoutiqueText
+                  variant="label"
+                  size="9px"
+                  color={BQ_COLORS.inkFaint}
+                >
+                  Refund Review
+                </BoutiqueText>
+                <BoutiqueText size="13px" weight={700} color="#d97706">
+                  {refundStatusLabel(order.refundReview.status)}
+                </BoutiqueText>
+              </BoutiqueStack>
+            )}
+            {cancellationLabel && (
+              <BoutiqueStack gap={2}>
+                <BoutiqueText
+                  variant="label"
+                  size="9px"
+                  color={BQ_COLORS.inkFaint}
+                >
+                  Cancellation
+                </BoutiqueText>
+                <BoutiqueText size="13px" weight={700} color="#2563eb">
+                  {cancellationLabel}
+                </BoutiqueText>
+              </BoutiqueStack>
+            )}
             {order.receipt?.receiptNumber && (
               <BoutiqueStack gap={2}>
                 <BoutiqueText
@@ -226,6 +273,16 @@ function OrderCard({ order, onTrack, onReorder }) {
             </BoutiqueStack>
 
             <BoutiqueBox direction="row" gap={12}>
+              {order.receipt?.receiptNumber ? (
+                <BoutiqueButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onReceipt(order)}
+                  style={{ width: "auto" }}
+                >
+                  <Receipt size={16} weight="bold" /> Receipt
+                </BoutiqueButton>
+              ) : null}
               <BoutiqueButton
                 variant="outline"
                 size="sm"
@@ -234,6 +291,16 @@ function OrderCard({ order, onTrack, onReorder }) {
               >
                 Track Order
               </BoutiqueButton>
+              {canRequestCancel ? (
+                <BoutiqueButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onCancelRequest(order)}
+                  style={{ width: "auto", color: BQ_COLORS.danger, borderColor: "#fecaca" }}
+                >
+                  Request Cancel
+                </BoutiqueButton>
+              ) : null}
               <BoutiqueButton
                 variant="ghost"
                 size="sm"

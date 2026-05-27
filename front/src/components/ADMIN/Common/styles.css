@@ -792,6 +792,21 @@
   background: var(--gray-50);
 }
 
+.admin-notifications-item.unread {
+  background: #eff6ff;
+}
+
+.admin-notifications-item.unread .admin-notifications-item-title::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
 .admin-notifications-item-title {
   font-weight: 900;
   color: var(--gray-800);

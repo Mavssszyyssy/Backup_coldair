@@ -24,7 +24,7 @@ const authenticate = async (req, res, next, options = {}) => {
     req.authUser = user;
     req.user = payload;
     const headerBranch = typeof req.headers["x-branch"] === "string" ? req.headers["x-branch"].trim() : "";
-    const isBranchScopedRole = user.role === "admin" || user.role === "technician";
+    const isBranchScopedRole = user.role === "admin" || user.role === "manager" || user.role === "technician";
     req.activeBranch = "";
     if (isBranchScopedRole) {
       const effectiveBranch = BRANCHES.includes(headerBranch)

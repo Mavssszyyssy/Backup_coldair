@@ -7,6 +7,46 @@ import { useUser } from '../../../context/UserContext';
 import '../techShared.css';
 import './styles.css';
 
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+};
+
+const ProofPhoto = ({ photo }) => {
+  if (!photo?.uri) return <span className="task-proof-empty">No photo submitted</span>;
+  return (
+    <a href={photo.uri} target="_blank" rel="noreferrer" className="task-proof-photo">
+      <img src={photo.uri} alt={photo.label || 'Service proof'} />
+      <span>{photo.label || 'View photo'}</span>
+    </a>
+  );
+};
+
+const TaskProofPanel = ({ proof = {}, task = {} }) => {
+  const beforePhotos = proof.beforePhotos || [];
+  const afterPhotos = proof.afterPhotos || [];
+  return (
+    <div className="tech-card task-proof-panel">
+      <h3>Service Proof</h3>
+      <p><strong>Customer Sign-off:</strong> {proof.customerSignature?.name || task.customerSignatureName || '-'}</p>
+      <p><strong>Technician:</strong> {proof.technicianName || task.assignedTechnicianName || '-'}</p>
+      <p><strong>Submitted:</strong> {formatDateTime(proof.submittedAt || task.proofSubmittedAt)}</p>
+      <div className="task-proof-grid">
+        <div>
+          <strong>Before Photo</strong>
+          <ProofPhoto photo={beforePhotos[0]} />
+        </div>
+        <div>
+          <strong>After Photo</strong>
+          <ProofPhoto photo={afterPhotos[0]} />
+        </div>
+      </div>
+      {proof.notes ? <p><strong>Proof Notes:</strong> {proof.notes}</p> : null}
+    </div>
+  );
+};
+
 const TaskDetails = () => {
   const { taskId } = useParams();
   const navigate = useNavigate();
@@ -36,6 +76,9 @@ const TaskDetails = () => {
     }
   };
 
+  const serials = task?.registrationProgress?.requiredSerials || [];
+  const registrations = task?.ampRegistrations || {};
+
   return (
     <TechLayout title="Task Details" subtitle={`Task #${taskId}`}>
       {loading ? (
@@ -55,14 +98,43 @@ const TaskDetails = () => {
           <p><strong>Status:</strong> {task.status}</p>
           <p><strong>Assigned Technician:</strong> {task.assignedTechnicianName || 'Unassigned'}</p>
           <p><strong>Notes:</strong> {task.notes || '-'}</p>
+          {serials.length > 0 ? (
+            <div className="task-registration-checklist">
+              <strong>AC unit registration</strong>
+              <p>
+                {task.registrationProgress?.totalRegistered || 0} of {task.registrationProgress?.totalRequired || 0} units registered
+                {task.registrationProgress?.totalHeld ? ` / ${task.registrationProgress.totalHeld} held` : ''}
+              </p>
+              <div className="task-registration-list">
+                {serials.map((serial) => {
+                  const registration = registrations[serial];
+                  return (
+                    <button
+                      type="button"
+                      key={serial}
+                      className={`task-registration-item ${registration?.status || 'pending'}`}
+                      onClick={() => navigate(`/tech/field-registration?serial=${encodeURIComponent(serial)}`)}
+                    >
+                      <span>{serial}</span>
+                      <strong>{registration?.status || 'pending'}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {user?.role === 'technician' && task.status === 'pending' && !task.assignedTechnicianId ? (
             <button type="button" onClick={handleAccept} disabled={accepting}>
               {accepting ? 'Accepting...' : 'Accept Task'}
             </button>
           ) : null}
+          <button type="button" onClick={() => navigate(`/tech/field-registration${serials[0] ? `?serial=${encodeURIComponent(serials[0])}` : ''}`)}>
+            Open AMP Registration
+          </button>
           <button type="button" onClick={() => navigate('/tech/tasks')}>Back to Tasks</button>
         </div>
-        <UpdateTaskStatus task={task} onStatusChange={(status) => setTask((prev) => ({ ...prev, status }))} />
+        <TaskProofPanel proof={task.proof || {}} task={task} />
+        <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} />
       </div>
       )}
     </TechLayout>
