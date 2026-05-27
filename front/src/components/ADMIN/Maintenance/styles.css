@@ -1,5 +1,104 @@
 /* ===== AdminMaintenance.css ===== */
 
+.maintenance-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 160px 190px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
 
+.maintenance-filters input,
+.maintenance-filters select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  padding: 9px 12px;
+}
+
+.maintenance-request-item {
+  align-items: flex-start;
+  gap: 12px;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.maintenance-request-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.maintenance-request-main span,
+.maintenance-request-main small {
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-status {
+  border-radius: 999px;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.maintenance-status-submitted,
+.maintenance-status-reviewed {
+  background: #dbeafe;
+}
+
+.maintenance-status-assigned,
+.maintenance-status-in-progress {
+  background: #fef3c7;
+}
+
+.maintenance-status-completed {
+  background: #dcfce7;
+}
+
+.maintenance-status-cancelled {
+  background: #fee2e2;
+}
+
+.maintenance-empty {
+  color: #64748b;
+  margin: 8px 0 0;
+}
+
+.maintenance-timeline {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.maintenance-timeline-item {
+  border-top: 1px solid #e5e7eb;
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+}
+
+.maintenance-timeline-item strong {
+  color: #0f172a;
+}
+
+.maintenance-timeline-item span {
+  color: #475569;
+}
+
+.maintenance-timeline-item small {
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .maintenance-filters {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ===== ServiceRequests.css ===== */

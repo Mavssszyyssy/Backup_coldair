@@ -20,6 +20,8 @@ const auditLogSchema = new mongoose.Schema(
         "low_stock_alert",
         "user_registered",
         "user_login",
+        "order_refund_review_updated",
+        "order_cancellation_requested",
       ],
       index: true,
     },
@@ -36,7 +38,7 @@ const auditLogSchema = new mongoose.Schema(
     },
     entityType: {
       type: String,
-      enum: ["product", "inventory_change_request", "restock_order", "user"],
+      enum: ["product", "inventory_change_request", "restock_order", "user", "order"],
       required: true,
     },
     entityId: {

@@ -33,6 +33,38 @@ function normalizeUser(user = {}) {
     user.type ||
     (user.isTechnician ? "technician" : "customer");
   const role = String(rawRole).trim().toLowerCase().replace(/-/g, "_");
+  const addresses = Array.isArray(user.addresses) ? user.addresses : [];
+  const defaultAddress =
+    addresses.find((item) => item?.isDefault) || addresses[0] || {};
+  const serviceAddress =
+    user.billingAddress ||
+    user.billing_address ||
+    user.location?.address ||
+    defaultAddress ||
+    {};
+  const serviceStreet =
+    user.thoroughfare ||
+    serviceAddress.street ||
+    defaultAddress.street ||
+    "";
+  const serviceMunicipality =
+    user.municipality || serviceAddress.city || defaultAddress.city || "";
+  const serviceSubmunicipality =
+    user.submunicipality ||
+    serviceAddress.barangay ||
+    defaultAddress.barangay ||
+    "";
+  const serviceAddressLine =
+    user.address ||
+    [
+      serviceStreet,
+      serviceSubmunicipality,
+      serviceMunicipality,
+      serviceAddress.province || defaultAddress.province,
+      serviceAddress.region || defaultAddress.region,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
   return {
     ...user,
@@ -42,19 +74,20 @@ function normalizeUser(user = {}) {
     status: user.status || "active",
     alias: user.alias || "",
     suffix: user.suffix || "",
-    address: user.address || "",
+    defaultAddressId: defaultAddress?._id || defaultAddress?.id || "",
+    address: serviceAddressLine || "",
     landmark: user.landmark || "",
     plusCode: user.plus_code || user.plusCode || "",
     plus_code: user.plus_code || user.plusCode || "",
-    municipality: user.municipality || "",
+    municipality: serviceMunicipality,
     municipalityCode: user.municipality_code || user.municipalityCode || "",
     municipality_code: user.municipality_code || user.municipalityCode || "",
-    submunicipality: user.submunicipality || "",
+    submunicipality: serviceSubmunicipality,
     submunicipalityCode:
       user.submunicipality_code || user.submunicipalityCode || "",
     submunicipality_code:
       user.submunicipality_code || user.submunicipalityCode || "",
-    thoroughfare: user.thoroughfare || "",
+    thoroughfare: serviceStreet,
     propertyBlockLot: user.property_block_lot || user.propertyBlockLot || "",
     property_block_lot: user.property_block_lot || user.propertyBlockLot || "",
     apartmentUnit: user.apartment_unit || user.apartmentUnit || "",
@@ -217,6 +250,20 @@ export function UserProvider({ children }) {
         current?.id && String(current.id) === String(updatedUser.id);
 
       // Normalise field names to snake_case for the API
+      const serviceStreet = [
+        updatedUser.apartment_unit || updatedUser.apartmentUnit,
+        updatedUser.property_block_lot || updatedUser.propertyBlockLot,
+        updatedUser.thoroughfare,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const serviceAddress = {
+        region: updatedUser.region || "",
+        province: updatedUser.province || "",
+        city: updatedUser.municipality || "",
+        barangay: updatedUser.submunicipality || "",
+        street: serviceStreet || updatedUser.address || "",
+      };
       const payload = {
         name_first: updatedUser.name_first,
         name_last: updatedUser.name_last,
@@ -249,6 +296,22 @@ export function UserProvider({ children }) {
         delivery_instructions:
           updatedUser.delivery_instructions || updatedUser.deliveryInstructions,
         profile_photo: updatedUser.profile_photo || updatedUser.profilePhoto,
+        billingAddress: serviceAddress,
+        addresses: [
+          {
+            label: "Service Address",
+            type: "home",
+            name:
+              updatedUser.name ||
+              [updatedUser.name_first, updatedUser.name_last]
+                .filter(Boolean)
+                .join(" "),
+            phone: updatedUser.phone || "",
+            ...serviceAddress,
+            postalCode: updatedUser.postalCode || "",
+            isDefault: true,
+          },
+        ],
         password: updatedUser.password,
       };
 

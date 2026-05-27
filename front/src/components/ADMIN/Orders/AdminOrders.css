@@ -13,10 +13,45 @@
   gap: 14px;
 }
 
+.admin-orders-filterbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-orders-filterbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-orders-filterbar button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-orders-filterbar span {
+  min-width: 22px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 2px 7px;
+  font-size: 12px;
+}
+
 .admin-order-card {
   background: #fff;
   border: 1px solid #dbe2ef;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 14px;
 }
 
@@ -50,17 +85,274 @@
   color: #6d28d9;
 }
 
+.status-complete {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .admin-order-meta {
   margin: 6px 0;
   color: #334155;
 }
 
-.admin-order-items {
-  margin: 8px 0 12px;
-  padding-left: 18px;
+.admin-order-refund-note {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-weight: 700;
 }
 
-.admin-process-btn {
+.admin-order-refund-note span,
+.admin-order-refund-note small,
+.admin-order-cancel-request span,
+.admin-order-cancel-request small {
+  font-weight: 600;
+}
+
+.admin-order-refund-note small,
+.admin-order-cancel-request small {
+  color: #64748b;
+}
+
+.admin-order-refund-note.refund-completed {
+  color: #166534;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.admin-order-cancel-request {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-weight: 700;
+}
+
+.admin-order-cancel-request.request-approved {
+  color: #166534;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.admin-order-fulfillment {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.admin-order-fulfillment label {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-order-fulfillment select,
+.admin-order-fulfillment input,
+.admin-cancel-reason {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  padding: 8px 10px;
+  font: inherit;
+  text-transform: none;
+}
+
+.admin-order-items {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.admin-order-item {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.admin-order-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.admin-order-item-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #0f172a;
+}
+
+.admin-order-item-summary span {
+  color: #475569;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-order-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.admin-order-unit-card {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 118px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.admin-order-unit-qr {
+  display: grid;
+  place-items: center;
+  width: 108px;
+  height: 108px;
+  border: 1px solid #dbe2ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-order-unit-qr span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-order-unit-details {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.admin-order-unit-details span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-order-unit-details code {
+  color: #0f172a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-unit-details small {
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-order-unit-details small:last-child {
+  max-height: 48px;
+  overflow: hidden;
+}
+
+.admin-order-no-serials {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admin-order-proof {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #e2e8f0;
+  margin: 12px 0;
+  padding-top: 12px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.admin-order-proof > strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.admin-order-proof-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 220px));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.admin-order-proof-photos a {
+  display: grid;
+  gap: 5px;
+  color: #1d4ed8;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.admin-order-proof-photos img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  border: 1px solid #dbe2ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.admin-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-order-recovery-note {
+  margin: 10px 0 0;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-process-btn,
+.admin-cancel-btn,
+.admin-receipt-btn,
+.admin-refund-btn,
+.admin-refund-complete-btn,
+.admin-recovery-btn,
+.admin-recovery-sync-btn {
   background: #0f172a;
   color: #fff;
   border: 0;
@@ -70,7 +362,66 @@
   cursor: pointer;
 }
 
-.admin-process-btn:disabled {
+.admin-cancel-btn {
+  background: #b91c1c;
+}
+
+.admin-receipt-btn {
+  background: #2563eb;
+}
+
+.admin-refund-btn {
+  background: #d97706;
+}
+
+.admin-refund-complete-btn {
+  background: #15803d;
+}
+
+.admin-recovery-btn {
+  background: #334155;
+}
+
+.admin-recovery-sync-btn {
+  background: #0f766e;
+}
+
+.admin-cancel-reason {
+  max-width: 260px;
+}
+
+.admin-process-btn:disabled,
+.admin-cancel-btn:disabled,
+.admin-receipt-btn:disabled,
+.admin-refund-btn:disabled,
+.admin-refund-complete-btn:disabled,
+.admin-recovery-btn:disabled,
+.admin-recovery-sync-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .admin-order-row,
+  .admin-order-item-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-order-unit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-order-unit-card {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .admin-order-fulfillment {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-cancel-reason {
+    max-width: none;
+  }
 }

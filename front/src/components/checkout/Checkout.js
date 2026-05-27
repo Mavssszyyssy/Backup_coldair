@@ -6,7 +6,7 @@ import { useCart } from "../../context/CartContext";
 import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
-import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
+import { computePurchaseTotals, isPaymongoTestCart } from "../../domain/purchase/computePurchaseTotals";
 import {
   loadOrdersFromStorage,
   saveOrdersToStorage,
@@ -93,8 +93,13 @@ function Checkout() {
 
   const totals = useMemo(() => {
     const subtotal = getCartTotal();
-    return computePurchaseTotals({ subtotal, serviceAreaId, discountAmount });
-  }, [getCartTotal, serviceAreaId, discountAmount]);
+    return computePurchaseTotals({
+      subtotal,
+      serviceAreaId,
+      discountAmount,
+      isTestCheckout: isPaymongoTestCart(cart),
+    });
+  }, [cart, getCartTotal, serviceAreaId, discountAmount]);
 
   const syncAddresses = useCallback(
     (nextAddresses, currentId = "") => {
@@ -349,12 +354,7 @@ function Checkout() {
       return;
     }
 
-    // Start Payment Simulation if not COD
-    if (selectedPayment !== "cod") {
-      setIsProcessingPayment(true);
-      // Simulate network delay for payment gateway
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
+    setIsProcessingPayment(true);
 
     const fromPostReg = consumePostRegistrationCheckoutIntent();
     const orderId = `ORD-${Date.now()}`;
@@ -380,17 +380,34 @@ function Checkout() {
           address: selectedAddress,
           paymentMethod: selectedPayment,
           total: order.total,
-          mockPaymentSuccess: selectedPayment !== "cod",
+          subtotal: totals.subtotal,
+          vatAmount: totals.vatAmount,
+          shippingFee: totals.deliveryFee,
+          discountAmount: totals.discountAmount,
         }),
       });
       const created = response.order;
+      const paymentUrl =
+        response.payment?.checkoutUrl ||
+        response.payment?.checkout_url ||
+        created?.paymentUrl ||
+        created?.paymongo?.checkoutUrl ||
+        "";
       setIsProcessingPayment(false);
       clearCart();
+      if (paymentUrl) {
+        window.location.assign(paymentUrl);
+        return;
+      }
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
       const isNetworkIssue = !error?.status;
       if (isNetworkIssue) {
+        if (selectedPayment !== "cod" && selectedPayment !== "pay_on_install") {
+          alert("Unable to reach the payment gateway. Please try again.");
+          return;
+        }
         const orders = loadOrdersFromStorage();
         orders.unshift(order);
         saveOrdersToStorage(orders);
@@ -477,8 +494,10 @@ function Checkout() {
             />
             <BoutiqueText variant="h2">Processing Payment</BoutiqueText>
             <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>
-              Please do not close this window while we secure your transaction
-              with {selectedPayment === "gcash" ? "GCash" : "your bank"}...
+              Please do not close this window while we prepare your order
+              {selectedPayment === "cod" || selectedPayment === "pay_on_install"
+                ? "."
+                : " and open the PayMongo checkout."}
             </BoutiqueText>
           </BoutiqueBox>
         </BoutiqueBox>

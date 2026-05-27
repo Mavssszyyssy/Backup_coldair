@@ -38,6 +38,7 @@ export default function TechnicianLayout() {
         <Stack.Screen name="oobe/index" options={{ title: "Technician Setup" }} />
         <Stack.Screen name="oobe/reset" options={{ title: "Reset Setup" }} />
         <Stack.Screen name="dashboard" options={{ title: "Dashboard" }} />
+        <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen name="tasks" options={{ title: "My Work Orders" }} />
         <Stack.Screen name="scan-qr" options={{ title: "Scan AC Unit" }} />
         <Stack.Screen name="parts" options={{ title: "Parts Requests" }} />
@@ -45,6 +46,14 @@ export default function TechnicianLayout() {
         <Stack.Screen
           name="task/[id]/information"
           options={{ title: "Work Order Details" }}
+        />
+        <Stack.Screen
+          name="task/[id]/complete-service"
+          options={{ title: "Complete Service" }}
+        />
+        <Stack.Screen
+          name="task/[id]/amp-registration"
+          options={{ title: "AMP Unit Registration" }}
         />
         <Stack.Screen
           name="task/[id]/unit/log/select"

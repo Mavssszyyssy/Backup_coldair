@@ -37,9 +37,11 @@ export default function CustomerLayout() {
         <Stack.Screen name="home" />
         <Stack.Screen name="units/[id]" />
         <Stack.Screen name="orders" />
+        <Stack.Screen name="notifications" />
         <Stack.Screen name="shop" />
         <Stack.Screen name="checkout" />
         <Stack.Screen name="order-confirmation/[id]" />
+        <Stack.Screen name="receipt/[id]" />
         <Stack.Screen name="requests/index" />
         <Stack.Screen name="requests/[id]/index" />
         <Stack.Screen name="requests/[id]/unit/log/consume-qr" />

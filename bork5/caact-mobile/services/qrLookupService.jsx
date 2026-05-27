@@ -1,5 +1,6 @@
 // services/qrLookupService.js
 import { API_BASE } from "../constants/config";
+import * as api from "./api";
 import { getStoredToken } from "./api";
 import { getAllUnits } from "./unitStorage";
 import { getAllServiceRequests } from "./serviceRequestStorage";
@@ -218,6 +219,22 @@ async function lookupBackendSerialUnit(rawValue) {
   }
 }
 
+async function lookupBackendRegistrationContext(rawValue) {
+  const { serialNumber } = parseLookupTarget(rawValue);
+  if (!serialNumber) return null;
+
+  const token = await getStoredToken();
+  if (!token) return null;
+
+  const result = await api.fetchRegistrationContext(token, serialNumber);
+  if (!result.success) return null;
+
+  return {
+    unit: result.unit,
+    tasks: result.task ? [result.task] : [],
+  };
+}
+
 export async function lookupUnitContext(rawValue) {
   const target = parseLookupTarget(rawValue);
   const value = target.lookupValue.toLowerCase();
@@ -225,6 +242,20 @@ export async function lookupUnitContext(rawValue) {
   const unitIdValue = target.unitId.toLowerCase();
 
   if (target.serialNumber) {
+    const registrationContext = await lookupBackendRegistrationContext(rawValue);
+    if (registrationContext?.unit) {
+      return {
+        unit: registrationContext.unit,
+        requests: [],
+        tasks: registrationContext.tasks,
+        health: calculateUnitHealthScore({
+          unit: registrationContext.unit,
+          requests: [],
+          tasks: registrationContext.tasks,
+        }),
+      };
+    }
+
     const backendResult = await lookupBackendSerialUnit(rawValue);
     if (backendResult?.unit) {
       return {

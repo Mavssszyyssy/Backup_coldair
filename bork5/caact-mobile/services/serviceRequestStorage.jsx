@@ -1,5 +1,6 @@
 // services/serviceRequestStorage.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as api from "./api";
 
 const STORAGE_KEY = "service_requests_storage_v2";
 
@@ -38,22 +39,25 @@ function normalizeNumberOrNull(value) {
 
 function normalizeServiceRequest(item = {}) {
   const createdAt = item.createdAt || new Date().toISOString();
-  const issueDescription = item.issueDescription || item.concern || "";
+  const issueDescription = item.issueDescription || item.concern || item.issue || "";
   const preferredDate = item.preferredDate || item.preferredSchedule || "";
+  const payload = item.payload && typeof item.payload === "object" ? item.payload : {};
 
   return {
     id: item.id || `service_request_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
-    userId: item.userId || null,
-    customerName: item.customerName || "",
+    userId: item.userId || item.customerId || item.createdBy || null,
+    customerName: item.customerName || item.customer || "",
     customerEmail: item.customerEmail || "",
     customerPhone: item.customerPhone || "",
     unitId: item.unitId || null,
-    unitName: item.unitName || item.unitType || "",
-    serviceType: item.serviceType || item.issueType || "",
+    unitName: item.unitName || item.unitType || payload.unitName || "",
+    serviceType: item.serviceType || item.issueType || payload.serviceType || "",
     issueType: item.issueType || "",
     issueDescription,
     concern: issueDescription,
     unitType: item.unitType || item.unitName || "",
+    unitSerialNumber: item.unitSerialNumber || item.serialNumber || payload.unitSerialNumber || "",
+    qrCode: item.qrCode || payload.qrCode || "",
     address: item.address || "",
     landmark: item.landmark || "",
     plusCode: item.plusCode || "",
@@ -64,10 +68,12 @@ function normalizeServiceRequest(item = {}) {
     preferredSchedule: preferredDate,
     assignedTechnicianId: item.assignedTechnicianId || "",
     assignedTechnicianName: item.assignedTechnicianName || "",
-    linkedTaskId: item.linkedTaskId || "",
+    linkedTaskId: item.linkedTaskId || item.taskId || payload.linkedTaskId || "",
+    taskCode: item.taskCode || payload.taskCode || "",
+    branch: item.branch || payload.branch || "",
     status: item.status || SERVICE_REQUEST_STATUS.SUBMITTED,
     notes: item.notes || "",
-    completedAt: item.completedAt || null,
+    completedAt: item.completedAt || payload.completedAt || null,
     timeline:
       Array.isArray(item.timeline) && item.timeline.length > 0
         ? item.timeline
@@ -90,6 +96,17 @@ function appendTimeline(request, event) {
 }
 
 export async function getAllServiceRequests() {
+  try {
+    const token = await api.getStoredToken();
+    if (token) {
+      const result = await api.fetchMyServiceRequests(token);
+      if (result.success) {
+        await saveAllServiceRequests(result.requests);
+        return result.requests.map(normalizeServiceRequest);
+      }
+    }
+  } catch {}
+
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const parsed = safeParse(raw, []);
   return Array.isArray(parsed) ? parsed.map(normalizeServiceRequest) : [];
@@ -102,6 +119,21 @@ export async function saveAllServiceRequests(items = []) {
 }
 
 export async function createServiceRequest(payload = {}) {
+  const token = await api.getStoredToken();
+  if (token) {
+    const result = await api.createMyServiceRequest(token, payload);
+    if (!result.success) {
+      throw new Error(result.error || "Unable to create service request.");
+    }
+    const created = normalizeServiceRequest(result.request);
+    const requests = await getAllServiceRequests();
+    await saveAllServiceRequests([
+      created,
+      ...requests.filter((item) => String(item.id) !== String(created.id)),
+    ]);
+    return created;
+  }
+
   const requests = await getAllServiceRequests();
   const created = normalizeServiceRequest(payload);
   const next = [created, ...requests];
@@ -141,6 +173,24 @@ export async function updateServiceRequestStatus(
   actor = "System",
   description = ""
 ) {
+  const token = await api.getStoredToken();
+  if (token) {
+    const result = await api.patchServiceRequestStatus(token, requestId, {
+      status,
+      actor,
+      description,
+    });
+    if (!result.success) {
+      throw new Error(result.error || "Unable to update service request.");
+    }
+    const updated = normalizeServiceRequest(result.request);
+    const requests = await getAllServiceRequests();
+    await saveAllServiceRequests(
+      requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
+    );
+    return updated;
+  }
+
   const requests = await getAllServiceRequests();
 
   const next = requests.map((item) =>
@@ -208,6 +258,26 @@ export async function assignTechnicianToServiceRequest(
   linkedTaskId = "",
   actor = "Admin"
 ) {
+  const token = await api.getStoredToken();
+  if (token) {
+    const result = await api.patchServiceRequestStatus(token, requestId, {
+      status: SERVICE_REQUEST_STATUS.ASSIGNED,
+      assignedTechnicianId: technicianId || "",
+      assignedTechnicianName: technicianName || "",
+      linkedTaskId,
+      actor,
+    });
+    if (!result.success) {
+      throw new Error(result.error || "Unable to assign technician.");
+    }
+    const updated = normalizeServiceRequest(result.request);
+    const requests = await getAllServiceRequests();
+    await saveAllServiceRequests(
+      requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
+    );
+    return updated;
+  }
+
   const requests = await getAllServiceRequests();
 
   const next = requests.map((item) =>

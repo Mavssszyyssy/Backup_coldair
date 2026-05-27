@@ -15,6 +15,7 @@ const TaskFilters = ({ filter, setFilter }) => (
       <option value="all">All</option>
       <option value="processing">Processing</option>
       <option value="in-progress">In Progress</option>
+      <option value="on-hold">On Hold</option>
       <option value="completed">Completed</option>
     </select>
   </div>

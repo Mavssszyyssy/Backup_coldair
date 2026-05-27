@@ -12,9 +12,19 @@ const STORAGE_KEY = "technician_tasks_storage_v2";
 export const TASK_STATUS = {
   PENDING: "Pending",
   IN_PROGRESS: "In Progress",
+  ON_HOLD: "On Hold",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
+
+function normalizeTaskStatus(status) {
+  const value = String(status || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+  if (value === "in-progress") return TASK_STATUS.IN_PROGRESS;
+  if (value === "completed") return TASK_STATUS.COMPLETED;
+  if (value === "cancelled" || value === "canceled") return TASK_STATUS.CANCELLED;
+  if (value === "on-hold") return TASK_STATUS.ON_HOLD;
+  return TASK_STATUS.PENDING;
+}
 
 function safeParse(value, fallback) {
   try {
@@ -38,6 +48,20 @@ export function normalizeTask(item = {}) {
   const createdAt = item.createdAt || new Date().toISOString();
   const title = item.title || item.issueType || "Service Task";
   const description = item.description || item.concern || item.issueDescription || "";
+  const orderItems = Array.isArray(item.items) ? item.items : [];
+  const serialNumbers = Array.from(
+    new Set(
+      orderItems
+        .flatMap((orderItem) => [
+          ...(Array.isArray(orderItem.serialNumbers) ? orderItem.serialNumbers : []),
+          ...(Array.isArray(orderItem.serialUnits)
+            ? orderItem.serialUnits.map((unit) => unit?.serialNumber)
+            : []),
+        ])
+        .map((serial) => String(serial || "").trim())
+        .filter(Boolean),
+    ),
+  );
   const laborCost = Number(item.laborCost || 0);
   const partsCost = Number(item.partsCost || 0);
   const additionalCost = Number(item.additionalCost || 0);
@@ -45,23 +69,47 @@ export function normalizeTask(item = {}) {
     item.totalServiceCost === undefined || item.totalServiceCost === null
       ? laborCost + partsCost + additionalCost
       : Number(item.totalServiceCost || 0);
+  const proof = item.proof && typeof item.proof === "object"
+    ? item.proof
+    : {
+        beforePhotos: item.beforePhotoUri ? [{ uri: item.beforePhotoUri, label: "Before service" }] : [],
+        afterPhotos: item.afterPhotoUri ? [{ uri: item.afterPhotoUri, label: "After service" }] : [],
+        customerSignature: {
+          name: item.customerSignatureName || "",
+          signature: item.customerSignature || "",
+          signedAt: item.customerSignedAt || "",
+        },
+        technicianName: item.technicianName || item.assignedTechnicianName || "",
+        submittedAt: item.proofSubmittedAt || "",
+        notes: item.proofNotes || item.notes || "",
+      };
   const completionNotes =
     item.completionNotes ||
     [item.findings, item.resolution, item.notes].filter(Boolean).join(" | ");
 
   return {
     id: item.id || `task_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+    taskCode: item.taskCode || "",
+    orderId: item.orderId || "",
+    orderCode: item.orderCode || "",
+    items: orderItems,
+    serialNumbers,
+    registrationProgress: item.registrationProgress || null,
+    ampRegistrations: item.ampRegistrations || {},
     requestId: item.requestId || "",
     title,
     description,
     customerId: item.customerId || item.userId || "",
-    customerName: item.customerName || "",
+    customerName: item.customerName || item.customer || "",
     customerEmail: item.customerEmail || "",
     customerPhone: item.customerPhone || "",
     issueType: item.issueType || "",
     concern: description,
     unitId: item.unitId || null,
-    unitName: item.unitName || item.unitType || "",
+    unitName:
+      item.unitName ||
+      item.unitType ||
+      orderItems.map((orderItem) => orderItem.name).filter(Boolean).join(", "),
     unitType: item.unitType || item.unitName || "",
     address: item.address || "",
     plusCode: item.plusCode || "",
@@ -69,7 +117,7 @@ export function normalizeTask(item = {}) {
     assignedTechnicianName: item.assignedTechnicianName || "",
     priority: item.priority || "Normal",
     scheduledDate: item.scheduledDate || item.preferredDate || item.preferredSchedule || "",
-    status: item.status || TASK_STATUS.PENDING,
+    status: normalizeTaskStatus(item.status),
     findings: item.findings || "",
     resolution: item.resolution || "",
     beforeCondition: item.beforeCondition || "",
@@ -81,6 +129,12 @@ export function normalizeTask(item = {}) {
     totalServiceCost,
     nextMaintenanceDate: item.nextMaintenanceDate || "",
     customerAdvice: item.customerAdvice || "",
+    proof,
+    beforePhotoUri: item.beforePhotoUri || proof.beforePhotos?.[0]?.uri || "",
+    afterPhotoUri: item.afterPhotoUri || proof.afterPhotos?.[0]?.uri || "",
+    customerSignatureName: item.customerSignatureName || proof.customerSignature?.name || "",
+    customerSignature: item.customerSignature || proof.customerSignature?.signature || "",
+    proofSubmittedAt: item.proofSubmittedAt || proof.submittedAt || "",
     completionNotes,
     notes: item.notes || "",
     startedAt: item.startedAt || null,
@@ -274,11 +328,17 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
       if (token) {
         const result = await api.patchTask(token, taskId, updated);
         if (result.success) {
-          await saveAllTasks(next);
-          return normalizeTask(result.task);
+          const backendTask = normalizeTask(result.task);
+          await saveAllTasks(
+            next.map((item) => (String(item.id) === String(taskId) ? backendTask : item)),
+          );
+          return backendTask;
         }
+        throw new Error(result.error || "Failed to update task.");
       }
-    } catch {}
+    } catch (error) {
+      if (isCompleting) throw error;
+    }
   }
 
   await saveAllTasks(next);
@@ -324,6 +384,52 @@ export async function getTasksByTechnician(technicianId) {
   );
 }
 
+export async function acceptTask(taskId) {
+  try {
+    const token = await api.getStoredToken();
+    if (token) {
+      const result = await api.acceptTask(token, taskId);
+      if (result.success) {
+        const accepted = normalizeTask(result.task);
+        const tasks = await getAllTasks();
+        await saveAllTasks(
+          tasks.map((item) => (String(item.id) === String(taskId) ? accepted : item)),
+        );
+        return accepted;
+      }
+      throw new Error(result.error || "Failed to accept task.");
+    }
+  } catch (error) {
+    throw error;
+  }
+
+  return updateTaskStatus(taskId, TASK_STATUS.IN_PROGRESS);
+}
+
+export async function registerTaskAmpUnit(taskId, payload = {}) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("You need to sign in again before registering this unit.");
+
+  const result = await api.registerAmpUnit(token, taskId, payload);
+  if (!result.success) {
+    const missing = Array.isArray(result.missingFields) && result.missingFields.length
+      ? ` Missing: ${result.missingFields.join(", ")}.`
+      : "";
+    throw new Error(`${result.error || "Failed to submit AMP registration."}${missing}`);
+  }
+
+  const updated = normalizeTask(result.task);
+  const tasks = await getAllTasks();
+  await saveAllTasks(
+    tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)),
+  );
+  return {
+    task: updated,
+    registration: result.registration,
+    registrationProgress: result.registrationProgress || updated.registrationProgress,
+  };
+}
+
 export async function reassignTaskTechnician(taskId, technician = {}) {
   const technicianName =
     technician.name ||
@@ -355,6 +461,7 @@ export function getTaskStats(tasks = []) {
     pending: tasks.filter((task) => task.status === TASK_STATUS.PENDING).length,
     inProgress: tasks.filter((task) => task.status === TASK_STATUS.IN_PROGRESS).length,
     completed: tasks.filter((task) => task.status === TASK_STATUS.COMPLETED).length,
+    onHold: tasks.filter((task) => task.status === TASK_STATUS.ON_HOLD).length,
     cancelled: tasks.filter((task) => task.status === TASK_STATUS.CANCELLED).length,
   };
 }

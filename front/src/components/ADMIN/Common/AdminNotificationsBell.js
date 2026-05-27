@@ -1,3 +1,4 @@
+import { Bell } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../../config/api";
@@ -5,13 +6,19 @@ import {
   getAdminNotificationsReadAt,
   markAllAdminNotificationsRead,
 } from "../../../utils/adminNotifications";
-// import icons from '../../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
 
 const isOlderThanHours = (isoDate, hours) => {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return false;
   return Date.now() - date.getTime() > hours * 60 * 60 * 1000;
+};
+
+const resolveNotificationRoute = (item = {}) => {
+  const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
+  if (text.includes("stock") || text.includes("inventory")) return "/admin/reorder";
+  if (text.includes("task") || text.includes("technician")) return "/admin/technicians";
+  if (item.type === "order" || text.includes("order")) return "/admin/orders";
+  return "/admin/dashboard";
 };
 
 function AdminNotificationsBell() {
@@ -27,7 +34,8 @@ function AdminNotificationsBell() {
   const refresh = useCallback(async () => {
     setBusy(true);
     try {
-      const [lowStockResult, ordersResult] = await Promise.all([
+      const [notificationResult, lowStockResult, ordersResult] = await Promise.all([
+        apiRequest("/notifications/me").catch(() => ({ notifications: [] })),
         apiRequest("/products/low-stock").catch(() => ({ products: [] })),
         apiRequest("/orders").catch(() => ({ orders: [] })),
       ]);
@@ -42,7 +50,16 @@ function AdminNotificationsBell() {
         return isOlderThanHours(o.createdAt, 24);
       });
 
-      const next = [];
+      const backendItems = (notificationResult.notifications || []).map((item) => ({
+        ...item,
+        id: item.id || item._id,
+        createdAt: item.createdAt || new Date().toISOString(),
+        to: resolveNotificationRoute(item),
+        source: "backend",
+        unread: Boolean(item.unread),
+      }));
+
+      const next = [...backendItems];
       if (lowStockCount > 0) {
         next.push({
           id: "low-stock",
@@ -50,6 +67,7 @@ function AdminNotificationsBell() {
           title: "Low stock items",
           message: `${lowStockCount} item(s) have < 5 units remaining.`,
           to: "/admin/reorder",
+          source: "local",
         });
       }
       if (pendingOrders.length > 0) {
@@ -59,6 +77,7 @@ function AdminNotificationsBell() {
           title: "Pending orders",
           message: `${pendingOrders.length} pending order(s) are older than 24 hours.`,
           to: "/admin/orders",
+          source: "local",
         });
       }
       setItems(next);
@@ -88,22 +107,41 @@ function AdminNotificationsBell() {
   const unreadCount = useMemo(() => {
     const readAtDate = readAt ? new Date(readAt) : null;
     return items.filter((item) => {
+      if (item.source === "backend") return Boolean(item.unread);
       if (!readAtDate) return true;
       const created = new Date(item.createdAt);
       if (Number.isNaN(created.getTime())) return true;
-      return created.getTime() > readAt;
+      return created.getTime() > readAtDate.getTime();
     }).length;
   }, [items, readAt]);
 
-  const onMarkAllRead = () => {
+  const onMarkAllRead = async () => {
+    try {
+      await apiRequest("/notifications/me/read-all", { method: "PATCH" });
+    } catch (_error) {
+      // Local alert state can still be marked read if the request is retried later.
+    }
     const next = markAllAdminNotificationsRead();
     setReadAt(next);
+    setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
   };
 
-  const onNavigate = (to) => {
-    if (!to) return;
+  const onNavigate = async (item) => {
+    if (!item?.to) return;
+    if (item.source === "backend" && item.unread && item.id) {
+      try {
+        await apiRequest(`/notifications/${item.id}/read`, { method: "PATCH" });
+        setItems((prev) =>
+          prev.map((entry) =>
+            entry.id === item.id ? { ...entry, unread: false } : entry,
+          ),
+        );
+      } catch (_error) {
+        // Navigation remains useful even if read-state fails.
+      }
+    }
     setOpen(false);
-    navigate(to);
+    navigate(item.to);
   };
 
   return (
@@ -115,11 +153,7 @@ function AdminNotificationsBell() {
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Open notifications"
       >
-        <img
-          src={icons.bellNotification}
-          alt=""
-          className="inline-icon inline-icon--md"
-        />
+        <Bell size={20} weight="bold" />
         {unreadCount > 0 ? (
           <span className="admin-notifications-badge">{unreadCount}</span>
         ) : null}
@@ -141,7 +175,7 @@ function AdminNotificationsBell() {
                 onClick={refresh}
                 disabled={busy}
               >
-                {busy ? "Refreshing…" : "Refresh"}
+                {busy ? "Refreshing..." : "Refresh"}
               </button>
               <button
                 type="button"
@@ -163,8 +197,8 @@ function AdminNotificationsBell() {
                 <button
                   key={item.id}
                   type="button"
-                  className="admin-notifications-item"
-                  onClick={() => onNavigate(item.to)}
+                  className={`admin-notifications-item ${item.unread ? "unread" : ""}`}
+                  onClick={() => onNavigate(item)}
                 >
                   <div className="admin-notifications-item-title">
                     {item.title}

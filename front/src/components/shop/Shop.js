@@ -435,7 +435,7 @@ const Shop = () => {
   // Mark all as read
   const handleMarkAllAsRead = async () => {
     try {
-      await apiRequest("/notifications/read-all", { method: "POST" });
+      await apiRequest("/notifications/me/read-all", { method: "PATCH" });
       setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     } catch (err) {
       console.error("Failed to mark all notifications as read", err);

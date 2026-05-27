@@ -158,6 +158,12 @@ export default function TechDashboard() {
         Quick Actions
       </Text>
       <QuickAction
+        title="Notifications"
+        subtitle="Review task assignments and system alerts from the backend"
+        icon="notifications-sharp"
+        onPress={() => router.push("/technician/notifications")}
+      />
+      <QuickAction
         title="My Work Orders"
         subtitle="Filter, start, complete, and document assigned service work"
         icon="clipboard-sharp"

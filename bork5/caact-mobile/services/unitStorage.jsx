@@ -1,5 +1,6 @@
 // services/unitStorage.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as api from "./api";
 
 const STORAGE_KEY = "units_storage_v1";
 export const SEEDED_CUSTOMER_EMAIL = "c@coldair-act.online";
@@ -35,9 +36,24 @@ function normalizeUnit(unit = {}) {
     ventilationQuality: unit.ventilationQuality || "Good",
     lastMaintenanceDate: unit.lastMaintenanceDate || "",
     notes: unit.notes || "",
+    qrCode: unit.qrCode || "",
+    amp: unit.amp || {},
+    nextIdealServiceDate: unit.nextIdealServiceDate || unit.amp?.nextIdealServiceDate || "",
+    nextIdealServicePeriod: unit.nextIdealServicePeriod || unit.amp?.nextIdealServicePeriod || "",
     createdAt: unit.createdAt || new Date().toISOString(),
     updatedAt: unit.updatedAt || new Date().toISOString(),
   };
+}
+
+function mergeByIdOrSerial(existing = [], incoming = []) {
+  const byKey = new Map();
+  existing.map(normalizeUnit).forEach((unit) => {
+    byKey.set(String(unit.serialNumber || unit.id), unit);
+  });
+  incoming.map(normalizeUnit).forEach((unit) => {
+    byKey.set(String(unit.serialNumber || unit.id), unit);
+  });
+  return Array.from(byKey.values());
 }
 
 export async function getAllUnits() {
@@ -53,6 +69,28 @@ export async function saveAllUnits(units = []) {
 }
 
 export async function getUnitsByUser(userId) {
+  try {
+    const token = await api.getStoredToken();
+    if (token) {
+      const result = await api.fetchCustomerAmpUnits(token);
+      if (result.success) {
+        const backendUnits = result.units.map((unit) => normalizeUnit({ ...unit, userId }));
+        const localUnits = await getAllUnits();
+        const otherUsers = localUnits.filter(
+          (unit) => String(unit.userId || "") !== String(userId || ""),
+        );
+        const mergedForUser = mergeByIdOrSerial(
+          localUnits.filter((unit) => String(unit.userId || "") === String(userId || "")),
+          backendUnits,
+        );
+        await saveAllUnits([...mergedForUser, ...otherUsers]);
+        return mergedForUser;
+      }
+    }
+  } catch {
+    // Offline fallback uses local unit cache.
+  }
+
   const units = await getAllUnits();
   return units.filter((unit) => String(unit.userId) === String(userId));
 }
@@ -144,6 +182,19 @@ export async function addUnit(unit) {
 }
 
 export async function getUnitByCode(rawValue) {
+  try {
+    const token = await api.getStoredToken();
+    if (token) {
+      const result = await api.fetchCustomerAmpUnits(token);
+      if (result.success) {
+        const localUnits = await getAllUnits();
+        await saveAllUnits(mergeByIdOrSerial(localUnits, result.units));
+      }
+    }
+  } catch {
+    // Keep local QR lookup available offline.
+  }
+
   const value = String(rawValue || "").trim().toLowerCase();
   if (!value) return null;
 

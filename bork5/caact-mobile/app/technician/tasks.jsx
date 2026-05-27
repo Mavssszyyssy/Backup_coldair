@@ -24,6 +24,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
 import {
+  acceptTask,
   getTasksByTechnician,
   TASK_STATUS,
   updateTaskStatus,
@@ -33,6 +34,7 @@ import { confirmAction } from "../../utils/confirmAction";
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
   [TASK_STATUS.IN_PROGRESS]: COLORS.tech,
+  [TASK_STATUS.ON_HOLD]: COLORS.warning,
   [TASK_STATUS.COMPLETED]: COLORS.success,
   [TASK_STATUS.CANCELLED]: COLORS.textMuted,
 };
@@ -47,12 +49,29 @@ const EMPTY_FORM = {
   additionalCost: "",
   nextMaintenanceDate: "",
   customerAdvice: "",
+  customerSignatureName: "",
+  customerSignature: "",
   notes: "",
 };
 
 function Badge({ label }) {
   const c = STATUS_COLOR[label] || COLORS.textSecondary;
   return <StatusChip label={label} color={c} />;
+}
+
+function getTaskSerials(task = {}) {
+  if (Array.isArray(task.serialNumbers) && task.serialNumbers.length > 0) {
+    return task.serialNumbers.filter(Boolean);
+  }
+  return (task.items || [])
+    .flatMap((item) => [
+      ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
+      ...(Array.isArray(item.serialUnits)
+        ? item.serialUnits.map((unit) => unit?.serialNumber)
+        : []),
+    ])
+    .map((serial) => String(serial || "").trim())
+    .filter(Boolean);
 }
 
 function CompletionForm({ form, onChange, onSubmit, submitting }) {
@@ -133,6 +152,18 @@ function CompletionForm({ form, onChange, onSubmit, submitting }) {
         value={form.customerAdvice}
         onChangeText={f("customerAdvice")}
         multiline
+      />
+      <TextField
+        label="Customer Name"
+        value={form.customerSignatureName}
+        onChangeText={f("customerSignatureName")}
+        placeholder="Name of customer or receiver"
+      />
+      <TextField
+        label="Customer Signature"
+        value={form.customerSignature}
+        onChangeText={f("customerSignature")}
+        placeholder="Typed signature"
       />
       <TextField
         label="Notes"
@@ -332,7 +363,8 @@ export default function TasksScreen() {
           const order = {
             [TASK_STATUS.IN_PROGRESS]: 0,
             [TASK_STATUS.PENDING]: 1,
-            [TASK_STATUS.COMPLETED]: 2,
+            [TASK_STATUS.ON_HOLD]: 2,
+            [TASK_STATUS.COMPLETED]: 3,
           };
           return (order[a.status] ?? 3) - (order[b.status] ?? 3);
         });
@@ -360,11 +392,7 @@ export default function TasksScreen() {
       confirmText: "Start",
       onConfirm: async () => {
         setBusy(task.id);
-        await updateTaskStatus(
-          task.id,
-          TASK_STATUS.IN_PROGRESS,
-          getDisplayName(current),
-        );
+        await acceptTask(task.id);
         refresh();
         setBusy(null);
       },
@@ -372,23 +400,41 @@ export default function TasksScreen() {
 
   const handleComplete = async (task) => {
     const form = completionForms[task.id] || EMPTY_FORM;
+    const proofSubmittedAt = new Date().toISOString();
+    const technicianName = getDisplayName(current);
     setBusy(task.id);
     try {
       await updateTaskStatus(
         task.id,
         TASK_STATUS.COMPLETED,
-        getDisplayName(current),
+        technicianName,
         {
           ...form,
           laborCost: Number(form.laborCost || 0),
           partsCost: Number(form.partsCost || 0),
           additionalCost: Number(form.additionalCost || 0),
+          proofSubmittedAt,
+          proof: {
+            beforePhotos: [],
+            afterPhotos: [],
+            customerSignature: {
+              name: form.customerSignatureName.trim(),
+              signature: form.customerSignature.trim() || form.customerSignatureName.trim(),
+              signedAt: proofSubmittedAt,
+            },
+            technicianName,
+            submittedAt: proofSubmittedAt,
+            notes: form.notes.trim(),
+          },
         },
       );
       setCompleting(null);
       refresh();
-    } catch {
-      Alert.alert("Error", "Could not complete this work order.");
+    } catch (error) {
+      Alert.alert(
+        "Unable to complete",
+        error?.message || "Could not complete this work order.",
+      );
     } finally {
       setBusy(null);
     }
@@ -446,6 +492,15 @@ export default function TasksScreen() {
           style={{ paddingVertical: SPACING.xs }}
         />
       )}
+      {getTaskSerials(item).length > 0 && (
+        <IconRow
+          icon="qr-code-sharp"
+          title={`${getTaskSerials(item).length} assigned unit${getTaskSerials(item).length === 1 ? "" : "s"}`}
+          subtitle={getTaskSerials(item).join(", ")}
+          color={COLORS.success}
+          style={{ paddingVertical: SPACING.xs }}
+        />
+      )}
       <View style={{ marginTop: SPACING.sm }}>
         {item.status === TASK_STATUS.PENDING && (
           <TechButton
@@ -459,22 +514,33 @@ export default function TasksScreen() {
           />
         )}
         {item.status === TASK_STATUS.IN_PROGRESS && (
-          <TechButton
-            title={completing === item.id ? "Cancel" : "Complete Work Order"}
-            onPress={() =>
-              setCompleting(completing === item.id ? null : item.id)
-            }
-            size="sm"
-            leftIcon={
-              <Ionicons
-                name={
-                  completing === item.id ? "close-sharp" : "checkmark-sharp"
-                }
-                size={16}
-                color={COLORS.surface}
-              />
-            }
-          />
+          getTaskSerials(item).length > 0 ? (
+            <TechButton
+              title="Register Assigned Unit"
+              onPress={() => router.push(`/technician/task/${item.id}/amp-registration?serial=${encodeURIComponent(getTaskSerials(item)[0])}`)}
+              size="sm"
+              leftIcon={
+                <Ionicons
+                  name="qr-code-sharp"
+                  size={16}
+                  color={COLORS.surface}
+                />
+              }
+            />
+          ) : (
+            <TechButton
+              title="Complete Service"
+              onPress={() => router.push(`/technician/task/${item.id}/complete-service`)}
+              size="sm"
+              leftIcon={
+                <Ionicons
+                  name="checkmark-sharp"
+                  size={16}
+                  color={COLORS.surface}
+                />
+              }
+            />
+          )
         )}
         <TechButton
           title="More Options"

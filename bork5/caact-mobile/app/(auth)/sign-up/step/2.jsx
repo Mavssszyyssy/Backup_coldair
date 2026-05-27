@@ -17,6 +17,10 @@ import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { useUserContext } from "../../../../context/UserContext";
+import {
+  requestVerificationOtp,
+  verifyRegistrationOtp,
+} from "../../../../services/api";
 
 const CODE_RESEND_MS = 60 * 1000;
 const CODE_EXPIRES_MS = 5 * 60 * 1000;
@@ -42,6 +46,7 @@ export default function SignUpStep2() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [messengerHandle, setMessengerHandle] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeExpiresAt, setCodeExpiresAt] = useState(0);
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
@@ -62,7 +67,39 @@ export default function SignUpStep2() {
   const codeExpiryCountdown =
     codeExpiresAt > now ? formatSeconds(codeExpiresAt - now) : 0;
   const blockCountdown = blockUntil > now ? formatSeconds(blockUntil - now) : 0;
-  const codeSent = Boolean(verificationCode);
+  const phoneForApi = contactMethod === "mobile" ? `+63${mobileNumber}` : "";
+  const messengerForApi =
+    contactMethod === "messenger" ? messengerHandle.trim() : "";
+  const otpAction =
+    contactMethod === "mobile" ? "register_phone" : "register_messenger";
+  const otpChannel = contactMethod === "mobile" ? "sms" : "messenger";
+  const addressStreet = [
+    readParam(params.apartmentUnit).trim(),
+    readParam(params.propertyBlockLot).trim(),
+    readParam(params.thoroughfare).trim(),
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const primaryLocation = useMemo(
+    () => ({
+      coordinates: {
+        latitude: null,
+        longitude: null,
+        accuracy: null,
+        timestamp: null,
+      },
+      address: {
+        region: "",
+        province: "",
+        city: readParam(params.municipality).trim(),
+        barangay: readParam(params.submunicipality).trim(),
+        street: addressStreet,
+        postalCode: "",
+      },
+      source: readParam(params.plusCode).trim() ? "gps" : "manual",
+    }),
+    [addressStreet, params],
+  );
 
   const registrationPayload = useMemo(
     () => ({
@@ -72,6 +109,7 @@ export default function SignUpStep2() {
       alias: readParam(params.alias).trim(),
       email: readParam(params.email).trim(),
       password: readParam(params.password),
+      role: readParam(params.role).trim() || "customer",
       address: readParam(params.address).trim(),
       municipality: readParam(params.municipality).trim(),
       municipality_code: readParam(params.municipalityCode).trim(),
@@ -83,15 +121,23 @@ export default function SignUpStep2() {
       landmark: readParam(params.landmark).trim(),
       plus_code: readParam(params.plusCode).trim(),
       contact_method: contactMethod,
-      phone: contactMethod === "mobile" ? `+63${mobileNumber}` : "",
-      messenger_handle:
-        contactMethod === "messenger" ? messengerHandle.trim() : "",
+      phone: phoneForApi,
+      messenger_handle: messengerForApi,
+      locations: primaryLocation.address.city ? [primaryLocation] : [],
     }),
-    [contactMethod, messengerHandle, mobileNumber, params],
+    [
+      contactMethod,
+      messengerForApi,
+      mobileNumber,
+      params,
+      phoneForApi,
+      primaryLocation,
+    ],
   );
 
   const resetVerificationSession = () => {
     setVerificationCode("");
+    setCodeSent(false);
     setCodeInput("");
     setCodeExpiresAt(0);
     setResendAvailableAt(0);
@@ -119,7 +165,7 @@ export default function SignUpStep2() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
     if (isBlocked) {
       Alert.alert(
         "Verification Blocked",
@@ -141,14 +187,44 @@ export default function SignUpStep2() {
       return;
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const timestamp = Date.now();
+    setSubmitting(true);
 
-    setVerificationCode(code);
-    setCodeInput("");
-    setCodeExpiresAt(timestamp + CODE_EXPIRES_MS);
-    setResendAvailableAt(timestamp + CODE_RESEND_MS);
-    setErrors((prev) => ({ ...prev, code: "" }));
+    try {
+      let result;
+      try {
+        result = await requestVerificationOtp({
+          action: otpAction,
+          channel: otpChannel,
+          email: registrationPayload.email,
+          phone: phoneForApi,
+          messenger_handle: messengerForApi,
+        });
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          code: error?.message || "Unable to send verification code.",
+        }));
+        return;
+      }
+
+      if (!result.success) {
+        setErrors((prev) => ({
+          ...prev,
+          code: result.error || "Unable to send verification code.",
+        }));
+        return;
+      }
+
+      setVerificationCode(result.debugCode || "");
+      setCodeSent(true);
+      setCodeInput("");
+      setCodeExpiresAt(timestamp + CODE_EXPIRES_MS);
+      setResendAvailableAt(timestamp + CODE_RESEND_MS);
+      setErrors((prev) => ({ ...prev, code: "" }));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCompleteRegistration = async () => {
@@ -193,28 +269,40 @@ export default function SignUpStep2() {
       return;
     }
 
-    if (codeInput.trim() !== verificationCode) {
-      const nextAttemptCount = attemptCount + 1;
-      setAttemptCount(nextAttemptCount);
+    setSubmitting(true);
+    try {
+      const verification = await verifyRegistrationOtp({
+        action: otpAction,
+        channel: otpChannel,
+        email: registrationPayload.email,
+        phone: phoneForApi,
+        messenger_handle: messengerForApi,
+        code: codeInput.trim(),
+      });
 
-      if (nextAttemptCount >= 3) {
-        setBlockUntil(Date.now() + BLOCK_DURATION_MS);
+      if (!verification.success) {
+        const nextAttemptCount = attemptCount + 1;
+        setAttemptCount(nextAttemptCount);
+
+        if (nextAttemptCount >= 3) {
+          setBlockUntil(Date.now() + BLOCK_DURATION_MS);
+          setErrors((prev) => ({
+            ...prev,
+            code:
+              "Too many failed attempts. Verification is blocked for 1 day.",
+          }));
+          return;
+        }
+
         setErrors((prev) => ({
           ...prev,
-          code: "Too many failed attempts. Verification is blocked for 1 day.",
+          code:
+            verification.error ||
+            `Incorrect code. ${3 - nextAttemptCount} attempt(s) remaining.`,
         }));
         return;
       }
 
-      setErrors((prev) => ({
-        ...prev,
-        code: `Incorrect code. ${3 - nextAttemptCount} attempt(s) remaining.`,
-      }));
-      return;
-    }
-
-    setSubmitting(true);
-    try {
       const result = await register(registrationPayload);
 
       if (!result.success) {
@@ -474,7 +562,7 @@ export default function SignUpStep2() {
             onPress={handleSendCode}
             variant="secondary"
             style={{ marginTop: SPACING.sm }}
-            disabled={resendCountdown > 0 || isBlocked}
+            disabled={resendCountdown > 0 || isBlocked || submitting}
           />
         </Card>
 

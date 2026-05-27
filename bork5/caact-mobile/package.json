@@ -20,6 +20,7 @@
     "expo-checkbox": "^5.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",
+    "expo-file-system": "19.0.22",
     "expo-linking": "~8.0.12",
     "expo-location": "^55.1.8",
     "expo-router": "~6.0.23",

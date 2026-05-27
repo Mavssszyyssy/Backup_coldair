@@ -11,6 +11,7 @@ const router = express.Router();
 router.use(requireAuth);
 router.get("/me", listMyNotifications);
 router.patch("/me/read-all", markAllNotificationsRead);
+router.post("/read-all", markAllNotificationsRead);
 router.patch("/:id/read", markNotificationRead);
 
 module.exports = router;

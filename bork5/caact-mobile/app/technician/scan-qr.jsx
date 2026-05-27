@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 
@@ -74,6 +75,8 @@ function SectionTitle({ icon, title, count }) {
 }
 
 export default function ScanScreen() {
+  const router = useRouter();
+  const { serial } = useLocalSearchParams();
   const [code, setCode] = useState("");
   const [lastScannedCode, setLastScannedCode] = useState("");
   const [result, setResult] = useState(null);
@@ -85,6 +88,14 @@ export default function ScanScreen() {
   useEffect(() => {
     ensureSeededScannerUnit().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const serialValue = Array.isArray(serial) ? serial[0] : serial;
+    if (!serialValue) return;
+    setScannerActive(false);
+    setCode(String(serialValue));
+    lookup(String(serialValue));
+  }, [serial]);
 
   const lookup = async (rawValue, options = {}) => {
     const value = String(rawValue || "").trim();
@@ -321,6 +332,18 @@ export default function ScanScreen() {
                       />
                     }
                   />
+                  {result.unit?.serialNumber ? (
+                    <TechButton
+                      title="Register This Unit"
+                      onPress={() =>
+                        router.push(
+                          `/technician/task/${task.id}/amp-registration?serial=${encodeURIComponent(result.unit.serialNumber)}`,
+                        )
+                      }
+                      size="sm"
+                      leftIcon={<Ionicons name="construct-sharp" size={16} color={COLORS.surface} />}
+                    />
+                  ) : null}
                 </View>
               ))}
             </Card>

@@ -24,6 +24,26 @@ import WarrantyStatusModal from "./WarrantyStatusModal";
 // import icons from '../common/icons';
 const icons = {}; // BOUTIQUE MIGRATION STUB
 
+const buildUnitFromBackend = (unit = {}) => ({
+  id: unit.id || unit.serialNumber || `unit-${Date.now()}`,
+  backendUnitId: unit.id || "",
+  brand: unit.brand || "Cold Air ACT",
+  model: unit.model || unit.modelName || unit.unitName || "Installed AC Unit",
+  serialNumber: unit.serialNumber || "",
+  qrCode: unit.qrCode || "",
+  installationDate: unit.installationDate || "",
+  status: unit.status || "Active",
+  ampereNextServiceLabel:
+    unit.nextIdealServicePeriod ||
+    (unit.nextIdealServiceDate ? `Next service around ${unit.nextIdealServiceDate}` : ""),
+  technicianReportSummary: "Installed unit synced from completed technician fulfillment.",
+  installEnvironmentNotes: [unit.placementArea, unit.installationEnvironment]
+    .filter(Boolean)
+    .join(" - "),
+  notes: "This unit was created from the backend order-to-installation handoff.",
+  serviceHistory: [],
+});
+
 function MyUnit() {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
@@ -40,47 +60,40 @@ function MyUnit() {
   const { user } = useUser();
 
   useEffect(() => {
-    const savedUnits = localStorage.getItem("ac_units");
-    if (savedUnits) {
-      const parsedUnits = JSON.parse(savedUnits);
-      if (Array.isArray(parsedUnits) && parsedUnits.length > 0) {
-        setUnits(parsedUnits);
-        return;
+    let mounted = true;
+
+    const loadUnits = async () => {
+      try {
+        const result = await apiRequest("/amp/customer/units");
+        const backendUnits = (result.units || []).map(buildUnitFromBackend);
+        if (backendUnits.length > 0) {
+          if (!mounted) return;
+          setUnits(backendUnits);
+          localStorage.setItem("ac_units", JSON.stringify(backendUnits));
+          return;
+        }
+      } catch (_error) {
+        // Local cache keeps manually added units available if backend units are not ready.
       }
-    }
 
-    const demoUnits = [
-      {
-        id: "demo-unit-001",
-        brand: "Daikin",
-        model: "FTKM Series",
-        serialNumber: "DKN-20240514-001",
-        installationDate: "2025-02-15",
-        status: "Good",
-        ampereNextServiceLabel: "Next recommended service in 180 days",
-        technicianReportSummary:
-          "Demo report: unit passed installation inspection. Monitor cooling efficiency monthly.",
-        installEnvironmentNotes:
-          "Mounted in living room with unobstructed airflow.",
-        notes:
-          "This demo unit helps validate the unit, report, and admin assignment flow.",
-        serviceHistory: [
-          {
-            id: "demo-svc-001",
-            date: "2025-03-10",
-            time: "09:00",
-            serviceType: "Cleaning and inspection",
-            details: "Initial demo maintenance completed",
-            price: 899,
-            technician: "Senior tech",
-            status: "Completed",
-          },
-        ],
-      },
-    ];
+      const savedUnits = localStorage.getItem("ac_units");
+      if (savedUnits) {
+        const parsedUnits = JSON.parse(savedUnits);
+        if (Array.isArray(parsedUnits) && parsedUnits.length > 0) {
+          if (mounted) setUnits(parsedUnits);
+          return;
+        }
+      }
 
-    setUnits(demoUnits);
-    localStorage.setItem("ac_units", JSON.stringify(demoUnits));
+      if (!mounted) return;
+      setUnits([]);
+      localStorage.removeItem("ac_units_demo_seeded");
+    };
+
+    loadUnits();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const saveUnits = (updatedUnits) => {
@@ -338,6 +351,10 @@ function MyUnit() {
           onClose={() => {
             setShowDetailsModal(false);
             setSelectedUnit(null);
+          }}
+          onScheduleService={(unit) => {
+            setShowDetailsModal(false);
+            handleScheduleService(unit);
           }}
           onReport={handleReportIssue}
         />
