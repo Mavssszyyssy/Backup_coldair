@@ -1,0 +1,7 @@
+The following packages should be updated for best compatibility with the installed expo version:
+  babel-preset-expo@55.0.19 - expected version: ~54.0.10
+  expo@54.0.34 - expected version: ~54.0.36
+  expo-file-system@19.0.22 - expected version: ~19.0.23
+  expo-location@55.1.8 - expected version: ~19.0.8
+  expo-router@6.0.23 - expected version: ~6.0.24
+Your project may not work correctly until you install the expected versions of the packages.

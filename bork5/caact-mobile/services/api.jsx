@@ -523,6 +523,12 @@ export async function fetchMyServiceRequests(token) {
   };
 }
 
+export async function createOrder(token, payload) {
+  const { ok, data } = await post("/orders", payload, token);
+  if (ok) return { success: true, order: data.order, payment: data.payment || null };
+  return { success: false, error: getErrorMessage(data, "Unable to create the order.") };
+}
+
 export async function createMyServiceRequest(token, payload) {
   const { ok, data } = await post("/service-requests/me", payload, token);
   if (ok) return { success: true, request: data.request };

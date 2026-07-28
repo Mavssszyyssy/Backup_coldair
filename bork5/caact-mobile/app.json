@@ -25,8 +25,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.maviitootie.Coldair",
-      "usesCleartextTraffic": true
+      "package": "com.maviitootie.Coldair"
     },
     "scheme": "coldair",
     "web": {
@@ -39,6 +38,14 @@
         "expo-camera",
         {
           "cameraPermission": "Allow Coldair to use the camera to scan unit QR codes."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],

@@ -19,6 +19,9 @@ import {
   BQ_WEIGHTS,
 } from "../common/boutique/BoutiqueTheme";
 
+const DEFAULT_CATALOG_IMAGE_URL =
+  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+
 function productPlaceholderIcon(product) {
   if (product?.category === "window") return SquareSplitHorizontal;
   if (product?.category === "floor") return ComputerTower;
@@ -29,12 +32,13 @@ function productPlaceholderIcon(product) {
 function ModalProductImage({ product }) {
   const [imgBroken, setBroken] = useState(false);
   const IconComp = productPlaceholderIcon(product);
-  const hasImage = product?.imageUrl && product.imageUrl.trim() !== "";
+  const imageUrl = product?.imageUrl || DEFAULT_CATALOG_IMAGE_URL;
+  const hasImage = imageUrl.trim() !== "";
 
   if (hasImage && !imgBroken) {
     return (
       <img
-        src={product.imageUrl}
+        src={imageUrl}
         alt={product.name}
         onError={() => setBroken(true)}
         className="bq-modal-img"

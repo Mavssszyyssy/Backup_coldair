@@ -6,7 +6,7 @@ import { useCart } from "../../context/CartContext";
 import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
-import { computePurchaseTotals, isPaymongoTestCart } from "../../domain/purchase/computePurchaseTotals";
+import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
 import {
   loadOrdersFromStorage,
   saveOrdersToStorage,
@@ -97,7 +97,6 @@ function Checkout() {
       subtotal,
       serviceAreaId,
       discountAmount,
-      isTestCheckout: isPaymongoTestCart(cart),
     });
   }, [cart, getCartTotal, serviceAreaId, discountAmount]);
 
@@ -227,11 +226,15 @@ function Checkout() {
 
   const ensureHasAddressBeforeCheckout = useCallback(async () => {
     const latestAddresses = await loadAddresses();
-    if (latestAddresses.length > 0) return true;
+    const latestSelectedAddress = findBestSelectedAddress(
+      latestAddresses,
+      selectedAddress?.id || "",
+    );
+    if (latestSelectedAddress) return latestSelectedAddress;
     alert("No delivery address found. Please add an address to proceed.");
     redirectToAddressForm();
-    return false;
-  }, [loadAddresses, redirectToAddressForm]);
+    return null;
+  }, [loadAddresses, redirectToAddressForm, selectedAddress?.id]);
 
   const closeAddressModal = useCallback(() => {
     setShowAddressModal(false);
@@ -334,20 +337,12 @@ function Checkout() {
       return;
     }
 
-    const hasSavedAddress = await ensureHasAddressBeforeCheckout();
-    if (!hasSavedAddress) return;
+    // Do not read the selectedAddress state after refreshing the address list:
+    // React state is asynchronous and can still hold the old, empty address.
+    const checkoutAddress = await ensureHasAddressBeforeCheckout();
+    if (!checkoutAddress) return;
 
-    if (addressLoadFailed) {
-      alert(
-        "Unable to verify your saved addresses right now. Please try again in a moment.",
-      );
-      return;
-    }
-    if (!selectedAddress) {
-      alert("Please select a delivery address.");
-      return;
-    }
-    if (!isValidCheckoutAddress(selectedAddress)) {
+    if (!isValidCheckoutAddress(checkoutAddress)) {
       alert(
         "Please provide a valid address. Phone must be 11 digits (09XXXXXXXXX) and postal code must be 4 digits.",
       );
@@ -364,7 +359,7 @@ function Checkout() {
       orderId,
       trackingNumber,
       cartItems: cart,
-      address: selectedAddress,
+      address: checkoutAddress,
       paymentMethod: selectedPayment,
       serviceAreaId,
       totals,
@@ -376,8 +371,8 @@ function Checkout() {
         method: "POST",
         body: JSON.stringify({
           items: order.items,
-          addressId: selectedAddress.id,
-          address: selectedAddress,
+          addressId: checkoutAddress.id,
+          address: checkoutAddress,
           paymentMethod: selectedPayment,
           total: order.total,
           subtotal: totals.subtotal,
@@ -426,8 +421,6 @@ function Checkout() {
   }, [
     refreshStock,
     ensureHasAddressBeforeCheckout,
-    addressLoadFailed,
-    selectedAddress,
     cart,
     selectedPayment,
     serviceAreaId,

@@ -1,0 +1,9 @@
+Failed to connect to MongoDB at mongodb+srv://juliusnunez02_db_user:5HoTOhy3qeTZunDv@aeropulse.9xqx6su.mongodb.net/
+Start MongoDB or set MONGODB_URI in backend/.env to a reachable database.
+Failed to start server: Error: querySrv ETIMEOUT _mongodb._tcp.aeropulse.9xqx6su.mongodb.net
+    at QueryReqWrap.onresolve [as oncomplete] (node:internal/dns/promises:295:17) {
+  errno: undefined,
+  code: 'ETIMEOUT',
+  syscall: 'querySrv',
+  hostname: '_mongodb._tcp.aeropulse.9xqx6su.mongodb.net'
+}

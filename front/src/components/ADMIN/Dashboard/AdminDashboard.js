@@ -9,8 +9,7 @@ import SalesAnalyticsChart from "./SalesAnalyticsChart";
 import "./styles.css";
 import TechnicianKPIs from "./TechnicianKPIs";
 import TopProductsChart from "./TopProductsChart";
-// import icons from '../../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import icons from "../../common/icons";
 
 const AdminDashboard = () => {
   const { user } = useUser();

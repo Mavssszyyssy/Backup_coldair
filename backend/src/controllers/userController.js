@@ -157,6 +157,53 @@ const syncPrimaryAddressFromDefault = (user, addresses = []) => {
   user.address = formatAddressLine(defaultAddress);
 };
 
+// Profile settings use legacy fields while checkout uses the saved-address
+// list. Keep the default saved address current whenever the profile changes.
+const syncDefaultAddressFromProfile = (user) => {
+  const addresses = Array.isArray(user.addresses)
+    ? user.addresses.map((item) => item?.toObject?.() || item)
+    : [];
+  const defaultIndex = addresses.findIndex((item) => item?.isDefault);
+  const index = defaultIndex >= 0 ? defaultIndex : 0;
+  const existing = addresses[index] || {};
+  const billing = user.billingAddress?.toObject?.() || user.billingAddress || {};
+  const street = [user.apartment_unit, user.property_block_lot, user.thoroughfare]
+    .map((value) => sanitizeText(value, 180))
+    .filter(Boolean)
+    .join(", ");
+
+  const nextAddress = {
+    ...existing,
+    label: existing.label || "Primary Address",
+    type: existing.type || "home",
+    name:
+      sanitizeText(user.name, 120) ||
+      [user.name_first, user.name_last]
+        .map((value) => sanitizeText(value, 80))
+        .filter(Boolean)
+        .join(" ") ||
+      existing.name ||
+      "Customer",
+    phone: canonicalizePhMobile(user.phone || existing.phone || ""),
+    region: sanitizeText(billing.region, 120) || existing.region || "",
+    province: sanitizeText(billing.province, 120) || existing.province || "",
+    city: sanitizeText(user.municipality, 120) || sanitizeText(billing.city, 120) || existing.city || "",
+    barangay:
+      sanitizeText(user.submunicipality, 120) ||
+      sanitizeText(billing.barangay, 120) ||
+      existing.barangay ||
+      "",
+    street: street || sanitizeText(billing.street, 180) || existing.street || sanitizeText(user.address, 180),
+    isDefault: true,
+  };
+
+  if (addresses.length === 0) addresses.push(nextAddress);
+  else addresses[index] = nextAddress;
+  normalizeDefaultAddress(addresses);
+  user.addresses = addresses;
+  syncPrimaryAddressFromDefault(user, addresses);
+};
+
 const normalizePreferences = (current, payload = {}) => {
   const next = { ...current };
   if (payload.language !== undefined)
@@ -377,6 +424,20 @@ const applyProfileUpdate = async (
   if (allowEmailChange && payload.email !== undefined) {
     // Placeholder for a future verified-email-change flow.
   }
+
+  const hasProfileAddressUpdate = [
+    "address",
+    "billingAddress",
+    "municipality",
+    "submunicipality",
+    "thoroughfare",
+    "property_block_lot",
+    "apartment_unit",
+    "phone",
+    "name_first",
+    "name_last",
+  ].some((field) => payload[field] !== undefined);
+  if (hasProfileAddressUpdate) syncDefaultAddressFromProfile(user);
 
   return { ok: true };
 };

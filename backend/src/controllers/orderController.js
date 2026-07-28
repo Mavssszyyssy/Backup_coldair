@@ -548,16 +548,6 @@ const getPaymongoRuntimeStatus = () => {
   };
 };
 
-const PAYMONGO_TEST_SKU = "TEST-PAYMONGO-001";
-
-const isPaymongoTestItem = (item = {}) =>
-  [item.sku, item.model, item.productSku, item.productId, item.id]
-    .map((value) => String(value || "").trim().toUpperCase())
-    .includes(PAYMONGO_TEST_SKU);
-
-const isPaymongoTestItems = (items = []) =>
-  Array.isArray(items) && items.length > 0 && items.every(isPaymongoTestItem);
-
 const normalizePaymentReturnTarget = (value = "") => {
   const target = String(value || "").trim().toLowerCase();
   return ["mobile", "app", "native"].includes(target) ? "mobile" : "web";
@@ -1580,7 +1570,6 @@ const createOrder = async (req, res) => {
   const checkoutReturnTarget = normalizePaymentReturnTarget(
     paymentReturnTarget || returnTarget || clientType || platform,
   );
-  const usesTestOnlyCheckout = isPaymongoTestItems(items);
   const savedAddresses = Array.isArray(user.addresses)
     ? user.addresses.map((item) => normalizeAddress(item))
     : [];
@@ -1613,8 +1602,9 @@ const createOrder = async (req, res) => {
         (item) => String(item._id || "") === requestedId,
       );
       if (matchedById) {
-        const mergedById = mergeAddress(matchedById, payloadAddress);
-        if (isValidAddress(mergedById)) return mergedById;
+        // A selected saved address is authoritative. Client profile data can
+        // be stale after the customer edits their address in another session.
+        if (isValidAddress(matchedById)) return matchedById;
       }
     }
 
@@ -1757,11 +1747,11 @@ const createOrder = async (req, res) => {
       0,
     );
     const normalizedSubtotal = Number(subtotalAmount || subtotal || resolvedSubtotal || 0);
-    const normalizedVat = usesTestOnlyCheckout ? 0 : Number(vatAmount || taxAmount || 0);
-    const normalizedShipping = usesTestOnlyCheckout ? 0 : Number(shippingFee || deliveryFee || 0);
+    const normalizedVat = Number(vatAmount || taxAmount || 0);
+    const normalizedShipping = Number(shippingFee || deliveryFee || 0);
     const normalizedDiscount = Number(discountAmount || 0);
     const normalizedTotal =
-      (usesTestOnlyCheckout ? 0 : Number(total || 0)) ||
+      Number(total || 0) ||
       Math.max(0, normalizedSubtotal + normalizedVat + normalizedShipping - normalizedDiscount);
 
     const stockSourceBranch = lastSourceBranch || preferredBranch;

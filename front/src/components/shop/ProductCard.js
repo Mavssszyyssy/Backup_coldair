@@ -21,6 +21,9 @@ import {
   BQ_SHADOWS,
 } from "../common/boutique/BoutiqueTheme";
 
+const DEFAULT_CATALOG_IMAGE_URL =
+  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+
 function productPlaceholderIcon(product) {
   if (product?.category === "window") return SquareSplitHorizontal;
   if (product?.category === "floor") return ComputerTower;
@@ -64,9 +67,9 @@ export default function ProductCard({
         padding={24}
         style={{ position: "relative" }}
       >
-        {product.imageUrl && !imgBroken ? (
+        {(product.imageUrl || DEFAULT_CATALOG_IMAGE_URL) && !imgBroken ? (
           <img
-            src={product.imageUrl}
+            src={product.imageUrl || DEFAULT_CATALOG_IMAGE_URL}
             alt={product.name}
             onError={() => setBroken(true)}
             className="bq-img"

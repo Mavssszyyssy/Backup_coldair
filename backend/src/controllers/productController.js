@@ -3,6 +3,68 @@ const Order = require("../models/Order");
 const { BRANCHES } = require("../domain/branchRouting");
 const { validateProductUniqueness } = require("../utils/productValidation");
 
+// A licensed stock photo used only when an administrator has not uploaded a
+// product image yet. Uploaded product images always take precedence.
+const DEFAULT_CATALOG_IMAGE_URL =
+  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+
+// Seed items are model families, so each family gets a matching product photo
+// instead of every card showing the same generic air-conditioner image.
+const CATALOG_IMAGE_BY_SKU_PREFIX = [
+  [
+    "AHAC-MINV",
+    "https://ansons.ph/wp-content/uploads/2024/12/29_AHAC-MINV1023EHW-480x480.jpg",
+  ],
+  [
+    "TAC09-CWI",
+    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
+  ],
+  [
+    "TAC12-CWI",
+    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
+  ],
+  [
+    "TAC18-CWI",
+    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
+  ],
+  [
+    "TAC24-CWI",
+    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
+  ],
+  [
+    "TAC-",
+    "https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&dpr=1&h=750&w=1260",
+  ],
+  [
+    "MSCE-",
+    "https://web-res.midea.com/content/dam/midea-aem/my/my-new/pdp/air-conditioner/residential/msce-25crfn8-id--msce-25crfn8-od/PD-air-conditioner-residential-MSCE-25CRFN8-ID%20%20MSCE-25CRFN8-OD-EF1-front-close-1040x1040.jpg",
+  ],
+  [
+    "AR",
+    "https://dienmayabc.com/media/product/3579_samsung_ar09tyhqasinsv_a_1_org.jpg",
+  ],
+  [
+    "HSN",
+    "https://www.lg.com/content/dam/channel/wcms/ph/images/residential-air-conditioners/hsn09ipx_attglcp_eacm_ph_c/gallery/Zoom_01.jpg?w=800",
+  ],
+  [
+    "53CNV",
+    "https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&dpr=1&h=750&w=1260",
+  ],
+  [
+    "53CLV",
+    "https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&dpr=1&h=750&w=1260",
+  ],
+];
+
+const getCatalogImage = (item = {}) => {
+  const sku = String(item.sku || "").toUpperCase();
+  const match = CATALOG_IMAGE_BY_SKU_PREFIX.find(([prefix]) =>
+    sku.startsWith(prefix),
+  );
+  return match?.[1] || DEFAULT_CATALOG_IMAGE_URL;
+};
+
 const SAMPLE_PRODUCTS = [
   {
     name: "PayMongo Test AC",
@@ -654,6 +716,7 @@ const createSampleDoc = (item) => {
   );
   return {
     ...item,
+    image: item.image || getCatalogImage(item),
     stock: total,
     branchStock,
     serialUnits: [],
@@ -711,6 +774,11 @@ const ensureSampleInventory = async () => {
       }
       if (!existing.category && item.category) {
         existing.category = item.category;
+        touched = true;
+      }
+      const catalogImage = item.image || getCatalogImage(item);
+      if (!existing.image || existing.image === DEFAULT_CATALOG_IMAGE_URL) {
+        existing.image = catalogImage;
         touched = true;
       }
       if ((Number(existing.price) || 0) <= 0 && Number(item.price) > 0) {

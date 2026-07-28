@@ -392,6 +392,32 @@ const fallbackProducts = [
   },
 ];
 
+const getModelImageUrl = (product = {}) => {
+  const sku = String(product.sku || product.model || "").toUpperCase();
+  if (sku.startsWith("AHAC-MINV")) {
+    return "https://ansons.ph/wp-content/uploads/2024/12/29_AHAC-MINV1023EHW-480x480.jpg";
+  }
+  if (sku.includes("CWI")) {
+    return "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946";
+  }
+  if (sku.startsWith("TAC-")) {
+    return "https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&dpr=1&h=750&w=1260";
+  }
+  if (sku.startsWith("MSCE-")) {
+    return "https://web-res.midea.com/content/dam/midea-aem/my/my-new/pdp/air-conditioner/residential/msce-25crfn8-id--msce-25crfn8-od/PD-air-conditioner-residential-MSCE-25CRFN8-ID%20%20MSCE-25CRFN8-OD-EF1-front-close-1040x1040.jpg";
+  }
+  if (sku.startsWith("AR")) {
+    return "https://dienmayabc.com/media/product/3579_samsung_ar09tyhqasinsv_a_1_org.jpg";
+  }
+  if (sku.startsWith("HSN")) {
+    return "https://www.lg.com/content/dam/channel/wcms/ph/images/residential-air-conditioners/hsn09ipx_attglcp_eacm_ph_c/gallery/Zoom_01.jpg?w=800";
+  }
+  if (sku.startsWith("53CNV") || sku.startsWith("53CLV")) {
+    return "https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&dpr=1&h=750&w=1260";
+  }
+  return "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+};
+
 // Helper to parse HP numeric value for sorting
 const parseHP = (hpStr) => {
   if (!hpStr) return 0;
@@ -497,7 +523,7 @@ const Shop = () => {
             stock: Number(product.stock) || 0,
             model: product.sku || "",
             warranty: product.warranty || "1 year parts, 5 years compressor",
-            imageUrl: `${API_BASE_URL}/products/${product.id}/image`,
+            imageUrl: product.image || `${API_BASE_URL}/products/${product.id}/image`,
             discount: product.discount || 0,
             featured: product.featured || false,
           };
@@ -531,7 +557,10 @@ const Shop = () => {
       preferBackend: true,
       verbose: false,
     });
-    return deduplicateProducts(merged, { verbose: false });
+    return deduplicateProducts(merged, { verbose: false }).map((product) => ({
+      ...product,
+      imageUrl: product.imageUrl || getModelImageUrl(product),
+    }));
   }, [backendProducts]);
 
   const filteredProducts = useMemo(() => {

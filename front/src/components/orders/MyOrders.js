@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
+import { useUser } from "../../context/UserContext";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -45,6 +46,7 @@ function MyOrders() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useUser();
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
@@ -157,6 +159,7 @@ function MyOrders() {
         title="My Orders"
         leftAction="back"
         onLeftAction={handleBack}
+        isAuthenticated={isAuthenticated}
       />
 
       <BoutiqueBox

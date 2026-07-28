@@ -3,7 +3,12 @@ import {
   ShoppingCartSimple,
   WarningDiamond,
 } from "@phosphor-icons/react";
-import { BQ_COLORS, BQ_FONTS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
+import {
+  BQ_COLORS,
+  BQ_FONTS,
+  BQ_GEOMETRY,
+  BQ_SHADOWS,
+} from "../common/boutique/BoutiqueTheme";
 
 export default function ShopHeader({
   isAuthenticated,

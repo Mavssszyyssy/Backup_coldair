@@ -46,6 +46,8 @@ const env = {
   host: process.env.HOST || "0.0.0.0",
   port: process.env.PORT || 5000,
   mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/aeropulse",
+  mongoDirectHosts: process.env.MONGODB_DIRECT_HOSTS || "",
+  mongoReplicaSet: process.env.MONGODB_REPLICA_SET || "",
   jwtSecret: process.env.JWT_SECRET || "dev-secret",
   corsOrigin: buildCorsOrigin(),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
