@@ -59,13 +59,17 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setCart([]);
 
+  const replaceCart = (nextCart = []) => {
+    setCart(Array.isArray(nextCart) ? nextCart : []);
+  };
+
   const value = useMemo(() => {
     const cartCount = cart.reduce((total, item) => total + Number(item.quantity || 0), 0);
     const cartTotal = cart.reduce(
       (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
       0,
     );
-    return { cart, cartCount, cartTotal, hydrated, addToCart, updateQuantity, removeFromCart, clearCart };
+    return { cart, cartCount, cartTotal, hydrated, addToCart, updateQuantity, removeFromCart, clearCart, replaceCart };
   }, [cart, hydrated]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

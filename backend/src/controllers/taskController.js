@@ -32,16 +32,20 @@ const normalizeStatus = (value = "") => {
 };
 
 const getTaskSerialNumbers = (task) => {
-  const items = Array.isArray(task?.payload?.items) ? task.payload.items : [];
+  const payload = task?.payload || {};
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const directSerials = Array.isArray(payload.serialNumbers)
+    ? payload.serialNumbers
+    : [];
   return Array.from(
     new Set(
-      items
+      [...directSerials, ...items
         .flatMap((item) => [
           ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
           ...(Array.isArray(item.serialUnits)
             ? item.serialUnits.map((unit) => unit?.serialNumber)
             : []),
-        ])
+        ])]
         .map((serial) => String(serial || "").trim())
         .filter(Boolean),
     ),
@@ -97,6 +101,24 @@ const assertCanCompleteTask = (task) => {
     message: "Register all assigned AC unit QR labels before completing this task.",
     progress,
   };
+};
+
+const findLinkedOrderForTask = async (task) => {
+  const payload = task?.payload || {};
+  const orderId = String(payload.orderId || "").trim();
+  const orderCode = String(payload.orderCode || "").trim();
+  const conditions = [];
+  if (mongoose.Types.ObjectId.isValid(orderId)) conditions.push({ _id: orderId });
+  if (orderCode) conditions.push({ orderCode });
+  if (conditions.length === 0) return null;
+  return Order.findOne({ $or: conditions });
+};
+
+const getOrderCompletionBlocker = async (task) => {
+  const order = await findLinkedOrderForTask(task);
+  if (!order || order.workflowStatus === "complete") return null;
+  if (order.workflowStatus === "to_install") return null;
+  return `Order ${order.orderCode} must be marked dispatched by an admin before the installation can be completed.`;
 };
 
 const findProductSerialUnit = async (serialNumber) => {
@@ -331,35 +353,21 @@ const updateSerialUnitsForOrderWorkflow = async (order, nextWorkflowStatus) => {
 
 const syncOrderWorkflowForTask = async (task, status) => {
   const normalizedStatus = normalizeStatus(status || task.status);
-  const payload = task.payload || {};
-  const orderId = String(payload.orderId || "").trim();
-  const orderCode = String(payload.orderCode || "").trim();
-  if (!orderId && !orderCode) return;
+  if (normalizedStatus !== "completed") return;
 
-  let nextWorkflowStatus = null;
-  if (normalizedStatus === "in-progress") nextWorkflowStatus = "to_install";
-  if (normalizedStatus === "completed") nextWorkflowStatus = "complete";
-  if (!nextWorkflowStatus) return;
-
-  const orderConditions = [];
-  if (mongoose.Types.ObjectId.isValid(orderId)) orderConditions.push({ _id: orderId });
-  if (orderCode) orderConditions.push({ orderCode });
-  if (orderConditions.length === 0) return;
-
-  const order = await Order.findOne({ $or: orderConditions });
+  const order = await findLinkedOrderForTask(task);
   if (!order) return;
   if (order.workflowStatus === "complete") return;
+  if (order.workflowStatus !== "to_install") return;
 
-  order.workflowStatus = nextWorkflowStatus;
+  order.workflowStatus = "complete";
   order.status = "paid";
   if (!order.assignedTechnician && task.assignedTechnicianName) {
     order.assignedTechnician = task.assignedTechnicianName;
   }
   await order.save();
-  if (normalizedStatus === "completed") {
-    await ensureInstalledCustomerUnitsForTask(task);
-  }
-  await updateSerialUnitsForOrderWorkflow(order, nextWorkflowStatus);
+  await ensureInstalledCustomerUnitsForTask(task);
+  await updateSerialUnitsForOrderWorkflow(order, "complete");
 };
 
 const syncServiceRequestForTask = async (task, status) => {
@@ -472,27 +480,43 @@ const canTechnicianAcceptTask = (task, technician) => {
 const hydrateTaskResponse = (task) => {
   const payload = task.payload && Object.keys(task.payload).length ? task.payload : null;
   const progress = getRegistrationProgress(task);
+  const base = task.toJSON();
   if (!payload) {
     return {
-      ...task.toJSON(),
+      ...base,
       proof: task.proof || {},
       registrationProgress: progress,
     };
   }
 
   return {
+    // Preserve the canonical Task fields (address, schedule, unit and
+    // customer metadata) while keeping the order payload such as items and
+    // serial numbers. Previously the payload replaced the task and left the
+    // technician Work Details screen without the information it needs.
+    ...base,
     ...payload,
-    id: task.id,
+    id: base.id,
     taskCode: task.taskCode,
     title: task.title,
     customer: task.customer,
+    customerName: payload.customerName || task.customer,
+    customerId: payload.customerId || task.customerId || "",
+    customerPhone: payload.customerPhone || task.customerPhone || "",
     address: task.address,
+    unitId: payload.unitId || task.unitId || "",
+    unitName: payload.unitName || task.unitName || "",
+    unitType: payload.unitType || task.unitType || "",
+    issueType: payload.issueType || task.issueType || "",
+    description: payload.description || task.description || "",
+    scheduledDate: payload.scheduledDate || task.scheduledDate || "",
+    timeSlot: payload.timeSlot || task.timeSlot || "",
     priority: task.priority,
     assignedTechnicianId: task.assignedTechnicianId,
     assignedTechnicianName: task.assignedTechnicianName,
     proof: payload.proof || task.proof || {},
     registrationProgress: progress,
-    status: payload.status || task.status,
+    status: task.status,
     createdAt: payload.createdAt || task.createdAt,
     updatedAt: payload.updatedAt || task.updatedAt,
   };
@@ -628,6 +652,10 @@ const updateTask = async (req, res) => {
           registrationProgress: completionError.progress,
         });
       }
+      const orderCompletionBlocker = await getOrderCompletionBlocker(task);
+      if (orderCompletionBlocker) {
+        return res.status(409).json({ message: orderCompletionBlocker });
+      }
     }
     task.completedAt = nextStatus === "completed" ? new Date() : null;
     task.proof = proof;
@@ -721,7 +749,13 @@ const getRegistrationContextBySerial = async (req, res) => {
             { assignedTechnicianId: "" },
           ],
         },
-        { "payload.items.serialNumbers": serialNumber },
+        {
+          $or: [
+            { "payload.serialNumbers": serialNumber },
+            { "payload.items.serialNumbers": serialNumber },
+            { "payload.items.serialUnits.serialNumber": serialNumber },
+          ],
+        },
       ],
     }).sort({ updatedAt: -1 });
 
@@ -777,7 +811,10 @@ const registerAmpUnit = async (req, res) => {
     }
 
     const requiredSerials = getTaskSerialNumbers(task);
-    if (requiredSerials.length > 0 && !requiredSerials.includes(serialNumber)) {
+    const assignedSerial = requiredSerials.find(
+      (serial) => serial.toLowerCase() === serialNumber.toLowerCase(),
+    );
+    if (requiredSerials.length > 0 && !assignedSerial) {
       return res.status(400).json({ message: "This AC unit is not part of the selected installation task." });
     }
 
@@ -808,15 +845,19 @@ const registerAmpUnit = async (req, res) => {
       }
     }
 
-    const { product, serialUnit } = await findProductSerialUnit(serialNumber);
+    const normalizedSerialNumber = assignedSerial || serialNumber;
+    const { product, serialUnit } = await findProductSerialUnit(normalizedSerialNumber);
+    if (!product || !serialUnit) {
+      return res.status(404).json({ message: "The assigned QR serial was not found in inventory. Ask an administrator to repair the order inventory before continuing." });
+    }
     const previousPlan =
-      getAmpRegistrations(task)[serialNumber]?.ampServicePlan ||
+      getAmpRegistrations(task)[normalizedSerialNumber]?.ampServicePlan ||
       serialUnit?.ampRegistration?.ampServicePlan ||
       null;
     const registration = buildRegistrationRecord({
       req,
       task,
-      serialNumber,
+      serialNumber: normalizedSerialNumber,
       payload,
       status: isDefectiveHold ? "defective_hold" : "registered",
       previousPlan,
@@ -846,7 +887,7 @@ const registerAmpUnit = async (req, res) => {
       ...(task.payload || {}),
       ampRegistrations: {
         ...getAmpRegistrations(task),
-        [serialNumber]: registration,
+        [normalizedSerialNumber]: registration,
       },
       updatedAt: new Date().toISOString(),
     };
@@ -905,6 +946,10 @@ const updateTaskStatus = async (req, res) => {
           message: completionError.message,
           registrationProgress: completionError.progress,
         });
+      }
+      const orderCompletionBlocker = await getOrderCompletionBlocker(task);
+      if (orderCompletionBlocker) {
+        return res.status(409).json({ message: orderCompletionBlocker });
       }
     }
     task.completedAt = status === "completed" ? new Date() : null;

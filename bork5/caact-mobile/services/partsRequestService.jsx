@@ -1,5 +1,6 @@
 // services/partsRequestService.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as api from "./api";
 
 const TECH_PARTS_KEY = "parts_requests_storage_v2";
 
@@ -24,7 +25,7 @@ function normalizePartsRequest(request = {}) {
   return {
     id: request.id || `parts_request_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
     taskId: request.taskId || "",
-    technicianId: request.technicianId || "",
+    technicianId: request.technicianId || request.requestedBy || "",
     technicianName: request.technicianName || "",
     inventoryItemId: request.inventoryItemId || "",
     partName: request.partName || request.name || "",
@@ -43,15 +44,46 @@ async function getAllPartsRequests() {
   return Array.isArray(all) ? all.map(normalizePartsRequest) : [];
 }
 
+async function saveAllPartsRequests(requests = []) {
+  const normalized = requests.map(normalizePartsRequest);
+  await AsyncStorage.setItem(TECH_PARTS_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
 export async function getPartsRequestsByTechnician(techId) {
+  try {
+    const token = await api.getStoredToken();
+    if (token) {
+      const result = await api.fetchMyPartsRequests(token);
+      if (result.success) {
+        const existing = await getAllPartsRequests();
+        const otherTechnicians = existing.filter(
+          (request) => String(request.technicianId) !== String(techId),
+        );
+        const mine = result.requests.map(normalizePartsRequest);
+        await saveAllPartsRequests([...mine, ...otherTechnicians]);
+        return mine;
+      }
+      throw new Error(result.error || "Unable to load parts requests.");
+    }
+  } catch (error) {
+    if (error?.message && !/network request failed|failed to fetch|timed out/i.test(error.message)) {
+      throw error;
+    }
+  }
   const all = await getAllPartsRequests();
   return all.filter((r) => String(r.technicianId) === String(techId));
 }
 
 export async function savePartsRequest(req) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again before submitting a parts request.");
+  const result = await api.createPartsRequest(token, req);
+  if (!result.success) throw new Error(result.error || "Unable to submit the parts request.");
   const all = await getAllPartsRequests();
-  const next = [normalizePartsRequest(req), ...all];
-  await AsyncStorage.setItem(TECH_PARTS_KEY, JSON.stringify(next));
+  const created = normalizePartsRequest(result.request);
+  await saveAllPartsRequests([created, ...all.filter((item) => String(item.id) !== String(created.id))]);
+  return created;
 }
 
 export async function updatePartsRequestStatus(requestId, status) {

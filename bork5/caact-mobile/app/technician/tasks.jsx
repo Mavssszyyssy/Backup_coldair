@@ -19,15 +19,12 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
-import TextField from "../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import { getDisplayName } from "../../services/profileService";
 import {
   acceptTask,
   getTasksByTechnician,
   TASK_STATUS,
-  updateTaskStatus,
 } from "../../services/taskStorage";
 import { confirmAction } from "../../utils/confirmAction";
 
@@ -38,147 +35,24 @@ const STATUS_COLOR = {
   [TASK_STATUS.COMPLETED]: COLORS.success,
   [TASK_STATUS.CANCELLED]: COLORS.textMuted,
 };
-const EMPTY_FORM = {
-  beforeCondition: "",
-  findings: "",
-  resolution: "",
-  afterCondition: "",
-  partsUsed: "",
-  laborCost: "",
-  partsCost: "",
-  additionalCost: "",
-  nextMaintenanceDate: "",
-  customerAdvice: "",
-  customerSignatureName: "",
-  customerSignature: "",
-  notes: "",
-};
-
 function Badge({ label }) {
   const c = STATUS_COLOR[label] || COLORS.textSecondary;
   return <StatusChip label={label} color={c} />;
 }
 
 function getTaskSerials(task = {}) {
-  if (Array.isArray(task.serialNumbers) && task.serialNumbers.length > 0) {
-    return task.serialNumbers.filter(Boolean);
-  }
-  return (task.items || [])
-    .flatMap((item) => [
+  const safeTask = task && typeof task === "object" ? task : {};
+  const directSerials = Array.isArray(safeTask.serialNumbers) ? safeTask.serialNumbers : [];
+  const itemSerials = (Array.isArray(safeTask.items) ? safeTask.items : [])
+    .flatMap((item = {}) => [
       ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
       ...(Array.isArray(item.serialUnits)
         ? item.serialUnits.map((unit) => unit?.serialNumber)
         : []),
-    ])
+    ]);
+  return Array.from(new Set([...directSerials, ...itemSerials]
     .map((serial) => String(serial || "").trim())
-    .filter(Boolean);
-}
-
-function CompletionForm({ form, onChange, onSubmit, submitting }) {
-  const f = (k) => (v) => onChange(k, v);
-  return (
-    <View
-      style={{
-        borderTopWidth: 1,
-        borderColor: COLORS.border,
-        marginTop: SPACING.sm,
-        paddingTop: SPACING.sm,
-      }}
-    >
-      <Text
-        style={{
-          fontWeight: FONT.black,
-          color: COLORS.textPrimary,
-          marginBottom: SPACING.sm,
-        }}
-      >
-        Complete Work Order
-      </Text>
-      <TextField
-        label="Before Condition"
-        value={form.beforeCondition}
-        onChangeText={f("beforeCondition")}
-        multiline
-      />
-      <TextField
-        label="Findings"
-        value={form.findings}
-        onChangeText={f("findings")}
-        multiline
-      />
-      <TextField
-        label="Resolution"
-        value={form.resolution}
-        onChangeText={f("resolution")}
-        multiline
-      />
-      <TextField
-        label="After Condition"
-        value={form.afterCondition}
-        onChangeText={f("afterCondition")}
-        multiline
-      />
-      <TextField
-        label="Parts Used"
-        value={form.partsUsed}
-        onChangeText={f("partsUsed")}
-      />
-      <TextField
-        label="Labor Cost (₱)"
-        value={form.laborCost}
-        onChangeText={f("laborCost")}
-        keyboardType="decimal-pad"
-      />
-      <TextField
-        label="Parts Cost (₱)"
-        value={form.partsCost}
-        onChangeText={f("partsCost")}
-        keyboardType="decimal-pad"
-      />
-      <TextField
-        label="Additional Cost (₱)"
-        value={form.additionalCost}
-        onChangeText={f("additionalCost")}
-        keyboardType="decimal-pad"
-      />
-      <TextField
-        label="Next Maintenance Date"
-        value={form.nextMaintenanceDate}
-        onChangeText={f("nextMaintenanceDate")}
-        placeholder="YYYY-MM-DD"
-      />
-      <TextField
-        label="Customer Advice"
-        value={form.customerAdvice}
-        onChangeText={f("customerAdvice")}
-        multiline
-      />
-      <TextField
-        label="Customer Name"
-        value={form.customerSignatureName}
-        onChangeText={f("customerSignatureName")}
-        placeholder="Name of customer or receiver"
-      />
-      <TextField
-        label="Customer Signature"
-        value={form.customerSignature}
-        onChangeText={f("customerSignature")}
-        placeholder="Typed signature"
-      />
-      <TextField
-        label="Notes"
-        value={form.notes}
-        onChangeText={f("notes")}
-        multiline
-      />
-      <TechButton
-        title={submitting ? "Submitting..." : "Submit Work Report"}
-        onPress={onSubmit}
-        loading={submitting}
-        style={{ marginTop: SPACING.sm }}
-      />
-    </View>
-  );
+    .filter(Boolean)));
 }
 
 function TaskActionSheet({ task, visible, onClose, onInformation, onLogs }) {
@@ -350,8 +224,6 @@ export default function TasksScreen() {
   const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState("All");
   const [unitFilter, setUnitFilter] = useState("All");
-  const [completing, setCompleting] = useState(null);
-  const [completionForms, setCompletionForms] = useState({});
   const [busy, setBusy] = useState(null);
   const [actionTask, setActionTask] = useState(null);
 
@@ -392,59 +264,19 @@ export default function TasksScreen() {
       confirmText: "Start",
       onConfirm: async () => {
         setBusy(task.id);
-        await acceptTask(task.id);
-        refresh();
-        setBusy(null);
+        try {
+          await acceptTask(task.id);
+          refresh();
+        } catch (error) {
+          Alert.alert(
+            "Unable to start",
+            error?.message || "Could not start this work order.",
+          );
+        } finally {
+          setBusy(null);
+        }
       },
     });
-
-  const handleComplete = async (task) => {
-    const form = completionForms[task.id] || EMPTY_FORM;
-    const proofSubmittedAt = new Date().toISOString();
-    const technicianName = getDisplayName(current);
-    setBusy(task.id);
-    try {
-      await updateTaskStatus(
-        task.id,
-        TASK_STATUS.COMPLETED,
-        technicianName,
-        {
-          ...form,
-          laborCost: Number(form.laborCost || 0),
-          partsCost: Number(form.partsCost || 0),
-          additionalCost: Number(form.additionalCost || 0),
-          proofSubmittedAt,
-          proof: {
-            beforePhotos: [],
-            afterPhotos: [],
-            customerSignature: {
-              name: form.customerSignatureName.trim(),
-              signature: form.customerSignature.trim() || form.customerSignatureName.trim(),
-              signedAt: proofSubmittedAt,
-            },
-            technicianName,
-            submittedAt: proofSubmittedAt,
-            notes: form.notes.trim(),
-          },
-        },
-      );
-      setCompleting(null);
-      refresh();
-    } catch (error) {
-      Alert.alert(
-        "Unable to complete",
-        error?.message || "Could not complete this work order.",
-      );
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const setField = (taskId, key, value) =>
-    setCompletionForms((p) => ({
-      ...p,
-      [taskId]: { ...(p[taskId] || EMPTY_FORM), [key]: value },
-    }));
 
   const renderItem = ({ item }) => (
     <Card
@@ -502,6 +334,13 @@ export default function TasksScreen() {
         />
       )}
       <View style={{ marginTop: SPACING.sm }}>
+        <TechButton
+          title="View Work Details"
+          onPress={() => router.push(`/technician/task/${item.id}/information`)}
+          size="sm"
+          variant="secondary"
+          leftIcon={<Ionicons name="information-circle-sharp" size={16} color={COLORS.tech} />}
+        />
         {item.status === TASK_STATUS.PENDING && (
           <TechButton
             title="Start Work Order"
@@ -514,10 +353,10 @@ export default function TasksScreen() {
           />
         )}
         {item.status === TASK_STATUS.IN_PROGRESS && (
-          getTaskSerials(item).length > 0 ? (
+          getTaskSerials(item).length > 0 && !item.registrationProgress?.isComplete ? (
             <TechButton
-              title="Register Assigned Unit"
-              onPress={() => router.push(`/technician/task/${item.id}/amp-registration?serial=${encodeURIComponent(getTaskSerials(item)[0])}`)}
+              title="Continue Installation"
+              onPress={() => router.push(`/technician/task/${item.id}/amp-registration`)}
               size="sm"
               leftIcon={
                 <Ionicons
@@ -529,7 +368,7 @@ export default function TasksScreen() {
             />
           ) : (
             <TechButton
-              title="Complete Service"
+              title="Complete Installation"
               onPress={() => router.push(`/technician/task/${item.id}/complete-service`)}
               size="sm"
               leftIcon={
@@ -556,14 +395,6 @@ export default function TasksScreen() {
           style={{ marginTop: SPACING.sm }}
         />
       </View>
-      {completing === item.id && item.status === TASK_STATUS.IN_PROGRESS && (
-        <CompletionForm
-          form={completionForms[item.id] || EMPTY_FORM}
-          onChange={(k, v) => setField(item.id, k, v)}
-          onSubmit={() => handleComplete(item)}
-          submitting={busy === item.id}
-        />
-      )}
     </Card>
   );
 

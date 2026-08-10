@@ -19,18 +19,18 @@ function money(value) {
 }
 
 function getTaskSerials(task = {}) {
-  if (Array.isArray(task.serialNumbers) && task.serialNumbers.length > 0) {
-    return task.serialNumbers.filter(Boolean);
-  }
-  return (task.items || [])
-    .flatMap((item) => [
+  const safeTask = task && typeof task === "object" ? task : {};
+  const directSerials = Array.isArray(safeTask.serialNumbers) ? safeTask.serialNumbers : [];
+  const itemSerials = (Array.isArray(safeTask.items) ? safeTask.items : [])
+    .flatMap((item = {}) => [
       ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
       ...(Array.isArray(item.serialUnits)
         ? item.serialUnits.map((unit) => unit?.serialNumber)
         : []),
-    ])
+    ]);
+  return Array.from(new Set([...directSerials, ...itemSerials]
     .map((serial) => String(serial || "").trim())
-    .filter(Boolean);
+    .filter(Boolean)));
 }
 
 function ProofPhotoList({ photos = [] }) {
@@ -64,24 +64,37 @@ export default function TaskInformationScreen() {
   const [unit, setUnit] = useState(null);
   const [requests, setRequests] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
       async function load() {
-        const loadedTask = await getTaskById(id);
-        const loadedUnit = loadedTask?.unitId
-          ? await getUnitByCode(loadedTask.unitId)
-          : null;
-        const loadedRequests = loadedTask?.customerId
-          ? await getServiceRequestsByUser(loadedTask.customerId)
-          : [];
-        const loadedLogs = loadedUnit?.id ? await getServiceLogsByUnit(loadedUnit.id) : [];
-        if (active) {
-          setTask(loadedTask);
-          setUnit(loadedUnit);
-          setRequests(loadedRequests);
-          setLogs(loadedLogs);
+        setLoading(true);
+        setLoadError("");
+        try {
+          const loadedTask = await getTaskById(id);
+          if (!loadedTask) {
+            throw new Error("This work order is no longer available. Return to My Work Orders and refresh the list.");
+          }
+          const loadedUnit = loadedTask.unitId
+            ? await getUnitByCode(loadedTask.unitId)
+            : null;
+          const loadedRequests = loadedTask.customerId
+            ? await getServiceRequestsByUser(loadedTask.customerId)
+            : [];
+          const loadedLogs = loadedUnit?.id ? await getServiceLogsByUnit(loadedUnit.id) : [];
+          if (active) {
+            setTask(loadedTask);
+            setUnit(loadedUnit);
+            setRequests(loadedRequests);
+            setLogs(loadedLogs);
+          }
+        } catch (error) {
+          if (active) setLoadError(error?.message || "Unable to load this work order.");
+        } finally {
+          if (active) setLoading(false);
         }
       }
       load();
@@ -105,6 +118,9 @@ export default function TaskInformationScreen() {
     : null;
   const assignedSerials = getTaskSerials(task);
   const proof = task?.proof || {};
+  const registrationProgress = task?.registrationProgress;
+  const registrationComplete =
+    registrationProgress?.isComplete ?? assignedSerials.length === 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -121,6 +137,25 @@ export default function TaskInformationScreen() {
           onBack={() => router.back()}
         />
 
+        {loading && !task ? (
+          <Card>
+            <Text style={{ color: COLORS.textSecondary }}>Loading work order details…</Text>
+          </Card>
+        ) : null}
+
+        {loadError ? (
+          <Card>
+            <Text style={{ color: COLORS.danger, fontWeight: FONT.bold }}>{loadError}</Text>
+            <TechButton
+              title="Back to Work Orders"
+              onPress={() => router.replace("/technician/tasks")}
+              style={{ marginTop: SPACING.md }}
+            />
+          </Card>
+        ) : null}
+
+        {!task || loadError ? null : <>
+
         <Card>
           <InfoCard label="Status" value={task?.status || "Unknown"} />
           <InfoCard label="Customer" value={task?.customerName || "Unknown"} />
@@ -128,6 +163,30 @@ export default function TaskInformationScreen() {
           <InfoCard label="Schedule" value={task?.scheduledDate || "Unscheduled"} />
           <InfoCard label="Service Concern" value={task?.description || task?.concern || "None"} />
         </Card>
+
+        {assignedSerials.length > 0 && (
+          <Card>
+            <Text
+              style={{
+                color: COLORS.textPrimary,
+                fontWeight: FONT.black,
+                fontSize: FONT.lg,
+                marginBottom: SPACING.sm,
+              }}
+            >
+              Installation progress
+            </Text>
+            <InfoCard
+              label="Assigned QR labels"
+              value={`${registrationProgress?.totalRegistered || 0} of ${registrationProgress?.totalRequired || assignedSerials.length} registered`}
+            />
+            <InfoCard label="Serial numbers" value={assignedSerials.join(", ")} />
+            <InfoCard
+              label="Next step"
+              value={registrationComplete ? "Submit the installation report and customer sign-off." : "Register each assigned unit before completing the installation."}
+            />
+          </Card>
+        )}
 
         <Card>
           <Text
@@ -223,23 +282,31 @@ export default function TaskInformationScreen() {
                 variant="secondary"
               />
             )}
-            {task?.status === TASK_STATUS.IN_PROGRESS && !!task?.unitId && (
+            {task?.status === TASK_STATUS.IN_PROGRESS && !!task?.unitId && registrationComplete && (
               <TechButton
-                title="Complete Service"
+                title="Complete Installation"
                 onPress={() => router.push(`/technician/task/${task.id}/complete-service`)}
                 size="sm"
               />
             )}
-            {assignedSerials.length > 0 && (
+            {task?.status === TASK_STATUS.IN_PROGRESS && assignedSerials.length > 0 && !registrationComplete && (
               <TechButton
-                title="Register Assigned Unit"
-                onPress={() => router.push(`/technician/task/${task.id}/amp-registration?serial=${encodeURIComponent(assignedSerials[0])}`)}
+                title="Continue Installation"
+                onPress={() => router.push(`/technician/task/${task.id}/amp-registration`)}
                 size="sm"
                 variant="secondary"
               />
             )}
+            {task?.status === TASK_STATUS.IN_PROGRESS && !task?.unitId && registrationComplete && (
+              <TechButton
+                title="Complete Installation"
+                onPress={() => router.push(`/technician/task/${task.id}/complete-service`)}
+                size="sm"
+              />
+            )}
           </View>
         </Card>
+        </>}
       </ScrollView>
     </SafeAreaView>
   );

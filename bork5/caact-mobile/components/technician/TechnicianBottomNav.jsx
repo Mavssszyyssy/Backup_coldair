@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
@@ -71,15 +72,19 @@ function NavItem({ item }) {
 }
 
 export default function TechnicianBottomNav() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, SPACING.xs);
+
   return (
     <View
       style={{
         flexDirection: "row",
-        height: 76,
+        height: 76 + bottomInset,
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         paddingHorizontal: SPACING.xs,
+        paddingBottom: bottomInset,
         alignItems: "center",
       }}
     >

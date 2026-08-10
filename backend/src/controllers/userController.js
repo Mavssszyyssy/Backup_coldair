@@ -489,9 +489,19 @@ const updateProfileById = async (req, res) => {
 };
 
 const listAddresses = async (req, res) => {
-  const addresses = Array.isArray(req.authUser.addresses)
+  let addresses = Array.isArray(req.authUser.addresses)
     ? req.authUser.addresses
     : [];
+
+  // Accounts created before saved addresses were introduced still have the
+  // sign-up/profile address fields. Materialize that same address as the
+  // default checkout address instead of asking the customer to enter it again.
+  if (addresses.length === 0) {
+    syncDefaultAddressFromProfile(req.authUser);
+    await req.authUser.save();
+    addresses = req.authUser.addresses || [];
+  }
+
   return res.json({ addresses });
 };
 

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE } from "../constants/config";
+import { apiFetch } from "../constants/config";
 import { getStoredToken } from "./api";
 
 const STORAGE_KEY = "orders_storage_v1";
@@ -163,7 +163,7 @@ function mergeOrders(primary = [], secondary = []) {
 async function fetchBackendOrders() {
   const token = await getStoredToken();
   if (!token) return [];
-  const response = await fetch(`${API_BASE}/orders/me`, {
+  const response = await apiFetch("/orders/me", {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error("Unable to fetch backend orders.");
@@ -227,7 +227,7 @@ export async function getOrdersByUser(user = {}) {
 export async function requestOrderCancellation(orderId, reason = "") {
   const token = await getStoredToken();
   if (!token) throw new Error("Please sign in again before cancelling this order.");
-  const response = await fetch(`${API_BASE}/orders/me/${encodeURIComponent(orderId)}/cancel-request`, {
+  const response = await apiFetch(`/orders/me/${encodeURIComponent(orderId)}/cancel-request`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

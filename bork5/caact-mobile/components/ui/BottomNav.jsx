@@ -2,11 +2,15 @@
 // Customer bottom navigation bar — 5 tabs.
 // Reloads cart count whenever the screen that mounts this nav gains focus.
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS } from "../../constants/theme";
 import NavButton from "./NavButton";
 
 export default function BottomNav() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 4);
+
   return (
     <View
       style={{
@@ -14,8 +18,9 @@ export default function BottomNav() {
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
-        height: 70,
+        height: 70 + bottomInset,
         alignItems: "center",
+        paddingBottom: bottomInset,
       }}
     >
       <NavButton

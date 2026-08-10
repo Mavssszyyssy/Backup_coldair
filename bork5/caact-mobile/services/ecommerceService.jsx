@@ -1,4 +1,4 @@
-import { API_BASE } from "../constants/config";
+import { apiFetch } from "../constants/config";
 
 const DEFAULT_CATALOG_IMAGE_URL =
   "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
@@ -11,11 +11,10 @@ const getProductImageUrl = (product = {}) => {
   return DEFAULT_CATALOG_IMAGE_URL;
 };
 
-export const fallbackProducts = [
-  { id: "test-paymongo-001", sku: "TEST-PAYMONGO-001", name: "AeroPulse Test AC Unit", brand: "AeroPulse", model: "TEST-1HP", category: "split", specs: "1.0 HP", price: 100, stock: 10, inStock: true, description: "Test item for the PayMongo checkout flow.", warranty: "Test warranty" },
-  { id: "coldair-split-1", sku: "CA-SPLIT-1HP", name: "Coldair Split Type Inverter", brand: "Coldair", model: "CSI-10", category: "split", specs: "1.0 HP", price: 25999, stock: 4, inStock: true, description: "Energy-efficient split type air conditioner.", warranty: "1 year service warranty" },
-  { id: "coldair-window-1", sku: "CA-WINDOW-08", name: "Coldair Window Type", brand: "Coldair", model: "CWT-08", category: "window", specs: "0.8 HP", price: 16999, stock: 6, inStock: true, description: "Compact cooling for bedrooms and small spaces.", warranty: "1 year service warranty" },
-].map((product) => ({ ...product, imageUrl: getProductImageUrl(product) }));
+// Products must come from the API so every item shown in the mobile shop has
+// a real inventory record and can be checked out. Do not expose placeholder
+// products here: they cannot be resolved by the order service.
+export const fallbackProducts = [];
 
 const normalizeProduct = (product = {}) => ({
   id: String(product.id || product._id || product.productId || product.sku || ""),
@@ -47,7 +46,10 @@ export const mergeProducts = (fallback, backend) => {
   return Array.from(merged.values());
 };
 export async function fetchShopProducts() {
-  const response = await fetch(`${API_BASE}/products`);
+  // The public catalogue is intentionally used here. The previous protected
+  // endpoint was called without an auth header and made the app silently show
+  // only its old test fallback products.
+  const response = await apiFetch("/products/public");
   if (!response.ok) throw new Error("Unable to load products.");
   const body = await response.json();
   return (body.products || body.data || []).map(normalizeProduct).filter((product) => product.id);

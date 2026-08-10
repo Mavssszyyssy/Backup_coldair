@@ -23,6 +23,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const ampRoutes = require("./routes/ampRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
+const partsRequestRoutes = require("./routes/partsRequestRoutes");
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/amp", ampRoutes);
 app.use("/api/predictions", predictionRoutes);
+app.use("/api/parts-requests", partsRequestRoutes);
 
 const buildPath = path.resolve(__dirname, "..", "..", "front", "build");
 const indexHtml = path.join(buildPath, "index.html");

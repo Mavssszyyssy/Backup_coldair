@@ -1,5 +1,5 @@
 // services/qrLookupService.js
-import { API_BASE } from "../constants/config";
+import { apiFetch } from "../constants/config";
 import * as api from "./api";
 import { getStoredToken } from "./api";
 import { getAllUnits } from "./unitStorage";
@@ -133,7 +133,7 @@ async function lookupSerialInProductCatalog(rawValue, token) {
   const rawNeedle = String(rawValue || "").trim().toLowerCase();
   if (!serialNeedle || !token) return null;
 
-  const response = await fetch(`${API_BASE}/products`, {
+  const response = await apiFetch("/products", {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -176,8 +176,8 @@ async function lookupBackendSerialUnit(rawValue) {
   }
 
   try {
-    const response = await fetch(
-      `${API_BASE}/products/serial/${encodeURIComponent(serialNumber)}`,
+    const response = await apiFetch(
+      `/products/serial/${encodeURIComponent(serialNumber)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

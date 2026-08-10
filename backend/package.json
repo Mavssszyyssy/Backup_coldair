@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "start:5000": "PORT=5000 node src/server.js",
+    "start:5001": "PORT=5001 node src/server.js",
     "seed": "node src/seed/seedDemoUsers.js",
     "check:imports": "node ../scripts/check-imports.js"
   },

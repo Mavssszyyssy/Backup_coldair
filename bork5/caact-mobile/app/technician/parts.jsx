@@ -80,19 +80,23 @@ export default function PartsScreen() {
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
 
   const handleSubmit = async () => {
-    if (!form.partName) {
-      Alert.alert("Required", "Enter the part name.");
+    if (!form.partName.trim() || !form.reason.trim()) {
+      Alert.alert("Required", "Enter the part name and explain why it is needed.");
+      return;
+    }
+    const quantity = Number(form.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      Alert.alert("Invalid quantity", "Enter a whole quantity of at least 1.");
       return;
     }
     setSubmitting(true);
     try {
       await savePartsRequest({
-        id: `tr_${Date.now()}`,
         technicianId: current.id,
         technicianName: `${current.name_first} ${current.name_last}`.trim(),
         partName: form.partName,
-        quantity: Number(form.quantity || 1),
-        reason: form.reason,
+        quantity,
+        reason: form.reason.trim(),
         priority: form.priority,
         status: PARTS_REQUEST_STATUS.SUBMITTED,
         requestedAt: new Date().toISOString(),

@@ -2,11 +2,12 @@
 // HTTP client for the Express API server in ../../backend.
 //
 // Base URL selection:
-//   - Expo LAN / real device -> derived from Metro host, e.g. http://192.168.1.x:5000/api
-//   - Android emulator fallback -> http://10.0.2.2:5000/api
+//   - Expo LAN / real device -> derived from Metro host, e.g. http://192.168.1.x:5001/api
+//   - Local API fallback -> the same host on port 5000
+//   - Android emulator fallback -> http://10.0.2.2:5001/api
 //   - Override with EXPO_PUBLIC_API_BASE_URL or EXPO_PUBLIC_API_BASE.
 
-import { API_BASE } from "../constants/config";
+import { API_BASE, apiFetch } from "../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ---------------------------------------------------------------------------
@@ -27,7 +28,7 @@ async function request(method, path, { token, body } = {}) {
 
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    res = await apiFetch(path, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -447,9 +448,13 @@ export async function fetchTasks(token, { technicianId } = {}) {
 }
 
 export async function fetchTask(token, taskId) {
-  const { ok, data } = await get(`/tasks/${encodeURIComponent(taskId)}`, token);
+  const { ok, status, data } = await get(`/tasks/${encodeURIComponent(taskId)}`, token);
   if (ok) return { success: true, task: data.task };
-  return { success: false, error: getErrorMessage(data, "Failed to fetch task.") };
+  return {
+    success: false,
+    status,
+    error: getErrorMessage(data, "Failed to fetch task."),
+  };
 }
 
 export async function createTask(token, payload) {
@@ -507,6 +512,22 @@ export async function registerAmpUnit(token, taskId, payload) {
     error: getErrorMessage(data, "Failed to submit AMP registration."),
     missingFields: data.missingFields || [],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Technician parts requests
+// ---------------------------------------------------------------------------
+
+export async function fetchMyPartsRequests(token) {
+  const { ok, data } = await get("/parts-requests/me", token);
+  if (ok) return { success: true, requests: data.requests || [] };
+  return { success: false, error: getErrorMessage(data, "Failed to load parts requests."), requests: [] };
+}
+
+export async function createPartsRequest(token, payload) {
+  const { ok, data } = await post("/parts-requests", payload, token);
+  if (ok) return { success: true, request: data.request };
+  return { success: false, error: getErrorMessage(data, "Failed to submit parts request.") };
 }
 
 // ---------------------------------------------------------------------------

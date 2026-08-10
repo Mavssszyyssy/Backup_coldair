@@ -6,12 +6,14 @@
 //   EXPO_PUBLIC_API_BASE=http://192.168.1.33:5000/api
 //
 // By default, Expo LAN runs derive the backend host from Metro's host and use
-// the Express backend in ../../backend on port 5000.
+// the Express fallback listener on port 5001. Requests retry port 5000 when
+// that primary backend listener is available instead.
 
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-const BACKEND_PORT = "5000";
+const BACKEND_PORT = "5001";
+const BACKEND_FALLBACK_PORT = "5000";
 
 const trimTrailingSlash = (value = "") => String(value).replace(/\/+$/, "");
 
@@ -39,15 +41,15 @@ const getBrowserHost = () => {
   return "";
 };
 
-const getDefaultApiOrigin = () => {
+const getDefaultApiOrigin = (port = BACKEND_PORT) => {
   const expoHost = getExpoHost();
-  if (expoHost) return `http://${expoHost}:${BACKEND_PORT}`;
+  if (expoHost) return `http://${expoHost}:${port}`;
 
   const browserHost = getBrowserHost();
-  if (browserHost) return `http://${browserHost}:${BACKEND_PORT}`;
+  if (browserHost) return `http://${browserHost}:${port}`;
 
-  if (Platform.OS === "android") return `http://10.0.2.2:${BACKEND_PORT}`;
-  return `http://localhost:${BACKEND_PORT}`;
+  if (Platform.OS === "android") return `http://10.0.2.2:${port}`;
+  return `http://localhost:${port}`;
 };
 
 const normalizeApiBase = (value = "") => {
@@ -56,5 +58,22 @@ const normalizeApiBase = (value = "") => {
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 };
 
-export const API_BASE = normalizeApiBase(getConfiguredBaseUrl());
+const configuredBaseUrl = getConfiguredBaseUrl();
+
+export const API_BASE = normalizeApiBase(configuredBaseUrl);
+export const API_BASE_FALLBACKS = configuredBaseUrl
+  ? []
+  : [normalizeApiBase(`${getDefaultApiOrigin(BACKEND_FALLBACK_PORT)}/api`)];
 export const API_HEALTH_URL = `${API_BASE}/health`;
+
+export async function apiFetch(path, options) {
+  let networkError;
+  for (const baseUrl of [API_BASE, ...API_BASE_FALLBACKS]) {
+    try {
+      return await fetch(`${baseUrl}${path}`, options);
+    } catch (error) {
+      networkError = error;
+    }
+  }
+  throw networkError || new Error("Unable to reach the local API.");
+}

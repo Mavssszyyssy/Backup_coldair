@@ -45,19 +45,36 @@ function createTimelineEvent({ title, description = "", actor = "System", timest
 }
 
 export function normalizeTask(item = {}) {
-  const createdAt = item.createdAt || new Date().toISOString();
-  const title = item.title || item.issueType || "Service Task";
-  const description = item.description || item.concern || item.issueDescription || "";
-  const orderItems = Array.isArray(item.items) ? item.items : [];
+  const payload =
+    item.payload && typeof item.payload === "object" && !Array.isArray(item.payload)
+      ? item.payload
+      : {};
+  const value = (key, fallback = "") =>
+    item[key] !== undefined && item[key] !== null && item[key] !== ""
+      ? item[key]
+      : payload[key] ?? fallback;
+  const createdAt = value("createdAt", new Date().toISOString());
+  const title = value("title") || value("issueType") || "Service Task";
+  const description =
+    value("description") || value("concern") || value("issueDescription") || "";
+  const orderItems = Array.isArray(item.items)
+    ? item.items
+    : Array.isArray(payload.items)
+      ? payload.items
+      : [];
+  const suppliedSerials = [
+    ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
+    ...(Array.isArray(payload.serialNumbers) ? payload.serialNumbers : []),
+  ];
   const serialNumbers = Array.from(
     new Set(
-      orderItems
+      [...suppliedSerials, ...orderItems
         .flatMap((orderItem) => [
           ...(Array.isArray(orderItem.serialNumbers) ? orderItem.serialNumbers : []),
           ...(Array.isArray(orderItem.serialUnits)
             ? orderItem.serialUnits.map((unit) => unit?.serialNumber)
             : []),
-        ])
+        ])]
         .map((serial) => String(serial || "").trim())
         .filter(Boolean),
     ),
@@ -88,36 +105,37 @@ export function normalizeTask(item = {}) {
     [item.findings, item.resolution, item.notes].filter(Boolean).join(" | ");
 
   return {
-    id: item.id || `task_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
-    taskCode: item.taskCode || "",
-    orderId: item.orderId || "",
-    orderCode: item.orderCode || "",
+    id: value("id") || `task_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+    taskCode: value("taskCode"),
+    orderId: value("orderId"),
+    orderCode: value("orderCode"),
     items: orderItems,
     serialNumbers,
-    registrationProgress: item.registrationProgress || null,
-    ampRegistrations: item.ampRegistrations || {},
-    requestId: item.requestId || "",
+    registrationProgress: value("registrationProgress", null),
+    ampRegistrations: value("ampRegistrations", {}),
+    requestId: value("requestId"),
     title,
     description,
-    customerId: item.customerId || item.userId || "",
-    customerName: item.customerName || item.customer || "",
-    customerEmail: item.customerEmail || "",
-    customerPhone: item.customerPhone || "",
-    issueType: item.issueType || "",
+    customerId: value("customerId") || value("userId"),
+    customerName: value("customerName") || value("customer"),
+    customerEmail: value("customerEmail"),
+    customerPhone: value("customerPhone"),
+    issueType: value("issueType"),
     concern: description,
-    unitId: item.unitId || null,
+    unitId: value("unitId", null),
     unitName:
-      item.unitName ||
-      item.unitType ||
+      value("unitName") ||
+      value("unitType") ||
       orderItems.map((orderItem) => orderItem.name).filter(Boolean).join(", "),
-    unitType: item.unitType || item.unitName || "",
-    address: item.address || "",
-    plusCode: item.plusCode || "",
-    assignedTechnicianId: item.assignedTechnicianId || "",
-    assignedTechnicianName: item.assignedTechnicianName || "",
-    priority: item.priority || "Normal",
-    scheduledDate: item.scheduledDate || item.preferredDate || item.preferredSchedule || "",
-    status: normalizeTaskStatus(item.status),
+    unitType: value("unitType") || value("unitName"),
+    address: value("address"),
+    plusCode: value("plusCode"),
+    assignedTechnicianId: value("assignedTechnicianId"),
+    assignedTechnicianName: value("assignedTechnicianName"),
+    priority: value("priority") || "Normal",
+    scheduledDate:
+      value("scheduledDate") || value("preferredDate") || value("preferredSchedule"),
+    status: normalizeTaskStatus(value("status")),
     findings: item.findings || "",
     resolution: item.resolution || "",
     beforeCondition: item.beforeCondition || "",
@@ -188,16 +206,36 @@ export async function saveAllTasks(items = []) {
 }
 
 export async function getTaskById(taskId) {
+  const normalizedTaskId = Array.isArray(taskId) ? taskId[0] : taskId;
+  let connectionFailed = false;
   try {
     const token = await api.getStoredToken();
     if (token) {
-      const result = await api.fetchTask(token, taskId);
+      const result = await api.fetchTask(token, normalizedTaskId);
       if (result.success) return normalizeTask(result.task);
+      // A response from the server is authoritative. Falling back to an old
+      // local copy for a 401/403/404 made Work Details report a misleading
+      // missing task and could send a technician into the wrong installation.
+      throw new Error(result.error || "Unable to load this work order.");
     }
-  } catch {}
+  } catch (error) {
+    connectionFailed = true;
+    if (error?.message && !/network request failed|failed to fetch|timed out/i.test(error.message)) {
+      throw error;
+    }
+  }
 
-  const tasks = await getAllTasks();
-  return tasks.find((item) => String(item.id) === String(taskId)) || null;
+  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+  const cachedTasks = safeParse(raw, []);
+  const cachedTask = Array.isArray(cachedTasks)
+    ? cachedTasks.find((item) => String(item?.id) === String(normalizedTaskId))
+    : null;
+  if (cachedTask) return normalizeTask(cachedTask);
+
+  if (connectionFailed) {
+    throw new Error("Unable to reach the server. Check the connection and try again.");
+  }
+  return null;
 }
 
 export async function createTask(payload = {}, actor = "Admin") {

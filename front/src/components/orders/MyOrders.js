@@ -26,7 +26,10 @@ const VALID_ORDER_STATUSES = [
 
 const normalizeCustomerOrder = (order = {}) => ({
   ...order,
-  id: order.orderCode || order.id,
+  // Prefer the database identifier for mutations. The API also accepts the
+  // human-readable order code, but using one canonical ID prevents a stale
+  // card from submitting a cancellation against a mismatched cached code.
+  id: order.id || order._id || order.orderCode,
   date: order.createdAt || order.date,
   total: order.totalAmount || order.total || 0,
   status: order.workflowStatus || order.status,
@@ -51,6 +54,7 @@ function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [cancellingOrderId, setCancellingOrderId] = useState("");
 
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
@@ -133,6 +137,7 @@ function MyOrders() {
     if (reason === null) return;
 
     try {
+      setCancellingOrderId(String(order.id));
       const response = await apiRequest(`/orders/me/${encodeURIComponent(order.id)}/cancel-request`, {
         method: "PATCH",
         body: JSON.stringify({ reason }),
@@ -146,6 +151,8 @@ function MyOrders() {
       alert(response.message || "Cancellation request submitted.");
     } catch (error) {
       alert(error?.message || "Unable to request cancellation.");
+    } finally {
+      setCancellingOrderId("");
     }
   };
 
@@ -289,6 +296,7 @@ function MyOrders() {
                 onReorder={handleReorder}
                 onReceipt={handleReceipt}
                 onCancelRequest={handleCancelRequest}
+                cancelling={cancellingOrderId === String(order.id)}
               />
             ))
           )}

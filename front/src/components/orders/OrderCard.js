@@ -28,7 +28,7 @@ const cancellationStatusLabel = (order = {}) => {
   return "";
 };
 
-function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest }) {
+function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, cancelling = false }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case "to_pay":
@@ -295,10 +295,12 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest }) {
                 <BoutiqueButton
                   variant="outline"
                   size="sm"
+                  type="button"
+                  disabled={cancelling}
                   onClick={() => onCancelRequest(order)}
                   style={{ width: "auto", color: BQ_COLORS.danger, borderColor: "#fecaca" }}
                 >
-                  Request Cancel
+                  {cancelling ? "Submitting..." : "Request Cancel"}
                 </BoutiqueButton>
               ) : null}
               <BoutiqueButton

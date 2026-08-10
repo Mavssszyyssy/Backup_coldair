@@ -458,6 +458,22 @@ const restoreStockForCancelledOrder = async (order, session = null) => {
   );
 };
 
+const rollbackUnpaidOnlineOrder = async (order) => {
+  if (!order || !isOnlinePaymentMethod(order.paymentMethod)) return;
+
+  try {
+    await restoreStockForCancelledOrder(order);
+    await updateSerialUnitsForOrder(order, "cancelled");
+    order.workflowStatus = "cancelled";
+    order.status = "cancelled";
+    order.paymentStatus = "failed";
+    order.cancellationReason = "PayMongo checkout could not be started.";
+    await order.save();
+  } catch (rollbackError) {
+    console.error("Unable to roll back unpaid online order:", rollbackError);
+  }
+};
+
 const updateSerialUnitsForOrder = async (order, nextStatus) => {
   const serialNumbers = (order.items || []).flatMap((item) =>
     collectItemSerialNumbers(item),
@@ -1729,10 +1745,13 @@ const createOrder = async (req, res) => {
 
       resolvedItems.push({
         productId: String(product.id || ""),
-        name: item.name || product.name,
-        price: Number(item.price) || Number(product.price || 0),
+        name: product.name,
+        // The catalogue is the source of truth for every purchasable item.
+        // This prevents a stale test-cart price from becoming the payment
+        // amount while allowing any active product to be purchased.
+        price: Number(product.price || 0),
         quantity: quantityNeeded,
-        specs: item.specs || product.specs || "",
+        specs: product.specs || "",
         serialNumbers,
         serialUnits,
         sourceBranch: finalBranch,
@@ -1837,9 +1856,10 @@ const createOrder = async (req, res) => {
   try {
     let lastError = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
+      let order = null;
+      let checkout = null;
       try {
-        const order = await attemptCreateOrder();
-        let checkout = null;
+        order = await attemptCreateOrder();
         if (usesOnlinePayment) {
           checkout = await attachPaymongoCheckout(order, {
             req,
@@ -1885,6 +1905,13 @@ const createOrder = async (req, res) => {
             : null,
         });
       } catch (error) {
+        // An online order reserves stock before the payment provider creates
+        // its checkout session. Restore that reservation whenever PayMongo
+        // cannot start, so the customer can retry without a silent, blocked
+        // cart or an orphaned unpaid order.
+        if (order && usesOnlinePayment && !checkout) {
+          await rollbackUnpaidOnlineOrder(order);
+        }
         if (error instanceof HttpError) {
           return res.status(error.status).json({ message: error.message });
         }
