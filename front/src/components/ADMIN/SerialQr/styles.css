@@ -28,6 +28,40 @@
   gap: 16px;
 }
 
+.serialqr-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.serialqr-pagination > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.serialqr-pagination button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.serialqr-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .serialqr-model-header {
   display: flex;
   align-items: flex-start;
@@ -111,5 +145,10 @@
 
   .serialqr-card {
     grid-template-columns: 1fr;
+  }
+
+  .serialqr-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

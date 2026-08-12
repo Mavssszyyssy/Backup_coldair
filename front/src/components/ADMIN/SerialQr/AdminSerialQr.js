@@ -21,6 +21,8 @@ const AdminSerialQr = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const load = async () => {
     setError("");
@@ -59,6 +61,17 @@ const AdminSerialQr = () => {
     (sum, product) => sum + (product.serialUnits?.length || 0),
     0,
   );
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  const firstProductIndex = (page - 1) * pageSize;
+  const pageProducts = filteredProducts.slice(firstProductIndex, firstProductIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <AdminLayout
@@ -89,7 +102,7 @@ const AdminSerialQr = () => {
       {loading ? <div className="admin-card">Loading serial numbers...</div> : null}
 
       <div className="serialqr-model-list">
-        {filteredProducts.map((product) => {
+        {pageProducts.map((product) => {
           const serialUnits = product.serialUnits || [];
           return (
             <section className="admin-card serialqr-model" key={product.id}>
@@ -134,6 +147,17 @@ const AdminSerialQr = () => {
           );
         })}
       </div>
+
+      {!loading && filteredProducts.length > 0 ? (
+        <div className="serialqr-pagination" aria-label="QR registry pagination">
+          <span>Showing {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, filteredProducts.length)} of {filteredProducts.length} models</span>
+          <div>
+            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button>
+            <span>Page {page} of {totalPages}</span>
+            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button>
+          </div>
+        </div>
+      ) : null}
 
       {!loading && filteredProducts.length === 0 ? (
         <div className="admin-card">No AC unit models matched your search.</div>

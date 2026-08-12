@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert, Platform, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSettingsRow, {
@@ -35,6 +35,7 @@ export default function CustomerSettingsScreen() {
   const [barangays, setBarangays] = useState([]);
   const [localitiesLoading, setLocalitiesLoading] = useState(true);
   const [barangaysLoading, setBarangaysLoading] = useState(false);
+  const [addressNotice, setAddressNotice] = useState("");
 
   useEffect(() => {
     setForm(buildEditableProfile(current));
@@ -148,7 +149,8 @@ export default function CustomerSettingsScreen() {
       }
 
       setIsEditing(false);
-      Alert.alert("Saved", "Your customer settings have been updated.");
+      setAddressNotice("Delivery address saved and ready for checkout.");
+      Alert.alert("Delivery Address Saved", "Your delivery address is now ready to use at checkout.");
     } finally {
       setSaving(false);
     }
@@ -200,6 +202,22 @@ export default function CustomerSettingsScreen() {
         ) : null
       }
     >
+      {addressNotice ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            padding: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "#86efac",
+            backgroundColor: "#f0fdf4",
+          }}
+        >
+          <Ionicons name="checkmark-circle" size={20} color={COLORS.success} style={{ marginRight: 8 }} />
+          <Text style={{ flex: 1, color: "#166534", fontWeight: "700" }}>{addressNotice}</Text>
+        </View>
+      ) : null}
       {!isEditing ? (
         <>
           <Section title="Account">

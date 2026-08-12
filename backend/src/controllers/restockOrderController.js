@@ -137,11 +137,11 @@ const signalRestockOrder = async (req, res) => {
 };
 
 /**
- * Manager marks restock as received
+ * SuperAdmin marks restock as received
  */
 const markRestockReceived = async (req, res) => {
-  if (req.authUser.role !== "admin" && req.authUser.role !== "technician") {
-    return res.status(403).json({ message: "Only managers can mark restock as received" });
+  if (req.authUser.role !== "superadmin") {
+    return res.status(403).json({ message: "Only SuperAdmin can receive stock into inventory" });
   }
 
   const { id } = req.params;

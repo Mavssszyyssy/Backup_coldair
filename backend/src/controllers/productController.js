@@ -724,18 +724,6 @@ const createSampleDoc = (item) => {
   };
 };
 
-const replenishStockIfEmpty = async (product, fallbackStock) => {
-  const existingBranchTotal = getBranchTotal(product);
-  const existingTotal = Math.max(
-    existingBranchTotal,
-    Number(product.stock) || 0,
-  );
-  if (existingTotal > 0) return false;
-  applyBranchStock(product, distributeStockToBranches(fallbackStock));
-  await product.save();
-  return true;
-};
-
 const ensureSampleInventory = async () => {
   if (sampleSeedDone) {
     return;
@@ -793,11 +781,7 @@ const ensureSampleInventory = async () => {
         touched = true;
       }
 
-      const replenished = await replenishStockIfEmpty(
-        existing,
-        item.stock || DISTRIBUTION_FALLBACK_STOCK,
-      );
-      if (touched && !replenished) {
+      if (touched) {
         await existing.save();
       }
     }
@@ -810,15 +794,6 @@ const ensureSampleInventory = async () => {
       sku: { $in: Array.from(sampleBySku.keys()) },
     });
     await ensureSerialUnitsForProducts(seededSamples);
-
-    if (process.env.NODE_ENV !== "production") {
-      const globallyDepleted = await Product.find({ stock: { $lte: 0 } });
-      await Promise.all(
-        globallyDepleted.map((product) =>
-          replenishStockIfEmpty(product, DISTRIBUTION_FALLBACK_STOCK),
-        ),
-      );
-    }
 
     sampleSeedDone = true;
   })().finally(() => {
@@ -840,7 +815,13 @@ const toRoleAwareProduct = (product, req) => {
   if (req.authUser.role === "superadmin" || req.authUser.role === "technician") {
     return { ...base, branchStock };
   }
-  const branch = req.activeBranch;
+  const requestedBranch = String(req.query?.branch || "").trim();
+  // Admins can monitor another branch, but remain read-only. Stock-changing routes
+  // still use the authenticated account's active branch and require SuperAdmin.
+  const branch =
+    req.authUser.role === "admin" && BRANCHES.includes(requestedBranch)
+      ? requestedBranch
+      : req.activeBranch;
   return {
     ...base,
     activeBranch: branch,
@@ -855,6 +836,14 @@ const toRoleAwareProduct = (product, req) => {
 const requireAdmin = (req, res) => {
   if (req.authUser.role !== "admin" && req.authUser.role !== "superadmin") {
     res.status(403).json({ message: "Forbidden" });
+    return false;
+  }
+  return true;
+};
+
+const requireInventoryOwner = (req, res) => {
+  if (req.authUser.role !== "superadmin") {
+    res.status(403).json({ message: "Inventory changes are managed by SuperAdmin. Admin access is read-only." });
     return false;
   }
   return true;
@@ -893,7 +882,7 @@ const listLowStockProducts = async (req, res) => {
 };
 
 const createProduct = async (req, res) => {
-  if (!requireAdmin(req, res)) return null;
+  if (!requireInventoryOwner(req, res)) return null;
 
   const {
     name,
@@ -999,7 +988,7 @@ const createProduct = async (req, res) => {
 };
 
 const restockProduct = async (req, res) => {
-  if (!requireAdmin(req, res)) return null;
+  if (!requireInventoryOwner(req, res)) return null;
 
   const { productId } = req.params;
   const { quantity = 0, branch, features } = req.body || {};
@@ -1046,7 +1035,7 @@ const restockProduct = async (req, res) => {
 };
 
 const updateBranchStock = async (req, res) => {
-  if (!requireAdmin(req, res)) return null;
+  if (!requireInventoryOwner(req, res)) return null;
 
   const { productId } = req.params;
   const { branch, action = "set", quantity = 0 } = req.body || {};
@@ -1056,8 +1045,7 @@ const updateBranchStock = async (req, res) => {
     return res.status(404).json({ message: "Product not found" });
   }
 
-  const scopedBranch =
-    req.authUser.role === "superadmin" ? branch : req.activeBranch;
+  const scopedBranch = branch;
   if (!scopedBranch || !BRANCHES.includes(scopedBranch)) {
     return res.status(400).json({ message: "A valid branch is required" });
   }
@@ -1160,7 +1148,7 @@ const getProductSerialUnit = async (req, res) => {
 };
 
 const updateProduct = async (req, res) => {
-  if (!requireAdmin(req, res)) return null;
+  if (!requireInventoryOwner(req, res)) return null;
 
   const { productId } = req.params;
   const product = await Product.findById(productId);
@@ -1249,7 +1237,7 @@ const updateProduct = async (req, res) => {
 };
 
 const deleteProduct = async (req, res) => {
-  if (!requireAdmin(req, res)) return null;
+  if (!requireInventoryOwner(req, res)) return null;
 
   const { productId } = req.params;
   const product = await Product.findById(productId);

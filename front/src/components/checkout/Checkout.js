@@ -1,4 +1,4 @@
-import { Buildings, Spinner } from "@phosphor-icons/react";
+import { Buildings, CheckCircle, Spinner } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
@@ -77,6 +77,7 @@ function Checkout() {
   const [editingAddress, setEditingAddress] = useState(null);
   const [addressBusy, setAddressBusy] = useState(false);
   const [addressLoadFailed, setAddressLoadFailed] = useState(false);
+  const [addressNotice, setAddressNotice] = useState("");
   const [discountAmount] = useState(0);
   const [stockIssues, setStockIssues] = useState([]);
   const [stockCheckedAt, setStockCheckedAt] = useState("");
@@ -263,8 +264,12 @@ function Checkout() {
           const newest = normalized[normalized.length - 1];
           if (newest)
             setSelectedAddress(findBestSelectedAddress(normalized, newest.id));
+          setAddressNotice("Delivery address saved and ready for checkout.");
         }
         closeAddressModal();
+        if (!editingAddress?.id) {
+          window.alert("Delivery address added. It is now available for this checkout.");
+        }
       } catch (error) {
         if (error?.fieldErrors) {
           // Backend validation error with field-level details
@@ -511,6 +516,13 @@ function Checkout() {
       >
         <BoutiqueBox flex={1} padding="32px" className="checkout-left">
           <BoutiqueStack gap={32}>
+            {addressNotice ? (
+              <div className="checkout-address-notice" role="status">
+                <CheckCircle size={20} weight="fill" aria-hidden="true" />
+                <span>{addressNotice}</span>
+                <button type="button" onClick={() => setAddressNotice("")} aria-label="Dismiss address notification">×</button>
+              </div>
+            ) : null}
             <DeliveryAddress
               addresses={addresses}
               selectedAddress={selectedAddress}

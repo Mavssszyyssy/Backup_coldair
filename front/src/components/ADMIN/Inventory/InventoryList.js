@@ -4,10 +4,12 @@ import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './styles.css';
 
-const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock }) => {
+const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock, canManageStock = false, searchQuery = '', stockFilter = 'all' }) => {
   const { user } = useUser();
   const [pendingId, setPendingId] = React.useState('');
   const [rowState, setRowState] = React.useState({});
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
 
   const getRowState = (productId) => rowState[productId] || { quantity: '' };
   const setRowValue = (productId, next) => {
@@ -24,6 +26,35 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
     return product.stock || 0;
   };
 
+  const visibleProducts = products.filter((product) => {
+    const stock = Number(getStockDisplay(product) || 0);
+    const query = String(searchQuery || '').trim().toLowerCase();
+    const searchable = [product.name, product.sku, product.brand, product.category, product.specs]
+      .map((value) => String(value || '').toLowerCase())
+      .join(' ');
+    const matchesSearch = !query || searchable.includes(query);
+    const threshold = Number(product.threshold || 0);
+    const matchesStock =
+      stockFilter === 'all' ||
+      (stockFilter === 'out' && stock === 0) ||
+      (stockFilter === 'low' && stock > 0 && threshold > 0 && stock < threshold) ||
+      (stockFilter === 'available' && stock > 0);
+    return matchesSearch && matchesStock;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
+  const firstProductIndex = (page - 1) * pageSize;
+  const pageProducts = visibleProducts.slice(firstProductIndex, firstProductIndex + pageSize);
+  const columnCount = 7 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchQuery, stockFilter, branch, pageSize]);
+
+  React.useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   const updateStock = async (productId) => {
     const { quantity } = getRowState(productId);
     const qty = Number(quantity);
@@ -35,6 +66,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
         body: JSON.stringify({
           action: 'add',
           quantity: qty,
+          branch,
         }),
       });
       appendAuditLog({
@@ -69,12 +101,12 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
             <th>SKU</th>
             <th>Stock</th>
             <th>Price</th>
-            <th>Add Stock</th>
+            {canManageStock && <th>Stock Adjustment</th>}
             {onRequestChange && <th>Manager Actions</th>}
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
+          {pageProducts.map((product) => (
             <tr key={product.id}>
               <td>{product.name}</td>
               <td>{product.brand || '-'}</td>
@@ -82,24 +114,28 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
               <td>{product.specs || '-'}</td>
               <td>{product.sku}</td>
               <td className="stock-cell">
-                <span className="stock-badge">{getStockDisplay(product)}</span>
+                <span className={`stock-badge ${Number(getStockDisplay(product)) === 0 ? 'stock-badge--out' : ''}`}>
+                  {Number(getStockDisplay(product)) === 0 ? 'OUT OF STOCK · 0' : getStockDisplay(product)}
+                </span>
               </td>
               <td>PHP {product.price}</td>
-              <td style={{ minWidth: 210 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    min="1"
-                    value={getRowState(product.id).quantity}
-                    onChange={(event) => setRowValue(product.id, { quantity: event.target.value })}
-                    placeholder="Qty"
-                    style={{ width: 70 }}
-                  />
-                  <button type="button" onClick={() => updateStock(product.id)} disabled={pendingId === product.id}>
-                    {pendingId === product.id ? 'Adding...' : 'Add'}
-                  </button>
-                </div>
-              </td>
+              {canManageStock && (
+                <td style={{ minWidth: 210 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={getRowState(product.id).quantity}
+                      onChange={(event) => setRowValue(product.id, { quantity: event.target.value })}
+                      placeholder="Add qty"
+                      style={{ width: 80 }}
+                    />
+                    <button type="button" onClick={() => updateStock(product.id)} disabled={pendingId === product.id || !branch}>
+                      {pendingId === product.id ? 'Saving...' : 'Add stock'}
+                    </button>
+                  </div>
+                </td>
+              )}
 
               {onRequestChange && (
                 <td>
@@ -115,8 +151,39 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
               )}
             </tr>
           ))}
+          {!loading && visibleProducts.length === 0 ? (
+            <tr><td colSpan={columnCount} className="inventory-empty-cell">No products match the current search and filters.</td></tr>
+          ) : null}
         </tbody>
       </table>
+      {!loading && visibleProducts.length > 0 ? (
+        <div className="inventory-pagination" aria-label="Inventory pagination">
+          <span className="inventory-pagination-summary">
+            Showing {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, visibleProducts.length)} of {visibleProducts.length}
+          </span>
+          <label className="inventory-page-size">
+            Rows
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              aria-label="Inventory rows per page"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+          <div className="inventory-page-controls">
+            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
+              Previous
+            </button>
+            <span>Page {page} of {totalPages}</span>
+            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
       <button type="button" onClick={onRefresh} style={{ marginTop: 10 }}>
         Refresh
       </button>

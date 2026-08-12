@@ -391,6 +391,42 @@ const decrementProductStockForOrder = async (
       `Stock changed while reserving ${product.name}. Please try again.`,
     );
   }
+
+  const updatedProduct = await Product.findById(productId).select("name stock branchStock threshold");
+  const remainingBranchStock = hasBranchSnapshot
+    ? Number(updatedProduct?.branchStock?.get(branch) || 0)
+    : Number(updatedProduct?.stock || 0);
+  if (remainingBranchStock !== 0) return;
+
+  try {
+    const recipients = await User.find({
+      role: { $in: ["admin", "superadmin"] },
+      accountStatus: { $ne: "disabled" },
+      $or: [
+        { role: "superadmin" },
+        { assignedBranch: branch },
+        { activeBranch: branch },
+        { assignedBranch: "" },
+        { activeBranch: "" },
+      ],
+    }).select("_id");
+    const title = "Out of stock";
+    const message = `${product.name} is now out of stock${branch ? ` at ${branch}` : ""}. SuperAdmin action is required.`;
+    if (recipients.length) {
+      await Notification.insertMany(
+        recipients.map((recipient) => ({
+          user: recipient._id,
+          type: "inventory",
+          title,
+          message,
+          unread: true,
+          status: "unread",
+        })),
+      );
+    }
+  } catch (error) {
+    console.error("Failed to create zero-stock notifications:", error);
+  }
 };
 
 const lifecycleActions = {

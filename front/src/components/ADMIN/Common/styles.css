@@ -673,6 +673,22 @@
   transform: translateY(0);
 }
 
+/* Keep the footer in the sidebar flow; old decorative margins made Logout
+   overlap the last navigation item on shorter admin screens. */
+.admin-sidebar-nav {
+  min-height: 0;
+}
+
+.admin-sidebar-footer {
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+.admin-sidebar-logout {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 /* ===== Global notifications (Admin top bar) ===== */
 .admin-header-user {
   display: flex;

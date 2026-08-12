@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
-import { exportHtmlToPdfViaPrint, exportToCsv } from "../../../utils/exporters";
+import { exportHtmlToPdfViaPrint, exportToExcel } from "../../../utils/exporters";
 import "../adminShared.css";
 import AdminLayout from "../Common/AdminLayout";
 // import icons from '../../common/icons';
@@ -13,6 +13,13 @@ const tabs = [
 ];
 
 const toIsoDate = (d) => d.toISOString().split("T")[0];
+
+const escapeReportHtml = (value) => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#039;");
 
 const defaultRange = () => {
   const to = new Date();
@@ -132,33 +139,35 @@ function AdminReports() {
     return `${tab} (${range.from} to ${range.to})`;
   }, [activeTab, range.from, range.to]);
 
-  const onExportCsv = () => {
-    exportToCsv({
-      filename: `aeropulse-${activeTab}-${range.from}-to-${range.to}.csv`,
+  const onExportExcel = () => {
+    exportToExcel({
+      filename: `aeropulse-${activeTab}-${range.from}-to-${range.to}.xls`,
+      title,
+      summary: data.summary,
       rows: data.rows,
     });
   };
 
   const onExportPdf = () => {
     const summaryHtml = data.summary
-      ? `<div class="meta"><strong>Summary:</strong> ${Object.entries(
+      ? `<div class="summary">${Object.entries(
           data.summary,
         )
           .map(
             ([k, v]) =>
-              `${k}: ${typeof v === "number" ? v.toLocaleString() : String(v)}`,
+              `<div class="summary-item"><strong>${typeof v === "number" ? v.toLocaleString() : String(v)}</strong><span>${k.replace(/([A-Z])/g, " $1")}</span></div>`,
           )
-          .join(" | ")}</div>`
+          .join("")}</div>`
       : "";
     const headers = data.rows.length ? Object.keys(data.rows[0]) : [];
     const table = headers.length
       ? `<table>
-          <thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
+          <thead><tr>${headers.map((h) => `<th>${escapeReportHtml(h)}</th>`).join("")}</tr></thead>
           <tbody>
             ${data.rows
               .map(
                 (r) =>
-                  `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`,
+                  `<tr>${headers.map((h) => `<td>${escapeReportHtml(r[h])}</td>`).join("")}</tr>`,
               )
               .join("")}
           </tbody>
@@ -166,7 +175,8 @@ function AdminReports() {
       : '<div class="meta">No rows.</div>';
     exportHtmlToPdfViaPrint({
       title,
-      html: `<h1>${title}</h1>${summaryHtml}${table}`,
+      subtitle: `Reporting period: ${range.from} to ${range.to}`,
+      html: `${summaryHtml}${table}`,
     });
   };
 
@@ -244,11 +254,11 @@ function AdminReports() {
             </button>
             <button
               type="button"
-              onClick={onExportCsv}
+              onClick={onExportExcel}
               disabled={!canExport}
               style={{ fontWeight: 800 }}
             >
-              Export CSV
+              Export Excel
             </button>
             <button
               type="button"

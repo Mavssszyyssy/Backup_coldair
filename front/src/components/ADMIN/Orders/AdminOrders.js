@@ -13,6 +13,8 @@ const statusActionMap = {
   to_install: { label: 'Mark Complete', action: 'complete' }
 };
 
+const ORDER_PAGE_SIZE = 10;
+
 const getInventoryQrPayload = (serialNumber, storedQrCode = '') => {
   const serial = String(serialNumber || '').trim();
   const qrCode = String(storedQrCode || '').trim();
@@ -126,6 +128,7 @@ const AdminOrders = () => {
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState('');
   const [orderViewFilter, setOrderViewFilter] = useState('all');
+  const [orderPage, setOrderPage] = useState(1);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
   const loadOrders = useCallback(async () => {
@@ -176,6 +179,20 @@ const AdminOrders = () => {
     () => orders.filter((order) => order.cancellationRequest?.requested).length,
     [orders],
   );
+  const totalOrderPages = Math.max(1, Math.ceil(pendingOrders.length / ORDER_PAGE_SIZE));
+  const paginatedOrders = useMemo(
+    () => pendingOrders.slice((orderPage - 1) * ORDER_PAGE_SIZE, orderPage * ORDER_PAGE_SIZE),
+    [orderPage, pendingOrders],
+  );
+
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderViewFilter]);
+
+  useEffect(() => {
+    if (orderPage > totalOrderPages) setOrderPage(totalOrderPages);
+  }, [orderPage, totalOrderPages]);
+
   const tasksByOrder = useMemo(() => {
     const map = {};
     tasks.forEach((task) => {
@@ -394,7 +411,7 @@ const AdminOrders = () => {
         ) : null}
         {!loading && pendingOrders.length === 0 ? <p>No customer orders.</p> : null}
         <div className="admin-orders-list">
-          {pendingOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const actionConfig = statusActionMap[order.workflowStatus];
             const canCancel = ['to_pay', 'to_deliver'].includes(order.workflowStatus);
             const isPaymongoPending =
@@ -730,6 +747,22 @@ const AdminOrders = () => {
             );
           })}
         </div>
+        {!loading && pendingOrders.length > 0 ? (
+          <div className="admin-orders-pagination" aria-label="Orders pagination">
+            <span>
+              Showing {(orderPage - 1) * ORDER_PAGE_SIZE + 1}-{Math.min(orderPage * ORDER_PAGE_SIZE, pendingOrders.length)} of {pendingOrders.length}
+            </span>
+            <div>
+              <button type="button" onClick={() => setOrderPage((page) => Math.max(1, page - 1))} disabled={orderPage === 1}>
+                Previous
+              </button>
+              <span>Page {orderPage} of {totalOrderPages}</span>
+              <button type="button" onClick={() => setOrderPage((page) => Math.min(totalOrderPages, page + 1))} disabled={orderPage === totalOrderPages}>
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </AdminLayout>
   );

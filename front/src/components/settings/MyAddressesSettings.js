@@ -15,6 +15,7 @@ function MyAddressesSettings({ user }) {
   const [addressSaving, setAddressSaving] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [addressNotice, setAddressNotice] = useState("");
 
   const loadAddresses = async () => {
     setAddressLoading(true);
@@ -46,10 +47,14 @@ function MyAddressesSettings({ user }) {
           method: "POST",
           body: JSON.stringify(payload),
         });
+        setAddressNotice("New delivery address saved. It can now be selected at checkout.");
       }
       await loadAddresses();
       setAddressModalOpen(false);
       setEditingAddress(null);
+      if (!editingAddress) {
+        window.alert("Delivery address added successfully.");
+      }
     } catch (error) {
       alert(error.message || "Unable to save address.");
     } finally {
@@ -91,6 +96,20 @@ function MyAddressesSettings({ user }) {
   return (
     <BoutiqueCard padding={32}>
       <BoutiqueStack gap={32}>
+        {addressNotice ? (
+          <BoutiqueBox
+            direction="row"
+            align="center"
+            justify="space-between"
+            gap={12}
+            padding="12px 14px"
+            style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, color: "#166534" }}
+            role="status"
+          >
+            <BoutiqueText weight={700}>{addressNotice}</BoutiqueText>
+            <BoutiqueButton variant="ghost" size="sm" onClick={() => setAddressNotice("")} style={{ width: "auto", color: "#166534" }}>Dismiss</BoutiqueButton>
+          </BoutiqueBox>
+        ) : null}
         <BoutiqueBox direction="row" align="center" justify="space-between">
           <BoutiqueBox direction="row" align="center" gap={12}>
             <BoutiqueBox

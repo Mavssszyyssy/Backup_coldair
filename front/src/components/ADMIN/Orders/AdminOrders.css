@@ -13,6 +13,44 @@
   gap: 14px;
 }
 
+.admin-orders-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-orders-pagination > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-orders-pagination button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-orders-pagination button:hover:not(:disabled) {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.admin-orders-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .admin-orders-filterbar {
   display: flex;
   gap: 8px;
@@ -473,5 +511,10 @@
 
   .admin-cancel-reason {
     max-width: none;
+  }
+
+  .admin-orders-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
