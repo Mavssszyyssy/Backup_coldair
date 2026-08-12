@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 const ITEMS = [
-  { href: "/technician/home", label: "Home", icon: "home-sharp" },
+  { href: "/technician/dashboard", label: "Dashboard", icon: "speedometer-sharp" },
   { href: "/technician/tasks", label: "Work", icon: "clipboard-sharp" },
   { href: "/technician/scan-qr", label: "Scan", icon: "qr-code-sharp", elevated: true },
   { href: "/technician/parts", label: "Parts", icon: "construct-sharp" },
@@ -78,14 +78,25 @@ export default function TechnicianBottomNav() {
   return (
     <View
       style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 30,
         flexDirection: "row",
         height: 76 + bottomInset,
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         paddingHorizontal: SPACING.xs,
+        paddingTop: SPACING.xs,
         paddingBottom: bottomInset,
         alignItems: "center",
+        elevation: 20,
+        shadowColor: "#0F172A",
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: -4 },
       }}
     >
       {ITEMS.map((item) => (

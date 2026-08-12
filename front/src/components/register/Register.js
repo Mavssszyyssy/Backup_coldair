@@ -25,6 +25,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { register } = useUser();
   const isShuttingDown = useRef(false);
+  const registrationStateReady = useRef(false);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -56,9 +57,11 @@ export default function Register() {
 
   // Persistence
   useEffect(() => {
+    let active = true;
     const init = async () => {
       const saved = await loadEncrypted(STORAGE_KEY);
-      if (saved && saved.formData) {
+      const hasLocalProgress = Boolean(saved && saved.formData);
+      if (active && hasLocalProgress) {
         setFormData((prev) => ({
           ...prev,
           ...saved.formData,
@@ -67,12 +70,38 @@ export default function Register() {
         }));
         setStepIndex(saved.stepIndex || 0);
       }
+
+      // The server session is a recovery source for the verified-email stage.
+      // Local encrypted state takes precedence because it may contain progress
+      // that has not reached the server yet.
+      if (!hasLocalProgress) {
+        try {
+          const response = await apiRequest("/auth/session");
+          const progress = response?.session?.registrationProgress;
+          if (active && progress?.formData) {
+            setFormData((prev) => ({
+              ...prev,
+              ...progress.formData,
+              emailVerified: Boolean(progress.formData.emailVerified || progress.formData.verifiedCode),
+              locations: progress.formData.locations || [],
+            }));
+            setStepIndex(Math.max(0, Math.min(Number(progress.stepIndex) || 0, STEPS.length - 1)));
+          }
+        } catch (_error) {
+          // Offline registration can continue from encrypted local state.
+        }
+      }
+
+      if (active) registrationStateReady.current = true;
     };
     init();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (isShuttingDown.current) return;
+    if (isShuttingDown.current || !registrationStateReady.current) return;
     const persist = async () => {
       try {
         await saveEncrypted(STORAGE_KEY, { formData, stepIndex });
@@ -81,6 +110,30 @@ export default function Register() {
       }
     };
     persist();
+  }, [formData, stepIndex]);
+
+  useEffect(() => {
+    if (isShuttingDown.current || !registrationStateReady.current || !formData.email) return undefined;
+
+    // Keep the temporary server session in sync for a refresh, but never put
+    // the account password in that session.
+    const timer = window.setTimeout(() => {
+      const { password, confirmPassword, ...sessionFormData } = formData;
+      apiRequest("/auth/session/registration", {
+        method: "POST",
+        body: JSON.stringify({
+          progress: {
+            email: formData.email,
+            stepIndex,
+            formData: sessionFormData,
+          },
+        }),
+      }).catch(() => {
+        // The encrypted browser copy remains the offline fallback.
+      });
+    }, 450);
+
+    return () => window.clearTimeout(timer);
   }, [formData, stepIndex]);
 
   const handleFieldChange = useCallback((field, value) => {

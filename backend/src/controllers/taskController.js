@@ -103,10 +103,40 @@ const assertCanCompleteTask = (task) => {
   };
 };
 
+const assertInstallationProof = (task, proof, payload = {}) => {
+  // A normal maintenance task can still be closed without this installation
+  // handover record. Orders containing assigned AC serials must have it.
+  if (getTaskSerialNumbers(task).length === 0) return null;
+
+  const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) =>
+    Boolean(String(photo?.uri || "").trim()),
+  );
+  const hasCustomerSignoff = Boolean(String(proof?.customerSignature?.name || "").trim());
+  const hasWorkSummary = Boolean(
+    String(payload.findings || payload.resolution || task?.payload?.findings || "").trim(),
+  );
+
+  if (hasInstallationPhoto && hasCustomerSignoff && hasWorkSummary) return null;
+
+  const missing = [
+    !hasInstallationPhoto ? "an installed-unit photo" : "",
+    !hasWorkSummary ? "a technician work summary" : "",
+    !hasCustomerSignoff ? "the customer or receiver sign-off" : "",
+  ].filter(Boolean);
+
+  return {
+    status: 409,
+    message: `Installation proof is incomplete. Add ${missing.join(", ")} before closing this work order.`,
+  };
+};
+
 const findLinkedOrderForTask = async (task) => {
   const payload = task?.payload || {};
-  const orderId = String(payload.orderId || "").trim();
-  const orderCode = String(payload.orderCode || "").trim();
+  // Keep completion syncing resilient for older and manually created tasks,
+  // where the order linkage may be present on the task response instead of
+  // inside its payload.
+  const orderId = String(payload.orderId || task?.orderId || "").trim();
+  const orderCode = String(payload.orderCode || task?.orderCode || "").trim();
   const conditions = [];
   if (mongoose.Types.ObjectId.isValid(orderId)) conditions.push({ _id: orderId });
   if (orderCode) conditions.push({ orderCode });
@@ -448,6 +478,15 @@ const buildRegistrationRecord = ({ req, task, serialNumber, payload, status, pre
     technicianName: req.authUser.name || `${req.authUser.name_first || ""} ${req.authUser.name_last || ""}`.trim() || "Technician",
     submittedAt: new Date().toISOString(),
     ampParameters,
+    installationProof: {
+      placementArea: ampParameters.placementArea,
+      filterCondition: ampParameters.filterCondition,
+      coilCondition: ampParameters.coilCondition,
+      drainageCondition: ampParameters.drainageCondition,
+      conditionRating: ampParameters.conditionRating,
+      notes: ampParameters.notes,
+      recordedAt: new Date().toISOString(),
+    },
     defectReason: String(payload.defectReason || ""),
     ampServicePlan: status === "registered"
       ? estimateNextServiceWindow(ampParameters, previousPlan)
@@ -652,6 +691,10 @@ const updateTask = async (req, res) => {
           registrationProgress: completionError.progress,
         });
       }
+      const proofError = assertInstallationProof(task, proof, payload);
+      if (proofError) {
+        return res.status(proofError.status).json({ message: proofError.message });
+      }
       const orderCompletionBlocker = await getOrderCompletionBlocker(task);
       if (orderCompletionBlocker) {
         return res.status(409).json({ message: orderCompletionBlocker });
@@ -827,12 +870,9 @@ const registerAmpUnit = async (req, res) => {
       "installationDate",
       "placementArea",
       "usageHoursPerDay",
-      "environmentDustLevel",
-      "occupancyLoad",
       "filterCondition",
       "coilCondition",
       "drainageCondition",
-      "voltageStability",
       "conditionRating",
     ];
     if (!isDefectiveHold) {
@@ -938,6 +978,8 @@ const updateTaskStatus = async (req, res) => {
       }
     }
 
+    const payload = req.body || {};
+    const proof = buildTaskProof({ task, payload, req, nextStatus: status });
     task.status = status;
     if (status === "completed") {
       const completionError = assertCanCompleteTask(task);
@@ -947,14 +989,16 @@ const updateTaskStatus = async (req, res) => {
           registrationProgress: completionError.progress,
         });
       }
+      const proofError = assertInstallationProof(task, proof, payload);
+      if (proofError) {
+        return res.status(proofError.status).json({ message: proofError.message });
+      }
       const orderCompletionBlocker = await getOrderCompletionBlocker(task);
       if (orderCompletionBlocker) {
         return res.status(409).json({ message: orderCompletionBlocker });
       }
     }
     task.completedAt = status === "completed" ? new Date() : null;
-    const payload = req.body || {};
-    const proof = buildTaskProof({ task, payload, req, nextStatus: status });
     task.proof = proof;
     task.payload = {
       ...(task.payload || {}),

@@ -13,8 +13,7 @@ import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
 import EmptyState from "../../../components/ui/EmptyState";
-import StatusChip from "../../../components/ui/StatusChip";
-import { COLORS, FONT, SPACING } from "../../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
   buildNextRecommendedMaintenance,
@@ -135,17 +134,8 @@ export default function CustomerUnitDetailsScreen() {
       title="AC Unit Details"
       subtitle={unit?.unitName || "Loading AC unit details"}
     >
-      <Button
-        title="Back to Home"
-        variant="secondary"
-        onPress={() => router.back()}
-        leftIcon={
-          <Ionicons name="arrow-back-sharp" size={18} color={COLORS.primary} />
-        }
-        style={{ marginBottom: SPACING.md }}
-      />
-
-      <Card>
+      <Card style={{ backgroundColor: COLORS.primary, borderColor: COLORS.primary, overflow: "hidden" }}>
+        <View style={{ position: "absolute", width: 150, height: 150, borderRadius: RADIUS.full, backgroundColor: "rgba(255,255,255,0.10)", right: -45, top: -56 }} />
         <View
           style={{
             flexDirection: "row",
@@ -154,39 +144,36 @@ export default function CustomerUnitDetailsScreen() {
             marginBottom: SPACING.sm,
           }}
         >
+          <View style={{ width: 52, height: 52, borderRadius: RADIUS.lg, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
+            <Ionicons name="snow-sharp" size={28} color={COLORS.surface} />
+          </View>
           <View style={{ flex: 1 }}>
+            <Text style={{ color: "#DBEAFE", fontSize: FONT.sm, fontWeight: FONT.bold }}>YOUR REGISTERED UNIT</Text>
             <Text
               style={{
-                color: COLORS.textPrimary,
+                color: COLORS.surface,
                 fontSize: FONT.xl,
                 fontWeight: FONT.black,
               }}
             >
               {unit?.unitName || "Unnamed AC Unit"}
             </Text>
-            <Text style={{ color: COLORS.textSecondary, marginTop: 2 }}>
+            <Text style={{ color: "#E0F2FE", marginTop: 2 }}>
               {[unit?.brand, unit?.model].filter(Boolean).join(" / ") ||
                 "Brand and model not set"}
             </Text>
           </View>
-          <StatusChip
-            label={unit?.status || "Active"}
-            color={
-              String(unit?.status || "").toLowerCase() === "active"
-                ? COLORS.success
-                : COLORS.warning
-            }
-          />
         </View>
-
-        <DetailRow label="Serial Number" value={unit?.serialNumber} />
-        <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
-        <DetailRow label="Installation Date" value={unit?.installationDate} />
-        <DetailRow label="Last Maintenance" value={unit?.lastMaintenanceDate} />
-        <DetailRow
-          label="AMP Service Window"
-          value={unit?.nextIdealServicePeriod || "Not calculated"}
-        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, marginTop: SPACING.sm }}>
+          <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Installed</Text>
+            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.installationDate || "Not recorded"}</Text>
+          </View>
+          <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Status</Text>
+            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.status || "Active"}</Text>
+          </View>
+        </View>
       </Card>
 
       <CustomerHealthPanel health={health} />
@@ -194,7 +181,9 @@ export default function CustomerUnitDetailsScreen() {
       <CustomerMaintenancePanel maintenance={maintenance} />
 
       <Card>
-        <CustomerSectionHeader title="AC Unit Status" />
+        <CustomerSectionHeader title="Your AC at a glance" />
+        <DetailRow label="Serial Number" value={unit?.serialNumber} />
+        <DetailRow label="Last Maintenance" value={unit?.lastMaintenanceDate || "Not recorded"} />
         <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
         <DetailRow
           label="Environment"
@@ -205,6 +194,7 @@ export default function CustomerUnitDetailsScreen() {
           label="Ventilation"
           value={unit?.ventilationQuality || "Good"}
         />
+        <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
       </Card>
 
       {health?.aiPrediction ? (

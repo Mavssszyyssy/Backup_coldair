@@ -36,16 +36,8 @@ export default function CustomerSettingsRow({
 }) {
   const accent = danger ? COLORS.danger : color;
 
-  return (
-    <TouchableOpacity
-      activeOpacity={onPress ? 0.72 : 1}
-      onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: SPACING.sm,
-      }}
-    >
+  const content = (
+    <>
       <View
         style={{
           width: 40,
@@ -80,7 +72,22 @@ export default function CustomerSettingsRow({
           </Text>
         )}
       </View>
-      {right ?? null}
+      {right ?? (onPress ? <Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} /> : null)}
+    </>
+  );
+
+  const rowStyle = {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: SPACING.sm,
+        minHeight: 56,
+      };
+
+  if (!onPress) return <View style={rowStyle}>{content}</View>;
+
+  return (
+    <TouchableOpacity activeOpacity={0.72} onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={rowStyle}>
+      {content}
     </TouchableOpacity>
   );
 }

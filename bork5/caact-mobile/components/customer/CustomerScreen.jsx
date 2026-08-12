@@ -3,7 +3,7 @@ import { usePathname, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 // Top-level tab routes that should show a home icon instead of a back arrow.
 const TAB_ROUTES = [
@@ -39,7 +39,8 @@ export default function CustomerScreen({
       contentContainerStyle={[
         {
           padding: SPACING.md,
-          paddingBottom: SPACING.xxl,
+          // Keep the last action clear of the persistent shop-style tab bar.
+          paddingBottom: SPACING.xxl + 84,
         },
         contentContainerStyle,
       ]}
@@ -53,7 +54,7 @@ export default function CustomerScreen({
         {
           flex: 1,
           padding: SPACING.md,
-          paddingBottom: SPACING.xxl,
+          paddingBottom: SPACING.xxl + 84,
         },
         contentContainerStyle,
       ]}
@@ -81,7 +82,7 @@ export default function CustomerScreen({
       : "arrow-back-sharp";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View
         style={{
           flexDirection: "row",
@@ -93,7 +94,20 @@ export default function CustomerScreen({
         }}
       >
         <Pressable onPress={handleLeftAction} hitSlop={12}>
-          <Ionicons name={leftIcon} size={24} color={COLORS.textSecondary} />
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: RADIUS.md,
+              backgroundColor: COLORS.surface,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+            }}
+          >
+            <Ionicons name={leftIcon} size={21} color={COLORS.primary} />
+          </View>
         </Pressable>
 
         <View style={{ flex: 1, marginHorizontal: SPACING.sm }}>
@@ -119,7 +133,7 @@ export default function CustomerScreen({
           ) : null}
         </View>
 
-        <View style={{ minWidth: 32, alignItems: "flex-end" }}>
+        <View style={{ minWidth: 40, alignItems: "flex-end" }}>
           {right ?? null}
         </View>
       </View>

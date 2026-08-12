@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
@@ -126,8 +126,9 @@ const AdminOrders = () => {
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState('');
   const [orderViewFilter, setOrderViewFilter] = useState('all');
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setError('');
     try {
       const [ordersResponse, tasksResponse] = await Promise.all([
@@ -137,6 +138,7 @@ const AdminOrders = () => {
       const response = ordersResponse;
       setOrders(response.orders || []);
       setTasks(tasksResponse.tasks || []);
+      setLastSyncedAt(new Date());
       apiRequest('/users?role=technician')
         .then((usersResponse) => setTechnicians(usersResponse.users || []))
         .catch(() => setTechnicians([]));
@@ -145,11 +147,17 @@ const AdminOrders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadOrders();
-  }, []);
+    const refreshId = window.setInterval(loadOrders, 15000);
+    window.addEventListener('focus', loadOrders);
+    return () => {
+      window.clearInterval(refreshId);
+      window.removeEventListener('focus', loadOrders);
+    };
+  }, [loadOrders]);
 
   const pendingOrders = useMemo(() => {
     if (orderViewFilter === 'refund_review') {
@@ -179,12 +187,19 @@ const AdminOrders = () => {
     return map;
   }, [tasks]);
 
+  const getSavedTechnicianId = (order) => {
+    const linkedTask = tasksByOrder[String(order.id || '').trim()] || tasksByOrder[String(order.orderCode || '').trim()];
+    if (linkedTask?.assignedTechnicianId) return String(linkedTask.assignedTechnicianId);
+    const savedName = String(order.assignedTechnician || '').trim().toLowerCase();
+    return String(technicians.find((technician) => getTechnicianName(technician).toLowerCase() === savedName)?.id || '');
+  };
+
   const updateFulfillmentForm = (order, patch) => {
     const key = String(order.id || order.orderCode || '');
     setFulfillmentForms((current) => ({
       ...current,
       [key]: {
-        assignedTechnicianId: '',
+        assignedTechnicianId: getSavedTechnicianId(order),
         estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
         installationDate: dateInputValue(order.installationDate),
         timeSlot: '',
@@ -198,7 +213,7 @@ const AdminOrders = () => {
   const getFulfillmentForm = (order) => {
     const key = String(order.id || order.orderCode || '');
     return fulfillmentForms[key] || {
-      assignedTechnicianId: '',
+      assignedTechnicianId: getSavedTechnicianId(order),
       estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
       installationDate: dateInputValue(order.installationDate),
       timeSlot: '',
@@ -276,6 +291,7 @@ const AdminOrders = () => {
   const handleRecovery = async (order, action) => {
     if (!order?.id) return;
     const actionLabels = {
+      assign_technician: 'assign and sync the technician work order',
       recreate_task: 'repair the technician task',
       sync_installed_units: 'sync installed customer units',
     };
@@ -306,6 +322,15 @@ const AdminOrders = () => {
     } finally {
       setProcessingId('');
     }
+  };
+
+  const handleAssignment = async (order) => {
+    const form = getFulfillmentForm(order);
+    if (!form.assignedTechnicianId) {
+      alert('Select a technician before saving this assignment.');
+      return;
+    }
+    await handleRecovery(order, 'assign_technician');
   };
 
   const handleRefundReview = async (order, status) => {
@@ -341,6 +366,9 @@ const AdminOrders = () => {
         {error ? <p className="admin-orders-error">{error}</p> : null}
         {!loading ? (
           <div className="admin-orders-filterbar">
+            <button type="button" onClick={loadOrders} className="admin-orders-refresh">
+              Refresh{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
+            </button>
             <button
               type="button"
               className={orderViewFilter === 'all' ? 'active' : ''}
@@ -375,11 +403,15 @@ const AdminOrders = () => {
               order.workflowStatus === 'to_pay';
             const linkedTask = tasksByOrder[String(order.id || '').trim()] || tasksByOrder[String(order.orderCode || '').trim()];
             const proof = linkedTask?.proof || null;
-            const hasProof =
-              Boolean(proof?.submittedAt || proof?.customerSignature?.name) ||
-              (proof?.beforePhotos || []).some((photo) => photo?.uri) ||
-              (proof?.afterPhotos || []).some((photo) => photo?.uri);
+            const ampRecords = Object.values(linkedTask?.ampRegistrations || {})
+              .filter((registration) => registration?.status === 'registered');
+            const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) => photo?.uri);
+            const hasCustomerSignoff = Boolean(proof?.customerSignature?.name || linkedTask?.customerSignatureName);
+            const hasTechnicianSummary = Boolean(linkedTask?.findings || linkedTask?.resolution);
             const taskCompleted = String(linkedTask?.status || '').toLowerCase() === 'completed';
+            const registrationComplete = Boolean(linkedTask?.registrationProgress?.isComplete);
+            const hasProof = taskCompleted && registrationComplete && hasInstallationPhoto && hasCustomerSignoff && hasTechnicianSummary;
+            const hasAnyInstallationEvidence = Boolean(proof?.submittedAt || hasInstallationPhoto || hasCustomerSignoff || ampRecords.length);
             const isWaitingTechnician =
               order.workflowStatus === 'to_install' &&
               actionConfig?.action === 'complete' &&
@@ -480,6 +512,18 @@ const AdminOrders = () => {
                         onChange={(event) => updateFulfillmentForm(order, { timeSlot: event.target.value })}
                       />
                     </label>
+                    <button
+                      type="button"
+                      className="admin-process-btn admin-assign-technician-btn"
+                      onClick={() => handleAssignment(order)}
+                      disabled={!getFulfillmentForm(order).assignedTechnicianId || processingId === `${order.id}:recovery-assign_technician`}
+                    >
+                      {processingId === `${order.id}:recovery-assign_technician`
+                        ? 'Assigning...'
+                        : linkedTask?.assignedTechnicianId
+                          ? 'Update Technician & Work Order'
+                          : 'Assign Technician & Create Work Order'}
+                    </button>
                   </div>
                 ) : null}
                 <div className="admin-order-items">
@@ -537,12 +581,28 @@ const AdminOrders = () => {
                     );
                   })}
                 </div>
-                {hasProof ? (
+                {hasAnyInstallationEvidence ? (
                   <div className="admin-order-proof">
-                    <strong>Installation / Service Proof</strong>
+                    <strong>Proof of Installation</strong>
                     <span>Technician: {proof.technicianName || linkedTask.assignedTechnicianName || 'Technician'}</span>
                     <span>Customer Sign-off: {proof.customerSignature?.name || linkedTask.customerSignatureName || 'No sign-off yet'}</span>
                     <span>Submitted: {formatDateTime(proof.submittedAt || linkedTask.proofSubmittedAt)}</span>
+                    {linkedTask?.findings ? <span>Work completed: {linkedTask.findings}</span> : null}
+                    {linkedTask?.afterCondition ? <span>Final condition: {linkedTask.afterCondition}</span> : null}
+                    {ampRecords.length ? (
+                      <div className="admin-order-amp-records">
+                        <strong>AMP registration record</strong>
+                        {ampRecords.map((registration) => (
+                          <div className="admin-order-amp-record" key={registration.serialNumber}>
+                            <b>{registration.serialNumber}</b>
+                            <span>
+                              {registration.ampParameters?.placementArea || 'Placement not recorded'} · Filter: {registration.ampParameters?.filterCondition || 'normal'} · Coil: {registration.ampParameters?.coilCondition || 'normal'} · Condition: {registration.ampParameters?.conditionRating || 'good'}
+                            </span>
+                            {registration.ampParameters?.notes ? <small>{registration.ampParameters.notes}</small> : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="admin-order-proof-photos">
                       {(proof.beforePhotos || []).slice(0, 1).map((photo, index) => (
                         <a key={`before-${index}`} href={photo.uri} target="_blank" rel="noreferrer">
@@ -561,7 +621,7 @@ const AdminOrders = () => {
                 ) : null}
                 {isWaitingTechnician ? (
                   <p className="admin-order-recovery-note">
-                    Complete the technician task, AMP QR registration, and proof before closing this order.
+                    Waiting for the technician to finish AMP registration, submit an installed-unit photo, work summary, and receiver sign-off.
                   </p>
                 ) : null}
                 {actionConfig || order.receipt?.receiptNumber || order.refundReview?.required || canRepairTask ? (

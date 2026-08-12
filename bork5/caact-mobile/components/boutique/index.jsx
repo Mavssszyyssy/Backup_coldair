@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const BQ_COLORS = {
   accent: "#2563eb",
@@ -36,7 +37,9 @@ export function BoutiqueText({ children, variant = "body", color = BQ_COLORS.ink
 }
 
 export function BoutiqueScreen({ children, contentContainerStyle, style }) {
-  return <ScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl }, contentContainerStyle]}>{children}</ScrollView>;
+  // The customer tab bar has a raised centre action, so leave clear space for
+  // it on every iPhone size instead of letting the last product/action hide.
+  return <ScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl + 72 }, contentContainerStyle]}>{children}</ScrollView>;
 }
 
 export function BoutiqueCard({ children, onPress, padding = BQ_SPACING.md, elevated = true, style }) {
@@ -59,7 +62,8 @@ const chipColors = {
 export function BoutiqueChip({ label, variant = "neutral" }) { const colors = chipColors[variant] || chipColors.neutral; return <View style={{ alignSelf: "flex-start", backgroundColor: colors.bg, borderRadius: BQ_RADIUS.pill, paddingHorizontal: 9, paddingVertical: 4 }}><BoutiqueText variant="caption" color={colors.text}>{label}</BoutiqueText></View>; }
 
 export function BoutiqueHeader({ title, subtitle, onBack, onCart, cartCount = 0 }) {
-  return <View style={[{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm, paddingHorizontal: BQ_SPACING.md, paddingTop: BQ_SPACING.md, paddingBottom: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }, BQ_SHADOW.float]}>{onBack ? <Pressable onPress={onBack} hitSlop={10}><Ionicons name="arrow-back" size={24} color={BQ_COLORS.ink} /></Pressable> : null}<View style={{ flex: 1 }}><BoutiqueText variant="h2" numberOfLines={1}>{title}</BoutiqueText>{subtitle ? <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>{subtitle}</BoutiqueText> : null}</View>{onCart ? <Pressable onPress={onCart} style={{ padding: 6 }} hitSlop={8}><Ionicons name="cart-outline" size={25} color={BQ_COLORS.ink} />{cartCount > 0 ? <View style={{ position: "absolute", right: -4, top: -4, minWidth: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.danger }}><BoutiqueText variant="caption" color="#fff">{cartCount}</BoutiqueText></View> : null}</Pressable> : null}</View>;
+  const insets = useSafeAreaInsets();
+  return <View style={[{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm, paddingHorizontal: BQ_SPACING.md, paddingTop: Math.max(insets.top, BQ_SPACING.md), paddingBottom: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }, BQ_SHADOW.float]}>{onBack ? <Pressable onPress={onBack} hitSlop={10}><Ionicons name="arrow-back" size={24} color={BQ_COLORS.ink} /></Pressable> : null}<View style={{ flex: 1 }}><BoutiqueText variant="h2" numberOfLines={1}>{title}</BoutiqueText>{subtitle ? <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>{subtitle}</BoutiqueText> : null}</View>{onCart ? <Pressable onPress={onCart} style={{ padding: 6 }} hitSlop={8}><Ionicons name="cart-outline" size={25} color={BQ_COLORS.ink} />{cartCount > 0 ? <View style={{ position: "absolute", right: -4, top: -4, minWidth: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.danger }}><BoutiqueText variant="caption" color="#fff">{cartCount}</BoutiqueText></View> : null}</Pressable> : null}</View>;
 }
 
 export function BoutiqueQuantityStepper({ value, onChange, max = 99 }) { const safeValue = Number(value || 1); return <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm }}><Pressable onPress={() => onChange(Math.max(1, safeValue - 1))}><Ionicons name="remove-circle-outline" size={23} color={BQ_COLORS.brand} /></Pressable><BoutiqueText variant="label">{safeValue}</BoutiqueText><Pressable onPress={() => onChange(Math.min(max, safeValue + 1))}><Ionicons name="add-circle-outline" size={23} color={BQ_COLORS.brand} /></Pressable></View>; }

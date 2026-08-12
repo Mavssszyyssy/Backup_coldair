@@ -1220,6 +1220,24 @@ const notifyBranchTechnicians = async (branch, orderCode) => {
   }
 };
 
+const notifyAssignedTechnician = async (technicianId, orderCode, taskCode) => {
+  if (!technicianId) return;
+  try {
+    const technician = await User.findById(technicianId).select("notifications");
+    if (!technician || !canReceiveNotification(technician, "system")) return;
+    await Notification.create({
+      user: technician._id,
+      type: "system",
+      title: "Work order assigned to you",
+      message: `Order ${orderCode} is assigned to you${taskCode ? ` (${taskCode})` : ""}. Open My Work to review it.`,
+      unread: true,
+      status: "unread",
+    });
+  } catch (error) {
+    console.error("Failed to notify assigned technician:", error);
+  }
+};
+
 const getUserDisplayName = (user = {}) =>
   user.name ||
   `${user.name_first || ""} ${user.name_last || ""}`.trim() ||
@@ -1237,7 +1255,7 @@ const resolveTechnicianAssignment = async (options = {}) => {
     _id: technicianId,
     role: "technician",
     isDeleted: { $ne: true },
-    accountStatus: { $ne: "deleted" },
+    accountStatus: { $nin: ["deleted", "disabled"] },
   }).select("name name_first name_last email");
 
   if (!technician) {
@@ -1355,6 +1373,13 @@ const createTaskForOrder = async (order, options = {}) => {
         updatedAt: new Date().toISOString(),
       };
       await existingTask.save();
+      if (assignment.assignedTechnicianId) {
+        await notifyAssignedTechnician(
+          assignment.assignedTechnicianId,
+          order.orderCode,
+          existingTask.taskCode,
+        );
+      }
     }
     return existingTask;
   }
@@ -1410,7 +1435,11 @@ const createTaskForOrder = async (order, options = {}) => {
     },
   });
 
-  await notifyBranchTechnicians(branch, order.orderCode);
+  if (assignment.assignedTechnicianId) {
+    await notifyAssignedTechnician(assignment.assignedTechnicianId, order.orderCode, task.taskCode);
+  } else {
+    await notifyBranchTechnicians(branch, order.orderCode);
+  }
   return task;
 };
 
@@ -1443,16 +1472,18 @@ const findProductSerialUnit = async (serialNumber) => {
 };
 
 const getTaskSerialNumbers = (task) => {
-  const items = Array.isArray(task?.payload?.items) ? task.payload.items : [];
+  const payload = task?.payload || {};
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const directSerials = Array.isArray(payload.serialNumbers) ? payload.serialNumbers : [];
   return Array.from(
     new Set(
-      items
+      [...directSerials, ...items
         .flatMap((item) => [
           ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
           ...(Array.isArray(item.serialUnits)
             ? item.serialUnits.map((unit) => unit?.serialNumber)
             : []),
-        ])
+        ])]
         .map((serial) => String(serial || "").trim())
         .filter(Boolean),
     ),
@@ -1485,12 +1516,15 @@ const getTaskCompletionBlocker = (order, linkedTask) => {
   }
 
   const proof = linkedTask.proof || linkedTask.payload?.proof || {};
-  const hasProof =
-    Boolean(proof?.submittedAt || proof?.customerSignature?.name) ||
-    (Array.isArray(proof?.beforePhotos) && proof.beforePhotos.length > 0) ||
-    (Array.isArray(proof?.afterPhotos) && proof.afterPhotos.length > 0);
-  if (!hasProof) {
-    return `Order ${order.orderCode} is missing technician proof or customer sign-off.`;
+  const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) =>
+    Boolean(String(photo?.uri || "").trim()),
+  );
+  const hasCustomerSignoff = Boolean(String(proof?.customerSignature?.name || "").trim());
+  const hasWorkSummary = Boolean(
+    String(linkedTask.payload?.findings || linkedTask.payload?.resolution || "").trim(),
+  );
+  if (!hasInstallationPhoto || !hasCustomerSignoff || !hasWorkSummary) {
+    return `Order ${order.orderCode} needs a technician work summary, installed-unit photo, and customer or receiver sign-off before it can be closed.`;
   }
 
   return "";
@@ -1996,11 +2030,14 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   if (action === "complete") {
     const linkedTask = await findLinkedTaskForOrder(order);
     const proof = linkedTask?.proof || linkedTask?.payload?.proof || {};
-    const hasProof =
-      Boolean(proof?.submittedAt || proof?.customerSignature?.name) ||
-      (Array.isArray(proof?.beforePhotos) && proof.beforePhotos.length > 0) ||
-      (Array.isArray(proof?.afterPhotos) && proof.afterPhotos.length > 0);
-    if (!linkedTask || linkedTask.status !== "completed" || !hasProof) {
+    const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) =>
+      Boolean(String(photo?.uri || "").trim()),
+    );
+    const hasCustomerSignoff = Boolean(String(proof?.customerSignature?.name || "").trim());
+    const hasWorkSummary = Boolean(
+      String(linkedTask?.payload?.findings || linkedTask?.payload?.resolution || "").trim(),
+    );
+    if (!linkedTask || linkedTask.status !== "completed" || !hasInstallationPhoto || !hasCustomerSignoff || !hasWorkSummary) {
       throw new HttpError(
         409,
         getTaskCompletionBlocker(order, linkedTask) ||
@@ -2288,6 +2325,39 @@ const recoverOrder = async (req, res) => {
     });
   }
 
+  if (action === "assign_technician") {
+    const technician = await resolveTechnicianAssignment({
+      assignedTechnicianId: form.assignedTechnicianId || "",
+      assignedTechnicianName: form.assignedTechnicianName || "",
+    });
+    if (!technician.assignedTechnicianId) {
+      return res.status(400).json({ message: "Select a technician before assigning this work order." });
+    }
+    if (["complete", "cancelled"].includes(order.workflowStatus)) {
+      return res.status(409).json({ message: `Cannot change the technician for a ${workflowLabel(order.workflowStatus)} order.` });
+    }
+
+    order.assignedTechnician = technician.assignedTechnicianName;
+    if (form.estimatedArrival) order.estimatedArrival = form.estimatedArrival;
+    if (form.installationDate) order.installationDate = form.installationDate;
+    await order.save();
+
+    const task = await createTaskForOrder(order, {
+      assignedTechnicianId: technician.assignedTechnicianId,
+      assignedTechnicianName: technician.assignedTechnicianName,
+      estimatedArrival: form.estimatedArrival || order.estimatedArrival || "",
+      installationDate: form.installationDate || order.installationDate || "",
+      timeSlot: form.timeSlot || "",
+      forceRefreshTask: true,
+    });
+    const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([order]);
+    return res.json({
+      message: `${technician.assignedTechnicianName} is assigned to ${order.orderCode}. The work order is now in their My Work list.`,
+      order: hydratedOrder,
+      task,
+    });
+  }
+
   if (action === "sync_installed_units") {
     const linkedTask = await findLinkedTaskForOrder(order);
     if (!linkedTask) {
@@ -2312,7 +2382,7 @@ const recoverOrder = async (req, res) => {
   }
 
   return res.status(400).json({
-    message: "Recovery action must be recreate_task or sync_installed_units.",
+    message: "Recovery action must be assign_technician, recreate_task, or sync_installed_units.",
   });
 };
 

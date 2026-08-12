@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Text, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 export default function IconRow({
@@ -9,18 +9,11 @@ export default function IconRow({
   color = COLORS.primary,
   right,
   style,
+  onPress,
+  accessibilityLabel,
 }) {
-  return (
-    <View
-      style={[
-        {
-          flexDirection: "row",
-          alignItems: "center",
-          paddingVertical: SPACING.sm,
-        },
-        style,
-      ]}
-    >
+  const content = (
+    <>
       <View
         style={{
           width: 42,
@@ -44,7 +37,41 @@ export default function IconRow({
           </Text>
         )}
       </View>
-      {right ?? null}
+      {right ?? (onPress ? <Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} /> : null)}
+    </>
+  );
+
+  const rowStyle = [
+    {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: SPACING.sm,
+      minHeight: 58,
+    },
+    style,
+  ];
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.72}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+        style={rowStyle}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        ...rowStyle,
+      ]}
+    >
+      {content}
     </View>
   );
 }

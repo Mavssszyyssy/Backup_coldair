@@ -402,7 +402,7 @@ export default function RegisterProfilePasswordStep({
         </BoutiqueButton>
         <BoutiqueButton
           type="submit"
-          disabled={aliasStatus === "checking" || aliasStatus === "taken"}
+          disabled={aliasStatus === "taken"}
         >
           Continue <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>

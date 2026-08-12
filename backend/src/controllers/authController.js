@@ -431,17 +431,21 @@ const verifyRegistrationCode = async (req, res) => {
 
   req.session.registrationProgress = {
     email: normalizedEmail,
-    stepIndex: 3,
+    stepIndex: 1,
     formData: {
       email: normalizedEmail,
       registrationSecret: secret,
       verifiedCode: code,
+      emailVerified: true,
     },
   };
 
-  return res.json({
-    message: "Success",
-    registrationProgress: req.session.registrationProgress,
+  return req.session.save((error) => {
+    if (error) return res.status(500).json({ message: "Unable to save email verification." });
+    return res.json({
+      message: "Success",
+      registrationProgress: req.session.registrationProgress,
+    });
   });
 };
 
@@ -594,8 +598,44 @@ const getSession = async (req, res) => {
 };
 
 const updateRegistrationProgress = async (req, res) => {
-  req.session.registrationProgress = req.body.progress;
-  return res.json({ success: true });
+  const incoming = req.body?.progress;
+  if (!incoming || typeof incoming !== "object") {
+    return res.status(400).json({ message: "Registration progress is required." });
+  }
+
+  const existing = req.session.registrationProgress || {};
+  const incomingForm = incoming.formData && typeof incoming.formData === "object"
+    ? incoming.formData
+    : {};
+  const existingForm = existing.formData && typeof existing.formData === "object"
+    ? existing.formData
+    : {};
+  const email = normalizeEmail(incoming.email || existing.email || incomingForm.email || existingForm.email);
+
+  // Passwords belong only in the encrypted browser draft and final register
+  // request. This session is for resumable verification and form progress.
+  delete incomingForm.password;
+  delete incomingForm.confirmPassword;
+
+  const mergedForm = {
+    ...existingForm,
+    ...incomingForm,
+    email: email || existingForm.email || "",
+    registrationSecret: existingForm.registrationSecret || incomingForm.registrationSecret || "",
+    provisioningUri: existingForm.provisioningUri || incomingForm.provisioningUri || "",
+    verifiedCode: existingForm.verifiedCode || incomingForm.verifiedCode || "",
+    emailVerified: Boolean(existingForm.emailVerified || existingForm.verifiedCode || incomingForm.emailVerified),
+  };
+
+  req.session.registrationProgress = {
+    email,
+    stepIndex: Math.max(0, Math.min(Number(incoming.stepIndex) || 0, 4)),
+    formData: mergedForm,
+  };
+  return req.session.save((error) => {
+    if (error) return res.status(500).json({ message: "Unable to save registration progress." });
+    return res.json({ success: true, registrationProgress: req.session.registrationProgress });
+  });
 };
 
 const updateCart = async (req, res) => {

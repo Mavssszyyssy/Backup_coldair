@@ -608,6 +608,19 @@ export async function markAllNotificationsRead(token) {
   };
 }
 
+export async function registerPushToken(token, expoPushToken) {
+  const { ok, data } = await post(
+    "/notifications/push-token",
+    { expoPushToken },
+    token,
+  );
+  if (ok) return { success: true, message: data.message };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to enable push notifications."),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // AMP technician service completion
 // ---------------------------------------------------------------------------

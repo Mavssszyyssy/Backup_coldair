@@ -6,14 +6,14 @@
 //   EXPO_PUBLIC_API_BASE=http://192.168.1.33:5000/api
 //
 // By default, Expo LAN runs derive the backend host from Metro's host and use
-// the Express fallback listener on port 5001. Requests retry port 5000 when
-// that primary backend listener is available instead.
+// the Express listener on port 5000. This is the port used by the local
+// backend, so a physical device never tries to reach its own localhost.
 
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-const BACKEND_PORT = "5001";
-const BACKEND_FALLBACK_PORT = "5000";
+const BACKEND_PORT = "5000";
+const BACKEND_FALLBACK_PORT = "5001";
 
 const trimTrailingSlash = (value = "") => String(value).replace(/\/+$/, "");
 
@@ -26,12 +26,23 @@ const getConfiguredBaseUrl = () =>
 const getExpoHost = () => {
   const hostUri =
     Constants.expoConfig?.hostUri ||
+    // Expo Go puts the Metro address here on physical devices. The app was
+    // previously missing this value and could therefore fall back to
+    // `localhost`, which refers to the phone instead of this computer.
+    Constants.expoGoConfig?.debuggerHost ||
     Constants.manifest2?.extra?.expoClient?.hostUri ||
     Constants.manifest?.debuggerHost ||
     Constants.manifest?.hostUri ||
     "";
 
-  return String(hostUri).split(":")[0];
+  const value = String(hostUri).trim();
+  if (!value) return "";
+
+  // Metro supplies `host:port`; tolerate a fully qualified URI as well.
+  return value
+    .replace(/^[a-z][a-z\d+.-]*:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0];
 };
 
 const getBrowserHost = () => {

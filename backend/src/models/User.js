@@ -116,6 +116,7 @@ const userSchema = new mongoose.Schema(
       promotions: { type: Boolean, default: true },
       serviceUpdates: { type: Boolean, default: true },
     },
+    expoPushTokens: [{ type: String, trim: true }],
     skills: [{ type: String }],
     permissions: [{ type: String }],
     department: { type: String },

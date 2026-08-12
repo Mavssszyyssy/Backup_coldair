@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import IconRow from "../ui/IconRow";
@@ -11,12 +11,13 @@ export default function CustomerUnitRow({
   onPress,
 }) {
   return (
-    <TouchableOpacity activeOpacity={0.72} onPress={onPress}>
       <IconRow
         icon="snow-sharp"
         title={unit?.unitName || "Unnamed AC Unit"}
         subtitle={`Next recommended maintenance: ${maintenance?.date || maintenance?.label || "Not scheduled"}`}
         color={COLORS.primary}
+        onPress={onPress}
+        accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
         right={
           health ? (
             <View
@@ -61,6 +62,5 @@ export default function CustomerUnitRow({
           )
         }
       />
-    </TouchableOpacity>
   );
 }

@@ -1,9 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+
+const BOTTOM_NAV_ROUTES = new Set([
+  "/technician",
+  "/technician/home",
+  "/technician/dashboard",
+  "/technician/notifications",
+  "/technician/tasks",
+  "/technician/scan-qr",
+  "/technician/parts",
+  "/technician/profile",
+]);
 
 export function TechHero({ eyebrow, title, subtitle, icon = "construct-sharp", children }) {
   return (
@@ -74,7 +85,9 @@ export function TechStatCard({ label, value, icon, color = COLORS.tech }) {
     <View
       style={{
         flex: 1,
-        minWidth: "46%",
+        minWidth: "50%",
+        flexGrow: 0,
+        flexShrink: 0,
         minHeight: 84,
         alignItems: "center",
         justifyContent: "center",
@@ -103,11 +116,18 @@ export default function TechnicianScreen({
   stickyAction,
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const hasBottomNav = withBottomNav && BOTTOM_NAV_ROUTES.has(pathname);
+  const bottomClearance = hasBottomNav
+    ? 76 + Math.max(insets.bottom, SPACING.xs) + 44
+    : Math.max(insets.bottom, SPACING.md) + SPACING.lg;
 
   const content = scroll ? (
     <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={[
-        { padding: SPACING.md, paddingBottom: SPACING.xxl },
+        { padding: SPACING.md, paddingBottom: bottomClearance },
         contentContainerStyle,
       ]}
       keyboardShouldPersistTaps="handled"
@@ -115,7 +135,7 @@ export default function TechnicianScreen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1, padding: SPACING.md, paddingBottom: SPACING.xxl }, contentContainerStyle]}>{children}</View>
+    <View style={[{ flex: 1, padding: SPACING.md, paddingBottom: bottomClearance }, contentContainerStyle]}>{children}</View>
   );
 
   const handleBack = () => {
@@ -127,7 +147,7 @@ export default function TechnicianScreen({
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View
         style={{
           flexDirection: "row",
@@ -153,7 +173,7 @@ export default function TechnicianScreen({
             <Ionicons name={onBack ? "arrow-back-sharp" : icon} size={20} color={COLORS.tech} />
           </View>
         </Pressable>
-        <View style={{ flex: 1, marginHorizontal: SPACING.sm }}>
+        <View style={{ flex: 1, flexShrink: 1, marginHorizontal: SPACING.sm }}>
           <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.xl }}>
             {title}
           </Text>

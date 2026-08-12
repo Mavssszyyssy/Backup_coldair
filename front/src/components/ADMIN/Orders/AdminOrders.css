@@ -308,6 +308,46 @@
   font-size: 14px;
 }
 
+.admin-order-amp-records {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  background: #f0f9ff;
+}
+
+.admin-order-amp-records > strong {
+  color: #075985;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-order-amp-record {
+  display: grid;
+  gap: 3px;
+  padding: 8px 0;
+  border-top: 1px solid #dbeafe;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-order-amp-record:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.admin-order-amp-record b {
+  color: #0f172a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.admin-order-amp-record small {
+  color: #64748b;
+}
+
 .admin-order-proof-photos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 220px));
@@ -360,6 +400,16 @@
   padding: 10px 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.admin-assign-technician-btn {
+  align-self: end;
+  background: #0f766e;
+}
+
+.admin-assign-technician-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .admin-cancel-btn {

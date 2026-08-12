@@ -1,6 +1,6 @@
 // app/technician/_layout.jsx
 // Role guard + Stack navigator for technician screens.
-import { Redirect } from "expo-router";
+import { Redirect, usePathname } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { ActivityIndicator, View } from "react-native";
 
@@ -10,6 +10,18 @@ import { useRoleGuard } from "../../hooks/useRoleGuard";
 
 export default function TechnicianLayout() {
   const { initialized, allowed, redirectHref } = useRoleGuard(["technician"]);
+  const pathname = usePathname();
+  const topLevelScreens = [
+    "/technician",
+    "/technician/home",
+    "/technician/dashboard",
+    "/technician/notifications",
+    "/technician/tasks",
+    "/technician/scan-qr",
+    "/technician/parts",
+    "/technician/profile",
+  ];
+  const showBottomNav = topLevelScreens.includes(pathname);
 
   if (!initialized) {
     return (
@@ -32,7 +44,7 @@ export default function TechnicianLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack style={{ flex: 1 }} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: "Technician" }} />
         <Stack.Screen name="home" options={{ title: "Home" }} />
         <Stack.Screen name="oobe/index" options={{ title: "Technician Setup" }} />
@@ -90,7 +102,7 @@ export default function TechnicianLayout() {
           options={{ title: "Delivery QR Code" }}
         />
       </Stack>
-      <TechnicianBottomNav />
+      {showBottomNav ? <TechnicianBottomNav /> : null}
     </View>
   );
 }

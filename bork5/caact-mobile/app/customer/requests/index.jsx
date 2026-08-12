@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, View } from "react-native";
 
 import CustomerMetricPill from "../../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../../components/customer/CustomerScreen";
@@ -109,12 +109,11 @@ export default function CustomerRequestsScreen() {
         </Card>
       ) : (
         requests.map((request) => (
-          <TouchableOpacity
+          <Card
             key={request.id}
             onPress={() => router.push(`/customer/requests/${request.id}`)}
-            activeOpacity={0.78}
+            accessibilityLabel={`View ${request.serviceType || request.issueType || "service request"}`}
           >
-            <Card pressed>
               <View
                 style={{
                   flexDirection: "row",
@@ -150,8 +149,7 @@ export default function CustomerRequestsScreen() {
                 color={COLORS.success}
                 right={<Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} />}
               />
-            </Card>
-          </TouchableOpacity>
+          </Card>
         ))
       )}
     </CustomerScreen>

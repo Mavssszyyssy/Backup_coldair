@@ -40,6 +40,7 @@ const FieldServiceRegistration = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [notice, setNotice] = useState('');
 
   const currentRegistration = useMemo(
     () => registrationFor(context.task, serialNumber),
@@ -102,8 +103,17 @@ const FieldServiceRegistration = () => {
       setError('No assigned installation task was found for this QR label.');
       return;
     }
+    if (!defectiveHold && !String(form.placementArea || '').trim()) {
+      setError('Add the unit placement area before registering it.');
+      return;
+    }
+    if (defectiveHold && !String(form.defectReason || '').trim()) {
+      setError('Add a defect reason before putting this unit on hold.');
+      return;
+    }
     setSaving(true);
     setError('');
+    setNotice('');
     setResult(null);
     try {
       const response = await apiRequest(`/tasks/${context.task.id}/amp-registration`, {
@@ -116,6 +126,14 @@ const FieldServiceRegistration = () => {
       });
       setContext((prev) => ({ ...prev, task: response.task }));
       setResult(response.registration);
+      const progress = response.registrationProgress || response.task?.registrationProgress;
+      const registered = progress?.totalRegistered || 0;
+      const required = progress?.totalRequired || 0;
+      setNotice(
+        defectiveHold
+          ? `Unit ${serialNumber} is on hold. The task cannot be completed until the defect is resolved.`
+          : `Unit ${serialNumber} registered successfully. ${registered} of ${required} assigned units are now registered.`,
+      );
     } catch (err) {
       setError(err.message || 'Unable to submit AMP registration.');
     } finally {
@@ -148,6 +166,7 @@ const FieldServiceRegistration = () => {
           </div>
 
           {error ? <p className="field-registration-error">{error}</p> : null}
+          {notice ? <p className="field-registration-notice" role="status">{notice}</p> : null}
 
           {context.unit ? (
             <div className="field-registration-summary">

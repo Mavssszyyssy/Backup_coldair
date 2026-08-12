@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -13,7 +13,6 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
-import { COLD_AIR_WEBSITE } from "../../constants/company";
 import { COLORS, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
@@ -91,18 +90,20 @@ export default function CustomerHomeScreen() {
       >
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <Button
+            title="Shop AC Units"
+            onPress={() => router.push("/customer/shop")}
+            variant="secondary"
+            style={{ flex: 1 }}
+            leftIcon={<Ionicons name="bag-handle-sharp" size={18} color={COLORS.primary} />}
+            rightIcon={<Ionicons name="chevron-forward-sharp" size={18} color={COLORS.primary} />}
+          />
+          <Button
             title="Book Service"
             onPress={() => router.push("/customer/services")}
             variant="secondary"
             style={{ flex: 1 }}
             leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.primary} />}
-          />
-          <Button
-            title="Website"
-            onPress={() => Linking.openURL(COLD_AIR_WEBSITE)}
-            variant="secondary"
-            style={{ flex: 1 }}
-            leftIcon={<Ionicons name="globe-sharp" size={18} color={COLORS.primary} />}
+            rightIcon={<Ionicons name="chevron-forward-sharp" size={18} color={COLORS.primary} />}
           />
         </View>
       </AppHero>
@@ -142,8 +143,9 @@ export default function CustomerHomeScreen() {
             iconColor={COLORS.primary}
             action={
               <Button
-                title="Go to Website"
-                onPress={() => Linking.openURL(COLD_AIR_WEBSITE)}
+                title="Browse AC Units"
+                onPress={() => router.push("/customer/shop")}
+                rightIcon={<Ionicons name="arrow-forward-sharp" size={18} color={COLORS.surface} />}
               />
             }
           />
@@ -189,6 +191,8 @@ export default function CustomerHomeScreen() {
               title={`Order #${String(order.id).slice(-6).toUpperCase()}`}
               subtitle={`${order.items.length} item(s) • ${order.status}`}
               color={COLORS.success}
+              onPress={() => router.push("/customer/orders")}
+              accessibilityLabel={`View order ${order.orderCode || order.id}`}
             />
           ))
         )}

@@ -141,4 +141,22 @@ const markAllNotificationsRead = async (req, res) => {
   });
 };
 
-module.exports = { listMyNotifications, markNotificationRead, markAllNotificationsRead };
+const registerPushToken = async (req, res) => {
+  const expoPushToken = String(req.body?.expoPushToken || "").trim();
+  if (!/^(ExponentPushToken|ExpoPushToken)\[.+\]$/.test(expoPushToken)) {
+    return res.status(400).json({ message: "A valid Expo push token is required." });
+  }
+
+  await User.updateOne(
+    { _id: req.authUser._id },
+    { $addToSet: { expoPushTokens: expoPushToken } },
+  );
+  return res.json({ message: "Push notifications enabled for this device." });
+};
+
+module.exports = {
+  listMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  registerPushToken,
+};

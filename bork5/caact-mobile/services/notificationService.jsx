@@ -37,12 +37,28 @@ function normalizeNotification(item = {}) {
   };
 }
 
-function resolveNotificationRoute(item = {}) {
+export function resolveNotificationRoute(item = {}, role = "") {
+  if (typeof item.route === "string" && item.route.startsWith("/")) {
+    return item.route;
+  }
+
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
+  const normalizedRole = String(role || item.role || "").toLowerCase();
+
+  if (normalizedRole === "technician") {
+    if (text.includes("part")) return "/technician/parts";
+    if (item.type === "order" || text.includes("order") || text.includes("task") || text.includes("work order")) {
+      return "/technician/tasks";
+    }
+    return "/technician/dashboard";
+  }
+
+  if (text.includes("service") || text.includes("appointment") || text.includes("request")) {
+    return "/customer/requests";
+  }
   if (item.type === "order" || text.includes("order")) return "/customer/orders";
-  if (text.includes("task") || text.includes("work order")) return "/technician/tasks";
-  if (text.includes("part")) return "/technician/parts";
-  return "";
+  if (item.type === "account") return "/customer/settings";
+  return "/customer/home";
 }
 
 export async function getAllNotifications() {
@@ -73,10 +89,10 @@ export async function getNotificationsForUser(user = {}) {
       if (result.success) {
         return result.notifications.map((item) => {
           const normalized = normalizeNotification(item);
-          if (user?.role === "technician" && normalized.route === "/customer/orders") {
-            return { ...normalized, route: "/technician/tasks" };
-          }
-          return normalized;
+          return {
+            ...normalized,
+            route: resolveNotificationRoute(item, user?.role),
+          };
         });
       }
     } catch {

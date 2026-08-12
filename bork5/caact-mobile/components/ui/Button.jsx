@@ -47,7 +47,9 @@ export default function Button({
   disabled = false,
   style,
   leftIcon,
+  rightIcon,
   align = "center",
+  accessibilityLabel,
 }) {
   const v = getVariantStyle(variant, accentColor);
   const s = SIZE_STYLES[size] ?? SIZE_STYLES.md;
@@ -58,6 +60,9 @@ export default function Button({
       onPress={onPress}
       disabled={inactive}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityState={{ disabled: inactive }}
       style={[
         {
           backgroundColor: inactive && variant !== "ghost" ? "#CBD5E1" : v.bg,
@@ -70,7 +75,12 @@ export default function Button({
           borderColor: v.border ?? "transparent",
           flexDirection: "row",
           justifyContent: JUSTIFY[align] || JUSTIFY.center,
-          minHeight: size === "sm" ? 38 : 48,
+          minHeight: size === "sm" ? 42 : 52,
+          shadowColor: variant === "primary" ? accentColor : "transparent",
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: variant === "primary" && !inactive ? 0.2 : 0,
+          shadowRadius: 8,
+          elevation: variant === "primary" && !inactive ? 3 : 0,
         },
         style,
       ]}
@@ -91,6 +101,7 @@ export default function Button({
           >
             {title}
           </Text>
+          {rightIcon && <View style={{ marginLeft: s.iconGap }}>{rightIcon}</View>}
         </>
       )}
     </TouchableOpacity>

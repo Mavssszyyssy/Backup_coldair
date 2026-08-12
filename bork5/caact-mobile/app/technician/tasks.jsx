@@ -35,6 +35,18 @@ const STATUS_COLOR = {
   [TASK_STATUS.COMPLETED]: COLORS.success,
   [TASK_STATUS.CANCELLED]: COLORS.textMuted,
 };
+
+const WORK_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "in-progress", label: "Active" },
+  { key: "pending", label: "Ready" },
+  { key: "on-hold", label: "On hold" },
+  { key: "completed", label: "Completed" },
+];
+
+const taskStatusKey = (status = "") => String(status).trim().toLowerCase().replace(/[_\s]+/g, "-");
+const taskUnitKey = (task = {}) => String(task.unitName || task.unitType || task.title || "Unassigned unit").trim();
+
 function Badge({ label }) {
   const c = STATUS_COLOR[label] || COLORS.textSecondary;
   return <StatusChip label={label} color={c} />;
@@ -218,14 +230,106 @@ function TaskActionSheet({ task, visible, onClose, onInformation, onLogs }) {
   );
 }
 
+function FilterSheet({
+  visible,
+  onClose,
+  statusFilter,
+  unitFilter,
+  onStatusChange,
+  onUnitChange,
+  unitNames,
+  tasks,
+}) {
+  const clearFilters = () => {
+    onStatusChange("all");
+    onUnitChange("all");
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.44)" }}
+      >
+        <Pressable
+          onPress={() => {}}
+          style={{ backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, padding: SPACING.md }}
+        >
+          <View style={{ width: 42, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderInput, alignSelf: "center", marginBottom: SPACING.sm }} />
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
+            <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
+              <Ionicons name="options-sharp" size={21} color={COLORS.tech} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Filter work orders</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Choose a status or an assigned AC unit</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close filters">
+              <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Work status</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+            {WORK_FILTERS.map((status) => {
+              const active = statusFilter === status.key;
+              const count = status.key === "all" ? tasks.length : tasks.filter((task) => taskStatusKey(task.status) === status.key).length;
+              return (
+                <TouchableOpacity
+                  key={status.key}
+                  onPress={() => onStatusChange(status.key)}
+                  activeOpacity={0.78}
+                  style={{ minHeight: 38, flexDirection: "row", alignItems: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface, paddingHorizontal: SPACING.sm + 2, gap: 6 }}
+                >
+                  <Text style={{ color: active ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold }}>{status.label}</Text>
+                  <View style={{ minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: active ? "rgba(255,255,255,0.2)" : COLORS.surfaceAlt }}>
+                    <Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontSize: 11, fontWeight: FONT.bold }}>{count}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {unitNames.length > 1 ? (
+            <>
+              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Assigned AC unit</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+                {unitNames.map((name) => {
+                  const active = unitFilter === name;
+                  return (
+                    <TouchableOpacity
+                      key={name}
+                      onPress={() => onUnitChange(name)}
+                      activeOpacity={0.78}
+                      style={{ minHeight: 38, justifyContent: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.techLight : COLORS.surface, paddingHorizontal: SPACING.sm + 4 }}
+                    >
+                      <Text numberOfLines={1} style={{ maxWidth: 220, color: active ? COLORS.tech : COLORS.textSecondary, fontWeight: active ? FONT.bold : "500" }}>{name === "all" ? "All AC units" : name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+            <TechButton title="Clear" onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
+            <TechButton title="Show results" onPress={onClose} style={{ flex: 1 }} />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export default function TasksScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const [tasks, setTasks] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [unitFilter, setUnitFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState("all");
   const [busy, setBusy] = useState(null);
   const [actionTask, setActionTask] = useState(null);
+  const [filterVisible, setFilterVisible] = useState(false);
 
   const refresh = () => {
     if (!current?.id) return;
@@ -252,10 +356,20 @@ export default function TasksScreen() {
 
   const unitNames = useMemo(() => {
     const names = tasks
-      .map((t) => t.unitName || t.title || null)
+      .map((t) => taskUnitKey(t))
       .filter(Boolean);
-    return ["All", ...Array.from(new Set(names))];
+    return ["all", ...Array.from(new Set(names))];
   }, [tasks]);
+
+  const filteredTasks = useMemo(
+    () => tasks.filter((task) => {
+      const statusMatch = statusFilter === "all" || taskStatusKey(task.status) === statusFilter;
+      const unitMatch = unitFilter === "all" || taskUnitKey(task) === unitFilter;
+      return statusMatch && unitMatch;
+    }),
+    [tasks, statusFilter, unitFilter],
+  );
+  const activeFilterCount = Number(statusFilter !== "all") + Number(unitFilter !== "all");
 
   const handleStart = (task) =>
     confirmAction({
@@ -280,7 +394,6 @@ export default function TasksScreen() {
 
   const renderItem = ({ item }) => (
     <Card
-      pressed
       style={{
         marginBottom: SPACING.sm,
         borderLeftWidth: 4,
@@ -406,14 +519,8 @@ export default function TasksScreen() {
       scroll={false}
     >
       <FlatList
-        data={tasks.filter((task) => {
-          const statusMatch =
-            statusFilter === "All" || task.status === statusFilter;
-          const unitMatch =
-            unitFilter === "All" ||
-            (task.unitName || task.title || "") === unitFilter;
-          return statusMatch && unitMatch;
-        })}
+        style={{ flex: 1 }}
+        data={filteredTasks}
         keyExtractor={(i) => String(i.id)}
         renderItem={renderItem}
         contentContainerStyle={{
@@ -423,48 +530,31 @@ export default function TasksScreen() {
           <View>
             <TechHero
               eyebrow="Work Order Board"
-              title={`${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}`}
+              title={`${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
               subtitle="Prioritize active work, open AC unit records, and submit service reports."
               icon="map-sharp"
             />
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: SPACING.sm,
-                marginBottom: SPACING.md,
-              }}
+            <Card
+              onPress={() => setFilterVisible(true)}
+              accessibilityLabel="Open work order filters"
+              style={{ marginBottom: SPACING.md, padding: SPACING.sm + 4 }}
             >
-              {["All", ...Object.values(TASK_STATUS)].map((status) => (
-                <TechButton
-                  key={status}
-                  title={status}
-                  onPress={() => setStatusFilter(status)}
-                  size="sm"
-                  variant={statusFilter === status ? "primary" : "secondary"}
-                />
-              ))}
-            </View>
-            {unitNames.length > 1 && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: SPACING.sm,
-                  marginBottom: SPACING.md,
-                }}
-              >
-                {unitNames.map((name) => (
-                  <TechButton
-                    key={name}
-                    title={name === "All" ? "All AC Units" : name}
-                    onPress={() => setUnitFilter(name)}
-                    size="sm"
-                    variant={unitFilter === name ? "secondary" : "ghost"}
-                  />
-                ))}
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={{ width: 38, height: 38, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
+                  <Ionicons name="options-sharp" size={20} color={COLORS.tech} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
+                    {activeFilterCount === 0 ? "All statuses and AC units" : `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                  </Text>
+                </View>
+                <View style={{ minWidth: 26, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginRight: SPACING.xs }}>
+                  <Text style={{ color: activeFilterCount ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.black }}>{activeFilterCount}</Text>
+                </View>
+                <Ionicons name="chevron-forward-sharp" size={20} color={COLORS.textMuted} />
               </View>
-            )}
+            </Card>
           </View>
         }
         ListEmptyComponent={
@@ -486,6 +576,16 @@ export default function TasksScreen() {
         onLogs={() =>
           router.push(`/technician/task/${actionTask?.id}/unit/log/select`)
         }
+      />
+      <FilterSheet
+        visible={filterVisible}
+        onClose={() => setFilterVisible(false)}
+        statusFilter={statusFilter}
+        unitFilter={unitFilter}
+        onStatusChange={setStatusFilter}
+        onUnitChange={setUnitFilter}
+        unitNames={unitNames}
+        tasks={tasks}
       />
     </TechnicianScreen>
   );

@@ -38,9 +38,10 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Coldair to use the camera to scan unit QR codes."
+          "cameraPermission": "Allow Coldair to scan unit QR codes and capture proof of installation photos."
         }
       ],
+      "expo-notifications",
       [
         "expo-build-properties",
         {

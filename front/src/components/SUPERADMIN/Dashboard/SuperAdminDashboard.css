@@ -5,3 +5,19 @@
 
 /* Dashboard-specific styles are not required here because the shared Super Admin stylesheet provides the
    unified cards, grids, tables, buttons, and layout styles used across all Super Admin screens. */
+
+.super-commerce-dashboard { padding-top: 18px; }
+.super-profile-button {
+  margin-top: 16px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.super-profile-button:hover { background: #e0e7ff; }
