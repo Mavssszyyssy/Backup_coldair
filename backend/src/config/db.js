@@ -28,11 +28,21 @@ const displayMongoTarget = (uri) => {
 };
 
 const connectDb = async () => {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
   const mongoUri = buildMongoUri();
   try {
-    await mongoose.connect(mongoUri);
+    // Warm Vercel instances reuse this promise instead of opening a new Atlas
+    // connection on every request.
+    if (!global.__aeropulseMongoConnection) {
+      global.__aeropulseMongoConnection = mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+    }
+    await global.__aeropulseMongoConnection;
     console.log(`MongoDB connected: ${displayMongoTarget(mongoUri)}`);
+    return mongoose.connection;
   } catch (error) {
+    global.__aeropulseMongoConnection = null;
     console.error(`Failed to connect to MongoDB at ${displayMongoTarget(mongoUri)}`);
     console.error("Start MongoDB or set MONGODB_URI in backend/.env to a reachable database.");
     throw error;

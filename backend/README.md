@@ -1,6 +1,6 @@
 # AeroPulse Backend
 
-Express + MongoDB backend API for web and future mobile clients.
+Express + MongoDB backend API for web and mobile clients. It is ready to deploy as a standalone Vercel repository.
 
 ## Setup
 
@@ -16,6 +16,26 @@ Express + MongoDB backend API for web and future mobile clients.
 ## API Base URL
 
 - `http://localhost:5000/api`
+
+## Deploy to Vercel
+
+Deploy the `backend` folder as the repository root. Vercel uses `api/index.js` as the serverless entry and rewrites every request to the Express app.
+
+Set these Vercel environment variables for Production, Preview, and Development as appropriate:
+
+- `NODE_ENV=production`
+- `MONGODB_URI` — MongoDB Atlas connection string
+- `JWT_SECRET` — a long random secret
+- `CORS_ORIGIN` — comma-separated allowed web origins, for example `https://your-web-app.vercel.app`
+- `FRONTEND_URL` — primary web application URL
+- `BACKEND_PUBLIC_URL` — deployed backend URL, for example `https://your-backend.vercel.app`
+- Payment/email provider settings only when those features are enabled.
+
+Allow Vercel's outbound access in MongoDB Atlas Network Access (or use Atlas's secure access mechanism). After deployment, verify:
+
+- `https://your-backend.vercel.app/api/health`
+
+The expected response includes `"status":"ok"`.
 
 ## Auth Endpoints
 

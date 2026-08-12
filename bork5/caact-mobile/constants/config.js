@@ -2,8 +2,8 @@
 // Central place for environment-level configuration.
 //
 // Override when needed:
-//   EXPO_PUBLIC_API_BASE_URL=http://192.168.1.33:5000/api
-//   EXPO_PUBLIC_API_BASE=http://192.168.1.33:5000/api
+//   EXPO_PUBLIC_API_BASE_URL=https://backend-deployment-ivory.vercel.app/api
+//   EXPO_PUBLIC_API_BASE=https://backend-deployment-ivory.vercel.app/api
 //
 // By default, Expo LAN runs derive the backend host from Metro's host and use
 // the Express listener on port 5000. This is the port used by the local

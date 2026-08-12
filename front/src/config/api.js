@@ -1,11 +1,11 @@
 const API_BASE_URL =
   process.env.REACT_APP_API_URL ||
   process.env.REACT_APP_BACKEND_URL ||
-  "http://localhost:5001/api";
+  "https://backend-deployment-ivory.vercel.app/api";
 
 const API_FALLBACK_URL =
   process.env.REACT_APP_API_FALLBACK_URL ||
-  (API_BASE_URL === "http://localhost:5001/api" ? "http://localhost:5000/api" : "");
+  "";
 
 if (
   typeof window !== "undefined" &&
@@ -14,7 +14,7 @@ if (
 ) {
   console.warn(
     "Frontend is running in production but API_BASE_URL is still pointing to localhost. " +
-      "Set REACT_APP_API_URL in Vercel to your deployed Render backend URL.",
+    "Set REACT_APP_API_URL in Vercel to your deployed backend URL.",
   );
 }
 

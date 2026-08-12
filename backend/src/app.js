@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const env = require("./config/env");
@@ -26,6 +27,11 @@ const predictionRoutes = require("./routes/predictionRoutes");
 const partsRequestRoutes = require("./routes/partsRequestRoutes");
 
 const app = express();
+const isProduction = env.nodeEnv === "production";
+
+// Vercel terminates HTTPS at its proxy. Trust the forwarded protocol so secure
+// cross-site session cookies can be issued to the deployed web application.
+if (isProduction) app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(
@@ -44,11 +50,20 @@ app.use(
     secret: env.jwtSecret,
     resave: false,
     saveUninitialized: false,
+    // Serverless instances do not share express-session's memory store.
+    store: env.mongoUri
+      ? MongoStore.create({
+          mongoUrl: env.mongoUri,
+          collectionName: "sessions",
+          ttl: 24 * 60 * 60,
+          autoRemove: "native",
+        })
+      : undefined,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
-      secure: env.nodeEnv === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     },
   }),
 );
@@ -59,8 +74,8 @@ app.use(express.json({ limit: "5mb" }));
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
-    build: "mobile-order-bridge-2026-05-25",
-    cwd: process.cwd(),
+    service: "aeropulse-api",
+    environment: env.nodeEnv,
   });
 });
 
@@ -98,6 +113,10 @@ if (fs.existsSync(indexHtml)) {
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ message: "Internal server error" });
+});
+
+app.use("/api", (_req, res) => {
+  res.status(404).json({ message: "API route not found." });
 });
 
 module.exports = app;
