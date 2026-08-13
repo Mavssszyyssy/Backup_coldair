@@ -1,7 +1,7 @@
 const API_BASE_URL =
   process.env.REACT_APP_API_URL ||
   process.env.REACT_APP_BACKEND_URL ||
-  "https://backend-deployment-ivory.vercel.app/api";
+  "https://aeropulse-backend.vercel.app/api";
 
 const API_FALLBACK_URL =
   process.env.REACT_APP_API_FALLBACK_URL ||

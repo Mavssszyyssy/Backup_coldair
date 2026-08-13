@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:route*",
+      "destination": "/api/index?__route=:route*"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index"
+    }
+  ],
   "functions": {
     "api/index.js": {
       "maxDuration": 30

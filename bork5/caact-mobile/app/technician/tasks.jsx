@@ -8,6 +8,7 @@ import {
   Modal,
   Pressable,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -42,10 +43,38 @@ const WORK_FILTERS = [
   { key: "pending", label: "Ready" },
   { key: "on-hold", label: "On hold" },
   { key: "completed", label: "Completed" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
 const taskStatusKey = (status = "") => String(status).trim().toLowerCase().replace(/[_\s]+/g, "-");
-const taskUnitKey = (task = {}) => String(task.unitName || task.unitType || task.title || "Unassigned unit").trim();
+const taskPriorityKey = (priority = "") => String(priority || "Normal").trim().toLowerCase();
+const PRIORITY_FILTERS = [
+  { key: "all", label: "Any priority" },
+  { key: "urgent", label: "Urgent" },
+  { key: "high", label: "High" },
+  { key: "normal", label: "Normal" },
+  { key: "low", label: "Low" },
+];
+
+const taskMatchesQuery = (task = {}, query = "") => {
+  const term = String(query || "").trim().toLowerCase();
+  if (!term) return true;
+  const searchable = [
+    task.title,
+    task.issueType,
+    task.taskCode,
+    task.orderCode,
+    task.customerName,
+    task.address,
+    task.unitName,
+    task.unitType,
+    ...getTaskSerials(task),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return searchable.includes(term);
+};
 
 function Badge({ label }) {
   const c = STATUS_COLOR[label] || COLORS.textSecondary;
@@ -234,15 +263,17 @@ function FilterSheet({
   visible,
   onClose,
   statusFilter,
-  unitFilter,
+  priorityFilter,
+  searchQuery,
   onStatusChange,
-  onUnitChange,
-  unitNames,
+  onPriorityChange,
+  onSearchChange,
   tasks,
 }) {
   const clearFilters = () => {
     onStatusChange("all");
-    onUnitChange("all");
+    onPriorityChange("all");
+    onSearchChange("");
   };
 
   return (
@@ -262,11 +293,30 @@ function FilterSheet({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Filter work orders</Text>
-              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Choose a status or an assigned AC unit</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Find work by status, priority, customer, or reference</Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close filters">
               <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: "row", alignItems: "center", minHeight: 46, borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.surface, marginBottom: SPACING.md }}>
+            <Ionicons name="search-sharp" size={19} color={COLORS.textMuted} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={onSearchChange}
+              placeholder="Search customer, task, order, or serial"
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ flex: 1, color: COLORS.textPrimary, marginLeft: SPACING.xs, paddingVertical: SPACING.xs, fontSize: FONT.md }}
+              accessibilityLabel="Search work orders"
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => onSearchChange("")} hitSlop={10} accessibilityLabel="Clear work order search">
+                <Ionicons name="close-circle-sharp" size={20} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Work status</Text>
@@ -290,26 +340,22 @@ function FilterSheet({
             })}
           </View>
 
-          {unitNames.length > 1 ? (
-            <>
-              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Assigned AC unit</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
-                {unitNames.map((name) => {
-                  const active = unitFilter === name;
-                  return (
-                    <TouchableOpacity
-                      key={name}
-                      onPress={() => onUnitChange(name)}
-                      activeOpacity={0.78}
-                      style={{ minHeight: 38, justifyContent: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.techLight : COLORS.surface, paddingHorizontal: SPACING.sm + 4 }}
-                    >
-                      <Text numberOfLines={1} style={{ maxWidth: 220, color: active ? COLORS.tech : COLORS.textSecondary, fontWeight: active ? FONT.bold : "500" }}>{name === "all" ? "All AC units" : name}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          ) : null}
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Priority</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+            {PRIORITY_FILTERS.map((priority) => {
+              const active = priorityFilter === priority.key;
+              return (
+                <TouchableOpacity
+                  key={priority.key}
+                  onPress={() => onPriorityChange(priority.key)}
+                  activeOpacity={0.78}
+                  style={{ minHeight: 38, justifyContent: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.techLight : COLORS.surface, paddingHorizontal: SPACING.sm + 4 }}
+                >
+                  <Text style={{ color: active ? COLORS.tech : COLORS.textSecondary, fontWeight: active ? FONT.bold : "500" }}>{priority.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             <TechButton title="Clear" onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
@@ -326,7 +372,8 @@ export default function TasksScreen() {
   const { current } = useUserContext();
   const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [unitFilter, setUnitFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [busy, setBusy] = useState(null);
   const [actionTask, setActionTask] = useState(null);
   const [filterVisible, setFilterVisible] = useState(false);
@@ -354,22 +401,15 @@ export default function TasksScreen() {
     }, [current]),
   );
 
-  const unitNames = useMemo(() => {
-    const names = tasks
-      .map((t) => taskUnitKey(t))
-      .filter(Boolean);
-    return ["all", ...Array.from(new Set(names))];
-  }, [tasks]);
-
   const filteredTasks = useMemo(
     () => tasks.filter((task) => {
       const statusMatch = statusFilter === "all" || taskStatusKey(task.status) === statusFilter;
-      const unitMatch = unitFilter === "all" || taskUnitKey(task) === unitFilter;
-      return statusMatch && unitMatch;
+      const priorityMatch = priorityFilter === "all" || taskPriorityKey(task.priority) === priorityFilter;
+      return statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
     }),
-    [tasks, statusFilter, unitFilter],
+    [tasks, statusFilter, priorityFilter, searchQuery],
   );
-  const activeFilterCount = Number(statusFilter !== "all") + Number(unitFilter !== "all");
+  const activeFilterCount = Number(statusFilter !== "all") + Number(priorityFilter !== "all") + Number(Boolean(searchQuery.trim()));
 
   const handleStart = (task) =>
     confirmAction({
@@ -531,7 +571,7 @@ export default function TasksScreen() {
             <TechHero
               eyebrow="Work Order Board"
               title={`${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
-              subtitle="Prioritize active work, open AC unit records, and submit service reports."
+              subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Prioritize active work, open AC unit records, and submit service reports."}
               icon="map-sharp"
             />
             <Card
@@ -546,11 +586,11 @@ export default function TasksScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
                   <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                    {activeFilterCount === 0 ? "All statuses and AC units" : `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                    {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
                   </Text>
                 </View>
-                <View style={{ minWidth: 26, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginRight: SPACING.xs }}>
-                  <Text style={{ color: activeFilterCount ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.black }}>{activeFilterCount}</Text>
+                <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>
+                  <Text style={{ color: activeFilterCount ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.black }}>{filteredTasks.length}</Text>
                 </View>
                 <Ionicons name="chevron-forward-sharp" size={20} color={COLORS.textMuted} />
               </View>
@@ -559,10 +599,20 @@ export default function TasksScreen() {
         }
         ListEmptyComponent={
           <EmptyState
-            title="No work orders assigned"
-            message="Assigned service work will appear here."
+            title={tasks.length ? "No matching work orders" : "No work orders assigned"}
+            message={tasks.length ? "Try clearing or changing the current filters." : "Assigned service work will appear here."}
             icon="clipboard-sharp"
             iconColor={COLORS.tech}
+            action={tasks.length ? (
+              <TechButton
+                title="Clear Filters"
+                onPress={() => {
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                  setSearchQuery("");
+                }}
+              />
+            ) : null}
           />
         }
       />
@@ -581,10 +631,11 @@ export default function TasksScreen() {
         visible={filterVisible}
         onClose={() => setFilterVisible(false)}
         statusFilter={statusFilter}
-        unitFilter={unitFilter}
+        priorityFilter={priorityFilter}
+        searchQuery={searchQuery}
         onStatusChange={setStatusFilter}
-        onUnitChange={setUnitFilter}
-        unitNames={unitNames}
+        onPriorityChange={setPriorityFilter}
+        onSearchChange={setSearchQuery}
         tasks={tasks}
       />
     </TechnicianScreen>
