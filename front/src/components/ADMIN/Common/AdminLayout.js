@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
 import AdminSidebar from './AdminSidebar';
 import AdminNotificationsBell from './AdminNotificationsBell';
+import SuperAdminLayout from '../../SUPERADMIN/Common/SuperAdminLayout';
 import '../adminShared.css';
 import './styles.css';
 
@@ -27,6 +28,13 @@ const AdminLayout = ({ title, subtitle, children }) => {
     }
     return () => document.body.classList.remove('no-scroll');
   }, [isSidebarOpen]);
+
+  // Operational modules are shared with SuperAdmin, but the surrounding
+  // shell stays authoritative: SuperAdmin always keeps the HQ navigation
+  // instead of being dropped into the branch-admin sidebar.
+  if (user?.role === 'superadmin') {
+    return <SuperAdminLayout title={title} subtitle={subtitle}>{children}</SuperAdminLayout>;
+  }
 
   return (
     <div className="admin-layout">

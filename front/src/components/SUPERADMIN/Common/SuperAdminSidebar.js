@@ -1,11 +1,14 @@
 import {
   MapPin,
   Package,
+  QrCode,
+  Gear,
   ShieldCheck,
   ShoppingCart,
   SignOut,
   WarningCircle,
   Wrench,
+  Users,
 } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
@@ -16,8 +19,16 @@ const links = [
   { to: "/superadmin/branches", label: "Branch Locations", icon: MapPin },
   { to: "/superadmin/sales", label: "Processing Sales", icon: ShoppingCart },
   { to: "/superadmin/inventory", label: "Inventory Checker", icon: Package },
+  { to: "/superadmin/reorders", label: "Reorder Approvals", icon: ShoppingCart },
+  { to: "/superadmin/orders", label: "Customer Orders", icon: ShoppingCart },
+  { to: "/superadmin/maintenance", label: "Service Requests", icon: Wrench },
+  { to: "/superadmin/technicians", label: "Technicians", icon: Users },
+  { to: "/superadmin/serial-qrs", label: "Serial QR Registry", icon: QrCode },
+  { to: "/superadmin/reports", label: "Reports", icon: ShieldCheck },
   { to: "/superadmin/tasks", label: "Processing Tech Tasks", icon: Wrench },
-  { to: "/superadmin/alerts", label: "Customer Alerts", icon: WarningCircle },
+  { to: "/superadmin/alerts", label: "Customer Support Alerts", icon: WarningCircle },
+  { to: "/superadmin/settings", label: "Settings", icon: Gear },
+  { to: "/superadmin/profile", label: "My Profile", icon: Users },
 ];
 
 const SuperAdminSidebar = ({ isOpen, onClose }) => {

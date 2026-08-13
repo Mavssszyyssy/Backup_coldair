@@ -8,7 +8,6 @@ import TechnicianScreen, { TechHero } from "../../components/technician/Technici
 import Card from "../../components/ui/Card";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import { getPartsRequestsByTechnician } from "../../services/partsRequestService";
 import { getDisplayName } from "../../services/profileService";
 import { getTasksByTechnician, getTaskStats } from "../../services/taskStorage";
 
@@ -53,15 +52,13 @@ export default function TechDashboard() {
   const router = useRouter();
   const { current } = useUserContext();
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
-  const [partsCount, setPartsCount] = useState(0);
 
   useFocusEffect(
     React.useCallback(() => {
       if (!current?.id) return;
-      Promise.all([getTasksByTechnician(current.id), getPartsRequestsByTechnician(current.id)])
-        .then(([tasks, parts]) => {
+      getTasksByTechnician(current.id)
+        .then((tasks) => {
           setStats(getTaskStats(tasks));
-          setPartsCount(parts.length);
         })
         .catch(() => {});
     }, [current]),
@@ -99,15 +96,13 @@ export default function TechDashboard() {
         <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label="Pending" value={stats.pending} icon="time-sharp" color={COLORS.warning} /></View>
       </View>
       <View style={{ flexDirection: "row", marginBottom: SPACING.md }}>
-        <View style={{ flex: 1, marginRight: SPACING.xs }}><MetricCard label="All work orders" value={stats.total} icon="layers-sharp" color={COLORS.primary} /></View>
-        <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label="Parts requests" value={partsCount} icon="construct-sharp" color={COLORS.success} /></View>
+        <View style={{ flex: 1 }}><MetricCard label="All work orders" value={stats.total} icon="layers-sharp" color={COLORS.primary} /></View>
       </View>
 
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>Workspace</Text>
       <DashboardLink title="Active work" subtitle="Continue work already started and add service notes." icon="briefcase-sharp" onPress={() => router.push("/technician/home")} />
       <DashboardLink title="My work orders" subtitle="Review, filter, start, and complete assigned work." icon="clipboard-sharp" onPress={() => router.push("/technician/tasks")} />
       <DashboardLink title="Scan AC unit" subtitle="Open a unit record using its QR code." icon="qr-code-sharp" onPress={() => router.push("/technician/scan-qr")} />
-      <DashboardLink title="Parts requests" subtitle="Submit or follow up on replacement parts." icon="cube-sharp" accent={COLORS.success} onPress={() => router.push("/technician/parts")} />
       <DashboardLink title="Notifications" subtitle="Review new assignments and service alerts." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
     </TechnicianScreen>
   );

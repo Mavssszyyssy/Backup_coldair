@@ -14,7 +14,6 @@ import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import {
   forgotPassword,
   resetPassword,
-  verifyOtp,
 } from "../../../../services/api";
 import {
   validateConfirmPassword,
@@ -38,7 +37,7 @@ export default function RecoverPasswordScreen() {
   const handleSendCode = async () => {
     setLoading(true);
     try {
-      const result = await forgotPassword(email, "customer");
+      const result = await forgotPassword(email, "email");
       if (result.success) {
         setPhase("verify");
       } else {
@@ -75,14 +74,14 @@ export default function RecoverPasswordScreen() {
 
     setLoading(true);
     try {
-      const verifyResult = await verifyOtp(email, otp.trim());
-      if (!verifyResult.success) {
-        setErrors({
-          otp: verifyResult.error || "Invalid or expired reset code.",
-        });
-        return;
-      }
-      const resetResult = await resetPassword(email, otp.trim(), newPassword);
+      // Reset validates and consumes the OTP in one request. Verifying it in
+      // a separate request would invalidate a one-time code before reset.
+      const resetResult = await resetPassword(
+        email,
+        otp.trim(),
+        newPassword,
+        "email",
+      );
       if (!resetResult.success) {
         Alert.alert(
           "Reset Failed",

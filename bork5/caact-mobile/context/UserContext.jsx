@@ -169,7 +169,7 @@ export function UserProvider({ children }) {
   /**
    * Login with email + password.
    * Returns { success, user? } on success.
-   * Returns { success: false, error, locked?, secondsLeft? } on failure.
+   * Returns { success: false, error } on failure.
    */
   const login = async (email, password) => {
     try {

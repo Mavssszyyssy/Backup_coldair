@@ -139,41 +139,18 @@ export default function SignUpStep0() {
     }
   };
 
-  const handleNext = () => {
-    const nextErrors = {};
-
-    const firstNameError = validatePersonName(form.name_first, "First name");
-    const lastNameError = validatePersonName(form.name_last, "Last name");
-
-    if (firstNameError) nextErrors.name_first = firstNameError;
-    if (lastNameError) nextErrors.name_last = lastNameError;
-
-    if (!form.municipality.trim()) {
-      nextErrors.municipality = "Municipality is required.";
-    }
-
-    if (!form.submunicipality.trim()) {
-      nextErrors.submunicipality = "Submunicipality is required.";
-    }
-
-    if (!form.thoroughfare.trim()) {
-      nextErrors.thoroughfare = "Thoroughfare is required.";
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-
-    const address = [
-      form.apartmentUnit.trim(),
-      form.propertyBlockLot.trim(),
-      form.thoroughfare.trim(),
-      form.submunicipality.trim(),
-      form.municipality.trim(),
-    ]
-      .filter(Boolean)
-      .join(", ");
+  const continueToAccountDetails = (includeAddress) => {
+    const address = includeAddress
+      ? [
+          form.apartmentUnit.trim(),
+          form.propertyBlockLot.trim(),
+          form.thoroughfare.trim(),
+          form.submunicipality.trim(),
+          form.municipality.trim(),
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : "";
 
     router.push({
       pathname: "/sign-up/step/1",
@@ -182,17 +159,42 @@ export default function SignUpStep0() {
         name_last: form.name_last.trim(),
         suffix: form.suffix.trim(),
         address,
-        municipality: form.municipality.trim(),
-        submunicipality: form.submunicipality.trim(),
-        thoroughfare: form.thoroughfare.trim(),
-        propertyBlockLot: form.propertyBlockLot.trim(),
-        apartmentUnit: form.apartmentUnit.trim(),
-        landmark: form.landmark.trim(),
-        plusCode: form.plusCode.trim(),
-        municipalityCode: form.municipalityCode,
-        submunicipalityCode: form.submunicipalityCode,
+        municipality: includeAddress ? form.municipality.trim() : "",
+        submunicipality: includeAddress ? form.submunicipality.trim() : "",
+        thoroughfare: includeAddress ? form.thoroughfare.trim() : "",
+        propertyBlockLot: includeAddress ? form.propertyBlockLot.trim() : "",
+        apartmentUnit: includeAddress ? form.apartmentUnit.trim() : "",
+        landmark: includeAddress ? form.landmark.trim() : "",
+        plusCode: includeAddress ? form.plusCode.trim() : "",
+        municipalityCode: includeAddress ? form.municipalityCode : "",
+        submunicipalityCode: includeAddress ? form.submunicipalityCode : "",
       },
     });
+  };
+
+  const validateNameStep = () => {
+    const nextErrors = {};
+
+    const firstNameError = validatePersonName(form.name_first, "First name");
+    const lastNameError = validatePersonName(form.name_last, "Last name");
+
+    if (firstNameError) nextErrors.name_first = firstNameError;
+    if (lastNameError) nextErrors.name_last = lastNameError;
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateNameStep()) continueToAccountDetails(true);
+  };
+
+  const handleSkipAddress = () => {
+    if (validateNameStep()) continueToAccountDetails(false);
   };
 
   return (
@@ -208,7 +210,7 @@ export default function SignUpStep0() {
       >
         <PageHeader
           title="Create Account"
-          subtitle="Step 1 of 3: Your Name & Address"
+          subtitle="Step 1 of 3: Your name and optional delivery address"
           color={COLORS.primary}
           onBack={() => router.push("/sign-in")}
         />
@@ -237,8 +239,16 @@ export default function SignUpStep0() {
         </Card>
 
         <Card>
+          <View style={{ marginBottom: SPACING.sm }}>
+            <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold }}>
+              Delivery Address (Optional)
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
+              Add this now for faster checkout, or skip it and add it when you are ready to order.
+            </Text>
+          </View>
           <BottomSheetSelect
-            label="Municipality"
+            label="Municipality (optional)"
             value={form.municipality}
             placeholder="City or municipality"
             items={localities}
@@ -248,7 +258,7 @@ export default function SignUpStep0() {
             onSelect={handleMunicipalitySelect}
           />
           <BottomSheetSelect
-            label="Submunicipality"
+            label="Submunicipality (optional)"
             value={form.submunicipality}
             placeholder="Barangay or district"
             items={barangays}
@@ -263,7 +273,7 @@ export default function SignUpStep0() {
             onSelect={handleBarangaySelect}
           />
           <TextField
-            label="Thoroughfare"
+            label="Thoroughfare (optional)"
             value={form.thoroughfare}
             onChangeText={(value) => updateField("thoroughfare", value)}
             placeholder="Street name"
@@ -375,12 +385,21 @@ export default function SignUpStep0() {
         </TouchableOpacity>
       </ScrollView>
       <StickyActionBar>
-        <Button
-          title="Next"
-          onPress={handleNext}
-          variant="primary"
-          leftIcon={<Ionicons name="arrow-forward-sharp" size={18} color={COLORS.surface} />}
-        />
+        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+          <Button
+            title="Skip for Now"
+            onPress={handleSkipAddress}
+            variant="secondary"
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="Next"
+            onPress={handleNext}
+            variant="primary"
+            style={{ flex: 1 }}
+            leftIcon={<Ionicons name="arrow-forward-sharp" size={18} color={COLORS.surface} />}
+          />
+        </View>
       </StickyActionBar>
     </SafeAreaView>
   );

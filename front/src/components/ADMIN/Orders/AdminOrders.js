@@ -14,6 +14,18 @@ const statusActionMap = {
 };
 
 const ORDER_PAGE_SIZE = 10;
+const TIME_SLOT_OPTIONS = [
+  '9:00 AM - 12:00 PM',
+  '1:00 PM - 4:00 PM',
+  '4:00 PM - 6:00 PM',
+];
+
+const getTodayDateInput = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
+const isPastCalendarDate = (value) => Boolean(value && String(value) < getTodayDateInput());
 
 const getInventoryQrPayload = (serialNumber, storedQrCode = '') => {
   const serial = String(serialNumber || '').trim();
@@ -257,6 +269,10 @@ const AdminOrders = () => {
     if (!config) return;
     const processingKey = `${order.id}:${config.action}`;
     const form = getFulfillmentForm(order);
+    if (['approve', 'dispatch'].includes(config.action) && (isPastCalendarDate(form.estimatedArrival) || isPastCalendarDate(form.installationDate))) {
+      alert('Delivery and installation dates must be today or a future date.');
+      return;
+    }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
     if (config.action === 'cancel' && !form.cancellationReason.trim()) {
       const ok = window.confirm('Cancel this order without a cancellation note?');
@@ -318,6 +334,10 @@ const AdminOrders = () => {
 
     const processingKey = `${order.id}:recovery-${action}`;
     const form = getFulfillmentForm(order);
+    if (['assign_technician', 'recreate_task'].includes(action) && (isPastCalendarDate(form.estimatedArrival) || isPastCalendarDate(form.installationDate))) {
+      alert('Delivery and installation dates must be today or a future date.');
+      return;
+    }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
     setProcessingId(processingKey);
     try {
@@ -508,6 +528,7 @@ const AdminOrders = () => {
                       Delivery Date
                       <input
                         type="date"
+                        min={getTodayDateInput()}
                         value={getFulfillmentForm(order).estimatedArrival}
                         onChange={(event) => updateFulfillmentForm(order, { estimatedArrival: event.target.value })}
                       />
@@ -516,18 +537,22 @@ const AdminOrders = () => {
                       Install Date
                       <input
                         type="date"
+                        min={getTodayDateInput()}
                         value={getFulfillmentForm(order).installationDate}
                         onChange={(event) => updateFulfillmentForm(order, { installationDate: event.target.value })}
                       />
                     </label>
                     <label>
                       Time Slot
-                      <input
-                        type="text"
-                        placeholder="e.g. 9AM - 12PM"
+                      <select
                         value={getFulfillmentForm(order).timeSlot}
                         onChange={(event) => updateFulfillmentForm(order, { timeSlot: event.target.value })}
-                      />
+                      >
+                        <option value="">Select time slot</option>
+                        {TIME_SLOT_OPTIONS.map((slot) => (
+                          <option key={slot} value={slot}>{slot}</option>
+                        ))}
+                      </select>
                     </label>
                     <button
                       type="button"

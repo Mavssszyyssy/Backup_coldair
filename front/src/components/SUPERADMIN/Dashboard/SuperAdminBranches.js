@@ -1,129 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
+import { BRANCHES } from '../../../domain/branches/branches';
 import '../superAdminShared.css';
+import './SuperAdminBranches.css';
+
+const lastActive = (value) => value ? new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never signed in';
 
 const SuperAdminBranches = () => {
-  // Removed unused: branches, setBranches
   const [admins, setAdmins] = useState([]);
+  const [branch, setBranch] = useState(BRANCHES[0] || '');
+  const [adminId, setAdminId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState({ name: '', location: '', manager: '', adminId: '', needs: '', requests: '' });
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        // Fetch admins for the dropdown
-        const adminData = await apiRequest('/users?role=admin');
-        const adminsList = Array.isArray(adminData?.users) ? adminData.users : [];
-        if (active) setAdmins(adminsList);
-      } catch (err) {
-        if (active) {
-          setError(err.message || 'Failed to load admins');
-          setAdmins([]);
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    load();
-    return () => { active = false; };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await apiRequest('/users?role=admin');
+      setAdmins(Array.isArray(result.users) ? result.users : []);
+    } catch (requestError) {
+      setAdmins([]);
+      setError(requestError.message || 'Unable to load branch administrators.');
+    } finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
 
-  // Removed unused: getAdminForBranch
+  const assignmentByBranch = useMemo(() => Object.fromEntries(BRANCHES.map((name) => [name, admins.find((admin) => admin.assignedBranch === name) || null])), [admins]);
+  const selectedAssignment = assignmentByBranch[branch];
+  useEffect(() => { setAdminId(selectedAssignment?.id || ''); }, [branch, selectedAssignment?.id]);
 
-  const formatLastLogin = (date) => {
-    if (!date) return 'Never';
-    const d = new Date(date);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return d.toLocaleDateString();
+  const save = async (event) => {
+    event.preventDefault();
+    setMessage('');
+    setError('');
+    if (!branch || !adminId) { setError('Select both a branch and an administrator.'); return; }
+    setSaving(true);
+    try {
+      const result = await apiRequest(`/users/${adminId}`, { method: 'PATCH', body: JSON.stringify({ assignedBranch: branch, activeBranch: branch }) });
+      const updated = result.user;
+      setAdmins((current) => current.map((admin) => {
+        if (admin.id === updated.id) return updated;
+        return admin.assignedBranch === branch ? { ...admin, assignedBranch: '', activeBranch: '' } : admin;
+      }));
+      setMessage(`${updated.name || 'Administrator'} is now responsible for ${branch}.`);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to update branch ownership.');
+    } finally { setSaving(false); }
   };
 
-  return (
-    <SuperAdminLayout title="Branch Location Handling" subtitle="Monitor branch allocation, network status, needs, and requests">
-      <div className="super-grid-2">
-        <div className="super-card">
-          <h3>Branch Allocation and Admin Assignment</h3>
-          <div className="super-list">
-            {loading && <p>Loading branches and admins...</p>}
-            {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
-            {!loading && admins.length > 0 && admins
-              .filter(admin => admin.assignedBranch)
-              .map((admin) => (
-                <div key={admin.id} className="super-list-item">
-                  <strong>{admin.assignedBranch}</strong>
-                  <p>Admin: {admin.name}</p>
-                  <p>Email: {admin.email}</p>
-                  <p>Last Login: {formatLastLogin(admin.lastLogin)}</p>
-                  <p>Phone: {admin.phone || '-'}</p>
-                  <p>Address: {admin.address || '-'}</p>
-                </div>
-              ))}
-            {!loading && admins.filter(a => a.assignedBranch).length === 0 && (
-              <p>No admins assigned to branches yet.</p>
-            )}
-          </div>
-        </div>
-        
-        <form
-          className="super-card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert('Branch assignment feature coming soon. Use admin user management to assign branches.');
-            setDraft({ name: '', location: '', manager: '', adminId: '', needs: '', requests: '' });
-          }}
-        >
-          <h3>Manage Branch</h3>
-          <select 
-            value={draft.adminId} 
-            onChange={(e) => setDraft((p) => ({ ...p, adminId: e.target.value }))}
-            placeholder="Select admin"
-            style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          >
-            <option value="">Select Admin...</option>
-            {admins.filter(a => !a.assignedBranch).map(admin => (
-              <option key={admin.id} value={admin.id}>{admin.name} ({admin.email})</option>
-            ))}
-          </select>
-          <input 
-            placeholder="Branch name" 
-            value={draft.name} 
-            onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} 
-            style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <input 
-            placeholder="Location" 
-            value={draft.location} 
-            onChange={(e) => setDraft((p) => ({ ...p, location: e.target.value }))} 
-            style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <input 
-            placeholder="Current need" 
-            value={draft.needs} 
-            onChange={(e) => setDraft((p) => ({ ...p, needs: e.target.value }))} 
-            style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <input 
-            placeholder="Request for HQ" 
-            value={draft.requests} 
-            onChange={(e) => setDraft((p) => ({ ...p, requests: e.target.value }))} 
-            style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '4px', border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}>
-            Assign Branch to Admin
-          </button>
-        </form>
-      </div>
-    </SuperAdminLayout>
-  );
+  return <SuperAdminLayout title="Branch Management" subtitle="Assign one accountable administrator to each operating branch">
+    <div className="branch-summary"><div><strong>{BRANCHES.length}</strong><span>Operating branches</span></div><div><strong>{Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>Assigned admins</span></div><div><strong>{BRANCHES.length - Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>Need assignment</span></div></div>
+    <section className="branch-workspace">
+      <div className="branch-workspace-heading"><div><p>HQ branch control</p><h2>Assign branch accountability</h2><span>Pick the branch and administrator from dropdowns. Reassigning a branch transfers its ownership cleanly.</span></div><button type="button" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button></div>
+      <form className="branch-assignment-form" onSubmit={save}>
+        <label>Branch<select value={branch} onChange={(event) => setBranch(event.target.value)}>{BRANCHES.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+        <label>Responsible administrator<select value={adminId} onChange={(event) => setAdminId(event.target.value)}><option value="">Select an administrator</option>{admins.map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email} {admin.assignedBranch ? `— currently ${admin.assignedBranch}` : '— unassigned'}</option>)}</select></label>
+        <button type="submit" disabled={saving || loading}>{saving ? 'Saving…' : 'Save assignment'}</button>
+      </form>
+      {message ? <p className="branch-success">{message}</p> : null}{error ? <p className="branch-error">{error}</p> : null}
+    </section>
+    <section className="branch-directory" aria-label="Branch assignments"><header><div><p>Branch directory</p><h2>Current ownership</h2></div></header>{loading ? <p className="branch-empty">Loading branch assignments…</p> : <div>{BRANCHES.map((name) => { const admin = assignmentByBranch[name]; return <article key={name}><div><strong>{name}</strong><span>{admin ? 'Assigned' : 'Needs an administrator'}</span></div>{admin ? <div className="branch-admin-detail"><b>{admin.name || 'Administrator'}</b><small>{admin.email || 'No email recorded'} · {lastActive(admin.lastLogin)}</small></div> : <p>Choose this branch above to assign an administrator.</p>}</article>; })}</div>}</section>
+  </SuperAdminLayout>;
 };
 
 export default SuperAdminBranches;

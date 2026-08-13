@@ -46,7 +46,7 @@ export function resolveNotificationRoute(item = {}, role = "") {
   const normalizedRole = String(role || item.role || "").toLowerCase();
 
   if (normalizedRole === "technician") {
-    if (text.includes("part")) return "/technician/parts";
+    if (text.includes("part")) return "/technician/tasks";
     if (item.type === "order" || text.includes("order") || text.includes("task") || text.includes("work order")) {
       return "/technician/tasks";
     }
@@ -54,7 +54,7 @@ export function resolveNotificationRoute(item = {}, role = "") {
   }
 
   if (text.includes("service") || text.includes("appointment") || text.includes("request")) {
-    return "/customer/requests";
+    return "/customer/home";
   }
   if (item.type === "order" || text.includes("order")) return "/customer/orders";
   if (item.type === "account") return "/customer/settings";

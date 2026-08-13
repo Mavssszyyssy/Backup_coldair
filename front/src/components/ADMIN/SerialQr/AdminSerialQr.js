@@ -61,6 +61,14 @@ const AdminSerialQr = () => {
     (sum, product) => sum + (product.serialUnits?.length || 0),
     0,
   );
+  const availableSerials = products.reduce(
+    (sum, product) =>
+      sum +
+      (product.serialUnits || []).filter(
+        (unit) => (unit.status || "available") === "available",
+      ).length,
+    0,
+  );
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const firstProductIndex = (page - 1) * pageSize;
   const pageProducts = filteredProducts.slice(firstProductIndex, firstProductIndex + pageSize);
@@ -76,14 +84,13 @@ const AdminSerialQr = () => {
   return (
     <AdminLayout
       title="Serial Numbers and QR Codes"
-      subtitle="Scan these QR codes in the technician mobile app to open AC unit details."
+      subtitle="Each available unit has its own unique QR code for technician installation and registration."
     >
       <div className="serialqr-toolbar admin-card">
         <div>
           <h3>AC Unit QR Registry</h3>
           <p>
-            {products.length} models with {totalSerials} generated serial
-            numbers.
+            {products.length} models · {availableSerials} available unit QR codes · {totalSerials} total serials
           </p>
         </div>
         <div className="serialqr-actions">
@@ -93,7 +100,7 @@ const AdminSerialQr = () => {
             placeholder="Search model, SKU, branch, or serial"
           />
           <button type="button" onClick={load} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh"}
+            {loading ? "Syncing..." : "Sync unique QRs"}
           </button>
         </div>
       </div>
@@ -116,7 +123,11 @@ const AdminSerialQr = () => {
                   </p>
                 </div>
                 <span className="serialqr-count">
-                  {serialUnits.length} serials
+                  {
+                    serialUnits.filter(
+                      (unit) => (unit.status || "available") === "available",
+                    ).length
+                  } available · {serialUnits.length} total
                 </span>
               </header>
 
@@ -137,7 +148,10 @@ const AdminSerialQr = () => {
                       <div className="serialqr-card-body">
                         <strong>{getUnitLabel(product, unit, index)}</strong>
                         <code>{unit.serialNumber}</code>
-                        <span>{unit.status || "available"}</span>
+                        <span>
+                          {unit.status || "available"}
+                          {unit.branch ? ` · ${unit.branch}` : ""}
+                        </span>
                       </div>
                     </article>
                   ))}

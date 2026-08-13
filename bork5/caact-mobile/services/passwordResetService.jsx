@@ -7,7 +7,7 @@ import { normalizeEmail } from "../utils/authValidation";
 
 export async function requestPasswordResetOtp(email, roleType = "customer") {
   const normalized = normalizeEmail(email);
-  const result = await api.forgotPassword(normalized, roleType);
+  const result = await api.forgotPassword(normalized, "email");
 
   if (!result.success) {
     throw new Error(result.error || "Failed to send OTP.");
@@ -17,19 +17,8 @@ export async function requestPasswordResetOtp(email, roleType = "customer") {
     success: true,
     email: normalized,
     role: roleType,
-    message: result.message || "OTP sent. Check the server console.",
+    message: result.message || "OTP sent. Check your email inbox.",
   };
-}
-
-export async function verifyPasswordResetOtp(email, otpCode) {
-  const normalized = normalizeEmail(email);
-  const result = await api.verifyOtp(normalized, String(otpCode || "").trim());
-
-  if (!result.success) {
-    throw new Error(result.error || "Invalid or expired OTP.");
-  }
-
-  return { success: true, email: normalized };
 }
 
 export async function resetPasswordWithOtp(email, otpCode, newPassword) {
@@ -38,6 +27,7 @@ export async function resetPasswordWithOtp(email, otpCode, newPassword) {
     normalized,
     String(otpCode || "").trim(),
     String(newPassword || ""),
+    "email",
   );
 
   if (!result.success) {

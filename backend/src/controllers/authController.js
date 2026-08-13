@@ -26,6 +26,17 @@ const canonicalizePhMobile = (phone = "") => {
 };
 const isValidSixDigitCode = (value = "") =>
   /^\d{6}$/.test(String(value).trim());
+const isStrongRecoveryPassword = (value = "") => {
+  const password = String(value || "");
+  return (
+    password.length >= 8 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password) &&
+    /[@$!%*?&]/.test(password) &&
+    zxcvbn(password).score >= 3
+  );
+};
 
 const toInternationalFormat = (phone = "") => {
   const digits = String(phone).replace(/\D/g, "");
@@ -33,6 +44,67 @@ const toInternationalFormat = (phone = "") => {
     return `639${digits.slice(2)}`;
   }
   return digits;
+};
+
+const infobipBaseUrl = () =>
+  String(env.infobipBaseUrl || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+
+const sendSmsViaInfobip = async ({ recipient, message }) => {
+  const baseUrl = infobipBaseUrl();
+  const sender = String(env.infobipSender || "").trim();
+  const destination = toInternationalFormat(recipient);
+
+  if (!env.infobipApiKey || !baseUrl || !sender) {
+    throw new Error("SMS delivery is not configured. Add the Infobip API key, base URL, and sender.");
+  }
+  if (!/^\d{8,15}$/.test(destination)) {
+    throw new Error("Enter a valid mobile number, including the country code.");
+  }
+
+  let response;
+  try {
+    response = await fetch(`https://${baseUrl}/sms/3/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `App ${env.infobipApiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            sender,
+            destinations: [{ to: destination }],
+            content: { text: message },
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    throw new Error(`SMS provider could not be reached: ${error.message}`);
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data?.requestError?.serviceException?.text || data?.message || "Infobip rejected the SMS request.";
+    console.error("[INFOBIP] SMS dispatch failed", {
+      status: response.status,
+      detail,
+      destination,
+    });
+    throw new Error(`SMS could not be sent: ${detail}`);
+  }
+
+  const accepted = data?.messages?.[0] || {};
+  console.log("[INFOBIP] SMS accepted", {
+    messageId: accepted.messageId || "",
+    to: destination,
+    status: accepted.status?.name || "PENDING",
+  });
+  return accepted;
 };
 
 const generateOtpCode = () =>
@@ -47,59 +119,20 @@ const sendOtpMessage = async ({ recipient, channel, action, code }) => {
   const message = `Your AeroPulse ${action.replace("_", " ")} code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`;
 
   if (channel === "email") {
-    if (canSendEmail()) {
-      await sendEmail({
-        to: recipient,
-        subject,
-        text: `${message}\n\nIf you did not request this, ignore this message.`,
-        html: `<p>${message}</p><p>If you did not request this, ignore this message.</p>`,
-      });
-    } else {
-      console.log("[OTP] Email code:", code, "for", recipient);
+    if (!canSendEmail()) {
+      throw new Error("Email delivery is not configured. Add an Infobip verified email sender and email API permission.");
     }
+    await sendEmail({
+      to: recipient,
+      subject,
+      text: `${message}\n\nIf you did not request this, ignore this message.`,
+      html: `<p>${message}</p><p>If you did not request this, ignore this message.</p>`,
+    });
     return;
   }
 
   if (channel === "sms") {
-    console.log("[OTP] SMS code:", code, "for", recipient);
-
-    if (env.infobipApiKey) {
-      try {
-        const intlRecipient = toInternationalFormat(recipient);
-        const res = await fetch(
-          `https://${env.infobipBaseUrl}/sms/2/text/advanced`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `App ${env.infobipApiKey}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              messages: [
-                {
-                  from: env.infobipSender,
-                  destinations: [{ to: intlRecipient }],
-                  text: message,
-                },
-              ],
-            }),
-          },
-        );
-
-        const data = await res.json();
-        if (res.ok) {
-          console.log(
-            `[INFOBIP] SMS dispatched to ${intlRecipient}. ID:`,
-            data.messages?.[0]?.messageId,
-          );
-        } else {
-          console.error(`[INFOBIP] Dispatch failed:`, data);
-        }
-      } catch (err) {
-        console.error("[INFOBIP] Error:", err.message);
-      }
-    }
+    await sendSmsViaInfobip({ recipient, message });
     return;
   }
 
@@ -137,12 +170,21 @@ const createOtpRequest = async ({
     metadata,
   });
 
-  await sendOtpMessage({
-    recipient: email || phone || messenger_handle,
-    channel,
-    action,
-    code,
-  });
+  try {
+    await sendOtpMessage({
+      recipient: email || phone || messenger_handle,
+      channel,
+      action,
+      code,
+    });
+  } catch (error) {
+    await OtpRequest.deleteOne({ _id: otpRequest._id });
+    throw error;
+  }
+
+  // Never expose OTP codes in production logs. They are delivered only by
+  // the selected provider after that provider accepts the request.
+  if (env.nodeEnv === "production") return { otpRequest, code };
 
   console.log("\n╔══════════════════════════════════════════════════════╗");
   console.log(
@@ -195,7 +237,12 @@ const verifyOtpRequest = async ({
   if (!otp) return { ok: false, reason: "not_found" };
   if (isOtpExpired(otp)) return { ok: false, reason: "expired" };
 
-  if (otp.codeHash !== hashValue(code)) return { ok: false, reason: "invalid" };
+  if (Number(otp.attempts || 0) >= 5) return { ok: false, reason: "too_many_attempts" };
+  if (otp.codeHash !== hashValue(code)) {
+    otp.attempts = Number(otp.attempts || 0) + 1;
+    await otp.save();
+    return { ok: false, reason: "invalid" };
+  }
 
   otp.verifiedAt = new Date();
   await otp.save();
@@ -248,10 +295,15 @@ const requestOtp = async (req, res) => {
       channel,
     });
 
-    return res.json({ message: "Code sent successfully.", debugCode: code });
+    return res.json({
+      message: "Code sent successfully.",
+      ...(env.nodeEnv === "production" ? {} : { debugCode: code }),
+    });
   } catch (err) {
     console.error("[OTP] Error:", err);
-    return res.status(500).json({ message: "Error processing OTP request." });
+    return res.status(502).json({
+      message: err?.message || "SMS delivery could not be completed. Please try again.",
+    });
   }
 };
 
@@ -276,19 +328,35 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired code." });
     }
 
-    // Persistent Session Sync
-    if (req.session.registrationProgress) {
-      const data = req.session.registrationProgress.formData;
-      if (action === "register_phone") {
+    // Keep registration verification progress resumable for both web and mobile.
+    if (action.startsWith("register_")) {
+      const existing = req.session.registrationProgress || {};
+      const data = existing.formData || {};
+      if (action === "register_email") {
+        data.email = normalizeEmail(email);
+        data.emailVerified = true;
+      } else if (action === "register_phone") {
         data.phone = canonicalizePhMobile(phone);
         data.phoneVerified = true;
       } else if (action === "register_messenger") {
         data.messengerHandle = messenger_handle;
         data.messengerVerified = true;
       }
+      req.session.registrationProgress = {
+        ...existing,
+        email: normalizeEmail(email || existing.email || data.email),
+        stepIndex: Math.max(1, Number(existing.stepIndex) || 0),
+        formData: data,
+      };
     }
 
-    return res.json({ message: "Verification successful." });
+    return req.session.save((error) => {
+      if (error) return res.status(500).json({ message: "Unable to save verification progress." });
+      return res.json({
+        message: "Verification successful.",
+        registrationProgress: req.session.registrationProgress || null,
+      });
+    });
   } catch (err) {
     console.error("[OTP] Verify Error:", err);
     return res.status(500).json({ message: "Error verifying OTP." });
@@ -652,20 +720,59 @@ const me = async (req, res) => {
 };
 
 const requestPasswordReset = async (req, res) => {
-  const email = normalizeEmail(req.body.email);
-  const user = await User.findOne({ email });
-  if (!user) return res.json({ message: "If email exists, code sent." });
-  const { code } = await createOtpRequest({
-    email,
-    action: "password_reset",
-    channel: "email",
-  });
-  res.json({ message: "Code sent.", debugCode: code });
+  const channel = String(req.body?.channel || "email").toLowerCase();
+  const rawIdentifier = req.body?.identifier || req.body?.email || req.body?.phone || "";
+  if (!["email", "sms"].includes(channel)) {
+    return res.status(400).json({ message: "Choose email or SMS verification." });
+  }
+
+  const email = channel === "email" ? normalizeEmail(rawIdentifier) : "";
+  const phone = channel === "sms" ? canonicalizePhMobile(rawIdentifier) : "";
+  if (channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ message: "Enter a valid registered email address." });
+  }
+  if (channel === "sms" && !/^09\d{9}$/.test(phone)) {
+    return res.status(400).json({ message: "Enter a valid registered mobile number (09XXXXXXXXX)." });
+  }
+
+  const user = await User.findOne(channel === "email" ? { email } : { phone });
+  // Keep the response deliberately neutral so this endpoint cannot be used to
+  // discover whether a SuperAdmin or another account exists.
+  if (!user || user.isDeleted || user.accountStatus === "deleted") {
+    return res.json({ message: "If the account details match, a verification code has been sent." });
+  }
+
+  try {
+    await OtpRequest.deleteMany({
+      action: "password_reset",
+      channel,
+      ...(channel === "email" ? { email } : { phone }),
+      verifiedAt: null,
+    });
+    await createOtpRequest({
+      email: channel === "email" ? user.email : "",
+      phone: channel === "sms" ? user.phone : "",
+      action: "password_reset",
+      channel,
+      metadata: { userId: String(user._id), role: user.role },
+    });
+    return res.json({ message: "If the account details match, a verification code has been sent." });
+  } catch (error) {
+    console.error("Password recovery code dispatch failed:", error.message);
+    return res.status(502).json({
+      message: error.message || "Unable to send a verification code right now.",
+    });
+  }
 };
 
 const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
+  if (!isStrongRecoveryPassword(password)) {
+    return res.status(400).json({
+      message: "Use a strong password with at least 8 characters, uppercase, lowercase, number, and special character.",
+    });
+  }
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
     const user = await User.findById(decoded.sub);
@@ -680,21 +787,45 @@ const resetPassword = async (req, res) => {
 };
 
 const resetPasswordWithCode = async (req, res) => {
-  const { email, code, newPassword } = req.body;
-  const normalizedEmail = normalizeEmail(email);
+  const { code, newPassword } = req.body || {};
+  const channel = String(req.body?.channel || "email").toLowerCase();
+  const rawIdentifier = req.body?.identifier || req.body?.email || req.body?.phone || "";
+  if (!["email", "sms"].includes(channel)) {
+    return res.status(400).json({ message: "Choose email or SMS verification." });
+  }
+  if (!isValidSixDigitCode(code)) {
+    return res.status(400).json({ message: "Enter the six-digit verification code." });
+  }
+  if (!isStrongRecoveryPassword(newPassword)) {
+    return res.status(400).json({
+      message: "Use a strong password with at least 8 characters, uppercase, lowercase, number, and special character.",
+    });
+  }
+
+  const normalizedEmail = channel === "email" ? normalizeEmail(rawIdentifier) : "";
+  const normalizedPhone = channel === "sms" ? canonicalizePhMobile(rawIdentifier) : "";
+  if ((channel === "email" && !normalizedEmail) || (channel === "sms" && !/^09\d{9}$/.test(normalizedPhone))) {
+    return res.status(400).json({ message: "Enter the same registered account detail used to request the code." });
+  }
+  const user = await User.findOne(channel === "email" ? { email: normalizedEmail } : { phone: normalizedPhone });
+  if (!user || user.isDeleted || user.accountStatus === "deleted") {
+    return res.status(400).json({ message: "Invalid or expired verification code." });
+  }
   const verification = await verifyOtpRequest({
-    email: normalizedEmail,
+    email: channel === "email" ? user.email : "",
+    phone: channel === "sms" ? user.phone : "",
     action: "password_reset",
-    channel: "email",
+    channel,
     code,
   });
   if (!verification.ok)
-    return res.status(400).json({ message: "Invalid code." });
-  const user = await User.findOne({ email: normalizedEmail });
+    return res.status(400).json({ message: "Invalid or expired verification code." });
   const salt = await bcrypt.genSalt(10);
   user.passwordHash = await bcrypt.hash(newPassword, salt);
+  user.failedLoginAttempts = 0;
+  user.lockoutUntil = null;
   await user.save();
-  res.json({ message: "Success" });
+  res.json({ message: "Password reset successfully. You can now sign in." });
 };
 
 module.exports = {

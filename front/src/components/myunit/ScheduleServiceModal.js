@@ -17,7 +17,8 @@ function ScheduleServiceModal({ unit, onClose, onSchedule }) {
   const basePrice = selected.disabled ? 0 : selected.price;
 
   const timeSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'];
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const handleSubmit = () => {
     if (selected.disabled) {
@@ -26,6 +27,10 @@ function ScheduleServiceModal({ unit, onClose, onSchedule }) {
     }
     if (!date || !time) {
       alert('Please select date and time');
+      return;
+    }
+    if (date < today) {
+      alert('Please select today or a future date.');
       return;
     }
     onSchedule(unit, {

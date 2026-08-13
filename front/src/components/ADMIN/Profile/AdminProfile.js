@@ -8,6 +8,7 @@ import './styles.css';
 
 const AdminProfile = () => {
   const { user, updateProfile } = useUser();
+  const roleTitle = user?.role === 'superadmin' ? 'SuperAdmin' : 'Admin';
   const branchName = localStorage.getItem('activeBranch') || user?.activeBranch || user?.assignedBranch || '';
   const branchInfo = loadBranchNetwork().find((branch) => branch.name === branchName);
   const adminLocation = branchInfo?.location || branchName || '-';
@@ -41,7 +42,7 @@ const AdminProfile = () => {
   };
 
   return (
-    <AdminLayout title="Admin Profile" subtitle="Manage profile and security">
+    <AdminLayout title={`${roleTitle} Profile`} subtitle="Manage profile and security">
       <div className="admin-grid-2">
         <div className="admin-card">
           <h3>Profile</h3>

@@ -17,7 +17,6 @@ import { COLORS, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
   getCustomerServiceHistory,
-  getCustomerServiceStats,
 } from "../../services/customerHistoryService";
 import { getOrdersByUser } from "../../services/orderStorage";
 import { getDisplayName } from "../../services/profileService";
@@ -36,7 +35,6 @@ export default function CustomerHomeScreen() {
   const [units, setUnits] = useState([]);
   const [healthMap, setHealthMap] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
-  const [requestStats, setRequestStats] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,9 +59,6 @@ export default function CustomerHomeScreen() {
           ),
         );
         setRecentOrders(nextOrders.slice(0, 3));
-        setRequestStats(
-          getCustomerServiceStats(history.requests, history.completedServices),
-        );
       });
 
       return () => {
@@ -85,7 +80,7 @@ export default function CustomerHomeScreen() {
       <AppHero
         eyebrow="Cold Air ACT"
         title="Your AC dashboard"
-        subtitle="Manage your AC units, track service requests, and get support in one place."
+        subtitle="Manage your AC units and get support in one place."
         icon="snow-sharp"
       >
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
@@ -120,18 +115,6 @@ export default function CustomerHomeScreen() {
         }}
       >
         <CustomerMetricPill label="AC Units" value={units.length} icon="snow-sharp" color={COLORS.primary} />
-        <CustomerMetricPill
-          label="Requests"
-          value={requestStats?.totalRequests || 0}
-          icon="time-sharp"
-          color={COLORS.warning}
-        />
-        <CustomerMetricPill
-          label="Completed"
-          value={requestStats?.completedServices || 0}
-          icon="checkmark-done-sharp"
-          color={COLORS.success}
-        />
       </View>
 
       {units.length === 0 ? (

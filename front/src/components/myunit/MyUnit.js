@@ -2,7 +2,6 @@ import { Plus, Snowflake } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
-import { useUser } from "../../context/UserContext";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -15,7 +14,6 @@ import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import AddUnitModal from "./AddUnitModal";
 import "./MyUnit.css";
 import RegisterQrUnitModal from "./RegisterQrUnitModal";
-import ReportIssueModal from "./ReportIssueModal";
 import ScheduleServiceModal from "./ScheduleServiceModal";
 import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
@@ -54,10 +52,6 @@ function MyUnit() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportingUnit, setReportingUnit] = useState(null);
-
-  const { user } = useUser();
 
   useEffect(() => {
     let mounted = true;
@@ -178,54 +172,6 @@ function MyUnit() {
     setShowDetailsModal(true);
   };
 
-  const handleReportIssue = (unit) => {
-    setReportingUnit(unit);
-    setShowReportModal(true);
-  };
-
-  const handleSubmitReport = async (reportData) => {
-    if (!reportingUnit) return;
-
-    try {
-      await apiRequest("/service-requests/me", {
-        method: "POST",
-        body: JSON.stringify({
-          customerName: user?.name || user?.email || "Demo customer",
-          customerEmail: user?.email || "",
-          customerPhone: user?.phone || "",
-          issueType: reportData.issueType,
-          issueDescription: reportData.issueDescription,
-          issue: `${reportData.issueType}: ${reportData.issueDescription}`,
-          address: reportData.address,
-          unitId: reportingUnit.id,
-          unitName: `${reportingUnit.brand} ${reportingUnit.model}`,
-          status: "Submitted",
-        }),
-      });
-
-      const updatedUnits = units.map((u) => {
-        if (u.id === reportingUnit.id) {
-          return {
-            ...u,
-            status: "Needs Service",
-            technicianReportSummary: `Issue reported: ${reportData.issueDescription}`,
-            notes: `A service report has been submitted to admin for assignment.`,
-          };
-        }
-        return u;
-      });
-
-      saveUnits(updatedUnits);
-      setShowReportModal(false);
-      setReportingUnit(null);
-      alert(
-        "Issue reported successfully. Admin will receive the service request and assign a technician.",
-      );
-    } catch (error) {
-      alert(error?.message || "Failed to send report. Please try again.");
-    }
-  };
-
   const handleWarrantyStatus = (unit) => {
     setSelectedUnit(unit);
     setShowWarrantyModal(true);
@@ -331,7 +277,6 @@ function MyUnit() {
                 onViewHistory={handleViewHistory}
                 onWarrantyStatus={handleWarrantyStatus}
                 onRegisterQr={handleRegisterQrRequest}
-                onReportIssue={handleReportIssue}
               />
             ))}
           </BoutiqueGrid>
@@ -356,7 +301,6 @@ function MyUnit() {
             setShowDetailsModal(false);
             handleScheduleService(unit);
           }}
-          onReport={handleReportIssue}
         />
       )}
 
@@ -378,18 +322,6 @@ function MyUnit() {
             setSelectedUnit(null);
           }}
           onSchedule={handleConfirmSchedule}
-        />
-      )}
-
-      {showReportModal && reportingUnit && (
-        <ReportIssueModal
-          unit={reportingUnit}
-          user={user}
-          onClose={() => {
-            setShowReportModal(false);
-            setReportingUnit(null);
-          }}
-          onSubmit={handleSubmitReport}
         />
       )}
 

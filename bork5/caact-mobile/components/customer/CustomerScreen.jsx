@@ -9,7 +9,6 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 const TAB_ROUTES = [
   "/customer/home",
   "/customer/orders",
-  "/customer/requests",
   "/customer/services",
   "/customer/settings",
   "/customer/contact",

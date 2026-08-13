@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUser } from '../../../context/UserContext';
+import SuperAdminNotificationsBell from './SuperAdminNotificationsBell';
 
 const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control' }) => {
   const { user } = useUser();
@@ -12,7 +13,10 @@ const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control
           <p>{subtitle}</p>
         </div>
       </div>
-      <strong>{user?.name || 'Super Admin'}</strong>
+      <div className="super-header-actions">
+        <SuperAdminNotificationsBell />
+        <strong>{user?.name || 'Super Admin'}</strong>
+      </div>
     </header>
   );
 };

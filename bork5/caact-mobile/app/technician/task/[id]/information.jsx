@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
@@ -121,6 +122,11 @@ export default function TaskInformationScreen() {
   const registrationProgress = task?.registrationProgress;
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
+  const nextAction = task?.status === TASK_STATUS.IN_PROGRESS
+    ? registrationComplete
+      ? { title: "Submit proof and complete", subtitle: "Capture the installed unit and collect receiver sign-off.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+      : { title: "Continue AMP registration", subtitle: "Register the remaining assigned QR serials before closing this work order.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
+    : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -163,6 +169,21 @@ export default function TaskInformationScreen() {
           <InfoCard label="Schedule" value={task?.scheduledDate || "Unscheduled"} />
           <InfoCard label="Service Concern" value={task?.description || task?.concern || "None"} />
         </Card>
+
+        {nextAction ? (
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
+                <Ionicons name={nextAction.icon} size={21} color={COLORS.tech} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.md }}>{nextAction.title}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{nextAction.subtitle}</Text>
+              </View>
+            </View>
+            <TechButton title={nextAction.title} onPress={() => router.push(nextAction.href)} style={{ marginTop: SPACING.sm }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} />
+          </Card>
+        ) : null}
 
         {assignedSerials.length > 0 && (
           <Card>
@@ -280,28 +301,6 @@ export default function TaskInformationScreen() {
                 onPress={() => router.push(`/technician/task/${task.id}/unit/log/insert`)}
                 size="sm"
                 variant="secondary"
-              />
-            )}
-            {task?.status === TASK_STATUS.IN_PROGRESS && !!task?.unitId && registrationComplete && (
-              <TechButton
-                title="Complete Installation"
-                onPress={() => router.push(`/technician/task/${task.id}/complete-service`)}
-                size="sm"
-              />
-            )}
-            {task?.status === TASK_STATUS.IN_PROGRESS && assignedSerials.length > 0 && !registrationComplete && (
-              <TechButton
-                title="Continue Installation"
-                onPress={() => router.push(`/technician/task/${task.id}/amp-registration`)}
-                size="sm"
-                variant="secondary"
-              />
-            )}
-            {task?.status === TASK_STATUS.IN_PROGRESS && !task?.unitId && registrationComplete && (
-              <TechButton
-                title="Complete Installation"
-                onPress={() => router.push(`/technician/task/${task.id}/complete-service`)}
-                size="sm"
               />
             )}
           </View>

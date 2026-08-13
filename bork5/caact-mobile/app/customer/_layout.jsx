@@ -42,10 +42,8 @@ export default function CustomerLayout() {
         <Stack.Screen name="checkout" />
         <Stack.Screen name="order-confirmation/[id]" />
         <Stack.Screen name="receipt/[id]" />
-        <Stack.Screen name="requests/index" />
-        <Stack.Screen name="requests/[id]/index" />
-        <Stack.Screen name="requests/[id]/unit/log/consume-qr" />
         <Stack.Screen name="services" />
+        <Stack.Screen name="faq" />
         <Stack.Screen name="contact" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="oobe/index" />

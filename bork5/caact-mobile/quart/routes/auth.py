@@ -3,12 +3,9 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from auth import (
-    check_lockout,
-    clear_attempts,
     create_session,
     delete_session,
     hash_password,
-    record_failed_attempt,
     require_auth,
     verify_password,
     write_audit_log,
@@ -65,7 +62,7 @@ def _validate_person_name(value: str, label: str, required: bool = True) -> str:
 async def login():
     """
     POST /auth/login — authenticate a user by email and password.
-    Checks for account lockout, verifies PBKDF2 credentials, issues a 24-hour session token, and writes an audit log entry.
+    Verifies PBKDF2 credentials, issues a 24-hour session token, and writes an audit log entry.
     Called directly by the mobile app login screen; returns the token and sanitised user object on success.
     """
     try:
@@ -79,16 +76,7 @@ async def login():
                 'error': 'Email or alias and password are required'
             }), 400
 
-        # 1. Check lockout before touching the DB for the user
-        lockout = await check_lockout(identifier)
-        if lockout['locked']:
-            return jsonify({
-                'error': 'Account locked',
-                'locked': True,
-                'seconds_left': lockout['seconds_left'],
-            }), 401
-
-        # 2. Lookup user
+        # 1. Lookup user
         async with get_db() as db:
             async with db.execute(
                 """
@@ -100,13 +88,7 @@ async def login():
                 row = await cursor.fetchone()
 
         if row is None:
-            attempt = await record_failed_attempt(identifier)
-            return jsonify({
-                'error': 'Invalid credentials',
-                'locked': attempt['locked'],
-                'attempts': attempt['attempts'],
-                'seconds_left': attempt['seconds_left'],
-            }), 401
+            return jsonify({'error': 'Invalid credentials'}), 401
 
         user_dict = dict(row)
 
@@ -114,13 +96,7 @@ async def login():
         if not verify_password(
             password, user_dict['password_hash'], user_dict['salt']
         ):
-            attempt = await record_failed_attempt(identifier)
-            return jsonify({
-                'error': 'Invalid credentials',
-                'locked': attempt['locked'],
-                'attempts': attempt['attempts'],
-                'seconds_left': attempt['seconds_left'],
-            }), 401
+            return jsonify({'error': 'Invalid credentials'}), 401
 
         # 4. Role filter (optional — used by mobile client to restrict login per screen)
         if role_filter and user_dict['role'] != role_filter:
@@ -130,13 +106,10 @@ async def login():
         if user_dict['status'] != 'active':
             return jsonify({'error': 'Account disabled'}), 403
 
-        # 6. Clear attempts
-        await clear_attempts(identifier)
-
-        # 7. Create session
+        # 6. Create session
         token = await create_session(user_dict['id'])
 
-        # 8. Audit log
+        # 7. Audit log
         user_obj = User.from_row(row)
         await write_audit_log(
             action='LOGIN',

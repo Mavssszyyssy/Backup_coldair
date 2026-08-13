@@ -2,16 +2,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, FlatList, Modal, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TechnicianScreen, {
   TechHero,
 } from "../../components/technician/TechnicianScreen";
@@ -55,6 +46,7 @@ const PRIORITY_FILTERS = [
   { key: "normal", label: "Normal" },
   { key: "low", label: "Low" },
 ];
+const PAGE_SIZE = 8;
 
 const taskMatchesQuery = (task = {}, query = "") => {
   const term = String(query || "").trim().toLowerCase();
@@ -83,6 +75,9 @@ function Badge({ label }) {
 
 function getTaskSerials(task = {}) {
   const safeTask = task && typeof task === "object" ? task : {};
+  const progressSerials = Array.isArray(safeTask.registrationProgress?.requiredSerials)
+    ? safeTask.registrationProgress.requiredSerials
+    : [];
   const directSerials = Array.isArray(safeTask.serialNumbers) ? safeTask.serialNumbers : [];
   const itemSerials = (Array.isArray(safeTask.items) ? safeTask.items : [])
     .flatMap((item = {}) => [
@@ -91,172 +86,9 @@ function getTaskSerials(task = {}) {
         ? item.serialUnits.map((unit) => unit?.serialNumber)
         : []),
     ]);
-  return Array.from(new Set([...directSerials, ...itemSerials]
+  return Array.from(new Set([...progressSerials, ...directSerials, ...itemSerials]
     .map((serial) => String(serial || "").trim())
     .filter(Boolean)));
-}
-
-function TaskActionSheet({ task, visible, onClose, onInformation, onLogs }) {
-  if (!task) return null;
-
-  const actions = [
-    {
-      label: "Work Order Details",
-      subtitle: "Customer, service request, AC unit, costs, and maintenance details",
-      icon: "information-circle-sharp",
-      onPress: onInformation,
-    },
-    task.unitId
-      ? {
-          label: "Service Notes",
-          subtitle: "View or add service notes for this AC unit",
-          icon: "document-text-sharp",
-          onPress: onLogs,
-        }
-      : null,
-  ].filter(Boolean);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        onPress={onClose}
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(15, 23, 42, 0.42)",
-          justifyContent: "flex-end",
-        }}
-      >
-        <Pressable
-          style={{
-            backgroundColor: COLORS.bg,
-            borderTopLeftRadius: RADIUS.xl,
-            borderTopRightRadius: RADIUS.xl,
-            padding: SPACING.md,
-          }}
-        >
-          <View
-            style={{
-              width: 44,
-              height: 5,
-              borderRadius: RADIUS.full,
-              backgroundColor: COLORS.borderInput,
-              alignSelf: "center",
-              marginBottom: SPACING.md,
-            }}
-          />
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: SPACING.md,
-            }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: RADIUS.md,
-                backgroundColor: COLORS.techLight,
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: SPACING.sm,
-              }}
-            >
-              <Ionicons name="briefcase-sharp" size={22} color={COLORS.tech} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  color: COLORS.textPrimary,
-                  fontWeight: FONT.black,
-                  fontSize: FONT.lg,
-                }}
-              >
-                {task.title || task.issueType || "Work Order Actions"}
-              </Text>
-              <Text
-                style={{
-                  color: COLORS.textSecondary,
-                  fontSize: FONT.sm,
-                  marginTop: 2,
-                }}
-              >
-                Choose the next action for this work order
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <Ionicons
-                name="close-sharp"
-                size={24}
-                color={COLORS.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {actions.map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              onPress={() => {
-                onClose();
-                action.onPress();
-              }}
-              activeOpacity={0.78}
-              style={{
-                backgroundColor: COLORS.surface,
-                borderRadius: RADIUS.lg,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                padding: SPACING.md,
-                marginBottom: SPACING.sm,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: RADIUS.md,
-                  backgroundColor: COLORS.techLight,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: SPACING.sm,
-                }}
-              >
-                <Ionicons name={action.icon} size={21} color={COLORS.tech} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}
-                >
-                  {action.label}
-                </Text>
-                <Text
-                  style={{
-                    color: COLORS.textSecondary,
-                    fontSize: FONT.sm,
-                    marginTop: 2,
-                  }}
-                >
-                  {action.subtitle}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward-sharp"
-                size={18}
-                color={COLORS.textMuted}
-              />
-            </TouchableOpacity>
-          ))}
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
 }
 
 function FilterSheet({
@@ -375,8 +207,8 @@ export default function TasksScreen() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [busy, setBusy] = useState(null);
-  const [actionTask, setActionTask] = useState(null);
   const [filterVisible, setFilterVisible] = useState(false);
+  const [page, setPage] = useState(1);
 
   const refresh = () => {
     if (!current?.id) return;
@@ -410,6 +242,16 @@ export default function TasksScreen() {
     [tasks, statusFilter, priorityFilter, searchQuery],
   );
   const activeFilterCount = Number(statusFilter !== "all") + Number(priorityFilter !== "all") + Number(Boolean(searchQuery.trim()));
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
+  const visibleTasks = useMemo(
+    () => filteredTasks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredTasks, page],
+  );
+
+  React.useEffect(() => setPage(1), [statusFilter, priorityFilter, searchQuery]);
+  React.useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const handleStart = (task) =>
     confirmAction({
@@ -488,7 +330,7 @@ export default function TasksScreen() {
       )}
       <View style={{ marginTop: SPACING.sm }}>
         <TechButton
-          title="View Work Details"
+          title="Open Work Order"
           onPress={() => router.push(`/technician/task/${item.id}/information`)}
           size="sm"
           variant="secondary"
@@ -534,19 +376,6 @@ export default function TasksScreen() {
             />
           )
         )}
-        <TechButton
-          title="More Options"
-          onPress={() => setActionTask(item)}
-          variant="secondary"
-          leftIcon={
-            <Ionicons
-              name="ellipsis-horizontal-sharp"
-              size={16}
-              color={COLORS.tech}
-            />
-          }
-          style={{ marginTop: SPACING.sm }}
-        />
       </View>
     </Card>
   );
@@ -560,7 +389,7 @@ export default function TasksScreen() {
     >
       <FlatList
         style={{ flex: 1 }}
-        data={filteredTasks}
+        data={visibleTasks}
         keyExtractor={(i) => String(i.id)}
         renderItem={renderItem}
         contentContainerStyle={{
@@ -615,17 +444,13 @@ export default function TasksScreen() {
             ) : null}
           />
         }
-      />
-      <TaskActionSheet
-        task={actionTask}
-        visible={!!actionTask}
-        onClose={() => setActionTask(null)}
-        onInformation={() =>
-          router.push(`/technician/task/${actionTask?.id}/information`)
-        }
-        onLogs={() =>
-          router.push(`/technician/task/${actionTask?.id}/unit/log/select`)
-        }
+        ListFooterComponent={filteredTasks.length > PAGE_SIZE ? (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACING.sm, paddingTop: SPACING.sm }}>
+            <TechButton title="Previous" size="sm" variant="secondary" disabled={page === 1} onPress={() => setPage((currentPage) => Math.max(1, currentPage - 1))} style={{ flex: 1 }} />
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{`Page ${page} of ${totalPages}`}</Text>
+            <TechButton title="Next" size="sm" disabled={page === totalPages} onPress={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))} style={{ flex: 1 }} />
+          </View>
+        ) : null}
       />
       <FilterSheet
         visible={filterVisible}

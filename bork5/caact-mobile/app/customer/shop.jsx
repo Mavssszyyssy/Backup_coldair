@@ -343,7 +343,7 @@ export default function CustomerShopScreen() {
     <>
       <BoutiqueHeader
         title="Shop AC Units"
-        subtitle={current ? "Boutique catalogue" : "Guest mode. Login to checkout."}
+        subtitle="Browse available AC units"
         onBack={() => router.replace("/customer/home")}
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}

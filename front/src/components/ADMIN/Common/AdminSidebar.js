@@ -2,13 +2,11 @@ import {
   ClipboardText,
   Gear,
   House,
-  Lock,
   Package,
   QrCode,
   ShoppingCart,
   SignOut,
   Users,
-  Wrench,
 } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
@@ -20,15 +18,13 @@ const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: ClipboardText },
   { to: "/admin/inventory", label: "Inventory", icon: Package },
   { to: "/admin/serial-qrs", label: "Serial QR", icon: QrCode },
-  { to: "/admin/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/admin/technicians", label: "Technicians", icon: Users },
   { to: "/admin/orders", label: "Orders", icon: ClipboardText },
+  { to: "/admin/maintenance", label: "Service Requests", icon: ClipboardText },
   { to: "/admin/store", label: "Store", icon: House },
   { to: "/admin/reorder", label: "Reorder", icon: ShoppingCart },
   { to: "/admin/reports", label: "Reports", icon: ClipboardText },
-  { to: "/admin/unlock-users", label: "Unlock Users", icon: Lock },
   { to: "/admin/settings", label: "Settings", icon: Gear },
-  { to: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardText },
   { to: "/admin/profile", label: "Profile", icon: Users },
 ];
 

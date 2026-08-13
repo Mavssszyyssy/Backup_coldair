@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import './styles.css';
 
-const getDisplayName = (user) =>
-  user?.name ||
-  `${user?.name_first || ''} ${user?.name_last || ''}`.trim() ||
-  user?.email ||
-  'Technician';
-
+const getDisplayName = (user) => user?.name || `${user?.name_first || ''} ${user?.name_last || ''}`.trim() || user?.email || 'Technician';
 const formatDateTime = (value) => {
-  if (!value) return 'No date';
+  if (!value) return 'Not recorded';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 };
@@ -19,218 +15,77 @@ const RequestDetails = ({ request, onUpdated }) => {
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [linkedTask, setLinkedTask] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     setCurrent(request);
     setSelectedTechnicianId(request?.assignedTechnicianId || '');
-    setMessage('');
+    setMessage(null);
   }, [request]);
 
   useEffect(() => {
     let active = true;
-    apiRequest('/users?role=technician')
-      .then((result) => {
-        if (!active) return;
-        setTechnicians(result.users || []);
-      })
-      .catch(() => {
-        if (active) setTechnicians([]);
-      });
-    return () => {
-      active = false;
-    };
+    apiRequest('/users?role=technician').then((result) => {
+      if (active) setTechnicians(Array.isArray(result.users) ? result.users : []);
+    }).catch(() => { if (active) setTechnicians([]); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     let active = true;
     const linkedTaskId = current?.linkedTaskId || current?.taskCode;
-    if (!linkedTaskId) {
-      setLinkedTask(null);
-      return () => {
-        active = false;
-      };
-    }
-    apiRequest(`/tasks/${encodeURIComponent(linkedTaskId)}`)
-      .then((result) => {
-        if (active) setLinkedTask(result.task || null);
-      })
-      .catch(() => {
-        if (active) setLinkedTask(null);
-      });
-    return () => {
-      active = false;
-    };
+    if (!linkedTaskId) { setLinkedTask(null); return () => { active = false; }; }
+    apiRequest(`/tasks/${encodeURIComponent(linkedTaskId)}`).then((result) => {
+      if (active) setLinkedTask(result.task || null);
+    }).catch(() => { if (active) setLinkedTask(null); });
+    return () => { active = false; };
   }, [current?.linkedTaskId, current?.taskCode]);
+
+  const proof = linkedTask?.proof || null;
+  const hasProof = Boolean(proof?.submittedAt || proof?.customerSignature?.name) || (proof?.beforePhotos || []).some((photo) => photo?.uri) || (proof?.afterPhotos || []).some((photo) => photo?.uri);
+  const isClosed = ['Completed', 'Cancelled'].includes(current?.status);
+  const taskStatus = String(linkedTask?.status || '').replace(/-/g, ' ');
+  const completionNote = useMemo(() => linkedTask?.status === 'completed'
+    ? 'The technician completed this work. The request status is synchronized automatically.'
+    : (current?.linkedTaskId || current?.taskCode) ? 'This request can only be completed after the technician submits the required proof of work.' : 'Assign a technician to create the work order.', [current?.linkedTaskId, current?.taskCode, linkedTask?.status]);
 
   const updateRequest = async (payload, successText) => {
     if (!current?.id) return;
     setBusy(true);
-    setMessage('');
+    setMessage(null);
     try {
-      const result = await apiRequest(`/service-requests/${current.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      });
+      const result = await apiRequest(`/service-requests/${current.id}/status`, { method: 'PATCH', body: JSON.stringify(payload) });
       setCurrent(result.request);
       onUpdated?.(result.request);
-      setMessage(successText);
+      setMessage({ type: 'success', text: successText });
     } catch (error) {
-      setMessage(error?.message || 'Request update failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const markCompleted = () => {
-    updateRequest({ status: 'Completed' }, 'Request marked completed.');
+      setMessage({ type: 'error', text: error?.message || 'Request update failed.' });
+    } finally { setBusy(false); }
   };
 
   const assignTechnician = () => {
     const technician = technicians.find((item) => String(item.id) === String(selectedTechnicianId));
-    if (!technician) {
-      setMessage('Choose a technician first.');
-      return;
-    }
-    updateRequest(
-      {
-        status: 'Assigned',
-        assignedTechnicianId: technician.id,
-        assignedTechnicianName: getDisplayName(technician),
-      },
-      'Technician assigned and task created.',
-    );
+    if (!technician) { setMessage({ type: 'error', text: 'Choose a technician before assigning this request.' }); return; }
+    updateRequest({ status: 'Assigned', assignedTechnicianId: technician.id, assignedTechnicianName: getDisplayName(technician) }, 'Technician assigned. The work order is now available in their My Work list.');
   };
 
-  if (!current) {
-    return (
-      <div className="admin-card">
-        <h3>Request Details</h3>
-        <p>Select a request to view full details.</p>
-      </div>
-    );
-  }
+  const cancelRequest = () => {
+    if (!window.confirm('Cancel this service request? This does not delete its history.')) return;
+    updateRequest({ status: 'Cancelled', description: 'Cancelled by an administrator.' }, 'Service request cancelled.');
+  };
 
-  const proof = linkedTask?.proof || null;
-  const hasProof =
-    Boolean(proof?.submittedAt || proof?.customerSignature?.name) ||
-    (proof?.beforePhotos || []).some((photo) => photo?.uri) ||
-    (proof?.afterPhotos || []).some((photo) => photo?.uri);
+  if (!current) return <aside className="maintenance-details maintenance-details--empty"><div className="maintenance-empty-icon">⌁</div><h2>Select a request</h2><p>Choose an item from the service queue to review the customer details and manage its assignment.</p></aside>;
 
-  return (
-    <div className="admin-card">
-      <h3>Request #{current.id}</h3>
-      <p><strong>Customer:</strong> {current.customer}</p>
-      <p><strong>Unit:</strong> {current.unitName || 'N/A'}</p>
-      <p><strong>Issue:</strong> {current.issue}</p>
-      <p><strong>Preferred Schedule:</strong> {current.preferredDate || current.preferredSchedule || 'Not set'}</p>
-      <p><strong>Address:</strong> {current.address}</p>
-      <p><strong>Status:</strong> {current.status}</p>
-      {current.assignedTechnicianName ? (
-        <p><strong>Assigned Technician:</strong> {current.assignedTechnicianName}</p>
-      ) : (
-        <p><strong>Assigned Technician:</strong> <span style={{ color: '#9ca3af' }}>Waiting for technician to accept...</span></p>
-      )}
-      {current.linkedTaskId ? (
-        <p><strong>Linked Task:</strong> {current.taskCode || current.linkedTaskId}</p>
-      ) : null}
-
-      {hasProof ? (
-        <div style={{ marginTop: 18 }}>
-          <h4 style={{ marginBottom: 8 }}>Technician Service Proof</h4>
-          <p><strong>Before:</strong> {linkedTask.beforeCondition || 'No before condition submitted.'}</p>
-          <p><strong>Findings:</strong> {linkedTask.findings || 'No findings submitted.'}</p>
-          <p><strong>Resolution:</strong> {linkedTask.resolution || 'No resolution submitted.'}</p>
-          <p><strong>After:</strong> {linkedTask.afterCondition || 'No after condition submitted.'}</p>
-          <p><strong>Customer Sign-off:</strong> {proof.customerSignature?.name || linkedTask.customerSignatureName || 'No sign-off yet.'}</p>
-          <p><strong>Submitted By:</strong> {proof.technicianName || linkedTask.assignedTechnicianName || 'Technician'}</p>
-          <p><strong>Submitted At:</strong> {formatDateTime(proof.submittedAt || linkedTask.proofSubmittedAt)}</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 10 }}>
-            {(proof.beforePhotos || []).slice(0, 1).map((photo, index) => (
-              <a key={`before-${index}`} href={photo.uri} target="_blank" rel="noreferrer" style={{ color: '#1d4ed8', fontWeight: 700, textDecoration: 'none' }}>
-                <img src={photo.uri} alt={photo.label || 'Before service'} style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 8, border: '1px solid #d1d5db' }} />
-                <span>{photo.label || 'Before service'}</span>
-              </a>
-            ))}
-            {(proof.afterPhotos || []).slice(0, 1).map((photo, index) => (
-              <a key={`after-${index}`} href={photo.uri} target="_blank" rel="noreferrer" style={{ color: '#1d4ed8', fontWeight: 700, textDecoration: 'none' }}>
-                <img src={photo.uri} alt={photo.label || 'After service'} style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 8, border: '1px solid #d1d5db' }} />
-                <span>{photo.label || 'After service'}</span>
-              </a>
-            ))}
-          </div>
-          {(proof.beforePhotos || []).length === 0 && (proof.afterPhotos || []).length === 0 ? (
-            <p style={{ color: '#64748b' }}>No proof photos submitted yet.</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div style={{ marginTop: 18 }}>
-        <h4 style={{ marginBottom: 8 }}>Status History</h4>
-        <div className="maintenance-timeline">
-          {(current.timeline || []).length === 0 ? (
-            <p style={{ color: '#64748b', margin: 0 }}>No status history yet.</p>
-          ) : null}
-          {(current.timeline || []).map((event) => (
-            <div key={event.id || `${event.title}-${event.timestamp}`} className="maintenance-timeline-item">
-              <strong>{event.title || 'Request Updated'}</strong>
-              <span>{event.description || 'No description provided.'}</span>
-              <small>{`${event.actor || 'System'} - ${formatDateTime(event.timestamp)}`}</small>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gap: 8, marginTop: 18, maxWidth: 360 }}>
-        <label htmlFor="technician-select" style={{ fontWeight: 700 }}>Assign Technician</label>
-        <select
-          id="technician-select"
-          value={selectedTechnicianId}
-          onChange={(event) => setSelectedTechnicianId(event.target.value)}
-          style={{
-            padding: '10px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: 8,
-            background: '#fff',
-          }}
-        >
-          <option value="">Select technician</option>
-          {technicians.map((technician) => (
-            <option key={technician.id} value={technician.id}>
-              {getDisplayName(technician)}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={assignTechnician} disabled={busy || !selectedTechnicianId} style={{
-          padding: '10px 20px',
-          background: '#0f172a',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: busy || !selectedTechnicianId ? 'not-allowed' : 'pointer',
-          fontWeight: 700
-        }}>
-          {busy ? 'Saving...' : 'Assign Technician'}
-        </button>
-      </div>
-
-      <div style={{ marginTop: 18 }}>
-        <button type="button" onClick={markCompleted} disabled={busy} style={{ 
-          padding: '10px 20px',
-          background: '#2563eb',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontWeight: 700
-        }}>
-          {busy ? 'Saving…' : 'Mark Completed'}
-        </button>
-      </div>
-
-      {message ? <p style={{ marginTop: 12, color: '#1f2937', fontWeight: 600 }}>{message}</p> : null}
-    </div>
-  );
+  return <aside className="maintenance-details" aria-live="polite">
+    <div className="maintenance-detail-header"><div><p className="maintenance-eyebrow">Request details</p><h2>{current.unitName || 'Service request'}</h2><p className="maintenance-request-id">#{current.id}</p></div><span className={`maintenance-status maintenance-status-${String(current.status || '').toLowerCase().replace(/\s+/g, '-')}`}>{current.status || 'Submitted'}</span></div>
+    {message ? <div className={`maintenance-message maintenance-message--${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div> : null}
+    <div className="maintenance-detail-section"><h3>Customer & request</h3><dl className="maintenance-detail-grid"><div><dt>Customer</dt><dd>{current.customerName || current.customer || 'Not provided'}</dd></div><div><dt>Service type</dt><dd>{current.issueType || current.serviceType || 'Service request'}</dd></div><div><dt>Preferred schedule</dt><dd>{current.preferredDate || current.preferredSchedule || 'Not set'}</dd></div><div><dt>Branch</dt><dd>{current.branch || 'Unassigned'}</dd></div><div className="maintenance-detail-grid--wide"><dt>Issue</dt><dd>{current.issueDescription || current.issue || 'No description provided'}</dd></div><div className="maintenance-detail-grid--wide"><dt>Service address</dt><dd>{current.address || 'Not provided'}</dd></div></dl></div>
+    <div className="maintenance-detail-section"><div className="maintenance-section-heading"><div><h3>Technician assignment</h3><p>{current.assignedTechnicianName ? `Currently assigned to ${current.assignedTechnicianName}.` : 'No technician has been assigned yet.'}</p></div>{linkedTask ? <span className="maintenance-task-chip">Task: {taskStatus || 'pending'}</span> : null}</div><label className="maintenance-assignment-field"><span>Choose technician</span><select value={selectedTechnicianId} disabled={busy || isClosed} onChange={(event) => setSelectedTechnicianId(event.target.value)}><option value="">Select technician</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{getDisplayName(technician)}</option>)}</select></label><div className="maintenance-action-row"><button type="button" className="maintenance-button" onClick={assignTechnician} disabled={busy || isClosed || !selectedTechnicianId}>{busy ? 'Saving…' : current.assignedTechnicianId ? 'Reassign technician' : 'Assign technician'}</button>{!isClosed && current.status === 'Submitted' ? <button type="button" className="maintenance-button maintenance-button--secondary" onClick={() => updateRequest({ status: 'Reviewed' }, 'Request marked as reviewed.')} disabled={busy}>Mark reviewed</button> : null}</div></div>
+    <div className="maintenance-completion-note"><strong>Completion workflow</strong><span>{completionNote}</span></div>
+    {hasProof ? <div className="maintenance-detail-section"><h3>Technician proof of work</h3><dl className="maintenance-detail-grid"><div><dt>Before condition</dt><dd>{linkedTask.beforeCondition || 'Not recorded'}</dd></div><div><dt>After condition</dt><dd>{linkedTask.afterCondition || 'Not recorded'}</dd></div><div><dt>Findings</dt><dd>{linkedTask.findings || 'Not recorded'}</dd></div><div><dt>Resolution</dt><dd>{linkedTask.resolution || 'Not recorded'}</dd></div><div><dt>Customer sign-off</dt><dd>{proof.customerSignature?.name || linkedTask.customerSignatureName || 'Not submitted'}</dd></div><div><dt>Submitted</dt><dd>{formatDateTime(proof.submittedAt || linkedTask.proofSubmittedAt)}</dd></div></dl><div className="maintenance-proof-images">{[...(proof.beforePhotos || []).slice(0, 1), ...(proof.afterPhotos || []).slice(0, 1)].map((photo, index) => <a key={`${photo.uri}-${index}`} href={photo.uri} target="_blank" rel="noreferrer"><img src={photo.uri} alt={photo.label || 'Service proof'} /><span>{photo.label || 'Service proof'}</span></a>)}</div></div> : null}
+    <div className="maintenance-detail-section"><h3>Status history</h3><div className="maintenance-timeline">{(current.timeline || []).length ? (current.timeline || []).map((event) => <div key={event.id || `${event.title}-${event.timestamp}`} className="maintenance-timeline-item"><strong>{event.title || 'Request updated'}</strong><span>{event.description || 'No description provided.'}</span><small>{event.actor || 'System'} · {formatDateTime(event.timestamp)}</small></div>) : <p className="maintenance-muted">No status history yet.</p>}</div></div>
+    {!isClosed ? <div className="maintenance-danger-zone"><button type="button" onClick={cancelRequest} disabled={busy}>Cancel request</button></div> : null}
+  </aside>;
 };
 
 export default RequestDetails;

@@ -1,5 +1,5 @@
 import { ArrowLeft, Info, ShieldCheck } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import BoutiqueAuthHeader from "../common/boutique/BoutiqueAuthHeader";
@@ -8,7 +8,6 @@ import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
-import LockoutWarning from "./LockOutWarning";
 import LoginForm from "./LoginForm";
 
 const getRoleHomePath = (role) => {
@@ -25,31 +24,7 @@ function Login() {
   const [user, setUser] = useState({ identifier: "", password: "" });
   const [errors, setErrors] = useState({});
   const [authMessage, setAuthMessage] = useState("");
-  const [lockoutInfo, setLockoutInfo] = useState(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (secondsLeft > 0) {
-      setLockoutInfo((prev) =>
-        prev
-          ? {
-              ...prev,
-              message: `Account locked. Try again in ${secondsLeft}s.`,
-              secondsLeft,
-            }
-          : prev,
-      );
-    }
-  }, [secondsLeft]);
 
   useEffect(() => {
     setAuthMessage("");
@@ -82,23 +57,7 @@ function Login() {
       setLoading(false);
       navigate(getRoleHomePath(loggedInUser?.role));
     } catch (err) {
-      if (err?.status === 423) {
-        const lockSeconds = err?.data?.secondsLeft || 60;
-        setLockoutInfo({ message: err.message, secondsLeft: lockSeconds });
-        setSecondsLeft(lockSeconds);
-        timerRef.current = setInterval(() => {
-          setSecondsLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timerRef.current);
-              setLockoutInfo(null);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        setErrors((prev) => ({ ...prev, password: err.message }));
-      }
+      setErrors((prev) => ({ ...prev, password: err.message }));
       setLoading(false);
     }
   };
@@ -120,8 +79,6 @@ function Login() {
       />
 
       <BoutiqueStack gap={24} className="bq-login-form-inner">
-        <LockoutWarning lockoutInfo={lockoutInfo} secondsLeft={secondsLeft} />
-
         {authMessage && (
           <BoutiqueBox
             padding="16px 20px"
@@ -146,7 +103,7 @@ function Login() {
           onPasswordChange={handlePasswordChange}
           onSubmit={authenticateUser}
           loading={loading}
-          disabled={!!lockoutInfo}
+          disabled={false}
           onForgotPassword={() => navigate("/forgot-password")}
         />
 
@@ -186,7 +143,7 @@ function Login() {
               color={BQ_COLORS.inkMuted}
               weight={600}
             >
-              Automatic lockout after 3 failed attempts
+              Secure sign-in and encrypted session management
             </BoutiqueText>
             <BoutiqueText
               tag="li"

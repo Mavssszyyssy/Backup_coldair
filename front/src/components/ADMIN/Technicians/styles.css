@@ -1,9 +1,50 @@
-/* ===== AdminTechnician.css ===== */
-
-
-
-/* ===== AssignTask.css ===== */
-
-
-
-/* ===== TechnicianList.css ===== */
+.tech-management { display: grid; gap: 18px; }
+.tech-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tech-summary-grid article { display: grid; gap: 4px; min-width: 0; padding: 16px; border: 1px solid #dbeafe; border-radius: 14px; background: linear-gradient(145deg, #fff, #f5faff); box-shadow: 0 6px 18px rgba(15, 23, 42, .04); }
+.tech-summary-grid span, .tech-summary-grid small { color: #64748b; font-size: 12px; font-weight: 700; }
+.tech-summary-grid strong { color: #0f3e7a; font-size: 28px; line-height: 1.1; }
+.tech-filter-card, .tech-roster-card, .tech-assignment-form, .tech-work-orders { min-width: 0; }
+.tech-filter-heading, .tech-section-heading { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.tech-filter-heading h2, .tech-section-heading h2 { margin: 0; color: #0f172a; font-size: 18px; }
+.tech-filter-heading p, .tech-section-heading p { margin: 4px 0 0; color: #64748b; font-size: 13px; line-height: 1.45; }
+.tech-filter-grid { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(145px, 1fr)); gap: 12px; margin-top: 16px; }
+.tech-filter-grid label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
+.tech-filter-grid input, .tech-filter-grid select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #0f172a; font: inherit; }
+.tech-filter-grid select:disabled { background: #f1f5f9; color: #64748b; }
+.tech-management-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); gap: 18px; align-items: start; }
+.tech-roster-card { display: grid; gap: 14px; }
+.tech-roster-list, .tech-work-list { display: grid; gap: 10px; }
+.tech-person-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.tech-person-main { display: flex; min-width: 0; gap: 10px; align-items: center; }
+.tech-avatar { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: #dbeafe; color: #1d4ed8; font-weight: 900; }
+.tech-person-main h3, .tech-work-item h3 { margin: 0; color: #0f172a; font-size: 14px; overflow-wrap: anywhere; }
+.tech-person-main p, .tech-person-main small, .tech-work-item p, .tech-work-item small { margin: 3px 0 0; color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
+.tech-person-meta { display: grid; gap: 4px; text-align: right; color: #475569; font-size: 12px; }
+.tech-person-meta strong { color: #0f3e7a; font-size: 12px; }
+.tech-account-status, .tech-task-status { width: fit-content; justify-self: end; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 900; text-transform: capitalize; }
+.tech-account-status.is-active, .tech-task-status.is-completed { background: #dcfce7; color: #166534; }
+.tech-account-status.is-disabled { background: #fee2e2; color: #b91c1c; }
+.tech-task-status.is-pending { background: #fef3c7; color: #92400e; }
+.tech-task-status.is-in-progress, .tech-task-status.is-in_progress { background: #dbeafe; color: #1d4ed8; }
+.tech-task-status.is-on-hold, .tech-task-status.is-on_hold { background: #f3e8ff; color: #7e22ce; }
+.tech-inline-select { min-width: 155px; }
+.tech-primary-button, .tech-secondary-button, .tech-danger-button, .tech-pagination button { border: 0; border-radius: 9px; min-height: 38px; padding: 9px 12px; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.tech-primary-button { background: #1d4ed8; color: #fff; }
+.tech-primary-button:hover:not(:disabled) { background: #1e40af; }
+.tech-secondary-button, .tech-pagination button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.tech-danger-button { background: #fff1f2; color: #be123c; }
+.tech-primary-button:disabled, .tech-secondary-button:disabled, .tech-danger-button:disabled, .tech-pagination button:disabled { cursor: not-allowed; opacity: .55; }
+.tech-assignment-form { display: grid; gap: 13px; }
+.tech-branch-note { margin: 0; padding: 10px 12px; border-radius: 9px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
+.tech-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tech-message { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+.tech-message--error { background: #fef2f2; color: #b91c1c; }
+.tech-message--success { background: #f0fdf4; color: #166534; }
+.tech-empty { margin: 0; padding: 22px 8px; color: #64748b; text-align: center; }
+.tech-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #64748b; font-size: 13px; font-weight: 700; }
+.tech-pagination > div { display: flex; gap: 8px; }
+.tech-work-orders { display: grid; gap: 14px; }
+.tech-work-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .45fr); gap: 16px; align-items: center; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.tech-work-item .tech-task-status { justify-self: start; margin-bottom: 7px; }
+@media (max-width: 1120px) { .tech-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tech-management-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-work-item { grid-template-columns: 1fr; } .tech-filter-heading, .tech-section-heading, .tech-person-card { align-items: stretch; flex-direction: column; } .tech-filter-heading, .tech-section-heading { display: flex; } .tech-filter-heading .tech-secondary-button { width: 100%; } .tech-person-card { grid-template-columns: 1fr; } .tech-person-meta { text-align: left; } .tech-account-status { justify-self: start; } .tech-inline-select, .tech-person-card > button { width: 100%; } .tech-pagination { align-items: flex-start; flex-direction: column; } }

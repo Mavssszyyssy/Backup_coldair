@@ -1,7 +1,6 @@
 // app/(auth)/login.jsx
-// Login screen with email/password and lockout protection
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -21,36 +20,10 @@ import {
 export function LoginScreen() {
   const router = useRouter();
   const { login, resolveHomeRoute } = useUserContext();
-  const timerRef = useRef(null);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
-  const [lockoutInfo, setLockoutInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const stopCountdown = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    setLockoutInfo(null);
-  };
-
-  const startCountdown = (seconds) => {
-    if (!seconds || seconds <= 0) return stopCountdown();
-    if (timerRef.current) clearInterval(timerRef.current);
-    setLockoutInfo({ secondsLeft: seconds });
-    timerRef.current = setInterval(() => {
-      setLockoutInfo((prev) => {
-        const next = (prev?.secondsLeft ?? 0) - 1;
-        if (next <= 0) {
-          stopCountdown();
-          return null;
-        }
-        return { secondsLeft: next };
-      });
-    }, 1000);
-  };
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -69,19 +42,14 @@ export function LoginScreen() {
       const result = await login(normalizeEmail(form.email), form.password);
 
       if (result.success) {
-        stopCountdown();
         router.replace(resolveHomeRoute(result.user));
         return;
       }
 
-      if (result.locked) {
-        startCountdown(result.secondsLeft || 60);
-      } else {
-        setErrors({
-          email: result.error || " ",
-          password: result.error || "Invalid credentials.",
-        });
-      }
+      setErrors({
+        email: result.error || " ",
+        password: result.error || "Invalid credentials.",
+      });
     } catch {
       setErrors({ email: "Unable to login right now.", password: "" });
     } finally {
@@ -105,32 +73,6 @@ export function LoginScreen() {
           color={COLORS.primary}
         />
 
-        {lockoutInfo ? (
-          <View
-            style={{
-              backgroundColor: COLORS.dangerLight,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: COLORS.danger,
-              padding: SPACING.md,
-              marginBottom: SPACING.md,
-            }}
-          >
-            <Text
-              style={{
-                color: COLORS.danger,
-                fontWeight: "700",
-                marginBottom: 4,
-              }}
-            >
-              Account Locked
-            </Text>
-            <Text style={{ color: COLORS.danger }}>
-              Too many failed attempts. Try again in {lockoutInfo.secondsLeft}s.
-            </Text>
-          </View>
-        ) : null}
-
         <Card>
           <TextField
             label="Email or Alias"
@@ -153,7 +95,7 @@ export function LoginScreen() {
           onPress={handleLogin}
           variant="primary"
           loading={submitting}
-          disabled={submitting || !!lockoutInfo}
+          disabled={submitting}
         />
 
         <TouchableOpacity

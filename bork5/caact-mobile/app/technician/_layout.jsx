@@ -18,7 +18,6 @@ export default function TechnicianLayout() {
     "/technician/notifications",
     "/technician/tasks",
     "/technician/scan-qr",
-    "/technician/parts",
     "/technician/profile",
   ];
   const showBottomNav = topLevelScreens.includes(pathname);
@@ -53,7 +52,6 @@ export default function TechnicianLayout() {
         <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen name="tasks" options={{ title: "My Work Orders" }} />
         <Stack.Screen name="scan-qr" options={{ title: "Scan AC Unit" }} />
-        <Stack.Screen name="parts" options={{ title: "Parts Requests" }} />
         <Stack.Screen name="profile" options={{ title: "Profile" }} />
         <Stack.Screen
           name="task/[id]/information"

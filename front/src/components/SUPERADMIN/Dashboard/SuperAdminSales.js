@@ -1,29 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
 import { BRANCHES } from '../../../domain/branches/branches';
 import '../superAdminShared.css';
+import './SuperAdminSales.css';
 
-const PROCESS_STAGE_LABELS = {
-  to_pay: 'Pending',
-  to_deliver: 'To be completed',
-  to_install: 'To be completed',
-  complete: 'Completed',
-  cancelled: 'Cancelled',
+const STAGES = [
+  { id: 'all', label: 'All orders', className: 'all' },
+  { id: 'pending', label: 'Pending', className: 'pending' },
+  { id: 'in_progress', label: 'To be completed', className: 'progress' },
+  { id: 'completed', label: 'Completed', className: 'completed' },
+  { id: 'cancelled', label: 'Cancelled', className: 'cancelled' },
+];
+const getStage = (status = '') => {
+  if (status === 'to_pay') return 'pending';
+  if (status === 'to_deliver' || status === 'to_install') return 'in_progress';
+  if (status === 'complete') return 'completed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'pending';
 };
-
-const getProcessStage = (workflowStatus = '') => PROCESS_STAGE_LABELS[workflowStatus] || 'Unknown';
-
-const formatAmount = (amount) => {
-  if (amount === undefined || amount === null) return '0';
-  return Number(amount || 0).toLocaleString();
-};
+const stageLabel = (order) => STAGES.find((stage) => stage.id === getStage(order.workflowStatus))?.label || 'Pending';
+const orderBranch = (order) => String(order.stockSourceBranch || order.customerBranch || 'Unassigned').trim() || 'Unassigned';
+const formatAmount = (amount) => `₱${Number(amount || 0).toLocaleString()}`;
 
 const SuperAdminSales = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('All');
+  const [selectedBranch, setSelectedBranch] = useState('all');
+  const [selectedStage, setSelectedStage] = useState('all');
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -31,216 +36,33 @@ const SuperAdminSales = () => {
     try {
       const result = await apiRequest('/orders');
       setOrders(Array.isArray(result.orders) ? result.orders : []);
-    } catch (err) {
-      setError(err.message || 'Unable to load branch sales.');
+    } catch (requestError) {
       setOrders([]);
-    } finally {
-      setLoading(false);
-    }
+      setError(requestError.message || 'Unable to load processing sales.');
+    } finally { setLoading(false); }
   }, []);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  const branchOptions = useMemo(() => Array.from(new Set([...BRANCHES, ...orders.map(orderBranch)])).filter(Boolean), [orders]);
+  const branchScopedOrders = useMemo(() => orders.filter((order) => selectedBranch === 'all' || orderBranch(order) === selectedBranch), [orders, selectedBranch]);
+  const stageCounts = useMemo(() => STAGES.reduce((counts, stage) => ({ ...counts, [stage.id]: stage.id === 'all' ? branchScopedOrders.length : branchScopedOrders.filter((order) => getStage(order.workflowStatus) === stage.id).length }), {}), [branchScopedOrders]);
+  const visibleOrders = useMemo(() => branchScopedOrders.filter((order) => selectedStage === 'all' || getStage(order.workflowStatus) === selectedStage), [branchScopedOrders, selectedStage]);
+  const groups = useMemo(() => branchOptions.map((branch) => ({ branch, orders: visibleOrders.filter((order) => orderBranch(order) === branch) })).filter((group) => group.orders.length > 0), [branchOptions, visibleOrders]);
 
-  const branchSummary = orders.reduce((summary, order) => {
-    const branch = String(order.stockSourceBranch || order.customerBranch || 'Unknown').trim();
-    const stage = getProcessStage(order.workflowStatus);
-    if (!summary[branch]) {
-      summary[branch] = {
-        branch,
-        pending: 0,
-        toBeCompleted: 0,
-        completed: 0,
-        cancelled: 0,
-        total: 0,
-        orders: [],
-      };
-    }
-    summary[branch].total += 1;
-    summary[branch].orders.push(order);
-    if (stage === 'Pending') summary[branch].pending += 1;
-    else if (stage === 'To be completed') summary[branch].toBeCompleted += 1;
-    else if (stage === 'Completed') summary[branch].completed += 1;
-    else if (stage === 'Cancelled') summary[branch].cancelled += 1;
-    return summary;
-  }, {});
-
-  const branchList = Object.values(branchSummary).sort((a, b) => b.total - a.total);
-  const fullBranchList = BRANCHES.map((branchName) => branchList.find((branch) => branch.branch === branchName) || {
-    branch: branchName,
-    pending: 0,
-    toBeCompleted: 0,
-    completed: 0,
-    cancelled: 0,
-    total: 0,
-    orders: [],
-  });
-
-  const visibleBranchList = selectedBranch === 'All'
-    ? fullBranchList
-    : fullBranchList.filter((branch) => branch.branch === selectedBranch);
-
-  const totalPending = orders.filter((order) => getProcessStage(order.workflowStatus) === 'Pending').length;
-  const totalToBeCompleted = orders.filter((order) => getProcessStage(order.workflowStatus) === 'To be completed').length;
-  const totalCompleted = orders.filter((order) => getProcessStage(order.workflowStatus) === 'Completed').length;
-  const totalCancelled = orders.filter((order) => getProcessStage(order.workflowStatus) === 'Cancelled').length;
-
+  const clearFilters = () => { setSelectedBranch('all'); setSelectedStage('all'); };
   return (
-    <SuperAdminLayout
-      title="Processing Sales"
-      subtitle="Branch sales overview with pending, to-be-completed, and completed order stages."
-    >
-      <div className="super-grid">
-        <div className="super-card">
-          <h3>Pending</h3>
-          <strong>{totalPending}</strong>
-        </div>
-        <div className="super-card">
-          <h3>To be completed</h3>
-          <strong>{totalToBeCompleted}</strong>
-        </div>
-        <div className="super-card">
-          <h3>Completed</h3>
-          <strong>{totalCompleted}</strong>
-        </div>
-        <div className="super-card">
-          <h3>Cancelled</h3>
-          <strong>{totalCancelled}</strong>
-        </div>
-        <div className="super-card">
-          <h3>Branches</h3>
-          <strong>{BRANCHES.length}</strong>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, margin: '18px 0 8px' }}>
-        <button
-          type="button"
-          onClick={() => setSelectedBranch('All')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: 999,
-            border: selectedBranch === 'All' ? '1px solid #2563eb' : '1px solid #cbd5e1',
-            background: selectedBranch === 'All' ? '#eff6ff' : '#fff',
-            color: selectedBranch === 'All' ? '#1d4ed8' : '#334155',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          All branches
-        </button>
-        {fullBranchList.map((branchData) => (
-          <button
-            key={branchData.branch}
-            type="button"
-            onClick={() => setSelectedBranch(branchData.branch)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 999,
-              border: selectedBranch === branchData.branch ? '1px solid #2563eb' : '1px solid #cbd5e1',
-              background: selectedBranch === branchData.branch ? '#eff6ff' : '#fff',
-              color: selectedBranch === branchData.branch ? '#1d4ed8' : '#334155',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            {branchData.branch} ({branchData.total})
-          </button>
-        ))}
-      </div>
-
-      {error ? <p style={{ color: '#d14343', marginBottom: 16 }}>{error}</p> : null}
-      {loading ? <p>Loading branch sales...</p> : null}
-
-      {!loading && orders.length === 0 ? (
-        <p style={{ color: '#64748b' }}>No branch sales were found. Verify that supervisor access is active and orders exist in the backend.</p>
-      ) : null}
-
-      <div className="super-list">
-        {visibleBranchList.map((branchData) => (
-          <section key={branchData.branch} className="super-list-item" style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-              <div>
-                <h3 style={{ margin: 0 }}>{branchData.branch}</h3>
-                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>Total orders: {branchData.total}</p>
-              </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ color: '#2563eb', fontWeight: 600 }}>Pending {branchData.pending}</span>
-                <span style={{ color: '#ea580c', fontWeight: 600 }}>To be completed {branchData.toBeCompleted}</span>
-                <span style={{ color: '#16a34a', fontWeight: 600 }}>Completed {branchData.completed}</span>
-                {branchData.cancelled > 0 ? <span style={{ color: '#9f1239', fontWeight: 600 }}>Cancelled {branchData.cancelled}</span> : null}
-              </div>
-              {branchData.pending === 0 ? (
-                <p style={{ margin: '10px 0 0', color: '#475569', fontSize: 13 }}>
-                  No pending sales for this branch.
-                </p>
-              ) : null}
-            </div>
-            <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
-              {branchData.orders.length === 0 ? (
-                <p style={{ color: '#64748b', padding: 14, background: '#f8fafc', borderRadius: 12 }}>
-                  No branch sales were found for {branchData.branch}.
-                </p>
-              ) : (
-                branchData.orders.map((order) => (
-                  <div
-                    key={order.id}
-                    style={{
-                      padding: 14,
-                      borderRadius: 12,
-                      border: '1px solid #e2e8f0',
-                      background: '#fff',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                      <div>
-                        <strong>{order.orderCode || order.id}</strong>
-                        <p style={{ margin: '4px 0', color: '#475569', fontSize: 13 }}>Customer: {order.customerName || 'N/A'}</p>
-                      </div>
-                      <span
-                        style={{
-                          padding: '6px 10px',
-                          borderRadius: 999,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          background:
-                            getProcessStage(order.workflowStatus) === 'Pending'
-                              ? '#fde68a'
-                              : getProcessStage(order.workflowStatus) === 'To be completed'
-                                ? '#fed7aa'
-                                : getProcessStage(order.workflowStatus) === 'Completed'
-                                  ? '#bbf7d0'
-                                  : '#fda4af',
-                          color:
-                            getProcessStage(order.workflowStatus) === 'Pending'
-                              ? '#92400e'
-                              : getProcessStage(order.workflowStatus) === 'To be completed'
-                                ? '#9a3412'
-                                : getProcessStage(order.workflowStatus) === 'Completed'
-                                  ? '#166534'
-                                  : '#881337',
-                        }}
-                      >
-                        {getProcessStage(order.workflowStatus)}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 10, color: '#475569', fontSize: 13 }}>
-                      <span>Amount: ₱{formatAmount(order.totalAmount || order.total || 0)}</span>
-                      <span>Payment: {order.paymentMethod || 'N/A'}</span>
-                      <span>Order status: {order.workflowLabel || order.workflowStatus || 'N/A'}</span>
-                    </div>
-                    <div style={{ marginTop: 10, fontSize: 13, color: '#475569', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                      <span>Customer branch: {order.customerBranch || 'N/A'}</span>
-                      <span>Stock branch: {order.stockSourceBranch || 'N/A'}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+    <SuperAdminLayout title="Processing Sales" subtitle="Global order processing with branch and status controls">
+      <section className="sales-filter-summary" aria-label="Order status filters">
+        {STAGES.map((stage) => <button key={stage.id} type="button" className={`sales-summary-card sales-summary-card--${stage.className} ${selectedStage === stage.id ? 'is-active' : ''}`} onClick={() => setSelectedStage(stage.id)}><span>{stage.label}</span><strong>{stageCounts[stage.id] || 0}</strong></button>)}
+      </section>
+      <section className="sales-workspace">
+        <div className="sales-heading"><div><p className="sales-eyebrow">Order processing</p><h2>Sales queue</h2><p>Choose a branch or click a colored status card to filter the actual orders below.</p></div><button type="button" onClick={loadOrders} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>
+        <div className="sales-controls"><label>Purchase branch<select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)}><option value="all">All branches</option>{branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label><label>Order stage<select value={selectedStage} onChange={(event) => setSelectedStage(event.target.value)}>{STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></label><button type="button" className="sales-clear" onClick={clearFilters} disabled={selectedBranch === 'all' && selectedStage === 'all'}>Clear filters</button></div>
+        {error ? <div className="sales-error">{error}</div> : null}
+        {loading ? <div className="sales-empty">Loading processing sales…</div> : null}
+        {!loading && !error && visibleOrders.length === 0 ? <div className="sales-empty">No orders match the current branch and stage filters.</div> : null}
+        <div className="sales-branch-list">{groups.map((group) => <section className="sales-branch-group" key={group.branch}><header><div><h3>{group.branch}</h3><p>{group.orders.length} matching order{group.orders.length === 1 ? '' : 's'}</p></div></header><div className="sales-order-list">{group.orders.map((order) => <article className="sales-order-card" key={order.id}><div className="sales-order-top"><div><p>{order.orderCode || order.id}</p><h4>{order.customerName || 'Customer not recorded'}</h4></div><span className={`sales-stage sales-stage--${getStage(order.workflowStatus)}`}>{stageLabel(order)}</span></div><div className="sales-order-meta"><span><b>Total</b>{formatAmount(order.totalAmount || order.total)}</span><span><b>Payment</b>{order.paymentMethod || 'Not recorded'} · {order.paymentStatus || 'pending'}</span><span><b>Purchase branch</b>{orderBranch(order)}</span>{order.customerBranch && order.customerBranch !== orderBranch(order) ? <span><b>Customer branch</b>{order.customerBranch}</span> : null}</div><p className="sales-items">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No item details recorded.'}</p></article>)}</div></section>)}</div>
+      </section>
     </SuperAdminLayout>
   );
 };

@@ -5,6 +5,7 @@ const Unit = require("../models/Unit");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
+const { getScheduledDateError } = require("../utils/scheduling");
 
 const normalizeStatus = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -262,9 +263,16 @@ const createMyServiceRequest = async (req, res) => {
     const issue = String(payload.issueDescription || payload.issue || payload.concern || "").trim();
     const address = String(payload.address || "").trim();
     const unitId = String(payload.unitId || "").trim();
+    const preferredDateError = getScheduledDateError(payload.preferredDate, "Preferred date");
 
     if (!customerName || !issue || !address) {
       return res.status(400).json({ message: "customer, issue, and address are required" });
+    }
+    if (!payload.preferredDate) {
+      return res.status(400).json({ message: "Preferred date is required." });
+    }
+    if (preferredDateError) {
+      return res.status(400).json({ message: preferredDateError });
     }
 
     const unit = unitId ? await findOwnedUnit(unitId, req.authUser._id) : null;
@@ -348,6 +356,11 @@ const updateServiceRequestStatus = async (req, res) => {
     const request = await ServiceRequest.findById(id);
     if (!request) {
       return res.status(404).json({ message: "Service request not found" });
+    }
+    const preferredDateError = getScheduledDateError(req.body?.preferredDate, "Preferred date");
+    const scheduledDateError = getScheduledDateError(req.body?.scheduledDate, "Scheduled date");
+    if (preferredDateError || scheduledDateError) {
+      return res.status(400).json({ message: preferredDateError || scheduledDateError });
     }
 
     const role = req.authUser.role;

@@ -14,8 +14,12 @@ import { Platform } from "react-native";
 
 const BACKEND_PORT = "5000";
 const BACKEND_FALLBACK_PORT = "5001";
+const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
+const LIVE_BACKEND_HOST = "https://aeropulse-backend.vercel.app";
 
 const trimTrailingSlash = (value = "") => String(value).replace(/\/+$/, "");
+const replaceRetiredBackend = (value = "") =>
+  String(value).replace(RETIRED_BACKEND_HOST, LIVE_BACKEND_HOST);
 
 const getConfiguredBaseUrl = () =>
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -64,7 +68,7 @@ const getDefaultApiOrigin = (port = BACKEND_PORT) => {
 };
 
 const normalizeApiBase = (value = "") => {
-  const trimmed = trimTrailingSlash(value);
+  const trimmed = trimTrailingSlash(replaceRetiredBackend(value));
   if (!trimmed) return `${getDefaultApiOrigin()}/api`;
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 };

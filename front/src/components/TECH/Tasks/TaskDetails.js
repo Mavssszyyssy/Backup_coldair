@@ -54,10 +54,15 @@ const TaskDetails = () => {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [selectedSerial, setSelectedSerial] = useState('');
 
   useEffect(() => {
     apiRequest(`/tasks/${taskId}`)
-      .then((response) => setTask(response.task))
+      .then((response) => {
+        setTask(response.task);
+        const serials = response.task?.registrationProgress?.requiredSerials || response.task?.serialNumbers || [];
+        setSelectedSerial(String(serials[0] || ''));
+      })
       .catch(() => setTask(null))
       .finally(() => setLoading(false));
   }, [taskId]);
@@ -76,8 +81,9 @@ const TaskDetails = () => {
     }
   };
 
-  const serials = task?.registrationProgress?.requiredSerials || [];
+  const serials = task?.registrationProgress?.requiredSerials || task?.serialNumbers || [];
   const registrations = task?.ampRegistrations || {};
+  const isInstallation = serials.length > 0;
 
   return (
     <TechLayout title="Task Details" subtitle={`Task #${taskId}`}>
@@ -105,22 +111,13 @@ const TaskDetails = () => {
                 {task.registrationProgress?.totalRegistered || 0} of {task.registrationProgress?.totalRequired || 0} units registered
                 {task.registrationProgress?.totalHeld ? ` / ${task.registrationProgress.totalHeld} held` : ''}
               </p>
-              <div className="task-registration-list">
-                {serials.map((serial) => {
-                  const registration = registrations[serial];
-                  return (
-                    <button
-                      type="button"
-                      key={serial}
-                      className={`task-registration-item ${registration?.status || 'pending'}`}
-                      onClick={() => navigate(`/tech/field-registration?serial=${encodeURIComponent(serial)}`)}
-                    >
-                      <span>{serial}</span>
-                      <strong>{registration?.status || 'pending'}</strong>
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="task-registration-select-label">
+                Assigned QR serial
+                <select value={selectedSerial} onChange={(event) => setSelectedSerial(event.target.value)}>
+                  {serials.map((serial) => <option key={serial} value={serial}>{serial} — {registrations[serial]?.status || 'registration required'}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={() => navigate(`/tech/field-registration?serial=${encodeURIComponent(selectedSerial)}`)} disabled={!selectedSerial}>Register selected unit</button>
             </div>
           ) : null}
           {user?.role === 'technician' && task.status === 'pending' && !task.assignedTechnicianId ? (
@@ -128,13 +125,11 @@ const TaskDetails = () => {
               {accepting ? 'Accepting...' : 'Accept Task'}
             </button>
           ) : null}
-          <button type="button" onClick={() => navigate(`/tech/field-registration${serials[0] ? `?serial=${encodeURIComponent(serials[0])}` : ''}`)}>
-            Open AMP Registration
-          </button>
+          {isInstallation ? <button type="button" onClick={() => navigate(`/tech/field-registration${selectedSerial ? `?serial=${encodeURIComponent(selectedSerial)}` : ''}`)}>Open AMP Registration</button> : null}
           <button type="button" onClick={() => navigate('/tech/tasks')}>Back to Tasks</button>
         </div>
         <TaskProofPanel proof={task.proof || {}} task={task} />
-        <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} />
+        {!isInstallation ? <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} /> : null}
       </div>
       )}
     </TechLayout>

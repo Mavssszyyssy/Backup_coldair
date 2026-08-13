@@ -16,6 +16,7 @@ function ServiceBookingModal({ service, onClose, onConfirm }) {
   const validateForm = () => {
     const newErrors = {};
     if (!bookingData.date) newErrors.date = "Please select a date";
+    else if (bookingData.date < today) newErrors.date = "Please select today or a future date";
     if (!bookingData.time) newErrors.time = "Please select a time";
     if (!bookingData.address) newErrors.address = "Please enter your address";
     setErrors(newErrors);
@@ -38,7 +39,8 @@ function ServiceBookingModal({ service, onClose, onConfirm }) {
     "4:00 PM",
   ];
 
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Calculate total price
   const getTotalPrice = () => {

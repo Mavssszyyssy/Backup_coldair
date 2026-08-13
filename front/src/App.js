@@ -6,7 +6,6 @@ import {
   useLocation,
 } from "react-router-dom";
 import "./App.css";
-import AdminAuditLogs from "./components/ADMIN/AuditLogs/AdminAuditLogs";
 import AdminDashboard from "./components/ADMIN/Dashboard/AdminDashboard";
 import AdminInventory from "./components/ADMIN/Inventory/AdminInventory";
 import AdminMaintenance from "./components/ADMIN/Maintenance/AdminMaintenance";
@@ -18,7 +17,6 @@ import AdminSerialQr from "./components/ADMIN/SerialQr/AdminSerialQr";
 import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
 import AdminStoreOperations from "./components/ADMIN/Store/AdminStoreOperations";
 import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
-import AdminUnlockUsers from "./components/ADMIN/Users/AdminUnlockUsers";
 import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
 import OwnerAmpDashboard from "./components/AMP/OwnerAmpDashboard";
 import TechMainScreen from "./components/TECH/Dashboard/TechMainScreen";
@@ -31,8 +29,11 @@ import SuperAdminAlerts from "./components/SUPERADMIN/Dashboard/SuperAdminAlerts
 import SuperAdminBranches from "./components/SUPERADMIN/Dashboard/SuperAdminBranches";
 import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDashboard";
 import SuperAdminInventory from "./components/SUPERADMIN/Dashboard/SuperAdminInventory";
+import SuperAdminReorders from "./components/SUPERADMIN/Dashboard/SuperAdminReorders";
 import SuperAdminSales from "./components/SUPERADMIN/Dashboard/SuperAdminSales";
 import SuperAdminTasks from "./components/SUPERADMIN/Dashboard/SuperAdminTasks";
+import SuperAdminSettings from "./components/SUPERADMIN/Dashboard/SuperAdminSettings";
+import SuperAdminProfile from "./components/SUPERADMIN/Dashboard/SuperAdminProfile";
 import CustomerChatbot from "./components/chatbot/CustomerChatbot";
 import Checkout from "./components/checkout/Checkout";
 import OrderConfirmation from "./components/checkout/OrderConfirmation";
@@ -297,14 +298,6 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/maintenance"
-          element={
-            <RoleRoute allowedRoles={["admin"]}>
-              <AdminMaintenance />
-            </RoleRoute>
-          }
-        />
-        <Route
           path="/admin/technicians"
           element={
             <RoleRoute allowedRoles={["admin"]}>
@@ -345,26 +338,10 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/audit-logs"
-          element={
-            <RoleRoute allowedRoles={["admin"]}>
-              <AdminAuditLogs />
-            </RoleRoute>
-          }
-        />
-        <Route
           path="/admin/profile"
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminProfile />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/admin/unlock-users"
-          element={
-            <RoleRoute allowedRoles={["admin"]}>
-              <AdminUnlockUsers />
             </RoleRoute>
           }
         />
@@ -477,6 +454,78 @@ function AppContent() {
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
               <SuperAdminInventory />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/maintenance"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <AdminMaintenance />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/reorders"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <SuperAdminReorders />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/orders"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <AdminOrders />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/maintenance"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <AdminMaintenance />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/technicians"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <AdminTechnician />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/serial-qrs"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <AdminSerialQr />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/reports"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <AdminReports />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/settings"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <SuperAdminSettings />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/superadmin/profile"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <SuperAdminProfile />
             </RoleRoute>
           }
         />

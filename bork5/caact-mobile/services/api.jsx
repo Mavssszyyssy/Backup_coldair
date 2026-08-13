@@ -94,7 +94,7 @@ export async function checkBackendConnection() {
 /**
  * Login with email + password.
  * Returns { success, token, user } on success.
- * Returns { success: false, error, locked?, secondsLeft? } on failure.
+ * Returns { success: false, error } on failure.
  */
 export async function login(identifier, password) {
   const { ok, data } = await post("/auth/login", {
@@ -106,8 +106,6 @@ export async function login(identifier, password) {
   return {
     success: false,
     error: getErrorMessage(data, "Login failed."),
-    locked: data.locked || false,
-    secondsLeft: data.seconds_left || 0,
   };
 }
 
@@ -293,8 +291,11 @@ export async function me(token) {
 // Password reset
 // ---------------------------------------------------------------------------
 
-export async function forgotPassword(email, role = "customer") {
-  const { ok, data } = await post("/auth/forgot-password", { email, role });
+export async function forgotPassword(identifier, channel = "email") {
+  const { ok, data } = await post("/auth/forgot-password", {
+    identifier,
+    channel,
+  });
   if (ok) return { success: true, message: data.message };
   return { success: false, error: getErrorMessage(data, "Request failed.") };
 }
@@ -310,9 +311,10 @@ export async function verifyOtp(email, code) {
   return { success: false, error: getErrorMessage(data, "Invalid OTP.") };
 }
 
-export async function resetPassword(email, code, newPassword) {
+export async function resetPassword(identifier, code, newPassword, channel = "email") {
   const { ok, data } = await post("/auth/reset-password", {
-    email,
+    identifier,
+    channel,
     code,
     newPassword,
   });

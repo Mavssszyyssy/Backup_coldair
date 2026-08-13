@@ -306,27 +306,24 @@ const FieldServiceRegistration = () => {
       {requiredSerials(context.task).length > 0 ? (
         <section className="tech-card field-registration-required">
           <h3>Units Required Before Completion</h3>
-          <div className="field-registration-serials">
-            {requiredSerials(context.task).map((serial) => {
-              const registration = registrationFor(context.task, serial);
-              return (
-                <button
-                  type="button"
-                  key={serial}
-                  className={`field-registration-serial ${registration?.status || 'pending'}`}
-                  onClick={() => {
-                    setSerialNumber(serial);
-                    setRawQr(serial);
-                    setSearchParams({ serial });
-                    loadContext(serial);
-                  }}
-                >
-                  <strong>{serial}</strong>
-                  <span>{registration?.status || 'pending'}</span>
-                </button>
-              );
-            })}
-          </div>
+          <label className="task-registration-select-label">
+            Select an assigned serial to register
+            <select
+              value={serialNumber}
+              onChange={(event) => {
+                const serial = event.target.value;
+                setSerialNumber(serial);
+                setRawQr(serial);
+                setSearchParams({ serial });
+                loadContext(serial);
+              }}
+            >
+              {requiredSerials(context.task).map((serial) => {
+                const registration = registrationFor(context.task, serial);
+                return <option key={serial} value={serial}>{serial} — {registration?.status || 'registration required'}</option>;
+              })}
+            </select>
+          </label>
         </section>
       ) : null}
     </TechLayout>

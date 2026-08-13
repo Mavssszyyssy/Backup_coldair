@@ -1265,6 +1265,7 @@ const getProductImage = async (req, res) => {
 
 module.exports = {
   ensureSampleInventory,
+  ensureProductSerialUnits,
   listProducts,
   listPublicProducts,
   listLowStockProducts,

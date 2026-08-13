@@ -3,7 +3,6 @@ import {
   Bell,
   List,
   ShoppingCartSimple,
-  WarningDiamond,
 } from "@phosphor-icons/react";
 import coldAirLogo from "../images/Cold Air Logo.jpg";
 import BoutiqueBox from "./BoutiqueBox";
@@ -104,30 +103,6 @@ export default function BoutiqueHeader({
             </BoutiqueText>
           )}
         </BoutiqueBox>
-
-        {/* CENTER: Status (Hidden on mobile usually) */}
-        {!isAuthenticated && (
-          <BoutiqueBox flex={1} justify="center" className="bq-header-center">
-            <BoutiqueBox
-              direction="row"
-              align="center"
-              gap={12}
-              background="#fffbeb"
-              padding="10px 24px"
-              className="bq-status-pill"
-              style={{
-                borderRadius: BQ_GEOMETRY.radiusPill,
-                color: "#92400e",
-                boxShadow: BQ_SHADOWS.soft,
-              }}
-            >
-              <WarningDiamond size={18} weight="bold" />
-              <BoutiqueText size="13px" weight={600}>
-                Guest Mode. <strong>Login to checkout.</strong>
-              </BoutiqueText>
-            </BoutiqueBox>
-          </BoutiqueBox>
-        )}
 
         {/* RIGHT: Global Actions */}
         <BoutiqueBox

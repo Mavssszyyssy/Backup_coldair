@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
@@ -17,6 +17,20 @@ const defaultForm = () => ({
   coilCondition: "normal", drainageCondition: "clear", voltageStability: "stable",
   conditionRating: "good", notes: "", defectReason: "",
 });
+const PLACEMENT_OPTIONS = [
+  { value: "Living room", label: "Living room" },
+  { value: "Bedroom", label: "Bedroom" },
+  { value: "Office", label: "Office" },
+  { value: "Commercial area", label: "Commercial area" },
+  { value: "Other", label: "Other — enter a location" },
+];
+const USAGE_OPTIONS = [
+  { value: "4", label: "Up to 4 hours/day" },
+  { value: "8", label: "Around 8 hours/day" },
+  { value: "12", label: "Around 12 hours/day" },
+  { value: "16", label: "Around 16 hours/day" },
+  { value: "24", label: "Continuous / 24 hours" },
+];
 
 const taskSerials = (task = {}) => {
   const progressSerials = task?.registrationProgress?.requiredSerials;
@@ -29,55 +43,32 @@ const taskSerials = (task = {}) => {
     .map((serial) => String(serial || "").trim()).filter(Boolean)));
 };
 
-function OptionGroup({ label, value, options, onChange }) {
+function DropdownField({ label, value, options, onChange, helperText }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
   return (
     <View style={{ marginBottom: SPACING.md + 2 }}>
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginBottom: SPACING.xs + 2 }}>{label}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs }}>
-        {options.map((option) => {
-          const active = value === option.value;
-          return (
-            <TouchableOpacity
-              key={option.value}
-              onPress={() => onChange(option.value)}
-              activeOpacity={0.78}
-              style={{ minHeight: 38, borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.borderInput, backgroundColor: active ? COLORS.techLight : COLORS.surface, paddingHorizontal: SPACING.sm + 4, justifyContent: "center", flexDirection: "row", alignItems: "center", gap: 4 }}
-            >
-              {active ? <Ionicons name="checkmark-circle-sharp" size={15} color={COLORS.tech} /> : null}
-              <Text style={{ color: active ? COLORS.tech : COLORS.textSecondary, fontWeight: active ? FONT.bold : "500" }}>{option.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function SerialPicker({ serials, selected, registrations, onChange }) {
-  return (
-    <View style={{ gap: SPACING.xs }}>
-      {serials.map((serial) => {
-        const registration = registrations?.[serial];
-        const isRegistered = registration?.status === "registered";
-        const isHeld = registration?.status === "defective_hold";
-        const active = selected === serial;
-        const color = isHeld ? COLORS.danger : isRegistered ? COLORS.success : COLORS.tech;
-        return (
-          <TouchableOpacity
-            key={serial}
-            onPress={() => onChange(serial)}
-            activeOpacity={0.78}
-            style={{ minHeight: 64, borderWidth: 1, borderColor: active ? color : COLORS.border, backgroundColor: active ? `${color}14` : COLORS.surface, borderRadius: RADIUS.md, padding: SPACING.md - 2, flexDirection: "row", alignItems: "center" }}
-          >
-            <Ionicons name={isHeld ? "alert-circle-sharp" : isRegistered ? "checkmark-circle-sharp" : "qr-code-sharp"} size={21} color={color} />
-            <View style={{ flex: 1, marginLeft: SPACING.sm }}>
-              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>{serial}</Text>
-              <Text style={{ color, fontSize: FONT.sm, marginTop: 1 }}>{isHeld ? "Defect hold" : isRegistered ? "AMP registered" : "Registration required"}</Text>
-            </View>
-            {active ? <Ionicons name="checkmark-circle-sharp" size={21} color={color} /> : null}
-          </TouchableOpacity>
-        );
-      })}
+      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.78} accessibilityRole="button" accessibilityLabel={`${label}: ${selected?.label || "Choose"}`} style={{ minHeight: 48, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderInput, backgroundColor: COLORS.surface, paddingHorizontal: SPACING.sm + 2, flexDirection: "row", alignItems: "center" }}>
+        <Text numberOfLines={1} style={{ color: selected ? COLORS.textPrimary : COLORS.textMuted, fontWeight: selected ? FONT.bold : "500", flex: 1 }}>{selected?.label || "Choose an option"}</Text>
+        <Ionicons name="chevron-down-sharp" size={19} color={COLORS.tech} />
+      </TouchableOpacity>
+      {helperText ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 4 }}>{helperText}</Text> : null}
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setOpen(false)} style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.42)" }}>
+          <View style={{ backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, padding: SPACING.md }}>
+            <View style={{ width: 42, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderInput, alignSelf: "center", marginBottom: SPACING.sm }} />
+            <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black, marginBottom: SPACING.sm }}>{label}</Text>
+            {options.map((option) => {
+              const active = option.value === value;
+              return <TouchableOpacity key={option.value} onPress={() => { onChange(option.value); setOpen(false); }} activeOpacity={0.78} style={{ minHeight: 50, flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: active ? COLORS.techLight : "transparent", marginBottom: 4 }}>
+                <Text style={{ flex: 1, color: active ? COLORS.tech : COLORS.textPrimary, fontWeight: active ? FONT.black : "500" }}>{option.label}</Text>
+                {active ? <Ionicons name="checkmark-circle-sharp" size={21} color={COLORS.tech} /> : null}
+              </TouchableOpacity>;
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -143,6 +134,9 @@ export default function AmpRegistrationScreen() {
   const serials = useMemo(() => taskSerials(task), [task]);
   const registrations = task?.ampRegistrations || {};
   const progress = task?.registrationProgress;
+  const placementSelection = PLACEMENT_OPTIONS.some((option) => option.value === form.placementArea)
+    ? form.placementArea
+    : "Other";
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -232,20 +226,21 @@ export default function AmpRegistrationScreen() {
           </Card>
         ) : null}
 
-        {serials.length > 0 ? <FormSection icon="qr-code-sharp" title="Choose assigned unit" subtitle="Select the serial label you are registering"><SerialPicker serials={serials} selected={selectedSerial} registrations={registrations} onChange={selectSerial} /></FormSection> : null}
+        {serials.length > 0 ? <FormSection icon="qr-code-sharp" title="Choose assigned unit" subtitle="Select the serial label you are registering"><DropdownField label="Assigned QR serial" value={selectedSerial} onChange={selectSerial} helperText={`${progress?.totalRegistered || 0} of ${progress?.totalRequired || serials.length} units registered`} options={serials.map((serial) => { const status = registrations?.[serial]?.status; return { value: serial, label: `${serial} — ${status === "registered" ? "Registered" : status === "defective_hold" ? "On hold" : "Registration required"}` }; })} /></FormSection> : null}
 
         {selectedSerial ? (
           <>
             <FormSection icon="calendar-sharp" title="Installation details" subtitle="Record only the details needed to set up AMP monitoring">
               <TextField label="Installation Date" value={form.installationDate} onChangeText={(value) => setField("installationDate", value)} placeholder="YYYY-MM-DD" />
-              <TextField label="Placement Area" value={form.placementArea} onChangeText={(value) => setField("placementArea", value)} placeholder="Living room, bedroom, office..." />
-              <TextField label="Daily Usage Hours" value={String(form.usageHoursPerDay)} onChangeText={(value) => setField("usageHoursPerDay", value)} keyboardType="decimal-pad" />
+              <DropdownField label="Placement area" value={placementSelection} onChange={(value) => setField("placementArea", value === "Other" ? "" : value)} options={PLACEMENT_OPTIONS} />
+              {placementSelection === "Other" ? <TextField label="Other placement area" value={form.placementArea} onChangeText={(value) => setField("placementArea", value)} placeholder="e.g. Meeting room, server room" /> : null}
+              <DropdownField label="Daily usage" value={String(form.usageHoursPerDay || "8")} onChange={(value) => setField("usageHoursPerDay", value)} options={USAGE_OPTIONS} />
             </FormSection>
             <FormSection icon="snow-sharp" title="Unit condition" subtitle="These checks define the initial AMP health record">
-              <OptionGroup label="Filter Condition" value={form.filterCondition} onChange={(value) => setField("filterCondition", value)} options={[{ value: "clean", label: "Clean" }, { value: "normal", label: "Normal" }, { value: "dusty", label: "Dusty" }, { value: "clogged", label: "Clogged" }]} />
-              <OptionGroup label="Coil Condition" value={form.coilCondition} onChange={(value) => setField("coilCondition", value)} options={[{ value: "clean", label: "Clean" }, { value: "normal", label: "Normal" }, { value: "dusty", label: "Dusty" }, { value: "iced", label: "Iced" }]} />
-              <OptionGroup label="Drainage" value={form.drainageCondition} onChange={(value) => setField("drainageCondition", value)} options={[{ value: "clear", label: "Clear" }, { value: "slow", label: "Slow" }, { value: "blocked", label: "Blocked" }]} />
-              <OptionGroup label="Overall Condition" value={form.conditionRating} onChange={(value) => setField("conditionRating", value)} options={[{ value: "excellent", label: "Excellent" }, { value: "good", label: "Good" }, { value: "fair", label: "Fair" }, { value: "poor", label: "Poor" }]} />
+              <DropdownField label="Filter Condition" value={form.filterCondition} onChange={(value) => setField("filterCondition", value)} options={[{ value: "clean", label: "Clean" }, { value: "normal", label: "Normal" }, { value: "dusty", label: "Dusty" }, { value: "clogged", label: "Clogged" }]} />
+              <DropdownField label="Coil Condition" value={form.coilCondition} onChange={(value) => setField("coilCondition", value)} options={[{ value: "clean", label: "Clean" }, { value: "normal", label: "Normal" }, { value: "dusty", label: "Dusty" }, { value: "iced", label: "Iced" }]} />
+              <DropdownField label="Drainage" value={form.drainageCondition} onChange={(value) => setField("drainageCondition", value)} options={[{ value: "clear", label: "Clear" }, { value: "slow", label: "Slow" }, { value: "blocked", label: "Blocked" }]} />
+              <DropdownField label="Overall Condition" value={form.conditionRating} onChange={(value) => setField("conditionRating", value)} options={[{ value: "excellent", label: "Excellent" }, { value: "good", label: "Good" }, { value: "fair", label: "Fair" }, { value: "poor", label: "Poor" }]} />
             </FormSection>
             <FormSection icon="document-text-sharp" title="Notes and exceptions" subtitle="Record important installation notes or place a defective unit on hold">
               <TextField label="Installation Notes (optional)" value={form.notes} onChangeText={(value) => setField("notes", value)} multiline placeholder="Anything that should be included in the installation proof" />

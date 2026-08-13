@@ -87,7 +87,7 @@ const AdminDashboard = () => {
           <KpiCard label="Paid revenue" value={formatCurrency(stats.totalSales)} detail="Collected from paid orders" tone="blue" />
           <KpiCard label="Paid orders" value={Number(stats.paidOrders || 0).toLocaleString()} detail={`${Number(stats.totalOrders || 0).toLocaleString()} active orders in pipeline`} tone="green" />
           <KpiCard label="Average order value" value={formatCurrency(stats.averageOrderValue)} detail="Paid revenue ÷ paid orders" tone="violet" />
-          <KpiCard label="Open work" value={Number(stats.pendingTasks || 0).toLocaleString()} detail={`${Number(stats.serviceRequests || 0).toLocaleString()} service requests logged`} tone="amber" />
+          <KpiCard label="Open work" value={Number(stats.pendingTasks || 0).toLocaleString()} detail="Work orders awaiting technician action" tone="amber" />
         </div>
 
         <div className="commerce-analytics-grid">
@@ -119,7 +119,6 @@ const AdminDashboard = () => {
             <button type="button" onClick={() => navigate("/admin/orders")}>Process orders</button>
             <button type="button" onClick={() => navigate("/admin/inventory")}>Review inventory</button>
             <button type="button" onClick={() => navigate("/admin/technicians")}>Manage technicians</button>
-            <button type="button" onClick={() => navigate("/admin/maintenance")}>Service requests</button>
           </div>
         </section>
       </div>

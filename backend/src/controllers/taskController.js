@@ -7,6 +7,7 @@ const Unit = require("../models/Unit");
 const ServiceRequest = require("../models/ServiceRequest");
 const { estimateNextServiceWindow } = require("../domain/ampServiceEstimator");
 const { BRANCH_PRIORITY } = require("../domain/branchRouting");
+const { getScheduledDateError } = require("../utils/scheduling");
 
 const branchScopeQuery = (req) => {
   if (req.authUser.role === "superadmin") return {};
@@ -599,6 +600,11 @@ const createTask = async (req, res) => {
     }
 
     const payload = req.body || {};
+    const scheduleError = getScheduledDateError(
+      payload.scheduledDate || payload.preferredDate,
+      "Scheduled date",
+    );
+    if (scheduleError) return res.status(400).json({ message: scheduleError });
     const nowIso = new Date().toISOString();
     const taskCode = String(payload.taskCode || `TSK-${Date.now()}`).trim();
     const title = String(payload.title || payload.issueType || "Service Task").trim();
@@ -656,6 +662,11 @@ const updateTask = async (req, res) => {
     }
 
     const payload = req.body || {};
+    const scheduleError = getScheduledDateError(
+      payload.scheduledDate || payload.preferredDate,
+      "Scheduled date",
+    );
+    if (scheduleError) return res.status(400).json({ message: scheduleError });
     const nextStatus = normalizeStatus(payload.status || task.status);
     const proof = buildTaskProof({ task, payload, req, nextStatus });
     const updatedPayload = {

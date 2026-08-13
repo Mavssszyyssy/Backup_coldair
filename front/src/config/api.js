@@ -1,11 +1,20 @@
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  process.env.REACT_APP_BACKEND_URL ||
-  "https://aeropulse-backend.vercel.app/api";
+const LIVE_API_BASE_URL = "https://aeropulse-backend.vercel.app/api";
+const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
 
-const API_FALLBACK_URL =
-  process.env.REACT_APP_API_FALLBACK_URL ||
-  "";
+// Keep old browser/Vercel environment settings from sending users to the
+// retired backend deployment, which no longer contains the application API.
+const replaceRetiredBackend = (value = "") =>
+  String(value).replace(RETIRED_BACKEND_HOST, "https://aeropulse-backend.vercel.app");
+
+const API_BASE_URL = replaceRetiredBackend(
+  process.env.REACT_APP_API_URL ||
+    process.env.REACT_APP_BACKEND_URL ||
+    LIVE_API_BASE_URL,
+);
+
+const API_FALLBACK_URL = replaceRetiredBackend(
+  process.env.REACT_APP_API_FALLBACK_URL || "",
+);
 
 if (
   typeof window !== "undefined" &&

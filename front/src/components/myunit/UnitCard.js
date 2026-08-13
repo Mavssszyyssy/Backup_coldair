@@ -11,7 +11,6 @@ function UnitCard({
   onViewHistory,
   onWarrantyStatus,
   onRegisterQr,
-  onReportIssue,
 }) {
   const getStatusClass = () => {
     switch (unit.status) {
@@ -92,15 +91,6 @@ function UnitCard({
           }}
         >
           Service History
-        </button>
-        <button
-          className="unit-btn report-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onReportIssue?.(unit);
-          }}
-        >
-          Report Issue
         </button>
       </div>
     </div>

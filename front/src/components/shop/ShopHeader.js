@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ShoppingCartSimple,
-  WarningDiamond,
 } from "@phosphor-icons/react";
 import {
   BQ_COLORS,
@@ -25,17 +24,6 @@ export default function ShopHeader({
           </button>
           <h1 className="bq-shop-title">Shop AC Units</h1>
         </div>
-
-        {!isAuthenticated && (
-          <div className="bq-header-center">
-            <div className="bq-warning-pill">
-              <WarningDiamond size={18} weight="bold" />
-              <span>
-                Browsing as Guest. <strong>Log in to checkout.</strong>
-              </span>
-            </div>
-          </div>
-        )}
 
         <div className="bq-header-right">
           <button

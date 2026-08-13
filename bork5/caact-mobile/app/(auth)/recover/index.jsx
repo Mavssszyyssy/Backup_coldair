@@ -1,5 +1,5 @@
 // app/(auth)/recover/index.jsx
-// Entry point for password recovery - prompts email to receive reset code
+// Email recovery begins here and is available to every account role.
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
@@ -32,9 +32,10 @@ export default function RecoverScreen() {
       return;
     }
 
-    // Navigate to factor selection with email
+    // The backend sends the reset OTP through the configured Infobip email
+    // channel.  Go directly to the working code-and-password step.
     router.push({
-      pathname: "/recover/factor",
+      pathname: "/recover/factor/1",
       params: { email: normalizeEmail(email) },
     });
   };
@@ -51,7 +52,7 @@ export default function RecoverScreen() {
       >
         <PageHeader
           title="Recover Account"
-          subtitle="Enter your email to get started"
+          subtitle="Use your registered email to receive an Infobip verification code"
           color={COLORS.primary}
           onBack={() => router.push("/sign-in")}
         />

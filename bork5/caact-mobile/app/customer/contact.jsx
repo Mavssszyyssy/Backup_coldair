@@ -50,7 +50,7 @@ export default function CustomerContactScreen() {
         <ContactRow label="Sales Email" value={COMPANY_CONTACT.salesEmail} href={`mailto:${COMPANY_CONTACT.salesEmail}`} />
         <ContactRow label="Hotline" value={COMPANY_CONTACT.hotline} href={`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`} />
         <ContactRow label="Landline" value={COMPANY_CONTACT.landline} />
-        <ContactRow label="Messenger" value={COMPANY_CONTACT.messengerHandle} href={COMPANY_CONTACT.facebookPage} />
+        <ContactRow label="Messenger" value={COMPANY_CONTACT.messengerHandle} href={`https://${COMPANY_CONTACT.messengerHandle}`} />
         <Button
           title="Open Website"
           variant="secondary"

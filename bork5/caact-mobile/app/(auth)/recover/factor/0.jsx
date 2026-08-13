@@ -25,13 +25,13 @@ export default function RecoverAliasScreen() {
   const handleRecover = async () => {
     setLoading(true);
     try {
-      const result = await forgotPassword(email, "alias");
+      const result = await forgotPassword(email, "email");
       if (result.success) {
         setSent(true);
       } else {
         Alert.alert(
-          "Not Found",
-          result.error || "No account found with this email address.",
+          "Recovery unavailable",
+          result.error || "Unable to send a verification code to this email address.",
         );
       }
     } catch {
@@ -52,8 +52,8 @@ export default function RecoverAliasScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <PageHeader
-          title="Recover Alias"
-          subtitle="Find your sign-in alias"
+          title="Recover Account"
+          subtitle="Receive an email verification code to reset your password"
           color={COLORS.primary}
           onBack={() => router.back()}
         />
@@ -83,21 +83,29 @@ export default function RecoverAliasScreen() {
                 marginBottom: SPACING.xs,
               }}
             >
-              Email Sent
+              Verification Code Sent
             </Text>
             <Text style={{ color: COLORS.success }}>
-              Your sign-in alias has been sent to {email}. Check your inbox.
+              If the account matches, a verification code was sent to {email}.
             </Text>
           </Card>
         ) : (
           <Button
-            title={loading ? "Sending..." : "Send Alias to Email"}
+            title={loading ? "Sending..." : "Send Verification Code"}
             onPress={handleRecover}
             variant="primary"
             loading={loading}
             disabled={loading}
           />
         )}
+
+        {sent ? (
+          <Button
+            title="Continue to Reset Password"
+            onPress={() => router.replace({ pathname: "/recover/factor/1", params: { email } })}
+            variant="primary"
+          />
+        ) : null}
 
         <TouchableOpacity
           onPress={() => router.push("/sign-in")}

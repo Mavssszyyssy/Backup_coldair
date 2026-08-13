@@ -123,7 +123,7 @@ function SuperAdminDashboard() {
               <button type="button" onClick={() => navigate("/superadmin/sales")}>Sales operations</button>
               <button type="button" onClick={() => navigate("/superadmin/branches")}>Branch management</button>
               <button type="button" onClick={() => navigate("/superadmin/inventory")}>Inventory risk</button>
-              <button type="button" onClick={() => navigate("/superadmin/alerts")}>Customer alerts</button>
+              <button type="button" onClick={() => navigate("/superadmin/alerts")}>Customer support alerts</button>
             </div>
             <button className="super-profile-button" type="button" onClick={openEdit}>Edit executive profile</button>
           </section>

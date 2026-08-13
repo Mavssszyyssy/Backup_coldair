@@ -19,6 +19,7 @@ const {
   getCheckoutSession,
   isConfigured: isPaymongoConfigured,
 } = require("../services/paymongoClient");
+const { getScheduledDateError } = require("../utils/scheduling");
 
 const workflowLabel = (status) => {
   switch (status) {
@@ -1167,6 +1168,8 @@ const createStaffOrderNotification = async ({ order, title, message }) => {
         type: "order",
         title,
         message,
+        targetId: String(order._id || order.id || ""),
+        route: "/superadmin/orders",
       }));
     if (notifications.length > 0) await Notification.insertMany(notifications);
   } catch (error) {
@@ -1212,6 +1215,8 @@ const notifyBranchAdminsForOrder = async (order) => {
         type: "order",
         title: "New customer order",
         message: `Order ${order.orderCode} from ${order.customerName || "a customer"} is waiting in Admin Orders.`,
+        targetId: String(order._id || order.id || ""),
+        route: "/superadmin/orders",
         unread: true,
         status: "unread",
       }));
@@ -2037,6 +2042,13 @@ const getOrderForAdminAction = async (req, orderId) => {
 };
 
 const applyOrderLifecycleAction = async (order, action, options = {}) => {
+  if (["approve", "dispatch"].includes(action)) {
+    const deliveryDateError = getScheduledDateError(options.estimatedArrival, "Delivery date");
+    const installationDateError = getScheduledDateError(options.installationDate, "Installation date");
+    if (deliveryDateError || installationDateError) {
+      throw new HttpError(400, deliveryDateError || installationDateError);
+    }
+  }
   const config = lifecycleActions[action];
   if (!config) {
     throw new HttpError(400, "Invalid action.");
@@ -2339,6 +2351,13 @@ const recoverOrder = async (req, res) => {
 
   const action = String(req.body?.action || "").trim().toLowerCase();
   const form = req.body || {};
+  if (["assign_technician", "recreate_task"].includes(action)) {
+    const deliveryDateError = getScheduledDateError(form.estimatedArrival, "Delivery date");
+    const installationDateError = getScheduledDateError(form.installationDate, "Installation date");
+    if (deliveryDateError || installationDateError) {
+      return res.status(400).json({ message: deliveryDateError || installationDateError });
+    }
+  }
 
   if (action === "recreate_task") {
     const technician = await resolveTechnicianAssignment({
