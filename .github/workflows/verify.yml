@@ -31,5 +31,8 @@ jobs:
         run: CI=false npm run build
         working-directory: front
       - name: Load backend modules
-        run: node -e "require('./src/app')"
+        # The app configures a Mongo-backed session store during import. That
+        # store keeps a connection handle open, so explicitly finish after the
+        # synchronous module-load check succeeds instead of leaving CI running.
+        run: node -e "require('./src/app'); console.log('Backend modules loaded successfully.'); process.exit(0)"
         working-directory: backend
