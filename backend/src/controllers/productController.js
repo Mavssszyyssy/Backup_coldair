@@ -601,19 +601,39 @@ const getDesiredSerialBranches = (product, targetCount) => {
   return Array.from({ length: targetCount }, () => "");
 };
 
-const generateUniqueSerialNumber = async (product, seen) => {
-  for (let attempt = 0; attempt < 25; attempt += 1) {
-    const serialNumber = buildSerialNumber(product);
-    if (seen.has(serialNumber)) continue;
-    const exists = await Product.exists({
-      "serialUnits.serialNumber": serialNumber,
+const generateUniqueSerialNumbers = async (product, seen, count) => {
+  const required = Math.max(0, Number(count) || 0);
+  if (required === 0) return [];
+
+  const generated = [];
+  // A serial includes a millisecond timestamp plus a random token. Generate a
+  // small surplus, then confirm all candidates in one database query instead
+  // of making one remote lookup for every received unit.
+  for (let attempt = 0; attempt < 4 && generated.length < required; attempt += 1) {
+    const candidates = new Set();
+    const needed = Math.max(8, (required - generated.length) * 2);
+    while (candidates.size < needed) {
+      const serialNumber = buildSerialNumber(product);
+      if (!seen.has(serialNumber)) candidates.add(serialNumber);
+    }
+
+    const existing = await Product.distinct("serialUnits.serialNumber", {
+      "serialUnits.serialNumber": { $in: Array.from(candidates) },
     });
-    if (!exists) {
+    const existingSet = new Set(existing.map((serial) => String(serial)));
+
+    for (const serialNumber of candidates) {
+      if (existingSet.has(serialNumber) || seen.has(serialNumber)) continue;
       seen.add(serialNumber);
-      return serialNumber;
+      generated.push(serialNumber);
+      if (generated.length === required) break;
     }
   }
-  throw new Error("Unable to generate a unique serial number");
+
+  if (generated.length !== required) {
+    throw new Error("Unable to generate unique serial numbers");
+  }
+  return generated;
 };
 
 const ensureProductSerialUnits = async (product, targetCount = null) => {
@@ -638,6 +658,10 @@ const ensureProductSerialUnits = async (product, targetCount = null) => {
   let blankCount = 0;
   const seen = new Set();
   let changed = false;
+  const countsNeeded = desiredBranches.reduce((acc, branch) => {
+    acc[branch] = (acc[branch] || 0) + 1;
+    return acc;
+  }, {});
 
   product.serialUnits.forEach((unit, index) => {
     if (!unit.serialNumber) return;
@@ -658,10 +682,6 @@ const ensureProductSerialUnits = async (product, targetCount = null) => {
   });
 
   const getNextBranch = () => {
-    const countsNeeded = BRANCHES.reduce((acc, branch) => {
-      acc[branch] = desiredBranches.filter((item) => item === branch).length;
-      return acc;
-    }, {});
     const branch = BRANCHES.find(
       (name) => (branchCounts[name] || 0) < (countsNeeded[name] || 0),
     );
@@ -673,8 +693,9 @@ const ensureProductSerialUnits = async (product, targetCount = null) => {
     return desiredBranches[blankCount - 1] || "";
   };
 
-  while (product.serialUnits.length < desiredCount) {
-    const serialNumber = await generateUniqueSerialNumber(product, seen);
+  const missingCount = Math.max(0, desiredCount - product.serialUnits.length);
+  const serialNumbers = await generateUniqueSerialNumbers(product, seen, missingCount);
+  serialNumbers.forEach((serialNumber) => {
     product.serialUnits.push({
       serialNumber,
       qrCode: buildSerialQrCode(product, serialNumber),
@@ -682,7 +703,7 @@ const ensureProductSerialUnits = async (product, targetCount = null) => {
       status: "available",
     });
     changed = true;
-  }
+  });
 
   if (changed) {
     await product.save();
