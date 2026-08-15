@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, EnvelopeSimple, ShieldCheck, Spinner } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -28,7 +28,7 @@ export default function RegisterEmailStep({ formData, errors: externalErrors, on
     finally { setLoading(false); }
   };
 
-  const verifyCode = async () => {
+  const verifyCode = useCallback(async () => {
     if (!/^\d{6}$/.test(otpCode)) { setOtpError("Enter the 6-digit email code."); return; }
     setLoading(true); setOtpError("");
     try {
@@ -36,9 +36,9 @@ export default function RegisterEmailStep({ formData, errors: externalErrors, on
       onFieldChange("emailVerified", true); setOtpSent(false); setOtpCode("");
     } catch (error) { setOtpError(error?.message || "The code is invalid or has expired."); setOtpCode(""); }
     finally { setLoading(false); }
-  };
+  }, [formData.email, onFieldChange, otpCode]);
 
-  useEffect(() => { if (otpCode.length === 6 && otpSent && !loading && !isVerified) verifyCode(); }, [otpCode, otpSent, loading, isVerified]);
+  useEffect(() => { if (otpCode.length === 6 && otpSent && !loading && !isVerified) verifyCode(); }, [otpCode, otpSent, loading, isVerified, verifyCode]);
 
   const changeEmail = () => { setOtpSent(false); setOtpCode(""); setOtpError(""); onFieldChange("emailVerified", false); };
 

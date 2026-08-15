@@ -1,11 +1,33 @@
 import { ArrowRight, X } from "@phosphor-icons/react";
-import { useMemo } from "react";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+
+const CONSENTS = [
+  {
+    id: "agreeTermsWarranty",
+    link: "/terms",
+    linkText: "warranty terms and conditions",
+  },
+  {
+    id: "agreeTermsService",
+    link: "/terms",
+    linkText: "service terms and conditions",
+  },
+  {
+    id: "agreeTermsApp",
+    link: "/terms",
+    linkText: "app terms and conditions",
+  },
+  {
+    id: "agreePrivacyRa10173",
+    link: "/privacy",
+    linkText: "data privacy disclosure (RA 10173)",
+  },
+];
 
 export default function RegisterLegalConsentsStep({
   formData,
@@ -14,32 +36,7 @@ export default function RegisterLegalConsentsStep({
   onNext,
   onBack,
 }) {
-  const consents = [
-    {
-      id: "agreeTermsWarranty",
-      link: "/terms",
-      linkText: "warranty terms and conditions",
-    },
-    {
-      id: "agreeTermsService",
-      link: "/terms",
-      linkText: "service terms and conditions",
-    },
-    {
-      id: "agreeTermsApp",
-      link: "/terms",
-      linkText: "app terms and conditions",
-    },
-    {
-      id: "agreePrivacyRa10173",
-      link: "/privacy",
-      linkText: "data privacy disclosure (RA 10173)",
-    },
-  ];
-
-  const allChecked = useMemo(() => {
-    return consents.every((c) => !!formData[c.id]);
-  }, [formData]);
+  const allChecked = CONSENTS.every((consent) => !!formData[consent.id]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -70,7 +67,7 @@ export default function RegisterLegalConsentsStep({
       </BoutiqueBox>
 
       <BoutiqueStack gap={20} className="bq-reg-consent-list">
-        {consents.map((c) => (
+        {CONSENTS.map((c) => (
           <BoutiqueCheckbox
             key={c.id}
             checked={!!formData[c.id]}

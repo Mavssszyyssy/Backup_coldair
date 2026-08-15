@@ -43,7 +43,6 @@ const SETTINGS_TABS = [
 function Settings() {
   const {
     user,
-    currentTheme,
     updateProfile,
     updatePreferences,
     updatePrivacy,

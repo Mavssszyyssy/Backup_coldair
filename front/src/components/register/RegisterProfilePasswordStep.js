@@ -9,7 +9,7 @@ import {
   WarningDiamond,
   X,
 } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import zxcvbn from "zxcvbn";
 import { apiRequest } from "../../config/api";
 import { BRANCHES } from "../../domain/branches/branches";
@@ -67,7 +67,7 @@ export default function RegisterProfilePasswordStep({
    * INITIATE CHECK ON BLUR
    * Only triggers when user leaves the field.
    */
-  const handleAliasBlur = async () => {
+  const handleAliasBlur = useCallback(async () => {
     const aliasToCheck = formData.alias || aliasPlaceholder;
     if (!aliasToCheck || aliasToCheck.length < 2) {
       setAliasStatus(null);
@@ -83,7 +83,7 @@ export default function RegisterProfilePasswordStep({
     } catch (err) {
       setAliasStatus(null);
     }
-  };
+  }, [aliasPlaceholder, formData.alias]);
 
   /**
    * RESET STATUS ON CHANGE
@@ -104,7 +104,7 @@ export default function RegisterProfilePasswordStep({
   // Perform initial check on mount for the auto-generated alias
   useEffect(() => {
     handleAliasBlur();
-  }, []);
+  }, [handleAliasBlur]);
 
   const passwordStrength = useMemo(() => {
     if (!formData.password)
