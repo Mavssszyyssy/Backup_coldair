@@ -28,6 +28,7 @@ import {
   filterAndSortProducts,
   formatPeso,
   mergeProducts,
+  resolveInventoryBranch,
 } from "../../services/ecommerceService";
 
 const SORT_OPTIONS = [
@@ -115,7 +116,7 @@ function ProductCard({ product, onPress, onAddToCart, onBuyNow }) {
             {formatPeso(product.price)}
           </BoutiqueText>
           <BoutiqueChip
-            label={product.stock > 0 ? `${product.stock} units` : "Out"}
+            label={product.stock > 0 ? (product.stockLabel || `${product.stock} units`) : "Out"}
             variant={product.stock > 0 ? "success" : "danger"}
           />
         </View>
@@ -261,7 +262,7 @@ function ProductModal({ product, visible, onClose, onAddToCart, onBuyNow }) {
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BQ_SPACING.sm }}>
               {product.specs ? <BoutiqueChip label={product.specs} variant="blue" /> : null}
               <BoutiqueChip label={product.category} variant="neutral" />
-              <BoutiqueChip label={product.stock > 0 ? `${product.stock} units` : "Out of stock"} variant={product.stock > 0 ? "success" : "danger"} />
+              <BoutiqueChip label={product.stock > 0 ? (product.stockLabel || `${product.stock} units`) : "Out of stock"} variant={product.stock > 0 ? "success" : "danger"} />
             </View>
             <BoutiqueText color={BQ_COLORS.inkMuted}>{product.description}</BoutiqueText>
             <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
@@ -298,7 +299,7 @@ export default function CustomerShopScreen() {
       let active = true;
       const loadCatalogue = () => {
         setLoading(true);
-        fetchShopProducts()
+        fetchShopProducts(resolveInventoryBranch(current))
           .then((products) => {
             if (active) setBackendProducts(products);
           })
@@ -316,7 +317,7 @@ export default function CustomerShopScreen() {
         active = false;
         clearInterval(pollId);
       };
-    }, []),
+    }, [current]),
   );
 
   const products = useMemo(() => mergeProducts(fallbackProducts, backendProducts), [backendProducts]);

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
+import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
 import { deduplicateProducts } from "../../utils/productDeduplication";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
@@ -391,6 +392,17 @@ export const fallbackProducts = [
   },
 ];
 
+const getCustomerDeliveryAddress = (user = {}) => {
+  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
+  return (
+    addresses.find((address) => address?.isDefault) ||
+    addresses[0] ||
+    user?.billingAddress ||
+    user?.location?.address ||
+    null
+  );
+};
+
 const getModelImageUrl = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
   if (sku.startsWith("AHAC-MINV")) {
@@ -434,6 +446,11 @@ const Shop = () => {
     getCartTotal,
   } = useCart();
   const { user, isAuthenticated, logout } = useUser();
+  const inventoryBranch = useMemo(() => {
+    if (!isAuthenticated) return "";
+    const deliveryAddress = getCustomerDeliveryAddress(user);
+    return deliveryAddress ? resolvePreferredBranch(deliveryAddress) : "";
+  }, [isAuthenticated, user]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -494,7 +511,10 @@ const Shop = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await apiRequest("/products/public");
+      const query = inventoryBranch
+        ? `?branch=${encodeURIComponent(inventoryBranch)}`
+        : "";
+      const response = await apiRequest(`/products/public${query}`);
       const mapped = (response.products || []).map((product) => {
           // Strip redundant "AC" from name and description
           const cleanName = (product.name || "")
@@ -518,6 +538,10 @@ const Shop = () => {
             description: cleanDesc,
             inStock: Number(product.stock) > 0,
             stock: Number(product.stock) || 0,
+            stockLabel:
+              product.stockScope === "branch"
+                ? `${Number(product.stock) || 0} Units · ${product.inventoryBranch}`
+                : `${Number(product.totalStock ?? product.stock) || 0} Units across branches`,
             model: product.sku || "",
             warranty: product.warranty || "1 year parts, 5 years compressor",
             imageUrl: product.image || `${API_BASE_URL}/products/${product.id}/image`,
@@ -531,7 +555,7 @@ const Shop = () => {
       // static demo items with incorrect inventory.
       console.error("Failed to fetch products:", error);
     }
-  }, []);
+  }, [inventoryBranch]);
 
   useEffect(() => {
     fetchProducts();

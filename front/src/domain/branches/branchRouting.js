@@ -57,6 +57,19 @@ const getAddressLookupKeys = (address = {}) => [
 export const resolvePreferredBranch = (address = {}) => {
   const lookupKeys = getAddressLookupKeys(address);
 
+  // Keep the customer-facing catalogue on the exact same branch-routing
+  // rules as the order service. This prevents a product card from showing a
+  // quantity for one branch while checkout reserves another.
+  if (lookupKeys.some((key) => ["manila", "quezon city"].includes(key))) {
+    return "Bulacan";
+  }
+  if (lookupKeys.some((key) => ["laguna", "cavite", "batangas"].includes(key))) {
+    return "Laguna";
+  }
+  if (lookupKeys.some((key) => ["pangasinan", "tarlac"].includes(key))) {
+    return "Pangasinan";
+  }
+
   for (const key of lookupKeys) {
     const exactCityBranch = CITY_TO_BRANCH[key];
     if (exactCityBranch) return exactCityBranch;

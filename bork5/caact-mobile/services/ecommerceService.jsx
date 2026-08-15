@@ -27,6 +27,10 @@ const normalizeProduct = (product = {}) => ({
   price: Number(product.price || product.salePrice || 0),
   stock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0),
   inStock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0) > 0,
+  stockLabel:
+    product.stockScope === "branch"
+      ? `${Number(product.stock || 0)} units · ${product.inventoryBranch}`
+      : `${Number(product.totalStock ?? product.stock ?? 0)} units across branches`,
   description: product.description || "",
   warranty: product.warranty || "Standard warranty",
   imageUrl: product.imageUrl || product.image || getProductImageUrl(product),
@@ -45,11 +49,35 @@ export const mergeProducts = (fallback, backend) => {
   (backend || []).forEach((product) => merged.set(String(product.id), product));
   return Array.from(merged.values());
 };
-export async function fetchShopProducts() {
+export const resolveInventoryBranch = (user = {}) => {
+  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
+  const address =
+    addresses.find((item) => item?.isDefault) ||
+    addresses[0] ||
+    user?.billingAddress ||
+    user?.billing_address ||
+    user?.location?.address ||
+    {};
+  const keys = [address.city, address.province, address.region, address.barangay, address.street]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  if (keys.some((value) => ["manila", "quezon city"].includes(value))) return "Bulacan";
+  if (keys.some((value) => ["laguna", "cavite", "batangas"].includes(value))) return "Laguna";
+  if (keys.some((value) => ["pangasinan", "tarlac"].includes(value))) return "Pangasinan";
+  if (keys.some((value) => value.includes("bataan"))) return "Bataan";
+  if (keys.some((value) => value.includes("pangasinan"))) return "Pangasinan";
+  if (keys.some((value) => value.includes("ilocos") || value.includes("la union"))) return "Ilocos";
+  if (keys.some((value) => value.includes("bulacan") || value.includes("plaridel") || value.includes("malolos"))) return "Bulacan";
+  return "";
+};
+
+export async function fetchShopProducts(branch = "") {
   // The public catalogue is intentionally used here. The previous protected
   // endpoint was called without an auth header and made the app silently show
   // only its old test fallback products.
-  const response = await apiFetch("/products/public");
+  const query = branch ? `?branch=${encodeURIComponent(branch)}` : "";
+  const response = await apiFetch(`/products/public${query}`);
   if (!response.ok) throw new Error("Unable to load products.");
   const body = await response.json();
   return (body.products || body.data || []).map(normalizeProduct).filter((product) => product.id);

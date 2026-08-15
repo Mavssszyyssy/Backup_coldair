@@ -184,7 +184,7 @@ export default function ProductCard({
                 variant={product.stock > 0 ? "success" : "danger"}
                 size="sm"
               >
-                {product.stock > 0 ? `${product.stock} Units` : "Out of Stock"}
+                {product.stock > 0 ? (product.stockLabel || `${product.stock} Units`) : "Out of Stock"}
               </BoutiqueTechnicalCard>
             </BoutiqueBox>
 

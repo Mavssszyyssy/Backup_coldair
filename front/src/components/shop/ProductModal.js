@@ -157,7 +157,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
                     >
                       {isOutOfStock
                         ? "Temporarily Unavailable"
-                        : `${availableStock} units available`}
+                        : (product.stockLabel || `${availableStock} units available`)}
                     </BoutiqueTechnicalCard>
                   </div>
                   <BoutiqueNumberInput

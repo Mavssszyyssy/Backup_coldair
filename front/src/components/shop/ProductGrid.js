@@ -106,7 +106,7 @@ function ProductGrid({ products, onAddToCart, onBuyNow, onProductClick }) {
 
             {typeof product.stock === "number" && product.stock > 0 && (
               <div className="product-stock-status">
-                {product.stock} units available
+                {product.stockLabel || `${product.stock} units available`}
               </div>
             )}
 
