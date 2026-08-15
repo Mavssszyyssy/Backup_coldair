@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import InventoryList from './InventoryList';
 import { apiRequest } from '../../../config/api';
@@ -27,7 +27,7 @@ const AdminInventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -38,9 +38,9 @@ const AdminInventory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [branch]);
 
-  useEffect(() => { load(); }, [branch]);
+  useEffect(() => { load(); }, [load]);
 
   const zeroStockCount = useMemo(
     () => products.filter((product) => getBranchStock(product, branch) === 0).length,

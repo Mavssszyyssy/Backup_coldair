@@ -7,21 +7,6 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import BoutiqueVerifyInput from "../common/boutique/BoutiqueVerifyInput";
 
-/**
- * Heuristic for Messenger handles: Alphanumeric and dots, min 3 chars.
- */
-const validateMessengerHeuristic = (val) => {
-  if (!val) return { valid: true }; // Optional field
-  if (val.length < 3)
-    return { valid: false, reason: "Minimum 3 characters required" };
-  if (!/^[a-zA-Z0-9.]+$/.test(val))
-    return {
-      valid: false,
-      reason: "Invalid format (use alphanumeric and dots only)",
-    };
-  return { valid: true };
-};
-
 export default function RegisterContactStep({
   formData,
   onFieldChange,
@@ -66,19 +51,6 @@ export default function RegisterContactStep({
           validator={validatePhMobileHeuristic}
         />
 
-        {/* MESSENGER VERIFICATION - OPTIONAL */}
-        {/* <BoutiqueVerifyInput
-          label="FB Messenger Handle (Optional)"
-          icon={MessengerLogo}
-          placeholder="username"
-          value={formData.messengerHandle}
-          onValueChange={(val) => onFieldChange("messengerHandle", val.trim())}
-          verified={formData.messengerVerified}
-          onVerifiedChange={(val) => onFieldChange("messengerVerified", val)}
-          action="register_messenger"
-          channel="messenger"
-          validator={validateMessengerHeuristic}
-        />*/}
       </BoutiqueStack>
 
       <BoutiqueBox

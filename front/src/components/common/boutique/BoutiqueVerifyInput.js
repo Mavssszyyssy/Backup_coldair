@@ -1,5 +1,5 @@
 import { ShieldCheck, Spinner } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useVerification } from "../../../hooks/useVerification";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueInput from "./BoutiqueInput";
@@ -25,7 +25,7 @@ export default function BoutiqueVerifyInput({
   validator, // Custom heuristic validator
   ...props
 }) {
-  const { requestOtp, verifyOtp, loading, error, canResend, timeLeft } =
+  const { requestOtp, verifyOtp, loading, error, timeLeft } =
     useVerification({
       recipient: value,
       channel,
@@ -35,13 +35,6 @@ export default function BoutiqueVerifyInput({
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
-
-  // Auto-verify on 6th digit
-  useEffect(() => {
-    if (otpCode.length === 6 && otpSent && !loading && !verified) {
-      handlePerformVerify();
-    }
-  }, [otpCode]);
 
   const heuristic = useMemo(() => {
     if (!value) return { status: null };
@@ -67,7 +60,7 @@ export default function BoutiqueVerifyInput({
     setOtpSent(true);
   };
 
-  const handlePerformVerify = async () => {
+  const handlePerformVerify = useCallback(async () => {
     setOtpError("");
     const result = await verifyOtp(otpCode);
     if (result.success) {
@@ -78,7 +71,14 @@ export default function BoutiqueVerifyInput({
       setOtpError(result.error);
       setOtpCode("");
     }
-  };
+  }, [onVerifiedChange, otpCode, verifyOtp]);
+
+  // Auto-verify on 6th digit.
+  useEffect(() => {
+    if (otpCode.length === 6 && otpSent && !loading && !verified) {
+      handlePerformVerify();
+    }
+  }, [handlePerformVerify, loading, otpCode, otpSent, verified]);
 
   return (
     <BoutiqueStack gap={16} className="bq-verify-input bq-fade-in">

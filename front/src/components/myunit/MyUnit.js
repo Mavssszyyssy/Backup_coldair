@@ -19,8 +19,6 @@ import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
 
 const buildUnitFromBackend = (unit = {}) => ({
   id: unit.id || unit.serialNumber || `unit-${Date.now()}`,
@@ -188,10 +186,6 @@ function MyUnit() {
     alert(
       `Unit registered. AMPERE next service: ${newUnit.ampereNextServiceLabel || "—"}`,
     );
-  };
-
-  const handleBack = () => {
-    navigate("/home");
   };
 
   return (

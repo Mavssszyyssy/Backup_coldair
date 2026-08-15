@@ -76,7 +76,6 @@ function Checkout() {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const [addressBusy, setAddressBusy] = useState(false);
-  const [addressLoadFailed, setAddressLoadFailed] = useState(false);
   const [addressNotice, setAddressNotice] = useState("");
   const [discountAmount] = useState(0);
   const [stockIssues, setStockIssues] = useState([]);
@@ -99,7 +98,7 @@ function Checkout() {
       serviceAreaId,
       discountAmount,
     });
-  }, [cart, getCartTotal, serviceAreaId, discountAmount]);
+  }, [getCartTotal, serviceAreaId, discountAmount]);
 
   const syncAddresses = useCallback(
     (nextAddresses, currentId = "") => {
@@ -119,10 +118,8 @@ function Checkout() {
   const loadAddresses = useCallback(async () => {
     try {
       const response = await apiRequest("/users/addresses");
-      setAddressLoadFailed(false);
       return syncAddresses(response.addresses || []);
     } catch (_error) {
-      setAddressLoadFailed(true);
       return syncAddresses([]);
     }
   }, [syncAddresses]);
