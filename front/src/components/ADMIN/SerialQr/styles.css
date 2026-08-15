@@ -153,6 +153,14 @@
   line-height: 1.25;
 }
 
+.serialqr-card-body small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .serialqr-card-body code {
   display: block;
   color: #0f172a;
@@ -168,6 +176,59 @@
   font-size: 12px;
   font-weight: 700;
   text-transform: capitalize;
+}
+
+.serialqr-edit,
+.serialqr-editor button {
+  width: fit-content;
+  min-height: 32px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 9px;
+}
+
+.serialqr-editor {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.serialqr-editor label {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.serialqr-editor input {
+  min-width: 0;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 7px 8px;
+  text-transform: uppercase;
+}
+
+.serialqr-editor > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.serialqr-editor button:first-child {
+  background: #2563eb;
+  color: #fff;
+}
+
+.serialqr-editor .serialqr-cancel {
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 @media (max-width: 760px) {

@@ -2,13 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import AdminLayout from "../Common/AdminLayout";
 import { apiRequest } from "../../../config/api";
+import { useUser } from "../../../context/UserContext";
 import "../adminShared.css";
 import "./styles.css";
 
-const getUnitLabel = (product, unit, index) =>
-  `${product.sku || "AC"}-${String(index + 1).padStart(3, "0")} ${
-    unit.branch ? `(${unit.branch})` : ""
-  }`.trim();
+const getUnitLabel = (product) =>
+  [product.name || "AC unit", product.specs].filter(Boolean).join(" · ");
+
+const getSerialLabel = (unit) =>
+  unit.serialKind === "manufacturer"
+    ? "Manufacturer serial number"
+    : "Temporary inventory serial";
 
 const getTechnicianQrValue = (unit) => {
   const serial = encodeURIComponent(unit.serialNumber || "");
@@ -17,11 +21,16 @@ const getTechnicianQrValue = (unit) => {
 };
 
 const AdminSerialQr = () => {
+  const { user } = useUser();
+  const canManageSerials = user?.role === "superadmin";
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [editingSerial, setEditingSerial] = useState(null);
+  const [serialDraft, setSerialDraft] = useState("");
+  const [savingSerial, setSavingSerial] = useState(false);
   const pageSize = 10;
 
   const load = async () => {
@@ -81,10 +90,39 @@ const AdminSerialQr = () => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  const startSerialEdit = (product, unit) => {
+    setEditingSerial({ productId: product.id, currentSerial: unit.serialNumber });
+    setSerialDraft(unit.serialNumber || "");
+    setError("");
+  };
+
+  const cancelSerialEdit = () => {
+    setEditingSerial(null);
+    setSerialDraft("");
+  };
+
+  const saveManufacturerSerial = async () => {
+    if (!editingSerial) return;
+    setSavingSerial(true);
+    setError("");
+    try {
+      await apiRequest(
+        `/products/${editingSerial.productId}/serial-units/${encodeURIComponent(editingSerial.currentSerial)}`,
+        { method: "PATCH", body: JSON.stringify({ serialNumber: serialDraft }) },
+      );
+      cancelSerialEdit();
+      await load();
+    } catch (err) {
+      setError(err.message || "Unable to update the manufacturer serial number.");
+    } finally {
+      setSavingSerial(false);
+    }
+  };
+
   return (
     <AdminLayout
       title="Serial Numbers and QR Codes"
-      subtitle="Each available unit has its own unique QR code for technician installation and registration."
+      subtitle="Every QR identifies one AC unit. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment."
     >
       <div className="serialqr-toolbar admin-card">
         <div>
@@ -146,12 +184,42 @@ const AdminSerialQr = () => {
                         />
                       </div>
                       <div className="serialqr-card-body">
-                        <strong>{getUnitLabel(product, unit, index)}</strong>
-                        <code>{unit.serialNumber}</code>
+                        <strong>{getUnitLabel(product)}</strong>
+                        <small>{getSerialLabel(unit)}</small>
+                        <code title={unit.serialNumber}>{unit.serialNumber}</code>
                         <span>
                           {unit.status || "available"}
                           {unit.branch ? ` · ${unit.branch}` : ""}
                         </span>
+                        {canManageSerials && (unit.status || "available") === "available" ? (
+                          editingSerial?.productId === product.id &&
+                          editingSerial?.currentSerial === unit.serialNumber ? (
+                            <div className="serialqr-editor">
+                              <label htmlFor={`manufacturer-serial-${product.id}-${index}`}>
+                                Real manufacturer serial
+                              </label>
+                              <input
+                                id={`manufacturer-serial-${product.id}-${index}`}
+                                value={serialDraft}
+                                onChange={(event) => setSerialDraft(event.target.value.toUpperCase())}
+                                placeholder="Example: LG24PH-00123456"
+                                autoCapitalize="characters"
+                              />
+                              <div>
+                                <button type="button" onClick={saveManufacturerSerial} disabled={savingSerial || !serialDraft.trim()}>
+                                  {savingSerial ? "Saving..." : "Save real serial"}
+                                </button>
+                                <button type="button" className="serialqr-cancel" onClick={cancelSerialEdit} disabled={savingSerial}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button" className="serialqr-edit" onClick={() => startSerialEdit(product, unit)}>
+                              Set real serial
+                            </button>
+                          )
+                        ) : null}
                       </div>
                     </article>
                   ))}
