@@ -148,18 +148,6 @@ export function normalizeOrder(order = {}) {
   };
 }
 
-function mergeOrders(primary = [], secondary = []) {
-  const byId = new Map();
-  [...secondary, ...primary].forEach((order) => {
-    const normalized = normalizeOrder(order);
-    byId.set(String(normalized.id), normalized);
-  });
-  return Array.from(byId.values()).sort(
-    (a, b) =>
-      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt),
-  );
-}
-
 async function fetchBackendOrders() {
   const token = await getStoredToken();
   if (!token) return [];
@@ -180,9 +168,11 @@ export async function getAllOrders({ sync = true } = {}) {
 
   try {
     const backendOrders = await fetchBackendOrders();
-    const merged = mergeOrders(backendOrders, localOrders);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    return merged;
+    // The backend is the transaction source of truth. Merging device-only
+    // entries here made old orders appear on the wrong device or remain after
+    // a server-side cancellation. Cache the latest server result instead.
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(backendOrders));
+    return backendOrders;
   } catch {
     return localOrders;
   }

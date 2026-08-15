@@ -239,34 +239,13 @@ export async function getTaskById(taskId) {
 }
 
 export async function createTask(payload = {}, actor = "Admin") {
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const result = await api.createTask(token, normalizeTask(payload));
-      if (result.success) {
-        const created = normalizeTask(result.task);
-        const tasks = await getAllTasks();
-        await saveAllTasks([created, ...tasks.filter((task) => task.id !== created.id)]);
-        return created;
-      }
-    }
-  } catch {}
-
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again before creating a task.");
+  const result = await api.createTask(token, normalizeTask(payload));
+  if (!result.success) throw new Error(result.error || "Unable to create the task.");
+  const created = normalizeTask(result.task);
   const tasks = await getAllTasks();
-  const created = normalizeTask(payload);
-  const next = [created, ...tasks];
-  await saveAllTasks(next);
-
-  if (created.requestId) {
-    await assignTechnicianToServiceRequest(
-      created.requestId,
-      created.assignedTechnicianId,
-      created.assignedTechnicianName,
-      created.id,
-      actor
-    );
-  }
-
+  await saveAllTasks([created, ...tasks.filter((task) => task.id !== created.id)]);
   return created;
 }
 
@@ -276,41 +255,23 @@ export async function updateTask(taskId, patch = {}) {
     return updateTask(task.id, task);
   }
 
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const existing = await getTaskById(taskId);
-      const payload = normalizeTask({
-        ...(existing || {}),
-        ...patch,
-        id: taskId,
-        updatedAt: new Date().toISOString(),
-      });
-      const result = await api.patchTask(token, taskId, payload);
-      if (result.success) {
-        const updated = normalizeTask(result.task);
-        const tasks = await getAllTasks();
-        await saveAllTasks(
-          tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)),
-        );
-        return updated;
-      }
-    }
-  } catch {}
-
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again before updating a task.");
+  const existing = await getTaskById(taskId);
+  const payload = normalizeTask({
+    ...(existing || {}),
+    ...patch,
+    id: taskId,
+    updatedAt: new Date().toISOString(),
+  });
+  const result = await api.patchTask(token, taskId, payload);
+  if (!result.success) throw new Error(result.error || "Unable to update the task.");
+  const updated = normalizeTask(result.task);
   const tasks = await getAllTasks();
-  const next = tasks.map((item) =>
-    String(item.id) === String(taskId)
-      ? normalizeTask({
-          ...item,
-          ...patch,
-          updatedAt: new Date().toISOString(),
-        })
-      : item
+  await saveAllTasks(
+    tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)),
   );
-
-  await saveAllTasks(next);
-  return next.find((item) => String(item.id) === String(taskId)) || null;
+  return updated;
 }
 
 export async function updateTaskStatus(taskId, status, actor = "Technician", patch = {}) {
@@ -361,22 +322,15 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
   const updated = next.find((item) => String(item.id) === String(taskId)) || null;
 
   if (updated) {
-    try {
-      const token = await api.getStoredToken();
-      if (token) {
-        const result = await api.patchTask(token, taskId, updated);
-        if (result.success) {
-          const backendTask = normalizeTask(result.task);
-          await saveAllTasks(
-            next.map((item) => (String(item.id) === String(taskId) ? backendTask : item)),
-          );
-          return backendTask;
-        }
-        throw new Error(result.error || "Failed to update task.");
-      }
-    } catch (error) {
-      if (isCompleting) throw error;
-    }
+    const token = await api.getStoredToken();
+    if (!token) throw new Error("Please sign in again before updating a task.");
+    const result = await api.patchTask(token, taskId, updated);
+    if (!result.success) throw new Error(result.error || "Failed to update task.");
+    const backendTask = normalizeTask(result.task);
+    await saveAllTasks(
+      next.map((item) => (String(item.id) === String(taskId) ? backendTask : item)),
+    );
+    return backendTask;
   }
 
   await saveAllTasks(next);

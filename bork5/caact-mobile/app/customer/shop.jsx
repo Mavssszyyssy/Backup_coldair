@@ -296,19 +296,25 @@ export default function CustomerShopScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setLoading(true);
-      fetchShopProducts()
-        .then((products) => {
-          if (active) setBackendProducts(products);
-        })
-        .catch(() => {
-          if (active) setBackendProducts([]);
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
+      const loadCatalogue = () => {
+        setLoading(true);
+        fetchShopProducts()
+          .then((products) => {
+            if (active) setBackendProducts(products);
+          })
+          .catch(() => {
+            // Do not replace an already-confirmed catalogue with local demo
+            // products when the connection briefly drops.
+          })
+          .finally(() => {
+            if (active) setLoading(false);
+          });
+      };
+      loadCatalogue();
+      const pollId = setInterval(loadCatalogue, 20000);
       return () => {
         active = false;
+        clearInterval(pollId);
       };
     }, []),
   );

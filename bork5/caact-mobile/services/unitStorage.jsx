@@ -79,12 +79,10 @@ export async function getUnitsByUser(userId) {
         const otherUsers = localUnits.filter(
           (unit) => String(unit.userId || "") !== String(userId || ""),
         );
-        const mergedForUser = mergeByIdOrSerial(
-          localUnits.filter((unit) => String(unit.userId || "") === String(userId || "")),
-          backendUnits,
-        );
-        await saveAllUnits([...mergedForUser, ...otherUsers]);
-        return mergedForUser;
+        // Installed units are created by the technician completion flow.
+        // Do not merge stale device-only units back into the customer record.
+        await saveAllUnits([...backendUnits, ...otherUsers]);
+        return backendUnits;
       }
     }
   } catch {
@@ -92,7 +90,11 @@ export async function getUnitsByUser(userId) {
   }
 
   const units = await getAllUnits();
-  return units.filter((unit) => String(unit.userId) === String(userId));
+  return units.filter(
+    (unit) =>
+      String(unit.userId) === String(userId) &&
+      unit.id !== SEEDED_CUSTOMER_UNIT_ID,
+  );
 }
 
 export async function ensureSeededCustomerUnit(user) {

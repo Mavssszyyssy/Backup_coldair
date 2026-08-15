@@ -24,10 +24,7 @@ import {
   buildNextRecommendedMaintenance,
   buildUnitHealthMap,
 } from "../../services/acHealthScoreService";
-import {
-  ensureSeededCustomerUnit,
-  getUnitsByUser,
-} from "../../services/unitStorage";
+import { getUnitsByUser } from "../../services/unitStorage";
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
@@ -39,30 +36,30 @@ export default function CustomerHomeScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-
-      Promise.all([
-        getUnitsByUser(current?.id).then(async (items) => {
-          if (items.length > 0) return items;
-          await ensureSeededCustomerUnit(current);
-          return getUnitsByUser(current?.id);
-        }),
-        getOrdersByUser(current),
-        getCustomerServiceHistory(current?.id),
-      ]).then(([nextUnits, nextOrders, history]) => {
-        if (!active) return;
-        setUnits(nextUnits);
-        setHealthMap(
-          buildUnitHealthMap(
-            nextUnits,
-            history.requests,
-            history.linkedTasks,
-          ),
-        );
-        setRecentOrders(nextOrders.slice(0, 3));
-      });
+      const load = () => {
+        Promise.all([
+          getUnitsByUser(current?.id),
+          getOrdersByUser(current),
+          getCustomerServiceHistory(current?.id),
+        ]).then(([nextUnits, nextOrders, history]) => {
+          if (!active) return;
+          setUnits(nextUnits);
+          setHealthMap(
+            buildUnitHealthMap(
+              nextUnits,
+              history.requests,
+              history.linkedTasks,
+            ),
+          );
+          setRecentOrders(nextOrders.slice(0, 3));
+        });
+      };
+      load();
+      const pollId = setInterval(load, 20000);
 
       return () => {
         active = false;
+        clearInterval(pollId);
       };
     }, [current]),
   );

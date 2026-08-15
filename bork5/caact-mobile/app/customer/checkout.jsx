@@ -51,14 +51,47 @@ const getDefaultAddress = (user = {}) =>
   user?.addresses?.[0] ||
   getProfileAddress(user);
 
+const getDeliveryBranch = (address = {}) => {
+  const keys = [address.city, address.province, address.region, address.barangay, address.street]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+  if (keys.some((value) => ["manila", "quezon city"].includes(value))) return "Bulacan";
+  if (keys.some((value) => ["laguna", "cavite", "batangas"].includes(value))) return "Laguna";
+  if (keys.some((value) => ["pangasinan", "tarlac"].includes(value))) return "Pangasinan";
+  if (keys.some((value) => value.includes("bataan"))) return "Bataan";
+  if (keys.some((value) => value.includes("pangasinan"))) return "Pangasinan";
+  if (keys.some((value) => value.includes("ilocos") || value.includes("la union"))) return "Ilocos";
+  return "Bulacan";
+};
+
+const DELIVERY_FEE_BY_BRANCH = {
+  Bulacan: 380,
+  Cavite: 350,
+  Laguna: 400,
+  Bataan: 420,
+  Pangasinan: 550,
+  Ilocos: 600,
+};
+
+const calculateCheckoutTotals = (items = [], address = {}) => {
+  const subtotal = Math.round(items.reduce(
+    (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  ) * 100) / 100;
+  const vatAmount = Math.round(subtotal * 0.12 * 100) / 100;
+  const shippingFee = DELIVERY_FEE_BY_BRANCH[getDeliveryBranch(address)] || 400;
+  return { subtotal, vatAmount, shippingFee, total: subtotal + vatAmount + shippingFee };
+};
+
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { cart, cartTotal, clearCart, replaceCart } = useCart();
+  const { cart, clearCart, replaceCart } = useCart();
   const { current, token } = useUserContext();
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
+  const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, address), [cart, address]);
 
   const submitOrder = async () => {
     if (!cart.length) return Alert.alert("Cart is empty", "Add an item before checking out.");
@@ -124,10 +157,7 @@ export default function CheckoutScreen() {
       return Alert.alert("Address required", "Add a delivery address in Settings before checking out.");
     }
 
-    const checkoutTotal = checkoutCart.reduce(
-      (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
-      0,
-    );
+    const latestTotals = calculateCheckoutTotals(checkoutCart, checkoutAddress);
     setCheckoutMessage(
       paymentMethod === "cod"
         ? "Creating your cash-on-delivery order…"
@@ -146,8 +176,10 @@ export default function CheckoutScreen() {
         addressId: checkoutAddress.id || checkoutAddress._id || "",
         address: checkoutAddress,
         paymentMethod,
-        subtotal: checkoutTotal,
-        total: checkoutTotal,
+        subtotal: latestTotals.subtotal,
+        vatAmount: latestTotals.vatAmount,
+        shippingFee: latestTotals.shippingFee,
+        total: latestTotals.total,
         paymentReturnTarget: "mobile",
       });
       if (!result.success) throw new Error(result.error);
@@ -205,8 +237,8 @@ export default function CheckoutScreen() {
                 </View>
               ))}
               <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, paddingTop: BQ_SPACING.md, flexDirection: "row", justifyContent: "space-between" }}>
-                <BoutiqueText variant="h2">Total</BoutiqueText>
-                <BoutiqueText variant="h2">{formatPeso(cartTotal)}</BoutiqueText>
+                <BoutiqueText variant="h2">Total (incl. VAT & delivery)</BoutiqueText>
+                <BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
               </View>
             </BoutiqueCard>
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>

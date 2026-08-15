@@ -40,7 +40,18 @@ const AdminInventory = () => {
     }
   }, [branch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const pollId = window.setInterval(load, 20000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [load]);
 
   const zeroStockCount = useMemo(
     () => products.filter((product) => getBranchStock(product, branch) === 0).length,

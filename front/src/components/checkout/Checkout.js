@@ -7,10 +7,6 @@ import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
 import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
-import {
-  loadOrdersFromStorage,
-  saveOrdersToStorage,
-} from "../../domain/purchase/ordersStorage";
 import { DEFAULT_SERVICE_AREA_ID } from "../../domain/purchase/serviceAreas";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -354,12 +350,7 @@ function Checkout() {
     setIsProcessingPayment(true);
 
     const fromPostReg = consumePostRegistrationCheckoutIntent();
-    const orderId = `ORD-${Date.now()}`;
-    const trackingNumber = `TRK-${Math.floor(Math.random() * 1000000000)}`;
-
     const order = buildCustomerOrder({
-      orderId,
-      trackingNumber,
       cartItems: cart,
       address: checkoutAddress,
       paymentMethod: selectedPayment,
@@ -399,20 +390,8 @@ function Checkout() {
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
-      const isNetworkIssue = !error?.status;
-      if (isNetworkIssue) {
-        if (selectedPayment !== "cod" && selectedPayment !== "pay_on_install") {
-          alert("Unable to reach the payment gateway. Please try again.");
-          return;
-        }
-        const orders = loadOrdersFromStorage();
-        orders.unshift(order);
-        saveOrdersToStorage(orders);
-        clearCart();
-        navigate("/my-orders");
-        alert(
-          `Order received (${orderId}). Saved locally because backend could not be reached.`,
-        );
+      if (!error?.status) {
+        alert("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected.");
         return;
       }
       alert(

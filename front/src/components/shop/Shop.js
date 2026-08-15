@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
-import {
-  deduplicateProducts,
-  mergeProductLists,
-} from "../../utils/productDeduplication";
+import { deduplicateProducts } from "../../utils/productDeduplication";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import ProductModal from "./ProductModal";
@@ -20,7 +17,9 @@ import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import ShopCatalogue from "./ShopCatalogue";
 import ShopSidebar from "./ShopSidebar";
 
-const fallbackProducts = [
+// Retained only as an exported design reference; the live catalogue below
+// intentionally renders backendProducts only.
+export const fallbackProducts = [
   {
     name: "American Home Inverter",
     sku: "AHAC-MINV1023EHW",
@@ -493,11 +492,10 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState("default");
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await apiRequest("/products/public");
-        const mapped = (response.products || []).map((product) => {
+  const fetchProducts = useCallback(async () => {
+    try {
+      const response = await apiRequest("/products/public");
+      const mapped = (response.products || []).map((product) => {
           // Strip redundant "AC" from name and description
           const cleanName = (product.name || "")
             .replace(/\s*AC\s*$/gi, "")
@@ -526,15 +524,27 @@ const Shop = () => {
             discount: product.discount || 0,
             featured: product.featured || false,
           };
-        });
-        setBackendProducts(mapped);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-      } finally {
-      }
-    };
-    fetchProducts();
+      });
+      setBackendProducts(mapped);
+    } catch (error) {
+      // Keep the last confirmed server catalogue visible rather than showing
+      // static demo items with incorrect inventory.
+      console.error("Failed to fetch products:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+    const pollId = window.setInterval(fetchProducts, 20000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") fetchProducts();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [fetchProducts]);
 
   // Sync category from URL if present
   useEffect(() => {
@@ -551,11 +561,7 @@ const Shop = () => {
   }, [navigate]);
 
   const products = useMemo(() => {
-    const merged = mergeProductLists(fallbackProducts, backendProducts, {
-      preferBackend: true,
-      verbose: false,
-    });
-    return deduplicateProducts(merged, { verbose: false }).map((product) => ({
+    return deduplicateProducts(backendProducts, { verbose: false }).map((product) => ({
       ...product,
       imageUrl: product.imageUrl || getModelImageUrl(product),
     }));

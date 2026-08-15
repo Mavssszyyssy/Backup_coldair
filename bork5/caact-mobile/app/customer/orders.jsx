@@ -191,11 +191,16 @@ export default function CustomerOrdersScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      getOrdersByUser(current).then((items) => {
-        if (active) setOrders(items);
-      });
+      const load = () => {
+        getOrdersByUser(current).then((items) => {
+          if (active) setOrders(items);
+        });
+      };
+      load();
+      const pollId = setInterval(load, 20000);
       return () => {
         active = false;
+        clearInterval(pollId);
       };
     }, [current]),
   );
