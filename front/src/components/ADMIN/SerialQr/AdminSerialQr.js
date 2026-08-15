@@ -128,7 +128,7 @@ const AdminSerialQr = () => {
         <div>
           <h3>AC Unit QR Registry</h3>
           <p>
-            {products.length} models · {availableSerials} available unit QR codes · {totalSerials} total serials
+            {products.length} models · {availableSerials} available QR labels · {totalSerials} QR records (including sold and assigned units)
           </p>
         </div>
         <div className="serialqr-actions">
@@ -165,7 +165,7 @@ const AdminSerialQr = () => {
                     serialUnits.filter(
                       (unit) => (unit.status || "available") === "available",
                     ).length
-                  } available · {serialUnits.length} total
+                  } available · {serialUnits.length} QR records
                 </span>
               </header>
 
