@@ -2,8 +2,8 @@
 // Central place for environment-level configuration.
 //
 // Override when needed:
-//   EXPO_PUBLIC_API_BASE_URL=https://aeropulse-backend.vercel.app/api
-//   EXPO_PUBLIC_API_BASE=https://aeropulse-backend.vercel.app/api
+//   EXPO_PUBLIC_API_BASE_URL=https://api.coldair-act.online/api
+//   EXPO_PUBLIC_API_BASE=https://api.coldair-act.online/api
 //
 // By default, Expo LAN runs derive the backend host from Metro's host and use
 // the Express listener on port 5000. This is the port used by the local
@@ -15,11 +15,14 @@ import { Platform } from "react-native";
 const BACKEND_PORT = "5000";
 const BACKEND_FALLBACK_PORT = "5001";
 const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
-const LIVE_BACKEND_HOST = "https://aeropulse-backend.vercel.app";
+const LIVE_BACKEND_HOST = "https://api.coldair-act.online";
+const LEGACY_BACKEND_HOST = "https://aeropulse-backend.vercel.app";
 
 const trimTrailingSlash = (value = "") => String(value).replace(/\/+$/, "");
 const replaceRetiredBackend = (value = "") =>
-  String(value).replace(RETIRED_BACKEND_HOST, LIVE_BACKEND_HOST);
+  String(value)
+    .replace(RETIRED_BACKEND_HOST, LIVE_BACKEND_HOST)
+    .replace(LEGACY_BACKEND_HOST, LIVE_BACKEND_HOST);
 
 const getConfiguredBaseUrl = () =>
   process.env.EXPO_PUBLIC_API_BASE_URL ||

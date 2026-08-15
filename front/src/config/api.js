@@ -1,10 +1,13 @@
-const LIVE_API_BASE_URL = "https://aeropulse-backend.vercel.app/api";
+const LIVE_API_BASE_URL = "https://api.coldair-act.online/api";
 const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
+const LEGACY_BACKEND_HOST = "https://aeropulse-backend.vercel.app";
 
 // Keep old browser/Vercel environment settings from sending users to the
 // retired backend deployment, which no longer contains the application API.
 const replaceRetiredBackend = (value = "") =>
-  String(value).replace(RETIRED_BACKEND_HOST, "https://aeropulse-backend.vercel.app");
+  String(value)
+    .replace(RETIRED_BACKEND_HOST, "https://api.coldair-act.online")
+    .replace(LEGACY_BACKEND_HOST, "https://api.coldair-act.online");
 
 const API_BASE_URL = replaceRetiredBackend(
   process.env.REACT_APP_API_URL ||

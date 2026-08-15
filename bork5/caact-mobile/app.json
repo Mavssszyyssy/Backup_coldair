@@ -52,7 +52,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://aeropulse-backend.vercel.app/api",
+      "apiBaseUrl": "https://api.coldair-act.online/api",
       "router": {},
       "eas": {
         "projectId": "fc3e017a-abda-46d6-8a37-7e678451eb7a"
