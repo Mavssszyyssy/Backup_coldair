@@ -230,7 +230,7 @@ export default function CompleteServiceScreen() {
             {ampRecords.map((record) => (
               <View key={record.serialNumber} style={{ marginTop: SPACING.sm, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}>
                 <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>{record.serialNumber}</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{record.ampParameters?.placementArea || "Placement not recorded"} · Filter: {record.ampParameters?.filterCondition || "normal"} · Final condition: {record.ampParameters?.conditionRating || "good"}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{record.ampParameters?.placementArea || "Placement not recorded"} · Installed: {record.ampParameters?.installationDate || "Date not recorded"} {record.ampParameters?.installationTime || ""} · Filter: {record.ampParameters?.filterCondition || "normal"} · Final condition: {record.ampParameters?.conditionRating || "good"}</Text>
               </View>
             ))}
           </Card>

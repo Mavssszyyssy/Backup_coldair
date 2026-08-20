@@ -10,6 +10,7 @@ const today = () => new Date().toISOString().split('T')[0];
 
 const defaultForm = {
   installationDate: today(),
+  installationTime: new Date().toTimeString().slice(0, 5),
   lastServiceDate: today(),
   placementArea: '',
   usageHoursPerDay: 8,
@@ -203,6 +204,10 @@ const FieldServiceRegistration = () => {
             <label>
               Installation date
               <input type="date" value={form.installationDate} onChange={(event) => updateField('installationDate', event.target.value)} />
+            </label>
+            <label>
+              Installation time
+              <input type="time" value={form.installationTime} onChange={(event) => updateField('installationTime', event.target.value)} />
             </label>
             <label>
               Last service date

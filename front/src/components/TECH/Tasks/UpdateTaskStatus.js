@@ -86,8 +86,14 @@ const UpdateTaskStatus = ({ task, onTaskChange }) => {
       <h3>Update Task Status</h3>
       <select value={status} onChange={(e) => setStatus(e.target.value)}>
         <option value="pending">Pending</option>
+        <option value="accepted">Accepted</option>
+        <option value="on-the-way">On the way</option>
+        <option value="arrived">Arrived</option>
+        <option value="installing">Installing</option>
         <option value="in-progress">In Progress</option>
         <option value="on-hold">On Hold</option>
+        <option value="failed">Failed</option>
+        <option value="rescheduled">Rescheduled</option>
         <option value="completed">Completed</option>
       </select>
       {status === 'completed' ? (

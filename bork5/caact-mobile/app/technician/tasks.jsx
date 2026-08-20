@@ -22,20 +22,30 @@ import { confirmAction } from "../../utils/confirmAction";
 
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
+  [TASK_STATUS.ACCEPTED]: COLORS.tech,
+  [TASK_STATUS.ON_THE_WAY]: COLORS.tech,
+  [TASK_STATUS.ARRIVED]: COLORS.success,
+  [TASK_STATUS.INSTALLING]: COLORS.tech,
   [TASK_STATUS.IN_PROGRESS]: COLORS.tech,
   [TASK_STATUS.ON_HOLD]: COLORS.warning,
+  [TASK_STATUS.FAILED]: COLORS.danger,
+  [TASK_STATUS.RESCHEDULED]: COLORS.warning,
   [TASK_STATUS.COMPLETED]: COLORS.success,
   [TASK_STATUS.CANCELLED]: COLORS.textMuted,
 };
 
 const WORK_FILTERS = [
   { key: "all", label: "All" },
-  { key: "in-progress", label: "Active" },
+  { key: "active", label: "Active" },
   { key: "pending", label: "Ready" },
   { key: "on-hold", label: "On hold" },
   { key: "completed", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
+const STATUS_GROUPS = {
+  active: new Set(["accepted", "on-the-way", "arrived", "installing", "in-progress"]),
+};
 
 const taskStatusKey = (status = "") => String(status).trim().toLowerCase().replace(/[_\s]+/g, "-");
 const taskPriorityKey = (priority = "") => String(priority || "Normal").trim().toLowerCase();
@@ -155,7 +165,9 @@ function FilterSheet({
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
             {WORK_FILTERS.map((status) => {
               const active = statusFilter === status.key;
-              const count = status.key === "all" ? tasks.length : tasks.filter((task) => taskStatusKey(task.status) === status.key).length;
+              const count = status.key === "all"
+                ? tasks.length
+                : tasks.filter((task) => STATUS_GROUPS[status.key]?.has(taskStatusKey(task.status)) || taskStatusKey(task.status) === status.key).length;
               return (
                 <TouchableOpacity
                   key={status.key}
@@ -216,10 +228,16 @@ export default function TasksScreen() {
       .then((all) => {
         const sorted = [...all].sort((a, b) => {
           const order = {
+            [TASK_STATUS.ARRIVED]: 0,
+            [TASK_STATUS.INSTALLING]: 0,
             [TASK_STATUS.IN_PROGRESS]: 0,
-            [TASK_STATUS.PENDING]: 1,
-            [TASK_STATUS.ON_HOLD]: 2,
-            [TASK_STATUS.COMPLETED]: 3,
+            [TASK_STATUS.ON_THE_WAY]: 0,
+            [TASK_STATUS.ACCEPTED]: 1,
+            [TASK_STATUS.PENDING]: 2,
+            [TASK_STATUS.ON_HOLD]: 3,
+            [TASK_STATUS.RESCHEDULED]: 4,
+            [TASK_STATUS.FAILED]: 5,
+            [TASK_STATUS.COMPLETED]: 6,
           };
           return (order[a.status] ?? 3) - (order[b.status] ?? 3);
         });
@@ -235,7 +253,8 @@ export default function TasksScreen() {
 
   const filteredTasks = useMemo(
     () => tasks.filter((task) => {
-      const statusMatch = statusFilter === "all" || taskStatusKey(task.status) === statusFilter;
+      const normalizedStatus = taskStatusKey(task.status);
+      const statusMatch = statusFilter === "all" || STATUS_GROUPS[statusFilter]?.has(normalizedStatus) || normalizedStatus === statusFilter;
       const priorityMatch = priorityFilter === "all" || taskPriorityKey(task.priority) === priorityFilter;
       return statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
     }),
@@ -347,7 +366,7 @@ export default function TasksScreen() {
             }
           />
         )}
-        {item.status === TASK_STATUS.IN_PROGRESS && (
+        {[TASK_STATUS.ARRIVED, TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(item.status) && (
           getTaskSerials(item).length > 0 && !item.registrationProgress?.isComplete ? (
             <TechButton
               title="Continue Installation"

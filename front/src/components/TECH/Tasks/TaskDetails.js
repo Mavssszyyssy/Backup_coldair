@@ -54,6 +54,7 @@ const TaskDetails = () => {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [selectedSerial, setSelectedSerial] = useState('');
 
   useEffect(() => {
@@ -79,6 +80,50 @@ const TaskDetails = () => {
     } finally {
       setAccepting(false);
     }
+  };
+
+  const updateLifecycle = async (status) => {
+    if (!task?.id || actionBusy) return;
+    setActionBusy(true);
+    try {
+      const response = await apiRequest(`/tasks/${task.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      setTask(response.task);
+    } catch (error) {
+      alert(error.message || 'Unable to update task status.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const checkInWithGps = () => {
+    if (!navigator.geolocation) {
+      alert('This browser does not provide GPS location. Use the technician mobile app to check in.');
+      return;
+    }
+    setActionBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const response = await apiRequest(`/tasks/${task.id}/check-in`, {
+            method: 'PATCH',
+            body: JSON.stringify({ coordinates: { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy } }),
+          });
+          setTask(response.task);
+        } catch (error) {
+          alert(error.message || 'Unable to check in at this location.');
+        } finally {
+          setActionBusy(false);
+        }
+      },
+      (error) => {
+        setActionBusy(false);
+        alert(error.message || 'Location permission is required to check in.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
   };
 
   const serials = task?.registrationProgress?.requiredSerials || task?.serialNumbers || [];
@@ -125,11 +170,20 @@ const TaskDetails = () => {
               {accepting ? 'Accepting...' : 'Accept Task'}
             </button>
           ) : null}
+          {user?.role === 'technician' && task.status === 'accepted' ? (
+            <button type="button" onClick={() => updateLifecycle('on-the-way')} disabled={actionBusy}>Mark on the way</button>
+          ) : null}
+          {user?.role === 'technician' && task.status === 'on-the-way' ? (
+            <button type="button" onClick={checkInWithGps} disabled={actionBusy}>{actionBusy ? 'Checking in...' : 'Check in with GPS'}</button>
+          ) : null}
+          {user?.role === 'technician' && task.status === 'arrived' ? (
+            <button type="button" onClick={() => updateLifecycle('installing')} disabled={actionBusy}>Start installation</button>
+          ) : null}
           {isInstallation ? <button type="button" onClick={() => navigate(`/tech/field-registration${selectedSerial ? `?serial=${encodeURIComponent(selectedSerial)}` : ''}`)}>Open AMP Registration</button> : null}
           <button type="button" onClick={() => navigate('/tech/tasks')}>Back to Tasks</button>
         </div>
         <TaskProofPanel proof={task.proof || {}} task={task} />
-        {!isInstallation ? <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} /> : null}
+        <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} />
       </div>
       )}
     </TechLayout>

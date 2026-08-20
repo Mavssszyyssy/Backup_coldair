@@ -5,14 +5,17 @@ import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
+import QrCameraScanner from "../../../../components/technician/QrCameraScanner";
 import Card from "../../../../components/ui/Card";
 import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
+import { parseLookupTarget } from "../../../../services/qrLookupService";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const currentTime = () => new Date().toTimeString().slice(0, 5);
 const defaultForm = () => ({
-  installationDate: today(), lastServiceDate: today(), placementArea: "", usageHoursPerDay: "8",
+  installationDate: today(), installationTime: currentTime(), lastServiceDate: today(), placementArea: "", usageHoursPerDay: "8",
   environmentDustLevel: "moderate", occupancyLoad: "normal", filterCondition: "normal",
   coilCondition: "normal", drainageCondition: "clear", voltageStability: "stable",
   conditionRating: "good", notes: "", defectReason: "",
@@ -130,6 +133,7 @@ export default function AmpRegistrationScreen() {
   const [saving, setSaving] = useState(false);
   const [holdMode, setHoldMode] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
+  const [scannerActive, setScannerActive] = useState(true);
 
   const serials = useMemo(() => taskSerials(task), [task]);
   const registrations = task?.ampRegistrations || {};
@@ -167,6 +171,22 @@ export default function AmpRegistrationScreen() {
     const previous = registrations?.[serial]?.ampParameters;
     setForm(previous ? { ...defaultForm(), ...previous } : defaultForm());
     setHoldMode(registrations?.[serial]?.status === "defective_hold");
+  };
+
+  const handleScanned = (rawValue) => {
+    const parsed = parseLookupTarget(rawValue);
+    const scannedSerial = String(parsed.serialNumber || parsed.lookupValue || "").trim();
+    if (!scannedSerial) {
+      Alert.alert("QR not recognized", "This QR code does not contain an AC serial number.");
+      return;
+    }
+    const match = serials.find((serial) => serial.toLowerCase() === scannedSerial.toLowerCase());
+    if (!match) {
+      Alert.alert("Wrong AC unit", "This QR serial is not assigned to the selected installation task. Choose the assigned unit QR code.");
+      return;
+    }
+    selectSerial(match);
+    setScannerActive(false);
   };
 
   const submit = async () => {
@@ -226,12 +246,22 @@ export default function AmpRegistrationScreen() {
           </Card>
         ) : null}
 
-        {serials.length > 0 ? <FormSection icon="qr-code-sharp" title="Choose assigned unit" subtitle="Select the serial label you are registering"><DropdownField label="Assigned QR serial" value={selectedSerial} onChange={selectSerial} helperText={`${progress?.totalRegistered || 0} of ${progress?.totalRequired || serials.length} units registered`} options={serials.map((serial) => { const status = registrations?.[serial]?.status; return { value: serial, label: `${serial} — ${status === "registered" ? "Registered" : status === "defective_hold" ? "On hold" : "Registration required"}` }; })} /></FormSection> : null}
+        {serials.length > 0 ? (
+          <FormSection icon="qr-code-sharp" title="Verify the assigned unit" subtitle="Scan the unit QR to prevent registering the wrong AC">
+            <View style={{ flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.sm }}>
+              <TechButton title={scannerActive ? "Camera active" : "Scan QR"} onPress={() => setScannerActive(true)} variant={scannerActive ? "secondary" : "primary"} size="sm" leftIcon={<Ionicons name="camera-sharp" size={16} color={scannerActive ? COLORS.tech : COLORS.surface} />} />
+              <View style={{ flex: 1, justifyContent: "center" }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{selectedSerial ? `Selected: ${selectedSerial}` : "No unit selected"}</Text></View>
+            </View>
+            {scannerActive ? <QrCameraScanner active={scannerActive} onScanned={handleScanned} /> : null}
+            <DropdownField label="Assigned QR serial (manual fallback)" value={selectedSerial} onChange={selectSerial} helperText={`${progress?.totalRegistered || 0} of ${progress?.totalRequired || serials.length} units registered`} options={serials.map((serial) => { const status = registrations?.[serial]?.status; return { value: serial, label: `${serial} — ${status === "registered" ? "Registered" : status === "defective_hold" ? "On hold" : "Registration required"}` }; })} />
+          </FormSection>
+        ) : null}
 
         {selectedSerial ? (
           <>
             <FormSection icon="calendar-sharp" title="Installation details" subtitle="Record only the details needed to set up AMP monitoring">
               <TextField label="Installation Date" value={form.installationDate} onChangeText={(value) => setField("installationDate", value)} placeholder="YYYY-MM-DD" />
+              <TextField label="Installation Time" value={form.installationTime} onChangeText={(value) => setField("installationTime", value)} placeholder="HH:MM" />
               <DropdownField label="Placement area" value={placementSelection} onChange={(value) => setField("placementArea", value === "Other" ? "" : value)} options={PLACEMENT_OPTIONS} />
               {placementSelection === "Other" ? <TextField label="Other placement area" value={form.placementArea} onChangeText={(value) => setField("placementArea", value)} placeholder="e.g. Meeting room, server room" /> : null}
               <DropdownField label="Daily usage" value={String(form.usageHoursPerDay || "8")} onChange={(value) => setField("usageHoursPerDay", value)} options={USAGE_OPTIONS} />

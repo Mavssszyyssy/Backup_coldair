@@ -11,8 +11,14 @@ const STORAGE_KEY = "technician_tasks_storage_v2";
 
 export const TASK_STATUS = {
   PENDING: "Pending",
+  ACCEPTED: "Accepted",
+  ON_THE_WAY: "On the way",
+  ARRIVED: "Arrived",
+  INSTALLING: "Installing",
   IN_PROGRESS: "In Progress",
   ON_HOLD: "On Hold",
+  FAILED: "Failed",
+  RESCHEDULED: "Rescheduled",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
@@ -20,7 +26,13 @@ export const TASK_STATUS = {
 function normalizeTaskStatus(status) {
   const value = String(status || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
   if (value === "in-progress") return TASK_STATUS.IN_PROGRESS;
+  if (value === "accepted") return TASK_STATUS.ACCEPTED;
+  if (value === "on-the-way") return TASK_STATUS.ON_THE_WAY;
+  if (value === "arrived") return TASK_STATUS.ARRIVED;
+  if (value === "installing") return TASK_STATUS.INSTALLING;
   if (value === "completed") return TASK_STATUS.COMPLETED;
+  if (value === "failed") return TASK_STATUS.FAILED;
+  if (value === "rescheduled") return TASK_STATUS.RESCHEDULED;
   if (value === "cancelled" || value === "canceled") return TASK_STATUS.CANCELLED;
   if (value === "on-hold") return TASK_STATUS.ON_HOLD;
   return TASK_STATUS.PENDING;
@@ -395,7 +407,18 @@ export async function acceptTask(taskId) {
     throw error;
   }
 
-  return updateTaskStatus(taskId, TASK_STATUS.IN_PROGRESS);
+  return updateTaskStatus(taskId, TASK_STATUS.ACCEPTED);
+}
+
+export async function checkInTask(taskId, coordinates) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again before checking in.");
+  const result = await api.checkInTask(token, taskId, coordinates);
+  if (!result.success) throw new Error(result.error || "Unable to check in to this work order.");
+  const checkedIn = normalizeTask(result.task);
+  const tasks = await getAllTasks();
+  await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? checkedIn : item)));
+  return checkedIn;
 }
 
 export async function registerTaskAmpUnit(taskId, payload = {}) {
