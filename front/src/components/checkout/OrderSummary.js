@@ -10,6 +10,7 @@ function OrderSummary({
   onPlaceOrder,
   stockIssues = [],
   stockCheckedAt = "",
+  isProcessing = false,
 }) {
   const hasStockIssues = Array.isArray(stockIssues) && stockIssues.length > 0;
 
@@ -92,9 +93,14 @@ function OrderSummary({
         type="button"
         className="place-order-btn"
         onClick={onPlaceOrder}
-        disabled={hasStockIssues}
+        disabled={hasStockIssues || isProcessing}
+        aria-busy={isProcessing}
       >
-        {hasStockIssues ? "Update cart to continue" : "Place order"}
+        {hasStockIssues
+          ? "Update cart to continue"
+          : isProcessing
+            ? "Connecting..."
+            : "Place order"}
       </button>
     </div>
   );

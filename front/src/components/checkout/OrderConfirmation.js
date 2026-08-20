@@ -83,11 +83,19 @@ function OrderConfirmation() {
   }, [orderId, searchParams]);
 
   const paymentReturnState = searchParams.get("payment");
+  const normalizedPaymentStatus = String(order?.paymentStatus || "").toLowerCase();
+  const paymentFailed = ["failed", "expired"].includes(normalizedPaymentStatus);
+  const paymentCancelled =
+    paymentReturnState === "cancelled" || normalizedPaymentStatus === "cancelled";
+  const paymentPending =
+    order?.paymentProvider === "paymongo" &&
+    !paymentFailed &&
+    !paymentCancelled &&
+    normalizedPaymentStatus !== "paid";
+  const paymentNeedsAction =
+    order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
   const canRetryPayment =
-    order &&
-    order.paymentProvider === "paymongo" &&
-    order.paymentStatus !== "paid" &&
-    order.workflowStatus === "to_pay";
+    order && paymentNeedsAction && order.workflowStatus === "to_pay";
 
   const handlePayNow = async () => {
     if (!order?.id) return;
@@ -177,7 +185,11 @@ function OrderConfirmation() {
               <CheckCircle size={48} weight="fill" />
             </BoutiqueBox>
             <BoutiqueText variant="h1" align="center">
-              {paymentReturnState === "cancelled"
+              {paymentCancelled
+                ? "Payment cancelled"
+                : paymentFailed
+                  ? "Payment failed"
+                  : paymentPending
                 ? "Order received, payment pending"
                 : "Thank you for your order!"}
             </BoutiqueText>
@@ -410,7 +422,7 @@ function OrderConfirmation() {
                 onClick={handlePayNow}
                 disabled={paying}
               >
-                {paying ? "Opening PayMongo..." : "Pay Now"}
+                {paying ? "Connecting..." : "Pay Now"}
               </BoutiqueButton>
             ) : null}
             <BoutiqueButton

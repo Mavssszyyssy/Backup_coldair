@@ -556,6 +556,37 @@ export async function createOrder(token, payload) {
   };
 }
 
+export async function verifyPaymongoCheckout(token, orderId) {
+  const response = await apiFetch(`/orders/${encodeURIComponent(orderId)}/paymongo/verify`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || "Unable to verify PayMongo payment.");
+  }
+  return data;
+}
+
+export async function retryPaymongoCheckout(token, orderId) {
+  const response = await apiFetch(`/orders/${encodeURIComponent(orderId)}/paymongo/checkout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ paymentReturnTarget: "mobile" }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || "Unable to start PayMongo checkout.");
+  }
+  return data;
+}
+
 export async function checkInTask(token, taskId, coordinates) {
   const { ok, data } = await patch(
     `/tasks/${encodeURIComponent(taskId)}/check-in`,

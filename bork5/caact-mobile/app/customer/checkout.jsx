@@ -64,6 +64,8 @@ const DELIVERY_FEE_BY_BRANCH = {
   Ilocos: 600,
 };
 
+const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
+
 const calculateCheckoutTotals = (items = [], address = {}) => {
   const subtotal = Math.round(items.reduce(
     (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
@@ -86,6 +88,7 @@ export default function CheckoutScreen() {
   const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, address), [cart, address]);
 
   const submitOrder = async () => {
+    if (submitting) return;
     if (!cart.length) return Alert.alert("Cart is empty", "Add an item before checking out.");
     if (!token) return Alert.alert("Sign in required", "Please sign in again before checking out.");
 
@@ -157,29 +160,40 @@ export default function CheckoutScreen() {
     const latestTotals = calculateCheckoutTotals(checkoutCart, checkoutAddress);
     setCheckoutMessage(
       paymentMethod === "cod"
-        ? "Creating your cash-on-delivery order…"
-        : "Creating your secure PayMongo checkout…",
+        ? "Submitting your order…"
+        : "Connecting to secure payment…",
     );
     try {
-      const result = await createOrder(token, {
-        items: checkoutCart.map((item) => ({
-          productId: item.id,
-          sku: item.sku || "",
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          specs: item.specs || "",
-        })),
-        addressId: checkoutAddress.id || checkoutAddress._id || "",
-        address: checkoutAddress,
-        paymentMethod,
-        subtotal: latestTotals.subtotal,
-        vatAmount: latestTotals.vatAmount,
-        shippingFee: latestTotals.shippingFee,
-        total: latestTotals.total,
-        paymentReturnTarget: "mobile",
-        idempotencyKey: orderRequestKeyRef.current,
-      });
+      const result = await Promise.race([
+        createOrder(token, {
+          items: checkoutCart.map((item) => ({
+            productId: item.id,
+            sku: item.sku || "",
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            specs: item.specs || "",
+          })),
+          addressId: checkoutAddress.id || checkoutAddress._id || "",
+          address: checkoutAddress,
+          paymentMethod,
+          subtotal: latestTotals.subtotal,
+          vatAmount: latestTotals.vatAmount,
+          shippingFee: latestTotals.shippingFee,
+          total: latestTotals.total,
+          paymentReturnTarget: "mobile",
+          idempotencyKey: orderRequestKeyRef.current,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            const timeout = new Error(
+              "Connection timed out. Check My Orders before trying again; your order may still be processing.",
+            );
+            timeout.code = "PAYMENT_CONNECTION_TIMEOUT";
+            reject(timeout);
+          }, PAYMENT_CONNECTION_TIMEOUT_MS),
+        ),
+      ]);
       if (!result.success) {
         const error = new Error(result.error);
         error.status = result.status;
@@ -197,7 +211,7 @@ export default function CheckoutScreen() {
         if (!checkoutUrl) {
           throw new Error("PayMongo did not provide a payment link. Your cart is still available—please try again shortly.");
         }
-        setCheckoutMessage("Opening secure PayMongo payment…");
+        setCheckoutMessage("Connecting to secure payment…");
         const canOpenCheckout = await Linking.canOpenURL(checkoutUrl);
         if (!canOpenCheckout) {
           throw new Error("This device could not open the PayMongo payment link. Your cart is still available—please try again or use another payment method.");
@@ -210,7 +224,12 @@ export default function CheckoutScreen() {
       router.replace(`/customer/order-confirmation/${orderId}`);
     } catch (error) {
       if (error?.status) orderRequestKeyRef.current = "";
-      Alert.alert("Checkout unavailable", error?.message || "Unable to create the order.");
+      Alert.alert(
+        error?.code === "PAYMENT_CONNECTION_TIMEOUT"
+          ? "Connection timed out"
+          : "Payment connection failed",
+        error?.message || "Unable to connect to secure payment.",
+      );
     } finally {
       setSubmitting(false);
       setCheckoutMessage("");
@@ -270,7 +289,13 @@ export default function CheckoutScreen() {
               </BoutiqueText>
             ) : null}
             <BoutiqueButton
-              title={submitting ? "Creating order..." : "Place order"}
+              title={
+                submitting
+                  ? paymentMethod === "cod"
+                    ? "Submitting order..."
+                    : "Connecting..."
+                  : "Place order"
+              }
               disabled={submitting}
               fullWidth
               onPress={() => void submitOrder()}

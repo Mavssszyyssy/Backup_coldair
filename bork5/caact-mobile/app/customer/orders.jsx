@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Linking, View } from "react-native";
 
 import {
   BoutiqueButton,
@@ -15,7 +15,7 @@ import {
 } from "../../components/boutique";
 import { useUserContext } from "../../context/UserContext";
 import { formatPeso } from "../../services/ecommerceService";
-import { getOrdersByUser, requestOrderCancellation } from "../../services/orderStorage";
+import { getOrdersByUser, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
 
 function statusVariant(status = "") {
   const value = status.toLowerCase();
@@ -182,6 +182,7 @@ export default function CustomerOrdersScreen() {
   const { current } = useUserContext();
   const [orders, setOrders] = useState([]);
   const [cancellingId, setCancellingId] = useState("");
+  const [payingId, setPayingId] = useState("");
 
   const refreshOrders = useCallback(async () => {
     const items = await getOrdersByUser(current);
@@ -236,6 +237,21 @@ export default function CustomerOrdersScreen() {
         },
       ],
     );
+  };
+
+  const handlePayNow = async (order) => {
+    setPayingId(String(order.id));
+    try {
+      const checkoutUrl = await retryOrderPayment(order.id);
+      if (!checkoutUrl || !(await Linking.canOpenURL(checkoutUrl))) {
+        throw new Error("PayMongo did not return a usable checkout link.");
+      }
+      await Linking.openURL(checkoutUrl);
+    } catch (error) {
+      Alert.alert("Unable to open payment", error?.message || "Please try again.");
+    } finally {
+      setPayingId("");
+    }
   };
 
   return (
@@ -363,6 +379,18 @@ export default function CustomerOrdersScreen() {
                     disabled={cancellingId === String(order.id)}
                     loading={cancellingId === String(order.id)}
                     onPress={() => handleCancelRequest(order)}
+                  />
+                ) : null}
+
+                {order.paymentProvider === "paymongo" &&
+                order.paymentStatus !== "paid" &&
+                order.workflowStatus === "to_pay" ? (
+                  <BoutiqueButton
+                    title={payingId === String(order.id) ? "Connecting…" : "Complete payment"}
+                    variant="primary"
+                    disabled={payingId === String(order.id)}
+                    loading={payingId === String(order.id)}
+                    onPress={() => handlePayNow(order)}
                   />
                 ) : null}
 

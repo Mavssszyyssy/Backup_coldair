@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiFetch } from "../constants/config";
-import { getStoredToken } from "./api";
+import {
+  getStoredToken,
+  retryPaymongoCheckout as retryPaymongoCheckoutRequest,
+  verifyPaymongoCheckout as verifyPaymongoCheckoutRequest,
+} from "./api";
 
 const STORAGE_KEY = "orders_storage_v1";
 
@@ -212,6 +216,34 @@ export async function getOrdersByUser(user = {}) {
       (a, b) =>
         new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt),
     );
+}
+
+export async function verifyOrderPayment(orderId) {
+  const token = await getStoredToken();
+  if (!token) throw new Error("Please sign in again before verifying payment.");
+  const response = await verifyPaymongoCheckoutRequest(token, orderId);
+  if (response?.order) {
+    const normalized = normalizeOrder(response.order);
+    const orders = await getAllOrders({ sync: false });
+    await saveAllOrders([
+      normalized,
+      ...orders.filter((item) => String(item.id) !== String(normalized.id)),
+    ]);
+    return normalized;
+  }
+  return null;
+}
+
+export async function retryOrderPayment(orderId) {
+  const token = await getStoredToken();
+  if (!token) throw new Error("Please sign in again before paying.");
+  const response = await retryPaymongoCheckoutRequest(token, orderId);
+  return (
+    response?.payment?.checkoutUrl ||
+    response?.order?.paymentUrl ||
+    response?.order?.paymongo?.checkoutUrl ||
+    ""
+  );
 }
 
 export async function requestOrderCancellation(orderId, reason = "") {

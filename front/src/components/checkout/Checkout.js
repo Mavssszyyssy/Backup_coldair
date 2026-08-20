@@ -22,6 +22,8 @@ import DeliveryAddress from "./DeliveryAddress";
 import OrderSummary from "./OrderSummary";
 import PaymentMethod from "./PaymentMethod";
 
+const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
+
 const isValidCheckoutAddress = (address) => {
   if (!address) return false;
   const hasRequired =
@@ -325,6 +327,7 @@ function Checkout() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const handlePlaceOrder = useCallback(async () => {
+    if (isProcessingPayment) return;
     const latestStock = await refreshStock();
     if (latestStock.ok && latestStock.issues.length > 0) {
       const message = latestStock.issues
@@ -367,21 +370,32 @@ function Checkout() {
     });
 
     try {
-      const response = await apiRequest("/orders", {
-        method: "POST",
-        body: JSON.stringify({
-          items: order.items,
-          addressId: checkoutAddress.id,
-          address: checkoutAddress,
-          paymentMethod: selectedPayment,
-          total: order.total,
-          subtotal: totals.subtotal,
-          vatAmount: totals.vatAmount,
-          shippingFee: totals.deliveryFee,
-          discountAmount: totals.discountAmount,
-          idempotencyKey: orderRequestKeyRef.current,
+      const response = await Promise.race([
+        apiRequest("/orders", {
+          method: "POST",
+          body: JSON.stringify({
+            items: order.items,
+            addressId: checkoutAddress.id,
+            address: checkoutAddress,
+            paymentMethod: selectedPayment,
+            total: order.total,
+            subtotal: totals.subtotal,
+            vatAmount: totals.vatAmount,
+            shippingFee: totals.deliveryFee,
+            discountAmount: totals.discountAmount,
+            idempotencyKey: orderRequestKeyRef.current,
+          }),
         }),
-      });
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            const timeout = new Error(
+              "Connection timed out. Check My Orders before trying again; your order may still be processing.",
+            );
+            timeout.code = "PAYMENT_CONNECTION_TIMEOUT";
+            reject(timeout);
+          }, PAYMENT_CONNECTION_TIMEOUT_MS),
+        ),
+      ]);
       const created = response.order;
       const paymentUrl =
         response.payment?.checkoutUrl ||
@@ -389,17 +403,21 @@ function Checkout() {
         created?.paymentUrl ||
         created?.paymongo?.checkoutUrl ||
         "";
-      setIsProcessingPayment(false);
       orderRequestKeyRef.current = "";
       clearCart();
       if (paymentUrl) {
         window.location.assign(paymentUrl);
         return;
       }
+      setIsProcessingPayment(false);
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
       if (error?.status) orderRequestKeyRef.current = "";
+      if (error?.code === "PAYMENT_CONNECTION_TIMEOUT") {
+        alert(error.message);
+        return;
+      }
       if (!error?.status) {
         alert("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected.");
         return;
@@ -418,6 +436,7 @@ function Checkout() {
     totals,
     clearCart,
     navigate,
+    isProcessingPayment,
   ]);
 
   if (cart.length === 0) {
@@ -476,12 +495,14 @@ function Checkout() {
               weight="bold"
               color={BQ_COLORS.brand}
             />
-            <BoutiqueText variant="h2">Processing Payment</BoutiqueText>
+            <BoutiqueText variant="h2">
+              {selectedPayment === "gcash" || selectedPayment === "credit"
+                ? "Connecting to secure payment..."
+                : "Submitting your order..."}
+            </BoutiqueText>
             <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>
-              Please do not close this window while we prepare your order
-              {selectedPayment === "cod" || selectedPayment === "pay_on_install"
-                ? "."
-                : " and open the PayMongo checkout."}
+              Please wait. Do not click the payment button again while we
+              connect your order to the secure payment page.
             </BoutiqueText>
           </BoutiqueBox>
         </BoutiqueBox>
@@ -581,6 +602,7 @@ function Checkout() {
             onPlaceOrder={handlePlaceOrder}
             stockIssues={stockIssues}
             stockCheckedAt={stockCheckedAt}
+            isProcessing={isProcessingPayment}
           />
         </BoutiqueBox>
       </BoutiqueBox>
