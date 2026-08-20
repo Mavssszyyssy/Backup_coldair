@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
 import { parseQrInstallPayload } from '../../../domain/myunit/parseQrInstallPayload';
@@ -58,7 +58,7 @@ const FieldServiceRegistration = () => {
     [context.task, serialNumber],
   );
 
-  const loadContext = async (serial) => {
+  const loadContext = useCallback(async (serial) => {
     if (!serial) return;
     setLoading(true);
     setError('');
@@ -85,7 +85,7 @@ const FieldServiceRegistration = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setSearchParams]);
 
   useEffect(() => {
     if (querySerial) {
@@ -101,7 +101,7 @@ const FieldServiceRegistration = () => {
         loadContext(serial);
       }
     }
-  }, [querySerial, queryQr]);
+  }, [querySerial, queryQr, loadContext]);
 
   const handleParseQr = () => {
     const parsed = parseQrInstallPayload(rawQr);
