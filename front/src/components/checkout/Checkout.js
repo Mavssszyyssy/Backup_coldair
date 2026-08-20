@@ -181,14 +181,17 @@ function Checkout() {
 
   const refreshStock = useCallback(async () => {
     try {
-      const response = await apiRequest("/products/public");
+      const query = assignedBranch
+        ? `?branch=${encodeURIComponent(assignedBranch)}`
+        : "";
+      const response = await apiRequest(`/products/public${query}`);
       setStockIssues(computeStockIssues(response));
       setStockCheckedAt(new Date().toISOString());
       return { ok: true, issues: computeStockIssues(response) };
     } catch (_error) {
       return { ok: false, issues: stockIssues };
     }
-  }, [computeStockIssues, stockIssues]);
+  }, [assignedBranch, computeStockIssues, stockIssues]);
 
   useEffect(() => {
     let mounted = true;

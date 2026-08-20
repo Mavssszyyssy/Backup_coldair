@@ -15,7 +15,11 @@ import {
 import { useCart } from "../../context/CartContext";
 import { useUserContext } from "../../context/UserContext";
 import { createOrder, me } from "../../services/api";
-import { fetchShopProducts, formatPeso } from "../../services/ecommerceService";
+import {
+  fetchShopProducts,
+  formatPeso,
+  resolveInventoryBranch,
+} from "../../services/ecommerceService";
 
 const getProfileAddress = (user = {}) => {
   const billing = user?.billingAddress || user?.billing_address || {};
@@ -51,19 +55,6 @@ const getDefaultAddress = (user = {}) =>
   user?.addresses?.[0] ||
   getProfileAddress(user);
 
-const getDeliveryBranch = (address = {}) => {
-  const keys = [address.city, address.province, address.region, address.barangay, address.street]
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter(Boolean);
-  if (keys.some((value) => ["manila", "quezon city"].includes(value))) return "Bulacan";
-  if (keys.some((value) => ["laguna", "cavite", "batangas"].includes(value))) return "Laguna";
-  if (keys.some((value) => ["pangasinan", "tarlac"].includes(value))) return "Pangasinan";
-  if (keys.some((value) => value.includes("bataan"))) return "Bataan";
-  if (keys.some((value) => value.includes("pangasinan"))) return "Pangasinan";
-  if (keys.some((value) => value.includes("ilocos") || value.includes("la union"))) return "Ilocos";
-  return "Bulacan";
-};
-
 const DELIVERY_FEE_BY_BRANCH = {
   Bulacan: 380,
   Cavite: 350,
@@ -79,7 +70,7 @@ const calculateCheckoutTotals = (items = [], address = {}) => {
     0,
   ) * 100) / 100;
   const vatAmount = Math.round(subtotal * 0.12 * 100) / 100;
-  const shippingFee = DELIVERY_FEE_BY_BRANCH[getDeliveryBranch(address)] || 400;
+  const shippingFee = DELIVERY_FEE_BY_BRANCH[resolveInventoryBranch(address)] || 400;
   return { subtotal, vatAmount, shippingFee, total: subtotal + vatAmount + shippingFee };
 };
 
@@ -109,7 +100,9 @@ export default function CheckoutScreen() {
     // cannot make COD or PayMongo appear to do nothing.
     let checkoutCart = cart;
     try {
-      const catalogue = await fetchShopProducts();
+      const catalogue = await fetchShopProducts(
+        resolveInventoryBranch(getDefaultAddress(current)),
+      );
       const activeItems = cart
         .map((cartItem) => {
           const product = catalogue.find(

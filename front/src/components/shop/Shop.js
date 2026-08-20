@@ -685,6 +685,7 @@ const Shop = () => {
     <BoutiqueScreen withHeader padding={0}>
       <BoutiqueHeader
         title="Shop AC Units"
+        subtitle={inventoryBranch ? `Available stock · ${inventoryBranch} branch` : "Available stock across branches"}
         onLeftAction={() => setSidebarOpen(true)}
         leftAction="menu"
         cartCount={getCartCount()}

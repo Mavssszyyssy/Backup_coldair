@@ -284,6 +284,7 @@ export default function CustomerShopScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const { addToCart, cartCount } = useCart();
+  const inventoryBranch = useMemo(() => resolveInventoryBranch(current), [current]);
   const [backendProducts, setBackendProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
@@ -299,7 +300,7 @@ export default function CustomerShopScreen() {
       let active = true;
       const loadCatalogue = () => {
         setLoading(true);
-        fetchShopProducts(resolveInventoryBranch(current))
+        fetchShopProducts(inventoryBranch)
           .then((products) => {
             if (active) setBackendProducts(products);
           })
@@ -317,7 +318,7 @@ export default function CustomerShopScreen() {
         active = false;
         clearInterval(pollId);
       };
-    }, [current]),
+    }, [inventoryBranch]),
   );
 
   const products = useMemo(() => mergeProducts(fallbackProducts, backendProducts), [backendProducts]);
@@ -350,7 +351,7 @@ export default function CustomerShopScreen() {
     <>
       <BoutiqueHeader
         title="Shop AC Units"
-        subtitle="Browse available AC units"
+        subtitle={inventoryBranch ? `Browse available units · ${inventoryBranch} branch` : "Browse available AC units"}
         onBack={() => router.replace("/customer/home")}
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}
