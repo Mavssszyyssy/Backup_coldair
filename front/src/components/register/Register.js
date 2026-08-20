@@ -12,14 +12,15 @@ import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-import RegisterContactStep from "./RegisterContactStep";
 import RegisterEmailStep from "./RegisterEmailStep";
 import RegisterLegalConsentsStep from "./RegisterLegalConsentsStep";
 import RegisterLocationStep from "./RegisterLocationStep";
 import RegisterProfilePasswordStep from "./RegisterProfilePasswordStep";
 
 const STORAGE_KEY = "bq_reg_state";
-const STEPS = ["legal", "email", "identity", "contact", "location"];
+// A contact method is verified once at the beginning. The older, separate
+// contact step repeated verification after account details.
+const STEPS = ["legal", "verification", "identity", "location"];
 
 export default function Register() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     email: "",
     emailVerified: false,
+    verificationChannel: "email",
     registrationVerificationToken: "",
     firstName: "",
     lastName: "",
@@ -41,8 +43,6 @@ export default function Register() {
     password: "",
     phone: "",
     phoneVerified: false,
-    messengerHandle: "",
-    messengerVerified: false,
     role: "customer",
     branch: "",
     locations: [], // Array of { coordinates, address, source }
@@ -148,8 +148,7 @@ export default function Register() {
   const clearRegistrationSession = async () => {
     const hasVerifiedData =
       formData.emailVerified ||
-      formData.phoneVerified ||
-      formData.messengerVerified;
+      formData.phoneVerified;
 
     if (hasVerifiedData) {
       const confirmed = window.confirm(
@@ -172,6 +171,7 @@ export default function Register() {
       setFormData({
         email: "",
         emailVerified: false,
+        verificationChannel: "email",
         registrationVerificationToken: "",
         firstName: "",
         lastName: "",
@@ -179,8 +179,6 @@ export default function Register() {
         password: "",
         phone: "",
         phoneVerified: false,
-        messengerHandle: "",
-        messengerVerified: false,
         role: "customer",
         branch: "",
         locations: [],
@@ -220,7 +218,7 @@ export default function Register() {
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        messenger_handle: formData.messengerHandle,
+        contact_method: formData.verificationChannel,
         role: detectedRole,
         branch: formData.branch,
         locations: formData.locations,
@@ -279,7 +277,7 @@ export default function Register() {
             onBack={clearRegistrationSession}
           />
         )}
-        {step === "email" && (
+        {step === "verification" && (
           <RegisterEmailStep
             formData={formData}
             errors={errors}
@@ -299,14 +297,6 @@ export default function Register() {
             onNext={goNext}
             onBack={goBack}
             onCancel={clearRegistrationSession}
-          />
-        )}
-        {step === "contact" && (
-          <RegisterContactStep
-            formData={formData}
-            onFieldChange={handleFieldChange}
-            onNext={goNext}
-            onBack={goBack}
           />
         )}
         {step === "location" && (
