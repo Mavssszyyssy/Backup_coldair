@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { CartProvider } from "../context/CartContext";
+import BackendConnectionStatus from "../components/BackendConnectionStatus";
 import { UserProvider } from "../context/UserContext";
 import { useUserContext } from "../context/UserContext";
 import {
@@ -34,6 +35,7 @@ export default function RootLayout() {
       <UserProvider>
         <CartProvider>
           <PushNotificationSetup />
+          <BackendConnectionStatus />
           <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
         </CartProvider>
       </UserProvider>

@@ -82,3 +82,46 @@ body {
     padding: 9px 12px;
     cursor: pointer;
 }
+.backend-connection-banner {
+  position: fixed;
+  z-index: 10000;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(94vw, 620px);
+  padding: 10px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .16);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.backend-connection-banner.is-failed {
+  border-radius: 14px;
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.backend-connection-banner button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #be123c;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.backend-connection-banner button:disabled { opacity: .65; cursor: wait; }
+.backend-spin { animation: backend-spin .9s linear infinite; }
+@keyframes backend-spin { to { transform: rotate(360deg); } }

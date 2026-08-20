@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import ServiceRequests from './ServiceRequests';
 import RequestDetails from './RequestDetails';
+import WarrantyClaims from './WarrantyClaims';
 import { apiRequest } from '../../../config/api';
 import '../adminShared.css';
 import './styles.css';
@@ -17,13 +18,19 @@ const AdminMaintenance = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [warrantyClaims, setWarrantyClaims] = useState([]);
+  const [busyClaimId, setBusyClaimId] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     setLoading(true);
     try {
-      const result = await apiRequest('/service-requests');
+      const [result, claimResult] = await Promise.all([
+        apiRequest('/service-requests'),
+        apiRequest('/warranties/claims'),
+      ]);
       setRequests(Array.isArray(result.requests) ? result.requests : []);
+      setWarrantyClaims(Array.isArray(claimResult.claims) ? claimResult.claims : []);
     } catch (requestError) {
       setError(requestError.message || 'Unable to load service requests.');
     } finally {
@@ -76,6 +83,28 @@ const AdminMaintenance = () => {
     setTechnicianFilter('all');
   };
 
+  const reviewWarrantyClaim = async (claim, status) => {
+    const key = `${claim.unitId}:${claim.claimId}`;
+    const decisionNote = window.prompt(`Optional note for this ${status.replace('_', ' ')} decision:`, '') || '';
+    setBusyClaimId(key);
+    try {
+      const result = await apiRequest(`/warranties/units/${encodeURIComponent(claim.unitId)}/claims/${encodeURIComponent(claim.claimId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, decisionNote }),
+      });
+      setWarrantyClaims((items) => items.map((item) => (
+        String(item.unitId) === String(claim.unitId) && String(item.claimId) === String(claim.claimId)
+          ? { ...item, ...result.claim, warrantyStatus: result.warranty?.status }
+          : item
+      )));
+      if (status === 'approved') await load();
+    } catch (claimError) {
+      setError(claimError.message || 'Unable to update the warranty claim.');
+    } finally {
+      setBusyClaimId('');
+    }
+  };
+
   return (
     <AdminLayout title="Maintenance Operations" subtitle="Review service requests, assign technicians, and monitor proof of work">
       <section className="maintenance-page">
@@ -95,6 +124,8 @@ const AdminMaintenance = () => {
         </div>
 
         {error ? <div className="maintenance-alert" role="alert">{error}<button type="button" onClick={load}>Try again</button></div> : null}
+
+        <WarrantyClaims claims={warrantyClaims} busyClaimId={busyClaimId} onReview={reviewWarrantyClaim} />
 
         <div className="maintenance-workspace">
           <div className="maintenance-queue-panel">

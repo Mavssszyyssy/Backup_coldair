@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Alert, Linking, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   BoutiqueButton,
@@ -65,6 +66,53 @@ const DELIVERY_FEE_BY_BRANCH = {
 };
 
 const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
+const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "aeropulse_mobile_checkout_idempotency_v1";
+const CHECKOUT_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
+
+const checkoutFingerprint = ({ cartItems = [], address = {}, paymentMethod = "" }) =>
+  JSON.stringify({
+    paymentMethod: String(paymentMethod || "").toLowerCase(),
+    addressId: String(address.id || address._id || ""),
+    address: [address.street, address.barangay, address.city, address.province, address.postalCode]
+      .map((value) => String(value || "").trim().toLowerCase()),
+    items: cartItems
+      .map((item) => ({
+        id: String(item.id || item.productId || item.sku || ""),
+        quantity: Number(item.quantity || 0),
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  });
+
+const getCheckoutIdempotencyKey = async (fingerprint) => {
+  try {
+    const saved = JSON.parse(await AsyncStorage.getItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY) || "null");
+    if (
+      saved?.key &&
+      saved.fingerprint === fingerprint &&
+      Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS
+    ) return saved.key;
+  } catch (_error) {
+    // An in-memory key still protects the current screen.
+  }
+  const key = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    await AsyncStorage.setItem(
+      CHECKOUT_IDEMPOTENCY_STORAGE_KEY,
+      JSON.stringify({ key, fingerprint, createdAt: Date.now() }),
+    );
+  } catch (_error) {
+    // Storage failures do not prevent an order from being created safely.
+  }
+  return key;
+};
+
+const clearCheckoutIdempotencyKey = async () => {
+  try {
+    await AsyncStorage.removeItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY);
+  } catch (_error) {
+    // The key naturally expires, so an unavailable store needs no action.
+  }
+};
 
 const calculateCheckoutTotals = (items = [], address = {}) => {
   const subtotal = Math.round(items.reduce(
@@ -93,9 +141,6 @@ export default function CheckoutScreen() {
     if (!token) return Alert.alert("Sign in required", "Please sign in again before checking out.");
 
     setSubmitting(true);
-    if (!orderRequestKeyRef.current) {
-      orderRequestKeyRef.current = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    }
     setCheckoutMessage("Checking the latest stock and prices…");
 
     // Cart contents can persist between app updates. Resolve every line back
@@ -158,6 +203,11 @@ export default function CheckoutScreen() {
     }
 
     const latestTotals = calculateCheckoutTotals(checkoutCart, checkoutAddress);
+    if (!orderRequestKeyRef.current) {
+      orderRequestKeyRef.current = await getCheckoutIdempotencyKey(
+        checkoutFingerprint({ cartItems: checkoutCart, address: checkoutAddress, paymentMethod }),
+      );
+    }
     setCheckoutMessage(
       paymentMethod === "cod"
         ? "Submitting your order…"
@@ -221,9 +271,9 @@ export default function CheckoutScreen() {
 
       clearCart();
       orderRequestKeyRef.current = "";
+      await clearCheckoutIdempotencyKey();
       router.replace(`/customer/order-confirmation/${orderId}`);
     } catch (error) {
-      if (error?.status) orderRequestKeyRef.current = "";
       Alert.alert(
         error?.code === "PAYMENT_CONNECTION_TIMEOUT"
           ? "Connection timed out"

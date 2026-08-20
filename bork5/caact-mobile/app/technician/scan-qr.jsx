@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import QrCameraScanner from "../../components/technician/QrCameraScanner";
 import TechnicianScreen, { TechHero } from "../../components/technician/TechnicianScreen";
@@ -70,6 +70,28 @@ function SectionTitle({ icon, title, count }) {
         </Text>
       </View>
       {count !== undefined ? <StatusChip label={String(count)} color={COLORS.tech} /> : null}
+    </View>
+  );
+}
+
+function HistoryTable({ columns, rows, getValues }) {
+  if (!rows?.length) {
+    return <Text style={{ color: COLORS.textSecondary }}>No records found.</Text>;
+  }
+  return (
+    <View style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, overflow: "hidden" }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View style={{ minWidth: columns.length * 132 }}>
+          <View style={{ flexDirection: "row", backgroundColor: COLORS.surfaceAlt, padding: SPACING.xs }}>
+            {columns.map((column) => <Text key={column} style={{ width: 132, color: COLORS.textSecondary, fontWeight: FONT.black, fontSize: 11 }}>{column}</Text>)}
+          </View>
+          {rows.map((row, index) => (
+            <View key={row.id || `${row.date}-${index}`} style={{ flexDirection: "row", padding: SPACING.xs, borderTopWidth: index ? 1 : 0, borderColor: COLORS.border }}>
+              {getValues(row).map((value, valueIndex) => <Text key={`${row.id || index}-${valueIndex}`} numberOfLines={3} style={{ width: 132, color: COLORS.textPrimary, fontSize: 11, paddingRight: 8 }}>{value || "—"}</Text>)}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -278,6 +300,10 @@ export default function ScanScreen() {
             ) : null}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
               <DetailPair label="Serial" value={result.unit.serialNumber || "Not provided"} />
+              <DetailPair label="QR Unit ID" value={result.unit.qrUnitId || result.unit.id || result.unit.qrCode || "Not provided"} />
+              <DetailPair label="Branch" value={result.unit.branch || "Not provided"} />
+              <DetailPair label="Current Owner" value={result.unit.currentOwner || "Not assigned"} />
+              <DetailPair label="Warranty" value={String(result.unit.warrantyStatus || "Not recorded").replace(/_/g, " ")} />
               <DetailPair
                 label="Order Status"
                 value={result.unit.orderFulfillmentLabel}
@@ -293,6 +319,33 @@ export default function ScanScreen() {
                 value={result.health?.aiPrediction?.nextMaintenanceDate}
               />
             </View>
+          </Card>
+
+          <Card>
+            <SectionTitle icon="build-sharp" title="Maintenance History" count={result.maintenanceHistory?.length || 0} />
+            <HistoryTable
+              columns={["Date", "Service", "Technician", "Findings", "Action", "Status"]}
+              rows={result.maintenanceHistory || []}
+              getValues={(item) => [String(item.date || "").slice(0, 10), item.serviceType, item.technician, item.findings, item.actionTaken, item.status]}
+            />
+          </Card>
+
+          <Card>
+            <SectionTitle icon="medkit-sharp" title="Repair History" count={result.repairHistory?.length || 0} />
+            <HistoryTable
+              columns={["Date", "Issue", "Diagnosis", "Parts", "Technician", "Status"]}
+              rows={result.repairHistory || []}
+              getValues={(item) => [String(item.date || "").slice(0, 10), item.issue, item.diagnosis, item.partsUsed, item.technician, item.status]}
+            />
+          </Card>
+
+          <Card>
+            <SectionTitle icon="pulse-sharp" title="AMP Assessment" count={result.ampHistory?.length || 0} />
+            <HistoryTable
+              columns={["Date / Period", "Usage", "Health", "Risk", "Recommendation"]}
+              rows={result.ampHistory || []}
+              getValues={(item) => [`${String(item.date || "").slice(0, 10)} ${item.period || ""}`.trim(), item.usageData, String(item.healthScore ?? ""), item.riskLevel, item.recommendation]}
+            />
           </Card>
 
           {result.requests.length > 0 ? (

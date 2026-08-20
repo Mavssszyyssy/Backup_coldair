@@ -1,4 +1,5 @@
 import { Linking, Text, TouchableOpacity, View } from "react-native";
+import { useRouter } from "expo-router";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
@@ -10,6 +11,10 @@ import {
   COMPANY_CONTACT,
 } from "../../constants/company";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { useUserContext } from "../../context/UserContext";
+
+const contactEmailLink = (subject, body = "") =>
+  `mailto:${COMPANY_CONTACT.supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
 function ContactRow({ label, value, href }) {
   return (
@@ -39,11 +44,44 @@ function ContactRow({ label, value, href }) {
 }
 
 export default function CustomerContactScreen() {
+  const router = useRouter();
+  const { current } = useUserContext();
+  const assignedBranch = String(
+    current?.activeBranch || current?.assignedBranch || current?.branch || "",
+  ).trim();
+  const branchLabel = assignedBranch || "your assigned service branch";
+
   return (
     <CustomerScreen
       title="Contact"
       subtitle="Reach Cold Air ACT by phone, email, Messenger, or branch visit"
     >
+      <Card>
+        <CustomerSectionHeader title="Branch and Technician Assistance" />
+        <View style={{ padding: SPACING.md, borderRadius: 12, backgroundColor: COLORS.primaryLight, marginBottom: SPACING.md }}>
+          <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.black, textTransform: "uppercase", letterSpacing: 0.5 }}>Assigned branch</Text>
+          <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black, marginTop: 4 }}>{branchLabel}</Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginTop: 5 }}>Branch concerns are handled through Cold Air ACT’s official support channels so your request can be tracked and routed correctly.</Text>
+        </View>
+        <Button
+          title={`Contact ${assignedBranch || "Branch"} Desk`}
+          onPress={() => Linking.openURL(contactEmailLink(`Branch assistance: ${branchLabel}`, `Hello Cold Air ACT, I need assistance from ${branchLabel}.\n\nOrder or unit reference: \nConcern: `))}
+        />
+        <View style={{ height: SPACING.sm }} />
+        <Button
+          title="Contact Assigned Technician"
+          variant="secondary"
+          onPress={() => Linking.openURL(contactEmailLink("Message for assigned technician", "Hello Cold Air ACT, please relay this message to my assigned technician.\n\nOrder or unit reference: \nMessage: "))}
+        />
+        <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, lineHeight: 18, marginTop: SPACING.sm }}>For privacy and safety, technicians’ personal phone numbers and email addresses are not displayed. The service desk relays messages through the official work order.</Text>
+        <View style={{ marginTop: SPACING.md }}>
+          <ContactRow label={`${assignedBranch || "Branch"} desk email`} value={COMPANY_CONTACT.supportEmail} href={contactEmailLink(`Branch assistance: ${branchLabel}`)} />
+          <ContactRow label="Official service hotline" value={COMPANY_CONTACT.hotline} href={`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`} />
+        </View>
+        <View style={{ height: SPACING.sm }} />
+        <Button title="View My Orders" variant="ghost" onPress={() => router.push("/customer/orders")} />
+      </Card>
+
       <Card>
         <CustomerSectionHeader title="Contact Channels" />
         <ContactRow label="Support Email" value={COMPANY_CONTACT.supportEmail} href={`mailto:${COMPANY_CONTACT.supportEmail}`} />
@@ -77,6 +115,9 @@ export default function CustomerContactScreen() {
             </Text>
             <Text style={{ color: COLORS.primary, marginTop: 4 }}>
               {branch.plusCode}
+            </Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, marginTop: 4 }}>
+              Official hotline: {COMPANY_CONTACT.hotline}
             </Text>
           </View>
         ))}

@@ -42,10 +42,8 @@ export default function SignUpStep2() {
   const params = useLocalSearchParams();
   const { register } = useUserContext();
 
-  const [contactMethod, setContactMethod] = useState("mobile");
+  const [contactMethod, setContactMethod] = useState("email");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [messengerHandle, setMessengerHandle] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeExpiresAt, setCodeExpiresAt] = useState(0);
@@ -67,12 +65,9 @@ export default function SignUpStep2() {
   const codeExpiryCountdown =
     codeExpiresAt > now ? formatSeconds(codeExpiresAt - now) : 0;
   const blockCountdown = blockUntil > now ? formatSeconds(blockUntil - now) : 0;
-  const phoneForApi = contactMethod === "mobile" ? `+63${mobileNumber}` : "";
-  const messengerForApi =
-    contactMethod === "messenger" ? messengerHandle.trim() : "";
-  const otpAction =
-    contactMethod === "mobile" ? "register_phone" : "register_messenger";
-  const otpChannel = contactMethod === "mobile" ? "sms" : "messenger";
+  const phoneForApi = contactMethod === "sms" ? `+63${mobileNumber}` : "";
+  const otpAction = contactMethod === "sms" ? "register_phone" : "register_email";
+  const otpChannel = contactMethod === "sms" ? "sms" : "email";
   const addressStreet = [
     readParam(params.apartmentUnit).trim(),
     readParam(params.propertyBlockLot).trim(),
@@ -122,12 +117,11 @@ export default function SignUpStep2() {
       plus_code: readParam(params.plusCode).trim(),
       contact_method: contactMethod,
       phone: phoneForApi,
-      messenger_handle: messengerForApi,
+      messenger_handle: "",
       locations: primaryLocation.address.city ? [primaryLocation] : [],
     }),
     [
       contactMethod,
-      messengerForApi,
       mobileNumber,
       params,
       phoneForApi,
@@ -136,7 +130,6 @@ export default function SignUpStep2() {
   );
 
   const resetVerificationSession = () => {
-    setVerificationCode("");
     setCodeSent(false);
     setCodeInput("");
     setCodeExpiresAt(0);
@@ -145,20 +138,18 @@ export default function SignUpStep2() {
   };
 
   const clearContactErrors = () => {
-    setErrors((prev) => ({ ...prev, mobile: "", messenger: "", code: "" }));
+    setErrors((prev) => ({ ...prev, mobile: "", code: "" }));
   };
 
   const validateContactMethod = () => {
     const nextErrors = {};
 
-    if (contactMethod === "mobile") {
+    if (contactMethod === "sms") {
       if (!mobileNumber.trim()) {
         nextErrors.mobile = "Mobile number is required.";
       } else if (!/^\d{10}$/.test(mobileNumber.trim())) {
         nextErrors.mobile = "Please enter exactly 10 digits after +63.";
       }
-    } else if (!messengerHandle.trim()) {
-      nextErrors.messenger = "Facebook Messenger handle is required.";
     }
 
     setErrors((prev) => ({ ...prev, ...nextErrors }));
@@ -198,7 +189,7 @@ export default function SignUpStep2() {
           channel: otpChannel,
           email: registrationPayload.email,
           phone: phoneForApi,
-          messenger_handle: messengerForApi,
+          messenger_handle: "",
         });
       } catch (error) {
         setErrors((prev) => ({
@@ -216,11 +207,10 @@ export default function SignUpStep2() {
         return;
       }
 
-      setVerificationCode(result.debugCode || "");
       setCodeSent(true);
       setCodeInput("");
-      setCodeExpiresAt(timestamp + CODE_EXPIRES_MS);
-      setResendAvailableAt(timestamp + CODE_RESEND_MS);
+      setCodeExpiresAt(result?.expiresAt ? new Date(result.expiresAt).getTime() : timestamp + CODE_EXPIRES_MS);
+      setResendAvailableAt(result?.resendAvailableAt ? new Date(result.resendAvailableAt).getTime() : timestamp + CODE_RESEND_MS);
       setErrors((prev) => ({ ...prev, code: "" }));
     } finally {
       setSubmitting(false);
@@ -284,7 +274,7 @@ export default function SignUpStep2() {
         const nextAttemptCount = attemptCount + 1;
         setAttemptCount(nextAttemptCount);
 
-        if (nextAttemptCount >= 3) {
+        if (nextAttemptCount >= 5) {
           setBlockUntil(Date.now() + BLOCK_DURATION_MS);
           setErrors((prev) => ({
             ...prev,
@@ -298,12 +288,15 @@ export default function SignUpStep2() {
           ...prev,
           code:
             verification.error ||
-            `Incorrect code. ${3 - nextAttemptCount} attempt(s) remaining.`,
+            `Incorrect code. ${5 - nextAttemptCount} attempt(s) remaining.`,
         }));
         return;
       }
 
-      const result = await register(registrationPayload);
+      const result = await register({
+        ...registrationPayload,
+        registrationVerificationToken: verification.registrationVerificationToken,
+      });
 
       if (!result.success) {
         Alert.alert(
@@ -354,12 +347,12 @@ export default function SignUpStep2() {
               marginBottom: SPACING.sm,
             }}
           >
-            Choose Contact Method
+            Choose Verification Method
           </Text>
 
           <TouchableOpacity
             onPress={() => {
-              setContactMethod("mobile");
+              setContactMethod("email");
               resetVerificationSession();
               clearContactErrors();
             }}
@@ -370,7 +363,7 @@ export default function SignUpStep2() {
               paddingVertical: SPACING.sm,
               paddingHorizontal: SPACING.md,
               backgroundColor:
-                contactMethod === "mobile"
+                contactMethod === "email"
                   ? COLORS.primaryLight
                   : "transparent",
               borderRadius: 8,
@@ -384,13 +377,13 @@ export default function SignUpStep2() {
                 borderRadius: 10,
                 borderWidth: 2,
                 borderColor:
-                  contactMethod === "mobile" ? COLORS.primary : COLORS.border,
+                  contactMethod === "email" ? COLORS.primary : COLORS.border,
                 justifyContent: "center",
                 alignItems: "center",
                 marginRight: SPACING.sm,
               }}
             >
-              {contactMethod === "mobile" ? (
+              {contactMethod === "email" ? (
                 <View
                   style={{
                     width: 10,
@@ -402,13 +395,13 @@ export default function SignUpStep2() {
               ) : null}
             </View>
             <Text style={{ color: COLORS.textPrimary }}>
-              Mobile Number (+63)
+              Email ({readParam(params.email).trim() || "your registered email"})
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => {
-              setContactMethod("messenger");
+              setContactMethod("sms");
               resetVerificationSession();
               clearContactErrors();
             }}
@@ -419,7 +412,7 @@ export default function SignUpStep2() {
               paddingVertical: SPACING.sm,
               paddingHorizontal: SPACING.md,
               backgroundColor:
-                contactMethod === "messenger"
+                contactMethod === "sms"
                   ? COLORS.primaryLight
                   : "transparent",
               borderRadius: 8,
@@ -432,7 +425,7 @@ export default function SignUpStep2() {
                 borderRadius: 10,
                 borderWidth: 2,
                 borderColor:
-                  contactMethod === "messenger"
+                  contactMethod === "sms"
                     ? COLORS.primary
                     : COLORS.border,
                 justifyContent: "center",
@@ -440,7 +433,7 @@ export default function SignUpStep2() {
                 marginRight: SPACING.sm,
               }}
             >
-              {contactMethod === "messenger" ? (
+              {contactMethod === "sms" ? (
                 <View
                   style={{
                     width: 10,
@@ -452,13 +445,13 @@ export default function SignUpStep2() {
               ) : null}
             </View>
             <Text style={{ color: COLORS.textPrimary }}>
-              Facebook Messenger
+              SMS to mobile number
             </Text>
           </TouchableOpacity>
         </Card>
 
         <Card>
-          {contactMethod === "mobile" ? (
+          {contactMethod === "sms" ? (
             <View style={{ marginBottom: SPACING.sm + 6 }}>
               <Text
                 style={{
@@ -525,31 +518,15 @@ export default function SignUpStep2() {
               ) : null}
             </View>
           ) : (
-            <TextField
-              label="Facebook Messenger Handle"
-              value={messengerHandle}
-              onChangeText={(value) => {
-                setMessengerHandle(value);
-                resetVerificationSession();
-                setErrors((prev) => ({ ...prev, messenger: "" }));
-              }}
-              placeholder="username or profile URL"
-              error={errors.messenger}
-              autoCapitalize="none"
-            />
-          )}
-
-          {contactMethod === "messenger" ? (
             <Text
               style={{
                 color: COLORS.textSecondary,
                 marginBottom: SPACING.sm,
               }}
             >
-              Message the company Facebook page first, then enter the handle you
-              used here.
+              A verification code will be sent to {readParam(params.email).trim() || "your registered email"}.
             </Text>
-          ) : null}
+          )}
 
           <Button
             title={
@@ -566,54 +543,7 @@ export default function SignUpStep2() {
           />
         </Card>
 
-        {__DEV__ && codeSent ? (
-          <Card
-            style={{
-              backgroundColor: COLORS.primaryLight,
-              borderColor: COLORS.primary,
-              borderWidth: 1,
-            }}
-          >
-            <Text
-              style={{
-                fontWeight: FONT.bold,
-                color: COLORS.primary,
-                marginBottom: SPACING.xs,
-              }}
-            >
-              Debug: Verification Code
-            </Text>
-            <Text
-              style={{
-                fontSize: FONT.lg,
-                fontWeight: "800",
-                color: COLORS.textPrimary,
-              }}
-            >
-              {verificationCode}
-            </Text>
-            <Text
-              style={{
-                fontSize: FONT.sm,
-                color: COLORS.textSecondary,
-                marginTop: SPACING.xs,
-              }}
-            >
-              {contactMethod === "mobile"
-                ? `Sent to +63${mobileNumber}`
-                : `Sent to ${messengerHandle}`}
-            </Text>
-            <Text
-              style={{
-                fontSize: FONT.sm,
-                color: COLORS.textSecondary,
-                marginTop: SPACING.xs,
-              }}
-            >
-              Expires in {codeExpiryCountdown}s
-            </Text>
-          </Card>
-        ) : null}
+        {codeSent ? <Card><Text style={{ color: COLORS.textSecondary }}>Code sent by {contactMethod === "sms" ? `SMS to +63${mobileNumber}` : `email to ${readParam(params.email).trim()}`}. It expires in {codeExpiryCountdown}s.</Text></Card> : null}
 
         {isBlocked ? (
           <Card
@@ -647,7 +577,7 @@ export default function SignUpStep2() {
             error={errors.code}
           />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
-            Attempts used: {attemptCount}/3
+            Attempts used: {attemptCount}/5
           </Text>
         </Card>
 

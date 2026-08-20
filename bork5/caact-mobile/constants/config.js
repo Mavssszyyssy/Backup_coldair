@@ -11,6 +11,11 @@
 
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import {
+  beginBackendConnection,
+  failBackendConnection,
+  finishBackendConnection,
+} from "../services/backendConnectionState";
 
 const BACKEND_PORT = "5000";
 const BACKEND_FALLBACK_PORT = "5001";
@@ -85,13 +90,17 @@ export const API_BASE_FALLBACKS = configuredBaseUrl
 export const API_HEALTH_URL = `${API_BASE}/health`;
 
 export async function apiFetch(path, options) {
+  beginBackendConnection(path);
   let networkError;
   for (const baseUrl of [API_BASE, ...API_BASE_FALLBACKS]) {
     try {
-      return await fetch(`${baseUrl}${path}`, options);
+      const response = await fetch(`${baseUrl}${path}`, options);
+      finishBackendConnection(path);
+      return response;
     } catch (error) {
       networkError = error;
     }
   }
-  throw networkError || new Error("Unable to reach the local API.");
+  failBackendConnection(path);
+  throw networkError || new Error("Unable to connect to the server.");
 }

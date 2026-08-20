@@ -23,6 +23,7 @@ import WarrantyStatusModal from "./WarrantyStatusModal";
 const buildUnitFromBackend = (unit = {}) => ({
   id: unit.id || unit.serialNumber || `unit-${Date.now()}`,
   backendUnitId: unit.id || "",
+  qrUnitId: unit.qrUnitId || "",
   brand: unit.brand || "Cold Air ACT",
   model: unit.model || unit.modelName || unit.unitName || "Installed AC Unit",
   serialNumber: unit.serialNumber || "",
@@ -37,7 +38,11 @@ const buildUnitFromBackend = (unit = {}) => ({
     .filter(Boolean)
     .join(" - "),
   notes: "This unit was created from the backend order-to-installation handoff.",
-  serviceHistory: [],
+  warranty: unit.warranty || {},
+  warrantyStatus: unit.warrantyStatus || unit.warranty?.status || "pending_activation",
+  warrantyExpirationDate: unit.warrantyExpirationDate || unit.warranty?.expirationDate || "",
+  warrantyRecommendation: unit.warrantyRecommendation || "",
+  serviceHistory: Array.isArray(unit.serviceHistory) ? unit.serviceHistory : [],
 });
 
 function MyUnit() {

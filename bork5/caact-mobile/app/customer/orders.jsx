@@ -84,8 +84,6 @@ function workflowInfo(order = {}) {
   };
 }
 
-const workflowSteps = ["Submitted", "Approved", "Install", "Complete"];
-
 function formatDate(value = "") {
   if (!value) return "";
   const date = new Date(value);
@@ -118,14 +116,17 @@ function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
   );
 }
 
-function OrderStepStrip({ activeStep }) {
+function OrderStepStrip({ tracking = {}, activeStep = 0 }) {
+  const steps = Array.isArray(tracking.timeline) && tracking.timeline.length
+    ? tracking.timeline
+    : ["Submitted", "Approved", "Installation", "Completed"].slice(0, Math.max(activeStep + 1, 1)).map((label) => ({ label }));
   return (
     <View style={{ flexDirection: "row", gap: BQ_SPACING.xs }}>
-      {workflowSteps.map((step, index) => {
-        const isActive = activeStep >= index;
+      {steps.map((step, index) => {
+        const isActive = index < steps.length;
         return (
           <View
-            key={step}
+            key={step.stage || step.label}
             style={{
               flex: 1,
               borderRadius: 999,
@@ -138,7 +139,7 @@ function OrderStepStrip({ activeStep }) {
               variant="caption"
               color={isActive ? "#fff" : BQ_COLORS.inkMuted}
             >
-              {step}
+              {step.label}
             </BoutiqueText>
           </View>
         );
@@ -308,7 +309,7 @@ export default function CustomerOrdersScreen() {
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
                 </BoutiqueText>
 
-                <OrderStepStrip activeStep={progress.activeStep} />
+                <OrderStepStrip tracking={order.tracking} activeStep={progress.activeStep} />
 
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
                   {progress.body}
@@ -318,7 +319,7 @@ export default function CustomerOrdersScreen() {
                   <OrderProgressRow
                     icon="receipt-sharp"
                     title="Order stage"
-                    subtitle={order.workflowLabel || progress.label}
+                    subtitle={order.tracking?.currentLabel || order.workflowLabel || progress.label}
                   />
                   <OrderProgressRow icon="bicycle-sharp" title="Delivery" subtitle={order.deliveryStatus} />
                   <OrderProgressRow icon="card-sharp" title="Payment" subtitle={order.paymentStatus} color={BQ_COLORS.success} />

@@ -9,7 +9,7 @@ import { calculateUnitHealthScore } from "./acHealthScoreService";
 
 export function buildUnitQrCode(unit) {
   if (!unit) return "";
-  return `UNIT:${unit.id}|SERIAL:${unit.serialNumber || ""}|NAME:${unit.unitName || ""}`;
+  return unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.id}|SERIAL:${unit.serialNumber || ""}|NAME:${unit.unitName || ""}`;
 }
 
 function parseQrJson(value) {
@@ -37,29 +37,31 @@ function getPartValue(parts, prefix) {
 
 export function parseLookupTarget(raw) {
   const value = String(raw || "").trim();
-  if (!value) return { lookupValue: "", serialNumber: "", unitId: "" };
+  if (!value) return { lookupValue: "", serialNumber: "", unitId: "", qrUnitId: "" };
 
   const json = parseQrJson(value);
   if (json) {
     const serialNumber = String(json.serialNumber || json.serial || "").trim();
+    const qrUnitId = String(json.qrUnitId || json.qr_unit_id || "").trim();
     const unitId = String(json.unitId || json.unit || json.id || "").trim();
     return {
-      lookupValue: serialNumber || unitId,
+      lookupValue: serialNumber || qrUnitId || unitId,
       serialNumber,
       unitId,
+      qrUnitId,
     };
   }
 
   const urlSerial = value.match(/[?&](?:serialNumber|serial)=([^&#]+)/i);
   if (urlSerial?.[1]) {
     const serialNumber = decodeURIComponent(urlSerial[1]).trim();
-    return { lookupValue: serialNumber, serialNumber, unitId: "" };
+    return { lookupValue: serialNumber, serialNumber, unitId: "", qrUnitId: "" };
   }
 
   const pathSerial = value.match(/\/serial\/([^/?#]+)/i);
   if (pathSerial?.[1]) {
     const serialNumber = decodeURIComponent(pathSerial[1]).trim();
-    return { lookupValue: serialNumber, serialNumber, unitId: "" };
+    return { lookupValue: serialNumber, serialNumber, unitId: "", qrUnitId: "" };
   }
 
   const upperValue = value.toUpperCase();
@@ -68,33 +70,41 @@ export function parseLookupTarget(raw) {
   const acUnitSerial = getPartValue(parts, "AC_UNIT:");
   const explicitSerial = getPartValue(parts, "SERIAL:");
   const unitId = getPartValue(parts, "UNIT:");
+  const qrUnitId = getPartValue(parts, "QR_UNIT:");
   const serialNumber = acUnitSerial || explicitSerial;
 
-  if (serialNumber || unitId) {
+  if (serialNumber || qrUnitId || unitId) {
     return {
-      lookupValue: serialNumber || unitId,
+      lookupValue: serialNumber || qrUnitId || unitId,
       serialNumber,
       unitId,
+      qrUnitId,
     };
   }
 
   if (upperValue.startsWith("AC_UNIT:")) {
     const serial = value.replace(/^AC_UNIT:/i, "").trim();
-    return { lookupValue: serial, serialNumber: serial, unitId: "" };
+    return { lookupValue: serial, serialNumber: serial, unitId: "", qrUnitId: "" };
   }
 
   if (upperValue.startsWith("SERIAL:")) {
     const serial = value.replace(/^SERIAL:/i, "").trim();
-    return { lookupValue: serial, serialNumber: serial, unitId: "" };
+    return { lookupValue: serial, serialNumber: serial, unitId: "", qrUnitId: "" };
   }
 
-  return { lookupValue: value, serialNumber: value, unitId: "" };
+  if (upperValue.startsWith("QR_UNIT:")) {
+    const qrUnitId = value.replace(/^QR_UNIT:/i, "").trim();
+    return { lookupValue: qrUnitId, serialNumber: "", unitId: "", qrUnitId };
+  }
+
+  return { lookupValue: value, serialNumber: value, unitId: "", qrUnitId: "" };
 }
 
 function buildUnitFromProductSerial(product, serialUnit) {
   const serialNumber = serialUnit?.serialNumber || "";
   return {
-    id: serialNumber,
+    id: serialUnit?.qrUnitId || serialNumber,
+    qrUnitId: serialUnit?.qrUnitId || "",
     unitName: [product?.name, product?.specs].filter(Boolean).join(" "),
     brand: product?.brand || "",
     model: [product?.specs, product?.sku].filter(Boolean).join(" / "),
@@ -147,9 +157,11 @@ async function lookupSerialInProductCatalog(rawValue, token) {
   for (const product of products) {
     const serialUnit = (product.serialUnits || []).find((unit) => {
       const unitSerial = String(unit.serialNumber || "").trim().toLowerCase();
+      const unitQrId = String(unit.qrUnitId || "").trim().toLowerCase();
       const unitQr = String(unit.qrCode || "").trim().toLowerCase();
       return (
         unitSerial === serialNeedle ||
+        unitQrId === serialNeedle ||
         unitQr === rawNeedle ||
         unitQr.includes(`ac_unit:${serialNeedle}`)
       );
@@ -164,8 +176,9 @@ async function lookupSerialInProductCatalog(rawValue, token) {
 }
 
 async function lookupBackendSerialUnit(rawValue) {
-  const { serialNumber } = parseLookupTarget(rawValue);
-  if (!serialNumber) return { unit: null, error: "No serial number was found in the QR code." };
+  const { serialNumber, qrUnitId, lookupValue } = parseLookupTarget(rawValue);
+  const lookupKey = serialNumber || qrUnitId || lookupValue;
+  if (!lookupKey) return { unit: null, error: "No AC unit identifier was found in the QR code." };
 
   const token = await getStoredToken();
   if (!token) {
@@ -177,7 +190,7 @@ async function lookupBackendSerialUnit(rawValue) {
 
   try {
     const response = await apiFetch(
-      `/products/serial/${encodeURIComponent(serialNumber)}`,
+      `/products/serial/${encodeURIComponent(lookupKey)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -202,7 +215,7 @@ async function lookupBackendSerialUnit(rawValue) {
       return {
         unit: null,
         status: response.status,
-        serialNumber,
+        serialNumber: lookupKey,
         error:
           data?.message ||
           `Backend rejected serial lookup (${response.status}).`,
@@ -213,7 +226,7 @@ async function lookupBackendSerialUnit(rawValue) {
   } catch (error) {
     return {
       unit: null,
-      serialNumber,
+      serialNumber: lookupKey,
       error: error?.message || "Backend serial lookup failed.",
     };
   }
@@ -235,14 +248,46 @@ async function lookupBackendRegistrationContext(rawValue) {
   };
 }
 
+async function lookupBackendTechnicianHistory(rawValue) {
+  const serialNumber = String(rawValue || "").trim();
+  if (!serialNumber) return null;
+  const token = await getStoredToken();
+  if (!token) return null;
+  const result = await api.fetchTechnicianUnitHistory(token, serialNumber);
+  if (!result.success) return null;
+  const amp = result.ampHistory?.[0] || {};
+  const score = Number(amp.healthScore ?? 100);
+  return {
+    unit: result.unit,
+    maintenanceHistory: result.maintenanceHistory || [],
+    repairHistory: result.repairHistory || [],
+    ampHistory: result.ampHistory || [],
+    requests: [],
+    tasks: [],
+    health: {
+      score,
+      label: amp.riskLevel === "High" ? "Critical" : amp.riskLevel === "Moderate" ? "Warning" : "Good",
+      color: amp.riskLevel === "High" ? "#DC2626" : amp.riskLevel === "Moderate" ? "#D97706" : "#059669",
+      recommendation: amp.recommendation || "Review the maintenance history before servicing this unit.",
+      aiPrediction: { nextMaintenanceDate: amp.period || "Not recorded" },
+    },
+  };
+}
+
 export async function lookupUnitContext(rawValue) {
   const target = parseLookupTarget(rawValue);
   const value = target.lookupValue.toLowerCase();
   const serialValue = target.serialNumber.toLowerCase();
   const unitIdValue = target.unitId.toLowerCase();
+  const qrUnitIdValue = String(target.qrUnitId || "").toLowerCase();
 
-  if (target.serialNumber) {
-    const registrationContext = await lookupBackendRegistrationContext(rawValue);
+  if (target.serialNumber || target.qrUnitId) {
+    const backendResult = await lookupBackendSerialUnit(rawValue);
+    const resolvedSerial = backendResult?.unit?.serialNumber || target.serialNumber;
+    const historyContext = await lookupBackendTechnicianHistory(resolvedSerial);
+    if (historyContext?.unit) return historyContext;
+
+    const registrationContext = await lookupBackendRegistrationContext(resolvedSerial);
     if (registrationContext?.unit) {
       return {
         unit: registrationContext.unit,
@@ -256,7 +301,6 @@ export async function lookupUnitContext(rawValue) {
       };
     }
 
-    const backendResult = await lookupBackendSerialUnit(rawValue);
     if (backendResult?.unit) {
       return {
         unit: backendResult.unit,
@@ -276,7 +320,7 @@ export async function lookupUnitContext(rawValue) {
         tasks: [],
         lookupError: backendResult.error,
         lookupStatus: backendResult.status || 0,
-        lookupSerialNumber: backendResult.serialNumber || target.serialNumber,
+        lookupSerialNumber: backendResult.serialNumber || target.serialNumber || target.qrUnitId,
       };
     }
   }
@@ -289,6 +333,7 @@ export async function lookupUnitContext(rawValue) {
 
   const matchedUnit =
     units.find((unit) => String(unit.serialNumber || "").toLowerCase() === serialValue) ||
+    units.find((unit) => String(unit.qrUnitId || "").toLowerCase() === qrUnitIdValue) ||
     units.find((unit) => String(unit.id || "").toLowerCase() === unitIdValue) ||
     units.find((unit) => String(unit.serialNumber || "").toLowerCase() === value) ||
     units.find((unit) => String(unit.id || "").toLowerCase() === value) ||

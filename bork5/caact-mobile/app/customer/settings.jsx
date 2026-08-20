@@ -376,6 +376,21 @@ export default function CustomerSettingsScreen() {
           }
         />
       </Section>
+
+      <Section title="Help & Support">
+        <CustomerSettingsRow
+          icon="help-buoy-sharp"
+          title="Frequently Asked Questions"
+          subtitle="Orders, payments, delivery, warranty, and AC care"
+          onPress={() => router.push("/customer/faq")}
+        />
+        <CustomerSettingsRow
+          icon="chatbubble-ellipses-sharp"
+          title="Contact Customer Support"
+          subtitle="Get help with an order or service request"
+          onPress={() => router.push("/customer/contact")}
+        />
+      </Section>
     </CustomerScreen>
   );
 }

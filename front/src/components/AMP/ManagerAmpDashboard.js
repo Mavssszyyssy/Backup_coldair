@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
 import AmpDashboardShell from "./AmpDashboardShell";
+import AmpReportCenter from "./AmpReportCenter";
 import "./styles.css";
 
 const confidenceClass = (confidence) =>
@@ -126,6 +127,7 @@ function ManagerAmpDashboard() {
           </div>
         ) : null}
       </section>
+      <AmpReportCenter units={pipeline} />
     </AmpDashboardShell>
   );
 }

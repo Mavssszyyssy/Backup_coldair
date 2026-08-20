@@ -14,6 +14,7 @@ const MENU_ITEMS = [
   { label: "Notifications", href: "/customer/notifications", icon: "notifications-sharp" },
   { label: "Orders", href: "/customer/orders", icon: "receipt-sharp" },
   { label: "Services", href: "/customer/services", icon: "calendar-sharp" },
+  { label: "Help & FAQ", href: "/customer/faq", icon: "help-buoy-sharp" },
   { label: "Contact", href: "/customer/contact", icon: "call-sharp" },
   { label: "Settings", href: "/customer/settings", icon: "settings-sharp" },
   { label: "Account Security", href: "/customer/oobe", icon: "shield-checkmark-sharp" },

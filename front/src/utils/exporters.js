@@ -68,7 +68,7 @@ export const exportToCsv = ({ filename, rows }) => {
   downloadBlob(new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' }), filename || 'report.csv');
 };
 
-export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '' }) => {
+export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName = '', metadata = {} }) => {
   const w = window.open('', '_blank');
   if (!w) {
     window.alert('Your browser blocked the PDF window. Please allow pop-ups for this site and try again.');
@@ -80,7 +80,7 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '' }) => {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>${escapeHtml(title || 'Report')}</title>
+    <title>${escapeHtml(fileName || title || 'Report')}</title>
     <style>
       @page { size: A4 landscape; margin: 16mm; }
       * { box-sizing: border-box; }
@@ -100,15 +100,17 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '' }) => {
       th { background: #0f4c81; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
       tbody tr:nth-child(even) { background: #f8fafc; }
       .meta { color: #475569; font-size: 10px; margin: 0 0 12px; }
-      .report-footer { position: fixed; bottom: 0; left: 0; right: 0; color: #64748b; font-size: 9px; border-top: 1px solid #cbd5e1; padding-top: 5px; }
+      .report-watermark { position: fixed; top: 43%; left: 8%; right: 8%; transform: rotate(-28deg); text-align: center; font-size: 74px; font-weight: 800; letter-spacing: .12em; color: rgba(15, 76, 129, .055); pointer-events: none; z-index: -1; }
+      .report-footer { position: fixed; bottom: 0; left: 0; right: 0; color: #64748b; font-size: 9px; border-top: 1px solid #cbd5e1; padding-top: 5px; display: flex; justify-content: space-between; gap: 12px; }
       @media print { .report-footer { position: fixed; } }
     </style>
   </head>
   <body>
-    <header class="report-header"><div><div class="brand">AeroPulse <span>Airconditioning Trading</span></div></div><div class="generated">Generated: ${escapeHtml(new Date().toLocaleString())}</div></header>
+    <div class="report-watermark">${escapeHtml(metadata.watermark || 'AEROPULSE')}</div>
+    <header class="report-header"><div><div class="brand">AeroPulse <span>Airconditioning Trading</span></div></div><div class="generated">${metadata.reportId ? `Report ID: ${escapeHtml(metadata.reportId)}<br/>` : ''}Generated: ${escapeHtml(metadata.generatedAt || new Date().toLocaleString())}</div></header>
     <section><h1>${escapeHtml(title || 'Report')}</h1>${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ''}</section>
     ${html || ''}
-    <footer class="report-footer">AeroPulse confidential business report</footer>
+    <footer class="report-footer"><span>${escapeHtml(metadata.branch ? `Branch: ${metadata.branch}` : 'AEROPULSE confidential business report')} · ${escapeHtml(metadata.reportType || title || 'Report')}</span><span>${escapeHtml(metadata.reportId ? `Report ID: ${metadata.reportId} · ` : '')}${escapeHtml(metadata.generatedAt ? `Generated: ${metadata.generatedAt} · ` : '')}${escapeHtml(metadata.systemName || 'AEROPULSE')}</span></footer>
   </body>
 </html>`);
   w.onload = () => {

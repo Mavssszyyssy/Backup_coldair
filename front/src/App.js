@@ -38,6 +38,7 @@ import CustomerChatbot from "./components/chatbot/CustomerChatbot";
 import Checkout from "./components/checkout/Checkout";
 import OrderConfirmation from "./components/checkout/OrderConfirmation";
 import GlobalDialog from "./components/common/GlobalDialog";
+import BackendConnectionBanner from "./components/common/BackendConnectionBanner";
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import Contact from "./components/contact/Contact";
 import FaqPage from "./components/faq/FaqPage";
@@ -80,7 +81,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div className="loading-screen">Connecting...</div>;
   }
 
   return isAuthenticated ? (
@@ -95,7 +96,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div className="loading-screen">Connecting...</div>;
   }
 
   if (!isAuthenticated) {
@@ -114,7 +115,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
 
   if (loading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div className="loading-screen">Connecting...</div>;
   }
 
   return !isAuthenticated ? (
@@ -129,7 +130,7 @@ const HomeRoute = ({ children }) => {
   const { loading } = useUser();
 
   if (loading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div className="loading-screen">Connecting...</div>;
   }
 
   return children;
@@ -566,6 +567,7 @@ function App() {
         <CartProvider>
           <Router>
             <div className="App">
+              <BackendConnectionBanner />
               <AppContent />
               <GlobalDialog />
             </div>

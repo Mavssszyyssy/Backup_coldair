@@ -33,7 +33,29 @@ if (
 const getToken = () => localStorage.getItem("accessToken");
 const getActiveBranch = () => localStorage.getItem("activeBranch");
 
+let activeRequestCount = 0;
+
+const publishConnectionState = (state, detail = {}) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("aeropulse:connection", {
+      detail: { state, activeRequests: activeRequestCount, ...detail },
+    }),
+  );
+};
+
+const beginConnection = (path) => {
+  activeRequestCount += 1;
+  publishConnectionState("connecting", { path });
+};
+
+const finishConnection = (state = "loaded", detail = {}) => {
+  activeRequestCount = Math.max(0, activeRequestCount - 1);
+  publishConnectionState(state, detail);
+};
+
 const apiRequest = async (path, options = {}) => {
+  beginConnection(path);
   const token = getToken();
   const activeBranch = getActiveBranch();
   const method = String(options.method || "GET").toUpperCase();
@@ -43,7 +65,7 @@ const apiRequest = async (path, options = {}) => {
   );
   const url = `${API_BASE_URL}${path}`;
 
-  if (!token && !path.startsWith("/auth/")) {
+  if (!token && !path.startsWith("/auth/") && path !== "/health") {
     console.warn("Attempting API request without auth token", { url, path });
   }
 
@@ -74,13 +96,11 @@ const apiRequest = async (path, options = {}) => {
   } catch (error) {
     console.error("API request failed", { url: requestUrl, options, error });
     const message =
-      error?.message?.includes("Failed to fetch") ||
-      error?.message?.includes("NetworkError")
-        ? `Server unreachable at ${requestUrl}. Check backend is running and CORS is configured correctly.`
-        : error?.message || "Network error occurred while sending the request.";
+      "Unable to connect to the server. Please check your connection and try again.";
     const err = new Error(message);
     err.status = 0;
     err.data = null;
+    finishConnection("failed", { path, message, url: requestUrl });
     throw err;
   }
 
@@ -119,9 +139,11 @@ const apiRequest = async (path, options = {}) => {
     err.data = data;
     err.fieldErrors =
       data?.errors && typeof data.errors === "object" ? data.errors : null;
+    finishConnection("loaded", { path });
     throw err;
   }
 
+  finishConnection("loaded", { path });
   return data;
 };
 

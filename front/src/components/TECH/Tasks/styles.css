@@ -1087,6 +1087,30 @@
   margin-top: 14px;
 }
 
+.field-registration-history-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.field-registration-history-table th,
+.field-registration-history-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--gray-200);
+  text-align: left;
+  vertical-align: top;
+  color: var(--gray-700);
+}
+
+.field-registration-history-table th {
+  background: var(--gray-50);
+  color: var(--gray-600);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
 .field-registration-serials,
 .task-registration-list {
   display: grid;

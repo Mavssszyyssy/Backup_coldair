@@ -34,8 +34,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     email: "",
     emailVerified: false,
-    registrationSecret: "",
-    provisioningUri: "",
+    registrationVerificationToken: "",
     firstName: "",
     lastName: "",
     alias: "",
@@ -82,7 +81,7 @@ export default function Register() {
             setFormData((prev) => ({
               ...prev,
               ...progress.formData,
-              emailVerified: Boolean(progress.formData.emailVerified || progress.formData.verifiedCode),
+              emailVerified: Boolean(progress.formData.emailVerified),
               locations: progress.formData.locations || [],
             }));
             setStepIndex(Math.max(0, Math.min(Number(progress.stepIndex) || 0, STEPS.length - 1)));
@@ -173,8 +172,7 @@ export default function Register() {
       setFormData({
         email: "",
         emailVerified: false,
-        registrationSecret: "",
-        provisioningUri: "",
+        registrationVerificationToken: "",
         firstName: "",
         lastName: "",
         alias: "",
@@ -226,6 +224,7 @@ export default function Register() {
         role: detectedRole,
         branch: formData.branch,
         locations: formData.locations,
+        registrationVerificationToken: formData.registrationVerificationToken,
       };
 
       await register(payload);

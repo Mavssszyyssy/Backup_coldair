@@ -28,6 +28,15 @@ const defaultForm = {
 const requiredSerials = (task) => task?.registrationProgress?.requiredSerials || [];
 const registrationFor = (task, serial) => task?.ampRegistrations?.[serial] || null;
 
+const HistoryTable = ({ columns, rows, values }) => (
+  <div style={{ overflowX: 'auto' }}>
+    <table className="field-registration-history-table">
+      <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+      <tbody>{rows?.length ? rows.map((row, index) => <tr key={row.id || `${row.date}-${index}`}>{values(row).map((value, valueIndex) => <td key={`${row.id || index}-${valueIndex}`}>{value || '—'}</td>)}</tr>) : <tr><td colSpan={columns.length}>No records found.</td></tr>}</tbody>
+    </table>
+  </div>
+);
+
 const FieldServiceRegistration = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +51,7 @@ const FieldServiceRegistration = () => {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [notice, setNotice] = useState('');
+  const [history, setHistory] = useState(null);
 
   const currentRegistration = useMemo(
     () => registrationFor(context.task, serialNumber),
@@ -52,9 +62,19 @@ const FieldServiceRegistration = () => {
     if (!serial) return;
     setLoading(true);
     setError('');
+    setHistory(null);
     try {
       const response = await apiRequest(`/tasks/registration-context/${encodeURIComponent(serial)}`);
       setContext({ task: response.task, unit: response.unit });
+      const resolvedSerial = response.unit?.serialNumber || serial;
+      if (resolvedSerial !== serial) {
+        setSerialNumber(resolvedSerial);
+        setRawQr(resolvedSerial);
+        setSearchParams({ serial: resolvedSerial });
+      }
+      apiRequest(`/tasks/unit-history/${encodeURIComponent(serial)}`)
+        .then((historyResponse) => setHistory(historyResponse))
+        .catch(() => setHistory(null));
       const previous = response.unit?.ampRegistration?.ampParameters || response.task?.ampRegistrations?.[serial]?.ampParameters;
       if (previous) {
         setForm((prev) => ({ ...prev, ...previous, lastServiceDate: today() }));
@@ -75,7 +95,7 @@ const FieldServiceRegistration = () => {
     if (queryQr) {
       const parsed = parseQrInstallPayload(queryQr);
       if (parsed.ok) {
-        const serial = parsed.data.serialNumber || parsed.data.serial || '';
+        const serial = parsed.data.serialNumber || parsed.data.serial || parsed.data.qrUnitId || '';
         setSerialNumber(serial);
         setRawQr(queryQr);
         loadContext(serial);
@@ -89,7 +109,7 @@ const FieldServiceRegistration = () => {
       setError(parsed.error);
       return;
     }
-    const serial = parsed.data.serialNumber || parsed.data.serial || '';
+    const serial = parsed.data.serialNumber || parsed.data.serial || parsed.data.qrUnitId || '';
     setSerialNumber(serial);
     setSearchParams({ serial });
     loadContext(serial);
@@ -307,6 +327,18 @@ const FieldServiceRegistration = () => {
           ) : null}
         </section>
       </div>
+
+      {history?.unit ? <section className="tech-card field-registration-panel">
+        <h3>AC Unit Service History</h3>
+        <p><strong>{history.unit.unitName}</strong> · {history.unit.serialNumber} · {history.unit.branch || 'Branch not recorded'}</p>
+        <p>Owner: {history.unit.currentOwner || 'Not recorded'} · Warranty: {String(history.unit.warrantyStatus || 'Not recorded').replace(/_/g, ' ')}</p>
+        <h4>Maintenance History</h4>
+        <HistoryTable columns={['Date', 'Service Type', 'Technician', 'Findings', 'Action Taken', 'Status']} rows={history.maintenanceHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.serviceType, item.technician, item.findings, item.actionTaken, item.status]} />
+        <h4 style={{ marginTop: 20 }}>Repair History</h4>
+        <HistoryTable columns={['Date', 'Issue', 'Diagnosis', 'Parts Used', 'Technician', 'Status']} rows={history.repairHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.issue, item.diagnosis, item.partsUsed, item.technician, item.status]} />
+        <h4 style={{ marginTop: 20 }}>AMP Assessment</h4>
+        <HistoryTable columns={['Date / Period', 'Usage Data', 'Health Score', 'Risk Level', 'Recommendation']} rows={history.ampHistory} values={(item) => [`${item.date ? new Date(item.date).toLocaleDateString() : ''} ${item.period || ''}`.trim(), item.usageData, item.healthScore, item.riskLevel, item.recommendation]} />
+      </section> : null}
 
       {requiredSerials(context.task).length > 0 ? (
         <section className="tech-card field-registration-required">

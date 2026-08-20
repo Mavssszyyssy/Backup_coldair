@@ -963,3 +963,11 @@
     transform: translateX(-100%);
   }
 }
+
+.admin-notifications-item-time {
+  display: block;
+  margin-top: 6px;
+  color: var(--gray-400);
+  font-size: 10px;
+  font-weight: 700;
+}

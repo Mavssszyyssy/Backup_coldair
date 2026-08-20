@@ -13,8 +13,7 @@ export default function RegisterContactStep({
   onNext,
   onBack,
 }) {
-  // Messenger is now optional; only phone is required for progression
-  const isComplete = formData.phoneVerified;
+  const isComplete = Boolean(formData.emailVerified || formData.phoneVerified);
 
   return (
     <BoutiqueStack gap={32} className="bq-reg-step bq-fade-in" height="100%">
@@ -29,13 +28,15 @@ export default function RegisterContactStep({
           color={BQ_COLORS.inkMuted}
           weight={500}
         >
-          Verify your identity across multiple channels to secure your account.
+          Your email or mobile number must be verified before you can create an account.
         </BoutiqueText>
       </BoutiqueBox>
 
       <BoutiqueStack gap={32} className="bq-reg-contact-fields">
-        {/* PHONE VERIFICATION - MANDATORY */}
-        <BoutiqueVerifyInput
+        {formData.emailVerified ? <BoutiqueBox padding={18} background="#ecfdf5" style={{ borderRadius: 14 }}>
+          <BoutiqueText color={BQ_COLORS.success} weight={800}>Email verification completed</BoutiqueText>
+          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} margin="6px 0 0">Your mobile number is optional and can be added later in Settings.</BoutiqueText>
+        </BoutiqueBox> : <BoutiqueVerifyInput
           label="Phone Number"
           icon={Phone}
           type="tel"
@@ -49,7 +50,7 @@ export default function RegisterContactStep({
           action="register_phone"
           channel="sms"
           validator={validatePhMobileHeuristic}
-        />
+        />}
 
       </BoutiqueStack>
 

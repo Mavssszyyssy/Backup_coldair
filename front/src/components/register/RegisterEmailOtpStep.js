@@ -42,15 +42,10 @@ export default function RegisterEmailOtpStep({
         body: JSON.stringify({ email: formData.email }),
       });
 
-      if (response.secret) {
-        onFieldChange("registrationSecret", response.secret);
-        onFieldChange("provisioningUri", response.provisioningUri);
-        if (response.verifiedCode) {
-          onFieldChange("verifiedCode", response.verifiedCode);
-        }
+      if (response.message) {
         onNext();
       } else {
-        setLocalError(response.message || "Failed to initialize registration.");
+        setLocalError("Unable to send a verification code.");
       }
     } catch (err) {
       setLocalError(err.message || "Server error. Please try again.");
@@ -64,7 +59,7 @@ export default function RegisterEmailOtpStep({
       <div className="bq-reg-header">
         <h3 className="bq-reg-title">Email Verification</h3>
         <p className="bq-reg-desc">
-          Enter your email to receive your security secret.
+          Enter your email to receive a six-digit verification code.
         </p>
       </div>
 

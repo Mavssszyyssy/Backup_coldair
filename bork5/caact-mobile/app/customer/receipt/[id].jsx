@@ -32,8 +32,8 @@ const statusVariant = (status = "") => {
 };
 
 const receiptDetails = (order = {}) => ({
-  receiptNumber: order.receipt?.receiptNumber || order.orderCode || order.id,
-  issuedAt: order.receipt?.issuedAt || order.createdAt,
+  receiptNumber: order.invoice?.invoiceNumber || order.receipt?.receiptNumber || order.orderCode || order.id,
+  issuedAt: order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt,
   paymentStatus: order.paymentStatus || order.receipt?.paymentStatus || "Pending",
   paymentMethod: order.paymentProvider || order.receipt?.paymentProvider || order.paymentMethod || "Pending",
   paymentReference:
@@ -44,6 +44,11 @@ const receiptDetails = (order = {}) => ({
   discount: Number(order.discountAmount || order.receipt?.discountAmount || 0),
   total: Number(order.total || order.receipt?.amountPaid || 0),
 });
+
+const formatAddress = (address = {}) =>
+  address?.formatted || [address?.street, address?.barangay, address?.city, address?.province, address?.region, address?.postalCode]
+    .filter(Boolean)
+    .join(", ");
 
 function DetailCell({ label, value, fullWidth = false }) {
   return (
@@ -119,12 +124,8 @@ export default function ReceiptScreen() {
   );
 
   const receipt = receiptDetails(order || {});
-  const address = [
-    order?.address?.street,
-    order?.address?.barangay,
-    order?.address?.city,
-    order?.address?.province,
-  ].filter(Boolean).join(", ");
+  const invoice = order?.invoice || {};
+  const address = formatAddress(invoice.deliveryAddress || order?.address);
 
   return (
     <>
@@ -134,11 +135,11 @@ export default function ReceiptScreen() {
           <BoutiqueCard>
             <BoutiqueText color={BQ_COLORS.inkMuted}>Loading receipt…</BoutiqueText>
           </BoutiqueCard>
-        ) : !order ? (
+        ) : !order || !order.receiptAvailable ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={48} color={BQ_COLORS.inkFaint} />
             <BoutiqueText variant="h2" align="center">Receipt unavailable</BoutiqueText>
-            <BoutiqueText color={BQ_COLORS.inkMuted} align="center">The receipt will appear after an order has been created.</BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted} align="center">The official receipt will appear after payment is confirmed.</BoutiqueText>
             <BoutiqueButton title="View Orders" onPress={() => router.replace("/customer/orders")} />
           </BoutiqueCard>
         ) : (
@@ -179,8 +180,8 @@ export default function ReceiptScreen() {
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: "#0f172a" }}>
               <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">ORDER NUMBER</BoutiqueText>
-                <BoutiqueText variant="h3" color="#fff">{order.orderCode || order.id}</BoutiqueText>
+                <BoutiqueText variant="label" color="#94a3b8">INVOICE / ORDER</BoutiqueText>
+                <BoutiqueText variant="h3" color="#fff">{receipt.receiptNumber} · {order.orderCode || order.id}</BoutiqueText>
               </View>
               <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
                 <BoutiqueText variant="label" color="#94a3b8">ISSUED</BoutiqueText>
@@ -189,10 +190,14 @@ export default function ReceiptScreen() {
             </View>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: BQ_COLORS.border }}>
-              <DetailCell label="CUSTOMER" value={order.customerName || order.address?.name || "Customer"} />
+              <DetailCell label="CUSTOMER" value={[invoice.customer?.name || order.customerName || order.address?.name || "Customer", invoice.customer?.email, invoice.customer?.phone].filter(Boolean).join("\n")} />
+              <DetailCell label="BRANCH" value={invoice.branch || order.stockSourceBranch || order.customerBranch || "Pending"} />
               <DetailCell label="PAYMENT METHOD" value={receipt.paymentMethod} />
               <DetailCell label="PAYMENT REFERENCE" value={receipt.paymentReference} />
               <DetailCell label="DELIVERY ADDRESS" value={address || "Pending"} />
+              <DetailCell label="BILLING ADDRESS" value={formatAddress(invoice.billingAddress || order.address) || "Same as delivery"} />
+              <DetailCell label="ORDER / DELIVERY" value={`${invoice.orderStatus || order.workflowLabel || "Pending"} · ${order.tracking?.currentLabel || "Order Placed"}`} />
+              <DetailCell label="WARRANTY / TECHNICIAN" value={[invoice.warranty, invoice.technician?.name && `${invoice.technician.name} (${invoice.technician.status})`].filter(Boolean).join("\n") || "Warranty activates after installation."} />
             </View>
 
             <View style={{ paddingHorizontal: BQ_SPACING.lg, paddingTop: BQ_SPACING.lg, gap: BQ_SPACING.sm }}>
@@ -209,6 +214,7 @@ export default function ReceiptScreen() {
                       <View style={{ flex: 1 }}>
                         <BoutiqueText variant="h3">{item.name}</BoutiqueText>
                         {!!item.specs && <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.specs}</BoutiqueText>}
+                        {!!item.serialNumbers?.length && <BoutiqueText variant="caption" color={BQ_COLORS.success}>Serial: {item.serialNumbers.join(", ")}</BoutiqueText>}
                       </View>
                       <BoutiqueText variant="h3">{formatPeso(price * quantity)}</BoutiqueText>
                     </View>
@@ -220,8 +226,16 @@ export default function ReceiptScreen() {
 
             <View style={{ padding: BQ_SPACING.lg, gap: BQ_SPACING.lg }}>
               <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 21 }}>
-                This receipt confirms the order payment record stored in the Coldair ACT system.
+                This invoice is tied to one order and one receipt record in the Coldair ACT system.
               </BoutiqueText>
+              {!!order.tracking?.timeline?.length && (
+                <View style={{ gap: BQ_SPACING.xs, padding: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderRadius: BQ_RADIUS.sm }}>
+                  <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>DELIVERY TRACKING</BoutiqueText>
+                  {order.tracking.timeline.map((step) => (
+                    <BoutiqueText key={step.stage} variant="caption">✓ {step.label}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</BoutiqueText>
+                  ))}
+                </View>
+              )}
               <View style={{ gap: BQ_SPACING.sm }}>
                 <AmountRow label="Subtotal" value={receipt.subtotal} />
                 <AmountRow label="VAT" value={receipt.vat} />

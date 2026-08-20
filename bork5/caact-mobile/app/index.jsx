@@ -17,20 +17,20 @@ import { checkBackendConnection } from "../services/api";
 
 const STATUS_COPY = {
   checking: {
-    title: "Checking backend",
-    detail: "Looking for AeroPulse on your local network.",
+    title: "Connecting...",
+    detail: "Connecting to the server...",
     color: COLORS.warning,
     background: COLORS.warningLight,
   },
   connected: {
-    title: "Backend connected",
-    detail: "This device can reach the AeroPulse backend.",
+    title: "Loaded",
+    detail: "Server connection established.",
     color: COLORS.success,
     background: COLORS.successLight,
   },
   offline: {
-    title: "Backend offline",
-    detail: "Start the backend or confirm this device is on the same LAN.",
+    title: "Connection failed",
+    detail: "Unable to connect to the server. Please check your connection and try again.",
     color: COLORS.danger,
     background: COLORS.dangerLight,
   },
@@ -164,19 +164,29 @@ export default function Index() {
         </View>
 
         <TouchableOpacity
-          disabled={isChecking || isPreparing}
-          onPress={() => setEnterApp(true)}
+          disabled={isChecking || isPreparing || connection.state !== "connected"}
+          onPress={() => {
+            if (connection.state === "connected") setEnterApp(true);
+          }}
           style={{
             alignItems: "center",
             backgroundColor:
-              isChecking || isPreparing ? COLORS.textMuted : COLORS.primary,
+              isChecking || isPreparing || connection.state !== "connected"
+                ? COLORS.textMuted
+                : COLORS.primary,
             borderRadius: RADIUS.sm,
             marginTop: SPACING.lg,
             paddingVertical: 14,
           }}
         >
           <Text style={{ color: COLORS.surface, fontWeight: FONT.bold }}>
-            {isPreparing ? "Preparing..." : "Continue"}
+            {isPreparing
+              ? "Loading..."
+              : isChecking
+                ? "Connecting..."
+                : connection.state === "connected"
+                  ? "Continue"
+                  : "Retry connection"}
           </Text>
         </TouchableOpacity>
 

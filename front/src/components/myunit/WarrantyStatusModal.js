@@ -2,7 +2,10 @@ import { getWarrantyWarnings } from '../../domain/myunit/warrantyWarnings';
 
 function WarrantyStatusModal({ unit, onClose }) {
   const warnings = getWarrantyWarnings(unit);
-  const valid = !unit?.warrantyRevoked && !unit?.recallActive;
+  const warranty = unit?.warranty || {};
+  const status = unit?.warrantyStatus || warranty.status || "pending_activation";
+  const valid = status === "active";
+  const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "Not recorded";
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -16,8 +19,10 @@ function WarrantyStatusModal({ unit, onClose }) {
         <div className="modal-body">
           <div className="info-row">
             <span className="info-label">Validity</span>
-            <span className="info-value">{valid ? 'Active (demo)' : 'Limited / revoked'}</span>
+            <span className="info-value">{valid ? "Active" : status.replace(/_/g, " ")}</span>
           </div>
+          <div className="info-row"><span className="info-label">Warranty type</span><span className="info-value">{warranty.warrantyType || "Standard manufacturer warranty"}</span></div>
+          <div className="info-row"><span className="info-label">Coverage period</span><span className="info-value">{formatDate(warranty.startDate)} – {formatDate(warranty.expirationDate)}</span></div>
           {warnings.length > 0 && (
             <div className="warranty-warnings" role="alert">
               {warnings.map((w) => (
@@ -27,10 +32,24 @@ function WarrantyStatusModal({ unit, onClose }) {
           )}
           <div className="info-row">
             <span className="info-label">Coverage</span>
-            <span className="info-value">{unit.warrantyTerms || 'As agreed at sign-up (see Terms — warranty).'}</span>
+            <span className="info-value">{warranty.coveredComponents?.join(", ") || unit.warrantyTerms || "Coverage details pending."}</span>
           </div>
+          {!!warranty.coverageLimitations?.length && <div className="info-row"><span className="info-label">Limitations</span><span className="info-value">{warranty.coverageLimitations.join(" ")}</span></div>}
+          <div className="info-row"><span className="info-label">Claims</span><span className="info-value">{warranty.claims?.length || 0} recorded</span></div>
+          {warranty.claims?.map((claim) => (
+            <div className="info-row" key={claim.claimId}>
+              <span className="info-label">{claim.claimId}</span>
+              <span className="info-value">{claim.status?.replace(/_/g, " ")} — {claim.issue}</span>
+            </div>
+          ))}
+          {warranty.serviceRecords?.map((record, index) => (
+            <div className="info-row" key={`${record.serviceDate}-${index}`}>
+              <span className="info-label">Warranty service</span>
+              <span className="info-value">{record.visitType} — {record.summary}</span>
+            </div>
+          ))}
           <p className="warranty-footnote">
-            Owner-configured thresholds (e.g. failed repairs in a period) apply in production; this screen reads unit flags set by admin or technician tickets.
+            Warranty claims are reviewed by the service team. Approved claims create a linked service record and remain visible to AMP.
           </p>
         </div>
         <div className="modal-footer">

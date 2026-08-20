@@ -115,7 +115,13 @@ export function getHealthColor(score) {
   return "#DC2626";
 }
 
-export function buildHealthRecommendation(score, reasons = []) {
+export function buildHealthRecommendation(score, reasons = [], warrantyStatus = "") {
+  if (warrantyStatus === "under_review") {
+    return "Your warranty claim is being reviewed. Keep the AC accessible for the service team.";
+  }
+  if (warrantyStatus === "approved") {
+    return "Warranty repair is approved. Keep the technician appointment to complete the covered service.";
+  }
   if (score >= 85) {
     return "Unit condition looks stable. Continue regular preventive maintenance.";
   }
@@ -158,6 +164,9 @@ export function buildAiLifecyclePrediction({
   const completedTaskCount = tasks.filter(
     (task) => String(task.status || "").toLowerCase() === "completed"
   ).length;
+  const warrantyRepairCount = (Array.isArray(unit?.warranty?.serviceRecords)
+    ? unit.warranty.serviceRecords
+    : []).filter((record) => /repair/i.test(String(record?.visitType || ""))).length;
   const severeCount =
     requests.filter((request) =>
       containsSevereKeywords(`${request.issueType} ${request.issueDescription}`)
@@ -169,7 +178,7 @@ export function buildAiLifecyclePrediction({
   const placementRisk = placementProfile?.risk || 0;
   const expectedLifeMonths = Math.max(
     72,
-    144 - placementRisk - completedTaskCount * 3 - severeCount * 6
+    144 - placementRisk - completedTaskCount * 3 - severeCount * 6 - warrantyRepairCount * 4
   );
   const remainingMonths = installationDate
     ? Math.max(0, Math.round(expectedLifeMonths - ageMonths))
@@ -182,6 +191,9 @@ export function buildAiLifecyclePrediction({
     maintenanceIntervalMonths = 3;
   } else if (placementRisk >= 10 || score < 85) {
     maintenanceIntervalMonths = 4;
+  }
+  if (warrantyRepairCount >= 2) {
+    maintenanceIntervalMonths = Math.min(maintenanceIntervalMonths, 3);
   }
 
   const anchorDate = latestServiceDate || installationDate || now;
@@ -267,6 +279,10 @@ export function calculateUnitHealthScore({
 
   const installationDate = parseDateSafe(unit?.installationDate);
   const placementProfile = getPlacementProfile(unit);
+  const warrantyStatus = String(unit?.warrantyStatus || unit?.warranty?.status || "").toLowerCase();
+  const warrantyRepairs = (Array.isArray(unit?.warranty?.serviceRecords)
+    ? unit.warranty.serviceRecords
+    : []).filter((record) => /repair/i.test(String(record?.visitType || "")));
   if (installationDate) {
     const ageMonths = monthsBetween(installationDate, now);
 
@@ -330,6 +346,17 @@ export function calculateUnitHealthScore({
     reasons.push("Repeated service history found.");
   }
 
+  if (warrantyRepairs.length >= 2) {
+    score -= Math.min(warrantyRepairs.length * 4, 12);
+    reasons.push("Repeated warranty repair history found.");
+  }
+
+  if (warrantyStatus === "under_review") {
+    reasons.push("A warranty claim is currently under review.");
+  } else if (warrantyStatus === "approved") {
+    reasons.push("An approved warranty repair is awaiting completion.");
+  }
+
   const severeRequestCount = requests.filter((request) =>
     containsSevereKeywords(`${request.issueType} ${request.issueDescription}`)
   ).length;
@@ -378,7 +405,8 @@ export function calculateUnitHealthScore({
     label,
     color: getHealthColor(finalScore),
     reasons,
-    recommendation: buildHealthRecommendation(finalScore, reasons),
+    recommendation: buildHealthRecommendation(finalScore, reasons, warrantyStatus),
+    warrantyStatus,
     placementRisk: placementProfile.risk,
     placementFactors: placementProfile.factors,
     aiPrediction: buildAiLifecyclePrediction({

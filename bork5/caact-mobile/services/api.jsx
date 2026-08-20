@@ -35,10 +35,11 @@ async function request(method, path, { token, body } = {}) {
       ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (error) {
-    if (error?.name === "AbortError") {
-      throw new Error("Backend request timed out.");
-    }
-    throw error;
+    // Network and timeout failures deliberately use one customer-facing
+    // message. The app-wide connection banner provides a Retry action.
+    throw new Error(
+      "Unable to connect to the server. Please check your connection and try again.",
+    );
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
@@ -137,6 +138,7 @@ export async function register({
   locations,
   role,
   branch,
+  registrationVerificationToken,
 }) {
   const { ok, status, data } = await post("/auth/register", {
     name_first,
@@ -162,6 +164,7 @@ export async function register({
     locations,
     role,
     branch,
+    registrationVerificationToken,
   });
   if (ok) return { success: true, token: data.token, user: data.user };
   return {
@@ -236,7 +239,8 @@ export async function requestVerificationOtp({
     return {
       success: true,
       message: data.message,
-      debugCode: data.debugCode || "",
+      expiresAt: data.expiresAt || "",
+      resendAvailableAt: data.resendAvailableAt || "",
     };
   }
   return {
@@ -556,6 +560,19 @@ export async function createOrder(token, payload) {
   };
 }
 
+export async function fetchTechnicianUnitHistory(token, serialNumber) {
+  const { ok, status, data } = await get(
+    `/tasks/unit-history/${encodeURIComponent(serialNumber)}`,
+    token,
+  );
+  if (ok) return { success: true, ...data };
+  return {
+    success: false,
+    status,
+    error: getErrorMessage(data, "Failed to load AC unit history."),
+  };
+}
+
 export async function verifyPaymongoCheckout(token, orderId) {
   const response = await apiFetch(`/orders/${encodeURIComponent(orderId)}/paymongo/verify`, {
     method: "POST",
@@ -655,13 +672,30 @@ export async function markAllNotificationsRead(token) {
   };
 }
 
+export async function createWarrantyClaim(token, unitId, payload) {
+  const { ok, data } = await post(
+    `/warranties/units/${encodeURIComponent(unitId)}/claims`,
+    payload,
+    token,
+  );
+  if (ok) return { success: true, claim: data.claim, warranty: data.warranty };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to submit the warranty claim."),
+  };
+}
+
 export async function registerPushToken(token, expoPushToken) {
   const { ok, data } = await post(
     "/notifications/push-token",
     { expoPushToken },
     token,
   );
-  if (ok) return { success: true, message: data.message };
+  if (ok) return {
+    success: true,
+    message: data.message,
+    registrationVerificationToken: data.registrationVerificationToken || "",
+  };
   return {
     success: false,
     error: getErrorMessage(data, "Unable to enable push notifications."),
@@ -715,6 +749,20 @@ export async function fetchCustomerAmpUnits(token) {
     success: false,
     error: getErrorMessage(data, "Failed to fetch installed AC units."),
     units: [],
+  };
+}
+
+export async function generateAmpReport(token, { unitId, reportType = "ac_health_analysis" } = {}) {
+  const { ok, data } = await post(
+    "/ai/amp-report",
+    { unitId, reportType },
+    token,
+  );
+  if (ok) return { success: true, report: data.report || null, provider: data.provider || "" };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to generate AMP report."),
+    report: null,
   };
 }
 

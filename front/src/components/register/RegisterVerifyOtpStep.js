@@ -1,13 +1,10 @@
 import {
   ArrowLeft,
   ArrowRight,
-  CaretDown,
-  Key,
   ShieldCheck,
   Spinner,
   WarningDiamond,
 } from "@phosphor-icons/react";
-import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
@@ -24,12 +21,11 @@ export default function RegisterVerifyOtpStep({
   onNext,
   onBack,
 }) {
-  const [code, setCode] = useState(formData.verifiedCode || "");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
-  const isVerified = Boolean(formData.verifiedCode);
+  const isVerified = Boolean(formData.emailVerified);
 
   // Real-time verification when code reaches 6 digits
   useEffect(() => {
@@ -59,12 +55,12 @@ export default function RegisterVerifyOtpStep({
         body: JSON.stringify({
           email: formData.email,
           code,
-          secret: formData.registrationSecret,
         }),
       });
 
-      if (response.registrationProgress || response.sessionToken) {
-        onFieldChange("verifiedCode", code);
+      if (response.registrationProgress || response.registrationVerificationToken) {
+        onFieldChange("emailVerified", true);
+        onFieldChange("registrationVerificationToken", response.registrationVerificationToken || "");
       } else {
         setError(response.message || "Verification failed.");
       }
@@ -83,50 +79,8 @@ export default function RegisterVerifyOtpStep({
       <div className="bq-reg-header">
         <h3 className="bq-reg-title">Verify your email</h3>
         <p className="bq-reg-desc">
-          We've generated a security secret. Scan the QR code or enter it
-          manually.
+          Enter the six-digit code sent to your email address.
         </p>
-      </div>
-
-      <div
-        className={`bq-totp-container bq-debug-card ${!showDebug ? "collapsed" : ""}`}
-      >
-        <button
-          type="button"
-          className="bq-debug-badge"
-          onClick={() => setShowDebug(!showDebug)}
-        >
-          <WarningDiamond size={14} weight="bold" />
-          <span>DEBUG</span>
-          <CaretDown
-            size={14}
-            weight="bold"
-            style={{
-              marginLeft: "4px",
-              transition: "transform 0.3s",
-              transform: showDebug ? "rotate(180deg)" : "rotate(0)",
-            }}
-          />
-        </button>
-
-        {showDebug && (
-          <div className="bq-debug-content">
-            {formData.provisioningUri && (
-              <div className="bq-qr-wrap">
-                <QRCodeCanvas
-                  value={formData.provisioningUri}
-                  size={180}
-                  level="M"
-                  includeMargin={false}
-                />
-              </div>
-            )}
-            <div className="bq-secret-box">
-              <Key size={18} weight="bold" />
-              <code>{formData.registrationSecret}</code>
-            </div>
-          </div>
-        )}
       </div>
 
       <BoutiqueInput

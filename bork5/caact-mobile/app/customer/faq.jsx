@@ -11,34 +11,95 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 const FAQ_ITEMS = [
   {
-    id: "delivery",
-    question: "How long does AC delivery take after ordering?",
+    id: "ordering",
+    category: "Ordering",
+    question: "How do I place an AC unit order?",
     answer:
-      "Most in-stock units are scheduled within 24 to 48 hours after payment verification and branch allocation. We work to provide the fastest delivery service in the region.",
+      "Choose an available AC unit in Shop, add it to your cart, provide a delivery address, choose a payment method, then review and submit the order. The assigned branch and current stock are confirmed by the system.",
+  },
+  {
+    id: "payments",
+    category: "Payments",
+    question: "What payment methods are supported?",
+    answer:
+      "Available checkout methods may include GCash, credit or debit cards, Cash on Delivery, and Pay on Installation for eligible orders. Only a confirmed payment changes a paid order status.",
+  },
+  {
+    id: "payment-status",
+    category: "Payments",
+    question: "Why is my payment still pending?",
+    answer:
+      "Keep the payment page open until the provider confirms the result. Your order updates after secure payment confirmation. If it remains pending, open the order receipt or contact support before trying again.",
+  },
+  {
+    id: "delivery",
+    category: "Delivery",
+    question: "How can I track delivery and installation?",
+    answer:
+      "Open Orders to see the live timeline: Order Placed, Confirmed, Preparing, Dispatched, Out for Delivery, Arrived, Installation, and Completed. Only stages that apply to your order are shown.",
+  },
+  {
+    id: "installation",
+    category: "Installation",
+    question: "What happens during installation?",
+    answer:
+      "A technician verifies the assigned AC QR code, records the installation details and evidence, then completes the work. Your unit is added to My Units and warranty coverage activates when applicable.",
   },
   {
     id: "reschedule",
-    question: "Can I reschedule my installation appointment?",
+    category: "Installation",
+    question: "Can I reschedule an installation or technician visit?",
     answer:
-      "Yes. Open your registered unit in My Units to manage its appointment. Please reschedule at least 12 hours before the original time slot.",
+      "Use the service or order details to request a new preferred date. Submit the request before the scheduled visit where possible; branch availability and technician assignment determine the final time slot.",
   },
   {
     id: "warranty",
-    question: "Do you provide warranty service for all brands?",
+    category: "Warranty",
+    question: "Where can I see my warranty coverage?",
     answer:
-      "Cold Air ACT provides warranty support for the brands we carry. Your registered unit shows the coverage details that apply to its model.",
+      "Open My Units and select the registered AC. The unit record shows the warranty type, activation and expiration dates, covered components, and any claim or service history.",
   },
   {
-    id: "payment",
-    question: "What payment methods are supported?",
+    id: "maintenance",
+    category: "Maintenance",
+    question: "How do I request maintenance or repair?",
     answer:
-      "Available checkout methods may include Cash on Delivery, GCash, credit or debit cards, and Pay on Installation for eligible services. Your available choices are shown during checkout.",
+      "Go to Services, select your registered AC, choose the service type, describe the concern, and select a future preferred date. You will be notified when the request is reviewed or assigned.",
   },
   {
-    id: "registration",
-    question: "How do I register my unit for warranty?",
+    id: "amp-health",
+    category: "AMP",
+    question: "What does my AMP Health Score mean?",
     answer:
-      "After installation, scan the technician-provided QR code or add the unit serial number in My Units. Registration must be completed before warranty details are available.",
+      "The AMP Health Score summarizes available unit condition, usage, maintenance, and repair information. It supports preventive recommendations but does not replace an on-site technician diagnosis.",
+  },
+  {
+    id: "qr-scanning",
+    category: "QR & Unit Records",
+    question: "What is the QR code on my AC unit for?",
+    answer:
+      "The QR code securely identifies the specific unit for delivery, installation, warranty, maintenance, and technician service history. It is not your product model or physical serial number.",
+  },
+  {
+    id: "technician-visit",
+    category: "Technician Visits",
+    question: "What should I prepare for a technician visit?",
+    answer:
+      "Ensure someone can provide access to the installation area, keep the unit QR label available, and share any site restrictions or concerns in your service request. Technicians only receive the details needed for service.",
+  },
+  {
+    id: "cancel-refund",
+    category: "Orders",
+    question: "How do cancellation and refunds work?",
+    answer:
+      "Cancellation eligibility depends on the current order stage. Request cancellation through the order details or support. Approved refunds follow the original payment method and provider processing times.",
+  },
+  {
+    id: "ac-concerns",
+    category: "Common AC Concerns",
+    question: "My AC is leaking, noisy, or not cooling. What should I do?",
+    answer:
+      "Turn the unit off if you notice an electrical smell, smoke, or leaking near electrical parts. For normal cooling, noise, or drainage concerns, create a service request and include clear symptoms and photos when available.",
   },
 ];
 
@@ -61,8 +122,8 @@ export default function CustomerFaqScreen() {
 
   return (
     <CustomerScreen
-      title="Help Center"
-      subtitle="Quick answers and customer support"
+      title="FAQ & Help"
+      subtitle="Answers for orders, AC care, and service"
     >
       <Card style={{ backgroundColor: COLORS.primaryLight, borderColor: "#BFDBFE" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
@@ -108,7 +169,10 @@ export default function CustomerFaqScreen() {
                 <View style={{ width: 30, height: 30, borderRadius: RADIUS.full, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primaryLight, marginRight: SPACING.sm }}>
                   <Ionicons name="help-sharp" size={16} color={COLORS.primary} />
                 </View>
-                <Text style={{ flex: 1, color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold, lineHeight: 20 }}>{item.question}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.black, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{item.category}</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold, lineHeight: 20 }}>{item.question}</Text>
+                </View>
                 <Ionicons name={expanded ? "chevron-up-sharp" : "chevron-down-sharp"} size={20} color={COLORS.primary} style={{ marginLeft: SPACING.sm }} />
               </Pressable>
               {expanded ? (

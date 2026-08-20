@@ -64,6 +64,10 @@ function UnitCard({
               {unit.status}
             </span>
           </div>
+          <div className="info-row">
+            <span className="info-label">Warranty</span>
+            <span className="info-value">{String(unit.warrantyStatus || unit.warranty?.status || "pending activation").replace(/_/g, " ")}</span>
+          </div>
           {unit.ampereNextServiceLabel && (
             <div className="info-row">
               <span className="info-label">AMPERE</span>

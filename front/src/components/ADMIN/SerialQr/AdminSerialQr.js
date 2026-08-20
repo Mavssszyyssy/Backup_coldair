@@ -14,11 +14,8 @@ const getSerialLabel = (unit) =>
     ? "Manufacturer serial number"
     : "Temporary inventory serial";
 
-const getTechnicianQrValue = (unit) => {
-  const serial = encodeURIComponent(unit.serialNumber || "");
-  if (typeof window === "undefined") return unit.qrCode || unit.serialNumber;
-  return `${window.location.origin}/tech/field-registration?serial=${serial}`;
-};
+const getTechnicianQrValue = (unit) =>
+  unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.serialNumber || ""}`;
 
 const AdminSerialQr = () => {
   const { user } = useUser();
@@ -122,7 +119,7 @@ const AdminSerialQr = () => {
   return (
     <AdminLayout
       title="Serial Numbers and QR Codes"
-      subtitle="Every QR identifies one AC unit. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment."
+      subtitle="Every QR has a permanent Unit ID. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment."
     >
       <div className="serialqr-toolbar admin-card">
         <div>
@@ -174,7 +171,7 @@ const AdminSerialQr = () => {
               ) : (
                 <div className="serialqr-grid">
                   {serialUnits.map((unit, index) => (
-                    <article className="serialqr-card" key={unit.serialNumber}>
+                    <article className="serialqr-card" key={unit.qrUnitId || unit.serialNumber}>
                       <div className="serialqr-codebox">
                         <QRCodeCanvas
                           value={getTechnicianQrValue(unit)}
@@ -185,8 +182,11 @@ const AdminSerialQr = () => {
                       </div>
                       <div className="serialqr-card-body">
                         <strong>{getUnitLabel(product)}</strong>
+                        <small>Product model · {product.sku || "No SKU"}</small>
+                        <small>QR Unit ID</small>
+                        <code title={unit.qrUnitId || unit.qrCode}>{unit.qrUnitId || "Legacy QR identity"}</code>
                         <small>{getSerialLabel(unit)}</small>
-                        <code title={unit.serialNumber}>{unit.serialNumber}</code>
+                        <code title={unit.serialNumber}>{unit.serialNumber || "Serial pending"}</code>
                         <span>
                           {unit.status || "available"}
                           {unit.branch ? ` · ${unit.branch}` : ""}

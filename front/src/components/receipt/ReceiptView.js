@@ -17,6 +17,11 @@ const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 };
 
+const formatAddress = (address = {}) =>
+  address.formatted || [address.street, address.barangay, address.city, address.province, address.region, address.postalCode]
+    .filter(Boolean)
+    .join(", ") || "Pending";
+
 const normalizeOrder = (order = {}) => ({
   id: String(order.id || order._id || order.orderCode || ""),
   orderCode: String(order.orderCode || order.id || ""),
@@ -26,7 +31,10 @@ const normalizeOrder = (order = {}) => ({
   paymentStatus: String(order.paymentStatus || order.receipt?.paymentStatus || ""),
   paymentProvider: String(order.paymentProvider || order.receipt?.paymentProvider || ""),
   paymentReference: String(order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || ""),
+  receiptAvailable: Boolean(order.receiptAvailable),
   receipt: order.receipt || {},
+  invoice: order.invoice || {},
+  tracking: order.tracking || {},
   address: order.address || {},
   items: Array.isArray(order.items) ? order.items : [],
   subtotalAmount: Number(order.subtotalAmount || order.receipt?.subtotalAmount || 0),
@@ -72,11 +80,11 @@ function ReceiptView() {
     window.print();
   };
 
-  if (loading || error || !order) {
+  if (loading || error || !order || !order.receiptAvailable) {
     return (
       <BoutiqueScreen withHeader={false}>
         <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={() => navigate(-1)} />
-        <div className="receipt-page">{loading ? "Loading receipt..." : error || "Receipt not found."}</div>
+        <div className="receipt-page">{loading ? "Loading receipt..." : error || (!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</div>
       </BoutiqueScreen>
     );
   }
@@ -110,23 +118,29 @@ function ReceiptView() {
 
             <div className="receipt-band">
               <div>
-                <span>Order Number</span>
-                <strong>{order.orderCode}</strong>
+                <span>Invoice Number</span>
+                <strong>{order.invoice?.invoiceNumber || order.receipt?.receiptNumber || "Pending"}</strong>
               </div>
               <div>
-                <span>Issued</span>
-                <strong>{formatDateTime(order.receipt?.issuedAt || order.createdAt)}</strong>
+                <span>Order Number / Transaction date</span>
+                <strong>{order.orderCode} · {formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt)}</strong>
               </div>
             </div>
 
             <div className="receipt-grid">
               <div>
                 <span>Customer</span>
-                <strong>{order.customerName}</strong>
+                <strong>{order.invoice?.customer?.name || order.customerName}</strong>
+                <small>{[order.invoice?.customer?.email, order.invoice?.customer?.phone].filter(Boolean).join(" · ") || "Contact pending"}</small>
+              </div>
+              <div>
+                <span>Branch</span>
+                <strong>{order.invoice?.branch || "Branch pending"}</strong>
               </div>
               <div>
                 <span>Payment Method</span>
                 <strong>{order.paymentProvider || order.paymentMethod || "Pending"}</strong>
+                <small>{(order.invoice?.payment?.status || order.paymentStatus || "pending").toUpperCase()}</small>
               </div>
               <div>
                 <span>Payment Reference</span>
@@ -134,21 +148,32 @@ function ReceiptView() {
               </div>
               <div>
                 <span>Delivery Address</span>
-                <strong>
-                  {[order.address?.street, order.address?.barangay, order.address?.city, order.address?.province].filter(Boolean).join(", ") || "Pending"}
-                </strong>
+                <strong>{formatAddress(order.invoice?.deliveryAddress || order.address)}</strong>
+              </div>
+              <div>
+                <span>Billing Address</span>
+                <strong>{formatAddress(order.invoice?.billingAddress || order.address)}</strong>
+              </div>
+              <div>
+                <span>Order / Delivery Status</span>
+                <strong>{order.invoice?.orderStatus || "Pending"} · {order.tracking?.currentLabel || "Order Placed"}</strong>
+              </div>
+              <div>
+                <span>Warranty / Installation</span>
+                <strong>{order.invoice?.warranty || "Warranty activates after installation."}</strong>
+                {order.invoice?.technician?.name && <small>{order.invoice.technician.name} · {order.invoice.technician.status}</small>}
               </div>
             </div>
 
             <div className="receipt-table-wrap">
               <table className="receipt-table">
                 <thead>
-                  <tr><th>Item</th><th>Specs</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+                  <tr><th>Product / Model / Serial</th><th>Specs</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
                 </thead>
                 <tbody>
                   {order.items.map((item, index) => (
                     <tr key={`${item.name}-${index}`}>
-                      <td>{item.name}</td>
+                      <td><strong>{item.name}</strong><br /><small>{item.serialNumbers?.length ? `Serial: ${item.serialNumbers.join(", ")}` : "Serial pending"}</small></td>
                       <td>{item.specs || "-"}</td>
                       <td>{item.quantity}</td>
                       <td>{money(item.price)}</td>
@@ -160,7 +185,15 @@ function ReceiptView() {
             </div>
 
             <div className="receipt-bottom">
-              <p>This receipt confirms the order payment record stored in the Coldair ACT system.</p>
+              <div>
+                <p>This invoice is tied to one order and one receipt record in the Coldair ACT system.</p>
+                {order.tracking?.timeline?.length > 0 && (
+                  <div className="receipt-tracking">
+                    <strong>Delivery tracking</strong>
+                    {order.tracking.timeline.map((step) => <span key={step.stage}>✓ {step.label}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</span>)}
+                  </div>
+                )}
+              </div>
               <div className="receipt-totals">
                 <p><span>Subtotal</span><strong>{money(order.subtotalAmount)}</strong></p>
                 <p><span>VAT</span><strong>{money(order.vatAmount)}</strong></p>
@@ -194,13 +227,16 @@ function ReceiptView() {
         .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #e2e8f0; }
         .receipt-grid div { background: #fff; padding: 18px 26px; display: grid; gap: 6px; min-width: 0; }
         .receipt-grid strong { overflow-wrap: anywhere; }
+        .receipt-grid small, .receipt-table small { color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
         .receipt-table-wrap { padding: 24px 26px 0; overflow-x: auto; }
         .receipt-table { width: 100%; border-collapse: collapse; min-width: 640px; }
         .receipt-table th, .receipt-table td { padding: 13px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
         .receipt-table th { color: #475569; background: #f8fafc; font-size: 12px; text-transform: uppercase; }
         .receipt-table td:nth-child(n+3), .receipt-table th:nth-child(n+3) { text-align: right; }
         .receipt-bottom { display: grid; grid-template-columns: 1fr minmax(280px, 380px); gap: 28px; padding: 24px 26px 28px; align-items: end; }
-        .receipt-bottom > p { color: #64748b; line-height: 1.55; margin: 0; }
+        .receipt-bottom > div > p { color: #64748b; line-height: 1.55; margin: 0; }
+        .receipt-tracking { margin-top: 16px; display: grid; gap: 5px; color: #475569; font-size: 12px; }
+        .receipt-tracking strong { color: #0f172a; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
         .receipt-totals { display: grid; gap: 10px; }
         .receipt-totals p { display: flex; justify-content: space-between; gap: 18px; margin: 0; }
         .receipt-totals span { color: #64748b; }

@@ -36,6 +36,7 @@ const normalizeOrder = (order = {}) => ({
   paymentProvider: String(order.paymentProvider || ""),
   paymongo: order.paymongo || {},
   receipt: order.receipt || {},
+  receiptAvailable: Boolean(order.receiptAvailable),
   address: order.address || {},
   items: (Array.isArray(order.items) ? order.items : []).map((it) => ({
     ...it,
@@ -359,12 +360,12 @@ function OrderConfirmation() {
                 margin="0 0 20px"
               >
                 <Receipt size={20} weight="fill" color={BQ_COLORS.accent} />
-                <BoutiqueText variant="h3">Receipt</BoutiqueText>
+                <BoutiqueText variant="h3">{order.receiptAvailable ? "Receipt" : "Payment record"}</BoutiqueText>
               </BoutiqueBox>
               <BoutiqueStack gap={12}>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Receipt No.</BoutiqueText>
-                  <BoutiqueText size="14px" weight={700}>{order.receipt?.receiptNumber || "Pending"}</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{order.receiptAvailable ? "Receipt No." : "Official receipt"}</BoutiqueText>
+                  <BoutiqueText size="14px" weight={700}>{order.receiptAvailable ? order.receipt?.receiptNumber : "Issued after payment confirmation"}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
                   <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Payment Status</BoutiqueText>
@@ -425,13 +426,15 @@ function OrderConfirmation() {
                 {paying ? "Connecting..." : "Pay Now"}
               </BoutiqueButton>
             ) : null}
-            <BoutiqueButton
-              variant="outline"
-              flex={1}
-              onClick={() => navigate(`/receipt/${order.id}`)}
-            >
-              <Receipt size={18} weight="bold" /> View Receipt
-            </BoutiqueButton>
+            {order.receiptAvailable ? (
+              <BoutiqueButton
+                variant="outline"
+                flex={1}
+                onClick={() => navigate(`/receipt/${order.id}`)}
+              >
+                <Receipt size={18} weight="bold" /> View Receipt
+              </BoutiqueButton>
+            ) : null}
             <BoutiqueButton
               variant="outline"
               flex={1}

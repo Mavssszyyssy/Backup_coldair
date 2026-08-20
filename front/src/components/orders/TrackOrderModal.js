@@ -1,54 +1,16 @@
-// import icons from \"../common/icons\";
-const icons = {}; // BOUTIQUE MIGRATION STUB
-
 function TrackOrderModal({ order, onClose }) {
-  const isToPay = order.status === "to_pay";
-  const isToDeliver = order.status === "to_deliver";
-  const isToInstall = order.status === "to_install";
-  const isComplete = order.status === "complete";
-
-  const steps = [
-    { label: "Order Placed", status: "completed", date: order.date },
-    {
-      label: "TO PAY (Admin Confirmation)",
-      status: isToPay ? "processing" : "completed",
-      date: isToPay ? order.date : null,
-    },
-    {
-      label: "TO DELIVER",
-      status: isToDeliver
-        ? "processing"
-        : isToInstall || isComplete
-          ? "completed"
-          : "upcoming",
-      date: isToDeliver ? order.date : null,
-    },
-    {
-      label: "TO INSTALL",
-      status: isToInstall
-        ? "processing"
-        : isComplete
-          ? "completed"
-          : "upcoming",
-      date: isToInstall ? order.date : null,
-    },
-    {
-      label: "Complete",
-      status: isComplete ? "completed" : "upcoming",
-      date: isComplete ? order.estimatedDelivery || order.date : null,
-    },
-  ];
+  const timeline = Array.isArray(order.tracking?.timeline) ? order.tracking.timeline : [];
+  const currentStage = order.tracking?.currentStage || "placed";
+  const steps = timeline.map((step) => ({
+    label: step.label,
+    detail: step.detail,
+    date: step.timestamp,
+    status: step.stage === currentStage ? "processing" : "completed",
+  }));
 
   const stepInner = (step) => {
     if (step.status === "completed") {
-      return (
-        <img
-          src={icons.checkCircle}
-          alt=""
-          className="inline-icon"
-          style={{ filter: "brightness(0) invert(1)" }}
-        />
-      );
+      return "✓";
     }
     if (step.status === "processing") {
       return "●";
@@ -148,7 +110,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#64748b",
               }}
             >
-              Order ID: <strong style={{ color: "#0f172a" }}>{order.id}</strong>
+              Order: <strong style={{ color: "#0f172a" }}>{order.orderCode || order.id}</strong>
             </div>
             <div
               style={{
@@ -170,7 +132,7 @@ function TrackOrderModal({ order, onClose }) {
                   fontFamily: "monospace",
                 }}
               >
-                {order.trackingNumber}
+                {order.tracking?.trackingNumber || order.trackingNumber || "Pending"}
               </div>
             </div>
             <div style={{ fontSize: "13px", color: "#64748b" }}>
@@ -233,7 +195,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#0f172a",
               }}
             >
-              Order Status
+              Delivery Tracking
             </h4>
             <div>
               {steps.map((step, idx) => (
@@ -280,9 +242,10 @@ function TrackOrderModal({ order, onClose }) {
                     </div>
                     {step.date && (
                       <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-                        {new Date(step.date).toLocaleDateString()}
+                        {new Date(step.date).toLocaleString()}
                       </div>
                     )}
+                    {step.detail && <div style={{ fontSize: "12px", color: "#64748b", marginTop: 2 }}>{step.detail}</div>}
                   </div>
                 </div>
               ))}
@@ -337,13 +300,7 @@ function TrackOrderModal({ order, onClose }) {
                 fontWeight: 600,
               }}
             >
-              <img
-                src={icons.phoneCall}
-                alt=""
-                className="inline-icon"
-                style={{ marginRight: 6 }}
-              />{" "}
-              {order.address.phone}
+              Phone: {order.address.phone || "Not provided"}
             </p>
           </div>
 

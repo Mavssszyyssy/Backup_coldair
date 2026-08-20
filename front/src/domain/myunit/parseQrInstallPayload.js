@@ -28,9 +28,15 @@ export function parseQrInstallPayload(raw) {
       .split('|')
       .map((part) => part.trim())
       .find((part) => part.toUpperCase().startsWith('AC_UNIT:'));
+    const qrUnitPart = trimmed
+      .split('|')
+      .map((part) => part.trim())
+      .find((part) => part.toUpperCase().startsWith('QR_UNIT:'));
     const serialNumber = acUnitPart
       ? acUnitPart.slice('AC_UNIT:'.length).trim()
-      : trimmed;
+      : qrUnitPart
+        ? qrUnitPart.slice('QR_UNIT:'.length).trim()
+        : trimmed;
 
     if (!serialNumber) {
       return { ok: false, error: 'Missing serial number in QR payload' };
@@ -47,7 +53,7 @@ export function parseQrInstallPayload(raw) {
 
   try {
     const data = JSON.parse(trimmed);
-    if (!data.serialNumber && !data.serial) {
+    if (!data.serialNumber && !data.serial && !data.qrUnitId) {
       return { ok: false, error: 'Missing serial number in payload' };
     }
     return { ok: true, data };

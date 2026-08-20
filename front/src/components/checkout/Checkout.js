@@ -23,6 +23,53 @@ import OrderSummary from "./OrderSummary";
 import PaymentMethod from "./PaymentMethod";
 
 const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
+const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "aeropulse_web_checkout_idempotency_v1";
+const CHECKOUT_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
+
+const checkoutFingerprint = ({ cartItems = [], address = {}, paymentMethod = "" }) =>
+  JSON.stringify({
+    paymentMethod: String(paymentMethod || "").toLowerCase(),
+    addressId: String(address.id || address._id || ""),
+    address: [address.street, address.barangay, address.city, address.province, address.postalCode]
+      .map((value) => String(value || "").trim().toLowerCase()),
+    items: cartItems
+      .map((item) => ({
+        id: String(item.id || item.productId || item.sku || ""),
+        quantity: Number(item.quantity || 0),
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  });
+
+const getCheckoutIdempotencyKey = (fingerprint) => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY) || "null");
+    if (
+      saved?.key &&
+      saved.fingerprint === fingerprint &&
+      Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS
+    ) return saved.key;
+  } catch (_error) {
+    // Checkout still works when browser storage is unavailable.
+  }
+  const key = `web_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    sessionStorage.setItem(
+      CHECKOUT_IDEMPOTENCY_STORAGE_KEY,
+      JSON.stringify({ key, fingerprint, createdAt: Date.now() }),
+    );
+  } catch (_error) {
+    // The in-memory ref below remains a safe fallback for this page.
+  }
+  return key;
+};
+
+const clearCheckoutIdempotencyKey = () => {
+  try {
+    sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY);
+  } catch (_error) {
+    // Nothing else is required when session storage is unavailable.
+  }
+};
 
 const isValidCheckoutAddress = (address) => {
   if (!address) return false;
@@ -356,7 +403,9 @@ function Checkout() {
 
     setIsProcessingPayment(true);
     if (!orderRequestKeyRef.current) {
-      orderRequestKeyRef.current = `web_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      orderRequestKeyRef.current = getCheckoutIdempotencyKey(
+        checkoutFingerprint({ cartItems: cart, address: checkoutAddress, paymentMethod: selectedPayment }),
+      );
     }
 
     const fromPostReg = consumePostRegistrationCheckoutIntent();
@@ -404,6 +453,7 @@ function Checkout() {
         created?.paymongo?.checkoutUrl ||
         "";
       orderRequestKeyRef.current = "";
+      clearCheckoutIdempotencyKey();
       clearCart();
       if (paymentUrl) {
         window.location.assign(paymentUrl);
@@ -413,7 +463,6 @@ function Checkout() {
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
-      if (error?.status) orderRequestKeyRef.current = "";
       if (error?.code === "PAYMENT_CONNECTION_TIMEOUT") {
         alert(error.message);
         return;

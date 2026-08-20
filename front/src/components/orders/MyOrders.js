@@ -35,6 +35,8 @@ const normalizeCustomerOrder = (order = {}) => ({
   status: order.workflowStatus || order.status,
   items: order.items || [],
   trackingNumber: order.trackingNumber || "Pending",
+  tracking: order.tracking || { timeline: [], currentLabel: order.workflowLabel || "Order Placed" },
+  invoice: order.invoice || null,
   estimatedDelivery: order.estimatedDelivery || "",
   estimatedArrival: order.estimatedArrival || "",
   installationDate: order.installationDate || "",
