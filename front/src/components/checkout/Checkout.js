@@ -1,5 +1,5 @@
 import { Buildings, CheckCircle, Spinner } from "@phosphor-icons/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
@@ -76,6 +76,7 @@ function Checkout() {
   const [discountAmount] = useState(0);
   const [stockIssues, setStockIssues] = useState([]);
   const [stockCheckedAt, setStockCheckedAt] = useState("");
+  const orderRequestKeyRef = useRef("");
 
   const assignedBranch = useMemo(() => {
     if (!selectedAddress) return "";
@@ -348,6 +349,9 @@ function Checkout() {
     }
 
     setIsProcessingPayment(true);
+    if (!orderRequestKeyRef.current) {
+      orderRequestKeyRef.current = `web_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
 
     const fromPostReg = consumePostRegistrationCheckoutIntent();
     const order = buildCustomerOrder({
@@ -372,6 +376,7 @@ function Checkout() {
           vatAmount: totals.vatAmount,
           shippingFee: totals.deliveryFee,
           discountAmount: totals.discountAmount,
+          idempotencyKey: orderRequestKeyRef.current,
         }),
       });
       const created = response.order;
@@ -382,6 +387,7 @@ function Checkout() {
         created?.paymongo?.checkoutUrl ||
         "";
       setIsProcessingPayment(false);
+      orderRequestKeyRef.current = "";
       clearCart();
       if (paymentUrl) {
         window.location.assign(paymentUrl);
@@ -390,6 +396,7 @@ function Checkout() {
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
+      if (error?.status) orderRequestKeyRef.current = "";
       if (!error?.status) {
         alert("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected.");
         return;

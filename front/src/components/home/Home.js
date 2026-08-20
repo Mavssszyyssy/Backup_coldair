@@ -75,18 +75,34 @@ function Home() {
       return;
     }
 
-    apiRequest("/notifications/me")
-      .then((response) => {
+    let active = true;
+    const loadNotifications = async () => {
+      try {
+        const response = await apiRequest("/notifications/me");
         const normalized = (response.notifications || []).map((item) => ({
           ...item,
           unread: Boolean(item.unread),
           time: new Date(item.createdAt).toLocaleString(),
         }));
         const currentIds = new Set(normalized.map((n) => n.id));
+        if (!active) return;
         setNotifications(normalized);
         previousNotificationIdsRef.current = currentIds;
-      })
-      .catch(() => setNotifications([]));
+      } catch {
+        if (active) setNotifications([]);
+      }
+    };
+    loadNotifications();
+    const pollId = window.setInterval(loadNotifications, 20000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") loadNotifications();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [isAuthenticated]);
 
   // Brand Data (Modularized)

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Linking, View } from "react-native";
 
 import {
@@ -90,6 +90,7 @@ export default function CheckoutScreen() {
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
   const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, address), [cart, address]);
 
@@ -98,6 +99,9 @@ export default function CheckoutScreen() {
     if (!token) return Alert.alert("Sign in required", "Please sign in again before checking out.");
 
     setSubmitting(true);
+    if (!orderRequestKeyRef.current) {
+      orderRequestKeyRef.current = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
     setCheckoutMessage("Checking the latest stock and prices…");
 
     // Cart contents can persist between app updates. Resolve every line back
@@ -181,8 +185,13 @@ export default function CheckoutScreen() {
         shippingFee: latestTotals.shippingFee,
         total: latestTotals.total,
         paymentReturnTarget: "mobile",
+        idempotencyKey: orderRequestKeyRef.current,
       });
-      if (!result.success) throw new Error(result.error);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.status = result.status;
+        throw error;
+      }
 
       const orderId = result.order?.id || result.order?._id;
       if (!orderId) throw new Error("The order was created without an order reference. Please check My Orders before trying again.");
@@ -204,8 +213,10 @@ export default function CheckoutScreen() {
       }
 
       clearCart();
+      orderRequestKeyRef.current = "";
       router.replace(`/customer/order-confirmation/${orderId}`);
     } catch (error) {
+      if (error?.status) orderRequestKeyRef.current = "";
       Alert.alert("Checkout unavailable", error?.message || "Unable to create the order.");
     } finally {
       setSubmitting(false);

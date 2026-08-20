@@ -490,16 +490,31 @@ const Shop = () => {
       return;
     }
 
-    apiRequest("/notifications/me")
-      .then((response) => {
+    let active = true;
+    const loadNotifications = async () => {
+      try {
+        const response = await apiRequest("/notifications/me");
         const normalized = (response.notifications || []).map((item) => ({
           ...item,
           unread: Boolean(item.unread),
           time: new Date(item.createdAt).toLocaleString(),
         }));
-        setNotifications(normalized);
-      })
-      .catch(() => setNotifications([]));
+        if (active) setNotifications(normalized);
+      } catch {
+        if (active) setNotifications([]);
+      }
+    };
+    loadNotifications();
+    const pollId = window.setInterval(loadNotifications, 20000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") loadNotifications();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [isAuthenticated]);
 
   // Filters
