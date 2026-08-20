@@ -269,6 +269,10 @@ const AdminOrders = () => {
     if (!config) return;
     const processingKey = `${order.id}:${config.action}`;
     const form = getFulfillmentForm(order);
+    if (config.action === 'dispatch' && !form.assignedTechnicianId) {
+      alert('Select a technician before marking this order dispatched. Dispatch creates the assigned technician work order.');
+      return;
+    }
     if (['approve', 'dispatch'].includes(config.action) && (isPastCalendarDate(form.estimatedArrival) || isPastCalendarDate(form.installationDate))) {
       alert('Delivery and installation dates must be today or a future date.');
       return;
@@ -674,7 +678,7 @@ const AdminOrders = () => {
                           type="button"
                           className="admin-process-btn"
                           onClick={() => handleProcess(order)}
-                          disabled={isPaymongoPending || isWaitingTechnician || processingId === `${order.id}:${actionConfig.action}`}
+                          disabled={isPaymongoPending || isWaitingTechnician || (actionConfig.action === 'dispatch' && !getFulfillmentForm(order).assignedTechnicianId) || processingId === `${order.id}:${actionConfig.action}`}
                         >
                           {isPaymongoPending
                             ? 'Waiting PayMongo'
