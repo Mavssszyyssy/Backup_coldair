@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
@@ -198,13 +198,9 @@ export default function Register() {
     }
   };
 
-  const detectedRole = useMemo(() => {
-    const email = formData.email.toLowerCase();
-    if (email.includes("superadmin")) return "superadmin";
-    if (email.includes("admin")) return "admin";
-    if (email.includes("technician")) return "technician";
-    return "customer";
-  }, [formData.email]);
+  // Public signup always creates a customer account. Staff accounts are only
+  // provisioned from Super Admin management, never inferred from an email.
+  const detectedRole = "customer";
 
   const handleFinalSubmit = async () => {
     setLoading(true);
@@ -219,15 +215,13 @@ export default function Register() {
         phone: formData.phone,
         password: formData.password,
         contact_method: formData.verificationChannel,
-        role: detectedRole,
-        branch: formData.branch,
         locations: formData.locations,
         registrationVerificationToken: formData.registrationVerificationToken,
       };
 
       await register(payload);
       removeEncrypted(STORAGE_KEY);
-      navigate("/login");
+      navigate("/shop", { replace: true });
     } catch (err) {
       setSubmissionError(err.message || "Registration failed.");
     } finally {

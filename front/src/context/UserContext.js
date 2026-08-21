@@ -145,7 +145,13 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify(userData),
     });
-
+    const userBranch =
+      result.user?.activeBranch || result.user?.assignedBranch || "";
+    saveSession(result.token, result.user, userBranch);
+    setUser(result.user);
+    setUserRole(result.user.role || null);
+    setCurrentSession(result.user);
+    setIsAuthenticated(true);
     return result.user;
   };
 

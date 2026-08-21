@@ -539,8 +539,6 @@ const register = async (req, res) => {
     messenger_handle,
     delivery_instructions,
     locations = [],
-    role,
-    branch,
   } = req.body;
   try {
     const normalizedEmail = normalizeEmail(email);
@@ -566,8 +564,10 @@ const register = async (req, res) => {
       phone: canonicalizePhMobile(phone),
       passwordHash,
       messenger_handle,
-      role: role || "customer",
-      assignedBranch: branch || "",
+      // Public registration must never be allowed to provision a privileged
+      // account. Staff are created by Super Admin.
+      role: "customer",
+      assignedBranch: "",
       address: addressString,
       municipality: municipality || primaryLoc?.address?.city || "",
       municipality_code: municipality_code || "",

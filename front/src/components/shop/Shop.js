@@ -394,13 +394,23 @@ export const fallbackProducts = [
 
 const getCustomerDeliveryAddress = (user = {}) => {
   const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
-  return (
+  const candidate = (
     addresses.find((address) => address?.isDefault) ||
     addresses[0] ||
     user?.billingAddress ||
     user?.location?.address ||
     null
   );
+  // A skipped address is stored by the backend as an empty object. It is not a
+  // delivery destination and must not block the backend catalogue request.
+  const hasLocation = candidate && [
+    candidate.city,
+    candidate.province,
+    candidate.region,
+    candidate.barangay,
+    candidate.street,
+  ].some((value) => String(value || "").trim());
+  return hasLocation ? candidate : null;
 };
 
 const getModelImageUrl = (product = {}) => {
