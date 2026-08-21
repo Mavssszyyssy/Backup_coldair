@@ -7,14 +7,13 @@ const routeForNotification = (item = {}) => {
   if (String(item.route || '').startsWith('/superadmin/')) return item.route;
   const targetType = String(item.targetType || item.category || '').toLowerCase();
   if (['inventory', 'stock', 'reorder'].includes(targetType)) return '/superadmin/inventory';
-  if (['warranty', 'claim'].includes(targetType)) return '/superadmin/maintenance';
-  if (['service', 'parts_request'].includes(targetType)) return '/superadmin/maintenance';
-  if (['task', 'technician'].includes(targetType)) return '/superadmin/technicians';
+  if (['warranty', 'claim', 'service', 'parts_request'].includes(targetType)) return '/superadmin/services?tab=service-requests';
+  if (['task', 'technician'].includes(targetType)) return '/superadmin/services?tab=technicians';
   const text = `${item.title || ''} ${item.message || ''}`.toLowerCase();
   if (text.includes('complaint') || text.includes('refund') || text.includes('cancel')) return '/superadmin/alerts';
-  if (text.includes('stock') || text.includes('inventory') || text.includes('reorder')) return '/superadmin/reorders';
-  if (text.includes('technician') || text.includes('task')) return '/superadmin/technicians';
-  if (item.type === 'order' || text.includes('order')) return '/superadmin/orders';
+  if (text.includes('stock') || text.includes('inventory') || text.includes('reorder')) return '/superadmin/inventory?tab=reorders';
+  if (text.includes('technician') || text.includes('task')) return '/superadmin/services?tab=technicians';
+  if (item.type === 'order' || text.includes('order')) return '/superadmin/services?tab=orders';
   return '/superadmin/dashboard';
 };
 

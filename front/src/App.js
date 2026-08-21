@@ -8,13 +8,10 @@ import {
 import "./App.css";
 import AdminDashboard from "./components/ADMIN/Dashboard/AdminDashboard";
 import AdminInventory from "./components/ADMIN/Inventory/AdminInventory";
-import AdminMaintenance from "./components/ADMIN/Maintenance/AdminMaintenance";
-import AdminOrders from "./components/ADMIN/Orders/AdminOrders";
 import AdminProfile from "./components/ADMIN/Profile/AdminProfile";
 import AdminReports from "./components/ADMIN/Reports/AdminReports";
 import AdminServices from "./components/ADMIN/Services/AdminServices";
 import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
-import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
 import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
 import OwnerAmpDashboard from "./components/AMP/OwnerAmpDashboard";
 import TechMainScreen from "./components/TECH/Dashboard/TechMainScreen";
@@ -28,6 +25,7 @@ import SuperAdminBranches from "./components/SUPERADMIN/Dashboard/SuperAdminBran
 import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDashboard";
 import SuperAdminInventory from "./components/SUPERADMIN/Dashboard/SuperAdminInventory";
 import SuperAdminSales from "./components/SUPERADMIN/Dashboard/SuperAdminSales";
+import SuperAdminServices from "./components/SUPERADMIN/Dashboard/SuperAdminServices";
 import SuperAdminTasks from "./components/SUPERADMIN/Dashboard/SuperAdminTasks";
 import SuperAdminSettings from "./components/SUPERADMIN/Dashboard/SuperAdminSettings";
 import SuperAdminProfile from "./components/SUPERADMIN/Dashboard/SuperAdminProfile";
@@ -511,10 +509,18 @@ function AppContent() {
           }
         />
         <Route
+          path="/superadmin/services"
+          element={
+            <RoleRoute allowedRoles={["superadmin"]}>
+              <SuperAdminServices />
+            </RoleRoute>
+          }
+        />
+        <Route
           path="/superadmin/orders"
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
-              <AdminOrders />
+              <Navigate to="/superadmin/services?tab=orders" replace />
             </RoleRoute>
           }
         />
@@ -522,7 +528,7 @@ function AppContent() {
           path="/superadmin/maintenance"
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
-              <AdminMaintenance />
+              <Navigate to="/superadmin/services?tab=service-requests" replace />
             </RoleRoute>
           }
         />
@@ -530,7 +536,7 @@ function AppContent() {
           path="/superadmin/technicians"
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
-              <AdminTechnician />
+              <Navigate to="/superadmin/services?tab=technicians" replace />
             </RoleRoute>
           }
         />

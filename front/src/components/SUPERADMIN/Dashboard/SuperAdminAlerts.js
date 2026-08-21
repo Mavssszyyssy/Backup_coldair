@@ -103,7 +103,7 @@ const SuperAdminAlerts = () => {
                 <div className="alert-detail-grid-wide"><dt>Items</dt><dd>{itemSummary}</dd></div>
                 <div><dt>Received</dt><dd>{formatDate(alert.createdAt)}</dd></div>
               </dl>
-              {order ? <button type="button" className="alert-open-order" onClick={() => navigate('/superadmin/orders')}>Open customer order</button> : null}
+              {order ? <button type="button" className="alert-open-order" onClick={() => navigate('/superadmin/services?tab=orders')}>Open customer order</button> : null}
             </article>;
           })}
         </div>
