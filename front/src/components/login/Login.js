@@ -66,10 +66,6 @@ function Login() {
     setLoading(true);
     try {
       const loggedInUser = await login(user.identifier, user.password);
-      const activeBranch =
-        loggedInUser?.activeBranch || loggedInUser?.assignedBranch || "";
-      if (activeBranch) localStorage.setItem("activeBranch", activeBranch);
-
       setLoading(false);
       navigate(
         loggedInUser?.role === "customer"

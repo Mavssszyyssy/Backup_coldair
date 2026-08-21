@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '../../../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
+import { getSessionActiveBranch } from '../../../utils/authSession';
 import TechLayout from '../Common/TechLayout';
 import TaskCard from './TaskCard';
 import TaskFilters from './TaskFilters';
@@ -11,7 +12,7 @@ import './styles.css';
 
 const TechMainScreen = () => {
   const { user } = useUser();
-  const activeBranch = localStorage.getItem('activeBranch') || user?.activeBranch || '';
+  const activeBranch = getSessionActiveBranch() || user?.activeBranch || '';
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');

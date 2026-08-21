@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiRequest } from '../../../config/api';
-import { ACTIVE_BRANCH_KEY, BRANCHES } from '../../../domain/branches/branches';
+import { BRANCHES } from '../../../domain/branches/branches';
+import { getSessionActiveBranch } from '../../../utils/authSession';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './styles.css';
@@ -27,7 +28,7 @@ const AddProduct = ({ onCreated }) => {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const activeBranch = localStorage.getItem(ACTIVE_BRANCH_KEY) || '';
+  const activeBranch = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
 
   const handleChange = (event) => {
     const { name, value } = event.target;

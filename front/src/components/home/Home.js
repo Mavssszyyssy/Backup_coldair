@@ -170,7 +170,6 @@ function Home() {
   ];
 
   const handleLogout = () => {
-    localStorage.clear();
     logout();
     clearCart();
     navigate("/home");

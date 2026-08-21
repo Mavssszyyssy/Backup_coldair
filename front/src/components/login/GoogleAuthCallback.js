@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { setAuthSessionItem } from '../../utils/authSession';
+import { ACTIVE_BRANCH_KEY } from '../../domain/branches/branches';
 
 const roleHome = (role) => {
   if (role === 'admin') return '/admin/dashboard';
@@ -21,9 +23,11 @@ function GoogleAuthCallback() {
 
     try {
       const parsedUser = JSON.parse(decodeURIComponent(encodedUser));
-      localStorage.setItem('accessToken', token);
-      localStorage.setItem('currentUser', JSON.stringify(parsedUser));
-      localStorage.setItem('userRole', parsedUser.role || 'customer');
+      setAuthSessionItem('accessToken', token);
+      setAuthSessionItem('currentUser', JSON.stringify(parsedUser));
+      setAuthSessionItem('userRole', parsedUser.role || 'customer');
+      const branch = parsedUser.activeBranch || parsedUser.assignedBranch || '';
+      if (branch) setAuthSessionItem(ACTIVE_BRANCH_KEY, branch);
       window.location.replace(roleHome(parsedUser.role));
     } catch (_error) {
       navigate('/login?google_error=invalid_payload', { replace: true });

@@ -1,3 +1,5 @@
+import { clearAuthSession, getAuthSessionItem, getSessionActiveBranch } from "../utils/authSession";
+
 const LIVE_API_BASE_URL = "https://api.coldair-act.online/api";
 const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
 const LEGACY_BACKEND_HOST = "https://aeropulse-backend.vercel.app";
@@ -30,8 +32,8 @@ if (
   );
 }
 
-const getToken = () => localStorage.getItem("accessToken");
-const getActiveBranch = () => localStorage.getItem("activeBranch");
+const getToken = () => getAuthSessionItem("accessToken");
+const getActiveBranch = () => getSessionActiveBranch();
 
 let activeRequestCount = 0;
 
@@ -113,11 +115,7 @@ const apiRequest = async (path, options = {}) => {
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("currentUser");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("activeBranch");
-      localStorage.removeItem("activeAccountSession");
+      clearAuthSession();
       console.warn("Cleared stale auth state after 401.", { url: requestUrl, options });
 
       try {

@@ -3,13 +3,14 @@ import { useUser } from '../../../context/UserContext';
 import AdminLayout from '../Common/AdminLayout';
 import ChangePassword from './ChangePassword';
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
+import { getSessionActiveBranch } from '../../../utils/authSession';
 import '../adminShared.css';
 import './styles.css';
 
 const AdminProfile = () => {
   const { user, updateProfile } = useUser();
   const roleTitle = user?.role === 'superadmin' ? 'SuperAdmin' : 'Admin';
-  const branchName = localStorage.getItem('activeBranch') || user?.activeBranch || user?.assignedBranch || '';
+  const branchName = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
   const branchInfo = loadBranchNetwork().find((branch) => branch.name === branchName);
   const adminLocation = branchInfo?.location || branchName || '-';
   const [isEditing, setIsEditing] = useState(false);

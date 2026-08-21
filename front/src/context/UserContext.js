@@ -8,6 +8,11 @@ import {
 } from "react";
 import { apiRequest } from "../config/api";
 import { ACTIVE_BRANCH_KEY } from "../domain/branches/branches";
+import {
+  getAuthSessionItem,
+  removeAuthSessionItem,
+  setAuthSessionItem,
+} from "../utils/authSession";
 
 const UserContext = createContext();
 const ACTIVE_ACCOUNT_SESSION_KEY = "activeAccountSession";
@@ -21,40 +26,22 @@ export const useUser = () => {
 };
 
 const saveSession = (token, user, branch = "") => {
-  localStorage.setItem("accessToken", token);
-  localStorage.setItem("currentUser", JSON.stringify(user));
-  localStorage.setItem("userRole", user.role);
+  setAuthSessionItem("accessToken", token);
+  setAuthSessionItem("currentUser", JSON.stringify(user));
+  setAuthSessionItem("userRole", user.role);
   if (branch) {
-    localStorage.setItem(ACTIVE_BRANCH_KEY, branch);
+    setAuthSessionItem(ACTIVE_BRANCH_KEY, branch);
   } else {
-    localStorage.removeItem(ACTIVE_BRANCH_KEY);
+    removeAuthSessionItem(ACTIVE_BRANCH_KEY);
   }
 };
 
 const clearSession = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("currentUser");
-  localStorage.removeItem("userRole");
-  localStorage.removeItem(ACTIVE_BRANCH_KEY);
-};
-
-const readActiveSession = () => {
-  try {
-    const val = localStorage.getItem(ACTIVE_ACCOUNT_SESSION_KEY);
-    return val ? JSON.parse(val) : null;
-  } catch (_error) {
-    return null;
-  }
-};
-
-const activateSingleSession = (user) => {
-  const session = {
-    accountId: user?.id || user?.email || "unknown",
-    email: user?.email || "",
-    startedAt: new Date().toISOString(),
-  };
-  localStorage.setItem(ACTIVE_ACCOUNT_SESSION_KEY, JSON.stringify(session));
-  return session;
+  removeAuthSessionItem("accessToken");
+  removeAuthSessionItem("currentUser");
+  removeAuthSessionItem("userRole");
+  removeAuthSessionItem(ACTIVE_BRANCH_KEY);
+  removeAuthSessionItem(ACTIVE_ACCOUNT_SESSION_KEY);
 };
 
 export const UserProvider = ({ children }) => {
@@ -88,7 +75,7 @@ export const UserProvider = ({ children }) => {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const token = localStorage.getItem("accessToken");
+      const token = getAuthSessionItem("accessToken");
       if (!token) {
         setLoading(false);
         return;
@@ -96,26 +83,18 @@ export const UserProvider = ({ children }) => {
 
       try {
         const result = await apiRequest("/auth/me");
-        const active = readActiveSession();
-        const accountId = result.user?.id || result.user?.email || "unknown";
-        if (active?.accountId && active.accountId !== accountId) {
-          clearSession();
-          setLoading(false);
-          return;
-        }
         setUser(result.user);
         setUserRole(result.user.role || null);
         setCurrentSession(result.user);
         setIsAuthenticated(true);
-        localStorage.setItem("currentUser", JSON.stringify(result.user));
+        setAuthSessionItem("currentUser", JSON.stringify(result.user));
         const activeBranch =
           result.user?.activeBranch || result.user?.assignedBranch || "";
         if (activeBranch) {
-          localStorage.setItem(ACTIVE_BRANCH_KEY, activeBranch);
+          setAuthSessionItem(ACTIVE_BRANCH_KEY, activeBranch);
         } else {
-          localStorage.removeItem(ACTIVE_BRANCH_KEY);
+          removeAuthSessionItem(ACTIVE_BRANCH_KEY);
         }
-        activateSingleSession(result.user);
       } catch (_error) {
         clearSession();
       } finally {
@@ -132,24 +111,6 @@ export const UserProvider = ({ children }) => {
     window.addEventListener("auth:logout", handler);
     return () => window.removeEventListener("auth:logout", handler);
   }, [forceLogout]);
-
-  useEffect(() => {
-    const onStorage = (event) => {
-      if (event.key !== ACTIVE_ACCOUNT_SESSION_KEY || !isAuthenticated || !user)
-        return;
-      const next = readActiveSession();
-      const accountId = user.id || user.email || "unknown";
-      if (next?.accountId && next.accountId !== accountId) {
-        clearSession();
-        setUser(null);
-        setUserRole(null);
-        setCurrentSession(null);
-        setIsAuthenticated(false);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [isAuthenticated, user]);
 
   useEffect(() => {
     // Enforce light theme attributes
@@ -171,7 +132,6 @@ export const UserProvider = ({ children }) => {
     const userBranch =
       result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
-    activateSingleSession(result.user);
     setUser(result.user);
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
@@ -190,11 +150,7 @@ export const UserProvider = ({ children }) => {
   };
 
   const logout = () => {
-    const active = readActiveSession();
-    const accountId = user?.id || user?.email || "unknown";
-    if (!active?.accountId || active.accountId === accountId) {
-      localStorage.removeItem(ACTIVE_ACCOUNT_SESSION_KEY);
-    }
+    removeAuthSessionItem(ACTIVE_ACCOUNT_SESSION_KEY);
     forceLogout();
   };
 
@@ -206,7 +162,7 @@ export const UserProvider = ({ children }) => {
     setUser(result.user);
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    setAuthSessionItem("currentUser", JSON.stringify(result.user));
     return result.user;
   };
 
@@ -240,7 +196,7 @@ export const UserProvider = ({ children }) => {
     setUser((previousUser) => {
       const nextUser = applyAddresses(previousUser);
       if (nextUser) {
-        localStorage.setItem("currentUser", JSON.stringify(nextUser));
+        setAuthSessionItem("currentUser", JSON.stringify(nextUser));
       }
       return nextUser;
     });
@@ -254,7 +210,7 @@ export const UserProvider = ({ children }) => {
     });
     setUser(result.user);
     setCurrentSession(result.user);
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    setAuthSessionItem("currentUser", JSON.stringify(result.user));
     return result.user;
   };
 
@@ -265,7 +221,7 @@ export const UserProvider = ({ children }) => {
     });
     setUser(result.user);
     setCurrentSession(result.user);
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    setAuthSessionItem("currentUser", JSON.stringify(result.user));
     return result.user;
   };
 
@@ -276,7 +232,7 @@ export const UserProvider = ({ children }) => {
     });
     setUser(result.user);
     setCurrentSession(result.user);
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    setAuthSessionItem("currentUser", JSON.stringify(result.user));
     return result.user;
   };
 
@@ -287,7 +243,7 @@ export const UserProvider = ({ children }) => {
     });
     setUser(result.user);
     setCurrentSession(result.user);
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    setAuthSessionItem("currentUser", JSON.stringify(result.user));
     return result.user;
   };
 

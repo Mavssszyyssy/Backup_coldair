@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import { useUser } from '../../../context/UserContext';
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
+import { getSessionActiveBranch } from '../../../utils/authSession';
 import '../adminShared.css';
 
 const TOTP_DEMO = '123456';
@@ -19,7 +20,7 @@ const AdminStoreOperations = () => {
   const branches = useMemo(() => loadBranchNetwork(), []);
 
   const assignedBranch = useMemo(() => {
-    const pickedBranch = localStorage.getItem('activeBranch') || user?.activeBranch || user?.assignedBranch || '';
+    const pickedBranch = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
     if (pickedBranch) {
       const matchedByName = branches.find((branch) => branch.name === pickedBranch);
       if (matchedByName) return matchedByName;

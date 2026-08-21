@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
 import { exportHtmlToPdfViaPrint, exportToExcel, formatReportValue } from "../../../utils/exporters";
+import { getSessionActiveBranch } from "../../../utils/authSession";
 import "../adminShared.css";
 import AdminLayout from "../Common/AdminLayout";
 // import icons from '../../common/icons';
@@ -146,7 +147,7 @@ function AdminReports() {
     const assignedBranch =
       user?.activeBranch ||
       user?.assignedBranch ||
-      localStorage.getItem("activeBranch") ||
+      getSessionActiveBranch() ||
       "";
     return {
       branch: isSuperAdmin
