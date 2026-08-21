@@ -210,6 +210,43 @@ export const UserProvider = ({ children }) => {
     return result.user;
   };
 
+  // Address routes return the saved address list rather than a full user.
+  // Keep the shared session in sync immediately so Shop, Checkout, and every
+  // other customer screen use the newly selected default address.
+  const synchronizeAddresses = useCallback((addresses = []) => {
+    const nextAddresses = Array.isArray(addresses) ? addresses : [];
+    const defaultAddress =
+      nextAddresses.find((address) => address?.isDefault) ||
+      nextAddresses[0] ||
+      null;
+
+    const applyAddresses = (previousUser) => {
+      if (!previousUser) return previousUser;
+      const nextUser = { ...previousUser, addresses: nextAddresses };
+      if (defaultAddress) {
+        nextUser.billingAddress = {
+          ...(previousUser.billingAddress || {}),
+          region: defaultAddress.region || "",
+          province: defaultAddress.province || "",
+          city: defaultAddress.city || "",
+          barangay: defaultAddress.barangay || "",
+          street: defaultAddress.street || "",
+          postalCode: defaultAddress.postalCode || "",
+        };
+      }
+      return nextUser;
+    };
+
+    setUser((previousUser) => {
+      const nextUser = applyAddresses(previousUser);
+      if (nextUser) {
+        localStorage.setItem("currentUser", JSON.stringify(nextUser));
+      }
+      return nextUser;
+    });
+    setCurrentSession((previousUser) => applyAddresses(previousUser));
+  }, []);
+
   const updatePreferences = async (preferences) => {
     const result = await apiRequest("/users/preferences", {
       method: "PATCH",
@@ -311,6 +348,7 @@ export const UserProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    synchronizeAddresses,
     updatePreferences,
     updatePrivacy,
     updateNotifications,

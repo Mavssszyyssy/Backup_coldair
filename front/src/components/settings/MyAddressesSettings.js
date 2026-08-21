@@ -1,5 +1,5 @@
 import { MapPin, Phone, Plus, Trash } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
 import AddAddressModal from "../checkout/AddAddressModal";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -9,7 +9,7 @@ import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
-function MyAddressesSettings({ user }) {
+function MyAddressesSettings({ onAddressesChanged }) {
   const [addresses, setAddresses] = useState([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
@@ -17,21 +17,23 @@ function MyAddressesSettings({ user }) {
   const [editingAddress, setEditingAddress] = useState(null);
   const [addressNotice, setAddressNotice] = useState("");
 
-  const loadAddresses = async () => {
+  const loadAddresses = useCallback(async () => {
     setAddressLoading(true);
     try {
       const result = await apiRequest("/users/addresses");
-      setAddresses(result.addresses || []);
+      const nextAddresses = result.addresses || [];
+      setAddresses(nextAddresses);
+      onAddressesChanged?.(nextAddresses);
     } catch (_error) {
       setAddresses([]);
     } finally {
       setAddressLoading(false);
     }
-  };
+  }, [onAddressesChanged]);
 
   useEffect(() => {
     loadAddresses();
-  }, []);
+  }, [loadAddresses]);
 
   const handleSaveAddress = async (payload) => {
     setAddressSaving(true);

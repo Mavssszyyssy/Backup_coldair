@@ -44,6 +44,7 @@ function Settings() {
   const {
     user,
     updateProfile,
+    synchronizeAddresses,
     updatePreferences,
     updatePrivacy,
     updateNotifications,
@@ -286,7 +287,9 @@ function Settings() {
               />
             )}
             {activeTab === "addresses" && (
-              <MyAddressesSettings user={formattedUser} />
+              <MyAddressesSettings
+                onAddressesChanged={synchronizeAddresses}
+              />
             )}
             {activeTab === "security" && (
               <AccountSettings

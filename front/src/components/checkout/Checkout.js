@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
+import { useUser } from "../../context/UserContext";
 import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
@@ -115,6 +116,7 @@ const findBestSelectedAddress = (items, currentId = "") => {
 function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart, getCartTotal } = useCart();
+  const { synchronizeAddresses } = useUser();
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState("cod");
@@ -169,6 +171,7 @@ function Checkout() {
     (nextAddresses, currentId = "") => {
       const normalized = (nextAddresses || []).map(normalizeAddress);
       setAddresses(normalized);
+      synchronizeAddresses(normalized);
       setSelectedAddress(
         findBestSelectedAddress(
           normalized,
@@ -177,7 +180,7 @@ function Checkout() {
       );
       return normalized;
     },
-    [selectedAddress?.id],
+    [selectedAddress?.id, synchronizeAddresses],
   );
 
   const loadAddresses = useCallback(async () => {
