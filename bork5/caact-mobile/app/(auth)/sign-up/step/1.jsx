@@ -82,7 +82,7 @@ export default function SignUpStep1() {
     if (emailError) nextErrors.email = emailError;
     if (aliasError) nextErrors.alias = aliasError;
     if (!form.password) nextErrors.password = "Password is required.";
-    else if (form.password.length < 12) nextErrors.password = "Password must be at least 12 characters.";
+    else if (form.password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     else if (form.password.length > 72) nextErrors.password = "Password must not exceed 72 characters.";
     else if ((passwordScore ?? 0) < 65) nextErrors.password = "Password is not strong enough. Aim for Good strength.";
     if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
