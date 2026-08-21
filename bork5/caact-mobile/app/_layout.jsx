@@ -2,6 +2,7 @@
 // Root layout: mounts providers that every screen needs.
 import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { CartProvider } from "../context/CartContext";
@@ -36,7 +37,13 @@ export default function RootLayout() {
         <CartProvider>
           <PushNotificationSetup />
           <BackendConnectionStatus />
-          <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={0}
+          >
+            <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+          </KeyboardAvoidingView>
         </CartProvider>
       </UserProvider>
     </SafeAreaProvider>

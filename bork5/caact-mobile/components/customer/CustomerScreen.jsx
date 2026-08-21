@@ -44,6 +44,8 @@ export default function CustomerScreen({
         contentContainerStyle,
       ]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
     >
       {children}
     </ScrollView>

@@ -130,6 +130,8 @@ export default function TechnicianScreen({
         contentContainerStyle,
       ]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
     >
       {children}
     </ScrollView>
