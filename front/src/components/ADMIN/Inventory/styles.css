@@ -4,6 +4,49 @@
 
 /* ===== AdminInventory.css ===== */
 
+/* Shared internal navigation for consolidated Admin and SuperAdmin modules. */
+.module-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 8px;
+  border: 1px solid #dbe5f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.module-tabs button {
+  flex: 1 1 180px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.module-tabs button:hover {
+  background: #eaf2ff;
+  color: #0f4c81;
+}
+
+.module-tabs button.active {
+  background: #0f4c81;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(15, 76, 129, 0.2);
+}
+
+.module-tabs button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
 .inventory-toolbar {
   display: flex;
   gap: 12px;

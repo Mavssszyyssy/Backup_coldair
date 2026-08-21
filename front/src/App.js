@@ -11,9 +11,8 @@ import AdminInventory from "./components/ADMIN/Inventory/AdminInventory";
 import AdminMaintenance from "./components/ADMIN/Maintenance/AdminMaintenance";
 import AdminOrders from "./components/ADMIN/Orders/AdminOrders";
 import AdminProfile from "./components/ADMIN/Profile/AdminProfile";
-import AdminReoder from "./components/ADMIN/Reorder/AdminReoder";
 import AdminReports from "./components/ADMIN/Reports/AdminReports";
-import AdminSerialQr from "./components/ADMIN/SerialQr/AdminSerialQr";
+import AdminServices from "./components/ADMIN/Services/AdminServices";
 import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
 import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
 import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
@@ -28,7 +27,6 @@ import SuperAdminAlerts from "./components/SUPERADMIN/Dashboard/SuperAdminAlerts
 import SuperAdminBranches from "./components/SUPERADMIN/Dashboard/SuperAdminBranches";
 import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDashboard";
 import SuperAdminInventory from "./components/SUPERADMIN/Dashboard/SuperAdminInventory";
-import SuperAdminReorders from "./components/SUPERADMIN/Dashboard/SuperAdminReorders";
 import SuperAdminSales from "./components/SUPERADMIN/Dashboard/SuperAdminSales";
 import SuperAdminTasks from "./components/SUPERADMIN/Dashboard/SuperAdminTasks";
 import SuperAdminSettings from "./components/SUPERADMIN/Dashboard/SuperAdminSettings";
@@ -297,10 +295,10 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/services/technicians"
+          path="/admin/services"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminTechnician />
+              <AdminServices />
             </RoleRoute>
           }
         />
@@ -308,7 +306,7 @@ function AppContent() {
           path="/admin/reorder"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminReoder />
+              <Navigate to="/admin/inventory?tab=reorder" replace />
             </RoleRoute>
           }
         />
@@ -324,7 +322,7 @@ function AppContent() {
           path="/admin/serial-qrs"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminSerialQr />
+              <Navigate to="/admin/inventory?tab=serial-qr" replace />
             </RoleRoute>
           }
         />
@@ -348,7 +346,15 @@ function AppContent() {
           path="/admin/services/orders"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminOrders />
+              <Navigate to="/admin/services" replace />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/services/technicians"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <Navigate to="/admin/services?tab=technicians" replace />
             </RoleRoute>
           }
         />
@@ -364,7 +370,7 @@ function AppContent() {
           path="/admin/technicians"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <Navigate to="/admin/services/technicians" replace />
+              <Navigate to="/admin/services?tab=technicians" replace />
             </RoleRoute>
           }
         />
@@ -372,7 +378,7 @@ function AppContent() {
           path="/admin/orders"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <Navigate to="/admin/services/orders" replace />
+              <Navigate to="/admin/services" replace />
             </RoleRoute>
           }
         />
@@ -380,7 +386,7 @@ function AppContent() {
           path="/admin/maintenance"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <Navigate to="/admin/services/service-requests" replace />
+              <Navigate to="/admin/services?tab=service-requests" replace />
             </RoleRoute>
           }
         />
@@ -388,7 +394,7 @@ function AppContent() {
           path="/admin/service-requests"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <Navigate to="/admin/services/service-requests" replace />
+              <Navigate to="/admin/services?tab=service-requests" replace />
             </RoleRoute>
           }
         />
@@ -492,7 +498,7 @@ function AppContent() {
           path="/admin/services/service-requests"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminMaintenance />
+              <Navigate to="/admin/services?tab=service-requests" replace />
             </RoleRoute>
           }
         />
@@ -500,7 +506,7 @@ function AppContent() {
           path="/superadmin/reorders"
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
-              <SuperAdminReorders />
+              <Navigate to="/superadmin/inventory?tab=reorders" replace />
             </RoleRoute>
           }
         />
@@ -532,7 +538,7 @@ function AppContent() {
           path="/superadmin/serial-qrs"
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
-              <AdminSerialQr />
+              <Navigate to="/superadmin/inventory?tab=serial-qr" replace />
             </RoleRoute>
           }
         />

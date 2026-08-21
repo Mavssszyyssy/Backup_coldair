@@ -40,7 +40,7 @@ const getInstallationStatus = (unit = {}) => {
 const getTechnicianQrValue = (unit) =>
   unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.serialNumber || ""}`;
 
-const AdminSerialQr = () => {
+const AdminSerialQr = ({ embedded = false }) => {
   const { user } = useUser();
   const canManageSerials = user?.role === "superadmin";
   const [products, setProducts] = useState([]);
@@ -143,6 +143,7 @@ const AdminSerialQr = () => {
     <AdminLayout
       title="Serial Numbers and QR Codes"
       subtitle="Every QR has a permanent Unit ID. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment."
+      embedded={embedded}
     >
       <div className="serialqr-toolbar admin-card">
         <div>

@@ -9,7 +9,7 @@ import './styles.css';
 
 const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'Completed', 'Cancelled'];
 
-const AdminMaintenance = () => {
+const AdminMaintenance = ({ embedded = false }) => {
   const [selected, setSelected] = useState(null);
   const [requests, setRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -106,7 +106,7 @@ const AdminMaintenance = () => {
   };
 
   return (
-    <AdminLayout title="Maintenance Operations" subtitle="Review service requests, assign technicians, and monitor proof of work">
+    <AdminLayout title="Maintenance Operations" subtitle="Review service requests, assign technicians, and monitor proof of work" embedded={embedded}>
       <section className="maintenance-page">
         <div className="maintenance-overview" aria-label="Maintenance summary">
           <div className="maintenance-summary-card">

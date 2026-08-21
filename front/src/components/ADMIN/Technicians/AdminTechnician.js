@@ -33,7 +33,7 @@ const initialDraft = (branch = "") => ({
   branch,
 });
 
-const AdminTechnician = () => {
+const AdminTechnician = ({ embedded = false }) => {
   const { user } = useUser();
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
@@ -223,7 +223,7 @@ const AdminTechnician = () => {
   };
 
   return (
-    <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized.">
+    <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized." embedded={embedded}>
       <section className="tech-management">
         <div className="tech-summary-grid">
           <article><span>Total technicians</span><strong>{technicians.length}</strong><small>Visible to your access level</small></article>

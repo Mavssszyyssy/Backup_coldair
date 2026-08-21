@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
+import { useUser } from "../../context/UserContext";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 
 const REPORT_TYPES = [
@@ -21,6 +22,7 @@ const reportList = (items = []) => (items || [])
   .join("");
 
 function AmpReportCenter({ units = [] }) {
+  const { user } = useUser();
   const reportUnits = useMemo(
     () => units.filter((unit) => unit?.unitId || unit?.id),
     [units],
@@ -56,6 +58,11 @@ function AmpReportCenter({ units = [] }) {
 
   const exportPdf = () => {
     if (!report) return;
+    const reportBranch =
+      report.branch ||
+      user?.activeBranch ||
+      user?.assignedBranch ||
+      (user?.role === "superadmin" ? "Head Office · All Branches" : "Unassigned Branch");
     const rootCauseRows = (report.rootCauses || []).map((item) => `
       <tr><td>${escapeHtml(item.factor)}</td><td>${escapeHtml(item.evidence)}</td><td>${escapeHtml(item.priority)}</td></tr>`).join("");
     const planRows = (report.maintenancePlan || []).map((item) => `
@@ -82,11 +89,16 @@ function AmpReportCenter({ units = [] }) {
       html,
       metadata: {
         reportId: report.reportId,
-        branch: report.branch,
+        branch: reportBranch,
         reportType: report.reportLabel,
         generatedAt: new Date(report.generatedAt).toLocaleString(),
         systemName: report.systemName,
         watermark: report.watermark,
+        representative: user?.name || user?.email || "AEROPULSE Representative",
+        representativeRole:
+          user?.role === "superadmin"
+            ? "Super Admin · Authorized Representative"
+            : "Branch Representative",
       },
     });
   };

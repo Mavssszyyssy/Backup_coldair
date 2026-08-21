@@ -9,7 +9,7 @@ import './styles.css';
 const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
 const statusLabel = (status) => String(status || 'submitted').replace(/^./, (letter) => letter.toUpperCase());
 
-const AdminReoder = () => {
+const AdminReoder = ({ embedded = false }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [items, setItems] = useState([]);
   const [reorders, setReorders] = useState([]);
@@ -43,7 +43,7 @@ const AdminReoder = () => {
   const submittedCount = reorders.filter((item) => item.status === 'submitted').length;
 
   return (
-    <AdminLayout title="Reorder Management" subtitle="Request stock replenishment and track SuperAdmin decisions">
+    <AdminLayout title="Reorder Management" subtitle="Request stock replenishment and track SuperAdmin decisions" embedded={embedded}>
       <div className="reorder-overview">
         <div><strong>{submittedCount}</strong><span>Awaiting SuperAdmin review</span></div>
         <div><strong>{items.length}</strong><span>Low-stock product{items.length === 1 ? '' : 's'} in this branch</span></div>

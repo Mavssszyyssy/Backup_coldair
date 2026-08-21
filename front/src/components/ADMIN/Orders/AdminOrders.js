@@ -145,7 +145,7 @@ const getInstallationStatus = (order = {}, task = null) => {
   return 'Not started';
 };
 
-const AdminOrders = () => {
+const AdminOrders = ({ embedded = false }) => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -417,7 +417,7 @@ const AdminOrders = () => {
   };
 
   return (
-    <AdminLayout title="Customer Orders" subtitle="Review and process customer checkout requests">
+    <AdminLayout title="Customer Orders" subtitle="Review and process customer checkout requests" embedded={embedded}>
       <div className="admin-orders-page">
         {loading ? <p>Loading orders...</p> : null}
         {error ? <p className="admin-orders-error">{error}</p> : null}

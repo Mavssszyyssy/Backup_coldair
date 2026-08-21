@@ -6,7 +6,7 @@ import '../../ADMIN/Reorder/styles.css';
 const displayName = (user) => user?.name || [user?.name_first, user?.name_last].filter(Boolean).join(' ') || user?.email || 'Admin';
 const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
 
-export default function SuperAdminReorders() {
+export default function SuperAdminReorders({ embedded = false }) {
   const [reorders, setReorders] = useState([]);
   const [filter, setFilter] = useState('submitted');
   const [notes, setNotes] = useState({});
@@ -48,7 +48,7 @@ export default function SuperAdminReorders() {
   };
 
   return (
-    <SuperAdminLayout title="Inventory Management — Reorder Approvals" subtitle="Review branch replenishment requests and add stock safely">
+    <SuperAdminLayout title="Inventory Management — Reorder Approvals" subtitle="Review branch replenishment requests and add stock safely" embedded={embedded}>
       <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>Requests awaiting your decision</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>Approved replenishments</span></div><button type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>
       {error ? <p className="reorder-message is-error">{error}</p> : null}
       <section className="reorder-history">

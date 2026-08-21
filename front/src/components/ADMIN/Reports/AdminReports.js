@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
-import { exportHtmlToPdfViaPrint, exportToExcel } from "../../../utils/exporters";
+import { useUser } from "../../../context/UserContext";
+import { exportHtmlToPdfViaPrint, exportToExcel, formatReportValue } from "../../../utils/exporters";
 import "../adminShared.css";
 import AdminLayout from "../Common/AdminLayout";
 // import icons from '../../common/icons';
@@ -28,6 +29,7 @@ const defaultRange = () => {
 };
 
 function AdminReports() {
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState("sales");
   const [range, setRange] = useState(defaultRange);
   const [busy, setBusy] = useState(false);
@@ -139,23 +141,47 @@ function AdminReports() {
     return `${tab} (${range.from} to ${range.to})`;
   }, [activeTab, range.from, range.to]);
 
+  const createExportMetadata = () => {
+    const isSuperAdmin = user?.role === "superadmin";
+    const assignedBranch =
+      user?.activeBranch ||
+      user?.assignedBranch ||
+      localStorage.getItem("activeBranch") ||
+      "";
+    return {
+      branch: isSuperAdmin
+        ? "Head Office · All Branches"
+        : assignedBranch || "Unassigned Branch",
+      representative: user?.name || user?.email || "AEROPULSE Representative",
+      representativeRole: isSuperAdmin
+        ? "Super Admin · Authorized Representative"
+        : "Branch Admin · Authorized Representative",
+      reportingPeriod: `${range.from} to ${range.to}`,
+      reportId: `APR-${activeTab.toUpperCase()}-${range.from.replaceAll("-", "")}-${range.to.replaceAll("-", "")}`,
+      generatedAt: new Date().toLocaleString("en-PH"),
+    };
+  };
+
   const onExportExcel = () => {
+    const exportMetadata = createExportMetadata();
     exportToExcel({
       filename: `aeropulse-${activeTab}-${range.from}-to-${range.to}.xls`,
       title,
       summary: data.summary,
       rows: data.rows,
+      metadata: exportMetadata,
     });
   };
 
   const onExportPdf = () => {
+    const exportMetadata = createExportMetadata();
     const summaryHtml = data.summary
       ? `<div class="summary">${Object.entries(
           data.summary,
         )
           .map(
             ([k, v]) =>
-              `<div class="summary-item"><strong>${typeof v === "number" ? v.toLocaleString() : String(v)}</strong><span>${k.replace(/([A-Z])/g, " $1")}</span></div>`,
+              `<div class="summary-item"><strong>${escapeReportHtml(formatReportValue(v, k))}</strong><span>${escapeReportHtml(k.replace(/([A-Z])/g, " $1"))}</span></div>`,
           )
           .join("")}</div>`
       : "";
@@ -167,7 +193,7 @@ function AdminReports() {
             ${data.rows
               .map(
                 (r) =>
-                  `<tr>${headers.map((h) => `<td>${escapeReportHtml(r[h])}</td>`).join("")}</tr>`,
+                  `<tr>${headers.map((h) => `<td>${escapeReportHtml(formatReportValue(r[h], h))}</td>`).join("")}</tr>`,
               )
               .join("")}
           </tbody>
@@ -175,8 +201,14 @@ function AdminReports() {
       : '<div class="meta">No rows.</div>';
     exportHtmlToPdfViaPrint({
       title,
-      subtitle: `Reporting period: ${range.from} to ${range.to}`,
+      subtitle: `Reporting period: ${range.from} to ${range.to} · Exporting branch: ${exportMetadata.branch}`,
       html: `${summaryHtml}${table}`,
+      fileName: `${exportMetadata.reportId}.pdf`,
+      metadata: {
+        ...exportMetadata,
+        reportType: tabs.find((tab) => tab.id === activeTab)?.label || "Operational Report",
+        watermark: "AEROPULSE",
+      },
     });
   };
 
@@ -298,7 +330,7 @@ function AdminReports() {
                   {Object.entries(data.summary)
                     .map(
                       ([k, v]) =>
-                        `${k}: ${typeof v === "number" ? v.toLocaleString() : String(v)}`,
+                        `${k.replace(/([A-Z])/g, " $1")}: ${formatReportValue(v, k)}`,
                     )
                     .join(" | ")}
                 </p>
@@ -321,7 +353,7 @@ function AdminReports() {
                 {data.rows.map((r, idx) => (
                   <tr key={idx}>
                     {Object.keys(data.rows[0]).map((h) => (
-                      <td key={h}>{String(r[h] ?? "")}</td>
+                      <td key={h}>{formatReportValue(r[h], h)}</td>
                     ))}
                   </tr>
                 ))}

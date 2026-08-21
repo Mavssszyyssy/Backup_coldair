@@ -7,7 +7,7 @@ import SuperAdminLayout from '../../SUPERADMIN/Common/SuperAdminLayout';
 import '../adminShared.css';
 import './styles.css';
 
-const AdminLayout = ({ title, subtitle, children }) => {
+const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
   const { user } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -28,6 +28,10 @@ const AdminLayout = ({ title, subtitle, children }) => {
     }
     return () => document.body.classList.remove('no-scroll');
   }, [isSidebarOpen]);
+
+  // Merged operational pages reuse their existing API-connected components
+  // inside one parent screen. Embedded mode prevents a second sidebar/header.
+  if (embedded) return children ?? <Outlet />;
 
   // Operational modules are shared with SuperAdmin, but the surrounding
   // shell stays authoritative: SuperAdmin always keeps the HQ navigation

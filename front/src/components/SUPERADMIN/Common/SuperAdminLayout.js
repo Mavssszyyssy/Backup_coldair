@@ -3,7 +3,7 @@ import SuperAdminHeader from './SuperAdminHeader';
 import SuperAdminSidebar from './SuperAdminSidebar';
 import '../superAdminShared.css';
 
-const SuperAdminLayout = ({ title, subtitle, children }) => {
+const SuperAdminLayout = ({ title, subtitle, children, embedded = false }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -14,6 +14,8 @@ const SuperAdminLayout = ({ title, subtitle, children }) => {
     }
     return () => document.body.classList.remove('no-scroll');
   }, [menuOpen]);
+
+  if (embedded) return children;
 
   return (
     <div className="super-layout">
