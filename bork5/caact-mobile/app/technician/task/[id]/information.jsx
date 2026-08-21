@@ -11,7 +11,7 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { calculateUnitHealthScore } from "../../../../services/acHealthScoreService";
 import { getServiceRequestsByUser } from "../../../../services/serviceRequestStorage";
-import { acceptTask, checkInTask, getTaskById, TASK_STATUS, updateTaskStatus } from "../../../../services/taskStorage";
+import { checkInTask, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getUnitByCode } from "../../../../services/unitStorage";
 import { getServiceLogsByUnit } from "../../../../services/unitServiceLogStorage";
@@ -124,38 +124,27 @@ export default function TaskInformationScreen() {
   const registrationProgress = task?.registrationProgress;
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
+  const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
   const nextAction = task?.status === TASK_STATUS.PENDING
-    ? { title: "Accept assignment", subtitle: "Confirm that you are taking this installation.", icon: "checkmark-circle-sharp", action: "accept" }
-    : task?.status === TASK_STATUS.ACCEPTED
-      ? { title: "Mark on the way", subtitle: "Start travel to the customer location.", icon: "navigate-sharp", action: "on-the-way" }
-      : task?.status === TASK_STATUS.ON_THE_WAY
-        ? { title: "Check in at customer", subtitle: "Share your current GPS location to verify arrival.", icon: "location-sharp", action: "check-in" }
-        : task?.status === TASK_STATUS.ARRIVED
-          ? { title: "Start installation", subtitle: "You are checked in. Begin the installation work.", icon: "construct-sharp", action: "installing" }
-          : [TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(task?.status)
-            ? registrationComplete
-              ? { title: "Submit proof and complete", subtitle: "Capture the installed unit and collect receiver sign-off.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
-              : { title: "Continue AMP registration", subtitle: "Register the remaining assigned QR serials before closing this work order.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
-            : null;
+    ? { title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
+    : task?.status === TASK_STATUS.IN_PROGRESS
+      ? !hasCheckedIn
+        ? { title: "Check in at installation", subtitle: "Record your GPS arrival before verifying the assigned AC unit.", icon: "location-sharp", action: "check-in" }
+        : registrationComplete
+        ? { title: "Submit proof and close work order", subtitle: "Add the installation proof and receiver sign-off for this assigned job.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+        : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
+      : null;
 
-  const runLifecycleAction = async (action) => {
-    if (!task || actionBusy) return;
+  const runWorkOrderAction = async () => {
+    if (actionBusy || !task || nextAction?.action !== "check-in") return;
     setActionBusy(true);
     try {
-      let updated;
-      if (action === "check-in") {
-        const location = await getCurrentLocationSnapshot();
-        updated = await checkInTask(id, location);
-        Alert.alert("Checked in", `Arrival recorded at ${location.displayAddress || "your current location"}.`);
-      } else if (action === "accept") {
-        updated = await acceptTask(id);
-      } else {
-        const targetStatus = action === "on-the-way" ? TASK_STATUS.ON_THE_WAY : TASK_STATUS.INSTALLING;
-        updated = await updateTaskStatus(id, targetStatus);
-      }
-      if (updated) setTask(updated);
+      const location = await getCurrentLocationSnapshot();
+      const updated = await checkInTask(id, location);
+      setTask(updated);
+      Alert.alert("Arrival recorded", "Your GPS check-in was recorded. You can now verify the assigned AC unit.");
     } catch (error) {
-      Alert.alert("Unable to update work order", error?.message || "Please try again.");
+      Alert.alert("Unable to check in", error?.message || "Please check location permissions and try again.");
     } finally {
       setActionBusy(false);
     }
@@ -214,13 +203,7 @@ export default function TaskInformationScreen() {
                 <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{nextAction.subtitle}</Text>
               </View>
             </View>
-            <TechButton
-              title={actionBusy ? "Updating..." : nextAction.title}
-              loading={actionBusy}
-              onPress={() => nextAction.href ? router.push(nextAction.href) : runLifecycleAction(nextAction.action)}
-              style={{ marginTop: SPACING.sm }}
-              leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />}
-            />
+            {!nextAction.disabled ? <TechButton title={actionBusy ? "Recording arrival..." : nextAction.title} loading={actionBusy} onPress={() => nextAction.href ? router.push(nextAction.href) : runWorkOrderAction()} style={{ marginTop: SPACING.sm }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} /> : null}
           </Card>
         ) : null}
 

@@ -16,8 +16,6 @@ export default function TechnicianLayout() {
     "/technician/home",
     "/technician/dashboard",
     "/technician/notifications",
-    "/technician/tasks",
-    "/technician/scan-qr",
     "/technician/profile",
   ];
   const showBottomNav = topLevelScreens.includes(pathname);
@@ -45,13 +43,13 @@ export default function TechnicianLayout() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <Stack style={{ flex: 1 }} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: "Technician" }} />
-        <Stack.Screen name="home" options={{ title: "Home" }} />
+        <Stack.Screen name="home" options={{ title: "Dashboard" }} />
         <Stack.Screen name="oobe/index" options={{ title: "Technician Setup" }} />
         <Stack.Screen name="oobe/reset" options={{ title: "Reset Setup" }} />
         <Stack.Screen name="dashboard" options={{ title: "Dashboard" }} />
         <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen name="tasks" options={{ title: "My Work Orders" }} />
-        <Stack.Screen name="scan-qr" options={{ title: "Scan AC Unit" }} />
+        <Stack.Screen name="scan-qr" options={{ title: "Work Orders" }} />
         <Stack.Screen name="profile" options={{ title: "Profile" }} />
         <Stack.Screen
           name="task/[id]/information"
@@ -59,7 +57,7 @@ export default function TechnicianLayout() {
         />
         <Stack.Screen
           name="task/[id]/complete-service"
-          options={{ title: "Complete Service" }}
+          options={{ title: "Work Order Proof" }}
         />
         <Stack.Screen
           name="task/[id]/amp-registration"

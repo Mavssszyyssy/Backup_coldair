@@ -7,8 +7,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 const ITEMS = [
   { href: "/technician/dashboard", label: "Dashboard", icon: "speedometer-sharp" },
-  { href: "/technician/tasks", label: "Work", icon: "clipboard-sharp" },
-  { href: "/technician/scan-qr", label: "Scan", icon: "qr-code-sharp", elevated: true },
+  { href: "/technician/notifications", label: "Alerts", icon: "notifications-sharp" },
   { href: "/technician/profile", label: "Profile", icon: "person-sharp" },
 ];
 

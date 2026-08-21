@@ -10,8 +10,6 @@ const BOTTOM_NAV_ROUTES = new Set([
   "/technician/home",
   "/technician/dashboard",
   "/technician/notifications",
-  "/technician/tasks",
-  "/technician/scan-qr",
   "/technician/profile",
 ]);
 

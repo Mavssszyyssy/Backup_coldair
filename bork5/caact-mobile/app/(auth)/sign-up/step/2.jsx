@@ -266,7 +266,7 @@ export default function SignUpStep2() {
         channel: otpChannel,
         email: registrationPayload.email,
         phone: phoneForApi,
-        messenger_handle: messengerForApi,
+        messenger_handle: "",
         code: codeInput.trim(),
       });
 
@@ -330,6 +330,8 @@ export default function SignUpStep2() {
           paddingBottom: 126,
         }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
         <PageHeader
           title="Create Account"

@@ -207,6 +207,8 @@ export default function SignUpStep0() {
           paddingBottom: 112,
         }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
         <PageHeader
           title="Create Account"

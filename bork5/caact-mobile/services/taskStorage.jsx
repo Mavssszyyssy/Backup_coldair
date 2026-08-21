@@ -160,6 +160,7 @@ export function normalizeTask(item = {}) {
     nextMaintenanceDate: item.nextMaintenanceDate || "",
     customerAdvice: item.customerAdvice || "",
     proof,
+    checkIn: value("checkIn", null),
     beforePhotoUri: item.beforePhotoUri || proof.beforePhotos?.[0]?.uri || "",
     afterPhotoUri: item.afterPhotoUri || proof.afterPhotos?.[0]?.uri || "",
     customerSignatureName: item.customerSignatureName || proof.customerSignature?.name || "",

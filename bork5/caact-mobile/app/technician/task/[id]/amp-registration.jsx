@@ -209,7 +209,7 @@ export default function AmpRegistrationScreen() {
       Alert.alert(
         holdMode ? "Unit on hold" : "Unit registered",
         holdMode ? "The task is on hold until the defect is resolved." : done ? "All assigned units are registered. You can now submit the installation report." : "Register the remaining assigned unit QR labels.",
-        [{ text: "OK", onPress: () => done && router.replace(`/technician/task/${id}/complete-service`) }],
+        [{ text: "OK", onPress: () => done && router.replace(`/technician/task/${id}/information`) }],
       );
     } catch (error) {
       Alert.alert("Unable to register unit", error?.message || "Please review the required fields and try again.");

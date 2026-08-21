@@ -2,7 +2,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, FlatList, Modal, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Modal, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TechnicianScreen, {
   TechHero,
 } from "../../components/technician/TechnicianScreen";
@@ -13,12 +13,7 @@ import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import {
-  acceptTask,
-  getTasksByTechnician,
-  TASK_STATUS,
-} from "../../services/taskStorage";
-import { confirmAction } from "../../utils/confirmAction";
+import { getTasksByTechnician, TASK_STATUS } from "../../services/taskStorage";
 
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
@@ -37,7 +32,7 @@ const STATUS_COLOR = {
 const WORK_FILTERS = [
   { key: "all", label: "All" },
   { key: "active", label: "Active" },
-  { key: "pending", label: "Ready" },
+  { key: "pending", label: "Awaiting Admin" },
   { key: "on-hold", label: "On hold" },
   { key: "completed", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
@@ -218,7 +213,6 @@ export default function TasksScreen() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [busy, setBusy] = useState(null);
   const [filterVisible, setFilterVisible] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -271,27 +265,6 @@ export default function TasksScreen() {
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-
-  const handleStart = (task) =>
-    confirmAction({
-      title: "Start Work Order",
-      message: `Start working on "${task.title || task.issueType}"?`,
-      confirmText: "Start",
-      onConfirm: async () => {
-        setBusy(task.id);
-        try {
-          await acceptTask(task.id);
-          refresh();
-        } catch (error) {
-          Alert.alert(
-            "Unable to start",
-            error?.message || "Could not start this work order.",
-          );
-        } finally {
-          setBusy(null);
-        }
-      },
-    });
 
   const renderItem = ({ item }) => (
     <Card
@@ -355,46 +328,7 @@ export default function TasksScreen() {
           variant="secondary"
           leftIcon={<Ionicons name="information-circle-sharp" size={16} color={COLORS.tech} />}
         />
-        {item.status === TASK_STATUS.PENDING && (
-          <TechButton
-            title="Start Work Order"
-            onPress={() => handleStart(item)}
-            loading={busy === item.id}
-            variant="primary"
-            leftIcon={
-              <Ionicons name="play-sharp" size={16} color={COLORS.surface} />
-            }
-          />
-        )}
-        {[TASK_STATUS.ARRIVED, TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(item.status) && (
-          getTaskSerials(item).length > 0 && !item.registrationProgress?.isComplete ? (
-            <TechButton
-              title="Continue Installation"
-              onPress={() => router.push(`/technician/task/${item.id}/amp-registration`)}
-              size="sm"
-              leftIcon={
-                <Ionicons
-                  name="qr-code-sharp"
-                  size={16}
-                  color={COLORS.surface}
-                />
-              }
-            />
-          ) : (
-            <TechButton
-              title="Complete Installation"
-              onPress={() => router.push(`/technician/task/${item.id}/complete-service`)}
-              size="sm"
-              leftIcon={
-                <Ionicons
-                  name="checkmark-sharp"
-                  size={16}
-                  color={COLORS.surface}
-                />
-              }
-            />
-          )
-        )}
+        {item.status === TASK_STATUS.PENDING ? <Text style={{ color: COLORS.warning, fontSize: FONT.sm, marginTop: SPACING.sm }}>This work order is assigned but cannot be started until Admin dispatches it.</Text> : null}
       </View>
     </Card>
   );
@@ -402,7 +336,7 @@ export default function TasksScreen() {
   return (
     <TechnicianScreen
       title="My Work Orders"
-      subtitle="Filter, start, and complete assigned service work"
+      subtitle="Review Admin-activated installation and service work"
       icon="clipboard-sharp"
       scroll={false}
     >

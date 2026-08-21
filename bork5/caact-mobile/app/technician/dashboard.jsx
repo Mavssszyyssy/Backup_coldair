@@ -52,6 +52,7 @@ export default function TechDashboard() {
   const router = useRouter();
   const { current } = useUserContext();
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
+  const [workOrders, setWorkOrders] = useState([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -59,6 +60,7 @@ export default function TechDashboard() {
       getTasksByTechnician(current.id)
         .then((tasks) => {
           setStats(getTaskStats(tasks));
+          setWorkOrders(tasks.slice(0, 3));
         })
         .catch(() => {});
     }, [current]),
@@ -67,7 +69,7 @@ export default function TechDashboard() {
   const focusMessage = stats.inProgress
     ? `${stats.inProgress} active work order${stats.inProgress === 1 ? "" : "s"} need your attention.`
     : stats.pending
-      ? `${stats.pending} pending work order${stats.pending === 1 ? "" : "s"} are ready to start.`
+      ? `${stats.pending} assigned work order${stats.pending === 1 ? "" : "s"} are awaiting Admin dispatch.`
       : "You have no active work orders right now.";
 
   return (
@@ -77,14 +79,14 @@ export default function TechDashboard() {
       icon="speedometer-sharp"
     >
       <TechHero
-        eyebrow="TODAY'S WORKSPACE"
+        eyebrow="TODAY'S WORK ORDERS"
         title={stats.inProgress ? `${stats.inProgress} job${stats.inProgress === 1 ? "" : "s"} in progress` : "Ready for your next job"}
         subtitle={focusMessage}
         icon="flash-sharp"
       >
         <TechButton
-          title={stats.inProgress ? "View active work" : "View work orders"}
-          onPress={() => router.push(stats.inProgress ? "/technician/home" : "/technician/tasks")}
+          title="View work orders"
+          onPress={() => router.push("/technician/tasks")}
           variant="secondary"
           leftIcon={<Ionicons name="clipboard-sharp" size={18} color={COLORS.tech} />}
         />
@@ -99,10 +101,19 @@ export default function TechDashboard() {
         <View style={{ flex: 1 }}><MetricCard label="All work orders" value={stats.total} icon="layers-sharp" color={COLORS.primary} /></View>
       </View>
 
-      <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>Workspace</Text>
-      <DashboardLink title="Active work" subtitle="Continue work already started and add service notes." icon="briefcase-sharp" onPress={() => router.push("/technician/home")} />
-      <DashboardLink title="My work orders" subtitle="Review, filter, start, and complete assigned work." icon="clipboard-sharp" onPress={() => router.push("/technician/tasks")} />
-      <DashboardLink title="Scan AC unit" subtitle="Open a unit record using its QR code." icon="qr-code-sharp" onPress={() => router.push("/technician/scan-qr")} />
+      <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>Work Orders</Text>
+      {workOrders.length ? workOrders.map((workOrder) => (
+        <Card key={workOrder.id} onPress={() => router.push(`/technician/task/${workOrder.id}/information`)} style={{ padding: SPACING.md - 2, marginBottom: SPACING.sm, borderLeftWidth: 3, borderLeftColor: workOrder.status === "in-progress" ? COLORS.tech : COLORS.warning }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ width: 42, height: 42, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}><Ionicons name="clipboard-sharp" size={21} color={COLORS.tech} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{workOrder.title || workOrder.issueType || "Work Order"}</Text>
+              <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{workOrder.status === "pending" ? "Awaiting Admin dispatch" : `${workOrder.status || "assigned"} · ${workOrder.customerName || "Customer"}`}</Text>
+            </View>
+            <Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} />
+          </View>
+        </Card>
+      )) : <Card><Text style={{ color: COLORS.textSecondary }}>No work orders have been assigned to you yet.</Text></Card>}
       <DashboardLink title="Notifications" subtitle="Review new assignments and service alerts." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
     </TechnicianScreen>
   );

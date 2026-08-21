@@ -214,7 +214,7 @@ export default function CompleteServiceScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl }} keyboardShouldPersistTaps="handled">
-        <PageHeader title="Proof of Installation" subtitle="AMP registration, field proof, and receiver sign-off" color={COLORS.tech} onBack={() => router.back()} />
+        <PageHeader title="Work Order Proof" subtitle="Final proof, AMP record, and receiver sign-off for this work order" color={COLORS.tech} onBack={() => router.back()} />
 
         <Card>
           <InfoCard label="Work order" value={task?.taskCode || task?.title || "Loading…"} />

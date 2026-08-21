@@ -575,8 +575,7 @@ const listTasks = async (req, res) => {
           scopeQuery,
           {
             $or: [
-              { assignedTechnicianId: String(req.authUser._id || "") },
-              { assignedTechnicianId: "" },
+            { assignedTechnicianId: String(req.authUser._id || "") },
             ],
           },
         ],
@@ -652,12 +651,11 @@ const updateTask = async (req, res) => {
 
     if (req.authUser.role === "technician") {
       const currentTechId = String(req.authUser._id || "");
-      if (task.assignedTechnicianId && String(task.assignedTechnicianId) !== currentTechId) {
+      if (!task.assignedTechnicianId || String(task.assignedTechnicianId) !== currentTechId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      if (!task.assignedTechnicianId) {
-        task.assignedTechnicianId = currentTechId;
-        task.assignedTechnicianName = getTechnicianDisplayName(req.authUser);
+      if (normalizeStatus(task.status) === "pending") {
+        return res.status(409).json({ message: "This work order must be activated by an administrator before work can begin." });
       }
     }
 
@@ -744,40 +742,52 @@ const acceptTask = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const task = await findTaskForRequest(req.params.taskId, req);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    const technician = await User.findById(req.authUser._id).select("assignedBranch activeBranch name name_first name_last");
-    if (!canTechnicianAcceptTask(task, technician)) {
-      return res.status(403).json({ message: "You are not authorized to accept this task." });
-    }
-
-    const currentTechId = String(technician._id || "");
-    if (task.assignedTechnicianId && String(task.assignedTechnicianId) !== currentTechId) {
-      return res.status(403).json({ message: "Task already accepted by another technician." });
-    }
-
-    task.assignedTechnicianId = currentTechId;
-    task.assignedTechnicianName = getTechnicianDisplayName(technician);
-    if (task.status === "pending") {
-      task.status = "in-progress";
-    }
-    task.payload = {
-      ...(task.payload || {}),
-      acceptedAt: new Date().toISOString(),
-      status: task.status,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await task.save();
-    await syncOrderWorkflowForTask(task, task.status);
-    await syncServiceRequestForTask(task, task.status);
-    return res.json({ task: hydrateTaskResponse(task) });
+    return res.status(409).json({ message: "Work orders are activated by an administrator when the linked order is dispatched." });
   } catch (error) {
     console.error("Failed to accept task:", error);
     return res.status(500).json({ message: "Unable to accept task right now." });
+  }
+};
+
+const checkInTask = async (req, res) => {
+  try {
+    if (req.authUser.role !== "technician") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const task = await findTaskForRequest(req.params.taskId, req);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    const technicianId = String(req.authUser._id || "");
+    if (!task.assignedTechnicianId || String(task.assignedTechnicianId) !== technicianId) {
+      return res.status(403).json({ message: "This task is assigned to another technician." });
+    }
+    if (normalizeStatus(task.status) !== "in-progress") {
+      return res.status(409).json({ message: "This work order must be activated by an administrator before checking in." });
+    }
+
+    const coordinates = req.body?.coordinates || req.body?.location?.coordinates || {};
+    const latitude = Number(coordinates.latitude);
+    const longitude = Number(coordinates.longitude);
+    const accuracy = Number(coordinates.accuracy || 0);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      return res.status(400).json({ message: "A valid GPS location is required to check in." });
+    }
+
+    const now = new Date().toISOString();
+    task.payload = {
+      ...(task.payload || {}),
+      checkIn: { latitude, longitude, accuracy: Number.isFinite(accuracy) ? accuracy : 0, checkedInAt: now },
+      status: "in-progress",
+      updatedAt: now,
+    };
+    await task.save();
+    await syncOrderWorkflowForTask(task, "in-progress");
+    await syncServiceRequestForTask(task, "in-progress");
+    return res.json({ task: hydrateTaskResponse(task), checkIn: task.payload.checkIn });
+  } catch (error) {
+    console.error("Failed to check in technician task:", error);
+    return res.status(500).json({ message: "Unable to check in to this work order right now." });
   }
 };
 
@@ -800,7 +810,6 @@ const getRegistrationContextBySerial = async (req, res) => {
         {
           $or: [
             { assignedTechnicianId: techId },
-            { assignedTechnicianId: "" },
           ],
         },
         {
@@ -854,8 +863,11 @@ const registerAmpUnit = async (req, res) => {
     }
 
     const techId = String(req.authUser._id || "");
-    if (task.assignedTechnicianId && String(task.assignedTechnicianId) !== techId) {
+    if (!task.assignedTechnicianId || String(task.assignedTechnicianId) !== techId) {
       return res.status(403).json({ message: "This task is assigned to another technician." });
+    }
+    if (normalizeStatus(task.status) !== "in-progress") {
+      return res.status(409).json({ message: "This work order must be activated by an administrator before the AC unit can be registered." });
     }
 
     const payload = req.body || {};
@@ -928,12 +940,6 @@ const registerAmpUnit = async (req, res) => {
       await upsertInstalledCustomerUnit({ task, product, serialUnit, registration });
     }
 
-    if (!task.assignedTechnicianId) {
-      const technician = await User.findById(req.authUser._id).select("name name_first name_last");
-      task.assignedTechnicianId = techId;
-      task.assignedTechnicianName = technician?.name || `${technician?.name_first || ""} ${technician?.name_last || ""}`.trim() || "Technician";
-    }
-
     task.payload = {
       ...(task.payload || {}),
       ampRegistrations: {
@@ -946,9 +952,7 @@ const registerAmpUnit = async (req, res) => {
     const progressAfterRegistration = getRegistrationProgress(task);
     task.status = isDefectiveHold || progressAfterRegistration.totalHeld > 0
       ? "on-hold"
-      : ["pending", "on-hold"].includes(task.status)
-        ? "in-progress"
-        : task.status;
+      : task.status;
     task.payload.status = task.status;
     task.completedAt = null;
 
@@ -980,12 +984,11 @@ const updateTaskStatus = async (req, res) => {
 
     if (req.authUser.role === "technician") {
       const currentTechId = String(req.authUser._id || "");
-      if (task.assignedTechnicianId && String(task.assignedTechnicianId) !== currentTechId) {
+      if (!task.assignedTechnicianId || String(task.assignedTechnicianId) !== currentTechId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      if (!task.assignedTechnicianId) {
-        task.assignedTechnicianId = currentTechId;
-        task.assignedTechnicianName = getTechnicianDisplayName(req.authUser);
+      if (normalizeStatus(task.status) === "pending") {
+        return res.status(409).json({ message: "This work order must be activated by an administrator before work can begin." });
       }
     }
 
@@ -1035,6 +1038,7 @@ module.exports = {
   updateTask,
   getTaskById,
   acceptTask,
+  checkInTask,
   getRegistrationContextBySerial,
   registerAmpUnit,
   updateTaskStatus,

@@ -39,7 +39,7 @@ export default function RootLayout() {
           <BackendConnectionStatus />
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={0}
           >
             <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
