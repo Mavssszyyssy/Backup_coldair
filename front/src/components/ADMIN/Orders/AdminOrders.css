@@ -138,6 +138,34 @@
   color: #334155;
 }
 
+.admin-order-workflow-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.admin-order-workflow-summary span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  color: #475569;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-workflow-summary b {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .admin-order-refund-note {
   display: grid;
   gap: 4px;
@@ -489,7 +517,17 @@
   cursor: not-allowed;
 }
 
+@media (max-width: 860px) {
+  .admin-order-workflow-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
+  .admin-order-workflow-summary {
+    grid-template-columns: 1fr;
+  }
+
   .admin-order-row,
   .admin-order-item-summary {
     align-items: flex-start;

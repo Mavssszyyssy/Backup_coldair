@@ -25,7 +25,7 @@ export default function HomeHero({ onBookNow, onShop }) {
             Shop Collections <ShoppingBag size={20} weight="bold" />
           </button>
           <button className="hero-btn hero-btn-secondary" onClick={onBookNow}>
-            Book Service <CalendarCheck size={20} weight="bold" />
+            Get the Mobile App <CalendarCheck size={20} weight="bold" />
           </button>
         </div>
       </div>

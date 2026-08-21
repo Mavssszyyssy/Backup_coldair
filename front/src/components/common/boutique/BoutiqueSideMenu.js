@@ -4,7 +4,6 @@ import {
   ShoppingBag,
   SignOut,
   User,
-  UserCircle,
   Wind,
   Wrench,
 } from "@phosphor-icons/react";
@@ -28,12 +27,12 @@ export default function BoutiqueSideMenu({
   const [avatarBroken, setAvatarBroken] = useState(false);
 
   const menuItems = [
-    { id: "profile", label: "Profile", icon: UserCircle, path: "/profile" },
+    { id: "shop", label: "Shop Catalog", icon: ShoppingBag, path: "/shop" },
+    { id: "orders", label: "My Orders", icon: ShoppingBag, path: "/my-orders" },
     { id: "myunit", label: "My Unit", icon: Wind, path: "/myunit" },
-    { id: "services", label: "Services", icon: Wrench, path: "/services" },
-    { id: "shop", label: "Shop", icon: ShoppingBag, path: "/shop" },
-    { id: "settings", label: "Settings", icon: Gear, path: "/settings" },
+    { id: "services", label: "Get the App", icon: Wrench, path: "/services" },
     { id: "contact", label: "Contact", icon: Phone, path: "/contact" },
+    { id: "settings", label: "Settings", icon: Gear, path: "/settings" },
   ];
 
   const handleNavigation = (path) => {

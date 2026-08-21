@@ -5,8 +5,6 @@ import * as api from "./api";
 const STORAGE_KEY = "units_storage_v1";
 export const SEEDED_CUSTOMER_EMAIL = "c@coldair-act.online";
 export const SEEDED_CUSTOMER_UNIT_ID = "seed_customer_ac_unit_001";
-export const SEEDED_SCANNER_UNIT_QR =
-  "UNIT:seed_customer_ac_unit_001|SERIAL:CAACT-AC-2026-001|NAME:Living Room AC";
 
 function safeParse(value, fallback) {
   try {
@@ -137,42 +135,6 @@ export async function ensureSeededCustomerUnit(user) {
     const next = units.map((unit) =>
       unit.id === SEEDED_CUSTOMER_UNIT_ID
         ? normalizeUnit({ ...unit, ...seededUnit, userId: user.id })
-        : unit
-    );
-    await saveAllUnits(next);
-    return next.find((unit) => unit.id === SEEDED_CUSTOMER_UNIT_ID) || null;
-  }
-
-  await saveAllUnits([seededUnit, ...units]);
-  return seededUnit;
-}
-
-export async function ensureSeededScannerUnit(userId = null) {
-  const units = await getAllUnits();
-  const existing = units.find((unit) => unit.id === SEEDED_CUSTOMER_UNIT_ID);
-  const seededUnit = normalizeUnit({
-    id: SEEDED_CUSTOMER_UNIT_ID,
-    userId: userId || existing?.userId || null,
-    unitName: "Living Room AC",
-    brand: "Cold Air ACT",
-    model: "Inverter Split Type 1.5HP",
-    serialNumber: "CAACT-AC-2026-001",
-    status: "Active",
-    installationDate: "2025-11-15",
-    placementArea: "Living Room",
-    installationEnvironment: "Indoor wall-mounted with good ventilation",
-    usageLevel: "Normal",
-    ventilationQuality: "Good",
-    lastMaintenanceDate: "2026-03-20",
-    notes: "Seeded demo AC unit for scanner testing.",
-    createdAt: "2026-05-03T00:00:00.000Z",
-    updatedAt: new Date().toISOString(),
-  });
-
-  if (existing) {
-    const next = units.map((unit) =>
-      unit.id === SEEDED_CUSTOMER_UNIT_ID
-        ? normalizeUnit({ ...unit, ...seededUnit, userId: seededUnit.userId })
         : unit
     );
     await saveAllUnits(next);

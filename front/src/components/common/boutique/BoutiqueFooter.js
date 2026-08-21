@@ -116,7 +116,7 @@ export default function BoutiqueFooter() {
             style={{ listStyle: "none" }}
           >
             <li>
-              <a href="/services">Book Service</a>
+              <a href="/services">Mobile Services</a>
             </li>
             <li>
               <a href="/myunit">My Units</a>

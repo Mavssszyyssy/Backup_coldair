@@ -33,7 +33,7 @@ const getCustomerInsight = (current, movedCloserDays) => {
   return "Recent local conditions moved your ideal service period sooner than last month.";
 };
 
-function DynamicServiceSticker({ unit, onBookNow }) {
+function DynamicServiceSticker({ unit }) {
   const unitId = unit?.ampUnitId || unit?.backendUnitId || unit?.unitId || unit?.id;
   const [current, setCurrent] = useState(null);
   const [previous, setPrevious] = useState(null);
@@ -94,8 +94,6 @@ function DynamicServiceSticker({ unit, onBookNow }) {
       ? Math.max(0, daysBetween(baselineDate, now))
       : Math.max(0, 180 - daysBetween(now, targetDate));
     const progress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalWindowDays) * 100)));
-    const daysUntilTarget = daysBetween(now, targetDate);
-    const bookEnabled = daysUntilTarget <= 30;
     const movedCloserDays = previousTargetDate
       ? Math.max(0, daysBetween(targetDate, previousTargetDate))
       : 0;
@@ -104,8 +102,6 @@ function DynamicServiceSticker({ unit, onBookNow }) {
       targetDate,
       period: current.next_ideal_service_period || formatPeriod(targetDate),
       progress,
-      daysUntilTarget,
-      bookEnabled,
       movedCloserDays,
       insight: getCustomerInsight(current, movedCloserDays),
     };
@@ -116,9 +112,9 @@ function DynamicServiceSticker({ unit, onBookNow }) {
       <section className="service-sticker service-sticker-static">
         <span className="service-sticker-label">Next Ideal Servicing Period</span>
         <strong>{unit.ampereNextServiceLabel}</strong>
-        <button type="button" className="service-sticker-book" disabled>
-          Booking opens near service period
-        </button>
+        <p className="service-sticker-app-note">
+          Request servicing in the Coldair Mobile App.
+        </p>
       </section>
     ) : null;
   }
@@ -156,17 +152,10 @@ function DynamicServiceSticker({ unit, onBookNow }) {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="service-sticker-book"
-        disabled={!sticker.bookEnabled}
-        onClick={(event) => {
-          event.stopPropagation();
-          onBookNow?.(unit);
-        }}
-      >
-        {sticker.bookEnabled ? "Book Now" : `Booking opens in ${Math.max(0, sticker.daysUntilTarget - 30)} days`}
-      </button>
+      <p className="service-sticker-app-note">
+        To request servicing or coordinate a technician, open the Coldair
+        Mobile App and use the same AeroPulse account.
+      </p>
     </section>
   );
 }

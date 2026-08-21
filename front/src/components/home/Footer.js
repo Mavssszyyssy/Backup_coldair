@@ -23,7 +23,7 @@ function Footer() {
               Home
             </Link>
             <Link className="footer-link" to="/services">
-              Services
+              Get the App
             </Link>
             <Link className="footer-link" to="/shop">
               Shop

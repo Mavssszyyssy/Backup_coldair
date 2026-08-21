@@ -7,7 +7,6 @@ const icons = {}; // BOUTIQUE MIGRATION STUB
 function UnitCard({
   unit,
   onClick,
-  onScheduleService,
   onViewHistory,
   onWarrantyStatus,
   onRegisterQr,
@@ -34,7 +33,6 @@ function UnitCard({
         <div className="unit-header-actions">
           <UnitKebabMenu
             unit={unit}
-            onScheduleService={onScheduleService}
             onViewHistory={onViewHistory}
             onWarrantyStatus={onWarrantyStatus}
             onRegisterQr={onRegisterQr}
@@ -75,18 +73,9 @@ function UnitCard({
             </div>
           )}
         </div>
-        <DynamicServiceSticker unit={unit} onBookNow={onScheduleService} />
+        <DynamicServiceSticker unit={unit} />
       </div>
       <div className="unit-footer">
-        <button
-          className="unit-btn service-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onScheduleService(unit);
-          }}
-        >
-          Schedule Service
-        </button>
         <button
           className="unit-btn history-btn"
           onClick={(e) => {

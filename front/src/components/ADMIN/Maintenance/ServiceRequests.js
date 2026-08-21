@@ -2,6 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './styles.css';
 
 const statusClass = (status) => String(status || 'Submitted').toLowerCase().replace(/\s+/g, '-');
+const requestPriority = (request = {}) =>
+  String(request.priority || request.payload?.priority || 'medium').toLowerCase();
+const requestSchedule = (request = {}) =>
+  [
+    request.scheduledDate || request.preferredDate,
+    request.timeSlot || request.preferredSchedule,
+  ].filter(Boolean).join(' · ') || 'Schedule not set';
 
 const ServiceRequests = ({ requests, selectedId, onSelect }) => {
   const [page, setPage] = useState(1);
@@ -21,11 +28,14 @@ const ServiceRequests = ({ requests, selectedId, onSelect }) => {
         return <button key={request.id} type="button" className={`maintenance-request-item ${selected ? 'is-selected' : ''}`} onClick={() => onSelect(request)} aria-pressed={selected}>
           <span className="maintenance-request-main">
             <strong>{request.customerName || request.customer || 'Customer'}</strong>
-            <span>{request.unitName || 'AC unit not specified'}</span>
+            <span>Request #{request.requestNumber || request.id}</span>
+            <span>{request.unitName || 'AC unit not specified'} · {request.issueType || request.serviceType || 'Service request'}</span>
             <small>{request.issueDescription || request.issue || 'No issue description'}</small>
+            <small>{request.branch || 'Unassigned branch'} · {requestSchedule(request)}</small>
           </span>
           <span className="maintenance-request-meta">
             <span className={`maintenance-status maintenance-status-${statusClass(request.status)}`}>{request.status || 'Submitted'}</span>
+            <span className={`maintenance-priority is-${requestPriority(request)}`}>{requestPriority(request)} priority</span>
             <small>{request.assignedTechnicianName ? request.assignedTechnicianName : 'Unassigned'}</small>
           </span>
         </button>;

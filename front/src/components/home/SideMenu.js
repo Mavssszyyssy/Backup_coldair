@@ -12,12 +12,12 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const [activeMenuItem, setActiveMenuItem] = useState(activePage);
 
   const menuItems = useMemo(() => ([
-    { id: 'profile', label: 'Profile', iconSrc: icons.memberList, path: '/profile', description: 'View and edit your profile' },
+    { id: 'shop', label: 'Shop Catalog', iconSrc: icons.cartShoppingFast, path: '/shop', description: 'Browse AC products' },
+    { id: 'orders', label: 'My Orders', iconSrc: icons.receipt || icons.cartShoppingFast, path: '/my-orders', description: 'Track orders, payments and delivery' },
     { id: 'myunit', label: 'My Unit', iconSrc: icons.temperatureFrigid, path: '/myunit', description: 'Manage your AC units' },
-    { id: 'services', label: 'Services', iconSrc: icons.tools, path: '/services', description: 'Book maintenance & repair' },
-    { id: 'shop', label: 'Shop', iconSrc: icons.cartShoppingFast, path: '/shop', description: 'Browse AC products' },
-    { id: 'settings', label: 'Settings', iconSrc: icons.customize, path: '/settings', description: 'Account preferences' },
+    { id: 'services', label: 'Get the App', iconSrc: icons.tools, path: '/services', description: 'Manage services on Mobile' },
     { id: 'contact', label: 'Contact', iconSrc: icons.phoneCall, path: '/contact', description: 'Get in touch with us' },
+    { id: 'settings', label: 'Settings', iconSrc: icons.customize, path: '/settings', description: 'Profile and account preferences' },
   ]), []);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
     }
     setShowLogoutModal(false);
     onClose();
-    navigate('/home', { replace: true });
+    navigate('/shop', { replace: true });
   };
 
   const handleCancelLogout = () => {

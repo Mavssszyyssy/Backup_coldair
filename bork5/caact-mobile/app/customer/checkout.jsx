@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -19,7 +19,7 @@ import { createOrder, me } from "../../services/api";
 import {
   fetchShopProducts,
   formatPeso,
-  resolveInventoryBranch,
+  resolveConfiguredInventoryBranch,
 } from "../../services/ecommerceService";
 
 const getProfileAddress = (user = {}) => {
@@ -114,13 +114,13 @@ const clearCheckoutIdempotencyKey = async () => {
   }
 };
 
-const calculateCheckoutTotals = (items = [], address = {}) => {
+const calculateCheckoutTotals = (items = [], branch = "") => {
   const subtotal = Math.round(items.reduce(
     (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
     0,
   ) * 100) / 100;
   const vatAmount = Math.round(subtotal * 0.12 * 100) / 100;
-  const shippingFee = DELIVERY_FEE_BY_BRANCH[resolveInventoryBranch(address)] || 400;
+  const shippingFee = DELIVERY_FEE_BY_BRANCH[branch] || 400;
   return { subtotal, vatAmount, shippingFee, total: subtotal + vatAmount + shippingFee };
 };
 
@@ -131,9 +131,18 @@ export default function CheckoutScreen() {
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [inventoryBranch, setInventoryBranch] = useState("");
   const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
-  const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, address), [cart, address]);
+  const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, inventoryBranch), [cart, inventoryBranch]);
+
+  useEffect(() => {
+    let active = true;
+    resolveConfiguredInventoryBranch(address)
+      .then((branch) => { if (active) setInventoryBranch(branch); })
+      .catch(() => { if (active) setInventoryBranch(""); });
+    return () => { active = false; };
+  }, [address]);
 
   const submitOrder = async () => {
     if (submitting) return;
@@ -147,9 +156,15 @@ export default function CheckoutScreen() {
     // to the active catalogue before checkout so placeholder or stale IDs
     // cannot make COD or PayMongo appear to do nothing.
     let checkoutCart = cart;
+    let liveBranch = "";
     try {
+      liveBranch = await resolveConfiguredInventoryBranch(getDefaultAddress(current));
+      if (!liveBranch) {
+        throw new Error("This delivery address is outside the current service areas. Choose another address before checkout.");
+      }
+      setInventoryBranch(liveBranch);
       const catalogue = await fetchShopProducts(
-        resolveInventoryBranch(getDefaultAddress(current)),
+        liveBranch,
       );
       const activeItems = cart
         .map((cartItem) => {
@@ -202,7 +217,14 @@ export default function CheckoutScreen() {
       return Alert.alert("Address required", "Add a delivery address in Settings before checking out.");
     }
 
-    const latestTotals = calculateCheckoutTotals(checkoutCart, checkoutAddress);
+    const latestBranch = await resolveConfiguredInventoryBranch(checkoutAddress);
+    if (!latestBranch) {
+      setSubmitting(false);
+      setCheckoutMessage("");
+      return Alert.alert("Address not serviceable", "This delivery address is outside the current service areas. Choose another address before checkout.");
+    }
+    setInventoryBranch(latestBranch);
+    const latestTotals = calculateCheckoutTotals(checkoutCart, latestBranch);
     if (!orderRequestKeyRef.current) {
       orderRequestKeyRef.current = await getCheckoutIdempotencyKey(
         checkoutFingerprint({ cartItems: checkoutCart, address: checkoutAddress, paymentMethod }),
@@ -331,6 +353,9 @@ export default function CheckoutScreen() {
               <BoutiqueText variant="h3">Delivery address</BoutiqueText>
               <BoutiqueText color={BQ_COLORS.inkMuted}>
                 {[address.street, address.barangay, address.city, address.province].filter(Boolean).join(", ") || current?.address || "No saved address"}
+              </BoutiqueText>
+              <BoutiqueText variant="caption" color={inventoryBranch ? BQ_COLORS.inkMuted : BQ_COLORS.danger}>
+                {inventoryBranch ? `Service branch: ${inventoryBranch}` : "Choose a delivery address within a configured service area."}
               </BoutiqueText>
             </BoutiqueCard>
             {checkoutMessage ? (

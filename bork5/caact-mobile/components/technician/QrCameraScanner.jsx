@@ -5,12 +5,11 @@ import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native"
 
 import TechButton from "./TechButton";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
-import { SEEDED_SCANNER_UNIT_QR } from "../../services/unitStorage";
 
 export default function QrCameraScanner({ active = true, onScanned }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [locked, setLocked] = useState(false);
-  const [testValue, setTestValue] = useState(SEEDED_SCANNER_UNIT_QR);
+  const [testValue, setTestValue] = useState("");
   const lockedRef = useRef(false);
 
   const granted = permission?.granted;
@@ -88,13 +87,6 @@ export default function QrCameraScanner({ active = true, onScanned }) {
               onPress={() => onScanned?.(testValue)}
               style={{ flex: 1 }}
               leftIcon={<Ionicons name="scan-sharp" size={18} color={COLORS.surface} />}
-            />
-            <TechButton
-              title="Use Sample"
-              variant="secondary"
-              onPress={() => setTestValue(SEEDED_SCANNER_UNIT_QR)}
-              style={{ flex: 1 }}
-              leftIcon={<Ionicons name="qr-code-sharp" size={18} color={COLORS.tech} />}
             />
           </View>
         </View>

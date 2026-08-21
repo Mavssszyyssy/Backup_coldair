@@ -49,28 +49,20 @@ export const mergeProducts = (fallback, backend) => {
   (backend || []).forEach((product) => merged.set(String(product.id), product));
   return Array.from(merged.values());
 };
-export const resolveInventoryBranch = (user = {}) => {
-  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
-  const address =
-    addresses.find((item) => item?.isDefault) ||
-    addresses[0] ||
-    user?.billingAddress ||
-    user?.billing_address ||
-    user?.location?.address ||
-    {};
-  const keys = [address.city, address.province, address.region, address.barangay, address.street]
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter(Boolean);
+export async function resolveConfiguredInventoryBranch(address = {}) {
+  const params = new URLSearchParams();
+  ["city", "province", "region", "barangay", "street"].forEach((field) => {
+    const value = String(address?.[field] || "").trim();
+    if (value) params.set(field, value);
+  });
+  if (!params.toString()) return "";
 
-  if (keys.some((value) => ["manila", "quezon city"].includes(value))) return "Bulacan";
-  if (keys.some((value) => ["laguna", "cavite", "batangas"].includes(value))) return "Laguna";
-  if (keys.some((value) => ["pangasinan", "tarlac"].includes(value))) return "Pangasinan";
-  if (keys.some((value) => value.includes("bataan"))) return "Bataan";
-  if (keys.some((value) => value.includes("pangasinan"))) return "Pangasinan";
-  if (keys.some((value) => value.includes("ilocos") || value.includes("la union"))) return "Ilocos";
-  if (keys.some((value) => value.includes("bulacan") || value.includes("plaridel") || value.includes("malolos"))) return "Bulacan";
-  return "";
-};
+  const response = await apiFetch(`/branches/resolve?${params.toString()}`);
+  if (response.status === 422) return "";
+  if (!response.ok) throw new Error("Unable to determine the service branch.");
+  const body = await response.json().catch(() => ({}));
+  return body?.serviceable ? String(body.branch || "") : "";
+}
 
 export async function fetchShopProducts(branch = "") {
   // The public catalogue is intentionally used here. The previous protected

@@ -14,6 +14,29 @@ const getSerialLabel = (unit) =>
     ? "Manufacturer serial number"
     : "Temporary inventory serial";
 
+const formatDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+};
+
+const getUnitOwner = (unit = {}) =>
+  unit?.ampRegistration?.customerName ||
+  unit?.ampRegistration?.customer ||
+  (unit.assignedOrderCode ? `Order ${unit.assignedOrderCode}` : "Branch inventory");
+
+const getInstallationStatus = (unit = {}) => {
+  const installationDate =
+    unit?.ampRegistration?.ampParameters?.installationDate ||
+    unit?.ampRegistration?.installationDate ||
+    unit?.registeredAt;
+  if (installationDate) return `Installed · ${formatDate(installationDate)}`;
+  if (unit.status === "assigned") return "Assigned · awaiting installation";
+  if (unit.status === "service") return "Service / repair in progress";
+  if (unit.status === "retired") return "Retired from service";
+  return "Not installed";
+};
+
 const getTechnicianQrValue = (unit) =>
   unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.serialNumber || ""}`;
 
@@ -191,6 +214,8 @@ const AdminSerialQr = () => {
                           {unit.status || "available"}
                           {unit.branch ? ` · ${unit.branch}` : ""}
                         </span>
+                        <small>Current owner · {getUnitOwner(unit)}</small>
+                        <small>Installation · {getInstallationStatus(unit)}</small>
                         {canManageSerials && (unit.status || "available") === "available" ? (
                           editingSerial?.productId === product.id &&
                           editingSerial?.currentSerial === unit.serialNumber ? (

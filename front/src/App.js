@@ -15,7 +15,6 @@ import AdminReoder from "./components/ADMIN/Reorder/AdminReoder";
 import AdminReports from "./components/ADMIN/Reports/AdminReports";
 import AdminSerialQr from "./components/ADMIN/SerialQr/AdminSerialQr";
 import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
-import AdminStoreOperations from "./components/ADMIN/Store/AdminStoreOperations";
 import AdminTechnician from "./components/ADMIN/Technicians/AdminTechnician";
 import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
 import OwnerAmpDashboard from "./components/AMP/OwnerAmpDashboard";
@@ -46,7 +45,6 @@ import Home from "./components/home/Home";
 import Login from "./components/login/Login";
 import MyUnit from "./components/myunit/MyUnit";
 import MyOrders from "./components/orders/MyOrders";
-import ProfileCenter from "./components/profile/ProfileCenter";
 import ReceiptView from "./components/receipt/ReceiptView";
 import ForgotPassword from "./components/recover/ForgotPassword";
 import ResetPassword from "./components/recover/ResetPassword";
@@ -71,7 +69,7 @@ const getRoleHomePath = (role) => {
     case "superadmin":
       return "/superadmin/dashboard";
     default:
-      return "/home";
+      return "/shop";
   }
 };
 
@@ -110,7 +108,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
   );
 };
 
-// Public Route wrapper (redirects to home if already authenticated)
+// Public Route wrapper redirects signed-in customers to the catalogue.
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
 
@@ -163,8 +161,8 @@ function AppContent() {
   return (
     <>
       <Routes>
-        {/* Root path redirects to home */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        {/* Shopping is the primary customer entry point. */}
+        <Route path="/" element={<Navigate to="/shop" replace />} />
         {/* Public routes */}
         <Route
           path="/login"
@@ -197,7 +195,7 @@ function AppContent() {
           path="/profile"
           element={
             <ProtectedRoute>
-              <ProfileCenter />
+              <Navigate to="/settings?tab=profile" replace />
             </ProtectedRoute>
           }
         />
@@ -299,7 +297,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/technicians"
+          path="/admin/services/technicians"
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminTechnician />
@@ -347,7 +345,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/orders"
+          path="/admin/services/orders"
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminOrders />
@@ -358,7 +356,39 @@ function AppContent() {
           path="/admin/store"
           element={
             <RoleRoute allowedRoles={["admin"]}>
-              <AdminStoreOperations />
+              <Navigate to="/admin/inventory" replace />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/technicians"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <Navigate to="/admin/services/technicians" replace />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <Navigate to="/admin/services/orders" replace />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/maintenance"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <Navigate to="/admin/services/service-requests" replace />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/service-requests"
+          element={
+            <RoleRoute allowedRoles={["admin"]}>
+              <Navigate to="/admin/services/service-requests" replace />
             </RoleRoute>
           }
         />
@@ -459,7 +489,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/maintenance"
+          path="/admin/services/service-requests"
           element={
             <RoleRoute allowedRoles={["admin"]}>
               <AdminMaintenance />
@@ -546,8 +576,8 @@ function AppContent() {
             </RoleRoute>
           }
         />
-        {/* Catch all - redirect to home */}
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        {/* Catch all - redirect to the customer catalogue */}
+        <Route path="*" element={<Navigate to="/shop" replace />} />
       </Routes>
       {shouldShowCustomerChatbot && <CustomerChatbot />}
       <LoginPromptModal

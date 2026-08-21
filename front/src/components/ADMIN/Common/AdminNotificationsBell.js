@@ -13,17 +13,26 @@ const isOlderThanHours = (isoDate, hours) => {
   return Date.now() - date.getTime() > hours * 60 * 60 * 1000;
 };
 
+const adminRouteAliases = {
+  "/admin/orders": "/admin/services/orders",
+  "/admin/maintenance": "/admin/services/service-requests",
+  "/admin/service-requests": "/admin/services/service-requests",
+  "/admin/technicians": "/admin/services/technicians",
+};
+
 const resolveNotificationRoute = (item = {}) => {
-  if (String(item.route || "").startsWith("/admin/")) return item.route;
+  if (String(item.route || "").startsWith("/admin/")) {
+    return adminRouteAliases[item.route] || item.route;
+  }
   const targetType = String(item.targetType || item.category || "").toLowerCase();
   if (["inventory", "stock", "reorder"].includes(targetType)) return "/admin/inventory";
-  if (["warranty", "claim"].includes(targetType)) return "/admin/maintenance";
-  if (["service", "parts_request"].includes(targetType)) return "/admin/maintenance";
-  if (["task", "technician"].includes(targetType)) return "/admin/technicians";
+  if (["warranty", "claim"].includes(targetType)) return "/admin/services/service-requests";
+  if (["service", "parts_request"].includes(targetType)) return "/admin/services/service-requests";
+  if (["task", "technician"].includes(targetType)) return "/admin/services/technicians";
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
   if (text.includes("stock") || text.includes("inventory")) return "/admin/reorder";
-  if (text.includes("task") || text.includes("technician")) return "/admin/technicians";
-  if (item.type === "order" || text.includes("order")) return "/admin/orders";
+  if (text.includes("task") || text.includes("technician")) return "/admin/services/technicians";
+  if (item.type === "order" || text.includes("order")) return "/admin/services/orders";
   return "/admin/dashboard";
 };
 
@@ -82,7 +91,7 @@ function AdminNotificationsBell() {
           createdAt: new Date().toISOString(),
           title: "Pending orders",
           message: `${pendingOrders.length} pending order(s) are older than 24 hours.`,
-          to: "/admin/orders",
+          to: "/admin/services/orders",
           source: "local",
         });
       }

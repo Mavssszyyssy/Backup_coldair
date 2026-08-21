@@ -48,7 +48,7 @@ export default function SuperAdminReorders() {
   };
 
   return (
-    <SuperAdminLayout title="Reorder Approvals" subtitle="Approve branch replenishment requests and add stock safely">
+    <SuperAdminLayout title="Inventory Management — Reorder Approvals" subtitle="Review branch replenishment requests and add stock safely">
       <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>Requests awaiting your decision</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>Approved replenishments</span></div><button type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>
       {error ? <p className="reorder-message is-error">{error}</p> : null}
       <section className="reorder-history">

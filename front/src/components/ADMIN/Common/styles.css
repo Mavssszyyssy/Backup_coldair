@@ -639,6 +639,65 @@
   color: var(--primary);
 }
 
+/* ----- INVENTORY NAVIGATION GROUP ----- */
+.admin-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-sidebar-group-trigger {
+  justify-content: flex-start;
+}
+
+.admin-sidebar-group.active .admin-sidebar-group-trigger {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.admin-sidebar-group-caret {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.admin-sidebar-group-caret.expanded {
+  transform: rotate(180deg);
+}
+
+.admin-sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: -0.05rem 0 0.35rem 1.1rem;
+  padding: 0.35rem 0 0.35rem 0.9rem;
+  border-left: 2px solid var(--gray-200);
+}
+
+.admin-sidebar-sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 34px;
+  padding: 0.45rem 0.65rem;
+  border-radius: 9px;
+  color: var(--gray-500);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-sidebar-sublink:hover {
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.admin-sidebar-sublink.active {
+  background: #eff6ff;
+  color: var(--primary);
+  font-weight: 800;
+}
+
 /* ----- SIDEBAR FOOTER - Clean Logout ----- */
 .admin-sidebar-footer {
   padding: 1rem;

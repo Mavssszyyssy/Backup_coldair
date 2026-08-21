@@ -12,6 +12,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 const displayName = (person = {}) =>
   person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.email || "Technician";
 const openTask = (task) => !["completed"].includes(String(task.status || "").toLowerCase());
+const taskStatusLabel = (status = "") =>
+  String(status || "pending").replace(/-/g, " ");
+const isServiceTask = (task = {}) =>
+  task?.payload?.source === "service_request" ||
+  Boolean(task?.payload?.requestId);
+const isInstallationTask = (task = {}) =>
+  Boolean(task?.orderId || task?.orderCode || task?.payload?.orderId) ||
+  /install/i.test(String(task?.title || ""));
 
 const initialDraft = (branch = "") => ({
   technicianId: "",
@@ -79,6 +87,30 @@ const AdminTechnician = () => {
       counts[String(task.assignedTechnicianId)] = (counts[String(task.assignedTechnicianId)] || 0) + 1;
     }
     return counts;
+  }, {}), [tasks]);
+
+  const taskStatsByTechnician = useMemo(() => tasks.reduce((stats, task) => {
+    const technicianId = String(task.assignedTechnicianId || "");
+    if (!technicianId) return stats;
+    const current = stats[technicianId] || {
+      assigned: 0,
+      open: 0,
+      completed: 0,
+      activeServices: 0,
+      activeInstallations: 0,
+      currentStatus: "",
+    };
+    current.assigned += 1;
+    if (openTask(task)) {
+      current.open += 1;
+      current.currentStatus = current.currentStatus || taskStatusLabel(task.status);
+      if (isServiceTask(task)) current.activeServices += 1;
+      if (isInstallationTask(task)) current.activeInstallations += 1;
+    } else {
+      current.completed += 1;
+    }
+    stats[technicianId] = current;
+    return stats;
   }, {}), [tasks]);
 
   const filteredTechnicians = useMemo(() => {
@@ -218,10 +250,29 @@ const AdminTechnician = () => {
             <div className="tech-section-heading"><div><h2>Field team</h2><p>{filteredTechnicians.length} technician{filteredTechnicians.length === 1 ? "" : "s"} match the selected filters.</p></div></div>
             {loading ? <p className="tech-empty">Loading technicians…</p> : pageTechnicians.length === 0 ? <p className="tech-empty">No technicians match these filters.</p> : <div className="tech-roster-list">{pageTechnicians.map((technician) => {
               const openCount = openTasksByTechnician[String(technician.id)] || 0;
+              const taskStats = taskStatsByTechnician[String(technician.id)] || {
+                assigned: 0,
+                open: 0,
+                completed: 0,
+                activeServices: 0,
+                activeInstallations: 0,
+                currentStatus: "",
+              };
+              const availability = technician.accountStatus !== "active"
+                ? "Unavailable"
+                : openCount >= 3
+                  ? "Busy"
+                  : "Available";
               const changing = updatingId === `tech-${technician.id}`;
               return <article className="tech-person-card" key={technician.id}>
                 <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.email || "No email recorded"}</small></div></div>
-                <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} open work order{openCount === 1 ? "" : "s"}</strong></div>
+                <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{availability}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} assigned task{openCount === 1 ? "" : "s"}</strong></div>
+                <div className="tech-person-workflow" aria-label={`${technician.name} work summary`}>
+                  <span>Current work: <strong>{taskStats.currentStatus || "No active task"}</strong></span>
+                  <span>Active service: <strong>{taskStats.activeServices}</strong></span>
+                  <span>Installations: <strong>{taskStats.activeInstallations}</strong></span>
+                  <span>Completed jobs: <strong>{taskStats.completed}</strong></span>
+                </div>
                 {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
                 <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => updateTechnician(technician, { status: technician.accountStatus === "active" ? "disabled" : "active" }, `${technician.name}'s account is now ${technician.accountStatus === "active" ? "disabled" : "active"}.`)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
               </article>;

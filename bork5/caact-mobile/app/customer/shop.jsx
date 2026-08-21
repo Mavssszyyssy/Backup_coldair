@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
 
 import {
@@ -28,7 +28,7 @@ import {
   filterAndSortProducts,
   formatPeso,
   mergeProducts,
-  resolveInventoryBranch,
+  resolveConfiguredInventoryBranch,
 } from "../../services/ecommerceService";
 
 const SORT_OPTIONS = [
@@ -284,7 +284,7 @@ export default function CustomerShopScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const { addToCart, cartCount } = useCart();
-  const inventoryBranch = useMemo(() => resolveInventoryBranch(current), [current]);
+  const [inventoryBranch, setInventoryBranch] = useState("");
   const [backendProducts, setBackendProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
@@ -294,6 +294,16 @@ export default function CustomerShopScreen() {
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [sortBy, setSortBy] = useState("default");
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const addresses = Array.isArray(current?.addresses) ? current.addresses : [];
+    const address = addresses.find((item) => item?.isDefault) || addresses[0] || current?.billingAddress || current?.location?.address || {};
+    let active = true;
+    resolveConfiguredInventoryBranch(address)
+      .then((branch) => { if (active) setInventoryBranch(branch); })
+      .catch(() => { if (active) setInventoryBranch(""); });
+    return () => { active = false; };
+  }, [current]);
 
   useFocusEffect(
     useCallback(() => {

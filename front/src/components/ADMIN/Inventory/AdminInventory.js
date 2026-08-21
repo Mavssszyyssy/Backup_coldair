@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import InventoryList from './InventoryList';
 import { apiRequest } from '../../../config/api';
+import { useSearchParams } from 'react-router-dom';
 import { ACTIVE_BRANCH_KEY } from '../../../domain/branches/branches';
 import '../adminShared.css';
 import './styles.css';
@@ -17,6 +18,12 @@ const getBranchStock = (product, branch) => {
 };
 
 const AdminInventory = () => {
+  const [searchParams] = useSearchParams();
+  const activeView = searchParams.get('view') === 'products'
+    ? 'products'
+    : searchParams.get('view') === 'stock'
+      ? 'stock'
+      : 'overview';
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,8 +65,23 @@ const AdminInventory = () => {
     [branch, products],
   );
 
+  const pageCopy = {
+    overview: {
+      title: 'Inventory Overview',
+      subtitle: 'Read-only branch stock visibility, product availability, and out-of-stock alerts.',
+    },
+    products: {
+      title: 'Products / AC Units',
+      subtitle: 'Review the product catalogue, model information, SKU, price, and availability for the selected branch.',
+    },
+    stock: {
+      title: 'Stock Management',
+      subtitle: 'Monitor current branch stock levels and identify low or out-of-stock AC units.',
+    },
+  }[activeView];
+
   return (
-    <AdminLayout title="Inventory Monitor" subtitle="Read-only branch stock visibility and out-of-stock alerts">
+    <AdminLayout title={pageCopy.title} subtitle={pageCopy.subtitle}>
       <div className="inventory-toolbar">
         <div className="admin-card" style={{ margin: 0, padding: '12px 16px' }}>
           <strong>Monitoring access</strong><br />

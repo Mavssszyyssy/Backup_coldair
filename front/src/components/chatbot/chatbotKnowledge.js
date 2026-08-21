@@ -17,10 +17,10 @@ const customerFaqEntries = [
   },
   {
     id: 'services-booking',
-    question: 'How do I book a service?',
+    question: 'How do I request a service?',
     keywords: ['service', 'book', 'maintenance', 'repair', 'cleaning', 'schedule'],
     answer:
-      'Go to Services, choose the service card, and click Book Now. You can select date, time, and technician type before confirming your booking.',
+      'Service requests, maintenance scheduling, and technician coordination are handled in the AeroPulse Mobile App. Open Get the App for the official mobile-app access link.',
     route: '/services'
   },
   {
@@ -28,7 +28,7 @@ const customerFaqEntries = [
     question: 'How much do services cost?',
     keywords: ['service price', 'cost', 'fee', 'pricing', 'senior technician', 'express'],
     answer:
-      'Service prices are shown per service card in Services. The final amount may include additional technician fees depending on the technician option selected during booking.',
+      'Service pricing and appointment details are shown in the AeroPulse Mobile App as part of the official service-request workflow.',
     route: '/services'
   },
   {
@@ -44,7 +44,7 @@ const customerFaqEntries = [
     question: 'Where can I view service history and warranty?',
     keywords: ['history', 'service history', 'warranty', 'unit details', 'status'],
     answer:
-      'Open My Unit and select your unit to view details, service history, and warranty status. You can also schedule a new service from the unit card.',
+      'Open My Unit and select your unit to view details, service history, and warranty status. Service requests are managed in the AeroPulse Mobile App.',
     route: '/myunit'
   },
   {
@@ -83,7 +83,7 @@ const customerFaqEntries = [
 
 const quickQuestions = [
   'How do I buy in the shop?',
-  'How do I book a service?',
+  'How do I request a service?',
   'How do I add my AC unit?',
   'Where can I track my orders?',
   'How do I contact support?'

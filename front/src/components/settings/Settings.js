@@ -7,8 +7,8 @@ import {
   SignOut,
   UserCircle,
 } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -53,9 +53,25 @@ function Settings() {
     logout,
   } = useUser();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab = SETTINGS_TABS.some((tab) => tab.id === requestedTab)
+    ? requestedTab
+    : "profile";
 
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
+
+  const selectTab = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId }, { replace: true });
+  };
 
   const formattedUser = useMemo(() => {
     if (!user) return null;
@@ -199,7 +215,7 @@ function Settings() {
                     key={tab.id}
                     type="button"
                     className={`bq-nav-item ${isActive ? "active" : ""}`}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => selectTab(tab.id)}
                     style={{
                       display: "flex",
                       alignItems: "center",

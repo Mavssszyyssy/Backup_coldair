@@ -116,9 +116,9 @@ const AdminDashboard = () => {
         <section className="commerce-panel commerce-actions-panel">
           <div className="commerce-panel-header"><div><h2>Operations</h2><p>Open the workflow that needs action.</p></div></div>
           <div className="commerce-action-grid">
-            <button type="button" onClick={() => navigate("/admin/orders")}>Process orders</button>
+            <button type="button" onClick={() => navigate("/admin/services/orders")}>Process orders</button>
             <button type="button" onClick={() => navigate("/admin/inventory")}>Review inventory</button>
-            <button type="button" onClick={() => navigate("/admin/technicians")}>Manage technicians</button>
+            <button type="button" onClick={() => navigate("/admin/services/technicians")}>Manage technicians</button>
           </div>
         </section>
       </div>

@@ -11,9 +11,25 @@ import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
 
 const getRoleHomePath = (role) => {
+  if (role === "technician") return "/tech/dashboard";
+  if (role === "manager") return "/manager/amp";
+  if (role === "owner") return "/owner/amp";
   if (role === "admin") return "/admin/dashboard";
   if (role === "superadmin") return "/superadmin/dashboard";
-  return "/home";
+  return "/shop";
+};
+
+const getCustomerLoginDestination = (location) => {
+  const from = location.state?.from;
+  const path = String(from?.pathname || "");
+  const allowedCustomerPaths = [
+    "/shop", "/checkout", "/profile", "/settings", "/myunit", "/contact",
+    "/services", "/my-orders", "/faq", "/order-confirmation/", "/receipt/",
+  ];
+  if (!path || !allowedCustomerPaths.some((allowed) => path === allowed || path.startsWith(allowed))) {
+    return "/shop";
+  }
+  return `${path}${from.search || ""}${from.hash || ""}`;
 };
 
 function Login() {
@@ -55,7 +71,12 @@ function Login() {
       if (activeBranch) localStorage.setItem("activeBranch", activeBranch);
 
       setLoading(false);
-      navigate(getRoleHomePath(loggedInUser?.role));
+      navigate(
+        loggedInUser?.role === "customer"
+          ? getCustomerLoginDestination(location)
+          : getRoleHomePath(loggedInUser?.role),
+        { replace: true },
+      );
     } catch (err) {
       setErrors((prev) => ({ ...prev, password: err.message }));
       setLoading(false);

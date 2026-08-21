@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 
 function UnitKebabMenu({
   unit,
-  onScheduleService,
   onViewHistory,
   onWarrantyStatus,
   onRegisterQr
@@ -40,11 +39,6 @@ function UnitKebabMenu({
       </button>
       {open && (
         <ul className="unit-kebab-menu" role="menu">
-          <li>
-            <button type="button" role="menuitem" onClick={run(onScheduleService)}>
-              Schedule for servicing
-            </button>
-          </li>
           <li>
             <button type="button" role="menuitem" onClick={run(onViewHistory)}>
               Service history

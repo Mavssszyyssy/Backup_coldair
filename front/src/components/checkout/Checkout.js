@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
-import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
+import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
 import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
@@ -125,12 +125,31 @@ function Checkout() {
   const [discountAmount] = useState(0);
   const [stockIssues, setStockIssues] = useState([]);
   const [stockCheckedAt, setStockCheckedAt] = useState("");
+  const [assignedBranch, setAssignedBranch] = useState("");
+  const [branchError, setBranchError] = useState("");
   const orderRequestKeyRef = useRef("");
 
-  const assignedBranch = useMemo(() => {
-    if (!selectedAddress) return "";
-    return resolvePreferredBranch(selectedAddress);
-  }, [selectedAddress]);
+  const resolveAddressBranch = useCallback(async (address) => {
+    if (!address) return "";
+    return resolveConfiguredBranch(address);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setAssignedBranch("");
+    setBranchError("");
+    if (!selectedAddress) return () => { active = false; };
+    resolveAddressBranch(selectedAddress)
+      .then((branch) => {
+        if (!active) return;
+        if (!branch) setBranchError("This address is outside the current service areas. Choose another delivery address.");
+        setAssignedBranch(branch);
+      })
+      .catch((error) => {
+        if (active) setBranchError(error.message || "Unable to determine the service branch.");
+      });
+    return () => { active = false; };
+  }, [selectedAddress, resolveAddressBranch]);
 
   const serviceAreaId = useMemo(() => {
     if (!assignedBranch) return DEFAULT_SERVICE_AREA_ID;
@@ -393,6 +412,17 @@ function Checkout() {
     // React state is asynchronous and can still hold the old, empty address.
     const checkoutAddress = await ensureHasAddressBeforeCheckout();
     if (!checkoutAddress) return;
+    try {
+      const confirmedBranch = await resolveAddressBranch(checkoutAddress);
+      if (!confirmedBranch) {
+        alert("This delivery address is outside the current service areas. Choose another address before checkout.");
+        return;
+      }
+      setAssignedBranch(confirmedBranch);
+    } catch (error) {
+      alert(error.message || "Unable to determine the service branch. Please try again.");
+      return;
+    }
 
     if (!isValidCheckoutAddress(checkoutAddress)) {
       alert(
@@ -479,6 +509,7 @@ function Checkout() {
   }, [
     refreshStock,
     ensureHasAddressBeforeCheckout,
+    resolveAddressBranch,
     cart,
     selectedPayment,
     serviceAreaId,
@@ -625,6 +656,7 @@ function Checkout() {
                 </BoutiqueStack>
               </BoutiqueBox>
             )}
+            {branchError ? <BoutiqueText size="13px" color={BQ_COLORS.danger}>{branchError}</BoutiqueText> : null}
 
             <PaymentMethod
               selectedMethod={selectedPayment}

@@ -80,10 +80,10 @@ function MyOrders() {
         setOrders(normalized);
       } catch (_error) {
         if (!mounted) return;
-        if (!localStorage.getItem("accessToken")) {
-          const savedOrders = localStorage.getItem("orders");
-          if (savedOrders) setOrders(JSON.parse(savedOrders));
-        }
+        // Orders are always sourced from the backend. Falling back to a
+        // browser copy can show an outdated or duplicate transaction after
+        // payments, cancellations, dispatch, or installation updates.
+        setOrders([]);
       }
     };
 
@@ -185,7 +185,7 @@ function MyOrders() {
           margin="0 0 32px"
         >
           <BoutiqueStack gap={4}>
-            <BoutiqueText variant="h2">Purchase History</BoutiqueText>
+            <BoutiqueText variant="h2">Order History</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
               Review and track your boutique orders.
             </BoutiqueText>
@@ -286,7 +286,7 @@ function MyOrders() {
                 No matching orders
               </BoutiqueText>
               <BoutiqueText>
-                Try a different filter to see your other purchases.
+                Try a different filter to see your other orders.
               </BoutiqueText>
             </BoutiqueBox>
           ) : (

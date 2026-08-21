@@ -37,7 +37,7 @@ const SuperAdminInventory = () => {
   );
 
   return (
-    <SuperAdminLayout title="Inventory Control" subtitle="Manage stock by branch and resolve out-of-stock alerts">
+    <SuperAdminLayout title="Inventory Management — Inventory Checker" subtitle="Review branch stock, compare availability, and resolve out-of-stock alerts">
       <div className="super-card" style={{ marginBottom: 18, borderColor: outOfStock.length ? '#fecaca' : undefined }}>
         <h3>{outOfStock.length ? `${outOfStock.length} out-of-stock alert${outOfStock.length === 1 ? '' : 's'}` : 'Inventory healthy'}</h3>
         <p className="super-muted">{outOfStock.length ? `These items have exactly 0 stock in ${branch}. Add stock below to make them available again.` : `No items are at zero stock in ${branch}.`}</p>

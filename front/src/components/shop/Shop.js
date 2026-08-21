@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
-import { resolvePreferredBranch } from "../../domain/branches/branchRouting";
+import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import { deduplicateProducts } from "../../utils/productDeduplication";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
@@ -446,11 +446,8 @@ const Shop = () => {
     getCartTotal,
   } = useCart();
   const { user, isAuthenticated, logout } = useUser();
-  const inventoryBranch = useMemo(() => {
-    if (!isAuthenticated) return "";
-    const deliveryAddress = getCustomerDeliveryAddress(user);
-    return deliveryAddress ? resolvePreferredBranch(deliveryAddress) : "";
-  }, [isAuthenticated, user]);
+  const [inventoryBranch, setInventoryBranch] = useState("");
+  const [inventoryBranchLoading, setInventoryBranchLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -460,6 +457,34 @@ const Shop = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!isAuthenticated) {
+      setInventoryBranch("");
+      setInventoryBranchLoading(false);
+      return () => { active = false; };
+    }
+    const deliveryAddress = getCustomerDeliveryAddress(user);
+    if (!deliveryAddress) {
+      setInventoryBranch("");
+      setInventoryBranchLoading(false);
+      return () => { active = false; };
+    }
+    setInventoryBranchLoading(true);
+    resolveConfiguredBranch(deliveryAddress)
+      .then((branch) => {
+        if (!active) return;
+        setInventoryBranch(branch);
+        setInventoryBranchLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setInventoryBranch("");
+        setInventoryBranchLoading(false);
+      });
+    return () => { active = false; };
+  }, [isAuthenticated, user]);
 
   // Mark single notification as read
   const handleNotificationClick = async (id) => {
@@ -525,6 +550,12 @@ const Shop = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchProducts = useCallback(async () => {
+    const hasDeliveryAddress = Boolean(isAuthenticated && getCustomerDeliveryAddress(user));
+    if (hasDeliveryAddress && inventoryBranchLoading) return;
+    if (hasDeliveryAddress && !inventoryBranch) {
+      setBackendProducts([]);
+      return;
+    }
     try {
       const query = inventoryBranch
         ? `?branch=${encodeURIComponent(inventoryBranch)}`
@@ -570,7 +601,7 @@ const Shop = () => {
       // static demo items with incorrect inventory.
       console.error("Failed to fetch products:", error);
     }
-  }, [inventoryBranch]);
+  }, [inventoryBranch, inventoryBranchLoading, isAuthenticated, user]);
 
   useEffect(() => {
     fetchProducts();

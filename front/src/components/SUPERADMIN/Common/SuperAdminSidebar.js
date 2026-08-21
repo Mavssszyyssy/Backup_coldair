@@ -1,4 +1,5 @@
 import {
+  CaretDown,
   MapPin,
   Package,
   QrCode,
@@ -10,30 +11,60 @@ import {
   Wrench,
   Users,
 } from "@phosphor-icons/react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmDialog } from "../../../utils/dialog";
 
 const links = [
-  { to: "/superadmin/dashboard", label: "Command Center", icon: ShieldCheck },
-  { to: "/superadmin/branches", label: "Branch Locations", icon: MapPin },
+  { to: "/superadmin/dashboard", label: "Dashboard", icon: ShieldCheck },
+  { to: "/superadmin/branches", label: "Branch Management", icon: MapPin },
   { to: "/superadmin/sales", label: "Processing Sales", icon: ShoppingCart },
-  { to: "/superadmin/inventory", label: "Inventory Checker", icon: Package },
-  { to: "/superadmin/reorders", label: "Reorder Approvals", icon: ShoppingCart },
   { to: "/superadmin/orders", label: "Customer Orders", icon: ShoppingCart },
   { to: "/superadmin/maintenance", label: "Service Requests", icon: Wrench },
   { to: "/superadmin/technicians", label: "Technicians", icon: Users },
-  { to: "/superadmin/serial-qrs", label: "Serial QR Registry", icon: QrCode },
-  { to: "/superadmin/reports", label: "Reports", icon: ShieldCheck },
+  { to: "/superadmin/reports", label: "AMP / Reports", icon: ShieldCheck },
   { to: "/superadmin/tasks", label: "Processing Tech Tasks", icon: Wrench },
   { to: "/superadmin/alerts", label: "Customer Support Alerts", icon: WarningCircle },
-  { to: "/superadmin/settings", label: "Settings", icon: Gear },
   { to: "/superadmin/profile", label: "My Profile", icon: Users },
+  { to: "/superadmin/settings", label: "Settings", icon: Gear },
 ];
 
 const SuperAdminSidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useUser();
+  const inventoryIsActive = [
+    "/superadmin/inventory",
+    "/superadmin/serial-qrs",
+    "/superadmin/reorders",
+  ].includes(location.pathname);
+  const [inventoryExpanded, setInventoryExpanded] = useState(inventoryIsActive);
+
+  useEffect(() => {
+    if (inventoryIsActive) setInventoryExpanded(true);
+  }, [inventoryIsActive]);
+
+  const inventoryItems = [
+    {
+      to: "/superadmin/inventory",
+      label: "Inventory Checker",
+      icon: Package,
+      isActive: location.pathname === "/superadmin/inventory",
+    },
+    {
+      to: "/superadmin/serial-qrs",
+      label: "Serial / QR Registry",
+      icon: QrCode,
+      isActive: location.pathname === "/superadmin/serial-qrs",
+    },
+    {
+      to: "/superadmin/reorders",
+      label: "Reorder Approvals",
+      icon: ShoppingCart,
+      isActive: location.pathname === "/superadmin/reorders",
+    },
+  ];
 
   const handleLogout = async () => {
     const confirmed = await confirmDialog(
@@ -54,7 +85,56 @@ const SuperAdminSidebar = ({ isOpen, onClose }) => {
         </button>
       </div>
       <nav className="super-nav">
-        {links.map((link) => (
+        {links.slice(0, 3).map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) =>
+              `super-nav-link ${isActive ? "active" : ""}`
+            }
+            onClick={onClose}
+          >
+            <span className="super-nav-icon-wrap">
+              <link.icon size={20} weight="bold" className="inline-icon" />
+            </span>
+            <span>{link.label}</span>
+          </NavLink>
+        ))}
+        <div className={`super-nav-group ${inventoryIsActive ? "active" : ""}`}>
+          <button
+            type="button"
+            className="super-nav-link super-nav-group-trigger"
+            onClick={() => setInventoryExpanded((expanded) => !expanded)}
+            aria-expanded={inventoryExpanded}
+            aria-controls="superadmin-inventory-navigation"
+          >
+            <span className="super-nav-icon-wrap">
+              <Package size={20} weight="bold" className="inline-icon" />
+            </span>
+            <span>Inventory Management</span>
+            <CaretDown
+              size={16}
+              weight="bold"
+              className={`super-nav-group-caret ${inventoryExpanded ? "expanded" : ""}`}
+            />
+          </button>
+          {inventoryExpanded ? (
+            <div id="superadmin-inventory-navigation" className="super-nav-subnav">
+              {inventoryItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={`super-nav-sublink ${item.isActive ? "active" : ""}`}
+                  onClick={onClose}
+                >
+                  <item.icon size={16} weight="bold" className="inline-icon" />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {links.slice(3).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

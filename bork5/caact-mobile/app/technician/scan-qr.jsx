@@ -13,10 +13,6 @@ import TextField from "../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { lookupUnitContext, parseLookupTarget } from "../../services/qrLookupService";
 import { TASK_STATUS } from "../../services/taskStorage";
-import {
-  ensureSeededScannerUnit,
-  SEEDED_SCANNER_UNIT_QR,
-} from "../../services/unitStorage";
 
 const TASK_STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
@@ -106,10 +102,6 @@ export default function ScanScreen() {
   const [scannerActive, setScannerActive] = useState(true);
   const inFlightRef = useRef(false);
   const lastNoticeRef = useRef({ value: "", time: 0 });
-
-  useEffect(() => {
-    ensureSeededScannerUnit().catch(() => {});
-  }, []);
 
   useEffect(() => {
     const serialValue = Array.isArray(serial) ? serial[0] : serial;
@@ -242,7 +234,7 @@ export default function ScanScreen() {
           label="Serial Number or AC Unit Code"
           value={code}
           onChangeText={setCode}
-          placeholder={SEEDED_SCANNER_UNIT_QR}
+          placeholder="e.g. CAACT-HSN241PX-123456"
           autoCapitalize="none"
         />
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>

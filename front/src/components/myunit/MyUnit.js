@@ -14,7 +14,6 @@ import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import AddUnitModal from "./AddUnitModal";
 import "./MyUnit.css";
 import RegisterQrUnitModal from "./RegisterQrUnitModal";
-import ScheduleServiceModal from "./ScheduleServiceModal";
 import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
@@ -52,7 +51,6 @@ function MyUnit() {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
@@ -103,66 +101,6 @@ function MyUnit() {
     saveUnits(updatedUnits);
     setShowAddModal(false);
     alert("AC Unit added successfully!");
-  };
-
-  const handleScheduleService = (unit) => {
-    setSelectedUnit(unit);
-    setShowScheduleModal(true);
-  };
-
-  const handleConfirmSchedule = (unit, serviceData) => {
-    const servicePrice = (() => {
-      switch (serviceData.serviceTypeId) {
-        case "cleaning_inspection":
-          return 899;
-        case "diagnosis_repair":
-          return 1499;
-        case "location_transfer":
-          return 0;
-        default:
-          break;
-      }
-      if (serviceData.serviceType === "Cleaning and inspection") return 899;
-      if (serviceData.serviceType === "Diagnosis and repair") return 1499;
-      return 899;
-    })();
-
-    const totalPrice =
-      servicePrice +
-      (serviceData.technician === "senior"
-        ? 200
-        : serviceData.technician === "express"
-          ? 500
-          : 0);
-
-    const newService = {
-      id: Date.now(),
-      date: serviceData.date,
-      time: serviceData.time,
-      serviceType: serviceData.serviceType,
-      details: serviceData.notes || "Scheduled service",
-      price: totalPrice,
-      technician: serviceData.technician,
-      status: "scheduled",
-    };
-
-    const updatedUnits = units.map((u) => {
-      if (u.id === unit.id) {
-        const updatedUnit = {
-          ...u,
-          serviceHistory: [...(u.serviceHistory || []), newService],
-          status: "Needs Service",
-        };
-        return updatedUnit;
-      }
-      return u;
-    });
-
-    saveUnits(updatedUnits);
-    setShowScheduleModal(false);
-    alert(
-      `Service scheduled for ${unit.brand} ${unit.model} on ${serviceData.date} at ${serviceData.time}\nTotal: ₱${totalPrice.toLocaleString()}`,
-    );
   };
 
   const handleViewHistory = (unit) => {
@@ -272,7 +210,6 @@ function MyUnit() {
                 key={unit.id}
                 unit={unit}
                 onClick={handleViewDetails}
-                onScheduleService={handleScheduleService}
                 onViewHistory={handleViewHistory}
                 onWarrantyStatus={handleWarrantyStatus}
                 onRegisterQr={handleRegisterQrRequest}
@@ -296,10 +233,6 @@ function MyUnit() {
             setShowDetailsModal(false);
             setSelectedUnit(null);
           }}
-          onScheduleService={(unit) => {
-            setShowDetailsModal(false);
-            handleScheduleService(unit);
-          }}
         />
       )}
 
@@ -310,17 +243,6 @@ function MyUnit() {
             setShowHistoryModal(false);
             setSelectedUnit(null);
           }}
-        />
-      )}
-
-      {showScheduleModal && selectedUnit && (
-        <ScheduleServiceModal
-          unit={selectedUnit}
-          onClose={() => {
-            setShowScheduleModal(false);
-            setSelectedUnit(null);
-          }}
-          onSchedule={handleConfirmSchedule}
         />
       )}
 

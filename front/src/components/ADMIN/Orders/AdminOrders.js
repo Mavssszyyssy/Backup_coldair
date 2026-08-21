@@ -129,6 +129,22 @@ const dateInputValue = (value = '') => {
   return date.toISOString().slice(0, 10);
 };
 
+const getDeliveryStatus = (order = {}) => {
+  if (order.deliveryStatus) return String(order.deliveryStatus);
+  if (order.workflowStatus === 'complete') return 'Completed';
+  if (order.workflowStatus === 'to_install') return 'Delivered / installation pending';
+  if (order.workflowStatus === 'to_deliver') return 'Preparing for dispatch';
+  if (order.workflowStatus === 'to_pay') return 'Awaiting payment';
+  return order.workflowLabel || 'Not recorded';
+};
+
+const getInstallationStatus = (order = {}, task = null) => {
+  if (task?.status) return String(task.status).replace(/-/g, ' ');
+  if (order.workflowStatus === 'complete') return 'Completed';
+  if (order.workflowStatus === 'to_install') return 'Awaiting technician';
+  return 'Not started';
+};
+
 const AdminOrders = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -459,6 +475,9 @@ const AdminOrders = () => {
               (!taskCompleted || !hasProof);
             const canRepairTask = ['to_deliver', 'to_install', 'complete'].includes(order.workflowStatus);
             const canSyncInstalledUnits = taskCompleted || order.workflowStatus === 'complete';
+            const paymentStatus = order.paymentStatus || (order.workflowStatus === 'to_pay' ? 'pending' : 'not recorded');
+            const deliveryStatus = getDeliveryStatus(order);
+            const installationStatus = getInstallationStatus(order, linkedTask);
             return (
               <article key={order.id} className="admin-order-card">
                 <div className="admin-order-row">
@@ -478,6 +497,12 @@ const AdminOrders = () => {
                   Amount: PHP {Number(order.totalAmount || 0).toLocaleString()} | Payment: {order.paymentMethod || 'N/A'}
                   {order.paymentProvider === 'paymongo' ? ` | PayMongo: ${order.paymentStatus || 'pending'}` : ''}
                 </p>
+                <div className="admin-order-workflow-summary" aria-label="Order service workflow">
+                  <span><b>Payment</b>{paymentStatus}</span>
+                  <span><b>Delivery</b>{deliveryStatus}</span>
+                  <span><b>Technician</b>{order.assignedTechnician || linkedTask?.assignedTechnicianName || 'Unassigned'}</span>
+                  <span><b>Installation / service</b>{installationStatus}</span>
+                </div>
                 {(order.assignedTechnician || linkedTask?.assignedTechnicianName || order.estimatedArrival || order.installationDate) ? (
                   <p className="admin-order-meta">
                     Fulfillment: {order.assignedTechnician || linkedTask?.assignedTechnicianName || 'Unassigned'}

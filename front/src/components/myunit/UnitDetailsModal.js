@@ -3,7 +3,7 @@ import DynamicServiceSticker from "./DynamicServiceSticker";
 // import icons from '../common/icons';
 const icons = {}; // BOUTIQUE MIGRATION STUB
 
-function UnitDetailsModal({ unit, onClose, onEdit, onDelete, onScheduleService }) {
+function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
   const getStatusClass = () => {
     switch (unit.status) {
       case "Good":
@@ -60,7 +60,7 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete, onScheduleService }
               <span className="info-value">{unit.ampereNextServiceLabel}</span>
             </div>
           )}
-          <DynamicServiceSticker unit={unit} onBookNow={onScheduleService} />
+          <DynamicServiceSticker unit={unit} />
           {unit.technicianReportSummary && (
             <div className="info-row">
               <span className="info-label">Latest report</span>

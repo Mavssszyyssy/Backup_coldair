@@ -2,6 +2,7 @@ import React from 'react';
 import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
+import InventorySerialQrPreview from './InventorySerialQrPreview';
 import './styles.css';
 
 const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock, canManageStock = false, searchQuery = '', stockFilter = 'all' }) => {
@@ -45,7 +46,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
   const firstProductIndex = (page - 1) * pageSize;
   const pageProducts = visibleProducts.slice(firstProductIndex, firstProductIndex + pageSize);
-  const columnCount = 7 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
+  const columnCount = 8 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
 
   React.useEffect(() => {
     setPage(1);
@@ -100,6 +101,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
             <th>HP / Specs</th>
             <th>SKU</th>
             <th>Stock</th>
+            <th>Serial / QR</th>
             <th>Price</th>
             {canManageStock && <th>Stock Adjustment</th>}
             {onRequestChange && <th>Manager Actions</th>}
@@ -117,6 +119,9 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                 <span className={`stock-badge ${Number(getStockDisplay(product)) === 0 ? 'stock-badge--out' : ''}`}>
                   {Number(getStockDisplay(product)) === 0 ? 'OUT OF STOCK · 0' : getStockDisplay(product)}
                 </span>
+              </td>
+              <td className="inventory-serial-cell">
+                <InventorySerialQrPreview product={product} branch={branch} />
               </td>
               <td>PHP {product.price}</td>
               {canManageStock && (
