@@ -33,6 +33,13 @@ const initialDraft = (branch = "") => ({
   branch,
 });
 
+const initialStaffDraft = (branch = "") => ({
+  firstName: "",
+  lastName: "",
+  email: "",
+  branch,
+});
+
 const AdminTechnician = ({ embedded = false }) => {
   const { user } = useUser();
   const isSuperAdmin = user?.role === "superadmin";
@@ -48,7 +55,11 @@ const AdminTechnician = ({ embedded = false }) => {
   const [branchFilter, setBranchFilter] = useState(isSuperAdmin ? "all" : homeBranch || "all");
   const [page, setPage] = useState(1);
   const [draft, setDraft] = useState(() => initialDraft(homeBranch));
+  const [staffDraft, setStaffDraft] = useState(() => initialStaffDraft(homeBranch));
   const [savingTask, setSavingTask] = useState(false);
+  const [savingStaff, setSavingStaff] = useState(false);
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
   const [updatingId, setUpdatingId] = useState("");
 
   const load = useCallback(async () => {
@@ -79,6 +90,7 @@ const AdminTechnician = ({ embedded = false }) => {
     if (!isSuperAdmin) {
       setBranchFilter(homeBranch || "all");
       setDraft((current) => ({ ...current, branch: homeBranch }));
+      setStaffDraft((current) => ({ ...current, branch: homeBranch }));
     }
   }, [homeBranch, isSuperAdmin]);
 
@@ -140,6 +152,45 @@ const AdminTechnician = ({ embedded = false }) => {
   const busyCount = technicians.filter((technician) => (openTasksByTechnician[String(technician.id)] || 0) >= 3).length;
 
   const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+  const updateStaffDraft = (field, value) => setStaffDraft((current) => ({ ...current, [field]: value }));
+
+  const createTechnician = async (event) => {
+    event.preventDefault();
+    const firstName = staffDraft.firstName.trim();
+    const lastName = staffDraft.lastName.trim();
+    const email = staffDraft.email.trim().toLowerCase();
+    if (!firstName || !lastName || !email || !staffDraft.branch) {
+      setError("Enter the technician's name, email, and assigned branch.");
+      return;
+    }
+    setSavingStaff(true);
+    setError("");
+    setNotice("");
+    setTemporaryPassword("");
+    try {
+      const result = await apiRequest("/users/staff", {
+        method: "POST",
+        body: JSON.stringify({
+          name_first: firstName,
+          name_last: lastName,
+          email,
+          role: "technician",
+          branch: staffDraft.branch,
+        }),
+      });
+      setTemporaryPassword(result.tempPassword || "");
+      setNotice(result.deliveryWarning || (result.tempPassword
+        ? `${firstName} ${lastName} was added. Save the temporary password below and share it securely.`
+        : `${firstName} ${lastName} was added. Their sign-in email and temporary password were sent to ${email}.`));
+      setStaffDraft(initialStaffDraft(staffDraft.branch));
+      setShowAddStaff(false);
+      await load();
+    } catch (requestError) {
+      setError(requestError.message || "Unable to add the technician.");
+    } finally {
+      setSavingStaff(false);
+    }
+  };
 
   const createTask = async (event) => {
     event.preventDefault();
@@ -242,8 +293,26 @@ const AdminTechnician = ({ embedded = false }) => {
           </div>
         </section>
 
+        {isSuperAdmin ? <section className="tech-add-staff-card admin-card" aria-label="Add technician staff">
+          <div className="tech-filter-heading">
+            <div><h2>Add technician staff</h2><p>Create one technician account for a branch. The system sends a secure temporary password by email.</p></div>
+            <button type="button" className="tech-primary-button" onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{showAddStaff ? "Close" : "Add technician"}</button>
+          </div>
+          {showAddStaff ? <form className="tech-add-staff-form" onSubmit={createTechnician}>
+            <div className="tech-form-row">
+              <label><span>First name</span><input value={staffDraft.firstName} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
+              <label><span>Last name</span><input value={staffDraft.lastName} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
+            </div>
+            <label><span>Work email</span><input type="email" value={staffDraft.email} onChange={(event) => updateStaffDraft("email", event.target.value)} placeholder="technician@company.com" autoComplete="email" required /></label>
+            <label><span>Assigned branch</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <p className="tech-staff-note">The account is created as an active Technician. The technician must change their temporary password after their first sign-in.</p>
+            <button type="submit" className="tech-primary-button" disabled={savingStaff}>{savingStaff ? "Adding technician…" : "Create technician account"}</button>
+          </form> : null}
+        </section> : null}
+
         {error ? <p className="tech-message tech-message--error">{error}</p> : null}
         {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
+        {temporaryPassword ? <p className="tech-message tech-message--temporary">Temporary password: <strong>{temporaryPassword}</strong>. Give it to the technician securely; it is not shown again.</p> : null}
 
         <div className="tech-management-grid">
           <section className="admin-card tech-roster-card">

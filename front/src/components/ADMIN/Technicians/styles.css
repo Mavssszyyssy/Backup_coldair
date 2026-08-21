@@ -3,13 +3,13 @@
 .tech-summary-grid article { display: grid; gap: 4px; min-width: 0; padding: 16px; border: 1px solid #dbeafe; border-radius: 14px; background: linear-gradient(145deg, #fff, #f5faff); box-shadow: 0 6px 18px rgba(15, 23, 42, .04); }
 .tech-summary-grid span, .tech-summary-grid small { color: #64748b; font-size: 12px; font-weight: 700; }
 .tech-summary-grid strong { color: #0f3e7a; font-size: 28px; line-height: 1.1; }
-.tech-filter-card, .tech-roster-card, .tech-assignment-form, .tech-work-orders { min-width: 0; }
+.tech-filter-card, .tech-add-staff-card, .tech-roster-card, .tech-assignment-form, .tech-work-orders { min-width: 0; }
 .tech-filter-heading, .tech-section-heading { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
 .tech-filter-heading h2, .tech-section-heading h2 { margin: 0; color: #0f172a; font-size: 18px; }
 .tech-filter-heading p, .tech-section-heading p { margin: 4px 0 0; color: #64748b; font-size: 13px; line-height: 1.45; }
 .tech-filter-grid { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(145px, 1fr)); gap: 12px; margin-top: 16px; }
-.tech-filter-grid label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
-.tech-filter-grid input, .tech-filter-grid select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #0f172a; font: inherit; }
+.tech-filter-grid label, .tech-add-staff-form label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
+.tech-filter-grid input, .tech-filter-grid select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #0f172a; font: inherit; }
 .tech-filter-grid select:disabled { background: #f1f5f9; color: #64748b; }
 .tech-management-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); gap: 18px; align-items: start; }
 .tech-roster-card { display: grid; gap: 14px; }
@@ -41,11 +41,17 @@
 .tech-danger-button { background: #fff1f2; color: #be123c; }
 .tech-primary-button:disabled, .tech-secondary-button:disabled, .tech-danger-button:disabled, .tech-pagination button:disabled { cursor: not-allowed; opacity: .55; }
 .tech-assignment-form { display: grid; gap: 13px; }
+.tech-add-staff-card { display: grid; gap: 14px; }
+.tech-add-staff-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr) auto; gap: 12px; align-items: end; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+.tech-add-staff-form .tech-form-row { grid-column: span 2; }
+.tech-add-staff-form > button { grid-column: 3; }
+.tech-staff-note { grid-column: 1 / -1; margin: 0; color: #475569; font-size: 12px; line-height: 1.45; }
 .tech-branch-note { margin: 0; padding: 10px 12px; border-radius: 9px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
 .tech-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tech-message { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 700; }
 .tech-message--error { background: #fef2f2; color: #b91c1c; }
 .tech-message--success { background: #f0fdf4; color: #166534; }
+.tech-message--temporary { background: #fff7ed; color: #9a3412; }
 .tech-empty { margin: 0; padding: 22px 8px; color: #64748b; text-align: center; }
 .tech-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #64748b; font-size: 13px; font-weight: 700; }
 .tech-pagination > div { display: flex; gap: 8px; }
@@ -53,4 +59,4 @@
 .tech-work-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .45fr); gap: 16px; align-items: center; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
 .tech-work-item .tech-task-status { justify-self: start; margin-bottom: 7px; }
 @media (max-width: 1120px) { .tech-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tech-management-grid { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-work-item { grid-template-columns: 1fr; } .tech-filter-heading, .tech-section-heading, .tech-person-card { align-items: stretch; flex-direction: column; } .tech-filter-heading, .tech-section-heading { display: flex; } .tech-filter-heading .tech-secondary-button { width: 100%; } .tech-person-card { grid-template-columns: 1fr; } .tech-person-meta { text-align: left; } .tech-account-status, .tech-availability { justify-self: start; } .tech-inline-select, .tech-person-card > button { width: 100%; } .tech-pagination { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 760px) { .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-add-staff-form, .tech-work-item { grid-template-columns: 1fr; } .tech-filter-heading, .tech-section-heading, .tech-person-card { align-items: stretch; flex-direction: column; } .tech-filter-heading, .tech-section-heading { display: flex; } .tech-filter-heading .tech-secondary-button, .tech-add-staff-form > button { width: 100%; } .tech-add-staff-form .tech-form-row, .tech-add-staff-form > button { grid-column: auto; } .tech-person-card { grid-template-columns: 1fr; } .tech-person-meta { text-align: left; } .tech-account-status, .tech-availability { justify-self: start; } .tech-inline-select, .tech-person-card > button { width: 100%; } .tech-pagination { align-items: flex-start; flex-direction: column; } }
