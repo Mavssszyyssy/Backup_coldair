@@ -64,6 +64,16 @@ const RequestDetails = ({ request, onUpdated }) => {
       const result = await apiRequest(`/service-requests/${current.id}/status`, { method: 'PATCH', body: JSON.stringify(payload) });
       setCurrent(result.request);
       onUpdated?.(result.request);
+      const linkedTaskId = result.request?.linkedTaskId || result.request?.taskCode;
+      if (linkedTaskId) {
+        try {
+          const taskResult = await apiRequest(`/tasks/${encodeURIComponent(linkedTaskId)}`);
+          setLinkedTask(taskResult.task || null);
+        } catch {
+          // The request update succeeded. A later refresh can retry the
+          // non-critical work-order preview without reporting a false failure.
+        }
+      }
       setMessage({ type: 'success', text: successText });
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'Request update failed.' });
@@ -73,7 +83,10 @@ const RequestDetails = ({ request, onUpdated }) => {
   const assignTechnician = () => {
     const technician = technicians.find((item) => String(item.id) === String(selectedTechnicianId));
     if (!technician) { setMessage({ type: 'error', text: 'Choose a technician before assigning this request.' }); return; }
-    updateRequest({ status: 'Assigned', assignedTechnicianId: technician.id, assignedTechnicianName: getDisplayName(technician) }, 'Technician assigned. The work order is now available in their My Work list.');
+    updateRequest(
+      { status: 'In Progress', assignedTechnicianId: technician.id, assignedTechnicianName: getDisplayName(technician) },
+      'Technician assigned and work order activated. It is ready in their Work Orders list.',
+    );
   };
 
   const cancelRequest = () => {
