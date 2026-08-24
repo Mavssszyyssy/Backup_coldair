@@ -14,7 +14,7 @@ import { getServiceRequestsByUser } from "../../../../services/serviceRequestSto
 import { checkInTask, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getUnitByCode } from "../../../../services/unitStorage";
-import { getServiceLogsByUnit } from "../../../../services/unitServiceLogStorage";
+import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
 
 function money(value) {
   return `PHP ${Number(value || 0).toFixed(2)}`;
@@ -87,7 +87,7 @@ export default function TaskInformationScreen() {
           const loadedRequests = loadedTask.customerId
             ? await getServiceRequestsByUser(loadedTask.customerId)
             : [];
-          const loadedLogs = loadedUnit?.id ? await getServiceLogsByUnit(loadedUnit.id) : [];
+          const loadedLogs = loadedTask?.id ? await getServiceLogsByTask(loadedTask.id) : [];
           if (active) {
             setTask(loadedTask);
             setUnit(loadedUnit);

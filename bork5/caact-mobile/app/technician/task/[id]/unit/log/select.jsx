@@ -12,7 +12,7 @@ import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
 import { getTaskById, TASK_STATUS } from "../../../../../../services/taskStorage";
 import {
   LOG_TYPES,
-  getServiceLogsByUnit,
+  getServiceLogsByTask,
 } from "../../../../../../services/unitServiceLogStorage";
 
 export default function LogSelectScreen() {
@@ -26,8 +26,8 @@ export default function LogSelectScreen() {
       let active = true;
       async function load() {
         const loadedTask = await getTaskById(taskId);
-        const loadedLogs = loadedTask?.unitId
-          ? await getServiceLogsByUnit(loadedTask.unitId)
+        const loadedLogs = loadedTask?.id
+          ? await getServiceLogsByTask(loadedTask.id)
           : [];
         if (active) {
           setTask(loadedTask);

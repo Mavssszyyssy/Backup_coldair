@@ -9,7 +9,6 @@ function UnitCard({
   onClick,
   onViewHistory,
   onWarrantyStatus,
-  onRegisterQr,
 }) {
   const getStatusClass = () => {
     switch (unit.status) {
@@ -35,7 +34,6 @@ function UnitCard({
             unit={unit}
             onViewHistory={onViewHistory}
             onWarrantyStatus={onWarrantyStatus}
-            onRegisterQr={onRegisterQr}
           />
           <div className="unit-icon">
             <img

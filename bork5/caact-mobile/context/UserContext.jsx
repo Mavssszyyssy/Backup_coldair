@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import * as api from "../services/api";
+import { clearOperationalSessionCache } from "../services/sessionCache";
 
 const TOKEN_KEY = "auth_token";
 const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
@@ -176,6 +177,7 @@ export function UserProvider({ children }) {
       const result = await api.login(email, password);
       if (result.success) {
         const normalized = normalizeUser(result.user);
+        await clearOperationalSessionCache();
         await storeToken(result.token);
         setCurrent(normalized);
         return { success: true, user: normalized };
@@ -196,6 +198,7 @@ export function UserProvider({ children }) {
       const result = await api.register(payload);
       if (result.success) {
         const normalized = normalizeUser(result.user);
+        await clearOperationalSessionCache();
         await storeToken(result.token);
         setCurrent(normalized);
         return { success: true, user: normalized };
@@ -216,6 +219,7 @@ export function UserProvider({ children }) {
     } catch {
       // Best-effort — clear locally regardless
     }
+    await clearOperationalSessionCache();
     await storeToken(null);
     setCurrent(null);
     setUsers([]);

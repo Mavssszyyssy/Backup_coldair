@@ -3,8 +3,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
 
 const STORAGE_KEY = "units_storage_v1";
-export const SEEDED_CUSTOMER_EMAIL = "c@coldair-act.online";
-export const SEEDED_CUSTOMER_UNIT_ID = "seed_customer_ac_unit_001";
 
 function safeParse(value, fallback) {
   try {
@@ -96,60 +94,12 @@ export async function getUnitsByUser(userId) {
 
   const units = await getAllUnits();
   return units.filter(
-    (unit) =>
-      String(unit.userId) === String(userId) &&
-      unit.id !== SEEDED_CUSTOMER_UNIT_ID,
+    (unit) => String(unit.userId) === String(userId),
   );
 }
 
-export async function ensureSeededCustomerUnit(user) {
-  if (
-    !user?.id ||
-    String(user.email || "").toLowerCase() !== SEEDED_CUSTOMER_EMAIL
-  ) {
-    return null;
-  }
-
-  const units = await getAllUnits();
-  const existing = units.find((unit) => unit.id === SEEDED_CUSTOMER_UNIT_ID);
-  const seededUnit = normalizeUnit({
-    id: SEEDED_CUSTOMER_UNIT_ID,
-    userId: user.id,
-    unitName: "Living Room AC",
-    brand: "Cold Air ACT",
-    model: "Inverter Split Type 1.5HP",
-    serialNumber: "CAACT-AC-2026-001",
-    status: "Active",
-    installationDate: "2025-11-15",
-    placementArea: "Living Room",
-    installationEnvironment: "Indoor wall-mounted with good ventilation",
-    usageLevel: "Normal",
-    ventilationQuality: "Good",
-    lastMaintenanceDate: "2026-03-20",
-    notes: "Seeded debug AC unit for customer home health score display.",
-    createdAt: "2026-05-03T00:00:00.000Z",
-    updatedAt: new Date().toISOString(),
-  });
-
-  if (existing) {
-    const next = units.map((unit) =>
-      unit.id === SEEDED_CUSTOMER_UNIT_ID
-        ? normalizeUnit({ ...unit, ...seededUnit, userId: user.id })
-        : unit
-    );
-    await saveAllUnits(next);
-    return next.find((unit) => unit.id === SEEDED_CUSTOMER_UNIT_ID) || null;
-  }
-
-  await saveAllUnits([seededUnit, ...units]);
-  return seededUnit;
-}
-
-export async function addUnit(unit) {
-  const units = await getAllUnits();
-  const created = normalizeUnit(unit);
-  await saveAllUnits([created, ...units]);
-  return created;
+export async function addUnit() {
+  throw new Error("AC units are added after a verified installation, not from this device.");
 }
 
 export async function getUnitByCode(rawValue) {
@@ -183,43 +133,15 @@ export async function getUnitByCode(rawValue) {
 }
 
 export async function claimUnitForUserByCode(rawValue, userId) {
-  const matched = await getUnitByCode(rawValue);
-  if (!matched) return { status: "not_found", unit: null };
-
-  if (matched.userId && String(matched.userId) !== String(userId)) {
-    return { status: "owned_by_other_user", unit: matched };
-  }
-
-  if (String(matched.userId) === String(userId)) {
-    return { status: "already_owned", unit: matched };
-  }
-
-  const updated = await updateUnit({
-    ...matched,
-    userId,
-  });
-
-  return { status: "claimed", unit: updated };
+  void rawValue;
+  void userId;
+  throw new Error("Unit ownership is confirmed by the technician installation workflow.");
 }
 
-export async function updateUnit(unit) {
-  const units = await getAllUnits();
-  const next = units.map((existing) =>
-    String(existing.id) === String(unit.id)
-      ? normalizeUnit({
-          ...existing,
-          ...unit,
-          updatedAt: new Date().toISOString(),
-        })
-      : existing
-  );
-  await saveAllUnits(next);
-  return next.find((existing) => String(existing.id) === String(unit.id)) || null;
+export async function updateUnit() {
+  throw new Error("AC unit records are managed through the synchronized service workflow.");
 }
 
-export async function deleteUnit(unitId) {
-  const units = await getAllUnits();
-  const next = units.filter((unit) => String(unit.id) !== String(unitId));
-  await saveAllUnits(next);
-  return true;
+export async function deleteUnit() {
+  throw new Error("AC unit records cannot be removed from this device.");
 }

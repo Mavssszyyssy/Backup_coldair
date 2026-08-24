@@ -4,8 +4,8 @@ const Task = require("../models/Task");
 const Unit = require("../models/Unit");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
+const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
-const { getScheduledDateError } = require("../utils/scheduling");
 
 const normalizeStatus = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -55,16 +55,19 @@ const getUserDisplayName = (user = {}) =>
   user.email ||
   "Customer";
 
-const getRequestBranch = ({ req, payload = {}, unit = null }) => {
+const getRequestBranch = async ({ req, payload = {}, unit = null }) => {
   if (req.authUser.role === "admin" || req.authUser.role === "manager" || req.authUser.role === "technician") {
     return req.activeBranch || String(payload.branch || "");
   }
   if (req.authUser.role === "superadmin") return String(payload.branch || "");
 
   const unitAddress = unit?.installation || {};
-  return String(payload.branch || "").trim() || resolvePreferredBranch({
+  // Customer addresses are the source of truth. Do not trust a stale branch
+  // value from a mobile/web payload after the customer changes location.
+  return resolvePreferredBranch({
     city: payload.city || unitAddress.city || "",
     province: payload.province || unitAddress.province || "",
+    barangay: payload.barangay || unitAddress.barangay || "",
     street: payload.address || unitAddress.addressLine || "",
   });
 };
@@ -263,16 +266,9 @@ const createMyServiceRequest = async (req, res) => {
     const issue = String(payload.issueDescription || payload.issue || payload.concern || "").trim();
     const address = String(payload.address || "").trim();
     const unitId = String(payload.unitId || "").trim();
-    const preferredDateError = getScheduledDateError(payload.preferredDate, "Preferred date");
 
     if (!customerName || !issue || !address) {
       return res.status(400).json({ message: "customer, issue, and address are required" });
-    }
-    if (!payload.preferredDate) {
-      return res.status(400).json({ message: "Preferred date is required." });
-    }
-    if (preferredDateError) {
-      return res.status(400).json({ message: preferredDateError });
     }
 
     const unit = unitId ? await findOwnedUnit(unitId, req.authUser._id) : null;
@@ -309,7 +305,7 @@ const createMyServiceRequest = async (req, res) => {
       customer: customerName,
       issue,
       address,
-      branch: getRequestBranch({ req, payload, unit }),
+      branch: await getRequestBranch({ req, payload, unit }),
       status: normalizeStatus(payload.status || "Submitted"),
       customerId: String(payload.customerId || payload.userId || req.authUser._id || ""),
       customerEmail: String(payload.customerEmail || req.authUser.email || ""),
@@ -339,6 +335,16 @@ const createMyServiceRequest = async (req, res) => {
       title: "Service request submitted",
       message: `${request.issueType || "Service"} request for ${request.unitName || "your AC unit"} was submitted.`,
     });
+    await notifyOperationalStaff({
+      branch: request.branch,
+      title: "New service request",
+      message: `${request.customer || "A customer"} requested ${request.issueType || "AC service"}${request.unitName ? ` for ${request.unitName}` : ""}.`,
+      type: "service",
+      category: "service_request",
+      targetId: String(request._id || request.id || ""),
+      targetType: "service",
+      dedupeKey: `service-request:${request._id || request.id}`,
+    });
 
     return res.status(201).json({ request: hydrateRequestResponse(request) });
   } catch (error) {
@@ -356,11 +362,6 @@ const updateServiceRequestStatus = async (req, res) => {
     const request = await ServiceRequest.findById(id);
     if (!request) {
       return res.status(404).json({ message: "Service request not found" });
-    }
-    const preferredDateError = getScheduledDateError(req.body?.preferredDate, "Preferred date");
-    const scheduledDateError = getScheduledDateError(req.body?.scheduledDate, "Scheduled date");
-    if (preferredDateError || scheduledDateError) {
-      return res.status(400).json({ message: preferredDateError || scheduledDateError });
     }
 
     const role = req.authUser.role;
@@ -455,6 +456,17 @@ const updateServiceRequestStatus = async (req, res) => {
         message: `Your service request is now ${request.status}.`,
       });
     }
+    await notifyOperationalStaff({
+      branch: request.branch,
+      title: "Service request updated",
+      message: `${request.issueType || "Service request"} for ${request.customer || "a customer"} is now ${request.status}.`,
+      type: "service",
+      category: "service_request",
+      severity: request.status === "Cancelled" ? "warning" : "info",
+      targetId: String(request._id || request.id || ""),
+      targetType: "service",
+      dedupeKey: `service-request:${request._id || request.id}:${request.status}`,
+    });
     return res.json({ request: hydrateRequestResponse(request) });
   } catch (error) {
     console.error("Failed to update service request status:", error);

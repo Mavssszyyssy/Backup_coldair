@@ -25,13 +25,34 @@ const parseCorsOrigins = (value = "") => {
     .filter(Boolean);
 };
 
+// A configured HTTPS site may be opened with or without `www`. Accept only
+// that paired hostname, never arbitrary preview or third-party domains.
+const expandWebsiteAliases = (origins = []) => {
+  const allowed = new Set(origins);
+  origins.forEach((origin) => {
+    try {
+      const url = new URL(origin);
+      if (url.protocol !== "https:") return;
+      const hostname = url.hostname.startsWith("www.")
+        ? url.hostname.slice(4)
+        : `www.${url.hostname}`;
+      allowed.add(`${url.protocol}//${hostname}${url.port ? `:${url.port}` : ""}`);
+    } catch (_error) {
+      // Invalid values remain excluded by the normal CORS check.
+    }
+  });
+  return Array.from(allowed);
+};
+
 const isPrivateLanOrigin = (origin = "") =>
   /^https?:\/\/(?:(?:localhost|127\.0\.0\.1)|(?:10\.)|(?:192\.168\.)|(?:172\.(?:1[6-9]|2\d|3[01])\.))[^/]*$/i.test(
     origin,
   );
 
 const buildCorsOrigin = () => {
-  const configuredOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+  const configuredOrigins = expandWebsiteAliases(
+    parseCorsOrigins(process.env.CORS_ORIGIN),
+  );
   return (origin, callback) => {
     if (!origin) return callback(null, true);
     if (
@@ -43,6 +64,26 @@ const buildCorsOrigin = () => {
     }
     return callback(new Error(`CORS origin not allowed: ${origin}`));
   };
+};
+
+// Keep test and live credentials deliberately separate. A generic
+// PAYMONGO_SECRET_KEY is supported for older deployments, but explicit
+// PAYMONGO_TEST_SECRET_KEY / PAYMONGO_LIVE_SECRET_KEY always wins for the
+// selected mode so a stale key cannot silently send a test checkout to live.
+const paymongoMode = String(process.env.PAYMONGO_MODE || "").trim().toLowerCase();
+const resolvePaymongoSecretKey = () => {
+  if (paymongoMode === "test") {
+    return process.env.PAYMONGO_TEST_SECRET_KEY || process.env.PAYMONGO_SECRET_KEY || "";
+  }
+  if (paymongoMode === "live") {
+    return process.env.PAYMONGO_LIVE_SECRET_KEY || process.env.PAYMONGO_SECRET_KEY || "";
+  }
+  return (
+    process.env.PAYMONGO_SECRET_KEY ||
+    process.env.PAYMONGO_TEST_SECRET_KEY ||
+    process.env.PAYMONGO_LIVE_SECRET_KEY ||
+    ""
+  );
 };
 
 const env = {
@@ -57,13 +98,18 @@ const env = {
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
   backendPublicUrl: process.env.BACKEND_PUBLIC_URL || process.env.PAYMONGO_RETURN_BASE_URL || "",
   mobileUrlScheme: process.env.MOBILE_URL_SCHEME || "coldair",
-  paymongoMode: process.env.PAYMONGO_MODE || "",
-  paymongoSecretKey: process.env.PAYMONGO_SECRET_KEY || "",
+  paymongoMode,
+  paymongoSecretKey: resolvePaymongoSecretKey(),
   paymongoWebhookSecret: process.env.PAYMONGO_WEBHOOK_SECRET || "",
   paymongoApiBaseUrl: process.env.PAYMONGO_API_BASE_URL || "https://api.paymongo.com",
   openAiApiKey: process.env.OPENAI_API_KEY || "",
   openAiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
   openAiBaseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+  otpTtlMinutes: Number(process.env.OTP_TTL_MINUTES || 5),
+  otpResendCooldownSeconds: Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60),
+  otpRequestWindowMinutes: Number(process.env.OTP_REQUEST_WINDOW_MINUTES || 15),
+  otpMaxRequestsPerWindow: Number(process.env.OTP_MAX_REQUESTS_PER_WINDOW || 5),
+  otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS || 5),
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   googleRedirectUri:
@@ -85,6 +131,11 @@ const env = {
   ),
   accountDeleteMode: process.env.ACCOUNT_DELETE_MODE || "soft",
   infobipApiKey: process.env.INFOBIP_API_KEY || "",
+  // Email can use a separate, least-privilege key while SMS continues to use
+  // INFOBIP_API_KEY. Fall back for installations that intentionally use one
+  // key for both channels.
+  infobipEmailApiKey:
+    process.env.INFOBIP_EMAIL_API_KEY || process.env.INFOBIP_API_KEY || "",
   infobipBaseUrl: process.env.INFOBIP_BASE_URL || "",
   infobipSender: process.env.INFOBIP_SENDER || "",
   infobipEmailSender: process.env.INFOBIP_EMAIL_SENDER || "",

@@ -21,7 +21,6 @@ import {
 } from "../../../services/acHealthScoreService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
 import {
-  ensureSeededCustomerUnit,
   getUnitByCode,
 } from "../../../services/unitStorage";
 import { createWarrantyClaim, generateAmpReport, getStoredToken } from "../../../services/api";
@@ -116,7 +115,7 @@ export default function CustomerUnitDetailsScreen() {
       let active = true;
 
       Promise.all([
-        ensureSeededCustomerUnit(current).then(() => getUnitByCode(unitId)),
+        getUnitByCode(unitId),
         getCustomerServiceHistory(current?.id),
       ])
         .then(([loadedUnit, loadedHistory]) => {

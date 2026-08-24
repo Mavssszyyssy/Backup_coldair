@@ -40,7 +40,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       let active = true;
       async function load() {
         const loadedTask = await getTaskById(taskId);
-        const existing = logId ? await getServiceLogById(logId) : null;
+        const existing = logId ? await getServiceLogById(taskId, logId) : null;
         const draft = !existing && !isUpdate ? await getLogDraft(taskId) : null;
         const source = existing || draft || {};
         if (active) {

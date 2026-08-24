@@ -1,7 +1,6 @@
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const speakeasy = require("speakeasy");
 const zxcvbn = require("zxcvbn");
 const User = require("../models/User");
 const OtpRequest = require("../models/OtpRequest"); // Symmetrical V3 Model
@@ -10,11 +9,16 @@ const { signAccessToken } = require("../utils/token");
 const env = require("../config/env");
 const { BRANCHES } = require("../domain/branchRouting");
 const { canSendEmail, sendEmail } = require("../utils/email");
+const { resolveConfiguredBranch } = require("../services/branchCoverageService");
 
 const OTP_TTL_MINUTES = Math.max(
   3,
   Math.min(15, Number(env.otpTtlMinutes || 5)),
 );
+const OTP_RESEND_COOLDOWN_SECONDS = Math.max(30, Math.min(300, Number(env.otpResendCooldownSeconds || 60)));
+const OTP_REQUEST_WINDOW_MINUTES = Math.max(5, Math.min(60, Number(env.otpRequestWindowMinutes || 15)));
+const OTP_MAX_REQUESTS_PER_WINDOW = Math.max(2, Math.min(10, Number(env.otpMaxRequestsPerWindow || 5)));
+const OTP_MAX_ATTEMPTS = Math.max(3, Math.min(10, Number(env.otpMaxAttempts || 5)));
 
 const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
 const normalizeIdentifier = (value = "") => String(value).trim().toLowerCase();
@@ -26,17 +30,16 @@ const canonicalizePhMobile = (phone = "") => {
 };
 const isValidSixDigitCode = (value = "") =>
   /^\d{6}$/.test(String(value).trim());
-const isStrongRecoveryPassword = (value = "") => {
-  const password = String(value || "");
-  return (
-    password.length >= 8 &&
-    /[a-z]/.test(password) &&
-    /[A-Z]/.test(password) &&
-    /\d/.test(password) &&
-    /[@$!%*?&]/.test(password) &&
-    zxcvbn(password).score >= 3
+const signRegistrationVerificationToken = ({ email = "", phone = "" }) =>
+  jwt.sign(
+    {
+      purpose: "registration_verification",
+      email: normalizeEmail(email),
+      phone: canonicalizePhMobile(phone),
+    },
+    env.jwtSecret,
+    { expiresIn: `${OTP_TTL_MINUTES}m` },
   );
-};
 
 const toInternationalFormat = (phone = "") => {
   const digits = String(phone).replace(/\D/g, "");
@@ -136,10 +139,7 @@ const sendOtpMessage = async ({ recipient, channel, action, code }) => {
     return;
   }
 
-  if (channel === "messenger") {
-    console.log("[OTP] Messenger code:", code, "for", recipient);
-    return;
-  }
+  throw new Error("Only SMS or email OTP delivery is supported.");
 };
 
 /**
@@ -153,15 +153,41 @@ const createOtpRequest = async ({
   channel,
   metadata = {},
 }) => {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = canonicalizePhMobile(phone);
+  const normalizedMessenger = String(messenger_handle || "").trim();
+  const targetQuery = { action, channel };
+  if (channel === "email") targetQuery.email = normalizedEmail;
+  if (channel === "sms") targetQuery.phone = normalizedPhone;
+  const now = new Date();
+  const latest = await OtpRequest.findOne(targetQuery).sort({ requestedAt: -1 });
+  if (latest?.requestedAt) {
+    const retryAfterSeconds = Math.ceil(
+      (latest.requestedAt.getTime() + OTP_RESEND_COOLDOWN_SECONDS * 1000 - now.getTime()) / 1000,
+    );
+    if (retryAfterSeconds > 0) {
+      const error = new Error(`Please wait ${retryAfterSeconds}s before requesting another code.`);
+      error.status = 429;
+      error.retryAfterSeconds = retryAfterSeconds;
+      throw error;
+    }
+  }
+  const windowStart = new Date(now.getTime() - OTP_REQUEST_WINDOW_MINUTES * 60 * 1000);
+  const requestCount = await OtpRequest.countDocuments({ ...targetQuery, requestedAt: { $gte: windowStart } });
+  if (requestCount >= OTP_MAX_REQUESTS_PER_WINDOW) {
+    const error = new Error("Too many verification requests. Please try again later.");
+    error.status = 429;
+    error.retryAfterSeconds = OTP_REQUEST_WINDOW_MINUTES * 60;
+    throw error;
+  }
   const code = generateOtpCode();
   const codeHash = hashValue(code);
-  const now = new Date();
   const expiresAt = new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000);
 
   const otpRequest = await OtpRequest.create({
-    email: normalizeEmail(email),
-    phone: canonicalizePhMobile(phone),
-    messenger_handle: String(messenger_handle || "").trim(),
+    email: channel === "email" ? normalizedEmail : "",
+    phone: channel === "sms" ? normalizedPhone : "",
+    messenger_handle: "",
     action,
     channel,
     codeHash,
@@ -172,7 +198,7 @@ const createOtpRequest = async ({
 
   try {
     await sendOtpMessage({
-      recipient: email || phone || messenger_handle,
+      recipient: channel === "email" ? normalizedEmail : normalizedPhone,
       channel,
       action,
       code,
@@ -182,26 +208,7 @@ const createOtpRequest = async ({
     throw error;
   }
 
-  // Never expose OTP codes in production logs. They are delivered only by
-  // the selected provider after that provider accepts the request.
-  if (env.nodeEnv === "production") return { otpRequest, code };
-
-  console.log("\n╔══════════════════════════════════════════════════════╗");
-  console.log(
-    "║ [OTP] GENERATED FOR:",
-    channel.toUpperCase().padEnd(26, " "),
-    "║",
-  );
-  console.log("║ ACTION:   ", action.padEnd(42, " "), "║");
-  console.log(
-    "║ RECIPIENT:",
-    (email || phone || messenger_handle).padEnd(42, " "),
-    "║",
-  );
-  console.log("║ CODE:     ", code.padEnd(42, " "), "║");
-  console.log("╚══════════════════════════════════════════════════════╝\n");
-
-  return { otpRequest, code };
+  return { otpRequest };
 };
 
 const findOtpRequest = async ({
@@ -212,10 +219,8 @@ const findOtpRequest = async ({
   channel,
 }) => {
   const query = { action, channel, verifiedAt: null };
-  if (email) query.email = normalizeEmail(email);
-  if (phone) query.phone = canonicalizePhMobile(phone);
-  if (messenger_handle)
-    query.messenger_handle = String(messenger_handle).trim();
+  if (channel === "email") query.email = normalizeEmail(email);
+  if (channel === "sms") query.phone = canonicalizePhMobile(phone);
   return OtpRequest.findOne(query).sort({ createdAt: -1 });
 };
 
@@ -236,12 +241,14 @@ const verifyOtpRequest = async ({
   });
   if (!otp) return { ok: false, reason: "not_found" };
   if (isOtpExpired(otp)) return { ok: false, reason: "expired" };
+  if (otp.lockedAt || Number(otp.attempts || 0) >= OTP_MAX_ATTEMPTS) return { ok: false, reason: "locked" };
 
-  if (Number(otp.attempts || 0) >= 5) return { ok: false, reason: "too_many_attempts" };
   if (otp.codeHash !== hashValue(code)) {
     otp.attempts = Number(otp.attempts || 0) + 1;
+    otp.lastAttemptAt = new Date();
+    if (otp.attempts >= OTP_MAX_ATTEMPTS) otp.lockedAt = new Date();
     await otp.save();
-    return { ok: false, reason: "invalid" };
+    return { ok: false, reason: otp.lockedAt ? "locked" : "invalid" };
   }
 
   otp.verifiedAt = new Date();
@@ -259,6 +266,15 @@ const requestOtp = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Action and channel are required." });
+  }
+  if (!["email", "sms"].includes(channel)) {
+    return res.status(400).json({ message: "Choose SMS or email verification." });
+  }
+  if (channel === "email" && !normalizeEmail(email)) {
+    return res.status(400).json({ message: "A valid email address is required for email verification." });
+  }
+  if (channel === "sms" && !canonicalizePhMobile(phone)) {
+    return res.status(400).json({ message: "A mobile number is required for SMS verification." });
   }
 
   // 1. Validation for specific actions
@@ -287,7 +303,7 @@ const requestOtp = async (req, res) => {
   }
 
   try {
-    const { code } = await createOtpRequest({
+    const { otpRequest } = await createOtpRequest({
       email,
       phone,
       messenger_handle,
@@ -297,12 +313,14 @@ const requestOtp = async (req, res) => {
 
     return res.json({
       message: "Code sent successfully.",
-      ...(env.nodeEnv === "production" ? {} : { debugCode: code }),
+      expiresAt: otpRequest.expiresAt,
+      resendAvailableAt: new Date(otpRequest.requestedAt.getTime() + OTP_RESEND_COOLDOWN_SECONDS * 1000),
     });
   } catch (err) {
-    console.error("[OTP] Error:", err);
-    return res.status(502).json({
+    console.error("[OTP] Request failed:", err?.message || err);
+    return res.status(err.status || 502).json({
       message: err?.message || "SMS delivery could not be completed. Please try again.",
+      retryAfterSeconds: err.retryAfterSeconds || undefined,
     });
   }
 };
@@ -325,7 +343,11 @@ const verifyOtp = async (req, res) => {
     });
 
     if (!verification.ok) {
-      return res.status(400).json({ message: "Invalid or expired code." });
+      return res.status(400).json({
+        message: verification.reason === "locked"
+          ? "Too many incorrect codes. Request a new verification code."
+          : "Invalid or expired code.",
+      });
     }
 
     // Keep registration verification progress resumable for both web and mobile.
@@ -350,11 +372,19 @@ const verifyOtp = async (req, res) => {
       };
     }
 
+    const registrationVerificationToken = action.startsWith("register_")
+      ? signRegistrationVerificationToken({
+        email: action === "register_email" ? email : "",
+        phone: action === "register_phone" ? phone : "",
+      })
+      : "";
+
     return req.session.save((error) => {
       if (error) return res.status(500).json({ message: "Unable to save verification progress." });
       return res.json({
         message: "Verification successful.",
         registrationProgress: req.session.registrationProgress || null,
+        registrationVerificationToken: registrationVerificationToken || undefined,
       });
     });
   } catch (err) {
@@ -394,116 +424,38 @@ const startRegistration = async (req, res) => {
     return res.status(409).json({ errors: { email: "Email already exists" } });
   }
 
-  let finalSecret = "";
-  let finalUri = "";
-  let verifiedCode = null;
-
-  // 1. Check for RESUME state in the session
-  const progress = req.session.registrationProgress;
-  if (
-    progress &&
-    normalizeEmail(progress.email || progress.formData?.email) === email
-  ) {
-    if (progress.formData?.registrationSecret) {
-      finalSecret = progress.formData.registrationSecret;
-      finalUri = progress.formData.provisioningUri;
-      verifiedCode = progress.formData.verifiedCode;
-    }
-  }
-
-  if (
-    !finalSecret &&
-    req.session.tempRegistrationSecret &&
-    normalizeEmail(req.session.tempRegistrationEmail) === email
-  ) {
-    finalSecret = req.session.tempRegistrationSecret;
-    finalUri = req.session.tempProvisioningUri;
-  }
-
-  // 2. FRESH START: If no session state, proactively PURGE all database artifacts for this email (Technical Cascade)
-  if (!finalSecret) {
-    console.log(
-      `[BOUTIQUE] Fresh start for ${email}. Purging existing database artifacts...`,
-    );
-    await OtpRequest.deleteMany({ email });
-
-    const secret = speakeasy.generateSecret({
-      length: 20,
-      name: `AeroPulse:${email}`,
+  try {
+    const { otpRequest } = await createOtpRequest({
+      email,
+      action: "register_email",
+      channel: "email",
     });
-    finalSecret = secret.base32;
-    finalUri = secret.otpauth_url;
-
-    req.session.tempRegistrationSecret = finalSecret;
-    req.session.tempProvisioningUri = finalUri;
-    req.session.tempRegistrationEmail = email;
-
-    // 3. Proactively DISPATCH the secret to the user's email if possible
-    if (canSendEmail()) {
-      try {
-        await sendEmail({
-          to: email,
-          subject: "Your AeroPulse Security Secret",
-          text: `Your boutique security secret is: ${finalSecret}\n\nEnter this code into your authenticator app or manually on the registration screen.`,
-          html: `<p>Your boutique security secret is: <strong>${finalSecret}</strong></p><p>Enter this code into your authenticator app or manually on the registration screen.</p>`,
-        });
-      } catch (err) {
-        console.error("[BOUTIQUE] Secret dispatch failed:", err.message);
-      }
-    }
+    return res.json({
+      email,
+      message: "Verification code sent.",
+      expiresAt: otpRequest.expiresAt,
+      resendAvailableAt: new Date(otpRequest.requestedAt.getTime() + OTP_RESEND_COOLDOWN_SECONDS * 1000),
+    });
+  } catch (error) {
+    return res.status(error.status || 502).json({ message: error.message || "Unable to send verification code." });
   }
-
-  const currentToken = speakeasy.totp({
-    secret: finalSecret,
-    encoding: "base32",
-  });
-
-  console.log("\n╔══════════════════════════════════════════════════════╗");
-  console.log("║ [TOTP] SECRET FOR:", email.padEnd(33, " "), "║");
-  console.log("║ BASE32 SECRET:    ", finalSecret.padEnd(33, " "), "║");
-  console.log("║ CURRENT TOKEN:    ", currentToken.padEnd(33, " "), "║");
-  if (verifiedCode)
-    console.log("║ STATUS:            ALREADY VERIFIED".padEnd(55, " "), "║");
-  console.log("╚══════════════════════════════════════════════════════╝\n");
-
-  return res.json({
-    email,
-    secret: finalSecret,
-    provisioningUri: finalUri,
-    verifiedCode,
-  });
 };
 
 const verifyRegistrationCode = async (req, res) => {
-  const { email, code, secret } = req.body;
+  const { email, code } = req.body;
   const normalizedEmail = normalizeEmail(email);
 
-  if (!normalizedEmail || !code || !secret) {
+  if (!normalizedEmail || !isValidSixDigitCode(code)) {
     return res.status(400).json({ message: "Data required." });
   }
-
-  const isValid = speakeasy.totp.verify({
-    secret: secret,
-    encoding: "base32",
-    token: code,
-    window: 1,
-  });
-  if (!isValid) return res.status(400).json({ message: "Invalid code." });
-
-  // Mark in database as verified
-  await OtpRequest.findOneAndUpdate(
-    { email: normalizedEmail, action: "register_email", verifiedAt: null },
-    { $set: { verifiedAt: new Date() } },
-    { sort: { createdAt: -1 } },
-  );
+  const verification = await verifyOtpRequest({ email: normalizedEmail, action: "register_email", channel: "email", code });
+  if (!verification.ok) return res.status(400).json({ message: "Invalid or expired code." });
 
   req.session.registrationProgress = {
     email: normalizedEmail,
     stepIndex: 1,
     formData: {
-      email: normalizedEmail,
-      registrationSecret: secret,
-      verifiedCode: code,
+      ...(normalizedEmail ? { email: normalizedEmail } : {}),
       emailVerified: true,
     },
   };
@@ -513,6 +465,7 @@ const verifyRegistrationCode = async (req, res) => {
     return res.json({
       message: "Success",
       registrationProgress: req.session.registrationProgress,
+      registrationVerificationToken: signRegistrationVerificationToken({ email: normalizedEmail }),
     });
   });
 };
@@ -539,18 +492,62 @@ const register = async (req, res) => {
     messenger_handle,
     delivery_instructions,
     locations = [],
+    registrationVerificationToken,
   } = req.body;
   try {
     const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = canonicalizePhMobile(phone);
+    const registrationProgress = req.session?.registrationProgress?.formData || {};
+    const emailVerified = Boolean(
+      registrationProgress.emailVerified
+      && normalizeEmail(registrationProgress.email) === normalizedEmail,
+    );
+    const phoneVerified = Boolean(
+      registrationProgress.phoneVerified
+      && canonicalizePhMobile(registrationProgress.phone) === normalizedPhone,
+    );
+
+    let tokenVerified = false;
+    if (registrationVerificationToken) {
+      try {
+        const decoded = jwt.verify(registrationVerificationToken, env.jwtSecret);
+        tokenVerified = decoded?.purpose === "registration_verification"
+          && ((decoded.email && normalizeEmail(decoded.email) === normalizedEmail)
+            || (decoded.phone && canonicalizePhMobile(decoded.phone) === normalizedPhone));
+      } catch (_error) {
+        tokenVerified = false;
+      }
+    }
+
+    if (!emailVerified && !phoneVerified && !tokenVerified) {
+      return res.status(403).json({
+        message: "Verify your email or mobile number before creating an account.",
+      });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Auto-generate alias from email if not provided (Technical Fallback)
-    const finalAlias = (alias || normalizedEmail.split("@")[0] || "")
+    const finalAlias = (
+      alias
+      || normalizedEmail.split("@")[0]
+      || (normalizedPhone ? `sms-${normalizedPhone}` : "")
+    )
       .toLowerCase()
       .trim();
 
     const primaryLoc = locations[0] || null;
+    let assignedBranch = "";
+    if (primaryLoc?.address) {
+      try {
+        assignedBranch = (await resolveConfiguredBranch(primaryLoc.address))?.name || "";
+      } catch (error) {
+        // Coverage can be retried later from the saved address. A temporary
+        // branch lookup issue must not prevent a verified customer signup.
+        console.error("Unable to assign registration branch:", error.message);
+      }
+    }
     const addressString = primaryLoc
       ? `${primaryLoc.address.street}, ${primaryLoc.address.city}, ${primaryLoc.address.province}`.trim()
       : "";
@@ -561,13 +558,14 @@ const register = async (req, res) => {
       name_last,
       alias: finalAlias,
       email: normalizedEmail,
-      phone: canonicalizePhMobile(phone),
+      phone: normalizedPhone,
       passwordHash,
       messenger_handle,
       // Public registration must never be allowed to provision a privileged
-      // account. Staff are created by Super Admin.
+      // account or choose its own branch. Staff are created by Super Admin.
       role: "customer",
-      assignedBranch: "",
+      assignedBranch,
+      activeBranch: assignedBranch,
       address: addressString,
       municipality: municipality || primaryLoc?.address?.city || "",
       municipality_code: municipality_code || "",
@@ -591,7 +589,12 @@ const register = async (req, res) => {
     });
 
     // Final database purge for this email after successful registration
-    await OtpRequest.deleteMany({ email: normalizedEmail });
+    await OtpRequest.deleteMany({
+      $or: [
+        { email: normalizedEmail },
+        ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+      ],
+    });
     if (req.session) req.session.destroy();
 
     const token = signAccessToken({ sub: newUser.id, role: newUser.role });
@@ -689,10 +692,7 @@ const updateRegistrationProgress = async (req, res) => {
     ...existingForm,
     ...incomingForm,
     email: email || existingForm.email || "",
-    registrationSecret: existingForm.registrationSecret || incomingForm.registrationSecret || "",
-    provisioningUri: existingForm.provisioningUri || incomingForm.provisioningUri || "",
-    verifiedCode: existingForm.verifiedCode || incomingForm.verifiedCode || "",
-    emailVerified: Boolean(existingForm.emailVerified || existingForm.verifiedCode || incomingForm.emailVerified),
+    emailVerified: Boolean(existingForm.emailVerified || incomingForm.emailVerified),
   };
 
   req.session.registrationProgress = {
@@ -720,47 +720,29 @@ const me = async (req, res) => {
 };
 
 const requestPasswordReset = async (req, res) => {
-  const channel = String(req.body?.channel || "email").toLowerCase();
-  const rawIdentifier = req.body?.identifier || req.body?.email || req.body?.phone || "";
-  if (!["email", "sms"].includes(channel)) {
-    return res.status(400).json({ message: "Choose email or SMS verification." });
-  }
-
-  const email = channel === "email" ? normalizeEmail(rawIdentifier) : "";
-  const phone = channel === "sms" ? canonicalizePhMobile(rawIdentifier) : "";
-  if (channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ message: "Enter a valid registered email address." });
-  }
-  if (channel === "sms" && !/^09\d{9}$/.test(phone)) {
-    return res.status(400).json({ message: "Enter a valid registered mobile number (09XXXXXXXXX)." });
-  }
-
+  const channel = req.body.channel === "sms" ? "sms" : "email";
+  const identifier = String(req.body.identifier || req.body.email || req.body.phone || "").trim();
+  const email = channel === "email" ? normalizeEmail(identifier) : "";
+  const phone = channel === "sms" ? canonicalizePhMobile(identifier) : "";
   const user = await User.findOne(channel === "email" ? { email } : { phone });
-  // Keep the response deliberately neutral so this endpoint cannot be used to
-  // discover whether a SuperAdmin or another account exists.
-  if (!user || user.isDeleted || user.accountStatus === "deleted") {
-    return res.json({ message: "If the account details match, a verification code has been sent." });
-  }
+  if (!user) return res.json({ message: "If the account exists, a verification code has been sent." });
 
   try {
-    await OtpRequest.deleteMany({
+    const { otpRequest } = await createOtpRequest({
+      email,
+      phone,
       action: "password_reset",
       channel,
-      ...(channel === "email" ? { email } : { phone }),
-      verifiedAt: null,
     });
-    await createOtpRequest({
-      email: channel === "email" ? user.email : "",
-      phone: channel === "sms" ? user.phone : "",
-      action: "password_reset",
-      channel,
-      metadata: { userId: String(user._id), role: user.role },
+    return res.json({
+      message: "If the account exists, a verification code has been sent.",
+      expiresAt: otpRequest.expiresAt,
+      resendAvailableAt: new Date(otpRequest.requestedAt.getTime() + OTP_RESEND_COOLDOWN_SECONDS * 1000),
     });
-    return res.json({ message: "If the account details match, a verification code has been sent." });
   } catch (error) {
-    console.error("Password recovery code dispatch failed:", error.message);
-    return res.status(502).json({
-      message: error.message || "Unable to send a verification code right now.",
+    return res.status(error.status || 502).json({
+      message: error.message || "Unable to send verification code.",
+      retryAfterSeconds: error.retryAfterSeconds || undefined,
     });
   }
 };
@@ -768,11 +750,6 @@ const requestPasswordReset = async (req, res) => {
 const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
-  if (!isStrongRecoveryPassword(password)) {
-    return res.status(400).json({
-      message: "Use a strong password with at least 8 characters, uppercase, lowercase, number, and special character.",
-    });
-  }
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
     const user = await User.findById(decoded.sub);
@@ -787,45 +764,29 @@ const resetPassword = async (req, res) => {
 };
 
 const resetPasswordWithCode = async (req, res) => {
-  const { code, newPassword } = req.body || {};
-  const channel = String(req.body?.channel || "email").toLowerCase();
-  const rawIdentifier = req.body?.identifier || req.body?.email || req.body?.phone || "";
-  if (!["email", "sms"].includes(channel)) {
-    return res.status(400).json({ message: "Choose email or SMS verification." });
-  }
-  if (!isValidSixDigitCode(code)) {
-    return res.status(400).json({ message: "Enter the six-digit verification code." });
-  }
-  if (!isStrongRecoveryPassword(newPassword)) {
-    return res.status(400).json({
-      message: "Use a strong password with at least 8 characters, uppercase, lowercase, number, and special character.",
-    });
-  }
-
-  const normalizedEmail = channel === "email" ? normalizeEmail(rawIdentifier) : "";
-  const normalizedPhone = channel === "sms" ? canonicalizePhMobile(rawIdentifier) : "";
-  if ((channel === "email" && !normalizedEmail) || (channel === "sms" && !/^09\d{9}$/.test(normalizedPhone))) {
-    return res.status(400).json({ message: "Enter the same registered account detail used to request the code." });
-  }
-  const user = await User.findOne(channel === "email" ? { email: normalizedEmail } : { phone: normalizedPhone });
-  if (!user || user.isDeleted || user.accountStatus === "deleted") {
-    return res.status(400).json({ message: "Invalid or expired verification code." });
-  }
+  const { email: requestedEmail, phone: requestedPhone, identifier, code, newPassword } = req.body;
+  const channel = req.body.channel === "sms" ? "sms" : "email";
+  const normalizedEmail = channel === "email"
+    ? normalizeEmail(identifier || requestedEmail)
+    : "";
+  const normalizedPhone = channel === "sms"
+    ? canonicalizePhMobile(identifier || requestedPhone)
+    : "";
   const verification = await verifyOtpRequest({
-    email: channel === "email" ? user.email : "",
-    phone: channel === "sms" ? user.phone : "",
+    email: normalizedEmail,
+    phone: normalizedPhone,
     action: "password_reset",
     channel,
     code,
   });
   if (!verification.ok)
-    return res.status(400).json({ message: "Invalid or expired verification code." });
+    return res.status(400).json({ message: "Invalid code." });
+  const user = await User.findOne(channel === "email" ? { email: normalizedEmail } : { phone: normalizedPhone });
+  if (!user) return res.status(404).json({ message: "User not found." });
   const salt = await bcrypt.genSalt(10);
   user.passwordHash = await bcrypt.hash(newPassword, salt);
-  user.failedLoginAttempts = 0;
-  user.lockoutUntil = null;
   await user.save();
-  res.json({ message: "Password reset successfully. You can now sign in." });
+  res.json({ message: "Success" });
 };
 
 module.exports = {

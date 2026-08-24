@@ -15,7 +15,7 @@ export default function LogDeleteScreen() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteServiceLog(logId);
+      await deleteServiceLog(taskId, logId);
       router.replace(`/technician/task/${taskId}/unit/log/select`);
     } catch (error) {
       Alert.alert("Delete Failed", error?.message || "Unable to delete this service note.");

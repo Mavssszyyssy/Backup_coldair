@@ -19,6 +19,7 @@ const {
   changePassword,
   requestPasswordChangeEmail,
   deleteAccount,
+  unlockUser,
   updateUserStatus,
   deleteUserById,
 } = require("../controllers/userController");
@@ -59,5 +60,6 @@ router.patch("/:id", allowRoles("admin", "superadmin"), updateProfileById);
 router.patch("/:id/status", allowRoles("admin", "superadmin"), updateUserStatus);
 router.put("/:id/profile", allowRoles("admin", "superadmin"), updateProfileById);
 router.delete("/:id", allowRoles("admin", "superadmin"), deleteUserById);
+router.post("/:id/unlock", allowRoles("admin", "superadmin"), unlockUser);
 
 module.exports = router;

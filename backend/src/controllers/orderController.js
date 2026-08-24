@@ -1,7 +1,9 @@
+const crypto = require("crypto");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Task = require("../models/Task");
 const Notification = require("../models/Notification");
+const { createDedupedNotification, notifyOperationalStaff } = require("../services/operationalNotificationService");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
 const Unit = require("../models/Unit");
@@ -18,8 +20,8 @@ const {
   createCheckoutSession,
   getCheckoutSession,
   isConfigured: isPaymongoConfigured,
+  getConfigurationError: getPaymongoConfigurationError,
 } = require("../services/paymongoClient");
-const { getScheduledDateError } = require("../utils/scheduling");
 
 const workflowLabel = (status) => {
   switch (status) {
@@ -34,6 +36,114 @@ const workflowLabel = (status) => {
     default:
       return "CANCELLED";
   }
+};
+
+const fulfillmentStages = {
+  placed: "Order Placed",
+  confirmed: "Order Confirmed",
+  preparing: "Preparing",
+  dispatched: "Dispatched",
+  out_for_delivery: "Out for Delivery",
+  arrived: "Arrived",
+  installation: "Installation",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const appendFulfillmentEvent = (order, stage, detail = "", timestamp = new Date()) => {
+  if (!order || !fulfillmentStages[stage]) return;
+  const existing = Array.isArray(order.fulfillmentTimeline)
+    ? order.fulfillmentTimeline
+    : [];
+  // A stage is a milestone, not an activity feed. Keeping one entry per
+  // stage prevents duplicate tracking tickets when a request is retried.
+  if (existing.some((event) => String(event?.stage || "") === stage)) return;
+  order.fulfillmentTimeline = [
+    ...existing,
+    { stage, label: fulfillmentStages[stage], detail: String(detail || ""), timestamp },
+  ];
+};
+
+const buildTrackingTimeline = (order = {}, task = null) => {
+  const stored = Array.isArray(order.fulfillmentTimeline)
+    ? order.fulfillmentTimeline.map((event) => ({
+        stage: String(event?.stage || ""),
+        label: String(event?.label || fulfillmentStages[event?.stage] || "Update"),
+        detail: String(event?.detail || ""),
+        timestamp: event?.timestamp || null,
+      })).filter((event) => event.stage)
+    : [];
+  const byStage = new Map(stored.map((event) => [event.stage, event]));
+  const ensure = (stage, timestamp, detail = "") => {
+    if (!timestamp || byStage.has(stage)) return;
+    byStage.set(stage, { stage, label: fulfillmentStages[stage], detail, timestamp });
+  };
+
+  ensure("placed", order.createdAt, "Order submitted");
+  if (["to_deliver", "to_install", "complete"].includes(order.workflowStatus)) {
+    ensure("confirmed", order.paymongo?.paidAt || order.updatedAt, "Order approved");
+    ensure("preparing", order.updatedAt, "Preparing your assigned unit");
+  }
+  if (["to_install", "complete"].includes(order.workflowStatus)) {
+    ensure("dispatched", order.dispatchedAt || order.updatedAt, "Order dispatched");
+  }
+  const taskStatus = String(task?.status || "").toLowerCase();
+  if (["on-the-way", "arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
+    ensure("out_for_delivery", task?.payload?.onTheWayAt || task?.updatedAt, "Technician is on the way");
+  }
+  if (["arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
+    ensure("arrived", task?.payload?.checkIn?.checkedInAt || task?.updatedAt, "Technician arrived at the address");
+  }
+  if (["installing", "in-progress", "completed"].includes(taskStatus)) {
+    ensure("installation", task?.payload?.installationStartedAt || task?.updatedAt, "Installation in progress");
+  }
+  if (order.workflowStatus === "complete") {
+    ensure("completed", task?.completedAt || order.updatedAt, "Installation completed");
+  }
+  if (order.workflowStatus === "cancelled") {
+    ensure("cancelled", order.cancelledAt || order.updatedAt, order.cancellationReason || "Order cancelled");
+  }
+
+  const orderedStages = Object.keys(fulfillmentStages);
+  const timeline = orderedStages
+    .filter((stage) => byStage.has(stage))
+    .map((stage) => byStage.get(stage));
+  const current = timeline[timeline.length - 1] || null;
+  return { timeline, currentStage: current?.stage || "placed", currentLabel: current?.label || "Order Placed" };
+};
+
+// Monetary amounts are calculated only on the server from the resolved
+// catalogue items and destination branch. Web and mobile may display an
+// estimate, but neither client is allowed to decide the stored transaction
+// amount.
+const DELIVERY_FEE_BY_BRANCH = {
+  Bulacan: 380,
+  Cavite: 350,
+  Laguna: 400,
+  Bataan: 420,
+  Pangasinan: 550,
+  Ilocos: 600,
+};
+const DEFAULT_DELIVERY_FEE = 400;
+const VAT_RATE = 0.12;
+const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
+const calculateOrderTotals = (items = [], branch = "") => {
+  const subtotal = roundMoney(
+    items.reduce(
+      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+      0,
+    ),
+  );
+  const discountAmount = 0;
+  const vatAmount = roundMoney((subtotal - discountAmount) * VAT_RATE);
+  const shippingFee = Number(DELIVERY_FEE_BY_BRANCH[branch] || DEFAULT_DELIVERY_FEE);
+  return {
+    subtotal,
+    vatAmount,
+    shippingFee,
+    discountAmount,
+    total: roundMoney(subtotal - discountAmount + vatAmount + shippingFee),
+  };
 };
 
 const normalizePhMobile = (value = "") => {
@@ -192,9 +302,11 @@ const buildSerialNumber = (product) => {
   return `CAACT-${skuPart || "AC"}-${timePart}-${randomSerialToken()}`;
 };
 
-const buildSerialQrCode = (product, serialNumber) =>
+const buildQrUnitId = () => `QRU-${crypto.randomUUID().replace(/-/g, "").slice(0, 18).toUpperCase()}`;
+
+const buildSerialQrCode = (product, serialNumber, qrUnitId = "") =>
   [
-    `AC_UNIT:${serialNumber}`,
+    qrUnitId ? `QR_UNIT:${qrUnitId}` : `AC_UNIT:${serialNumber}`,
     `PRODUCT:${product?._id || product?.id || ""}`,
     `SKU:${product?.sku || ""}`,
   ].join("|");
@@ -242,9 +354,11 @@ const ensureAvailableSerialUnits = async (
 
   for (let index = 0; index < missing; index += 1) {
     const serialNumber = await generateUniqueSerialNumber(product, seen, session);
+    const qrUnitId = buildQrUnitId();
     product.serialUnits.push({
       serialNumber,
-      qrCode: buildSerialQrCode(product, serialNumber),
+      qrUnitId,
+      qrCode: buildSerialQrCode(product, serialNumber, qrUnitId),
       branch,
       status: "available",
     });
@@ -393,41 +507,50 @@ const decrementProductStockForOrder = async (
     );
   }
 
-  const updatedProduct = await Product.findById(productId).select("name stock branchStock threshold");
+  const updatedProduct = await withOptionalSession(
+    Product.findById(productId).select("name stock branchStock threshold"),
+    session,
+  );
   const remainingBranchStock = hasBranchSnapshot
     ? Number(updatedProduct?.branchStock?.get(branch) || 0)
     : Number(updatedProduct?.stock || 0);
-  if (remainingBranchStock !== 0) return;
+  const lowStockThreshold = Math.max(1, Number(updatedProduct?.threshold || 5));
+  if (remainingBranchStock > lowStockThreshold) return;
 
   try {
-    const recipients = await User.find({
-      role: { $in: ["admin", "superadmin"] },
-      accountStatus: { $ne: "disabled" },
-      $or: [
-        { role: "superadmin" },
-        { assignedBranch: branch },
-        { activeBranch: branch },
-        { assignedBranch: "" },
-        { activeBranch: "" },
-      ],
-    }).select("_id");
-    const title = "Out of stock";
-    const message = `${product.name} is now out of stock${branch ? ` at ${branch}` : ""}. SuperAdmin action is required.`;
-    if (recipients.length) {
-      await Notification.insertMany(
-        recipients.map((recipient) => ({
-          user: recipient._id,
-          type: "inventory",
-          title,
-          message,
-          unread: true,
-          status: "unread",
-        })),
-      );
-    }
+    const isOutOfStock = remainingBranchStock <= 0;
+    const title = isOutOfStock ? "Out of stock" : "Low stock";
+    const message = isOutOfStock
+      ? `${product.name} is now out of stock${branch ? ` at ${branch}` : ""}. SuperAdmin action is required.`
+      : `${product.name} has ${remainingBranchStock} unit(s) remaining${branch ? ` at ${branch}` : ""}. Reorder before it runs out.`;
+    await notifyOperationalStaff({
+      branch,
+      title,
+      message,
+      type: "inventory",
+      category: "stock",
+      severity: isOutOfStock ? "critical" : "warning",
+      targetId: String(productId),
+      targetType: "inventory",
+      dedupeKey: `${isOutOfStock ? "out-of-stock" : "low-stock"}:${productId}:${branch}`,
+    });
   } catch (error) {
     console.error("Failed to create zero-stock notifications:", error);
   }
+};
+
+const restoreReservedProductStock = async (
+  productId,
+  branch,
+  quantity,
+  hasBranchSnapshot,
+  session = null,
+) => {
+  if (!productId || !branch || Number(quantity) < 1) return;
+  const increment = hasBranchSnapshot
+    ? { stock: Number(quantity), [`branchStock.${branch}`]: Number(quantity) }
+    : { stock: Number(quantity) };
+  await withOptionalSession(Product.updateOne({ _id: productId }, { $inc: increment }), session);
 };
 
 const lifecycleActions = {
@@ -435,6 +558,7 @@ const lifecycleActions = {
     from: ["to_pay"],
     to: "to_deliver",
     status: "paid",
+    deliveryStatus: "preparing",
     title: "Order approved",
     message: (orderCode) =>
       `Your order ${orderCode} was approved. Your order is now in TO DELIVER stage.`,
@@ -443,6 +567,7 @@ const lifecycleActions = {
     from: ["to_deliver"],
     to: "to_install",
     status: "paid",
+    deliveryStatus: "dispatched",
     title: "Order dispatched",
     message: (orderCode) =>
       `Your order ${orderCode} is on the way and moved to TO INSTALL stage.`,
@@ -451,6 +576,7 @@ const lifecycleActions = {
     from: ["to_install"],
     to: "complete",
     status: "paid",
+    deliveryStatus: "completed",
     title: "Order completed",
     message: (orderCode) =>
       `Your order ${orderCode} has been completed. Thank you for choosing AeroPulse.`,
@@ -459,6 +585,7 @@ const lifecycleActions = {
     from: ["to_pay", "to_deliver"],
     to: "cancelled",
     status: "cancelled",
+    deliveryStatus: "cancelled",
     title: "Order cancelled",
     message: (orderCode) =>
       `Your order ${orderCode} has been cancelled. Please contact support if you need assistance.`,
@@ -495,16 +622,97 @@ const restoreStockForCancelledOrder = async (order, session = null) => {
   );
 };
 
+const releaseOrderInventoryOnce = async (order, reason = "") => {
+  if (
+    !order ||
+    order.stockReservationStatus === "released" ||
+    order.stockReservationStatus === "consumed" ||
+    order.stockReleasedAt ||
+    order.workflowStatus === "complete"
+  ) {
+    return false;
+  }
+
+  await restoreStockForCancelledOrder(order);
+  await updateSerialUnitsForOrder(order, "cancelled");
+  order.stockReservationStatus = "released";
+  order.stockReleasedAt = new Date();
+  if (reason && !order.cancellationReason) order.cancellationReason = reason;
+  return true;
+};
+
+const reReserveReleasedOrderInventory = async (order) => {
+  if (!order || order.stockReservationStatus !== "released") return;
+
+  const completedReservations = [];
+  try {
+    for (const item of order.items || []) {
+      const quantity = Number(item.quantity || 0);
+      const productId = String(item.productId || "").trim();
+      const branch = String(item.sourceBranch || order.stockSourceBranch || "").trim();
+      if (quantity < 1 || !mongoose.Types.ObjectId.isValid(productId) || !branch) {
+        throw new HttpError(409, "This order no longer has a valid inventory reservation.");
+      }
+
+      const product = await Product.findById(productId);
+      if (!product) throw new HttpError(409, `Product ${item.name || productId} is no longer available.`);
+      const hasBranchSnapshot = Array.from(product.branchStock?.values?.() || []).some(
+        (value) => Number(value || 0) > 0,
+      );
+      const reservedUnits = await reserveSerialUnitsForOrder(
+        product,
+        branch,
+        quantity,
+        order.orderCode,
+      );
+      const serialNumbers = reservedUnits.map((unit) => unit.serialNumber);
+      try {
+        await decrementProductStockForOrder(
+          product,
+          branch,
+          quantity,
+          hasBranchSnapshot,
+        );
+      } catch (error) {
+        await releaseReservedSerialUnits(product._id, serialNumbers);
+        throw error;
+      }
+
+      completedReservations.push({ productId, branch, quantity, hasBranchSnapshot, serialNumbers });
+      item.serialNumbers = serialNumbers;
+      item.serialUnits = reservedUnits;
+    }
+
+    order.stockReservationStatus = "reserved";
+    order.stockReleasedAt = null;
+    await order.save();
+  } catch (error) {
+    await Promise.allSettled(
+      completedReservations.reverse().map(async (reservation) => {
+        await restoreReservedProductStock(
+          reservation.productId,
+          reservation.branch,
+          reservation.quantity,
+          reservation.hasBranchSnapshot,
+        );
+        await releaseReservedSerialUnits(
+          reservation.productId,
+          reservation.serialNumbers,
+        );
+      }),
+    );
+    throw error;
+  }
+};
+
 const rollbackUnpaidOnlineOrder = async (order) => {
   if (!order || !isOnlinePaymentMethod(order.paymentMethod)) return;
 
   try {
-    await restoreStockForCancelledOrder(order);
-    await updateSerialUnitsForOrder(order, "cancelled");
+    await releaseOrderInventoryOnce(order, "PayMongo checkout could not be started.");
     order.workflowStatus = "cancelled";
     order.status = "cancelled";
     order.paymentStatus = "failed";
-    order.cancellationReason = "PayMongo checkout could not be started.";
     await order.save();
   } catch (rollbackError) {
     console.error("Unable to roll back unpaid online order:", rollbackError);
@@ -580,6 +788,23 @@ const isOnlinePaymentMethod = (paymentMethod = "") =>
     String(paymentMethod || "").toLowerCase(),
   );
 
+// An invoice is a completed transaction record, not a record of every
+// checkout attempt. Keeping this rule in the API makes Mobile and Web show
+// the same primary receipt and hides legacy pending/failed attempt tickets.
+const hasPrimaryReceipt = (order = {}) => {
+  const isOnline =
+    isOnlinePaymentMethod(order.paymentMethod) ||
+    String(order.paymentProvider || "").toLowerCase() === "paymongo";
+  return isOnline
+    ? String(order.paymentStatus || "").toLowerCase() === "paid"
+    : Boolean(String(order.receipt?.receiptNumber || "").trim());
+};
+
+const primaryReceiptNumber = (order = {}) => {
+  const existing = String(order.receipt?.receiptNumber || "").trim();
+  return existing || `RCP-${String(order.orderCode || order.id || "").trim()}`;
+};
+
 const getPaymongoRuntimeStatus = () => {
   const configuredMode = String(env.paymongoMode || process.env.PAYMONGO_MODE || "").trim().toLowerCase();
   const keyPrefix = String(env.paymongoSecretKey || "").startsWith("sk_live_")
@@ -650,7 +875,10 @@ const envFrontendUrl = () =>
 const attachPaymongoCheckout = async (order, options = {}) => {
   if (!isOnlinePaymentMethod(order.paymentMethod)) return null;
   if (!isPaymongoConfigured()) {
-    throw new HttpError(500, "PayMongo secret key is not configured on the backend.");
+    throw new HttpError(
+      500,
+      getPaymongoConfigurationError() || "PayMongo secret key is not configured on the backend.",
+    );
   }
 
   const { successUrl, cancelUrl } = buildPaymentReturnUrls(order, options);
@@ -769,9 +997,109 @@ const findOrderForPaymongoEvent = async (event) => {
   return Order.findOne({ $or: conditions });
 };
 
+const parsePaymongoSignature = (header = "") =>
+  String(header || "")
+    .split(",")
+    .map((part) => part.trim().split("="))
+    .filter(([key, value]) => key && value)
+    .reduce((result, [key, value]) => {
+      result[String(key).trim().toLowerCase()] = String(value).trim();
+      return result;
+    }, {});
+
+const verifyPaymongoWebhookSignature = (req) => {
+  const secret = String(env.paymongoWebhookSecret || process.env.PAYMONGO_WEBHOOK_SECRET || "").trim();
+  if (!secret) {
+    throw new HttpError(503, "PayMongo webhook secret is not configured on the backend.");
+  }
+
+  const signatureHeader =
+    req.get?.("Paymongo-Signature") ||
+    req.headers?.["paymongo-signature"] ||
+    req.headers?.["x-paymongo-signature"] ||
+    "";
+  const signature = parsePaymongoSignature(signatureHeader);
+  const timestamp = Number(signature.t);
+  const rawBody = Buffer.isBuffer(req.rawBody)
+    ? req.rawBody
+    : Buffer.from(JSON.stringify(req.body || {}));
+  const maxAgeSeconds = 5 * 60;
+
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    throw new HttpError(401, "Invalid PayMongo webhook signature.");
+  }
+  if (Math.abs(Math.floor(Date.now() / 1000) - timestamp) > maxAgeSeconds) {
+    throw new HttpError(401, "Expired PayMongo webhook signature.");
+  }
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody.toString("utf8")}`)
+    .digest("hex");
+  const configuredMode = String(env.paymongoMode || process.env.PAYMONGO_MODE || "").toLowerCase();
+  const liveMode = configuredMode === "live" || configuredMode === "production";
+  const provided = String((liveMode ? signature.li : signature.te) || signature.li || signature.te || "")
+    .replace(/^sha256=/i, "")
+    .trim()
+    .toLowerCase();
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const providedBuffer = Buffer.from(provided, "utf8");
+  if (
+    expectedBuffer.length !== providedBuffer.length ||
+    !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+  ) {
+    throw new HttpError(401, "Invalid PayMongo webhook signature.");
+  }
+  return true;
+};
+
+const extractMoneyAndCurrency = (value = {}) => {
+  const attributes =
+    value?.data?.attributes || value?.attributes || value || {};
+  const amountCandidates = [
+    attributes.amount_total,
+    attributes.amount,
+    attributes.total_amount,
+    attributes.payment?.attributes?.amount,
+    attributes.payments?.[0]?.attributes?.amount,
+  ];
+  const amount = amountCandidates.find((candidate) => Number.isFinite(Number(candidate)));
+  const currency = String(
+    attributes.currency ||
+      attributes.currency_code ||
+      attributes.payment?.attributes?.currency ||
+      attributes.payments?.[0]?.attributes?.currency ||
+      "",
+  ).toUpperCase();
+  return { amount: amount === undefined ? null : Number(amount), currency };
+};
+
+const assertPaymongoAmountMatchesOrder = (order, eventOrSession = {}) => {
+  const { amount, currency } = extractMoneyAndCurrency(eventOrSession);
+  if (currency && currency !== "PHP") {
+    throw new HttpError(409, "PayMongo payment currency does not match the order currency.");
+  }
+  if (amount === null) return;
+  const expectedCentavos = Math.round(Number(order.totalAmount || 0) * 100);
+  if (Math.round(amount) !== expectedCentavos) {
+    throw new HttpError(409, "PayMongo payment amount does not match the order total.");
+  }
+};
+
 const applyPaymongoEventToOrder = async (order, event, rawPayload = {}) => {
   if (!order) return null;
   const eventType = String(event.eventType || "").toLowerCase();
+  const eventKey = [
+    eventType,
+    event.resourceId || event.paymentId || event.paymentIntentId || event.checkoutSessionId || "",
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(":");
+  const previousPaymongo = order.paymongo?.toObject?.() || order.paymongo || {};
+  if (eventKey && previousPaymongo.lastEventKey === eventKey) {
+    return order;
+  }
   const isPaid =
     eventType === "payment.paid" ||
     eventType === "checkout_session.payment.paid" ||
@@ -785,24 +1113,53 @@ const applyPaymongoEventToOrder = async (order, event, rawPayload = {}) => {
       String(event.attributes?.status || "").toLowerCase(),
     );
 
+  if (isPaid) {
+    assertPaymongoAmountMatchesOrder(order, event);
+  }
+
   order.paymentProvider = "paymongo";
   order.paymongo = {
-    ...(order.paymongo?.toObject?.() || order.paymongo || {}),
+    ...previousPaymongo,
     checkoutSessionId: event.checkoutSessionId || order.paymongo?.checkoutSessionId || "",
     paymentIntentId: event.paymentIntentId || order.paymongo?.paymentIntentId || "",
     paymentId: event.paymentId || order.paymongo?.paymentId || "",
     referenceNumber: event.orderCode || order.paymongo?.referenceNumber || order.orderCode,
     status: event.attributes?.status || order.paymongo?.status || "",
     lastEventType: event.eventType,
+    lastEventKey: eventKey,
     raw: rawPayload,
   };
 
   if (isPaid) {
+    // PayMongo may deliver both payment.paid and checkout_session.completed.
+    // Once the order is paid, do not issue a second receipt, reserve stock a
+    // second time, or send duplicate customer notifications.
+    const wasAlreadyPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+    // A late payment callback can arrive after an earlier failed/expired
+    // callback released the reservation. Re-reserve before approving so the
+    // paid order cannot advance with missing stock or serial assignments.
+    await reReserveReleasedOrderInventory(order);
     order.paymentStatus = "paid";
     order.status = "paid";
     order.paymongo.paidAt = order.paymongo.paidAt || new Date();
+    if (wasAlreadyPaid) {
+      // Older paid orders may predate deterministic receipt issuance. Repair
+      // the missing primary receipt without issuing another one.
+      if (!String(order.receipt?.receiptNumber || "").trim()) {
+        order.receipt = {
+          ...(order.receipt?.toObject?.() || order.receipt || {}),
+          receiptNumber: primaryReceiptNumber(order),
+          issuedAt: order.receipt?.issuedAt || new Date().toISOString(),
+          paymentStatus: "paid",
+          amountPaid: Number(order.totalAmount || 0),
+        };
+      }
+      await order.save();
+      return order;
+    }
     order.receipt = {
       ...(order.receipt?.toObject?.() || order.receipt || {}),
+      receiptNumber: primaryReceiptNumber(order),
       issuedAt: new Date().toISOString(),
       paymentMethod: order.paymentMethod,
       paymentProvider: "paymongo",
@@ -829,10 +1186,22 @@ const applyPaymongoEventToOrder = async (order, event, rawPayload = {}) => {
       title: "Payment received",
       message: `Your payment for order ${order.orderCode} was received through PayMongo.`,
     });
+    await createStaffOrderNotification({
+      order,
+      title: "Payment completed",
+      message: `PayMongo confirmed payment for ${order.orderCode}. The order is ready for fulfilment.`,
+    });
     return order;
   }
 
   if (isFailed) {
+    // Do not let a delayed failure callback roll back an order that has
+    // already been paid and moved beyond checkout. PayMongo can deliver
+    // callbacks out of order, so the server's current lifecycle wins.
+    if (String(order.paymentStatus || "").toLowerCase() === "paid") {
+      await order.save();
+      return order;
+    }
     const eventStatus = String(event.attributes?.status || "").toLowerCase();
     const eventPaymentStatus = String(event.attributes?.payment_status || "").toLowerCase();
     const nextPaymentStatus =
@@ -844,6 +1213,10 @@ const applyPaymongoEventToOrder = async (order, event, rawPayload = {}) => {
           ? "cancelled"
           : "failed";
     order.paymentStatus = nextPaymentStatus;
+    await releaseOrderInventoryOnce(
+      order,
+      `PayMongo payment ${nextPaymentStatus}.`,
+    );
     order.receipt = {
       ...(order.receipt?.toObject?.() || order.receipt || {}),
       paymentMethod: order.paymentMethod,
@@ -866,6 +1239,11 @@ const applyPaymongoEventToOrder = async (order, event, rawPayload = {}) => {
       customerId: order.customer,
       title: "Payment not completed",
       message: `Payment for order ${order.orderCode} was not completed. You may try paying again from your order details.`,
+    });
+    await createStaffOrderNotification({
+      order,
+      title: "Payment requires attention",
+      message: `PayMongo marked payment for ${order.orderCode} as ${nextPaymentStatus}. Stock was released where applicable.`,
     });
     return order;
   }
@@ -964,11 +1342,9 @@ const hydrateOrdersWithInventoryQrCodes = async (orders = []) => {
     });
   }
 
-  if (inventoryQueries.length === 0) return responses;
-
-  const products = await Product.find({ $or: inventoryQueries }).select(
-    "name sku serialUnits",
-  );
+  const products = inventoryQueries.length
+    ? await Product.find({ $or: inventoryQueries }).select("name sku serialUnits")
+    : [];
 
   const inventoryUnitBySerial = new Map();
   const assignedInventoryUnits = new Map();
@@ -1100,6 +1476,101 @@ const hydrateOrdersWithInventoryQrCodes = async (orders = []) => {
     });
   });
 
+  const tasks = orderCodes.length
+    ? await Task.find({ "payload.orderCode": { $in: orderCodes } })
+      .select("taskCode status assignedTechnicianName completedAt updatedAt proof payload")
+      .sort({ updatedAt: -1 })
+    : [];
+  const taskByOrderCode = new Map();
+  tasks.forEach((task) => {
+    const orderCode = String(task?.payload?.orderCode || "").trim();
+    if (orderCode && !taskByOrderCode.has(orderCode)) taskByOrderCode.set(orderCode, task);
+  });
+
+  const customerIds = responses
+    .map((order) => String(order.customer || "").trim())
+    .filter((id) => mongoose.Types.ObjectId.isValid(id));
+  const customers = customerIds.length
+    ? await User.find({ _id: { $in: customerIds } }).select("name email phone mobileNumber billingAddress")
+    : [];
+  const customerById = new Map(customers.map((customer) => [String(customer._id), customer]));
+
+  responses.forEach((order) => {
+    const task = taskByOrderCode.get(String(order.orderCode || "")) || null;
+    const customer = customerById.get(String(order.customer || ""));
+    const deliveryAddress = order.address || {};
+    const addressText = [
+      deliveryAddress.street,
+      deliveryAddress.barangay,
+      deliveryAddress.city,
+      deliveryAddress.province,
+      deliveryAddress.region,
+      deliveryAddress.postalCode,
+    ].filter(Boolean).join(", ");
+    const billingAddress = customer?.billingAddress?.toObject?.() || customer?.billingAddress || {};
+    const billingAddressText = [
+      billingAddress.street,
+      billingAddress.barangay,
+      billingAddress.city,
+      billingAddress.province,
+      billingAddress.region,
+      billingAddress.postalCode,
+    ].filter(Boolean).join(", ");
+    const paymentStatus = String(order.paymentStatus || order.receipt?.paymentStatus || "pending");
+    const tracking = buildTrackingTimeline(order, task);
+    order.tracking = {
+      trackingNumber: String(order.trackingNumber || ""),
+      estimatedDelivery: order.estimatedDelivery || "",
+      estimatedArrival: order.estimatedArrival || "",
+      currentStage: tracking.currentStage,
+      currentLabel: tracking.currentLabel,
+      timeline: tracking.timeline,
+    };
+    order.receiptAvailable = hasPrimaryReceipt(order);
+    if (!order.receiptAvailable) {
+      // Do not leak a historic placeholder receipt to the customer. Payment
+      // metadata remains available for the payment/retry workflow, but no
+      // invoice can be previewed or downloaded until it is official.
+      order.receipt = {
+        ...(order.receipt || {}),
+        receiptNumber: "",
+      };
+      order.invoice = null;
+      return;
+    }
+    const invoiceNumber = primaryReceiptNumber(order);
+    order.invoice = {
+      invoiceNumber,
+      orderNumber: String(order.orderCode || order.id || ""),
+      transactionDate: order.receipt?.issuedAt || order.createdAt || "",
+      customer: {
+        name: String(order.customerName || deliveryAddress.name || customer?.name || "Customer"),
+        phone: String(deliveryAddress.phone || customer?.phone || customer?.mobileNumber || ""),
+        email: String(customer?.email || ""),
+      },
+      billingAddress: billingAddressText
+        ? { ...billingAddress, formatted: billingAddressText, sameAsDelivery: false }
+        : { ...deliveryAddress, formatted: addressText, sameAsDelivery: true },
+      deliveryAddress: { ...deliveryAddress, formatted: addressText },
+      branch: String(order.stockSourceBranch || order.customerBranch || ""),
+      payment: {
+        method: String(order.paymentProvider || order.paymentMethod || ""),
+        status: paymentStatus,
+        reference: String(order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || ""),
+      },
+      orderStatus: String(order.workflowLabel || workflowLabel(order.workflowStatus)),
+      warranty: order.workflowStatus === "complete"
+        ? "Warranty is active for installed units."
+        : "Warranty activates after completed installation.",
+      technician: task ? {
+        name: String(task.assignedTechnicianName || order.assignedTechnician || ""),
+        taskCode: String(task.taskCode || ""),
+        status: String(task.status || ""),
+        installedAt: task.completedAt || null,
+      } : null,
+    };
+  });
+
   return responses;
 };
 
@@ -1124,13 +1595,13 @@ const createOrderNotification = async ({ customerId, title, message }) => {
       return;
     }
 
-    await Notification.create({
+    await createDedupedNotification({
       user: customerId,
       type: "order",
       title,
       message,
-      unread: true,
-      status: "unread",
+      targetType: "order",
+      dedupeKey: `customer-order:${customerId}:${title}:${message}`,
     });
   } catch (error) {
     console.error("Failed to create order notification:", error);
@@ -1140,38 +1611,17 @@ const createOrderNotification = async ({ customerId, title, message }) => {
 const createStaffOrderNotification = async ({ order, title, message }) => {
   if (!order || !title || !message) return;
   try {
-    const branch = String(order.stockSourceBranch || order.customerBranch || "").trim();
-    const branchFilter = branch
-      ? [
-          { role: "superadmin" },
-          { activeBranch: branch },
-          { assignedBranch: branch },
-          { activeBranch: "" },
-          { assignedBranch: "" },
-          { activeBranch: { $exists: false } },
-          { assignedBranch: { $exists: false } },
-        ]
-      : [{ role: { $in: ["admin", "superadmin", "manager", "owner"] } }];
-    const staff = await User.find({
-      role: { $in: ["admin", "superadmin", "manager", "owner"] },
-      isDeleted: { $ne: true },
-      accountStatus: { $ne: "deleted" },
-      $or: branchFilter,
-    }).select("_id notifications");
-    const notifications = staff
-      .filter((user) => {
-        const prefs = user.notifications?.toObject?.() || user.notifications || {};
-        return prefs.inApp !== false && prefs.push !== false && prefs.orderUpdates !== false;
-      })
-      .map((user) => ({
-        user: user._id,
-        type: "order",
-        title,
-        message,
-        targetId: String(order._id || order.id || ""),
-        route: "/superadmin/orders",
-      }));
-    if (notifications.length > 0) await Notification.insertMany(notifications);
+    await notifyOperationalStaff({
+      branch: String(order.stockSourceBranch || order.customerBranch || "").trim(),
+      title,
+      message,
+      type: "order",
+      category: "order",
+      targetId: String(order._id || order.id || ""),
+      targetType: "order",
+      dedupeKey: `staff-order:${order._id || order.orderCode}:${title}`,
+      roles: ["admin", "superadmin", "manager", "owner"],
+    });
   } catch (error) {
     console.warn("Failed to notify staff about order:", error);
   }
@@ -1190,40 +1640,17 @@ const canReceiveNotification = (user, type = "system") => {
 const notifyBranchAdminsForOrder = async (order) => {
   if (!order?.orderCode) return;
   try {
-    const branch = order.stockSourceBranch || order.customerBranch || "";
-    const staffRoles = ["admin", "superadmin", "manager", "owner"];
-    const branchFilters = branch
-      ? [
-          { assignedBranch: branch },
-          { activeBranch: branch },
-          { assignedBranch: "" },
-          { activeBranch: "" },
-          { assignedBranch: { $exists: false } },
-          { activeBranch: { $exists: false } },
-        ]
-      : [{}];
-    const staff = await User.find({
-      role: { $in: staffRoles },
-      accountStatus: { $ne: "disabled" },
-      $or: [{ role: "superadmin" }, ...branchFilters],
-    }).select("_id notifications");
-
-    const notifications = staff
-      .filter((user) => canReceiveNotification(user, "order"))
-      .map((user) => ({
-        user: user._id,
-        type: "order",
-        title: "New customer order",
-        message: `Order ${order.orderCode} from ${order.customerName || "a customer"} is waiting in Admin Orders.`,
-        targetId: String(order._id || order.id || ""),
-        route: "/superadmin/orders",
-        unread: true,
-        status: "unread",
-      }));
-
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
-    }
+    await notifyOperationalStaff({
+      branch: order.stockSourceBranch || order.customerBranch || "",
+      title: "New customer order",
+      message: `Order ${order.orderCode} from ${order.customerName || "a customer"} is waiting in Admin Orders.`,
+      type: "order",
+      category: "order",
+      targetId: String(order._id || order.id || ""),
+      targetType: "order",
+      dedupeKey: `new-order:${order._id || order.orderCode}`,
+      roles: ["admin", "superadmin", "manager", "owner"],
+    });
   } catch (error) {
     console.error("Failed to notify branch admins:", error);
   }
@@ -1418,6 +1845,9 @@ const createTaskForOrder = async (order, options = {}) => {
         timeSlot: existingTask.timeSlot,
         status: existingTask.status,
         activatedAt: activateTask ? new Date().toISOString() : existingTask.payload?.activatedAt || null,
+        orderWorkflowStatus: order.workflowStatus,
+        deliveryStatus: order.deliveryStatus || "",
+        dispatchedAt: order.dispatchedAt || null,
         updatedAt: new Date().toISOString(),
       };
       await existingTask.save();
@@ -1472,6 +1902,9 @@ const createTaskForOrder = async (order, options = {}) => {
       customerPhone: String(order.address.phone || ""),
       assignedTechnicianId: assignment.assignedTechnicianId,
       assignedTechnicianName: assignment.assignedTechnicianName,
+      orderWorkflowStatus: order.workflowStatus,
+      deliveryStatus: order.deliveryStatus || "",
+      dispatchedAt: order.dispatchedAt || null,
       scheduledDate:
         options.installationDate ||
         order.installationDate ||
@@ -1605,12 +2038,14 @@ const syncInstalledUnitsFromTask = async (task) => {
         $set: {
           serialNumber: serialUnit.serialNumber,
           qrCode: String(serialUnit.qrCode || ""),
+          qrUnitId: String(serialUnit.qrUnitId || ""),
           productId: String(product._id || product.id || ""),
           modelName: [product.name, product.specs].filter(Boolean).join(" ") || product.sku || "AC Unit",
           brand: String(product.brand || ""),
           capacityHp: parseCapacityHp(product.specs),
           customer: customerId,
           customerName: String(task.customer || task.payload?.customerName || ""),
+          serviceBranch: String(task.branch || serialUnit.branch || ""),
           installation: {
             installedAt: ampParameters.installationDate
               ? new Date(ampParameters.installationDate)
@@ -1665,7 +2100,36 @@ const createOrder = async (req, res) => {
     returnTarget = "",
     clientType = "",
     platform = "",
+    idempotencyKey: bodyIdempotencyKey = "",
   } = req.body;
+  const idempotencyKey = String(
+    req.get("Idempotency-Key") || bodyIdempotencyKey || "",
+  ).trim().slice(0, 160);
+
+  if (idempotencyKey) {
+    const existingOrder = await Order.findOne({
+      customer: user._id,
+      idempotencyKey,
+    });
+    if (existingOrder) {
+      const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([existingOrder]);
+      return res.status(200).json({
+        order: {
+          ...hydratedOrder,
+          paymentUrl: hydratedOrder.paymongo?.checkoutUrl || "",
+        },
+        payment: hydratedOrder.paymongo?.checkoutUrl
+          ? {
+              provider: "paymongo",
+              checkoutSessionId: hydratedOrder.paymongo?.checkoutSessionId || "",
+              checkoutUrl: hydratedOrder.paymongo.checkoutUrl,
+              status: hydratedOrder.paymongo?.status || "active",
+            }
+          : null,
+        idempotentReplay: true,
+      });
+    }
+  }
   const usesOnlinePayment = isOnlinePaymentMethod(paymentMethod);
   const checkoutReturnTarget = normalizePaymentReturnTarget(
     paymentReturnTarget || returnTarget || clientType || platform,
@@ -1752,114 +2216,146 @@ const createOrder = async (req, res) => {
     });
   }
 
-  const orderCode = `ORD-${Date.now()}`;
-  const receiptNumber = `RCP-${Date.now()}`;
+  // A timestamp alone can collide when two customers submit at the same
+  // millisecond. The suffix keeps every transaction and serial reservation
+  // independently traceable.
+  const orderCode = `ORD-${Date.now()}-${randomSerialToken()}`;
+  // Cash-on-delivery has one primary order receipt immediately. Online
+  // payments receive this deterministic number only after PayMongo confirms
+  // payment, so retries and failures cannot create invoice tickets.
+  const receiptNumber = usesOnlinePayment ? "" : `RCP-${orderCode}`;
   const trackingNumber = `TRK-${Math.floor(Math.random() * 1000000000)}`;
   const eta = new Date();
   eta.setDate(eta.getDate() + 7);
   const installDate = new Date(eta);
   installDate.setDate(installDate.getDate() + 1);
 
-  const preferredBranch = resolvePreferredBranch(normalizedAddress);
-  const branchSearchOrder = getBranchSearchOrder(preferredBranch);
+  const preferredBranch = await resolvePreferredBranch(normalizedAddress);
+  if (!preferredBranch) {
+    throw new HttpError(
+      422,
+      "This delivery address is outside the configured service areas. Please select a covered address.",
+    );
+  }
+  const branchSearchOrder = await getBranchSearchOrder(preferredBranch);
   const assignedTechnician = preferredBranch
     ? `${preferredBranch} Technician Team`
     : "";
 
   const createOrderDocument = async (session = null) => {
     const resolvedItems = [];
+    const completedReservations = [];
     let lastSourceBranch = null;
+    try {
+      for (const item of items) {
+        const quantityNeeded = Number(item.quantity) || 0;
+        if (quantityNeeded < 1) {
+          throw new HttpError(400, "Invalid cart item payload.");
+        }
 
-    for (const item of items) {
-      const quantityNeeded = Number(item.quantity) || 0;
-      if (quantityNeeded < 1) {
-        throw new HttpError(400, "Invalid cart item payload.");
-      }
+        const product = await resolveProductForOrderItem(item, session);
+        if (!product) {
+          throw new HttpError(
+            404,
+            `Product not found: ${item.name || item.productId || item.id || item.model || item.sku}`,
+          );
+        }
 
-      const product = await resolveProductForOrderItem(item, session);
-      if (!product) {
-        throw new HttpError(
-          404,
-          `Product not found: ${item.name || item.productId || item.id || item.model || item.sku}`,
+        const selectedBranch = branchSearchOrder.find((branch) =>
+          Number(product.branchStock?.get(branch) || 0) >= quantityNeeded,
         );
-      }
-
-      const selectedBranch = branchSearchOrder.find((branch) => {
-        return Number(product.branchStock?.get(branch) || 0) >= quantityNeeded;
-      });
-
-      const hasBranchSnapshot = branchSearchOrder.some(
-        (branch) => Number(product.branchStock?.get(branch) || 0) > 0,
-      );
-      const fallbackBranch =
-        !hasBranchSnapshot && Number(product.stock || 0) >= quantityNeeded
-          ? preferredBranch
-          : null;
-      const finalBranch = selectedBranch || fallbackBranch;
-
-      if (!finalBranch) {
-        throw new HttpError(
-          409,
-          `Insufficient branch stock for ${product.name}. Tried preferred and nearby branches.`,
+        const hasBranchSnapshot = branchSearchOrder.some(
+          (branch) => Number(product.branchStock?.get(branch) || 0) > 0,
         );
-      }
+        const fallbackBranch =
+          !hasBranchSnapshot && Number(product.stock || 0) >= quantityNeeded
+            ? preferredBranch
+            : null;
+        const finalBranch = selectedBranch || fallbackBranch;
 
-      lastSourceBranch = finalBranch;
+        if (!finalBranch) {
+          throw new HttpError(
+            409,
+            `Insufficient branch stock for ${product.name}. Tried preferred and nearby branches.`,
+          );
+        }
 
-      const serialUnits = await reserveSerialUnitsForOrder(
-        product,
-        finalBranch,
-        quantityNeeded,
-        orderCode,
-        session,
-      );
-      const serialNumbers = serialUnits.map((unit) => unit.serialNumber);
-      try {
-        await decrementProductStockForOrder(
+        lastSourceBranch = finalBranch;
+        const serialUnits = await reserveSerialUnitsForOrder(
           product,
           finalBranch,
           quantityNeeded,
-          hasBranchSnapshot,
+          orderCode,
           session,
         );
-      } catch (error) {
-        await releaseReservedSerialUnits(product._id, serialNumbers, session);
-        throw error;
-      }
+        const serialNumbers = serialUnits.map((unit) => unit.serialNumber);
+        try {
+          await decrementProductStockForOrder(
+            product,
+            finalBranch,
+            quantityNeeded,
+            hasBranchSnapshot,
+            session,
+          );
+        } catch (error) {
+          await releaseReservedSerialUnits(product._id, serialNumbers, session);
+          throw error;
+        }
 
-      resolvedItems.push({
-        productId: String(product.id || ""),
-        name: product.name,
-        // The catalogue is the source of truth for every purchasable item.
-        // This prevents a stale test-cart price from becoming the payment
-        // amount while allowing any active product to be purchased.
-        price: Number(product.price || 0),
-        quantity: quantityNeeded,
-        specs: product.specs || "",
-        serialNumbers,
-        serialUnits,
-        sourceBranch: finalBranch,
-      });
+        completedReservations.push({
+          productId: product._id,
+          branch: finalBranch,
+          quantity: quantityNeeded,
+          hasBranchSnapshot,
+          serialNumbers,
+        });
+        resolvedItems.push({
+          productId: String(product.id || ""),
+          name: product.name,
+          price: Number(product.price || 0),
+          quantity: quantityNeeded,
+          specs: product.specs || "",
+          serialNumbers,
+          serialUnits,
+          sourceBranch: finalBranch,
+        });
+      }
+    } catch (error) {
+      // Atlas transactions roll back automatically. A development or legacy
+      // Mongo deployment may not support transactions, so compensate every
+      // earlier reservation before reporting a failed order.
+      if (!session) {
+        await Promise.allSettled(
+          completedReservations.reverse().map(async (reservation) => {
+            await restoreReservedProductStock(
+              reservation.productId,
+              reservation.branch,
+              reservation.quantity,
+              reservation.hasBranchSnapshot,
+            );
+            await releaseReservedSerialUnits(
+              reservation.productId,
+              reservation.serialNumbers,
+            );
+          }),
+        );
+      }
+      throw error;
     }
 
     const itemsSummary = resolvedItems
       .map((item) => `${item.name} x${item.quantity}`)
       .join(", ");
-    const resolvedSubtotal = resolvedItems.reduce(
-      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
-      0,
-    );
-    const normalizedSubtotal = Number(subtotalAmount || subtotal || resolvedSubtotal || 0);
-    const normalizedVat = Number(vatAmount || taxAmount || 0);
-    const normalizedShipping = Number(shippingFee || deliveryFee || 0);
-    const normalizedDiscount = Number(discountAmount || 0);
-    const normalizedTotal =
-      Number(total || 0) ||
-      Math.max(0, normalizedSubtotal + normalizedVat + normalizedShipping - normalizedDiscount);
-
     const stockSourceBranch = lastSourceBranch || preferredBranch;
+    const serverTotals = calculateOrderTotals(resolvedItems, stockSourceBranch);
+    const normalizedSubtotal = serverTotals.subtotal;
+    const normalizedVat = serverTotals.vatAmount;
+    const normalizedShipping = serverTotals.shippingFee;
+    const normalizedDiscount = serverTotals.discountAmount;
+    const normalizedTotal = serverTotals.total;
     const orderPayload = {
       orderCode,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
       customer: user._id,
       customerName: user.name || `${user.name_first} ${user.name_last}`.trim(),
       items: resolvedItems,
@@ -1881,7 +2377,10 @@ const createOrder = async (req, res) => {
         paymentProvider: usesOnlinePayment ? "paymongo" : "",
         paymentReference: "",
         paymentStatus: usesOnlinePayment ? "pending" : "not_required",
-        amountPaid: normalizedTotal,
+        // Online orders are only paid after PayMongo verification/webhook.
+        // Storing the total here made pending card/GCash orders look paid in
+        // receipts even though no money had been confirmed.
+        amountPaid: usesOnlinePayment ? 0 : normalizedTotal,
         subtotalAmount: normalizedSubtotal,
         vatAmount: normalizedVat,
         shippingFee: normalizedShipping,
@@ -1895,6 +2394,15 @@ const createOrder = async (req, res) => {
       totalAmount: normalizedTotal,
       workflowStatus: "to_pay",
       status: "pending",
+      stockReservationStatus: "reserved",
+      fulfillmentTimeline: [
+        {
+          stage: "placed",
+          label: fulfillmentStages.placed,
+          detail: "Order submitted",
+          timestamp: new Date(),
+        },
+      ],
     };
 
     if (!session) return Order.create(orderPayload);
@@ -2051,13 +2559,6 @@ const getOrderForAdminAction = async (req, orderId) => {
 };
 
 const applyOrderLifecycleAction = async (order, action, options = {}) => {
-  if (["approve", "dispatch"].includes(action)) {
-    const deliveryDateError = getScheduledDateError(options.estimatedArrival, "Delivery date");
-    const installationDateError = getScheduledDateError(options.installationDate, "Installation date");
-    if (deliveryDateError || installationDateError) {
-      throw new HttpError(400, deliveryDateError || installationDateError);
-    }
-  }
   const config = lifecycleActions[action];
   if (!config) {
     throw new HttpError(400, "Invalid action.");
@@ -2103,16 +2604,38 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
     }
   }
 
-  const assignment =
-    action === "approve" || options.assignedTechnicianId || options.assignedTechnicianName
-      ? await resolveTechnicianAssignment(options)
-      : {
-          assignedTechnicianId: "",
-          assignedTechnicianName: String(options.assignedTechnician || "").trim(),
-        };
+  const linkedTaskBeforeAction = action === "dispatch" ? await findLinkedTaskForOrder(order) : null;
+  const assignmentOptions = action === "approve" || action === "dispatch" || options.assignedTechnicianId || options.assignedTechnicianName
+    ? {
+        ...options,
+        assignedTechnicianId: options.assignedTechnicianId || order.assignedTechnicianId || linkedTaskBeforeAction?.assignedTechnicianId || "",
+        assignedTechnicianName: options.assignedTechnicianName || order.assignedTechnician || linkedTaskBeforeAction?.assignedTechnicianName || "",
+      }
+    : options;
+  const assignment = await resolveTechnicianAssignment(assignmentOptions);
+  if (action === "dispatch" && !assignment.assignedTechnicianId) {
+    throw new HttpError(400, "Assign a technician before marking this order dispatched. The technician work order must be created at dispatch.");
+  }
+  if (action === "dispatch" && linkedTaskBeforeAction && ["completed", "failed"].includes(String(linkedTaskBeforeAction.status || "").toLowerCase())) {
+    throw new HttpError(409, `Order ${order.orderCode} has a ${linkedTaskBeforeAction.status} technician task and cannot be dispatched again.`);
+  }
 
   order.workflowStatus = config.to;
   order.status = config.status;
+  order.deliveryStatus = config.deliveryStatus || order.deliveryStatus;
+  if (action === "approve") {
+    appendFulfillmentEvent(order, "confirmed", "Order approved");
+    appendFulfillmentEvent(order, "preparing", "Preparing your assigned unit");
+  }
+  if (action === "dispatch") {
+    order.dispatchedAt = order.dispatchedAt || new Date();
+    order.dispatchedBy = options.actorUserId || null;
+    appendFulfillmentEvent(order, "dispatched", "Order dispatched to the technician");
+  }
+  if (action === "complete") appendFulfillmentEvent(order, "completed", "Installation completed");
+  if (assignment.assignedTechnicianId) {
+    order.assignedTechnicianId = assignment.assignedTechnicianId;
+  }
   if (assignment.assignedTechnicianName || options.assignedTechnician) {
     order.assignedTechnician =
       assignment.assignedTechnicianName ||
@@ -2123,6 +2646,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   if (action === "cancel") {
     order.cancelledAt = new Date();
     order.cancellationReason = String(options.cancellationReason || "").trim();
+    appendFulfillmentEvent(order, "cancelled", order.cancellationReason || "Order cancelled");
     if (
       String(order.paymentProvider || "").toLowerCase() === "paymongo" &&
       String(order.paymentStatus || "").toLowerCase() === "paid"
@@ -2141,7 +2665,8 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   await order.save();
   await updateSerialUnitsForOrder(order, order.workflowStatus);
   if (action === "cancel") {
-    await restoreStockForCancelledOrder(order);
+    await releaseOrderInventoryOnce(order, order.cancellationReason);
+    await order.save();
     await Task.updateMany(
       {
         $or: [
@@ -2159,12 +2684,32 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
       },
     );
   }
+  if (action === "complete") {
+    order.stockReservationStatus = "consumed";
+    order.stockReleasedAt = null;
+    await order.save();
+  }
   if (action === "approve" || action === "dispatch") {
     await createTaskForOrder(order, {
       ...options,
       activate: action === "dispatch",
       assignedTechnicianId: assignment.assignedTechnicianId,
       assignedTechnicianName: assignment.assignedTechnicianName,
+    });
+  }
+
+  if (options.actorUserId && mongoose.Types.ObjectId.isValid(String(options.actorUserId))) {
+    await AuditLog.create({
+      action: "order_lifecycle_updated",
+      user: options.actorUserId,
+      branch: order.stockSourceBranch || order.customerBranch || "",
+      entityType: "order",
+      entityId: order._id,
+      changeDetails: {
+        before: { workflowStatus: options.previousWorkflowStatus, assignedTechnicianId: options.previousTechnicianId || "" },
+        after: { workflowStatus: order.workflowStatus, deliveryStatus: order.deliveryStatus, assignedTechnicianId: order.assignedTechnicianId || "", dispatchedAt: order.dispatchedAt || null },
+      },
+      description: `${action} order ${order.orderCode}; technician task synchronized.`,
     });
   }
 
@@ -2209,6 +2754,9 @@ const approveOrder = async (req, res) => {
       estimatedArrival,
       installationDate,
       timeSlot,
+      actorUserId: req.authUser._id,
+      previousWorkflowStatus: order.workflowStatus,
+      previousTechnicianId: order.assignedTechnicianId,
     });
   } catch (error) {
     if (error instanceof HttpError) {
@@ -2337,6 +2885,9 @@ const processOrder = async (req, res) => {
       installationDate,
       timeSlot,
       cancellationReason,
+      actorUserId: req.authUser._id,
+      previousWorkflowStatus: order.workflowStatus,
+      previousTechnicianId: order.assignedTechnicianId,
     });
   } catch (error) {
     if (error instanceof HttpError) {
@@ -2361,13 +2912,6 @@ const recoverOrder = async (req, res) => {
 
   const action = String(req.body?.action || "").trim().toLowerCase();
   const form = req.body || {};
-  if (["assign_technician", "recreate_task"].includes(action)) {
-    const deliveryDateError = getScheduledDateError(form.estimatedArrival, "Delivery date");
-    const installationDateError = getScheduledDateError(form.installationDate, "Installation date");
-    if (deliveryDateError || installationDateError) {
-      return res.status(400).json({ message: deliveryDateError || installationDateError });
-    }
-  }
 
   if (action === "recreate_task") {
     const technician = await resolveTechnicianAssignment({
@@ -2438,6 +2982,11 @@ const recoverOrder = async (req, res) => {
 
     const installedUnits = await syncInstalledUnitsFromTask(linkedTask);
     await updateSerialUnitsForOrder(order, "complete");
+    order.workflowStatus = "complete";
+    order.status = "paid";
+    order.stockReservationStatus = "consumed";
+    order.stockReleasedAt = null;
+    await order.save();
     const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([order]);
     return res.json({
       message: `Synced ${installedUnits.length} installed customer unit(s) for ${order.orderCode}.`,
@@ -2651,6 +3200,7 @@ const requestCustomerCancellation = async (req, res) => {
 
 const handlePaymongoWebhook = async (req, res) => {
   try {
+    verifyPaymongoWebhookSignature(req);
     const event = extractPaymongoEvent(req.body || {});
     const order = await findOrderForPaymongoEvent(event);
     if (!order) {
@@ -2666,6 +3216,9 @@ const handlePaymongoWebhook = async (req, res) => {
     return res.json({ received: true, matched: true, orderCode: order.orderCode });
   } catch (error) {
     console.error("Failed to process PayMongo webhook:", error);
+    if (error instanceof HttpError) {
+      return res.status(error.status || 400).json({ message: error.message });
+    }
     return res.status(500).json({ message: "Unable to process PayMongo webhook." });
   }
 };
@@ -2739,6 +3292,8 @@ const retryPaymongoCheckout = async (req, res) => {
       return res.status(409).json({ message: "This order is already paid." });
     }
 
+    await reReserveReleasedOrderInventory(order);
+
     const checkout = await attachPaymongoCheckout(order, {
       req,
       returnTarget: req.body?.paymentReturnTarget || req.body?.returnTarget || req.body?.clientType || req.body?.platform,
@@ -2789,6 +3344,9 @@ const verifyPaymongoCheckout = async (req, res) => {
     const session = await getCheckoutSession(checkoutSessionId);
     const event = buildEventFromCheckoutSession(session);
     if (checkoutSessionLooksPaid(session) || checkoutSessionLooksClosed(session)) {
+      if (checkoutSessionLooksPaid(session)) {
+        assertPaymongoAmountMatchesOrder(order, session);
+      }
       await applyPaymongoEventToOrder(order, event, session);
     } else {
       order.paymongo = {

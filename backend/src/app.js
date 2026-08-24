@@ -26,6 +26,8 @@ const aiRoutes = require("./routes/aiRoutes");
 const ampRoutes = require("./routes/ampRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
 const partsRequestRoutes = require("./routes/partsRequestRoutes");
+const warrantyRoutes = require("./routes/warrantyRoutes");
+const branchCoverageRoutes = require("./routes/branchCoverageRoutes");
 
 const app = express();
 const isProduction = env.nodeEnv === "production";
@@ -70,7 +72,17 @@ app.use(
 );
 
 app.use(cookieParser(env.jwtSecret));
-app.use(express.json({ limit: "5mb" }));
+// Preserve the exact request bytes for PayMongo webhook signature
+// verification. JSON parsing normalizes whitespace and key ordering, so a
+// parsed object cannot be used to authenticate a webhook safely.
+app.use(
+  express.json({
+    limit: "5mb",
+    verify: (req, _res, buffer) => {
+      req.rawBody = Buffer.from(buffer);
+    },
+  }),
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -102,6 +114,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/amp", ampRoutes);
 app.use("/api/predictions", predictionRoutes);
 app.use("/api/parts-requests", partsRequestRoutes);
+app.use("/api/warranties", warrantyRoutes);
+app.use("/api/branches", branchCoverageRoutes);
 
 const buildPath = path.resolve(__dirname, "..", "..", "front", "build");
 const indexHtml = path.join(buildPath, "index.html");

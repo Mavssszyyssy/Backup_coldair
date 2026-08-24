@@ -20,7 +20,7 @@ export default function LogDetailScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
-      Promise.all([getTaskById(taskId), getServiceLogById(logId)]).then(
+      Promise.all([getTaskById(taskId), getServiceLogById(taskId, logId)]).then(
         ([loadedTask, loadedLog]) => {
           if (active) {
             setTask(loadedTask);

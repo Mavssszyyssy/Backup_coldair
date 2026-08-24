@@ -1,31 +1,50 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useUserContext } from "./UserContext";
 
-const CART_STORAGE_KEY = "coldair_cart";
 const CartContext = createContext(null);
 
 const normalizeQuantity = (quantity, max = Number.POSITIVE_INFINITY) =>
   Math.max(1, Math.min(Math.floor(Number(quantity) || 1), Math.max(1, Number(max) || 1)));
 
 export function CartProvider({ children }) {
+  const { current, initialized } = useUserContext();
   const [cart, setCart] = useState([]);
   const [hydrated, setHydrated] = useState(false);
+  const cartStorageKey = current?.id ? `coldair_cart_v2:${current.id}` : "";
 
   useEffect(() => {
-    AsyncStorage.getItem(CART_STORAGE_KEY)
+    let active = true;
+    if (!initialized) return undefined;
+
+    setHydrated(false);
+    if (!cartStorageKey) {
+      setCart([]);
+      setHydrated(true);
+      return undefined;
+    }
+
+    AsyncStorage.getItem(cartStorageKey)
       .then((savedCart) => {
+        if (!active) return;
         if (!savedCart) return;
         const parsedCart = JSON.parse(savedCart);
         if (Array.isArray(parsedCart)) setCart(parsedCart);
       })
-      .catch(() => AsyncStorage.removeItem(CART_STORAGE_KEY))
-      .finally(() => setHydrated(true));
-  }, []);
+      .catch(() => AsyncStorage.removeItem(cartStorageKey))
+      .finally(() => {
+        if (active) setHydrated(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cartStorageKey, initialized]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)).catch(() => {});
-  }, [cart, hydrated]);
+    if (!hydrated || !cartStorageKey) return;
+    AsyncStorage.setItem(cartStorageKey, JSON.stringify(cart)).catch(() => {});
+  }, [cart, hydrated, cartStorageKey]);
 
   const addToCart = (product, quantity = 1) => {
     if (!product?.id) return;

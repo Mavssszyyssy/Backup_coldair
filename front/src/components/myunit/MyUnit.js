@@ -1,9 +1,8 @@
-import { Plus, Snowflake } from "@phosphor-icons/react";
+import { Snowflake } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
-import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
@@ -11,9 +10,7 @@ import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-import AddUnitModal from "./AddUnitModal";
 import "./MyUnit.css";
-import RegisterQrUnitModal from "./RegisterQrUnitModal";
 import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
@@ -47,12 +44,10 @@ const buildUnitFromBackend = (unit = {}) => ({
 function MyUnit() {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -61,28 +56,11 @@ function MyUnit() {
       try {
         const result = await apiRequest("/amp/customer/units");
         const backendUnits = (result.units || []).map(buildUnitFromBackend);
-        if (backendUnits.length > 0) {
-          if (!mounted) return;
-          setUnits(backendUnits);
-          localStorage.setItem("ac_units", JSON.stringify(backendUnits));
-          return;
-        }
+        if (!mounted) return;
+        setUnits(backendUnits);
       } catch (_error) {
-        // Local cache keeps manually added units available if backend units are not ready.
+        if (mounted) setUnits([]);
       }
-
-      const savedUnits = localStorage.getItem("ac_units");
-      if (savedUnits) {
-        const parsedUnits = JSON.parse(savedUnits);
-        if (Array.isArray(parsedUnits) && parsedUnits.length > 0) {
-          if (mounted) setUnits(parsedUnits);
-          return;
-        }
-      }
-
-      if (!mounted) return;
-      setUnits([]);
-      localStorage.removeItem("ac_units_demo_seeded");
     };
 
     loadUnits();
@@ -90,18 +68,6 @@ function MyUnit() {
       mounted = false;
     };
   }, []);
-
-  const saveUnits = (updatedUnits) => {
-    setUnits(updatedUnits);
-    localStorage.setItem("ac_units", JSON.stringify(updatedUnits));
-  };
-
-  const handleAddUnit = (newUnit) => {
-    const updatedUnits = [...units, newUnit];
-    saveUnits(updatedUnits);
-    setShowAddModal(false);
-    alert("AC Unit added successfully!");
-  };
 
   const handleViewHistory = (unit) => {
     setSelectedUnit(unit);
@@ -116,19 +82,6 @@ function MyUnit() {
   const handleWarrantyStatus = (unit) => {
     setSelectedUnit(unit);
     setShowWarrantyModal(true);
-  };
-
-  const handleRegisterQrRequest = () => {
-    setShowQrModal(true);
-  };
-
-  const handleQrRegister = (newUnit) => {
-    const updatedUnits = [...units, newUnit];
-    saveUnits(updatedUnits);
-    setShowQrModal(false);
-    alert(
-      `Unit registered. AMPERE next service: ${newUnit.ampereNextServiceLabel || "—"}`,
-    );
   };
 
   return (
@@ -158,14 +111,6 @@ function MyUnit() {
               Track maintenance and service history for your units.
             </BoutiqueText>
           </BoutiqueStack>
-          <BoutiqueButton
-            variant="primary"
-            size="md"
-            onClick={() => setShowAddModal(true)}
-            style={{ width: "auto" }}
-          >
-            <Plus size={18} weight="bold" /> Add New Unit
-          </BoutiqueButton>
         </BoutiqueBox>
 
         {units.length === 0 ? (
@@ -182,22 +127,15 @@ function MyUnit() {
           >
             <BoutiqueStack gap={20} align="center">
               <Snowflake size={64} weight="bold" color={BQ_COLORS.inkFaint} />
-              <BoutiqueText variant="h3">No AC Units Added</BoutiqueText>
+              <BoutiqueText variant="h3">No Installed AC Units Yet</BoutiqueText>
               <BoutiqueText
                 color={BQ_COLORS.inkMuted}
                 align="center"
                 style={{ maxWidth: "320px" }}
               >
-                Add your AC units to track maintenance and receive service
-                reminders.
+                Completed technician installations automatically appear here
+                with their serial number, warranty, AMP, and service history.
               </BoutiqueText>
-              <BoutiqueButton
-                variant="outline"
-                onClick={() => setShowAddModal(true)}
-                style={{ width: "auto", marginTop: "12px" }}
-              >
-                + Add Your First Unit
-              </BoutiqueButton>
             </BoutiqueStack>
           </BoutiqueBox>
         ) : (
@@ -212,19 +150,11 @@ function MyUnit() {
                 onClick={handleViewDetails}
                 onViewHistory={handleViewHistory}
                 onWarrantyStatus={handleWarrantyStatus}
-                onRegisterQr={handleRegisterQrRequest}
               />
             ))}
           </BoutiqueGrid>
         )}
       </BoutiqueBox>
-
-      {showAddModal && (
-        <AddUnitModal
-          onClose={() => setShowAddModal(false)}
-          onSave={handleAddUnit}
-        />
-      )}
 
       {showDetailsModal && selectedUnit && (
         <UnitDetailsModal
@@ -256,12 +186,6 @@ function MyUnit() {
         />
       )}
 
-      {showQrModal && (
-        <RegisterQrUnitModal
-          onClose={() => setShowQrModal(false)}
-          onRegister={handleQrRegister}
-        />
-      )}
       <BoutiqueFooter />
     </BoutiqueScreen>
   );

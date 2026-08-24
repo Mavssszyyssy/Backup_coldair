@@ -3,8 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 function UnitKebabMenu({
   unit,
   onViewHistory,
-  onWarrantyStatus,
-  onRegisterQr
+  onWarrantyStatus
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -47,11 +46,6 @@ function UnitKebabMenu({
           <li>
             <button type="button" role="menuitem" onClick={run(onWarrantyStatus)}>
               Warranty status
-            </button>
-          </li>
-          <li>
-            <button type="button" role="menuitem" onClick={run(onRegisterQr)}>
-              Register unit (QR)
             </button>
           </li>
         </ul>

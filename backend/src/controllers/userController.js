@@ -3,9 +3,9 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const Order = require("../models/Order");
 const Notification = require("../models/Notification");
+const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const env = require("../config/env");
 const { canSendEmail, sendEmail } = require("../utils/email");
-const { BRANCHES } = require("../domain/branchRouting");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
 const NOTIFICATION_TYPES = ["account", "order", "system"];
@@ -485,40 +485,6 @@ const updateProfileById = async (req, res) => {
     return res.status(result.status).json({ message: result.message });
   }
 
-  // Branch assignment is an HQ-only action. Keeping it here means both the
-  // branch screen and technician management use the same protected profile
-  // endpoint, and a branch admin cannot change assignments through a crafted
-  // request.
-  const branchWasProvided =
-    req.body?.assignedBranch !== undefined || req.body?.activeBranch !== undefined;
-  if (branchWasProvided) {
-    if (
-      req.authUser.role !== "superadmin" ||
-      !["admin", "technician"].includes(target.role)
-    ) {
-      return res.status(403).json({ message: "Only Super Admin can assign staff branches." });
-    }
-
-    const branch = sanitizeText(
-      req.body?.assignedBranch ?? req.body?.activeBranch,
-      80,
-    );
-    if (!BRANCHES.includes(branch)) {
-      return res.status(400).json({ message: "Select a valid branch." });
-    }
-
-    // A branch has one accountable admin. Move administrator ownership
-    // cleanly, while allowing several technicians to serve the same branch.
-    if (target.role === "admin") {
-      await User.updateMany(
-        { _id: { $ne: target._id }, role: "admin", assignedBranch: branch },
-        { $set: { assignedBranch: "", activeBranch: "" } },
-      );
-    }
-    target.assignedBranch = branch;
-    target.activeBranch = branch;
-  }
-
   await target.save();
   return res.json({ user: target.toJSON() });
 };
@@ -971,9 +937,11 @@ const deleteUserById = async (req, res) => {
 
 const listUsers = async (req, res) => {
   const role = String(req.query.role || "").trim();
+  const locked = req.query.locked;
 
   const query = { isDeleted: { $ne: true }, accountStatus: { $ne: "deleted" } };
   if (role) query.role = role;
+  if (locked === "true") query.lockoutUntil = { $gt: new Date() };
 
   // Admin can only list customers and technicians.
   if (req.authUser.role === "admin") {
@@ -1000,6 +968,17 @@ const unlockUser = async (req, res) => {
   user.failedLoginAttempts = 0;
   user.lockoutUntil = null;
   await user.save();
+  await notifyOperationalStaff({
+    title: "User account unlocked",
+    message: `${user.name || user.email || "A user"} was unlocked by ${req.authUser.name || req.authUser.email || "an administrator"}.`,
+    type: "security",
+    category: "account_access",
+    severity: "warning",
+    targetId: String(user._id),
+    targetType: "user",
+    dedupeKey: `user-unlocked:${user._id}:${Date.now()}`,
+    roles: ["superadmin"],
+  });
   return res.json({ user: user.toJSON() });
 };
 
@@ -1022,6 +1001,17 @@ const updateUserStatus = async (req, res) => {
 
   user.accountStatus = nextStatus;
   await user.save();
+  await notifyOperationalStaff({
+    title: "User account status changed",
+    message: `${user.name || user.email || "A user"} was ${nextStatus} by ${req.authUser.name || req.authUser.email || "an administrator"}.`,
+    type: "security",
+    category: "account_access",
+    severity: nextStatus === "disabled" ? "warning" : "info",
+    targetId: String(user._id),
+    targetType: "user",
+    dedupeKey: `user-status:${user._id}:${nextStatus}:${Date.now()}`,
+    roles: ["superadmin"],
+  });
   return res.json({ user: user.toJSON() });
 };
 

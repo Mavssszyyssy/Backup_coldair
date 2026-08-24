@@ -34,6 +34,14 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: { type: String, default: "cod" },
     paymentProvider: { type: String, default: "" },
+    idempotencyKey: { type: String, trim: true, index: true, sparse: true },
+    stockReservationStatus: {
+      type: String,
+      enum: ["reserved", "released", "consumed"],
+      default: "reserved",
+      index: true,
+    },
+    stockReleasedAt: { type: Date, default: null },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "cancelled", "expired", "not_required"],
@@ -49,6 +57,7 @@ const orderSchema = new mongoose.Schema(
       status: { type: String, default: "" },
       paidAt: { type: Date, default: null },
       lastEventType: { type: String, default: "" },
+      lastEventKey: { type: String, default: "" },
       raw: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
     proofOfPayment: {
@@ -64,6 +73,26 @@ const orderSchema = new mongoose.Schema(
     estimatedArrival: { type: String, default: "" },
     installationDate: { type: String, default: "" },
     assignedTechnician: { type: String, default: "" },
+    assignedTechnicianId: { type: String, default: "", index: true },
+    deliveryStatus: {
+      type: String,
+      enum: ["pending", "preparing", "dispatched", "installing", "completed", "cancelled"],
+      default: "pending",
+      index: true,
+    },
+    dispatchedAt: { type: Date, default: null },
+    dispatchedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    // This is the single customer-facing fulfillment record.  It is updated
+    // by order actions and technician task actions so receipt/tracking views
+    // never need to guess a different status from cached client state.
+    fulfillmentTimeline: [
+      {
+        stage: { type: String, required: true },
+        label: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        detail: { type: String, default: "" },
+      },
+    ],
     customerBranch: { type: String, default: "" },
     stockSourceBranch: { type: String, default: "" },
     receipt: {
@@ -141,5 +170,10 @@ orderSchema.set("toJSON", {
     return ret;
   },
 });
+
+orderSchema.index(
+  { customer: 1, idempotencyKey: 1 },
+  { unique: true, sparse: true, name: "idx_customer_order_idempotency" },
+);
 
 module.exports = mongoose.model("Order", orderSchema);

@@ -90,11 +90,6 @@ function normalizeServiceRequest(item = {}) {
   };
 }
 
-function appendTimeline(request, event) {
-  const existing = Array.isArray(request.timeline) ? request.timeline : [];
-  return [...existing, event];
-}
-
 export async function getAllServiceRequests() {
   try {
     const token = await api.getStoredToken();
@@ -120,24 +115,20 @@ export async function saveAllServiceRequests(items = []) {
 
 export async function createServiceRequest(payload = {}) {
   const token = await api.getStoredToken();
-  if (token) {
-    const result = await api.createMyServiceRequest(token, payload);
-    if (!result.success) {
-      throw new Error(result.error || "Unable to create service request.");
-    }
-    const created = normalizeServiceRequest(result.request);
-    const requests = await getAllServiceRequests();
-    await saveAllServiceRequests([
-      created,
-      ...requests.filter((item) => String(item.id) !== String(created.id)),
-    ]);
-    return created;
+  if (!token) {
+    throw new Error("Please sign in again before submitting a service request.");
   }
 
+  const result = await api.createMyServiceRequest(token, payload);
+  if (!result.success) {
+    throw new Error(result.error || "Unable to create service request.");
+  }
+  const created = normalizeServiceRequest(result.request);
   const requests = await getAllServiceRequests();
-  const created = normalizeServiceRequest(payload);
-  const next = [created, ...requests];
-  await saveAllServiceRequests(next);
+  await saveAllServiceRequests([
+    created,
+    ...requests.filter((item) => String(item.id) !== String(created.id)),
+  ]);
   return created;
 }
 
@@ -152,19 +143,10 @@ export async function getServiceRequestsByUser(userId) {
 }
 
 export async function updateServiceRequest(requestId, patch = {}) {
-  const requests = await getAllServiceRequests();
-  const next = requests.map((item) =>
-    String(item.id) === String(requestId)
-      ? normalizeServiceRequest({
-          ...item,
-          ...patch,
-          updatedAt: new Date().toISOString(),
-        })
-      : item
+  void patch;
+  throw new Error(
+    `Service request ${requestId} can only be updated through the approved server workflow.`,
   );
-
-  await saveAllServiceRequests(next);
-  return next.find((item) => String(item.id) === String(requestId)) || null;
 }
 
 export async function updateServiceRequestStatus(
@@ -174,49 +156,24 @@ export async function updateServiceRequestStatus(
   description = ""
 ) {
   const token = await api.getStoredToken();
-  if (token) {
-    const result = await api.patchServiceRequestStatus(token, requestId, {
-      status,
-      actor,
-      description,
-    });
-    if (!result.success) {
-      throw new Error(result.error || "Unable to update service request.");
-    }
-    const updated = normalizeServiceRequest(result.request);
-    const requests = await getAllServiceRequests();
-    await saveAllServiceRequests(
-      requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
-    );
-    return updated;
+  if (!token) {
+    throw new Error("Please sign in again before updating a service request.");
   }
 
+  const result = await api.patchServiceRequestStatus(token, requestId, {
+    status,
+    actor,
+    description,
+  });
+  if (!result.success) {
+    throw new Error(result.error || "Unable to update service request.");
+  }
+  const updated = normalizeServiceRequest(result.request);
   const requests = await getAllServiceRequests();
-
-  const next = requests.map((item) =>
-    String(item.id) === String(requestId)
-      ? normalizeServiceRequest({
-          ...item,
-          status,
-          completedAt:
-            String(status).toLowerCase() === "completed"
-              ? new Date().toISOString()
-              : item.completedAt || null,
-          timeline: appendTimeline(
-            item,
-            createTimelineEvent({
-              title: `Status changed to ${status}`,
-              description: description || `Service request updated to ${status}.`,
-              actor,
-            })
-          ),
-          updatedAt: new Date().toISOString(),
-        })
-      : item
+  await saveAllServiceRequests(
+    requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
   );
-
-  await saveAllServiceRequests(next);
-  return next.find((item) => String(item.id) === String(requestId)) || null;
+  return updated;
 }
 
 export async function cancelServiceRequest(
@@ -259,50 +216,24 @@ export async function assignTechnicianToServiceRequest(
   actor = "Admin"
 ) {
   const token = await api.getStoredToken();
-  if (token) {
-    const result = await api.patchServiceRequestStatus(token, requestId, {
-      status: SERVICE_REQUEST_STATUS.ASSIGNED,
-      assignedTechnicianId: technicianId || "",
-      assignedTechnicianName: technicianName || "",
-      linkedTaskId,
-      actor,
-    });
-    if (!result.success) {
-      throw new Error(result.error || "Unable to assign technician.");
-    }
-    const updated = normalizeServiceRequest(result.request);
-    const requests = await getAllServiceRequests();
-    await saveAllServiceRequests(
-      requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
-    );
-    return updated;
+  if (!token) {
+    throw new Error("Please sign in again before assigning a technician.");
   }
 
+  const result = await api.patchServiceRequestStatus(token, requestId, {
+    status: SERVICE_REQUEST_STATUS.ASSIGNED,
+    assignedTechnicianId: technicianId || "",
+    assignedTechnicianName: technicianName || "",
+    linkedTaskId,
+    actor,
+  });
+  if (!result.success) {
+    throw new Error(result.error || "Unable to assign technician.");
+  }
+  const updated = normalizeServiceRequest(result.request);
   const requests = await getAllServiceRequests();
-
-  const next = requests.map((item) =>
-    String(item.id) === String(requestId)
-      ? normalizeServiceRequest({
-          ...item,
-          assignedTechnicianId: technicianId || "",
-          assignedTechnicianName: technicianName || "",
-          linkedTaskId: linkedTaskId || item.linkedTaskId || "",
-          status: SERVICE_REQUEST_STATUS.ASSIGNED,
-          timeline: appendTimeline(
-            item,
-            createTimelineEvent({
-              title: "Technician Assigned",
-              description: technicianName
-                ? `${technicianName} was assigned to this request.`
-                : "A technician was assigned to this request.",
-              actor,
-            })
-          ),
-          updatedAt: new Date().toISOString(),
-        })
-      : item
+  await saveAllServiceRequests(
+    requests.map((item) => (String(item.id) === String(requestId) ? updated : item)),
   );
-
-  await saveAllServiceRequests(next);
-  return next.find((item) => String(item.id) === String(requestId)) || null;
+  return updated;
 }
