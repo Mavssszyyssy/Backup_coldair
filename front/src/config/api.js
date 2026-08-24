@@ -56,6 +56,12 @@ const finishConnection = (state = "loaded", detail = {}) => {
   publishConnectionState(state, detail);
 };
 
+const waitBeforeRetry = (milliseconds) =>
+  new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+const isTransientResponse = (response) =>
+  [502, 503, 504].includes(Number(response?.status));
+
 const apiRequest = async (path, options = {}) => {
   beginConnection(path);
   const token = getToken();
@@ -77,22 +83,34 @@ const apiRequest = async (path, options = {}) => {
   try {
     for (const baseUrl of apiBaseUrls) {
       requestUrl = `${baseUrl}${path}`;
-      try {
-        response = await fetch(requestUrl, {
-          ...options,
-          ...(shouldDisableCache ? { cache: "no-store" } : {}),
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(activeBranch ? { "X-Branch": activeBranch } : {}),
-            ...(options.headers || {}),
-          },
-        });
-        break;
-      } catch (error) {
-        lastNetworkError = error;
+      // A Vercel function can briefly be unavailable while waking or being
+      // replaced. Retry a read-only request once before declaring the app
+      // offline; never repeat a write that could duplicate a transaction.
+      const attempts = shouldDisableCache ? 2 : 1;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          response = await fetch(requestUrl, {
+            ...options,
+            ...(shouldDisableCache ? { cache: "no-store" } : {}),
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              ...(activeBranch ? { "X-Branch": activeBranch } : {}),
+              ...(options.headers || {}),
+            },
+          });
+          if (!isTransientResponse(response) || attempt === attempts - 1) break;
+          await waitBeforeRetry(350);
+        } catch (error) {
+          lastNetworkError = error;
+          if (attempt < attempts - 1) {
+            await waitBeforeRetry(350);
+            continue;
+          }
+        }
       }
+      if (response) break;
     }
     if (!response) throw lastNetworkError || new Error("Network request failed.");
   } catch (error) {
