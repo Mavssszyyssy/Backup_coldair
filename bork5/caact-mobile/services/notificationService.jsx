@@ -31,6 +31,7 @@ function normalizeNotification(item = {}) {
     type: item.type || "info",
     route: item.route || resolveNotificationRoute(item),
     targetId: item.targetId || "",
+    targetType: item.targetType || "",
     read,
     unread: Boolean(unread),
     createdAt: item.createdAt || new Date().toISOString(),
@@ -44,6 +45,10 @@ export function resolveNotificationRoute(item = {}, role = "") {
 
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
   const normalizedRole = String(role || item.role || "").toLowerCase();
+
+  if (item.type === "warranty" || item.targetType === "warranty" || text.includes("warranty")) {
+    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}` : "/customer/units";
+  }
 
   if (normalizedRole === "technician") {
     if (text.includes("part")) return "/technician/tasks";

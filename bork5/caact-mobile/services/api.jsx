@@ -560,6 +560,12 @@ export async function createOrder(token, payload) {
   };
 }
 
+export async function fetchServiceCatalog(token) {
+  const { ok, data } = await get("/service-requests/catalog", token);
+  if (ok) return { success: true, offerings: data.offerings || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to load the current service catalog."), offerings: [] };
+}
+
 // ---------------------------------------------------------------------------
 // Saved delivery addresses
 // ---------------------------------------------------------------------------
@@ -596,9 +602,10 @@ export async function setDefaultAddress(token, addressId) {
   return { success: false, error: getErrorMessage(data, "Unable to set the default delivery address.") };
 }
 
-export async function fetchTechnicianUnitHistory(token, serialNumber) {
+export async function fetchTechnicianUnitHistory(token, serialNumber, taskId = "") {
+  const query = taskId ? `?taskId=${encodeURIComponent(taskId)}` : "";
   const { ok, status, data } = await get(
-    `/tasks/unit-history/${encodeURIComponent(serialNumber)}`,
+    `/tasks/unit-history/${encodeURIComponent(serialNumber)}${query}`,
     token,
   );
   if (ok) return { success: true, ...data };

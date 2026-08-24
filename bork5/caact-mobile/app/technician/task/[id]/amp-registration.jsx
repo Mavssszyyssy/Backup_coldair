@@ -6,9 +6,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
 import QrCameraScanner from "../../../../components/technician/QrCameraScanner";
+import UnitHistoryPanel from "../../../../components/technician/UnitHistoryPanel";
 import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
+import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
 import { parseLookupTarget } from "../../../../services/qrLookupService";
 
@@ -52,12 +54,23 @@ export default function AmpRegistrationScreen() {
   const [saving, setSaving] = useState(false);
   const [scannerActive, setScannerActive] = useState(true);
   const [message, setMessage] = useState("");
+  const [unitHistory, setUnitHistory] = useState(null);
 
   const serials = useMemo(() => taskSerials(task), [task]);
   const progress = task?.registrationProgress;
   const totalRequired = progress?.totalRequired || serials.length;
   const totalRegistered = progress?.totalRegistered || 0;
   const isComplete = Boolean(progress?.isComplete ?? totalRequired === 0);
+
+  const loadUnitHistory = React.useCallback(async (serialNumber) => {
+    if (!serialNumber) return null;
+    const token = await getStoredToken();
+    if (!token) return null;
+    const result = await fetchTechnicianUnitHistory(token, serialNumber, id);
+    if (!result.success) return null;
+    setUnitHistory(result);
+    return result;
+  }, [id]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -66,12 +79,14 @@ export default function AmpRegistrationScreen() {
       if (!nextTask) throw new Error("This work order is no longer available. Return to Work Orders and refresh the list.");
       setTask(nextTask);
       if (nextTask?.registrationProgress?.isComplete) setScannerActive(false);
+      const registeredSerial = taskSerials(nextTask).find((serial) => nextTask?.ampRegistrations?.[serial]?.status === "registered");
+      if (registeredSerial) await loadUnitHistory(registeredSerial);
     } catch (error) {
       Alert.alert("Unable to load work order", error?.message || "Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, loadUnitHistory]);
 
   useFocusEffect(React.useCallback(() => { load(); }, [load]));
 
@@ -99,13 +114,16 @@ export default function AmpRegistrationScreen() {
       const result = await registerTaskAmpUnit(id, automaticAmpPayload(assignedSerial));
       const updatedTask = result.task;
       setTask(updatedTask);
+      const history = await loadUnitHistory(assignedSerial);
       const updatedProgress = result.registrationProgress || updatedTask?.registrationProgress;
       const complete = Boolean(updatedProgress?.isComplete);
       const text = complete
-        ? "QR verified. Now capture the installed AC unit photo to complete the work order."
+        ? history?.unit
+          ? "QR verified. Review this unit's service history, then capture the installed AC unit photo to complete the work order."
+          : "QR verified. Now capture the installed AC unit photo to complete the work order."
         : `QR verified. ${updatedProgress?.totalRegistered || 0} of ${updatedProgress?.totalRequired || totalRequired} assigned units are registered. Scan the next assigned AC unit.`;
       setMessage(text);
-      Alert.alert("AC unit verified", text, [{ text: "Continue", onPress: () => complete && router.replace(`/technician/task/${id}/complete-service`) }]);
+      Alert.alert("AC unit verified", text, [{ text: "Review work order" }]);
     } catch (error) {
       setScannerActive(true);
       Alert.alert("Unable to verify AC unit", error?.message || "Please scan the assigned QR label again.");
@@ -134,6 +152,8 @@ export default function AmpRegistrationScreen() {
         </Card>
 
         {message ? <Card><Text style={{ color: COLORS.success, fontWeight: FONT.bold }}>{message}</Text></Card> : null}
+
+        <UnitHistoryPanel history={unitHistory} />
 
         {!loading && serials.length === 0 ? (
           <Card>

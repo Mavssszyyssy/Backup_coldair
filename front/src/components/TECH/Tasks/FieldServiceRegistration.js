@@ -72,7 +72,7 @@ const FieldServiceRegistration = () => {
         setRawQr(resolvedSerial);
         setSearchParams({ serial: resolvedSerial });
       }
-      apiRequest(`/tasks/unit-history/${encodeURIComponent(serial)}`)
+      apiRequest(`/tasks/unit-history/${encodeURIComponent(resolvedSerial)}?taskId=${encodeURIComponent(response.task?.id || response.task?.taskCode || '')}`)
         .then((historyResponse) => setHistory(historyResponse))
         .catch(() => setHistory(null));
       const previous = response.unit?.ampRegistration?.ampParameters || response.task?.ampRegistrations?.[serial]?.ampParameters;

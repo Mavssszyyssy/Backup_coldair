@@ -11,10 +11,11 @@ import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import StickyActionBar from "../../components/ui/StickyActionBar";
 import TextField from "../../components/ui/TextField";
-import { CUSTOMER_SERVICE_OFFERINGS, COLD_AIR_WEBSITE } from "../../constants/company";
+import { COLD_AIR_WEBSITE } from "../../constants/company";
 import { COLORS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
+import { fetchServiceCatalog, getStoredToken } from "../../services/api";
 import { createServiceRequest } from "../../services/serviceRequestStorage";
 import { getUnitsByUser } from "../../services/unitStorage";
 
@@ -22,7 +23,9 @@ export default function CustomerServicesScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const [units, setUnits] = useState([]);
-  const [selectedServiceId, setSelectedServiceId] = useState(CUSTOMER_SERVICE_OFFERINGS[0]?.id || "");
+  const [serviceOfferings, setServiceOfferings] = useState([]);
+  const [serviceCatalogError, setServiceCatalogError] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
@@ -30,17 +33,31 @@ export default function CustomerServicesScreen() {
   const [dateError, setDateError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const loadServiceCatalog = useCallback(async () => {
+    const token = await getStoredToken();
+    if (!token) return;
+    const result = await fetchServiceCatalog(token);
+    if (!result.success) {
+      setServiceCatalogError(result.error || "Unable to load services.");
+      return;
+    }
+    setServiceCatalogError("");
+    setServiceOfferings(result.offerings);
+    setSelectedServiceId((currentId) => currentId || result.offerings[0]?.id || "");
+  }, []);
+
   useFocusEffect(useCallback(() => {
     let active = true;
+    loadServiceCatalog();
     getUnitsByUser(current?.id).then((items) => {
       if (!active) return;
       setUnits(items);
       if (!selectedUnitId && items[0]?.id) setSelectedUnitId(items[0].id);
     });
     return () => { active = false; };
-  }, [current, selectedUnitId]));
+  }, [current, selectedUnitId, loadServiceCatalog]));
 
-  const selectedService = useMemo(() => CUSTOMER_SERVICE_OFFERINGS.find((item) => item.id === selectedServiceId) || CUSTOMER_SERVICE_OFFERINGS[0], [selectedServiceId]);
+  const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
 
   const selectDate = (value) => {
@@ -72,6 +89,7 @@ export default function CustomerServicesScreen() {
         unitName: selectedUnit.unitName,
         unitSerialNumber: selectedUnit.serialNumber || "",
         qrCode: selectedUnit.qrCode || "",
+        serviceId: selectedService.id,
         serviceType: selectedService.title,
         issueType: selectedService.defaultIssueType,
         issueDescription: issueDescription.trim(),
@@ -97,12 +115,15 @@ export default function CustomerServicesScreen() {
   };
 
   return (
-    <CustomerScreen title="Services" subtitle="Book a service appointment for your registered AC unit" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={submitting ? "Submitting..." : "Submit Request"} onPress={handleSubmit} loading={submitting} disabled={submitting || units.length === 0} /></StickyActionBar>}>
+    <CustomerScreen title="Services" subtitle="Book a service appointment for your registered AC unit" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={submitting ? "Submitting..." : "Submit Request"} onPress={handleSubmit} loading={submitting} disabled={submitting || units.length === 0 || !selectedService} /></StickyActionBar>}>
       {units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title="Available Services" />
-        <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={CUSTOMER_SERVICE_OFFERINGS} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
+        <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{selectedService?.summary}</Text>
+        {selectedService?.pricing?.label ? <Text style={{ color: COLORS.primary, fontWeight: "700", marginTop: SPACING.xs }}>Service price: {selectedService.pricing.label}</Text> : null}
+        {serviceCatalogError ? <Text style={{ color: COLORS.danger, marginTop: SPACING.xs }}>{serviceCatalogError}</Text> : null}
+        {serviceCatalogError ? <Button title="Retry services" variant="secondary" onPress={loadServiceCatalog} /> : null}
         <Button title="Browse FAQs" variant="secondary" onPress={() => router.push("/customer/faq")} />
       </Card>
       <Card>
