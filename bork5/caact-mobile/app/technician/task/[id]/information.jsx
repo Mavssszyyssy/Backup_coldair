@@ -131,7 +131,7 @@ export default function TaskInformationScreen() {
       ? !hasCheckedIn
         ? { title: "Check in at installation", subtitle: "Record your GPS arrival before verifying the assigned AC unit.", icon: "location-sharp", action: "check-in" }
         : registrationComplete
-        ? { title: "Submit proof and close work order", subtitle: "Add the installation proof and receiver sign-off for this assigned job.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+        ? { title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
         : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
       : null;
 
@@ -226,7 +226,7 @@ export default function TaskInformationScreen() {
             <InfoCard label="Serial numbers" value={assignedSerials.join(", ")} />
             <InfoCard
               label="Next step"
-              value={registrationComplete ? "Submit the installation report and customer sign-off." : "Register each assigned unit before completing the installation."}
+              value={registrationComplete ? "Capture one installed-unit photo to complete the work order." : "Scan each assigned AC unit QR before completing the installation."}
             />
           </Card>
         )}
@@ -282,7 +282,7 @@ export default function TaskInformationScreen() {
           >
             Service Proof
           </Text>
-          <InfoCard label="Customer Sign-off" value={proof.customerSignature?.name || task?.customerSignatureName || "No sign-off yet"} />
+          <InfoCard label="Order Customer" value={proof.customer?.name || task?.customerName || task?.customer || "Not provided"} />
           <InfoCard label="Submitted By" value={proof.technicianName || task?.assignedTechnicianName || "Technician"} />
           <InfoCard label="Submitted At" value={proof.submittedAt || task?.proofSubmittedAt || "Not submitted"} />
           <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.sm, marginBottom: SPACING.xs }}>
