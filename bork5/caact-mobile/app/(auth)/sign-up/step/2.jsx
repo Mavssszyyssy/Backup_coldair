@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,6 +14,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { useUserContext } from "../../../../context/UserContext";
 import {
@@ -322,16 +322,14 @@ export default function SignUpStep2() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.md,
           paddingBottom: 126,
         }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
+        minBottomPadding={150}
       >
         <PageHeader
           title="Create Account"
@@ -591,7 +589,7 @@ export default function SignUpStep2() {
             Back to previous step
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <StickyActionBar>
         <Button
           title={submitting ? "Creating Account..." : "Complete Registration"}

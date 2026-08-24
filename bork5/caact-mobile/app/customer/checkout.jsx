@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, View } from "react-native";
+import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
@@ -132,6 +132,7 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [inventoryBranch, setInventoryBranch] = useState("");
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
   const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
   const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, inventoryBranch), [cart, inventoryBranch]);
@@ -319,62 +320,64 @@ export default function CheckoutScreen() {
           </BoutiqueCard>
         ) : (
           <>
-            <BoutiqueCard style={{ gap: BQ_SPACING.md }}>
-              {cart.map((item) => (
-                <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
-                  <View style={{ flex: 1 }}>
-                    <BoutiqueText variant="h3">{item.name}</BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-                      {item.quantity} x {formatPeso(item.price)}
-                    </BoutiqueText>
-                  </View>
-                  <BoutiqueText variant="label">{formatPeso(item.quantity * item.price)}</BoutiqueText>
-                </View>
-              ))}
-              <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, paddingTop: BQ_SPACING.md, flexDirection: "row", justifyContent: "space-between" }}>
-                <BoutiqueText variant="h2">Total (incl. VAT & delivery)</BoutiqueText>
-                <BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
-              </View>
-            </BoutiqueCard>
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
-              <BoutiqueText variant="h3">Payment method</BoutiqueText>
-              <BoutiqueSegmented
-                value={paymentMethod}
-                onChange={setPaymentMethod}
-                options={[
-                  { value: "card", label: "PayMongo Card" },
-                  { value: "gcash", label: "GCash" },
-                  { value: "maya", label: "Maya" },
-                  { value: "cod", label: "Cash on delivery" },
-                ]}
-              />
-            </BoutiqueCard>
-            <BoutiqueCard style={{ gap: BQ_SPACING.xs }}>
-              <BoutiqueText variant="h3">Delivery address</BoutiqueText>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: BQ_SPACING.sm }}>
+                <BoutiqueText variant="h3">Delivery address</BoutiqueText>
+                <BoutiqueButton title="Change" size="sm" variant="outline" onPress={() => router.push("/customer/settings")} />
+              </View>
               <BoutiqueText color={BQ_COLORS.inkMuted}>
                 {[address.street, address.barangay, address.city, address.province].filter(Boolean).join(", ") || current?.address || "No saved address"}
               </BoutiqueText>
-              <BoutiqueText variant="caption" color={inventoryBranch ? BQ_COLORS.inkMuted : BQ_COLORS.danger}>
-                {inventoryBranch ? `Service branch: ${inventoryBranch}` : "Choose a delivery address within a configured service area."}
+              <BoutiqueText variant="caption" color={inventoryBranch ? BQ_COLORS.success : BQ_COLORS.danger}>
+                {inventoryBranch ? `Assigned branch: ${inventoryBranch}` : "Choose a delivery address within a configured service area."}
               </BoutiqueText>
             </BoutiqueCard>
-            {checkoutMessage ? (
-              <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>
-                {checkoutMessage}
-              </BoutiqueText>
-            ) : null}
-            <BoutiqueButton
-              title={
-                submitting
-                  ? paymentMethod === "cod"
-                    ? "Submitting order..."
-                    : "Connecting..."
-                  : "Place order"
-              }
-              disabled={submitting}
-              fullWidth
-              onPress={() => void submitOrder()}
-            />
+
+            <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
+              <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View>
+                  <BoutiqueText variant="h3">Order summary</BoutiqueText>
+                  <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{cart.reduce((count, item) => count + Number(item.quantity || 0), 0)} item(s)</BoutiqueText>
+                </View>
+                <BoutiqueText variant="label" color={BQ_COLORS.brand}>{showOrderDetails ? "Hide details" : "View details"}</BoutiqueText>
+              </TouchableOpacity>
+              {showOrderDetails ? cart.map((item) => (
+                <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
+                  <View style={{ flex: 1 }}>
+                    <BoutiqueText variant="label">{item.name}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
+                  </View>
+                  <BoutiqueText variant="label">{formatPeso(item.quantity * item.price)}</BoutiqueText>
+                </View>
+              )) : null}
+            </BoutiqueCard>
+
+            <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
+              <BoutiqueText variant="h3">Payment method</BoutiqueText>
+              <BoutiqueSegmented value={paymentMethod} onChange={setPaymentMethod} options={[
+                { value: "card", label: "Card" },
+                { value: "gcash", label: "GCash" },
+                { value: "maya", label: "Maya" },
+                { value: "cod", label: "Cash on delivery" },
+              ]} />
+            </BoutiqueCard>
+
+            <BoutiqueCard style={{ gap: BQ_SPACING.xs }}>
+              <BoutiqueText variant="h3">Price details</BoutiqueText>
+              {[
+                ["Items subtotal", checkoutTotals.subtotal],
+                ["VAT", checkoutTotals.vatAmount],
+                ["Delivery fee", checkoutTotals.shippingFee],
+              ].map(([label, amount]) => <View key={label} style={{ flexDirection: "row", justifyContent: "space-between" }}><BoutiqueText color={BQ_COLORS.inkMuted}>{label}</BoutiqueText><BoutiqueText>{formatPeso(amount)}</BoutiqueText></View>)}
+              <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, marginTop: BQ_SPACING.sm, paddingTop: BQ_SPACING.sm, flexDirection: "row", justifyContent: "space-between" }}>
+                <BoutiqueText variant="h2">Final total</BoutiqueText><BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
+              </View>
+            </BoutiqueCard>
+
+            <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
+              {checkoutMessage ? <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{checkoutMessage}</BoutiqueText> : null}
+              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting} fullWidth onPress={() => void submitOrder()} />
+            </BoutiqueCard>
           </>
         )}
       </BoutiqueScreen>

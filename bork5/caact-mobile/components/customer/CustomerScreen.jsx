@@ -1,9 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
 
 // Top-level tab routes that should show a home icon instead of a back arrow.
 const TAB_ROUTES = [
@@ -34,7 +35,7 @@ export default function CustomerScreen({
   );
 
   const content = scroll ? (
-    <ScrollView
+    <KeyboardAwareScrollView
       contentContainerStyle={[
         {
           padding: SPACING.md,
@@ -43,12 +44,10 @@ export default function CustomerScreen({
         },
         contentContainerStyle,
       ]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      automaticallyAdjustKeyboardInsets
+      minBottomPadding={stickyAction ? 176 : SPACING.xxl + 84}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
     <View
       style={[

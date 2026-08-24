@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -16,6 +15,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import {
@@ -199,16 +199,14 @@ export default function SignUpStep0() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.md,
           paddingBottom: 112,
         }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
+        minBottomPadding={148}
       >
         <PageHeader
           title="Create Account"
@@ -385,7 +383,7 @@ export default function SignUpStep0() {
             Already have an account? Sign in
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <StickyActionBar>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <Button

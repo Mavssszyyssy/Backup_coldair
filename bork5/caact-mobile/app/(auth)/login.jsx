@@ -1,7 +1,7 @@
 // app/(auth)/login.jsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../components/ui/Button";
@@ -9,6 +9,7 @@ import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import PasswordField from "../../components/ui/PasswordField";
 import TextField from "../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../components/ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
@@ -59,13 +60,13 @@ export function LoginScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.md,
         }}
-        keyboardShouldPersistTaps="handled"
+        minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
           title="Welcome Back"
@@ -115,7 +116,7 @@ export function LoginScreen() {
             New customer? Register
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

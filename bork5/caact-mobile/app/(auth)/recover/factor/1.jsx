@@ -2,7 +2,7 @@
 // Password recovery — send OTP, then enter OTP + new password.
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity } from "react-native";
+import { Alert, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../../components/ui/Button";
@@ -10,6 +10,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import PasswordField from "../../../../components/ui/PasswordField";
 import TextField from "../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import {
   forgotPassword,
@@ -99,7 +100,7 @@ export default function RecoverPasswordScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
@@ -227,7 +228,7 @@ export default function RecoverPasswordScreen() {
             Back to Login
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

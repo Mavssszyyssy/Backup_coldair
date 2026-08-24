@@ -560,6 +560,42 @@ export async function createOrder(token, payload) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Saved delivery addresses
+// ---------------------------------------------------------------------------
+// Address records are deliberately managed through their own endpoints rather
+// than by overwriting a profile object. This keeps add/edit/default/delete in
+// sync with checkout and the backend branch-routing rule.
+export async function listAddresses(token) {
+  const { ok, data } = await get("/users/addresses", token);
+  if (ok) return { success: true, addresses: data.addresses || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to load delivery addresses."), addresses: [] };
+}
+
+export async function addAddress(token, payload) {
+  const { ok, data } = await post("/users/addresses", payload, token);
+  if (ok) return { success: true, addresses: data.addresses || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to save the delivery address."), errors: data.errors || null };
+}
+
+export async function updateAddress(token, addressId, payload) {
+  const { ok, data } = await patch(`/users/addresses/${encodeURIComponent(addressId)}`, payload, token);
+  if (ok) return { success: true, addresses: data.addresses || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to update the delivery address."), errors: data.errors || null };
+}
+
+export async function removeAddress(token, addressId) {
+  const { ok, data } = await del(`/users/addresses/${encodeURIComponent(addressId)}`, token);
+  if (ok) return { success: true, addresses: data.addresses || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to delete the delivery address.") };
+}
+
+export async function setDefaultAddress(token, addressId) {
+  const { ok, data } = await patch(`/users/addresses/${encodeURIComponent(addressId)}/default`, {}, token);
+  if (ok) return { success: true, addresses: data.addresses || [] };
+  return { success: false, error: getErrorMessage(data, "Unable to set the default delivery address.") };
+}
+
 export async function fetchTechnicianUnitHistory(token, serialNumber) {
   const { ok, status, data } = await get(
     `/tasks/unit-history/${encodeURIComponent(serialNumber)}`,

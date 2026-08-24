@@ -340,6 +340,75 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Saved addresses are a first-class checkout resource. Refresh the full
+  // session after each mutation so the selected address and backend-resolved
+  // branch change together everywhere in the app.
+  const refreshCurrentUser = async () => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.me(token);
+      if (!result.success || !result.user) {
+        return { success: false, error: result.error || "Unable to refresh your account." };
+      }
+      const normalized = normalizeUser(result.user);
+      setCurrent(normalized);
+      return { success: true, user: normalized };
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to refresh your account." };
+    }
+  };
+
+  const updateMyAccount = async (payload) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.updateProfile(token, payload);
+      if (!result.success || !result.user) return result;
+      const normalized = normalizeUser(result.user);
+      setCurrent(normalized);
+      return { success: true, user: normalized };
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to update your account." };
+    }
+  };
+
+  const saveDeliveryAddress = async (address, addressId = "") => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = addressId
+        ? await api.updateAddress(token, addressId, address)
+        : await api.addAddress(token, address);
+      if (!result.success) return result;
+      const refreshed = await refreshCurrentUser();
+      return refreshed.success ? { success: true, user: refreshed.user } : refreshed;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to save the delivery address." };
+    }
+  };
+
+  const deleteDeliveryAddress = async (addressId) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.removeAddress(token, addressId);
+      if (!result.success) return result;
+      const refreshed = await refreshCurrentUser();
+      return refreshed.success ? { success: true, user: refreshed.user } : refreshed;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to delete the delivery address." };
+    }
+  };
+
+  const makeDefaultDeliveryAddress = async (addressId) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.setDefaultAddress(token, addressId);
+      if (!result.success) return result;
+      const refreshed = await refreshCurrentUser();
+      return refreshed.success ? { success: true, user: refreshed.user } : refreshed;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to update the default address." };
+    }
+  };
+
   /**
    * Update just the profile photo for a user.
    */
@@ -419,6 +488,11 @@ export function UserProvider({ children }) {
       updateUser,
       updateProfilePhoto,
       removeProfilePhoto,
+      refreshCurrentUser,
+      updateMyAccount,
+      saveDeliveryAddress,
+      deleteDeliveryAddress,
+      makeDefaultDeliveryAddress,
 
       // Routing
       resolveHomeRoute,

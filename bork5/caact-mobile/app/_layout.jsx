@@ -39,7 +39,10 @@ export default function RootLayout() {
           <BackendConnectionStatus />
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            // Android uses windowSoftInputMode=resize from app.json. Applying
+            // a second height adjustment there caused fields and action bars
+            // to jump under the keyboard on some APK devices.
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={0}
           >
             <Stack screenOptions={{ headerShown: false, animation: "fade" }} />

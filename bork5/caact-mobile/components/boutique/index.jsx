@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
 
 export const BQ_COLORS = {
   accent: "#2563eb",
@@ -39,7 +40,7 @@ export function BoutiqueText({ children, variant = "body", color = BQ_COLORS.ink
 export function BoutiqueScreen({ children, contentContainerStyle, style }) {
   // The customer tab bar has a raised centre action, so leave clear space for
   // it on every iPhone size instead of letting the last product/action hide.
-  return <ScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl + 72 }, contentContainerStyle]}>{children}</ScrollView>;
+  return <KeyboardAwareScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} minBottomPadding={BQ_SPACING.xl + 72} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md }, contentContainerStyle]}>{children}</KeyboardAwareScrollView>;
 }
 
 export function BoutiqueCard({ children, onPress, padding = BQ_SPACING.md, elevated = true, style }) {

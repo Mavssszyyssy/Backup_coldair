@@ -2,13 +2,14 @@
 // Email recovery begins here and is available to every account role.
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
 import TextField from "../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../../constants/theme";
 import { normalizeEmail, validateEmail } from "../../../utils/authValidation";
 
@@ -42,13 +43,13 @@ export default function RecoverScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.md,
         }}
-        keyboardShouldPersistTaps="handled"
+        minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
           title="Recover Account"
@@ -82,7 +83,7 @@ export default function RecoverScreen() {
             Back to Login
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

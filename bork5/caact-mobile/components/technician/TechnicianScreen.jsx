@@ -1,9 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
 
 const BOTTOM_NAV_ROUTES = new Set([
   "/technician",
@@ -121,18 +122,16 @@ export default function TechnicianScreen({
     : Math.max(insets.bottom, SPACING.md) + SPACING.lg;
 
   const content = scroll ? (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={{ flex: 1 }}
       contentContainerStyle={[
         { padding: SPACING.md, paddingBottom: bottomClearance },
         contentContainerStyle,
       ]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      automaticallyAdjustKeyboardInsets
+      minBottomPadding={stickyAction ? bottomClearance + 84 : bottomClearance}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
     <View style={[{ flex: 1, padding: SPACING.md, paddingBottom: bottomClearance }, contentContainerStyle]}>{children}</View>
   );

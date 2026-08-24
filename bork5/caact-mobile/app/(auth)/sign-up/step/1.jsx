@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../../components/ui/Button";
@@ -9,6 +9,7 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import PasswordField from "../../../../components/ui/PasswordField";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { checkAliasAvailability } from "../../../../services/api";
 import {
@@ -123,11 +124,12 @@ export default function SignUpStep1() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: 112 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={126}>
         <PageHeader title="Create Account" subtitle="Step 2 of 3: Account and security" color={COLORS.primary} onBack={() => router.back()} />
 
         <Card>
-          <TextField label="Email" value={form.email} onChangeText={(value) => updateField("email", value)} placeholder="you@example.com" error={errors.email} keyboardType="email-address" autoCapitalize="none" />
+          <TextField label="Email address" value={form.email} onChangeText={(value) => updateField("email", value)} placeholder="you@example.com" error={errors.email} keyboardType="email-address" autoCapitalize="none" />
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: -SPACING.xs, marginBottom: SPACING.sm }}>Used for sign-in, account creation, and email verification. You will not need to enter it again.</Text>
           <TextField label="Sign-in Alias" value={form.alias} onChangeText={(value) => updateField("alias", value.toLowerCase().trim())} onBlur={checkAlias} placeholder={aliasPlaceholder} error={errors.alias} autoCapitalize="none" />
           {aliasStatus === "checking" ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>Checking alias...</Text> : null}
           {aliasStatus === "available" ? <Text style={{ color: COLORS.success, fontSize: FONT.sm }}>Alias available</Text> : null}
@@ -140,7 +142,7 @@ export default function SignUpStep1() {
           {passwordScore !== null ? <View style={{ flexDirection: "row", alignItems: "center", marginTop: SPACING.xs }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: scoreColor, marginRight: SPACING.xs }} /><Text style={{ color: scoreColor, fontWeight: FONT.bold, fontSize: FONT.sm }}>Strength: {scoreLabel} ({passwordScore}/100)</Text></View> : null}
           <PasswordField label="Confirm Password" value={form.confirmPassword} onChangeText={(value) => updateField("confirmPassword", value)} error={errors.confirmPassword} />
         </Card>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <StickyActionBar>
         <Button title={loading ? "Checking account..." : "Continue to verification"} onPress={handleContinue} variant="primary" loading={loading} disabled={loading || aliasStatus === "checking"} />

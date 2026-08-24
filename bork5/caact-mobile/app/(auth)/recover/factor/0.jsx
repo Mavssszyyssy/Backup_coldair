@@ -2,13 +2,14 @@
 // Alias recovery — sends the user's sign-in alias to their email.
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity } from "react-native";
+import { Alert, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../../components/ui/Button";
 import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import TextField from "../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { forgotPassword } from "../../../../services/api";
 
@@ -43,13 +44,13 @@ export default function RecoverAliasScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.md,
         }}
-        keyboardShouldPersistTaps="handled"
+        minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
           title="Recover Account"
@@ -115,7 +116,7 @@ export default function RecoverAliasScreen() {
             Back to Login
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
