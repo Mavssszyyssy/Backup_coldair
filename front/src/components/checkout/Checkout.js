@@ -452,32 +452,22 @@ function Checkout() {
     });
 
     try {
-      const response = await Promise.race([
-        apiRequest("/orders", {
-          method: "POST",
-          body: JSON.stringify({
-            items: order.items,
-            addressId: checkoutAddress.id,
-            address: checkoutAddress,
-            paymentMethod: selectedPayment,
-            total: order.total,
-            subtotal: totals.subtotal,
-            vatAmount: totals.vatAmount,
-            shippingFee: totals.deliveryFee,
-            discountAmount: totals.discountAmount,
-            idempotencyKey: orderRequestKeyRef.current,
-          }),
+      const response = await apiRequest("/orders", {
+        method: "POST",
+        timeoutMs: PAYMENT_CONNECTION_TIMEOUT_MS,
+        body: JSON.stringify({
+          items: order.items,
+          addressId: checkoutAddress.id,
+          address: checkoutAddress,
+          paymentMethod: selectedPayment,
+          total: order.total,
+          subtotal: totals.subtotal,
+          vatAmount: totals.vatAmount,
+          shippingFee: totals.deliveryFee,
+          discountAmount: totals.discountAmount,
+          idempotencyKey: orderRequestKeyRef.current,
         }),
-        new Promise((_, reject) =>
-          setTimeout(() => {
-            const timeout = new Error(
-              "Connection timed out. Check My Orders before trying again; your order may still be processing.",
-            );
-            timeout.code = "PAYMENT_CONNECTION_TIMEOUT";
-            reject(timeout);
-          }, PAYMENT_CONNECTION_TIMEOUT_MS),
-        ),
-      ]);
+      });
       const created = response.order;
       const paymentUrl =
         response.payment?.checkoutUrl ||
@@ -496,7 +486,7 @@ function Checkout() {
       navigate(`/order-confirmation/${created._id || created.id}`);
     } catch (error) {
       setIsProcessingPayment(false);
-      if (error?.code === "PAYMENT_CONNECTION_TIMEOUT") {
+      if (error?.code === "PAYMENT_CONNECTION_TIMEOUT" || error?.code === "API_TIMEOUT") {
         alert(error.message);
         return;
       }

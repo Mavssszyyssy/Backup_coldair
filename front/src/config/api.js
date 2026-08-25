@@ -62,11 +62,47 @@ const waitBeforeRetry = (milliseconds) =>
 const isTransientResponse = (response) =>
   [502, 503, 504].includes(Number(response?.status));
 
+const boundedTimeout = (value, fallback) => {
+  const parsed = Number(value);
+  const resolved = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.min(Math.max(resolved, 3000), 60000);
+};
+
+const requestWithTimeout = async (url, options, timeoutMs, callerSignal) => {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortForCaller = () => controller.abort();
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  callerSignal?.addEventListener?.("abort", abortForCaller, { once: true });
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (timedOut) {
+      const timeoutError = new Error("The server took too long to respond. Please retry.");
+      timeoutError.code = "API_TIMEOUT";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    callerSignal?.removeEventListener?.("abort", abortForCaller);
+  }
+};
+
 const apiRequest = async (path, options = {}) => {
   beginConnection(path);
   const token = getToken();
   const activeBranch = getActiveBranch();
-  const method = String(options.method || "GET").toUpperCase();
+  const { timeoutMs: requestedTimeoutMs, signal: callerSignal, ...requestOptions } = options;
+  const method = String(requestOptions.method || "GET").toUpperCase();
+  const timeoutMs = boundedTimeout(
+    requestedTimeoutMs,
+    method === "GET" ? 20000 : 30000,
+  );
   const shouldDisableCache = method === "GET";
   const apiBaseUrls = [API_BASE_URL, API_FALLBACK_URL].filter(
     (value, index, values) => value && values.indexOf(value) === index,
@@ -89,17 +125,17 @@ const apiRequest = async (path, options = {}) => {
       const attempts = shouldDisableCache ? 2 : 1;
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
-          response = await fetch(requestUrl, {
-            ...options,
+          response = await requestWithTimeout(requestUrl, {
+            ...requestOptions,
             ...(shouldDisableCache ? { cache: "no-store" } : {}),
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
               ...(activeBranch ? { "X-Branch": activeBranch } : {}),
-              ...(options.headers || {}),
+              ...(requestOptions.headers || {}),
             },
-          });
+          }, timeoutMs, callerSignal);
           if (!isTransientResponse(response) || attempt === attempts - 1) break;
           await waitBeforeRetry(350);
         } catch (error) {
@@ -115,10 +151,12 @@ const apiRequest = async (path, options = {}) => {
     if (!response) throw lastNetworkError || new Error("Network request failed.");
   } catch (error) {
     console.error("API request failed", { url: requestUrl, options, error });
-    const message =
-      "Unable to connect to the server. Please check your connection and try again.";
+    const message = error?.code === "API_TIMEOUT"
+      ? error.message
+      : "Unable to connect to the server. Please check your connection and try again.";
     const err = new Error(message);
     err.status = 0;
+    err.code = error?.code || "API_NETWORK_ERROR";
     err.data = null;
     finishConnection("failed", { path, message, url: requestUrl });
     throw err;
