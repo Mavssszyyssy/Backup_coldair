@@ -22,15 +22,15 @@ import { getOrdersByUser } from "../../services/orderStorage";
 import { getDisplayName } from "../../services/profileService";
 import {
   buildNextRecommendedMaintenance,
-  buildUnitHealthMap,
-} from "../../services/acHealthScoreService";
+  buildUnitRecommendationMap,
+} from "../../services/maintenanceRecommendationService";
 import { getUnitsByUser } from "../../services/unitStorage";
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const [units, setUnits] = useState([]);
-  const [healthMap, setHealthMap] = useState({});
+  const [recommendationMap, setRecommendationMap] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
 
   useFocusEffect(
@@ -44,8 +44,8 @@ export default function CustomerHomeScreen() {
         ]).then(([nextUnits, nextOrders, history]) => {
           if (!active) return;
           setUnits(nextUnits);
-          setHealthMap(
-            buildUnitHealthMap(
+          setRecommendationMap(
+            buildUnitRecommendationMap(
               nextUnits,
               history.requests,
               history.linkedTasks,
@@ -138,14 +138,14 @@ export default function CustomerHomeScreen() {
           />
           {units.map((unit) => (
             (() => {
-              const health = healthMap[String(unit.id)];
-              const maintenance = buildNextRecommendedMaintenance(health);
+              const recommendation = recommendationMap[String(unit.id)];
+              const maintenance = buildNextRecommendedMaintenance(recommendation);
 
               return (
                 <CustomerUnitRow
                   key={unit.id}
                   unit={unit}
-                  health={health}
+                  recommendation={recommendation}
                   maintenance={maintenance}
                   onPress={() => router.push(`/customer/units/${unit.id}`)}
                 />

@@ -796,9 +796,7 @@ export async function completeAmpService(token, unitId, payload) {
       success: true,
       serviceHistory: data.serviceHistory,
       unit: data.unit,
-      baselineHealthScore: data.baselineHealthScore,
-      nextIdealServiceDate: data.next_ideal_service_date,
-      nextIdealServicePeriod: data.next_ideal_service_period,
+      recommendation: data.recommendation,
     };
   }
   return {
@@ -818,7 +816,7 @@ export async function fetchCustomerAmpUnits(token) {
   };
 }
 
-export async function generateAmpReport(token, { unitId, reportType = "ac_health_analysis" } = {}) {
+export async function generateAmpReport(token, { unitId, reportType = "predictive_maintenance" } = {}) {
   const { ok, data } = await post(
     "/ai/amp-report",
     { unitId, reportType },
@@ -830,6 +828,12 @@ export async function generateAmpReport(token, { unitId, reportType = "ac_health
     error: getErrorMessage(data, "Unable to generate AMP report."),
     report: null,
   };
+}
+
+export async function updateAmpRoomSize(token, unitId, roomSizeSqm) {
+  const { ok, data } = await patch(`/amp/units/${encodeURIComponent(unitId)}/room-size`, { roomSizeSqm }, token);
+  if (ok) return { success: true, unit: data.unit, recommendation: data.recommendation };
+  return { success: false, error: getErrorMessage(data, "Unable to update room size.") };
 }
 
 // ---------------------------------------------------------------------------

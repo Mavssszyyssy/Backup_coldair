@@ -50,6 +50,18 @@ const createReorderRequest = async (req, res) => {
     return res.status(400).json({ message: "A valid branch is required for a reorder request." });
   }
 
+  const existing = await ReorderRequest.exists({
+    requestedBy: req.authUser._id,
+    product: product._id,
+    branch,
+    status: "submitted",
+  });
+  if (existing) {
+    return res.status(409).json({
+      message: "A reorder request for this product and branch is already awaiting review.",
+    });
+  }
+
   const reorder = await ReorderRequest.create({
     requestedBy: req.authUser._id,
     product: product._id,
@@ -99,30 +111,66 @@ const updateReorderStatus = async (req, res) => {
     return res.status(400).json({ message: "Status must be approved or rejected." });
   }
 
-  const reorder = await ReorderRequest.findById(req.params.reorderId).populate("product");
-  if (!reorder) return res.status(404).json({ message: "Reorder request not found." });
-  if (reorder.status !== "submitted") {
+  const reviewNotes = String(req.body?.reviewNotes || "").trim();
+  // Claim the submitted request atomically before changing inventory. Only one
+  // concurrent click can move it out of submitted, so stock cannot be added
+  // twice even when the browser retries or the user double-clicks.
+  const reorder = await ReorderRequest.findOneAndUpdate(
+    { _id: req.params.reorderId, status: "submitted" },
+    {
+      $set: {
+        status,
+        reviewNotes,
+        reviewedBy: req.authUser._id,
+        reviewedAt: new Date(),
+      },
+    },
+    { new: true },
+  ).populate("product");
+
+  if (!reorder) {
     return res.status(409).json({ message: "This reorder request has already been reviewed." });
   }
 
   if (status === "approved") {
     const product = reorder.product;
-    if (!product) return res.status(409).json({ message: "The requested product is no longer available." });
-    const current = Number(product.branchStock?.get(reorder.branch) || 0);
-    product.branchStock.set(reorder.branch, current + Number(reorder.quantity));
-    product.stock = BRANCHES.reduce(
-      (total, branch) => total + Number(product.branchStock?.get(branch) || 0),
-      0,
-    );
-    await ensureProductSerialUnits(product, product.stock);
-    await product.save();
-  }
+    if (!product) {
+      await ReorderRequest.updateOne(
+        { _id: reorder._id, status: "approved", reviewedBy: req.authUser._id },
+        { $set: { status: "submitted", reviewNotes: "", reviewedBy: null, reviewedAt: null } },
+      );
+      return res.status(409).json({ message: "The requested product is no longer available." });
+    }
 
-  reorder.status = status;
-  reorder.reviewNotes = String(req.body?.reviewNotes || "").trim();
-  reorder.reviewedBy = req.authUser._id;
-  reorder.reviewedAt = new Date();
-  await reorder.save();
+    try {
+      // Use the same single-document stock/serial save used by Inventory
+      // Checker, which is reliable in the deployed serverless environment.
+      const current = Number(product.branchStock?.get(reorder.branch) || 0);
+      product.branchStock.set(reorder.branch, current + Number(reorder.quantity));
+      product.stock = BRANCHES.reduce(
+        (total, branch) => total + Number(product.branchStock?.get(branch) || 0),
+        0,
+      );
+      await ensureProductSerialUnits(product, product.stock, { deferSave: true });
+      await product.save();
+    } catch (error) {
+      // Release the claim when inventory could not be saved, allowing a safe
+      // retry without leaving the request falsely marked as approved.
+      await ReorderRequest.updateOne(
+        { _id: reorder._id, status: "approved", reviewedBy: req.authUser._id },
+        { $set: { status: "submitted", reviewNotes: "", reviewedBy: null, reviewedAt: null } },
+      );
+      console.error("Reorder approval inventory update failed", {
+        reorderId: String(reorder._id),
+        productId: String(product._id),
+        branch: reorder.branch,
+        error,
+      });
+      return res.status(500).json({
+        message: "Unable to add the approved stock. The request was kept pending; please try again.",
+      });
+    }
+  }
 
   try {
     await Notification.create({

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import '../../ADMIN/Reorder/styles.css';
@@ -13,6 +13,7 @@ export default function SuperAdminReorders({ embedded = false }) {
   const [processingId, setProcessingId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const hasLoadedQueue = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -20,8 +21,13 @@ export default function SuperAdminReorders({ embedded = false }) {
     try {
       const result = await apiRequest('/reorders');
       setReorders(result.reorders || []);
+      hasLoadedQueue.current = true;
     } catch (requestError) {
-      setError(requestError.message || 'Unable to load reorder requests.');
+      setError(
+        hasLoadedQueue.current
+          ? 'Could not refresh the queue. Showing the last successfully loaded requests. Please try Refresh again.'
+          : (requestError.message || 'Unable to load reorder requests.'),
+      );
     } finally {
       setLoading(false);
     }

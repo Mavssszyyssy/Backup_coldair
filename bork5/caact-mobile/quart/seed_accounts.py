@@ -98,7 +98,7 @@ async def seed_debug_accounts() -> None:
     Insert predefined debug accounts into the users table.
 
     The customer account is given a stable id so the frontend can seed the
-    matching dummy AC unit in AsyncStorage and show its health score.
+    matching dummy AC unit in AsyncStorage and show its maintenance recommendation.
     """
     now = _utcnow_iso()
 

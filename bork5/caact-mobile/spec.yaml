@@ -280,7 +280,7 @@ technician_workflow:
       - Display unit details
       - Show related service requests
       - Show related technician tasks
-      - AI health score and lifecycle prediction
+      - History-based predictive maintenance recommendations
     storage:
       - units_storage_v1
       - service_requests_storage_v2
@@ -374,7 +374,7 @@ business_rules:
   - google_auth_routing: REMOVED
   - inventory_dedupe: Placeholder products removed on load
   - audit_trail: All CRUD operations logged
-  - health_scoring: AI predicts unit lifecycle (age, maintenance, placement, requests)
+  - maintenance_prediction: backend predicts the best service date from recorded maintenance history
 
 backend_status:
   caact_server: empty (virtual environment only, no code)
@@ -387,7 +387,7 @@ key_metrics:
   default_products: 8
   login_attempt_limit: 3
   lockout_duration: 60 seconds
-  health_score_thresholds:
+  maintenance_due_thresholds:
     excellent: ">= 85"
     good: ">= 70"
     warning: ">= 50"

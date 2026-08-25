@@ -26,9 +26,12 @@ const buildUnitFromBackend = (unit = {}) => ({
   qrCode: unit.qrCode || "",
   installationDate: unit.installationDate || "",
   status: unit.status || "Active",
-  ampereNextServiceLabel:
-    unit.nextIdealServicePeriod ||
-    (unit.nextIdealServiceDate ? `Next service around ${unit.nextIdealServiceDate}` : ""),
+  bestServicedByLabel:
+    unit.bestServicedBy ? `Best serviced by ${new Date(unit.bestServicedBy).toLocaleDateString()}` : "",
+  bestServicedBy: unit.bestServicedBy || "",
+  recommendedService: unit.recommendedService || "regular_cleaning",
+  recommendationBasis: unit.recommendationBasis || "",
+  capacityAssessment: unit.capacityAssessment || null,
   technicianReportSummary: "Installed unit synced from completed technician fulfillment.",
   installEnvironmentNotes: [unit.placementArea, unit.installationEnvironment]
     .filter(Boolean)

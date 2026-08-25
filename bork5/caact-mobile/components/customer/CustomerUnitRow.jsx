@@ -6,7 +6,7 @@ import IconRow from "../ui/IconRow";
 
 export default function CustomerUnitRow({
   unit,
-  health,
+  recommendation,
   maintenance,
   onPress,
 }) {
@@ -19,7 +19,7 @@ export default function CustomerUnitRow({
         onPress={onPress}
         accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
         right={
-          health ? (
+          recommendation ? (
             <View
               style={{
                 alignItems: "flex-end",
@@ -29,12 +29,12 @@ export default function CustomerUnitRow({
             >
               <Text
                 style={{
-                  color: maintenance?.color || health.color,
+                  color: maintenance?.color || COLORS.primary,
                   fontWeight: FONT.black,
                   fontSize: FONT.sm,
                 }}
               >
-                {maintenance?.urgency || health.label}
+                {maintenance?.urgency || "Scheduled"}
               </Text>
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
                 View AC Details

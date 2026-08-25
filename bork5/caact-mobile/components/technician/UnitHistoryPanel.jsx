@@ -34,7 +34,7 @@ function HistoryTable({ columns, rows, emptyMessage }) {
 
 export default function UnitHistoryPanel({ history }) {
   if (!history?.unit) return null;
-  const { unit, maintenanceHistory = [], repairHistory = [], ampHistory = [] } = history;
+  const { unit, maintenanceHistory = [], repairHistory = [], ampHistory = [], recommendation = null } = history;
 
   return (
     <>
@@ -85,19 +85,31 @@ export default function UnitHistoryPanel({ history }) {
       </Card>
 
       <Card>
-        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Usage & AMP Information</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Use the latest AMP assessment to guide this visit.</Text>
+        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance Recommendations</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Use recorded history and the current due date to prepare for this visit.</Text>
         <HistoryTable
           columns={[
-            { key: "date", label: "Date / Period", format: (value, row) => `${formatDate(value)}\n${row.period || ""}` },
-            { key: "usageData", label: "Usage Data" },
-            { key: "healthScore", label: "Health Score" },
-            { key: "riskLevel", label: "Risk Level" },
-            { key: "recommendation", label: "Recommendation", width: 220 },
+            { key: "date", label: "Calculated", format: formatDate },
+            { key: "bestServicedBy", label: "Best Serviced By", format: formatDate },
+            { key: "recommendedService", label: "Recommended Service", format: (value) => String(value || "").replace(/_/g, " ") },
+            { key: "recommendationBasis", label: "Historical Basis", width: 260 },
           ]}
           rows={ampHistory}
           emptyMessage="No AMP assessment is available yet."
         />
+      </Card>
+
+      <Card>
+        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Preparation Recommendation</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginBottom: SPACING.sm }}>
+          Suggestions below come only from components recorded for comparable AC units. They are preparation guidance, not a diagnosis.
+        </Text>
+        <InfoCard label="Best Serviced By" value={formatDate(recommendation?.bestServicedBy)} />
+        <InfoCard label="Recommended Service" value={String(recommendation?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
+        <InfoCard label="Historical Pattern" value={recommendation?.recommendationBasis || "Comparable service history is still limited."} />
+        {(recommendation?.commonComponents || []).length ? (
+          (recommendation.commonComponents || []).map((item) => <InfoCard key={item.component} label="Consider Preparing" value={`${item.component} · ${item.count} recorded use(s)`} />)
+        ) : <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>No component preparation suggestion is supported by recorded history.</Text>}
       </Card>
     </>
   );

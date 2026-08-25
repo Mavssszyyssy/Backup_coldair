@@ -54,10 +54,10 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
               {unit.status}
             </span>
           </div>
-          {unit.ampereNextServiceLabel && (
+          {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">Next service (AMPERE)</span>
-              <span className="info-value">{unit.ampereNextServiceLabel}</span>
+              <span className="info-label">Best Serviced By</span>
+              <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}
           <DynamicServiceSticker unit={unit} />

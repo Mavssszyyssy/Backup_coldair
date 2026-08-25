@@ -64,10 +64,10 @@ function UnitCard({
             <span className="info-label">Warranty</span>
             <span className="info-value">{String(unit.warrantyStatus || unit.warranty?.status || "pending activation").replace(/_/g, " ")}</span>
           </div>
-          {unit.ampereNextServiceLabel && (
+          {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">AMPERE</span>
-              <span className="info-value">{unit.ampereNextServiceLabel}</span>
+              <span className="info-label">Best Serviced By</span>
+              <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}
         </div>

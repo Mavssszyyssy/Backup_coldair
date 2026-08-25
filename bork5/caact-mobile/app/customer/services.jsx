@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Text } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -33,6 +33,7 @@ const getServiceAddress = (user = {}) => {
 
 export default function CustomerServicesScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { current } = useUserContext();
   const [units, setUnits] = useState([]);
   const [serviceOfferings, setServiceOfferings] = useState([]);
@@ -71,6 +72,27 @@ export default function CustomerServicesScreen() {
 
   const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
+
+  useEffect(() => {
+    const requestedUnitId = Array.isArray(params.unitId) ? params.unitId[0] : params.unitId;
+    if (requestedUnitId && units.some((item) => String(item.id) === String(requestedUnitId))) {
+      setSelectedUnitId(String(requestedUnitId));
+    }
+  }, [params.unitId, units]);
+
+  useEffect(() => {
+    const rawType = Array.isArray(params.serviceType) ? params.serviceType[0] : params.serviceType;
+    const requestedType = String(rawType || "").trim().toLowerCase();
+    if (!requestedType || !serviceOfferings.length) return;
+    const preferredId = requestedType === "deep_cleaning" ? "cleaning" : requestedType === "regular_cleaning" ? "maintenance" : requestedType;
+    const match = serviceOfferings.find((item) => {
+      const values = [item.id, item.title, item.defaultIssueType].map((value) => String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_"));
+      return values.includes(requestedType) || values.includes(preferredId);
+    });
+    if (!match) return;
+    setSelectedServiceId(match.id);
+    setIssueDescription((currentValue) => currentValue || `AMP recommended ${requestedType.replace(/_/g, " ")} for this AC unit.`);
+  }, [params.serviceType, serviceOfferings]);
 
   const selectDate = (value) => {
     setPreferredDate(value);

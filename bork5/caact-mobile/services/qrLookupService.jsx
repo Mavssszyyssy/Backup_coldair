@@ -5,7 +5,7 @@ import { getStoredToken } from "./api";
 import { getAllUnits } from "./unitStorage";
 import { getAllServiceRequests } from "./serviceRequestStorage";
 import { getAllTasks } from "./taskStorage";
-import { calculateUnitHealthScore } from "./acHealthScoreService";
+import { buildMaintenanceRecommendation } from "./maintenanceRecommendationService";
 
 export function buildUnitQrCode(unit) {
   if (!unit) return "";
@@ -255,8 +255,6 @@ async function lookupBackendTechnicianHistory(rawValue) {
   if (!token) return null;
   const result = await api.fetchTechnicianUnitHistory(token, serialNumber);
   if (!result.success) return null;
-  const amp = result.ampHistory?.[0] || {};
-  const score = Number(amp.healthScore ?? 100);
   return {
     unit: result.unit,
     maintenanceHistory: result.maintenanceHistory || [],
@@ -264,13 +262,7 @@ async function lookupBackendTechnicianHistory(rawValue) {
     ampHistory: result.ampHistory || [],
     requests: [],
     tasks: [],
-    health: {
-      score,
-      label: amp.riskLevel === "High" ? "Critical" : amp.riskLevel === "Moderate" ? "Warning" : "Good",
-      color: amp.riskLevel === "High" ? "#DC2626" : amp.riskLevel === "Moderate" ? "#D97706" : "#059669",
-      recommendation: amp.recommendation || "Review the maintenance history before servicing this unit.",
-      aiPrediction: { nextMaintenanceDate: amp.period || "Not recorded" },
-    },
+    recommendation: result.recommendation || null,
   };
 }
 
@@ -293,7 +285,7 @@ export async function lookupUnitContext(rawValue) {
         unit: registrationContext.unit,
         requests: [],
         tasks: registrationContext.tasks,
-        health: calculateUnitHealthScore({
+        recommendation: buildMaintenanceRecommendation({
           unit: registrationContext.unit,
           requests: [],
           tasks: registrationContext.tasks,
@@ -306,7 +298,7 @@ export async function lookupUnitContext(rawValue) {
         unit: backendResult.unit,
         requests: [],
         tasks: [],
-        health: calculateUnitHealthScore({
+        recommendation: buildMaintenanceRecommendation({
           unit: backendResult.unit,
           requests: [],
           tasks: [],
@@ -346,7 +338,7 @@ export async function lookupUnitContext(rawValue) {
         unit: backendResult.unit,
         requests: [],
         tasks: [],
-        health: calculateUnitHealthScore({
+        recommendation: buildMaintenanceRecommendation({
           unit: backendResult.unit,
           requests: [],
           tasks: [],
@@ -383,7 +375,7 @@ export async function lookupUnitContext(rawValue) {
     unit: matchedUnit,
     requests: relatedRequests,
     tasks: relatedTasks,
-    health: calculateUnitHealthScore({
+    recommendation: buildMaintenanceRecommendation({
       unit: matchedUnit,
       requests: relatedRequests,
       tasks: relatedTasks,

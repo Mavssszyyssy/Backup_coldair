@@ -9,7 +9,6 @@ import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
 import PageHeader from "../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
-import { calculateUnitHealthScore } from "../../../../services/acHealthScoreService";
 import { getServiceRequestsByUser } from "../../../../services/serviceRequestStorage";
 import { checkInTask, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
@@ -107,18 +106,6 @@ export default function TaskInformationScreen() {
     }, [id]),
   );
 
-  const health = unit
-    ? calculateUnitHealthScore({
-        unit,
-        requests: requests.filter(
-          (request) =>
-            String(request.unitId || "") === String(unit.id) ||
-            String(request.unitName || "").toLowerCase() ===
-              String(unit.unitName || "").toLowerCase(),
-        ),
-        tasks: task ? [task] : [],
-      })
-    : null;
   const assignedSerials = getTaskSerials(task);
   const proof = task?.proof || {};
   const registrationProgress = task?.registrationProgress;
@@ -246,10 +233,10 @@ export default function TaskInformationScreen() {
           <InfoCard label="Brand / Model" value={[unit?.brand, unit?.model].filter(Boolean).join(" / ") || "Not provided"} />
           <InfoCard label="Serial" value={unit?.serialNumber || assignedSerials.join(", ") || "Not provided"} />
           <InfoCard label="Warranty Status" value={unit?.installationDate ? "Check purchase date and warranty terms" : "Unknown"} />
-          {health && (
+          {unit?.bestServicedBy && (
             <InfoCard
-              label="Maintenance Status"
-              value={`${health.score} - ${health.label}. ${health.recommendation}`}
+              label="Best Serviced By"
+              value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`}
             />
           )}
         </Card>

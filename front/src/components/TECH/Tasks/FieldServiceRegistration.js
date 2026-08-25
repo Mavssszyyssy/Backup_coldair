@@ -14,8 +14,7 @@ const defaultForm = {
   lastServiceDate: today(),
   placementArea: '',
   usageHoursPerDay: 8,
-  environmentDustLevel: 'moderate',
-  occupancyLoad: 'normal',
+  roomSizeSqm: '',
   filterCondition: 'normal',
   coilCondition: 'normal',
   drainageCondition: 'clear',
@@ -49,7 +48,6 @@ const FieldServiceRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
   const [notice, setNotice] = useState('');
   const [history, setHistory] = useState(null);
 
@@ -135,7 +133,6 @@ const FieldServiceRegistration = () => {
     setSaving(true);
     setError('');
     setNotice('');
-    setResult(null);
     try {
       const response = await apiRequest(`/tasks/${context.task.id}/amp-registration`, {
         method: 'PATCH',
@@ -146,7 +143,6 @@ const FieldServiceRegistration = () => {
         })
       });
       setContext((prev) => ({ ...prev, task: response.task }));
-      setResult(response.registration);
       const progress = response.registrationProgress || response.task?.registrationProgress;
       const registered = progress?.totalRegistered || 0;
       const required = progress?.totalRequired || 0;
@@ -242,21 +238,8 @@ const FieldServiceRegistration = () => {
               <input type="number" min="1" max="24" value={form.usageHoursPerDay} onChange={(event) => updateField('usageHoursPerDay', event.target.value)} />
             </label>
             <label>
-              Dust exposure
-              <select value={form.environmentDustLevel} onChange={(event) => updateField('environmentDustLevel', event.target.value)}>
-                <option value="low">Low</option>
-                <option value="moderate">Moderate</option>
-                <option value="high">High</option>
-                <option value="severe">Severe</option>
-              </select>
-            </label>
-            <label>
-              Occupancy load
-              <select value={form.occupancyLoad} onChange={(event) => updateField('occupancyLoad', event.target.value)}>
-                <option value="light">Light</option>
-                <option value="normal">Normal</option>
-                <option value="heavy">Heavy</option>
-              </select>
+              Room size (m²)
+              <input type="number" min="1" value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)} placeholder="Optional; used for HP suitability" />
             </label>
             <label>
               Filter condition
@@ -319,12 +302,6 @@ const FieldServiceRegistration = () => {
             </button>
           </div>
 
-          {result?.ampServicePlan ? (
-            <div className="field-registration-result">
-              <strong>Next ideal service: {result.ampServicePlan.label}</strong>
-              <p>{result.ampServicePlan.monthsUntil} month service interval saved for this unit.</p>
-            </div>
-          ) : null}
         </section>
       </div>
 
@@ -336,8 +313,8 @@ const FieldServiceRegistration = () => {
         <HistoryTable columns={['Date', 'Service Type', 'Technician', 'Findings', 'Action Taken', 'Status']} rows={history.maintenanceHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.serviceType, item.technician, item.findings, item.actionTaken, item.status]} />
         <h4 style={{ marginTop: 20 }}>Repair History</h4>
         <HistoryTable columns={['Date', 'Issue', 'Diagnosis', 'Parts Used', 'Technician', 'Status']} rows={history.repairHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.issue, item.diagnosis, item.partsUsed, item.technician, item.status]} />
-        <h4 style={{ marginTop: 20 }}>AMP Assessment</h4>
-        <HistoryTable columns={['Date / Period', 'Usage Data', 'Health Score', 'Risk Level', 'Recommendation']} rows={history.ampHistory} values={(item) => [`${item.date ? new Date(item.date).toLocaleDateString() : ''} ${item.period || ''}`.trim(), item.usageData, item.healthScore, item.riskLevel, item.recommendation]} />
+        <h4 style={{ marginTop: 20 }}>Maintenance Recommendations</h4>
+        <HistoryTable columns={['Calculated', 'Best Serviced By', 'Recommended Service', 'Historical Basis']} rows={history.ampHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.bestServicedBy ? new Date(item.bestServicedBy).toLocaleDateString() : 'Not available', String(item.recommendedService || '').replace(/_/g, ' '), item.recommendationBasis]} />
       </section> : null}
 
       {requiredSerials(context.task).length > 0 ? (

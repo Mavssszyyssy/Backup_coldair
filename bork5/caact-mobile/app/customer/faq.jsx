@@ -67,11 +67,11 @@ const FAQ_ITEMS = [
       "Go to Services, select your registered AC, choose the service type, describe the concern, and select a future preferred date. You will be notified when the request is reviewed or assigned.",
   },
   {
-    id: "amp-health",
+    id: "amp-maintenance",
     category: "AMP",
-    question: "What does my AMP Health Score mean?",
+    question: "What does Best Serviced By mean?",
     answer:
-      "The AMP Health Score summarizes available unit condition, usage, maintenance, and repair information. It supports preventive recommendations but does not replace an on-site technician diagnosis.",
+      "Best Serviced By is a preventive-maintenance date calculated from recorded service history for comparable AC units. It is planning guidance and does not replace an on-site technician inspection.",
   },
   {
     id: "qr-scanning",

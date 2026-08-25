@@ -4,9 +4,9 @@ import { useCallback, useState } from "react";
 import { Alert, Text, TextInput, View } from "react-native";
 
 import {
-  CustomerHealthPanel,
+  CustomerRecommendationPanel,
   CustomerMaintenancePanel,
-} from "../../../components/customer/CustomerHealthPanels";
+} from "../../../components/customer/CustomerMaintenancePanels";
 import CustomerScreen from "../../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
 import Button from "../../../components/ui/Button";
@@ -17,13 +17,13 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
   buildNextRecommendedMaintenance,
-  calculateUnitHealthScore,
-} from "../../../services/acHealthScoreService";
+  buildMaintenanceRecommendation,
+} from "../../../services/maintenanceRecommendationService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
 import {
   getUnitByCode,
 } from "../../../services/unitStorage";
-import { createWarrantyClaim, generateAmpReport, getStoredToken } from "../../../services/api";
+import { createWarrantyClaim, generateAmpReport, getStoredToken, updateAmpRoomSize } from "../../../services/api";
 
 function readParam(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -40,7 +40,7 @@ export default function CustomerUnitDetailsScreen() {
   const params = useLocalSearchParams();
   const { current } = useUserContext();
   const [unit, setUnit] = useState(null);
-  const [health, setHealth] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
   const [maintenance, setMaintenance] = useState(null);
   const [history, setHistory] = useState({
     requests: [],
@@ -52,6 +52,8 @@ export default function CustomerUnitDetailsScreen() {
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [ampReport, setAmpReport] = useState(null);
   const [ampReportLoading, setAmpReportLoading] = useState("");
+  const [roomSize, setRoomSize] = useState("");
+  const [roomSaving, setRoomSaving] = useState(false);
 
   const unitId = readParam(params.id);
 
@@ -75,13 +77,9 @@ export default function CustomerUnitDetailsScreen() {
         warrantyStatus: result.warranty?.status || "under_review",
       };
       setUnit(nextUnit);
-      const nextHealth = calculateUnitHealthScore({
-        unit: nextUnit,
-        requests: history.requests,
-        tasks: history.linkedTasks,
-      });
-      setHealth(nextHealth);
-      setMaintenance(buildNextRecommendedMaintenance(nextHealth));
+      const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit });
+      setRecommendation(nextRecommendation);
+      setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
       setClaimIssue("");
       Alert.alert("Warranty claim submitted", "Your claim is under review. We will notify you when it is updated.");
     } catch (error) {
@@ -127,7 +125,7 @@ export default function CustomerUnitDetailsScreen() {
 
           if (!ownsUnit) {
             setUnit(null);
-            setHealth(null);
+            setRecommendation(null);
             setMaintenance(null);
             setHistory(loadedHistory);
             return;
@@ -158,13 +156,10 @@ export default function CustomerUnitDetailsScreen() {
               (task) => String(task.status || "").toLowerCase() === "completed",
             ),
           });
-          const nextHealth = calculateUnitHealthScore({
-            unit: loadedUnit,
-            requests: relatedRequests,
-            tasks: relatedTasks,
-          });
-          setHealth(nextHealth);
-          setMaintenance(buildNextRecommendedMaintenance(nextHealth));
+          const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
+          setRecommendation(nextRecommendation);
+          setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
+          setRoomSize(loadedUnit.roomSizeSqm ? String(loadedUnit.roomSizeSqm) : "");
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -241,21 +236,19 @@ export default function CustomerUnitDetailsScreen() {
         </View>
       </Card>
 
-      <CustomerHealthPanel health={health} />
+      <CustomerRecommendationPanel recommendation={recommendation} />
 
       <CustomerMaintenancePanel maintenance={maintenance} />
 
       <Card>
         <CustomerSectionHeader title="AEROPULSE AMP Reports" />
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
-          Generate a current AC health, maintenance, root-cause, or summary report from your recorded installation and service history.
+          Generate a maintenance plan or summary from your recorded installation and service history.
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
           {[
-            ["ac_health_analysis", "Health analysis"],
             ["predictive_maintenance", "Maintenance plan"],
-            ["root_cause_analysis", "Root cause"],
-            ["summary_report", "Summary"],
+            ["maintenance_summary", "Summary"],
           ].map(([type, label]) => (
             <Button
               key={type}
@@ -274,9 +267,9 @@ export default function CustomerUnitDetailsScreen() {
             <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
             <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
-            <DetailRow label="Health status" value={`${ampReport.health?.label || "Assessment"} · ${ampReport.health?.score ?? "-"}/100`} />
-            <DetailRow label="Summary" value={ampReport.executiveSummary} multiline />
-            <DetailRow label="Recommendation" value={ampReport.recommendations?.[0] || "No recommendation available."} multiline />
+            <DetailRow label="Best Serviced By" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
+            <DetailRow label="Recommended Service" value={String(ampReport.maintenance?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
+            <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
             <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />
           </View>
         ) : null}
@@ -285,17 +278,23 @@ export default function CustomerUnitDetailsScreen() {
       <Card>
         <CustomerSectionHeader title="Your AC at a glance" />
         <DetailRow label="Serial Number" value={unit?.serialNumber} />
-        <DetailRow label="Last Maintenance" value={unit?.lastMaintenanceDate || "Not recorded"} />
+        <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
         <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
-        <DetailRow
-          label="Environment"
-          value={unit?.installationEnvironment || "Not set"}
-        />
-        <DetailRow label="Usage Level" value={unit?.usageLevel || "Normal"} />
-        <DetailRow
-          label="Ventilation"
-          value={unit?.ventilationQuality || "Good"}
-        />
+        <DetailRow label="HP Capacity" value={unit?.capacityHp ? `${unit.capacityHp} HP` : "Not recorded"} />
+        <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Room size (m²)</Text>
+        <TextInput value={roomSize} onChangeText={setRoomSize} keyboardType="decimal-pad" placeholder="Enter room size" placeholderTextColor={COLORS.textMuted} style={{ marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text }} />
+        <Button title="Save Room Size" loading={roomSaving} disabled={roomSaving} onPress={async () => {
+          const value = Number(roomSize);
+          if (!value || value <= 0) return Alert.alert("Invalid room size", "Enter a room size greater than zero.");
+          setRoomSaving(true);
+          try {
+            const token = await getStoredToken(); const result = await updateAmpRoomSize(token, unit.id, value);
+            if (!result.success) throw new Error(result.error);
+            const nextUnit = { ...unit, roomSizeSqm: value, capacityAssessment: result.recommendation?.capacityAssessment };
+            setUnit(nextUnit); const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit }); setRecommendation(nextRecommendation); setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
+            Alert.alert("Room size saved", result.recommendation?.capacityAssessment?.summary || "Capacity assessment updated.");
+          } catch (error) { Alert.alert("Unable to save", error.message || "Please try again."); } finally { setRoomSaving(false); }
+        }} />
         <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
       </Card>
 
@@ -341,25 +340,6 @@ export default function CustomerUnitDetailsScreen() {
         ) : null}
       </Card>
 
-      {health?.aiPrediction ? (
-        <Card>
-          <CustomerSectionHeader title="Maintenance Forecast" />
-          <DetailRow
-            label="Forecast"
-            value={health.aiPrediction.predictionSummary}
-            multiline
-          />
-          <DetailRow
-            label="Next Recommended Maintenance"
-            value={health.aiPrediction.nextMaintenanceDate}
-          />
-          <DetailRow
-            label="Estimated Remaining Life"
-            value={`${health.aiPrediction.estimatedRemainingYears} years`}
-          />
-        </Card>
-      ) : null}
-
       <Card>
           <CustomerSectionHeader title="Service Request Status" />
         <DetailRow label="Open Requests" value={String(history.requests.length)} />
@@ -373,7 +353,7 @@ export default function CustomerUnitDetailsScreen() {
         />
         <Button
           title="Book Service for This AC"
-          onPress={() => router.push("/customer/services")}
+          onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })}
           leftIcon={
             <Ionicons
               name="calendar-sharp"

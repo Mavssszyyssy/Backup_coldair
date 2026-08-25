@@ -35,8 +35,6 @@ const automaticAmpPayload = (serialNumber) => {
     lastServiceDate: now.toISOString(),
     placementArea: "Recorded from installation proof",
     usageHoursPerDay: 8,
-    environmentDustLevel: "moderate",
-    occupancyLoad: "normal",
     filterCondition: "normal",
     coilCondition: "normal",
     drainageCondition: "clear",

@@ -4,40 +4,40 @@ import AmpDashboardShell from "./AmpDashboardShell";
 import AmpReportCenter from "./AmpReportCenter";
 import "./styles.css";
 
-const confidenceClass = (confidence) =>
-  `amp-confidence ${String(confidence || "Low").toLowerCase()}`;
-
-const warningClass = (level) =>
-  `amp-warning ${String(level || "medium").toLowerCase()}`;
-
 function ManagerAmpDashboard() {
   const [pipeline, setPipeline] = useState([]);
+  const [reportUnits, setReportUnits] = useState([]);
+  const [aggregate, setAggregate] = useState({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    apiRequest("/amp/manager/pipeline?days=30")
-      .then((result) => {
-        setPipeline(result.units || []);
+    Promise.all([
+      apiRequest("/amp/manager/pipeline?days=30"),
+      apiRequest("/amp/report-units"),
+    ])
+      .then(([pipelineResult, reportUnitResult]) => {
+        setPipeline(pipelineResult.units || []);
+        setReportUnits(reportUnitResult.units || []);
+        setAggregate(pipelineResult.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
         setError("");
       })
       .catch((err) => {
         setError(err.message || "Unable to load AMP pipeline.");
         setPipeline([]);
+        setReportUnits([]);
+        setAggregate({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const warningCount = useMemo(
-    () => pipeline.reduce((sum, unit) => sum + (unit.chainReactionWarnings?.length || 0), 0),
-    [pipeline],
-  );
+  const overdueCount = useMemo(() => pipeline.filter((unit) => unit.overdue).length, [pipeline]);
 
   return (
     <AmpDashboardShell
       title="Service Pipeline"
-      subtitle="Units entering their next ideal servicing period in the next 30 days."
+      subtitle="Units due or approaching their history-based maintenance date."
     >
       <div className="amp-metrics">
         <article>
@@ -45,8 +45,8 @@ function ManagerAmpDashboard() {
           <strong>{pipeline.length}</strong>
         </article>
         <article>
-          <span>Chain warnings</span>
-          <strong>{warningCount}</strong>
+          <span>Overdue</span>
+          <strong>{overdueCount}</strong>
         </article>
       </div>
 
@@ -69,10 +69,10 @@ function ManagerAmpDashboard() {
                 <tr>
                   <th>Unit</th>
                   <th>Customer</th>
-                  <th>Service Period</th>
-                  <th>Last Visit</th>
-                  <th>Confidence</th>
-                  <th>Dispatch Warnings</th>
+                  <th>Best Serviced By</th>
+                  <th>Recommended Service</th>
+                  <th>Warranty / Branch</th>
+                  <th>Historical Basis</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,37 +88,20 @@ function ManagerAmpDashboard() {
                       <span>{unit.addressLine || "Address pending"}</span>
                     </td>
                     <td>
-                      <strong>{unit.nextIdealServicePeriod}</strong>
-                      <span>{unit.daysUntilDue} days out</span>
+                      <strong>{new Date(unit.bestServicedBy).toLocaleDateString()}</strong>
+                      <span>{unit.overdue ? `${Math.abs(unit.daysUntilDue)} days overdue` : `${unit.daysUntilDue} days remaining`}</span>
                     </td>
                     <td>
                       <strong>
-                        {unit.lastPhysicalVisitDate
-                          ? new Date(unit.lastPhysicalVisitDate).toLocaleDateString()
-                          : "No visit"}
+                        {String(unit.recommendedService || "regular_cleaning").replaceAll("_", " ")}
                       </strong>
                       <span>
-                        {unit.daysSinceLastVisit === null
-                          ? "Low evidence"
-                          : `${unit.daysSinceLastVisit} days ago`}
+                        {unit.lastServiceDate ? `Last service ${new Date(unit.lastServiceDate).toLocaleDateString()}` : "First scheduled service"}
                       </span>
                     </td>
+                    <td><strong>{String(unit.warrantyStatus || "pending_activation").replaceAll("_", " ")}</strong><span>{unit.serviceBranch || "Branch pending"}</span></td>
                     <td>
-                      <span className={confidenceClass(unit.confidence)}>{unit.confidence}</span>
-                    </td>
-                    <td>
-                      <div className="amp-warning-stack">
-                        {(unit.chainReactionWarnings || []).length === 0 ? (
-                          <span className="amp-muted">No active warnings</span>
-                        ) : (
-                          unit.chainReactionWarnings.map((warning) => (
-                            <div className={warningClass(warning.level)} key={warning.code}>
-                              <strong>{warning.dispatchRoute.replaceAll("_", " ")}</strong>
-                              <p>{warning.message}</p>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                      <span>{unit.recommendationBasis}</span>
                     </td>
                   </tr>
                 ))}
@@ -127,7 +110,21 @@ function ManagerAmpDashboard() {
           </div>
         ) : null}
       </section>
-      <AmpReportCenter units={pipeline} />
+      <div className="amp-report-grid">
+        <section className="amp-card">
+          <h2>Model Maintenance Frequency</h2>
+          <p className="amp-muted">Ranked only from completed service records in your accessible branch.</p>
+          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Model</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{aggregate.modelTrends.map((item) => <tr key={item.label}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
+          {!aggregate.modelTrends.length && !loading ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
+        </section>
+        <section className="amp-card">
+          <h2>Recorded Component Demand</h2>
+          <p className="amp-muted">Parts preparation data from components actually recorded during service.</p>
+          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Component</th><th>Recorded uses</th></tr></thead><tbody>{aggregate.componentReplacements.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody></table></div>
+          {!aggregate.componentReplacements.length && !loading ? <p className="amp-empty">No recorded component use is available yet.</p> : null}
+        </section>
+      </div>
+      <AmpReportCenter units={reportUnits} />
     </AmpDashboardShell>
   );
 }

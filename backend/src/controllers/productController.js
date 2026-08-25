@@ -417,16 +417,13 @@ const getBranchTotal = (product) =>
     0,
   );
 
-const randomSerialToken = () =>
-  Math.random().toString(36).slice(2, 8).toUpperCase();
-
 const buildSerialNumber = (product) => {
   const skuPart = String(product?.sku || "AC")
     .replace(/[^a-z0-9]/gi, "")
     .slice(0, 8)
     .toUpperCase();
-  const timePart = Date.now().toString(36).toUpperCase();
-  return `CAACT-${skuPart || "AC"}-${timePart}-${randomSerialToken()}`;
+  const uniqueToken = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
+  return `CAACT-${skuPart || "AC"}-${uniqueToken}`;
 };
 
 const buildQrUnitId = () => `QRU-${crypto.randomUUID().replace(/-/g, "").slice(0, 18).toUpperCase()}`;
@@ -635,18 +632,15 @@ const generateUniqueSerialNumber = async (product, seen) => {
   for (let attempt = 0; attempt < 25; attempt += 1) {
     const serialNumber = buildSerialNumber(product);
     if (seen.has(serialNumber)) continue;
-    const exists = await Product.exists({
-      "serialUnits.serialNumber": serialNumber,
-    });
-    if (!exists) {
-      seen.add(serialNumber);
-      return serialNumber;
-    }
+    // UUID-backed inventory serials are unique without a database round trip
+    // per unit. The Product unique index remains the final collision guard.
+    seen.add(serialNumber);
+    return serialNumber;
   }
   throw new Error("Unable to generate a unique serial number");
 };
 
-const ensureProductSerialUnits = async (product, targetCount = null) => {
+const ensureProductSerialUnits = async (product, targetCount = null, saveOptions = {}) => {
   const desiredCount = Math.max(
     0,
     Math.floor(
@@ -732,8 +726,8 @@ const ensureProductSerialUnits = async (product, targetCount = null) => {
     availableBlankCount += 1;
   }
 
-  if (changed) {
-    await product.save();
+  if (changed && !saveOptions.deferSave) {
+    await product.save(saveOptions);
   }
 
   return changed;
@@ -1403,6 +1397,7 @@ const getProductImage = async (req, res) => {
 };
 
 module.exports = {
+  ensureProductSerialUnits,
   ensureSampleInventory,
   listProducts,
   listPublicProducts,
