@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
@@ -158,9 +158,13 @@ const AdminOrders = ({ embedded = false }) => {
   const [orderViewFilter, setOrderViewFilter] = useState('all');
   const [orderPage, setOrderPage] = useState(1);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const orderLoadInFlightRef = useRef(false);
 
   const loadOrders = useCallback(async () => {
+    if (orderLoadInFlightRef.current) return;
+    orderLoadInFlightRef.current = true;
     setError('');
+    setLoading(true);
     try {
       const [ordersResponse, tasksResponse] = await Promise.all([
         apiRequest('/orders'),
@@ -177,16 +181,22 @@ const AdminOrders = ({ embedded = false }) => {
       setError(e.message || 'Failed to load orders.');
     } finally {
       setLoading(false);
+      orderLoadInFlightRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     loadOrders();
-    const refreshId = window.setInterval(loadOrders, 15000);
-    window.addEventListener('focus', loadOrders);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') loadOrders();
+    };
+    const refreshId = window.setInterval(refreshWhenVisible, 60000);
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       window.clearInterval(refreshId);
-      window.removeEventListener('focus', loadOrders);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [loadOrders]);
 

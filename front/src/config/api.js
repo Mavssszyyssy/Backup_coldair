@@ -36,6 +36,7 @@ const getToken = () => getAuthSessionItem("accessToken");
 const getActiveBranch = () => getSessionActiveBranch();
 
 let activeRequestCount = 0;
+const inFlightReadRequests = new Map();
 
 const publishConnectionState = (state, detail = {}) => {
   if (typeof window === "undefined") return;
@@ -93,7 +94,7 @@ const requestWithTimeout = async (url, options, timeoutMs, callerSignal) => {
   }
 };
 
-const apiRequest = async (path, options = {}) => {
+const performApiRequest = async (path, options = {}) => {
   beginConnection(path);
   const token = getToken();
   const activeBranch = getActiveBranch();
@@ -199,6 +200,39 @@ const apiRequest = async (path, options = {}) => {
 
   finishConnection("loaded", { path });
   return data;
+};
+
+const apiRequest = (path, options = {}) => {
+  const method = String(options.method || "GET").toUpperCase();
+  // Multiple panels can request the same data on the same refresh tick. Share
+  // that read instead of allowing long-running tabs to build an ever-growing
+  // queue of identical browser and serverless requests.
+  if (method !== "GET" || options.signal) return performApiRequest(path, options);
+
+  const requestKey = [
+    path,
+    getToken(),
+    getActiveBranch(),
+    JSON.stringify(options.headers || {}),
+  ].join("|");
+  const existingRequest = inFlightReadRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = performApiRequest(path, options);
+  inFlightReadRequests.set(requestKey, request);
+  request.then(
+    () => {
+      if (inFlightReadRequests.get(requestKey) === request) {
+        inFlightReadRequests.delete(requestKey);
+      }
+    },
+    () => {
+      if (inFlightReadRequests.get(requestKey) === request) {
+        inFlightReadRequests.delete(requestKey);
+      }
+    },
+  );
+  return request;
 };
 
 export { API_BASE_URL, apiRequest };

@@ -7,12 +7,6 @@ import {
   markAllAdminNotificationsRead,
 } from "../../../utils/adminNotifications";
 
-const isOlderThanHours = (isoDate, hours) => {
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) return false;
-  return Date.now() - date.getTime() > hours * 60 * 60 * 1000;
-};
-
 const adminRouteAliases = {
   "/admin/orders": "/admin/services/orders",
   "/admin/maintenance": "/admin/services/service-requests",
@@ -52,18 +46,14 @@ function AdminNotificationsBell() {
       const [notificationResult, lowStockResult, ordersResult] = await Promise.all([
         apiRequest("/notifications/me").catch(() => ({ notifications: [] })),
         apiRequest("/products/low-stock").catch(() => ({ products: [] })),
-        apiRequest("/orders").catch(() => ({ orders: [] })),
+        apiRequest("/orders?summary=alerts").catch(() => ({ summary: { pendingOrders: 0 } })),
       ]);
 
       const lowStockCount = (lowStockResult.products || []).filter(
         (p) => Number(p.stock || 0) < 5,
       ).length;
 
-      const pendingOrders = (ordersResult.orders || []).filter((o) => {
-        const workflow = String(o.workflowStatus || "");
-        if (workflow === "complete" || workflow === "cancelled") return false;
-        return isOlderThanHours(o.createdAt, 24);
-      });
+      const pendingOrders = Number(ordersResult.summary?.pendingOrders || 0);
 
       const backendItems = (notificationResult.notifications || []).map((item) => ({
         ...item,
@@ -85,12 +75,12 @@ function AdminNotificationsBell() {
           source: "local",
         });
       }
-      if (pendingOrders.length > 0) {
+      if (pendingOrders > 0) {
         next.push({
           id: "pending-orders",
           createdAt: new Date().toISOString(),
           title: "Pending orders",
-          message: `${pendingOrders.length} pending order(s) are older than 24 hours.`,
+          message: `${pendingOrders} pending order(s) are older than 24 hours.`,
           to: "/admin/services/orders",
           source: "local",
         });
