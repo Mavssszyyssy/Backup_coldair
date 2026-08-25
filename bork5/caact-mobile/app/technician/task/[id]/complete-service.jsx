@@ -15,6 +15,7 @@ import { getDisplayName } from "../../../../services/profileService";
 import { getTaskById, TASK_STATUS, updateTaskStatus } from "../../../../services/taskStorage";
 
 const taskSerials = (task = {}) => task?.registrationProgress?.requiredSerials || task?.serialNumbers || [];
+const MAX_PROOF_DATA_URI_LENGTH = 3_200_000;
 
 function InstallationPhotoCapture({ photos, onChange }) {
   const cameraRef = useRef(null);
@@ -37,9 +38,12 @@ function InstallationPhotoCapture({ photos, onChange }) {
     if (!cameraRef.current || capturing) return;
     setCapturing(true);
     try {
-      const image = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.2 });
+      const image = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.12 });
       const uri = image?.base64 ? `data:image/jpeg;base64,${image.base64}` : image?.uri;
       if (!uri) throw new Error("The photo could not be saved.");
+      if (uri.startsWith("data:image/") && uri.length > MAX_PROOF_DATA_URI_LENGTH) {
+        throw new Error("The photo is too large to upload. Move slightly farther from the unit and retake it.");
+      }
       onChange([{ uri, label: "Installed AC unit", capturedAt: new Date().toISOString() }]);
       setOpen(false);
     } catch (error) {

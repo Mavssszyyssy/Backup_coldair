@@ -15,15 +15,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // ---------------------------------------------------------------------------
 
 const REQUEST_TIMEOUT_MS = 10000;
+const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 
-async function request(method, path, { token, body } = {}) {
+async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const controller =
     typeof AbortController !== "undefined" ? new AbortController() : null;
   const timeoutId = controller
-    ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    ? setTimeout(() => controller.abort(), timeoutMs)
     : null;
 
   let res;
@@ -35,6 +36,11 @@ async function request(method, path, { token, body } = {}) {
       ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (error) {
+    if (error?.name === "AbortError" && timeoutMs > REQUEST_TIMEOUT_MS) {
+      throw new Error(
+        "The installation photo upload timed out. Check your connection, then tap Complete installation again.",
+      );
+    }
     // Network and timeout failures deliberately use one customer-facing
     // message. The app-wide connection banner provides a Retry action.
     throw new Error(
@@ -470,9 +476,26 @@ export async function createTask(token, payload) {
 }
 
 export async function patchTask(token, taskId, payload) {
-  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}`, payload, token);
+  const proofPhotos = [
+    ...(Array.isArray(payload?.proof?.afterPhotos) ? payload.proof.afterPhotos : []),
+    ...(Array.isArray(payload?.proof?.beforePhotos) ? payload.proof.beforePhotos : []),
+  ];
+  const hasPhotoProof = proofPhotos
+    .some((photo) => String(photo?.uri || photo || "").startsWith("data:image/"));
+  const { ok, status, data } = await request(
+    "PATCH",
+    `/tasks/${encodeURIComponent(taskId)}`,
+    {
+      token,
+      body: payload,
+      timeoutMs: hasPhotoProof ? PROOF_UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+    },
+  );
   if (ok) return { success: true, task: data.task };
-  return { success: false, error: getErrorMessage(data, "Failed to update task.") };
+  const fallback = status === 413
+    ? "The installation photo is too large to upload. Retake the photo and try again."
+    : "Failed to update task.";
+  return { success: false, status, error: getErrorMessage(data, fallback) };
 }
 
 export async function acceptTask(token, taskId) {

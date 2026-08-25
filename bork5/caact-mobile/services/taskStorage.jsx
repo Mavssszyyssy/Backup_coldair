@@ -191,6 +191,28 @@ function appendTimeline(task, event) {
   return [...existing, event];
 }
 
+const isEmbeddedProofImage = (value) =>
+  String(value || "").startsWith("data:image/");
+
+const taskForOfflineCache = (task = {}) => {
+  const proof = task.proof && typeof task.proof === "object" ? task.proof : {};
+  const keepRemotePhotos = (photos) =>
+    (Array.isArray(photos) ? photos : []).filter(
+      (photo) => !isEmbeddedProofImage(photo?.uri || photo),
+    );
+
+  return {
+    ...task,
+    proof: {
+      ...proof,
+      beforePhotos: keepRemotePhotos(proof.beforePhotos),
+      afterPhotos: keepRemotePhotos(proof.afterPhotos),
+    },
+    beforePhotoUri: isEmbeddedProofImage(task.beforePhotoUri) ? "" : task.beforePhotoUri,
+    afterPhotoUri: isEmbeddedProofImage(task.afterPhotoUri) ? "" : task.afterPhotoUri,
+  };
+};
+
 export async function getAllTasks() {
   try {
     const token = await api.getStoredToken();
@@ -214,7 +236,13 @@ export async function loadTasks() {
 
 export async function saveAllTasks(items = []) {
   const normalized = items.map(normalizeTask);
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  // Proof photos remain authoritative on the backend. Keeping base64 camera
+  // images in the shared offline task cache can exceed the native storage
+  // quota after an otherwise successful completion request.
+  await AsyncStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(normalized.map(taskForOfflineCache)),
+  );
   return normalized;
 }
 
@@ -337,7 +365,19 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
   if (updated) {
     const token = await api.getStoredToken();
     if (!token) throw new Error("Please sign in again before updating a task.");
-    const result = await api.patchTask(token, taskId, updated);
+    // Send only the fields changed by this action. A completion proof can
+    // contain an encoded camera photo; sending the whole normalized task also
+    // duplicated that image in afterPhotoUri and made mobile uploads time out.
+    const requestPayload = {
+      ...patch,
+      status,
+      completionNotes,
+      startedAt: updated.startedAt,
+      completedAt: updated.completedAt,
+      timeline: updated.timeline,
+      updatedAt: updated.updatedAt,
+    };
+    const result = await api.patchTask(token, taskId, requestPayload);
     if (!result.success) throw new Error(result.error || "Failed to update task.");
     const backendTask = normalizeTask(result.task);
     await saveAllTasks(
