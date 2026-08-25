@@ -1,11 +1,12 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Pressable, Text, TouchableOpacity, View } from "react-native";
 
 import TechButton from "../../../../../../components/technician/TechButton";
 import Card from "../../../../../../components/ui/Card";
 import PageHeader from "../../../../../../components/ui/PageHeader";
 import TextField from "../../../../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../../../constants/theme";
 import { useUserContext } from "../../../../../../context/UserContext";
 import { getDisplayName } from "../../../../../../services/profileService";
@@ -149,8 +150,9 @@ export default function LogInsertScreen({ mode = "insert" }) {
         justifyContent: "flex-end",
       }}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
         onStartShouldSetResponder={() => true}
+        minBottomPadding={148}
         contentContainerStyle={{
           padding: SPACING.md,
           paddingBottom: SPACING.lg,
@@ -238,7 +240,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
           style={{ marginBottom: SPACING.md }}
         />
         <TechButton title="Save Draft" onPress={persistDraftAndBack} variant="secondary" />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </Pressable>
   );
 }

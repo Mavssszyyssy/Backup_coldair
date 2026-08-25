@@ -21,6 +21,7 @@ import {
   formatPeso,
   resolveConfiguredInventoryBranch,
 } from "../../services/ecommerceService";
+import { validatePhone } from "../../utils/authValidation";
 
 const getProfileAddress = (user = {}) => {
   const billing = user?.billingAddress || user?.billing_address || {};
@@ -212,10 +213,20 @@ export default function CheckoutScreen() {
       // The current session remains a safe fallback if the refresh is unavailable.
     }
     const checkoutAddress = getDefaultAddress(checkoutUser);
-    if (!checkoutAddress?.street || !checkoutAddress?.phone) {
+    const missingAddressField = ["region", "province", "city", "barangay", "street"]
+      .some((field) => !String(checkoutAddress?.[field] || "").trim());
+    const phoneError = checkoutAddress?.phone ? validatePhone(checkoutAddress.phone) : "Phone number is required.";
+    if (missingAddressField || phoneError) {
       setSubmitting(false);
       setCheckoutMessage("");
-      return Alert.alert("Address required", "Add a delivery address in Settings before checking out.");
+      return Alert.alert(
+        "Complete delivery address",
+        phoneError || "Choose Region, Province, City/Municipality, Barangay, and Street in Settings before checking out.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => router.push("/customer/settings") },
+        ],
+      );
     }
 
     const latestBranch = await resolveConfiguredInventoryBranch(checkoutAddress);

@@ -1,21 +1,23 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, Text } from "react-native";
+import { Alert, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../components/technician/TechButton";
 import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
+import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { regenerateRecoveryCodes } from "../../../services/customerSecurityService";
+import { canonicalizePhMobile, sanitizePhMobileInput, validatePhone } from "../../../utils/authValidation";
 
 export default function TechnicianOobe() {
   const router = useRouter();
   const { current, updateUser } = useUserContext();
   const [alias, setAlias] = useState(current?.alias || "");
-  const [phone, setPhone] = useState(current?.phone || "");
+  const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
@@ -33,13 +35,18 @@ export default function TechnicianOobe() {
       Alert.alert("Password mismatch", "Please confirm the same password.");
       return;
     }
+    const phoneError = validatePhone(phone);
+    if (phoneError) {
+      Alert.alert("Invalid contact number", phoneError);
+      return;
+    }
 
     setSaving(true);
     try {
       await updateUser({
         ...current,
         alias: alias.trim(),
-        phone: phone.trim(),
+        phone: canonicalizePhMobile(phone),
         password,
         technicianOnboardedAt: new Date().toISOString(),
       });
@@ -53,7 +60,7 @@ export default function TechnicianOobe() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ padding: SPACING.md }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={128}>
         <PageHeader
           title="Technician Setup"
           subtitle="Complete the details your owner-created account still needs"
@@ -68,8 +75,10 @@ export default function TechnicianOobe() {
           <TextField
             label="Contact Number"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(value) => setPhone(sanitizePhMobileInput(value))}
             keyboardType="phone-pad"
+            placeholder="09XXXXXXXXX"
+            maxLength={12}
           />
           <TextField
             label="Password"
@@ -116,7 +125,7 @@ export default function TechnicianOobe() {
             ))}
           </Card>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

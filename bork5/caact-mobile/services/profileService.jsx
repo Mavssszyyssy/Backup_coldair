@@ -1,5 +1,6 @@
 // services/profileService.js
 import {
+  canonicalizePhMobile,
   validatePersonName,
   validatePhone,
   validateRequired,
@@ -60,7 +61,7 @@ export function buildEditableProfile(user) {
     alias: user?.alias || "",
     name: user?.name || "",
     email: user?.email || "",
-    phone: user?.phone || "",
+    phone: canonicalizePhMobile(user?.phone || ""),
     profilePhoto: user?.profilePhoto || null,
     address: serviceAddressLine || "",
     municipality: serviceMunicipality,
@@ -135,7 +136,7 @@ export function buildUpdatedUser(currentUser, form) {
     suffix,
     alias: String(form?.alias || "").trim(),
     name: fullName,
-    phone: String(form?.phone || "").trim(),
+    phone: canonicalizePhMobile(form?.phone || ""),
     address,
     municipality,
     municipalityCode: form?.municipalityCode || "",

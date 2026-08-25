@@ -20,9 +20,11 @@ import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import {
   getBarangaysByLocality,
-  getPhilippineLocalities,
+  getLocalitiesByProvince,
+  getPhilippineRegions,
+  getProvincesByRegion,
 } from "../../../../services/philippineAddressService";
-import { validatePersonName } from "../../../../utils/authValidation";
+import { validatePersonName, validateRequired } from "../../../../utils/authValidation";
 
 export default function SignUpStep0() {
   const router = useRouter();
@@ -30,6 +32,10 @@ export default function SignUpStep0() {
     name_first: "",
     name_last: "",
     suffix: "",
+    region: "",
+    regionCode: "",
+    province: "",
+    provinceCode: "",
     municipality: "",
     municipalityCode: "",
     submunicipality: "",
@@ -43,25 +49,56 @@ export default function SignUpStep0() {
   });
   const [errors, setErrors] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
   const [localities, setLocalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [regionsLoading, setRegionsLoading] = useState(true);
+  const [provincesLoading, setProvincesLoading] = useState(false);
   const [localitiesLoading, setLocalitiesLoading] = useState(true);
   const [barangaysLoading, setBarangaysLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
-    getPhilippineLocalities()
+    getPhilippineRegions()
       .then((items) => {
-        if (active) setLocalities(items);
+        if (active) setRegions(items);
       })
       .finally(() => {
-        if (active) setLocalitiesLoading(false);
+        if (active) setRegionsLoading(false);
       });
 
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!form.regionCode) {
+      setProvinces([]);
+      return () => { active = false; };
+    }
+    setProvincesLoading(true);
+    getProvincesByRegion(form.regionCode)
+      .then((items) => active && setProvinces(items))
+      .finally(() => active && setProvincesLoading(false));
+    return () => { active = false; };
+  }, [form.regionCode]);
+
+  useEffect(() => {
+    let active = true;
+    if (!form.provinceCode) {
+      setLocalities([]);
+      setLocalitiesLoading(false);
+      return () => { active = false; };
+    }
+    setLocalitiesLoading(true);
+    getLocalitiesByProvince(form.provinceCode, form.regionCode)
+      .then((items) => active && setLocalities(items))
+      .finally(() => active && setLocalitiesLoading(false));
+    return () => { active = false; };
+  }, [form.provinceCode, form.regionCode]);
 
   useEffect(() => {
     let active = true;
@@ -96,10 +133,49 @@ export default function SignUpStep0() {
     updateField(key, String(value || "").replace(/[0-9]/g, ""));
   };
 
+  const handleRegionSelect = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      region: item.name,
+      regionCode: item.code,
+      province: "",
+      provinceCode: "",
+      municipality: "",
+      municipalityCode: "",
+      submunicipality: "",
+      submunicipalityCode: "",
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      region: "",
+      province: "",
+      municipality: "",
+      submunicipality: "",
+    }));
+  };
+
+  const handleProvinceSelect = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      province: item.name,
+      provinceCode: item.code,
+      municipality: "",
+      municipalityCode: "",
+      submunicipality: "",
+      submunicipalityCode: "",
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      province: "",
+      municipality: "",
+      submunicipality: "",
+    }));
+  };
+
   const handleMunicipalitySelect = (item) => {
     setForm((prev) => ({
       ...prev,
-      municipality: item.displayName || item.name,
+      municipality: item.name,
       municipalityCode: item.code,
       submunicipality: "",
       submunicipalityCode: "",
@@ -110,7 +186,7 @@ export default function SignUpStep0() {
   const handleBarangaySelect = (item) => {
     setForm((prev) => ({
       ...prev,
-      submunicipality: item.displayName || item.name,
+      submunicipality: item.name,
       submunicipalityCode: item.code,
     }));
     setErrors((prev) => ({ ...prev, submunicipality: "" }));
@@ -147,6 +223,8 @@ export default function SignUpStep0() {
           form.thoroughfare.trim(),
           form.submunicipality.trim(),
           form.municipality.trim(),
+          form.province.trim(),
+          form.region.trim(),
         ]
           .filter(Boolean)
           .join(", ")
@@ -159,6 +237,10 @@ export default function SignUpStep0() {
         name_last: form.name_last.trim(),
         suffix: form.suffix.trim(),
         address,
+        region: includeAddress ? form.region.trim() : "",
+        regionCode: includeAddress ? form.regionCode : "",
+        province: includeAddress ? form.province.trim() : "",
+        provinceCode: includeAddress ? form.provinceCode : "",
         municipality: includeAddress ? form.municipality.trim() : "",
         submunicipality: includeAddress ? form.submunicipality.trim() : "",
         thoroughfare: includeAddress ? form.thoroughfare.trim() : "",
@@ -172,7 +254,7 @@ export default function SignUpStep0() {
     });
   };
 
-  const validateNameStep = () => {
+  const validateNameStep = (includeAddress = false) => {
     const nextErrors = {};
 
     const firstNameError = validatePersonName(form.name_first, "First name");
@@ -180,6 +262,19 @@ export default function SignUpStep0() {
 
     if (firstNameError) nextErrors.name_first = firstNameError;
     if (lastNameError) nextErrors.name_last = lastNameError;
+
+    if (includeAddress) {
+      [
+        ["region", "Region"],
+        ["province", "Province"],
+        ["municipality", "City or municipality"],
+        ["submunicipality", "Barangay"],
+        ["thoroughfare", "Street address"],
+      ].forEach(([field, label]) => {
+        const error = validateRequired(form[field], label);
+        if (error) nextErrors[field] = error;
+      });
+    }
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -190,11 +285,11 @@ export default function SignUpStep0() {
   };
 
   const handleNext = () => {
-    if (validateNameStep()) continueToAccountDetails(true);
+    if (validateNameStep(true)) continueToAccountDetails(true);
   };
 
   const handleSkipAddress = () => {
-    if (validateNameStep()) continueToAccountDetails(false);
+    if (validateNameStep(false)) continueToAccountDetails(false);
   };
 
   return (
@@ -248,17 +343,39 @@ export default function SignUpStep0() {
             </Text>
           </View>
           <BottomSheetSelect
-            label="Municipality (optional)"
+            label="Region (optional)"
+            value={form.region}
+            placeholder="Select region"
+            items={regions}
+            loading={regionsLoading}
+            error={errors.region}
+            emptyMessage="No regions found. Check your connection and try again."
+            onSelect={handleRegionSelect}
+          />
+          <BottomSheetSelect
+            label="Province (optional)"
+            value={form.province}
+            placeholder="Select province"
+            items={provinces}
+            loading={provincesLoading}
+            disabled={!form.regionCode}
+            error={errors.province}
+            emptyMessage={form.regionCode ? "No provinces found." : "Select a region first."}
+            onSelect={handleProvinceSelect}
+          />
+          <BottomSheetSelect
+            label="City or municipality (optional)"
             value={form.municipality}
             placeholder="City or municipality"
             items={localities}
             loading={localitiesLoading}
+            disabled={!form.provinceCode}
             error={errors.municipality}
-            emptyMessage="No city or municipality matched your search."
+            emptyMessage={form.provinceCode ? "No city or municipality matched your search." : "Select a province first."}
             onSelect={handleMunicipalitySelect}
           />
           <BottomSheetSelect
-            label="Submunicipality (optional)"
+            label="Barangay or district (optional)"
             value={form.submunicipality}
             placeholder="Barangay or district"
             items={barangays}
@@ -268,12 +385,12 @@ export default function SignUpStep0() {
             emptyMessage={
               form.municipalityCode
                 ? "No barangays matched your search."
-                : "Select a municipality first."
+                : "Select a city or municipality first."
             }
             onSelect={handleBarangaySelect}
           />
           <TextField
-            label="Thoroughfare (optional)"
+            label="Street address (optional)"
             value={form.thoroughfare}
             onChangeText={(value) => updateField("thoroughfare", value)}
             placeholder="Street name"

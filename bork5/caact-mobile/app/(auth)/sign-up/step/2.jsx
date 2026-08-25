@@ -84,10 +84,14 @@ export default function SignUpStep2() {
         timestamp: null,
       },
       address: {
-        region: "",
-        province: "",
+        region: readParam(params.region).trim(),
+        regionCode: readParam(params.regionCode).trim(),
+        province: readParam(params.province).trim(),
+        provinceCode: readParam(params.provinceCode).trim(),
         city: readParam(params.municipality).trim(),
+        municipalityCode: readParam(params.municipalityCode).trim(),
         barangay: readParam(params.submunicipality).trim(),
+        submunicipalityCode: readParam(params.submunicipalityCode).trim(),
         street: addressStreet,
         postalCode: "",
       },
@@ -147,8 +151,8 @@ export default function SignUpStep2() {
     if (contactMethod === "sms") {
       if (!mobileNumber.trim()) {
         nextErrors.mobile = "Mobile number is required.";
-      } else if (!/^\d{10}$/.test(mobileNumber.trim())) {
-        nextErrors.mobile = "Please enter exactly 10 digits after +63.";
+      } else if (!/^9\d{9}$/.test(mobileNumber.trim())) {
+        nextErrors.mobile = "Enter a valid PH mobile number beginning with 9 after +63.";
       }
     }
 

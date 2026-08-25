@@ -18,6 +18,18 @@ import { getDisplayName } from "../../services/profileService";
 import { fetchServiceCatalog, getStoredToken } from "../../services/api";
 import { createServiceRequest } from "../../services/serviceRequestStorage";
 import { getUnitsByUser } from "../../services/unitStorage";
+import { canonicalizePhMobile, validatePhone } from "../../utils/authValidation";
+
+const getServiceAddress = (user = {}) => {
+  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
+  return addresses.find((item) => item?.isDefault) || addresses[0] || {
+    phone: user?.phone || "",
+    street: user?.address || "",
+    city: user?.municipality || user?.billingAddress?.city || "",
+    province: user?.billingAddress?.province || "",
+    barangay: user?.submunicipality || user?.billingAddress?.barangay || "",
+  };
+};
 
 export default function CustomerServicesScreen() {
   const router = useRouter();
@@ -78,13 +90,27 @@ export default function CustomerServicesScreen() {
     }
     if (!issueDescription.trim()) return Alert.alert("Required", "Describe the request or concern.");
 
+    const serviceAddress = getServiceAddress(current);
+    const contactPhone = canonicalizePhMobile(serviceAddress.phone || current?.phone || "");
+    const contactError = validatePhone(contactPhone);
+    if (contactError) {
+      return Alert.alert(
+        "Valid contact number required",
+        `${contactError} Add or update your delivery address before requesting service.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => router.push("/customer/settings") },
+        ],
+      );
+    }
+
     setSubmitting(true);
     try {
       await createServiceRequest({
         userId: current?.id,
         customerName: getDisplayName(current),
         customerEmail: current?.email || "",
-        customerPhone: current?.phone || "",
+        customerPhone: contactPhone,
         unitId: selectedUnit.id,
         unitName: selectedUnit.unitName,
         unitSerialNumber: selectedUnit.serialNumber || "",
@@ -95,10 +121,10 @@ export default function CustomerServicesScreen() {
         issueDescription: issueDescription.trim(),
         preferredDate,
         notes: notes.trim(),
-        address: current?.address || selectedUnit.placementArea || "",
-        city: current?.municipality || current?.billingAddress?.city || "",
-        province: current?.billingAddress?.province || "",
-        barangay: current?.submunicipality || current?.billingAddress?.barangay || "",
+        address: serviceAddress.street || current?.address || selectedUnit.placementArea || "",
+        city: serviceAddress.city || current?.municipality || "",
+        province: serviceAddress.province || "",
+        barangay: serviceAddress.barangay || current?.submunicipality || "",
         landmark: current?.landmark || "",
         plusCode: current?.plusCode || "",
         deliveryInstructions: current?.deliveryInstructions || "",

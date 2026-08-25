@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -12,9 +12,21 @@ import StickyActionBar from "../../components/ui/StickyActionBar";
 import TextField from "../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import { getBarangaysByLocality, getPhilippineLocalities } from "../../services/philippineAddressService";
+import {
+  getBarangaysByLocality,
+  getLocalitiesByProvince,
+  getPhilippineRegions,
+  getProvincesByRegion,
+  resolvePhilippineAddressSelection,
+} from "../../services/philippineAddressService";
 import { buildEditableProfile } from "../../services/profileService";
-import { validatePersonName, validatePhone, validateRequired } from "../../utils/authValidation";
+import {
+  canonicalizePhMobile,
+  sanitizePhMobileInput,
+  validatePersonName,
+  validatePhone,
+  validateRequired,
+} from "../../utils/authValidation";
 
 const toText = (value) => String(value || "").trim();
 const addressId = (address) => String(address?._id || address?.id || "");
@@ -26,9 +38,11 @@ function blankAddress(user = {}) {
     label: "Home",
     type: "home",
     name: fullName(user),
-    phone: user?.phone || "",
+    phone: canonicalizePhMobile(user?.phone || ""),
     region: "",
+    regionCode: "",
     province: "",
+    provinceCode: "",
     city: "",
     municipalityCode: "",
     barangay: "",
@@ -47,6 +61,9 @@ function editableAddress(address, user) {
     city: address.city || user?.municipality || "",
     barangay: address.barangay || user?.submunicipality || "",
     street: address.street || "",
+    phone: canonicalizePhMobile(address.phone || user?.phone || ""),
+    regionCode: address.regionCode || "",
+    provinceCode: address.provinceCode || "",
     municipalityCode: address.municipalityCode || "",
     submunicipalityCode: address.submunicipalityCode || "",
   };
@@ -88,10 +105,15 @@ export default function CustomerSettingsScreen() {
   const [addressErrors, setAddressErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
   const [localities, setLocalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [regionsLoading, setRegionsLoading] = useState(true);
+  const [provincesLoading, setProvincesLoading] = useState(false);
   const [localitiesLoading, setLocalitiesLoading] = useState(true);
   const [barangaysLoading, setBarangaysLoading] = useState(false);
+  const addressEditorRequest = useRef(0);
 
   const addresses = Array.isArray(current?.addresses) ? current.addresses : [];
   const isEditingAddress = Boolean(addressForm);
@@ -104,9 +126,34 @@ export default function CustomerSettingsScreen() {
 
   useEffect(() => {
     let active = true;
-    getPhilippineLocalities().then((items) => active && setLocalities(items)).finally(() => active && setLocalitiesLoading(false));
+    getPhilippineRegions().then((items) => active && setRegions(items)).finally(() => active && setRegionsLoading(false));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const regionCode = addressForm?.regionCode;
+    if (!regionCode) {
+      setProvinces([]);
+      return () => { active = false; };
+    }
+    setProvincesLoading(true);
+    getProvincesByRegion(regionCode).then((items) => active && setProvinces(items)).finally(() => active && setProvincesLoading(false));
+    return () => { active = false; };
+  }, [addressForm?.regionCode]);
+
+  useEffect(() => {
+    let active = true;
+    const provinceCode = addressForm?.provinceCode;
+    if (!provinceCode) {
+      setLocalities([]);
+      setLocalitiesLoading(false);
+      return () => { active = false; };
+    }
+    setLocalitiesLoading(true);
+    getLocalitiesByProvince(provinceCode, addressForm?.regionCode).then((items) => active && setLocalities(items)).finally(() => active && setLocalitiesLoading(false));
+    return () => { active = false; };
+  }, [addressForm?.provinceCode, addressForm?.regionCode]);
 
   useEffect(() => {
     let active = true;
@@ -129,16 +176,83 @@ export default function CustomerSettingsScreen() {
     setAddressErrors((previous) => ({ ...previous, [key]: "" }));
   };
 
-  const openAddressEditor = (address = null) => {
+  const openAddressEditor = async (address = null) => {
     setEditingProfile(false);
     setAddressErrors({});
-    setAddressForm(editableAddress(address, current));
+    const draft = editableAddress(address, current);
+    const requestId = ++addressEditorRequest.current;
+    setAddressForm(draft);
+
+    if (address && (!draft.regionCode || !draft.provinceCode || !draft.municipalityCode)) {
+      const resolved = await resolvePhilippineAddressSelection(draft);
+      if (addressEditorRequest.current !== requestId) return;
+      setAddressForm((previous) => previous ? ({
+        ...previous,
+        region: resolved.region?.name || previous.region,
+        regionCode: resolved.region?.code || previous.regionCode,
+        province: resolved.province?.name || previous.province,
+        provinceCode: resolved.province?.code || previous.provinceCode,
+        city: resolved.locality?.name || previous.city,
+        municipalityCode: resolved.locality?.code || previous.municipalityCode,
+        barangay: resolved.barangay?.name || previous.barangay,
+        submunicipalityCode: resolved.barangay?.code || previous.submunicipalityCode,
+      }) : previous);
+    }
   };
   const closeEditor = () => {
+    addressEditorRequest.current += 1;
     setEditingProfile(false);
     setAddressForm(null);
     setProfileErrors({});
     setAddressErrors({});
+  };
+
+  const selectRegion = (item) => {
+    setAddressForm((previous) => ({
+      ...previous,
+      region: item.name,
+      regionCode: item.code,
+      province: "",
+      provinceCode: "",
+      city: "",
+      municipalityCode: "",
+      barangay: "",
+      submunicipalityCode: "",
+    }));
+    setAddressErrors((previous) => ({ ...previous, region: "", province: "", city: "", barangay: "" }));
+  };
+
+  const selectProvince = (item) => {
+    setAddressForm((previous) => ({
+      ...previous,
+      province: item.name,
+      provinceCode: item.code,
+      city: "",
+      municipalityCode: "",
+      barangay: "",
+      submunicipalityCode: "",
+    }));
+    setAddressErrors((previous) => ({ ...previous, province: "", city: "", barangay: "" }));
+  };
+
+  const selectLocality = (item) => {
+    setAddressForm((previous) => ({
+      ...previous,
+      city: item.name,
+      municipalityCode: item.code,
+      barangay: "",
+      submunicipalityCode: "",
+    }));
+    setAddressErrors((previous) => ({ ...previous, city: "", barangay: "" }));
+  };
+
+  const selectBarangay = (item) => {
+    setAddressForm((previous) => ({
+      ...previous,
+      barangay: item.name,
+      submunicipalityCode: item.code,
+    }));
+    setAddressErrors((previous) => ({ ...previous, barangay: "" }));
   };
 
   const saveProfile = async () => {
@@ -146,21 +260,24 @@ export default function CustomerSettingsScreen() {
     const firstNameError = validatePersonName(profileForm.name_first, "First name");
     const lastNameError = validatePersonName(profileForm.name_last, "Last name");
     const aliasError = validateRequired(profileForm.alias, "Alias");
+    const phoneError = toText(profileForm.phone) ? validatePhone(profileForm.phone) : "";
     if (firstNameError) errors.name_first = firstNameError;
     if (lastNameError) errors.name_last = lastNameError;
     if (aliasError) errors.alias = aliasError;
+    if (phoneError) errors.phone = phoneError;
     setProfileErrors(errors);
     if (Object.keys(errors).length) return;
 
     setSaving(true);
     try {
-      const result = await updateMyAccount({
+      const profilePayload = {
         name_first: toText(profileForm.name_first),
         name_last: toText(profileForm.name_last),
         suffix: toText(profileForm.suffix),
         alias: toText(profileForm.alias),
-        phone: toText(profileForm.phone),
-      });
+      };
+      if (toText(profileForm.phone)) profilePayload.phone = canonicalizePhMobile(profileForm.phone);
+      const result = await updateMyAccount(profilePayload);
       if (!result.success) return Alert.alert("Save failed", result.error || "Unable to update your account.");
       setNotice("Account details updated.");
       setEditingProfile(false);
@@ -178,11 +295,15 @@ export default function CustomerSettingsScreen() {
         label: toText(addressForm.label) || "Delivery address",
         type: addressForm.type || "home",
         name: toText(addressForm.name),
-        phone: toText(addressForm.phone),
+        phone: canonicalizePhMobile(addressForm.phone),
         region: toText(addressForm.region),
+        regionCode: toText(addressForm.regionCode),
         province: toText(addressForm.province),
+        provinceCode: toText(addressForm.provinceCode),
         city: toText(addressForm.city),
+        municipalityCode: toText(addressForm.municipalityCode),
         barangay: toText(addressForm.barangay),
+        submunicipalityCode: toText(addressForm.submunicipalityCode),
         street: toText(addressForm.street),
         postalCode: toText(addressForm.postalCode),
         isDefault: Boolean(addressForm.isDefault),
@@ -257,11 +378,11 @@ export default function CustomerSettingsScreen() {
         <Section title="Address details">
           <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />
           <TextField label="Recipient name" value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
-          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", value)} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} />
-          <TextField label="Region" value={addressForm.region} onChangeText={(value) => updateAddressField("region", value)} placeholder="Region IV-A" error={addressErrors.region} />
-          <TextField label="Province" value={addressForm.province} onChangeText={(value) => updateAddressField("province", value)} placeholder="Cavite" error={addressErrors.province} />
-          <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} error={addressErrors.city} emptyMessage="No city or municipality matched your search." onSelect={(item) => setAddressForm((previous) => ({ ...previous, city: item.displayName || item.name, municipalityCode: item.code, barangay: "", submunicipalityCode: "" }))} />
-          <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={(item) => setAddressForm((previous) => ({ ...previous, barangay: item.displayName || item.name, submunicipalityCode: item.code }))} />
+          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={addressErrors.phone} />
+          <BottomSheetSelect label="Region" value={addressForm.region} placeholder="Select region" items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage="No regions found. Check your connection and try again." onSelect={selectRegion} />
+          <BottomSheetSelect label="Province" value={addressForm.province} placeholder="Select province" items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={addressForm.regionCode ? "No provinces found." : "Select a region first."} onSelect={selectProvince} />
+          <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first."} onSelect={selectLocality} />
+          <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={selectBarangay} />
           <TextField label="Street address" value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder="House, block, lot, street" error={addressErrors.street} />
           <TextField label="Postal code (optional)" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" error={addressErrors.postalCode} />
           <Button title={addressForm.isDefault ? "Default delivery address" : "Set as default address"} variant={addressForm.isDefault ? "primary" : "secondary"} disabled={addressForm.isDefault || saving} onPress={() => updateAddressField("isDefault", true)} />
@@ -273,7 +394,7 @@ export default function CustomerSettingsScreen() {
         <TextField label="Suffix (optional)" value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
         <TextField label="Sign-in alias" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField label="Email" value={profileForm.email} editable={false} />
-        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", value)} keyboardType="phone-pad" error={profileErrors.phone} />
+        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={profileErrors.phone} />
       </Section>}
     </CustomerScreen>
   );

@@ -15,6 +15,7 @@ import { useUserContext } from "../../context/UserContext";
 import { regenerateRecoveryCodes } from "../../services/customerSecurityService";
 import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
+import { canonicalizePhMobile, sanitizePhMobileInput, validatePhone } from "../../utils/authValidation";
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
   return (
@@ -97,19 +98,24 @@ export default function TechProfile() {
   const { current, logout, updateUser } = useUserContext();
   const displayName = getDisplayName(current);
   const [alias, setAlias] = useState(current?.alias || "");
-  const [phone, setPhone] = useState(current?.phone || "");
+  const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
   const [password, setPassword] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    const phoneError = validatePhone(phone);
+    if (phoneError) {
+      Alert.alert("Invalid contact number", phoneError);
+      return;
+    }
     setSaving(true);
     try {
       const ok = await updateUser({
         ...current,
         alias: alias.trim(),
-        phone: phone.trim(),
+        phone: canonicalizePhMobile(phone),
         password: password || undefined,
       });
       Alert.alert(
@@ -251,8 +257,10 @@ export default function TechProfile() {
           <TextField
             label="Contact Number"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(value) => setPhone(sanitizePhMobileInput(value))}
             keyboardType="phone-pad"
+            placeholder="09XXXXXXXXX"
+            maxLength={12}
           />
           <TextField
             label="New Password"

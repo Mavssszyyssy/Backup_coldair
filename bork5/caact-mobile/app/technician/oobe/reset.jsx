@@ -1,12 +1,13 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, Text } from "react-native";
+import { Alert, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../components/technician/TechButton";
 import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
 import TextField from "../../../components/ui/TextField";
+import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
@@ -117,7 +118,7 @@ export default function TechnicianOobeReset() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ padding: SPACING.md }}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={132}>
         <PageHeader
           title="Reset Onboarding"
           subtitle="Verify your technician recovery setup"
@@ -199,7 +200,7 @@ export default function TechnicianOobeReset() {
             style={{ marginTop: SPACING.sm }}
           />
         </Card>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

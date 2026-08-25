@@ -10,6 +10,20 @@ export function normalizePhone(value = "") {
   return String(value).replace(/\D/g, "");
 }
 
+export function canonicalizePhMobile(value = "") {
+  const digits = normalizePhone(value);
+  if (/^639\d{9}$/.test(digits)) return `09${digits.slice(3)}`;
+  if (/^9\d{9}$/.test(digits)) return `0${digits}`;
+  return digits;
+}
+
+export function sanitizePhMobileInput(value = "") {
+  const digits = normalizePhone(value);
+  if (digits.startsWith("63")) return digits.slice(0, 12);
+  if (digits.startsWith("0")) return digits.slice(0, 11);
+  return digits.slice(0, 10);
+}
+
 export function validateRequired(value, fieldLabel = "This field") {
   if (!String(value || "").trim()) {
     return `${fieldLabel} is required.`;
@@ -54,14 +68,14 @@ export function validateEmail(email) {
 }
 
 export function validatePhone(phone) {
-  const digits = normalizePhone(phone);
+  const digits = canonicalizePhMobile(phone);
 
   if (!digits) {
     return "Phone number is required.";
   }
 
-  if (digits.length < 10) {
-    return "Enter a valid phone number.";
+  if (!/^09\d{9}$/.test(digits)) {
+    return "Use a valid Philippine mobile number (09XXXXXXXXX).";
   }
 
   return "";
