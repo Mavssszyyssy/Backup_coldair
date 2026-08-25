@@ -22,16 +22,25 @@ const getSalesReport = async (req, res) => {
     const to = parseDate(req.query.to) || new Date();
     const topN = Math.min(50, Math.max(1, Number(req.query.topN) || 10));
     const status = String(req.query.status || "paid").toLowerCase();
+    const supportedStatuses = ["all", "paid", "complete", "to_pay", "to_deliver", "to_install", "cancelled"];
+    if (!supportedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Unsupported report status filter." });
+    }
 
     const match = {
       createdAt: { $gte: from, $lte: to },
     };
 
-    if (status !== "all") {
-      match.status = status === "complete" ? "paid" : "paid";
-      match.workflowStatus = status === "complete" ? "complete" : { $ne: "cancelled" };
-    } else {
+    if (status === "all") {
       match.workflowStatus = { $ne: "cancelled" };
+    } else if (status === "paid") {
+      match.$or = [{ status: "paid" }, { paymentStatus: "paid" }];
+      match.workflowStatus = { $ne: "cancelled" };
+    } else if (status === "complete") {
+      match.$or = [{ status: "paid" }, { paymentStatus: "paid" }];
+      match.workflowStatus = "complete";
+    } else {
+      match.workflowStatus = status;
     }
 
     const activeBranch = req.authUser?.role === "superadmin" ? "" : String(req.activeBranch || "");

@@ -98,33 +98,20 @@ function AdminReports() {
           rows,
         });
       } else {
-        // Placeholder: later you can wire to real task / dispatch metrics
-        const rows = [
-          {
-            technician: "Technician A",
-            completedOrders: 12,
-            avgResponseMinutes: 45,
-          },
-          {
-            technician: "Technician B",
-            completedOrders: 9,
-            avgResponseMinutes: 62,
-          },
-          {
-            technician: "Technician C",
-            completedOrders: 6,
-            avgResponseMinutes: 80,
-          },
-        ];
+        const dashboard = await apiRequest("/dashboard/me");
+        const rows = (dashboard?.analytics?.technicianKPIs || []).map((item) => ({
+          technician: item.name || "Technician",
+          branch: item.branch || dashboard?.stats?.branchLabel || "",
+          completedToday: Number(item.completedToday || 0),
+          completedWeek: Number(item.completedWeek || 0),
+          completedMonth: Number(item.completedMonth || 0),
+        }));
         setData({
           summary: {
-            totalCompletedOrders: rows.reduce(
-              (s, r) => s + r.completedOrders,
-              0,
-            ),
-            avgResponseMinutes: Math.round(
-              rows.reduce((s, r) => s + r.avgResponseMinutes, 0) / rows.length,
-            ),
+            technicianCount: rows.length,
+            completedToday: rows.reduce((sum, row) => sum + row.completedToday, 0),
+            completedThisWeek: rows.reduce((sum, row) => sum + row.completedWeek, 0),
+            completedThisMonth: rows.reduce((sum, row) => sum + row.completedMonth, 0),
           },
           rows,
         });

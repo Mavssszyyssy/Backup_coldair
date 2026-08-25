@@ -124,7 +124,7 @@ export default function CustomerOobeResetScreen() {
       onBack={() => router.back()}
       withBottomNav={false}
     >
-      <Card
+      {__DEV__ ? <Card
         style={{
           backgroundColor: COLORS.primaryLight,
           borderColor: COLORS.primary,
@@ -171,7 +171,7 @@ export default function CustomerOobeResetScreen() {
         >
           {buildOtpAuthUrl(totpSecret, current?.email)}
         </Text>
-      </Card>
+      </Card> : null}
 
       <Card>
         <TextField

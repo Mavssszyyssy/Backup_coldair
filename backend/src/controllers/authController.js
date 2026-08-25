@@ -636,7 +636,7 @@ const login = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  console.log("[BOUTIQUE] Nuclear session & database purge initiated...");
+  console.info("[AUTH] Clearing the current registration session.");
   try {
     const email =
       req.session?.registrationProgress?.email ||
@@ -645,9 +645,7 @@ const logout = async (req, res) => {
       const deleted = await OtpRequest.deleteMany({
         email: normalizeEmail(email),
       });
-      console.log(
-        `[BOUTIQUE] Purged ${deleted.deletedCount} technical identifiers for ${email}.`,
-      );
+      console.info(`[AUTH] Cleared ${deleted.deletedCount} temporary OTP request(s).`);
     }
     if (req.session) {
       req.session.destroy(() => {

@@ -230,12 +230,7 @@ const ensureOrderAddress = (address = {}, user = {}) => {
     ...normalized,
     name: normalized.name || customerName || user.email || "Customer",
     phone: normalizePhMobile(normalized.phone || user.phone || ""),
-    street:
-      normalized.street ||
-      normalized.barangay ||
-      normalized.city ||
-      String(user.address || "").trim() ||
-      "Mobile checkout address pending",
+    street: normalized.street || String(user.address || "").trim(),
     barangay: normalized.barangay || "",
     city: normalized.city || "",
     province: normalized.province || "",
@@ -1590,7 +1585,6 @@ const createOrderNotification = async ({ customerId, title, message }) => {
       user?.notifications?.toObject?.() || user?.notifications || {};
     if (
       notifications.inApp === false ||
-      notifications.push === false ||
       notifications.orderUpdates === false
     ) {
       return;
@@ -1631,7 +1625,7 @@ const createStaffOrderNotification = async ({ order, title, message }) => {
 const canReceiveNotification = (user, type = "system") => {
   const notifications =
     user?.notifications?.toObject?.() || user?.notifications || {};
-  if (notifications.inApp === false || notifications.push === false) return false;
+  if (notifications.inApp === false) return false;
   if (type === "order" && notifications.orderUpdates === false) return false;
   if (type === "system" && notifications.systemAlerts === false) return false;
   if (type === "account" && notifications.accountUpdates === false) return false;
@@ -2193,16 +2187,9 @@ const createOrder = async (req, res) => {
     console.error("Failed to prepare product inventory for order:", error);
   }
   if (!isValidAddress(normalizedAddress)) {
-    console.warn("Order created with incomplete mobile checkout address", {
-      userId: String(user._id || ""),
-      reason: getAddressValidationMessage(normalizedAddress),
-      address: {
-        name: normalizedAddress.name,
-        phone: normalizedAddress.phone,
-        street: normalizedAddress.street,
-        barangay: normalizedAddress.barangay,
-        city: normalizedAddress.city,
-      },
+    return res.status(400).json({
+      message: `Please add or select a complete delivery address before checkout: ${getAddressValidationMessage(normalizedAddress)}.`,
+      code: "DELIVERY_ADDRESS_REQUIRED",
     });
   }
 
@@ -2760,10 +2747,6 @@ const listMyOrders = async (req, res) => {
   const orders = await Order.find({ customer: req.authUser._id }).sort({
     createdAt: -1,
   });
-  console.log("List my orders", {
-    userId: String(req.authUser._id),
-    count: Number(orders.length || 0),
-  });
   const hydratedOrders = await hydrateOrdersWithInventoryQrCodes(orders);
   return res.json({ orders: hydratedOrders });
 };
@@ -3318,6 +3301,12 @@ const verifyPaymongoCheckout = async (req, res) => {
     const isOwner = String(order.customer || "") === currentUserId;
     if (!isOwner && !["admin", "superadmin"].includes(req.authUser.role)) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+    if (
+      req.authUser.role === "admin" &&
+      ![order.customerBranch, order.stockSourceBranch].includes(req.activeBranch)
+    ) {
+      return res.status(403).json({ message: "This order belongs to another branch." });
     }
     if (String(order.paymentProvider || "").toLowerCase() !== "paymongo") {
       return res.status(400).json({ message: "This order does not use PayMongo checkout." });

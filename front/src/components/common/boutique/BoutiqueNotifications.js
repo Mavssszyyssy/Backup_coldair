@@ -103,7 +103,7 @@ export default function BoutiqueNotifications({
               <button
                 key={notif.id}
                 className={`bq-notif-item ${notif.unread ? "unread" : ""}`}
-                onClick={() => onNotificationClick?.(notif.id)}
+                onClick={() => onNotificationClick?.(notif)}
               >
                 <div className="bq-notif-dot" />
                 <BoutiqueBox flex={1} className="bq-notif-content">

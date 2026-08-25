@@ -180,10 +180,12 @@ const getTechnicianKPIs = async (activeBranch = "") => {
   monthStart.setHours(0, 0, 0, 0);
 
   const results = await Promise.all(technicians.map(async (tech) => ({
-    name: tech.name,
-    completedToday: await Task.countDocuments({ assignedTo: tech._id, status: "completed", completedAt: { $gte: today } }),
-    completedWeek: await Task.countDocuments({ assignedTo: tech._id, status: "completed", completedAt: { $gte: weekStart } }),
-    completedMonth: await Task.countDocuments({ assignedTo: tech._id, status: "completed", completedAt: { $gte: monthStart } }),
+    id: String(tech._id),
+    name: tech.name || `${tech.name_first || ""} ${tech.name_last || ""}`.trim() || tech.email || "Technician",
+    branch: tech.activeBranch || tech.assignedBranch || "",
+    completedToday: await Task.countDocuments({ assignedTechnicianId: String(tech._id), status: "completed", completedAt: { $gte: today } }),
+    completedWeek: await Task.countDocuments({ assignedTechnicianId: String(tech._id), status: "completed", completedAt: { $gte: weekStart } }),
+    completedMonth: await Task.countDocuments({ assignedTechnicianId: String(tech._id), status: "completed", completedAt: { $gte: monthStart } }),
   })));
   return results.sort((left, right) => right.completedMonth - left.completedMonth);
 };
@@ -196,7 +198,7 @@ const getTechnicianDashboard = async (activeBranch = "") => {
   return {
     stats: {
       pendingTasks: tasks.filter((task) => task.status === "pending").length,
-      processingTasks: tasks.filter((task) => task.status === "pending").length,
+      processingTasks: tasks.filter((task) => ["accepted", "on-the-way", "arrived", "installing"].includes(task.status)).length,
       inProgressTasks: tasks.filter((task) => task.status === "in-progress").length,
       onHoldTasks: tasks.filter((task) => task.status === "on-hold").length,
       completedToday: tasks.filter((task) => task.completedAt && task.completedAt >= today).length,
@@ -208,7 +210,7 @@ const getTechnicianDashboard = async (activeBranch = "") => {
 };
 
 const getAdminDashboard = async (activeBranch = "") => {
-  const taskQuery = { status: { $in: ["pending", "in-progress"] } };
+  const taskQuery = { status: { $in: ["pending", "accepted", "on-the-way", "arrived", "installing", "in-progress", "on-hold"] } };
   const techQuery = { role: "technician" };
   const customerQuery = { role: "customer" };
   const serviceQuery = {};

@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, allowRoles } = require("../middleware/auth");
 const {
   createPartsRequest,
   getMyPartsRequests,
@@ -10,9 +10,9 @@ const {
 const router = express.Router();
 
 router.use(requireAuth);
-router.post("/", createPartsRequest);
-router.get("/me", getMyPartsRequests);
-router.get("/", listPartsRequests);
-router.patch("/:requestId/status", updatePartsRequestStatus);
+router.post("/", allowRoles("technician"), createPartsRequest);
+router.get("/me", allowRoles("technician"), getMyPartsRequests);
+router.get("/", allowRoles("admin", "superadmin"), listPartsRequests);
+router.patch("/:requestId/status", allowRoles("admin", "superadmin"), updatePartsRequestStatus);
 
 module.exports = router;

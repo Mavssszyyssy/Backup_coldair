@@ -69,22 +69,6 @@ const getRoleHomePath = (role) => {
   }
 };
 
-// Protected Route wrapper component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useUser();
-  const location = useLocation();
-
-  if (loading) {
-    return <div className="loading-screen">Connecting...</div>;
-  }
-
-  return isAuthenticated ? (
-    children
-  ) : (
-    <Navigate to="/login" replace state={{ from: location }} />
-  );
-};
-
 const RoleRoute = ({ allowedRoles, children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
   const location = useLocation();
@@ -100,7 +84,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
   return allowedRoles.includes(userRole) ? (
     children
   ) : (
-    <Navigate to="/home" replace />
+    <Navigate to={getRoleHomePath(userRole)} replace />
   );
 };
 
@@ -190,25 +174,25 @@ function AppContent() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <Navigate to="/settings?tab=profile" replace />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <Settings />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/myunit"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <MyUnit />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
@@ -222,57 +206,57 @@ function AppContent() {
         <Route
           path="/contact"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <Contact />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/services"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <Services />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/checkout"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <Checkout />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/order-confirmation/:orderId"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <OrderConfirmation />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/my-orders"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <MyOrders />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />{" "}
         <Route
           path="/receipt/:orderId"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <ReceiptView />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/faq"
           element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={["customer"]}>
               <FaqPage />
-            </ProtectedRoute>
+            </RoleRoute>
           }
         />
         {/* Role-based dashboards */}

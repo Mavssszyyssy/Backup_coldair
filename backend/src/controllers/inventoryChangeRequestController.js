@@ -8,8 +8,8 @@ const User = require("../models/User");
  * Manager creates a change request for inventory
  */
 const createChangeRequest = async (req, res) => {
-  if (req.authUser.role !== "admin" && req.authUser.role !== "technician") {
-    return res.status(403).json({ message: "Only managers can request inventory changes" });
+  if (req.authUser.role !== "admin") {
+    return res.status(403).json({ message: "Only branch admins can request inventory changes" });
   }
 
   const { productId, requestedStock, addQuantity, reason } = req.body;

@@ -45,7 +45,7 @@ const roleMessages = (role = "customer", isFirstLogin = false) => {
       ? "Your account is ready. You can now shop, book services, and track orders."
       : "Great to see you again! Check out new products and manage your orders.",
     status:
-      "Visit My Orders or Profile to monitor TO PAY, TO DELIVER, TO INSTALL, and COMPLETE states.",
+      "Visit My Orders to monitor payment, delivery, installation, and completion states.",
   };
 };
 
@@ -83,7 +83,7 @@ const listMyNotifications = async (req, res) => {
   const userId = req.authUser._id;
   const user = await User.findById(userId).select("notifications lastLogin role");
   const userNotifications = user?.notifications?.toObject?.() || user?.notifications || {};
-  if (userNotifications.inApp === false || userNotifications.push === false) {
+  if (userNotifications.inApp === false) {
     return res.json({ notifications: [] });
   }
 

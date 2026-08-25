@@ -5,7 +5,7 @@ import { useUser } from '../../../context/UserContext';
 import './SuperAdminAccount.css';
 
 const DEFAULT_PREFERENCES = { language: 'English', currency: 'PHP', timezone: 'Asia/Manila' };
-const DEFAULT_NOTIFICATIONS = { email: true, inApp: true, sms: false, accountUpdates: true, systemAlerts: true };
+const DEFAULT_NOTIFICATIONS = { email: true, inApp: true, push: true, sms: false, accountUpdates: true, systemAlerts: true };
 
 const SuperAdminSettings = () => {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ const SuperAdminSettings = () => {
     event.preventDefault();
     setSaving(true); setNotice(''); setError('');
     try {
-      await updateSettings({ preferences, notifications: { ...notifications, push: notifications.inApp } });
+      await updateSettings({ preferences, notifications });
       setNotice('SuperAdmin settings saved.');
     } catch (requestError) {
       setError(requestError.message || 'Unable to save settings.');
@@ -38,6 +38,7 @@ const SuperAdminSettings = () => {
       <section className="hq-account-card"><div className="hq-card-heading"><p>Workspace</p><h3>Display preferences</h3></div><label>Language<select value={preferences.language} onChange={(event) => setPreferences((current) => ({ ...current, language: event.target.value }))}><option value="English">English</option><option value="Filipino">Filipino</option></select></label><label>Currency<select value={preferences.currency} onChange={(event) => setPreferences((current) => ({ ...current, currency: event.target.value }))}><option value="PHP">PHP — Philippine Peso</option><option value="USD">USD — US Dollar</option></select></label><label>Time zone<select value={preferences.timezone} onChange={(event) => setPreferences((current) => ({ ...current, timezone: event.target.value }))}><option value="Asia/Manila">Asia/Manila (PHT)</option><option value="UTC">UTC</option></select></label></section>
       <section className="hq-account-card"><div className="hq-card-heading"><p>Alert delivery</p><h3>Notification preferences</h3></div>{[
         ['inApp', 'In-app alerts', 'Show HQ orders, inventory, and customer-support alerts in the notification bell.'],
+        ['push', 'Push notifications', 'Receive important HQ alerts on registered devices.'],
         ['email', 'Email notifications', 'Send important account and operational updates to your email.'],
         ['sms', 'SMS notifications', 'Use SMS for critical SuperAdmin alerts.'],
         ['accountUpdates', 'Account security', 'Receive password and account-related updates.'],

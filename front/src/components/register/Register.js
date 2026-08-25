@@ -157,7 +157,6 @@ export default function Register() {
       if (!confirmed) return;
     }
 
-    console.log("[BOUTIQUE] Terminating registration session...");
     isShuttingDown.current = true;
 
     try {

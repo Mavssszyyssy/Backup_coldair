@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, allowRoles } = require("../middleware/auth");
 const {
   createOrder,
   listMyOrders,
@@ -23,18 +23,18 @@ const router = express.Router();
 router.post("/paymongo/webhook", handlePaymongoWebhook);
 router.get("/:orderId/paymongo/return", handlePaymongoReturn);
 router.use(requireAuth);
-router.post("/", createOrder);
-router.get("/", listOrdersForAdmin);
-router.patch("/:orderId/approve", approveOrder);
-router.patch("/:orderId/process", processOrder);
-router.patch("/:orderId/recovery", recoverOrder);
-router.patch("/:orderId/refund-review", updateRefundReview);
-router.post("/:orderId/paymongo/checkout", retryPaymongoCheckout);
-router.post("/:orderId/paymongo/verify", verifyPaymongoCheckout);
-router.get("/me", listMyOrders);
-router.get("/me/summary", getMyOrderSummary);
-router.patch("/me/:orderId/cancel-request", requestCustomerCancellation);
-router.get("/me/:orderId", getMyOrderById);
-router.get("/:orderId", getOrderByIdForAdmin);
+router.post("/", allowRoles("customer"), createOrder);
+router.get("/", allowRoles("admin", "superadmin"), listOrdersForAdmin);
+router.patch("/:orderId/approve", allowRoles("admin", "superadmin"), approveOrder);
+router.patch("/:orderId/process", allowRoles("admin", "superadmin"), processOrder);
+router.patch("/:orderId/recovery", allowRoles("admin", "superadmin"), recoverOrder);
+router.patch("/:orderId/refund-review", allowRoles("admin", "superadmin"), updateRefundReview);
+router.post("/:orderId/paymongo/checkout", allowRoles("customer"), retryPaymongoCheckout);
+router.post("/:orderId/paymongo/verify", allowRoles("customer", "admin", "superadmin"), verifyPaymongoCheckout);
+router.get("/me", allowRoles("customer"), listMyOrders);
+router.get("/me/summary", allowRoles("customer"), getMyOrderSummary);
+router.patch("/me/:orderId/cancel-request", allowRoles("customer"), requestCustomerCancellation);
+router.get("/me/:orderId", allowRoles("customer"), getMyOrderById);
+router.get("/:orderId", allowRoles("admin", "superadmin"), getOrderByIdForAdmin);
 
 module.exports = router;

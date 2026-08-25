@@ -497,7 +497,8 @@ const Shop = () => {
   }, [isAuthenticated, user]);
 
   // Mark single notification as read
-  const handleNotificationClick = async (id) => {
+  const handleNotificationClick = async (notification) => {
+    const id = notification?.id;
     try {
       await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
       setNotifications((prev) =>
@@ -506,6 +507,11 @@ const Shop = () => {
     } catch (err) {
       console.error("Failed to mark notification as read", err);
     }
+    const route = notification?.route ||
+      (notification?.type === "order" || notification?.targetType === "order" ? "/my-orders" :
+        ["service", "warranty"].includes(notification?.type) ? "/get-the-app" : "/settings");
+    setShowNotifications(false);
+    navigate(route);
   };
 
   // Mark all as read

@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
 
 const STORAGE_KEY = "service_requests_storage_v2";
+const PENDING_IDEMPOTENCY_KEY = "service_request_pending_idempotency_v1";
 
 export const SERVICE_REQUEST_STATUS = {
   SUBMITTED: "Submitted",
@@ -121,10 +122,30 @@ export async function createServiceRequest(payload = {}) {
     throw new Error("Please sign in again before submitting a service request.");
   }
 
-  const result = await api.createMyServiceRequest(token, payload);
+  const fingerprint = JSON.stringify({
+    unitId: String(payload.unitId || ""),
+    serviceId: String(payload.serviceId || payload.serviceType || ""),
+    preferredDate: String(payload.preferredDate || payload.preferredSchedule || ""),
+    issue: String(payload.issueDescription || payload.concern || payload.issue || ""),
+    address: String(payload.address || ""),
+  });
+  const storedPending = safeParse(await AsyncStorage.getItem(PENDING_IDEMPOTENCY_KEY), null);
+  const pending = storedPending?.fingerprint === fingerprint
+    ? storedPending
+    : {
+        fingerprint,
+        key: `service-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
+      };
+  await AsyncStorage.setItem(PENDING_IDEMPOTENCY_KEY, JSON.stringify(pending));
+
+  const result = await api.createMyServiceRequest(token, {
+    ...payload,
+    idempotencyKey: pending.key,
+  });
   if (!result.success) {
     throw new Error(result.error || "Unable to create service request.");
   }
+  await AsyncStorage.removeItem(PENDING_IDEMPOTENCY_KEY);
   const created = normalizeServiceRequest(result.request);
   const requests = await getAllServiceRequests();
   await saveAllServiceRequests([

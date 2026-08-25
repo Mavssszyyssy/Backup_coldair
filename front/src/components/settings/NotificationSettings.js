@@ -15,6 +15,7 @@ function NotificationSettings({
   const [notifications, setNotifications] = useState({
     email: true,
     inApp: true,
+    push: true,
     sms: false,
     accountUpdates: true,
     orderUpdates: true,
@@ -26,7 +27,8 @@ function NotificationSettings({
     const source = user?.notifications || {};
     setNotifications({
       email: source.email !== false,
-      inApp: source.inApp !== false && source.push !== false,
+      inApp: source.inApp !== false,
+      push: source.push !== false,
       sms: source.sms || false,
       accountUpdates: source.accountUpdates !== false,
       orderUpdates: source.orderUpdates !== false,
@@ -50,6 +52,11 @@ function NotificationSettings({
         key: "inApp",
         label: "In-app Notifications",
         description: "Show account notifications inside the app.",
+      },
+      {
+        key: "push",
+        label: "Push Notifications",
+        description: "Receive device alerts even when the app is not open.",
       },
       {
         key: "sms",
@@ -84,10 +91,7 @@ function NotificationSettings({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = {
-        ...notifications,
-        push: notifications.inApp,
-      };
+      const payload = { ...notifications };
       if (onUpdateSettings) {
         await onUpdateSettings({ notifications: payload });
       } else {
