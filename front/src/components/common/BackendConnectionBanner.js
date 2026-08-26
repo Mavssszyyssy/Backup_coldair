@@ -38,13 +38,16 @@ function BackendConnectionBanner() {
     // Verify the deployed API at application startup as well as during normal
     // page requests, so an unreachable backend is never mistaken for a frozen
     // login or blank dashboard.
-    apiRequest("/health").catch(() => {});
+    // Health is a background hint. Page data requests own the visible
+    // connection state; keeping this probe silent prevents a slow cold-start
+    // health check from masking a page that has already loaded.
+    apiRequest("/health", { silentConnection: true }).catch(() => {});
   }, []);
 
   const retry = async () => {
     setRetrying(true);
     try {
-      await apiRequest("/health");
+      await apiRequest("/health", { silentConnection: true });
       window.location.reload();
     } catch (_error) {
       // The shared connection state publishes the user-facing failure message.

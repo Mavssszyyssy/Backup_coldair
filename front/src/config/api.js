@@ -146,7 +146,12 @@ const performApiRequest = async (path, options = {}) => {
           await waitBeforeRetry(350);
         } catch (error) {
           lastNetworkError = error;
-          if (attempt < attempts - 1) {
+          // A timed-out request is still running in the serverless function.
+          // Starting an immediate second copy can multiply the database and
+          // payment-provider work and is the main cause of long-lived tabs
+          // becoming progressively slower. Only retry errors that indicate a
+          // connection failed before the server started processing the read.
+          if (attempt < attempts - 1 && error?.code !== "API_TIMEOUT") {
             await waitBeforeRetry(350);
             continue;
           }
