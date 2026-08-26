@@ -8,6 +8,10 @@
 /.pnp
 .pnp.js
 
+# local environment files (never commit credentials)
+.env
+**/.env
+
 # testing
 /coverage
 
@@ -17,6 +21,8 @@
 
 # misc
 /backend/.env
+*.log
+.runtime/
 .DS_Store
 .env.local
 .env.development.local

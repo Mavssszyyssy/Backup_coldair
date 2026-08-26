@@ -1,9 +1,0 @@
-Starting project at C:\Users\Mavss\Desktop\aeropulse-2\bork5\caact-mobile
-Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
-Starting Metro Bundler
-Waiting on http://localhost:60813
-Logs for your project will appear below.
-Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 72.1% (472/556)
-Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (966/972)
-Web Bundled 8080ms node_modules\expo-router\entry.js (991 modules)
- LOG  [web] Logs will appear in the browser console
