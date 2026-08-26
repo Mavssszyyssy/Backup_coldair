@@ -14,6 +14,27 @@ const adminRouteAliases = {
   "/admin/technicians": "/admin/services/technicians",
 };
 
+const LOCAL_DISMISSED_KEY = "aeropulse_admin_local_notifications_dismissed";
+
+const readDismissedLocalAlerts = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_DISMISSED_KEY) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch (_error) {
+    return new Set();
+  }
+};
+
+const writeDismissedLocalAlerts = (keys) => {
+  try {
+    localStorage.setItem(LOCAL_DISMISSED_KEY, JSON.stringify([...keys].slice(-100)));
+  } catch (_error) {
+    // A private browsing storage failure must not break notifications.
+  }
+};
+
+const localAlertKey = (item = {}) => `local:${String(item.id || "")}`;
+
 const resolveNotificationRoute = (item = {}) => {
   if (String(item.route || "").startsWith("/admin/")) {
     return adminRouteAliases[item.route] || item.route;
@@ -70,7 +91,7 @@ function AdminNotificationsBell() {
       const next = [...backendItems];
       if (lowStockCount > 0) {
         next.push({
-          id: "low-stock",
+          id: `low-stock-${lowStockCount}`,
           createdAt: new Date().toISOString(),
           title: "Low stock items",
           message: `${lowStockCount} item(s) have < 5 units remaining.`,
@@ -80,7 +101,7 @@ function AdminNotificationsBell() {
       }
       if (pendingOrders > 0) {
         next.push({
-          id: "pending-orders",
+          id: `pending-orders-${pendingOrders}`,
           createdAt: new Date().toISOString(),
           title: "Pending orders",
           message: `${pendingOrders} pending order(s) are older than 24 hours.`,
@@ -88,7 +109,8 @@ function AdminNotificationsBell() {
           source: "local",
         });
       }
-      setItems(next);
+      const dismissed = readDismissedLocalAlerts();
+      setItems(next.filter((item) => item.source !== "local" || !dismissed.has(localAlertKey(item))));
     } finally {
       setBusy(false);
       refreshInFlightRef.current = false;
@@ -138,12 +160,20 @@ function AdminNotificationsBell() {
       // Local alert state can still be marked read if the request is retried later.
     }
     const next = markAllAdminNotificationsRead();
+    const dismissed = readDismissedLocalAlerts();
+    items.filter((item) => item.source === "local").forEach((item) => dismissed.add(localAlertKey(item)));
+    writeDismissedLocalAlerts(dismissed);
     setReadAt(next);
     setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
   };
 
   const onNavigate = async (item) => {
     if (!item?.to) return;
+    if (item.source === "local") {
+      const dismissed = readDismissedLocalAlerts();
+      dismissed.add(localAlertKey(item));
+      writeDismissedLocalAlerts(dismissed);
+    }
     if (item.source === "backend" && item.unread && item.id) {
       try {
         await apiRequest(`/notifications/${item.id}/read`, { method: "PATCH" });
