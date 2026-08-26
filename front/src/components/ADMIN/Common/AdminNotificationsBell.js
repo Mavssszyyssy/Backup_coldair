@@ -34,6 +34,7 @@ function AdminNotificationsBell() {
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
+  const refreshInFlightRef = useRef(false);
 
   const [open, setOpen] = useState(false);
   const [readAt, setReadAt] = useState(() => getAdminNotificationsReadAt());
@@ -41,12 +42,14 @@ function AdminNotificationsBell() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setBusy(true);
     try {
       const [notificationResult, lowStockResult, ordersResult] = await Promise.all([
-        apiRequest("/notifications/me").catch(() => ({ notifications: [] })),
-        apiRequest("/products/low-stock").catch(() => ({ products: [] })),
-        apiRequest("/orders?summary=alerts").catch(() => ({ summary: { pendingOrders: 0 } })),
+        apiRequest("/notifications/me", { silentConnection: true }).catch(() => ({ notifications: [] })),
+        apiRequest("/products/low-stock", { silentConnection: true }).catch(() => ({ products: [] })),
+        apiRequest("/orders?summary=alerts", { silentConnection: true }).catch(() => ({ summary: { pendingOrders: 0 } })),
       ]);
 
       const lowStockCount = (lowStockResult.products || []).filter(
@@ -88,13 +91,21 @@ function AdminNotificationsBell() {
       setItems(next);
     } finally {
       setBusy(false);
+      refreshInFlightRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     refresh();
-    const pollId = window.setInterval(refresh, 20000);
-    return () => window.clearInterval(pollId);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const pollId = window.setInterval(refreshWhenVisible, 45000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [refresh]);
 
   useEffect(() => {

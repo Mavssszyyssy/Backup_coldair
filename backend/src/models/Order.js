@@ -175,5 +175,9 @@ orderSchema.index(
   { customer: 1, idempotencyKey: 1 },
   { unique: true, sparse: true, name: "idx_customer_order_idempotency" },
 );
+// Admin order lists are branch-scoped and newest-first. These indexes keep
+// two concurrent admin dashboards from repeatedly scanning historic orders.
+orderSchema.index({ customerBranch: 1, createdAt: -1 });
+orderSchema.index({ stockSourceBranch: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Order", orderSchema);

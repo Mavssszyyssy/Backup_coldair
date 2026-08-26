@@ -160,21 +160,22 @@ const AdminOrders = ({ embedded = false }) => {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const orderLoadInFlightRef = useRef(false);
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (options = {}) => {
+    const background = Boolean(options?.background);
     if (orderLoadInFlightRef.current) return;
     orderLoadInFlightRef.current = true;
     setError('');
     setLoading(true);
     try {
       const [ordersResponse, tasksResponse] = await Promise.all([
-        apiRequest('/orders'),
-        apiRequest('/tasks').catch(() => ({ tasks: [] })),
+        apiRequest('/orders', { silentConnection: background }),
+        apiRequest('/tasks?limit=75', { silentConnection: background }).catch(() => ({ tasks: [] })),
       ]);
       const response = ordersResponse;
       setOrders(response.orders || []);
       setTasks(tasksResponse.tasks || []);
       setLastSyncedAt(new Date());
-      apiRequest('/users?role=technician')
+      apiRequest('/users?role=technician', { silentConnection: true })
         .then((usersResponse) => setTechnicians(usersResponse.users || []))
         .catch(() => setTechnicians([]));
     } catch (e) {
@@ -188,7 +189,7 @@ const AdminOrders = ({ embedded = false }) => {
   useEffect(() => {
     loadOrders();
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') loadOrders();
+      if (document.visibilityState === 'visible') loadOrders({ background: true });
     };
     const refreshId = window.setInterval(refreshWhenVisible, 60000);
     window.addEventListener('focus', refreshWhenVisible);

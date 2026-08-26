@@ -95,10 +95,15 @@ const requestWithTimeout = async (url, options, timeoutMs, callerSignal) => {
 };
 
 const performApiRequest = async (path, options = {}) => {
-  beginConnection(path);
   const token = getToken();
   const activeBranch = getActiveBranch();
-  const { timeoutMs: requestedTimeoutMs, signal: callerSignal, ...requestOptions } = options;
+  const {
+    timeoutMs: requestedTimeoutMs,
+    signal: callerSignal,
+    silentConnection = false,
+    ...requestOptions
+  } = options;
+  if (!silentConnection) beginConnection(path);
   const method = String(requestOptions.method || "GET").toUpperCase();
   const timeoutMs = boundedTimeout(
     requestedTimeoutMs,
@@ -159,7 +164,7 @@ const performApiRequest = async (path, options = {}) => {
     err.status = 0;
     err.code = error?.code || "API_NETWORK_ERROR";
     err.data = null;
-    finishConnection("failed", { path, message, url: requestUrl });
+    if (!silentConnection) finishConnection("failed", { path, message, url: requestUrl });
     throw err;
   }
 
@@ -194,11 +199,11 @@ const performApiRequest = async (path, options = {}) => {
     err.data = data;
     err.fieldErrors =
       data?.errors && typeof data.errors === "object" ? data.errors : null;
-    finishConnection("loaded", { path });
+    if (!silentConnection) finishConnection("loaded", { path });
     throw err;
   }
 
-  finishConnection("loaded", { path });
+  if (!silentConnection) finishConnection("loaded", { path });
   return data;
 };
 
