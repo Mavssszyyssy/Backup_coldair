@@ -352,6 +352,16 @@ const createMyServiceRequest = async (req, res) => {
           request: hydrateRequestResponse(existingActiveRequest),
         });
       }
+
+      const activeWarrantyClaim = (unit?.warranty?.claims || []).find((claim) =>
+        ["submitted", "under_review", "approved"].includes(String(claim?.status || "").toLowerCase()),
+      );
+      if (activeWarrantyClaim) {
+        return res.status(409).json({
+          message: `Warranty claim ${activeWarrantyClaim.claimId || ""} is already ${String(activeWarrantyClaim.status || "being reviewed").replace(/_/g, " ")}. Please wait for that workflow instead of creating a duplicate service request.`,
+          claim: activeWarrantyClaim,
+        });
+      }
     }
 
     const nowIso = new Date().toISOString();

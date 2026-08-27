@@ -21,6 +21,7 @@ import {
 } from "../../../services/maintenanceRecommendationService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
 import {
+  cacheUnitUpdate,
   getUnitByCode,
 } from "../../../services/unitStorage";
 import { createWarrantyClaim, generateAmpReport, getStoredToken, updateAmpRoomSize } from "../../../services/api";
@@ -34,6 +35,9 @@ function formatDate(value = "") {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
 }
+
+const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
 
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
@@ -77,6 +81,10 @@ export default function CustomerUnitDetailsScreen() {
         warrantyStatus: result.warranty?.status || "under_review",
       };
       setUnit(nextUnit);
+      await cacheUnitUpdate(nextUnit.id, {
+        warranty: nextUnit.warranty,
+        warrantyStatus: nextUnit.warrantyStatus,
+      }).catch(() => null);
       const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit });
       setRecommendation(nextRecommendation);
       setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
@@ -188,6 +196,15 @@ export default function CustomerUnitDetailsScreen() {
       </CustomerScreen>
     );
   }
+
+  const activeServiceRequest = history.requests.find((request) =>
+    ACTIVE_REQUEST_STATUSES.has(String(request?.status || "").toLowerCase()),
+  );
+  const activeWarrantyClaim = (unit?.warranty?.claims || []).find((claim) =>
+    ACTIVE_CLAIM_STATUSES.has(String(claim?.status || "").toLowerCase()),
+  );
+  const warrantyStatus = String(unit?.warrantyStatus || unit?.warranty?.status || "pending_activation").toLowerCase();
+  const canSubmitWarrantyClaim = warrantyStatus === "active" && !activeServiceRequest && !activeWarrantyClaim;
 
   return (
     <CustomerScreen
@@ -324,7 +341,13 @@ export default function CustomerUnitDetailsScreen() {
           />
         ))}
         {unit?.warrantyRecommendation ? <DetailRow label="AMP Recommendation" value={unit.warrantyRecommendation} multiline /> : null}
-        {!["expired", "void", "under_review", "approved"].includes(String(unit?.warrantyStatus || unit?.warranty?.status || "").toLowerCase()) ? (
+        {activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+          This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
+        </Text> : null}
+        {activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+          Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. Once approved, its service request is created automatically.
+        </Text> : null}
+        {canSubmitWarrantyClaim ? (
           <>
             <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Request warranty support</Text>
             <TextInput
@@ -338,6 +361,9 @@ export default function CustomerUnitDetailsScreen() {
             <Button title="Submit Warranty Claim" onPress={handleWarrantyClaim} loading={claimSubmitting} disabled={claimSubmitting} />
           </>
         ) : null}
+        {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+          Warranty support is unavailable while coverage is {warrantyStatus.replace(/_/g, " ")}. You can still book a standard service request below.
+        </Text> : null}
       </Card>
 
       <Card>

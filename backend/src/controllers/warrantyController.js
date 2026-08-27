@@ -3,6 +3,7 @@ const Unit = require("../models/Unit");
 const Task = require("../models/Task");
 const ServiceRequest = require("../models/ServiceRequest");
 const Notification = require("../models/Notification");
+const User = require("../models/User");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
@@ -117,7 +118,24 @@ const createWarrantyClaim = async (req, res) => {
       ["submitted", "under_review", "approved"].includes(String(claim?.status || "")),
     );
     if (activeClaim) {
-      return res.status(409).json({ message: "This unit already has an active warranty claim.", claim: activeClaim });
+      return res.status(200).json({
+        message: "This unit already has an active warranty claim.",
+        claim: activeClaim,
+        warranty,
+        replayed: true,
+      });
+    }
+
+    const activeServiceRequest = await ServiceRequest.findOne({
+      createdBy: req.authUser._id,
+      unitId: String(unit._id),
+      status: { $in: ["Pending", "Submitted", "Reviewed", "Assigned", "In Progress"] },
+    }).sort({ createdAt: -1 });
+    if (activeServiceRequest) {
+      return res.status(409).json({
+        message: "This AC unit already has an active service request. Complete or cancel it before starting a warranty claim.",
+        request: activeServiceRequest,
+      });
     }
 
     const claim = {
@@ -175,30 +193,55 @@ const reviewWarrantyClaim = async (req, res) => {
 
     if (status === "approved" && !claim.serviceRequestId) {
       const address = [unit.installation?.addressLine, unit.installation?.city, unit.installation?.province].filter(Boolean).join(", ") || "Installation address";
-      const request = await ServiceRequest.create({
-        customer: unit.customerName || "Customer",
-        issue: `Warranty claim ${claim.claimId}: ${claim.issue}`,
-        address,
-        branch: unitBranch,
-        status: "Reviewed",
-        customerId: String(unit.customer || ""),
-        unitId: String(unit._id),
-        unitName: unit.modelName || "Installed AC Unit",
-        issueType: "Warranty Repair",
-        payload: {
-          warrantyClaimId: claim.claimId,
-          warrantyRelated: true,
-          unitSerialNumber: unit.serialNumber,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+      const existingWarrantyRequest = await ServiceRequest.findOne({
         createdBy: unit.customer,
+        unitId: String(unit._id),
+        "payload.warrantyClaimId": claim.claimId,
       });
+      const conflictingRequest = existingWarrantyRequest ? null : await ServiceRequest.findOne({
+        createdBy: unit.customer,
+        unitId: String(unit._id),
+        status: { $in: ["Pending", "Submitted", "Reviewed", "Assigned", "In Progress"] },
+      }).sort({ createdAt: -1 });
+      if (conflictingRequest) {
+        return res.status(409).json({
+          message: "This AC unit already has an active service request. Complete or cancel it before approving the warranty claim.",
+        });
+      }
+
+      const customer = unit.customer ? await User.findById(unit.customer).select("email phone") : null;
+      const request = existingWarrantyRequest || await ServiceRequest.create({
+          customer: unit.customerName || displayName(customer || {}) || "Customer",
+          issue: `Warranty claim ${claim.claimId}: ${claim.issue}`,
+          address,
+          branch: unitBranch,
+          status: "Reviewed",
+          customerId: String(unit.customer || ""),
+          customerEmail: String(customer?.email || ""),
+          customerPhone: String(customer?.phone || ""),
+          unitId: String(unit._id),
+          unitName: unit.modelName || "Installed AC Unit",
+          issueType: "Warranty Repair",
+          payload: {
+            warrantyClaimId: claim.claimId,
+            warrantyRelated: true,
+            unitSerialNumber: unit.serialNumber,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          createdBy: unit.customer,
+          idempotencyKey: `warranty-claim:${claim.claimId}`,
+        });
       claim.serviceRequestId = String(request._id || request.id || "");
     }
 
     warranty.claims[index] = claim;
-    warranty.status = status === "rejected" ? "rejected" : status;
+    // A rejected claim does not revoke the whole warranty. Coverage returns to
+    // active (or expired based on its date) while the individual claim keeps
+    // its rejected decision for history and future customer visibility.
+    warranty.status = status === "rejected"
+      ? effectiveWarrantyStatus({ ...warranty, status: "active" })
+      : status;
     warranty.timeline = appendWarrantyEvent(
       warranty,
       status === "approved" ? "Warranty Claim Approved" : status === "rejected" ? "Warranty Claim Rejected" : "Warranty Claim Under Review",

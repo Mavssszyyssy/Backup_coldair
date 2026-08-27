@@ -79,6 +79,24 @@ export async function saveAllUnits(units = []) {
   return normalized;
 }
 
+export async function cacheUnitUpdate(unitId, patch = {}) {
+  const units = await getAllUnits();
+  const index = units.findIndex((unit) => String(unit.id) === String(unitId));
+  if (index < 0) return null;
+
+  const updated = normalizeUnit({
+    ...units[index],
+    ...patch,
+    id: units[index].id,
+    userId: patch.userId || units[index].userId,
+    updatedAt: new Date().toISOString(),
+  });
+  const nextUnits = [...units];
+  nextUnits[index] = updated;
+  await saveAllUnits(nextUnits);
+  return updated;
+}
+
 export async function getUnitsByUser(userId) {
   try {
     const token = await api.getStoredToken();

@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Linking, Text } from "react-native";
+import { Alert, Linking, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
@@ -8,16 +8,19 @@ import BottomSheetSelect from "../../components/ui/BottomSheetSelect";
 import Button from "../../components/ui/Button";
 import CalendarDatePicker, { getTodayDateKey, isPastCalendarDate } from "../../components/ui/CalendarDatePicker";
 import Card from "../../components/ui/Card";
+import DetailRow from "../../components/ui/DetailRow";
 import EmptyState from "../../components/ui/EmptyState";
+import StatusChip from "../../components/ui/StatusChip";
 import StickyActionBar from "../../components/ui/StickyActionBar";
 import TextField from "../../components/ui/TextField";
 import { COLD_AIR_WEBSITE } from "../../constants/company";
 import { COLORS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
-import { fetchServiceCatalog, getStoredToken } from "../../services/api";
+import { createWarrantyClaim, fetchServiceCatalog, getStoredToken } from "../../services/api";
+import { getCustomerServiceHistory } from "../../services/customerHistoryService";
 import { createServiceRequest } from "../../services/serviceRequestStorage";
-import { getUnitsByUser } from "../../services/unitStorage";
+import { cacheUnitUpdate, getUnitsByUser } from "../../services/unitStorage";
 import { canonicalizePhMobile, validatePhone } from "../../utils/authValidation";
 
 const getServiceAddress = (user = {}) => {
@@ -31,18 +34,37 @@ const getServiceAddress = (user = {}) => {
   };
 };
 
+const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
+
+const readableStatus = (value = "") => String(value || "").replace(/_/g, " ");
+
+const getActiveWarrantyClaim = (unit) =>
+  (unit?.warranty?.claims || []).find((claim) => ACTIVE_CLAIM_STATUSES.has(String(claim?.status || "").toLowerCase())) || null;
+
+const hasActiveWarranty = (unit) =>
+  String(unit?.warrantyStatus || unit?.warranty?.status || "").toLowerCase() === "active";
+
+const formatDate = (value = "") => {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+};
+
 export default function CustomerServicesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { current } = useUserContext();
   const [units, setUnits] = useState([]);
   const [serviceOfferings, setServiceOfferings] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [serviceCatalogError, setServiceCatalogError] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [requestMode, setRequestMode] = useState("service");
   const [dateError, setDateError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,16 +84,33 @@ export default function CustomerServicesScreen() {
   useFocusEffect(useCallback(() => {
     let active = true;
     loadServiceCatalog();
-    getUnitsByUser(current?.id).then((items) => {
+    Promise.all([
+      getUnitsByUser(current?.id),
+      getCustomerServiceHistory(current?.id),
+    ]).then(([items, history]) => {
       if (!active) return;
       setUnits(items);
-      if (!selectedUnitId && items[0]?.id) setSelectedUnitId(items[0].id);
+      setRequests(history.requests || []);
+      setSelectedUnitId((currentId) => {
+        if (currentId && items.some((item) => String(item.id) === String(currentId))) return currentId;
+        return items[0]?.id || "";
+      });
     });
     return () => { active = false; };
-  }, [current, selectedUnitId, loadServiceCatalog]));
+  }, [current?.id, loadServiceCatalog]));
 
   const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
+  const selectedActiveRequest = useMemo(() => requests.find((request) =>
+    String(request.unitId || "") === String(selectedUnitId || "") &&
+    ACTIVE_REQUEST_STATUSES.has(String(request.status || "").toLowerCase())), [requests, selectedUnitId]);
+  const activeWarrantyClaim = useMemo(() => getActiveWarrantyClaim(selectedUnit), [selectedUnit]);
+  const repairSelected = String(selectedService?.id || "").toLowerCase() === "repair" || String(selectedService?.defaultIssueType || "").toLowerCase() === "repair";
+  const warrantyEligible = repairSelected && hasActiveWarranty(selectedUnit) && !activeWarrantyClaim;
+
+  useEffect(() => {
+    setRequestMode(warrantyEligible ? "warranty" : "service");
+  }, [selectedUnitId, selectedServiceId, warrantyEligible]);
 
   useEffect(() => {
     const requestedUnitId = Array.isArray(params.unitId) ? params.unitId[0] : params.unitId;
@@ -102,6 +141,45 @@ export default function CustomerServicesScreen() {
   const handleSubmit = async () => {
     if (!selectedService) return Alert.alert("Required", "Choose a service offering.");
     if (!selectedUnit) return Alert.alert("Required", "Select a registered AC unit first.");
+    if (selectedActiveRequest) {
+      return Alert.alert("Request already open", "This AC unit already has a service request in progress. You do not need to submit another one.");
+    }
+    if (activeWarrantyClaim) {
+      return Alert.alert("Warranty claim in progress", `Your warranty claim is already ${readableStatus(activeWarrantyClaim.status)}. We will notify you when it changes.`);
+    }
+    if (!issueDescription.trim()) return Alert.alert("Required", "Describe the request or concern.");
+
+    if (requestMode === "warranty" && warrantyEligible) {
+      const token = await getStoredToken();
+      if (!token) return Alert.alert("Sign in required", "Please sign in again before submitting warranty support.");
+      setSubmitting(true);
+      try {
+        const result = await createWarrantyClaim(token, selectedUnit.id, {
+          issue: issueDescription.trim(),
+          notes: notes.trim(),
+        });
+        if (!result.success) throw new Error(result.error);
+        const nextUnit = {
+          ...selectedUnit,
+          warranty: result.warranty,
+          warrantyStatus: result.warranty?.status || "under_review",
+        };
+        setUnits((items) => items.map((item) => String(item.id) === String(nextUnit.id) ? nextUnit : item));
+        await cacheUnitUpdate(nextUnit.id, {
+          warranty: nextUnit.warranty,
+          warrantyStatus: nextUnit.warrantyStatus,
+        }).catch(() => null);
+        setIssueDescription("");
+        setNotes("");
+        Alert.alert("Warranty support submitted", "Your claim is now under review. A service visit will be arranged after approval, so no appointment date is needed yet.");
+      } catch (error) {
+        Alert.alert("Claim not submitted", error?.message || "Unable to submit warranty support.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (!preferredDate) {
       setDateError("Choose your preferred appointment date.");
       return;
@@ -110,8 +188,6 @@ export default function CustomerServicesScreen() {
       setDateError("Please choose today or a future date.");
       return;
     }
-    if (!issueDescription.trim()) return Alert.alert("Required", "Describe the request or concern.");
-
     const serviceAddress = getServiceAddress(current);
     const contactPhone = canonicalizePhMobile(serviceAddress.phone || current?.phone || "");
     const contactError = validatePhone(contactPhone);
@@ -128,7 +204,7 @@ export default function CustomerServicesScreen() {
 
     setSubmitting(true);
     try {
-      await createServiceRequest({
+      const createdRequest = await createServiceRequest({
         userId: current?.id,
         customerName: getDisplayName(current),
         customerEmail: current?.email || "",
@@ -151,6 +227,7 @@ export default function CustomerServicesScreen() {
         plusCode: current?.plusCode || "",
         deliveryInstructions: current?.deliveryInstructions || "",
       });
+      setRequests((items) => [createdRequest, ...items.filter((item) => String(item.id) !== String(createdRequest.id))]);
       Alert.alert("Request Submitted", "Your preferred date was recorded. We will notify you once a technician and time slot are assigned.");
       setIssueDescription("");
       setPreferredDate("");
@@ -162,8 +239,16 @@ export default function CustomerServicesScreen() {
     }
   };
 
+  const submitTitle = selectedActiveRequest
+    ? "Request Already Open"
+    : activeWarrantyClaim
+      ? "Warranty Claim in Progress"
+      : requestMode === "warranty" && warrantyEligible
+        ? "Submit Warranty Support"
+        : "Submit Service Request";
+
   return (
-    <CustomerScreen title="Services" subtitle="Book a service appointment for your registered AC unit" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={submitting ? "Submitting..." : "Submit Request"} onPress={handleSubmit} loading={submitting} disabled={submitting || units.length === 0 || !selectedService} /></StickyActionBar>}>
+    <CustomerScreen title="Services" subtitle="Book maintenance, repair, or warranty support for your AC" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={submitting ? "Submitting..." : submitTitle} onPress={handleSubmit} loading={submitting} disabled={submitting || units.length === 0 || !selectedService || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
       {units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title="Available Services" />
@@ -174,10 +259,40 @@ export default function CustomerServicesScreen() {
         {serviceCatalogError ? <Button title="Retry services" variant="secondary" onPress={loadServiceCatalog} /> : null}
         <Button title="Browse FAQs" variant="secondary" onPress={() => router.push("/customer/faq")} />
       </Card>
+      {selectedUnit ? <Card>
+        <CustomerSectionHeader title="Coverage & Request Status" />
+        <DetailRow label="Warranty" value={readableStatus(selectedUnit.warrantyStatus || selectedUnit.warranty?.status || "pending activation")} />
+        <DetailRow label="Coverage expires" value={formatDate(selectedUnit.warrantyExpirationDate || selectedUnit.warranty?.expirationDate)} />
+        {selectedActiveRequest ? <>
+          <StatusChip label={selectedActiveRequest.status || "Submitted"} color={COLORS.warning} />
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            {selectedActiveRequest.serviceType || selectedActiveRequest.issueType || "Service"} is already being handled. Updates will synchronize here and in notifications.
+          </Text>
+          <Button title="Open AC Details" variant="secondary" onPress={() => router.push(`/customer/units/${selectedUnit.id}`)} />
+        </> : null}
+        {activeWarrantyClaim ? <>
+          <StatusChip label={`Claim ${readableStatus(activeWarrantyClaim.status)}`} color={COLORS.warning} />
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            No duplicate request is needed. Once approved, the service request will be created automatically and assigned by the service team.
+          </Text>
+        </> : null}
+        {warrantyEligible ? <>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            This repair may qualify for warranty review. Warranty support does not require an appointment date until the claim is approved.
+          </Text>
+          <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+            <Button title="Use Warranty" size="sm" variant={requestMode === "warranty" ? "primary" : "secondary"} onPress={() => setRequestMode("warranty")} style={{ flex: 1 }} />
+            <Button title="Standard Repair" size="sm" variant={requestMode === "service" ? "primary" : "secondary"} onPress={() => setRequestMode("service")} style={{ flex: 1 }} />
+          </View>
+        </> : null}
+        {!repairSelected && !selectedActiveRequest && !activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>
+          Routine maintenance is booked normally. For a fault that may be covered, choose Repair to use the guided warranty path.
+        </Text> : null}
+      </Card> : null}
       <Card>
         <CustomerSectionHeader title="Appointment Details" />
         <BottomSheetSelect label="Select AC Unit" value={selectedUnit?.unitName} placeholder="Choose registered AC unit" items={units} itemIcon="snow-sharp" getKey={(item) => String(item.id)} getLabel={(item) => `${item.unitName || "Unnamed AC Unit"}${item.brand ? ` - ${item.brand}` : ""}`} onSelect={(unit) => setSelectedUnitId(unit.id)} />
-        <CalendarDatePicker label="Preferred Date" value={preferredDate} onChange={selectDate} minimumDate={getTodayDateKey()} required error={dateError} />
+        {requestMode === "service" || !warrantyEligible ? <CalendarDatePicker label="Preferred Date" value={preferredDate} onChange={selectDate} minimumDate={getTodayDateKey()} required error={dateError} /> : null}
         <TextField label="Service Concern" value={issueDescription} onChangeText={setIssueDescription} placeholder="Describe the issue, delivery concern, or service needed" multiline style={{ minHeight: 100, textAlignVertical: "top" }} />
         <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} placeholder="Additional site instructions or preferences" multiline style={{ minHeight: 80, textAlignVertical: "top" }} />
       </Card>
