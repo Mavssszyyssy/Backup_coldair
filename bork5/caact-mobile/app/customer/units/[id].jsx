@@ -34,7 +34,9 @@ function readParam(value) {
 function formatDate(value = "") {
   if (!value) return "Not recorded";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" });
 }
 
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
@@ -283,7 +285,7 @@ export default function CustomerUnitDetailsScreen() {
             <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
             <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
-            <DetailRow label="Best Serviced By" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
+            <DetailRow label="Recommended Service Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
             <DetailRow label="Recommended Service" value={String(ampReport.maintenance?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
             <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
             <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />

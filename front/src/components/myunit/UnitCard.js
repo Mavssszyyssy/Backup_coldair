@@ -8,6 +8,15 @@ function UnitCard({
   onViewHistory,
   onWarrantyStatus,
 }) {
+  const warrantyLabel = {
+    pending_activation: "Activation in progress",
+    under_review: "Claim under review",
+    approved: "Claim approved",
+    rejected: "Claim not approved",
+    expired: "Coverage expired",
+    void: "Coverage unavailable",
+    active: "Active",
+  }[String(unit.warrantyStatus || unit.warranty?.status || "pending_activation").toLowerCase()] || "Status unavailable";
   const getStatusClass = () => {
     switch (unit.status) {
       case "Good":
@@ -57,11 +66,11 @@ function UnitCard({
           </div>
           <div className="info-row">
             <span className="info-label">Warranty</span>
-            <span className="info-value">{String(unit.warrantyStatus || unit.warranty?.status || "pending activation").replace(/_/g, " ")}</span>
+            <span className="info-value">{warrantyLabel}</span>
           </div>
           {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">Best Serviced By</span>
+              <span className="info-label">Recommended Service Date</span>
               <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}

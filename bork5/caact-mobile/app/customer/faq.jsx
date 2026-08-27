@@ -69,9 +69,9 @@ const FAQ_ITEMS = [
   {
     id: "amp-maintenance",
     category: "AMP",
-    question: "What does Best Serviced By mean?",
+    question: "What is the recommended service date?",
     answer:
-      "Best Serviced By is a preventive-maintenance date calculated from recorded service history for comparable AC units. It is planning guidance and does not replace an on-site technician inspection.",
+      "It is the suggested date for your next AC cleaning or maintenance. Following it can help keep your unit cooling efficiently and reduce unexpected problems.",
   },
   {
     id: "qr-scanning",

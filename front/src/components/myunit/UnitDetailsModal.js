@@ -19,7 +19,7 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="unit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Unit Details</h3>
+          <h3>AC Details</h3>
           <button className="close-modal" onClick={onClose}>
             ×
           </button>
@@ -53,26 +53,26 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
           </div>
           {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">Best Serviced By</span>
+              <span className="info-label">Recommended Service Date</span>
               <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}
           <DynamicServiceSticker unit={unit} />
           {unit.technicianReportSummary && (
             <div className="info-row">
-              <span className="info-label">Latest report</span>
+              <span className="info-label">Installation</span>
               <span className="info-value">{unit.technicianReportSummary}</span>
             </div>
           )}
           {unit.installEnvironmentNotes && (
             <div className="info-row">
-              <span className="info-label">Install environment</span>
+              <span className="info-label">Installed At</span>
               <span className="info-value">{unit.installEnvironmentNotes}</span>
             </div>
           )}
           {unit.notes && (
             <div className="info-row">
-              <span className="info-label">Notes</span>
+              <span className="info-label">Registration</span>
               <span className="info-value">{unit.notes}</span>
             </div>
           )}

@@ -16,6 +16,14 @@ import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
 
+const formatCustomerDate = (value = "") => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" });
+};
+
 const buildUnitFromBackend = (unit = {}) => ({
   id: unit.id || unit.serialNumber || `unit-${Date.now()}`,
   backendUnitId: unit.id || "",
@@ -27,19 +35,19 @@ const buildUnitFromBackend = (unit = {}) => ({
   model: unit.model || unit.modelName || unit.unitName || "Installed AC Unit",
   serialNumber: unit.serialNumber || "",
   qrCode: unit.qrCode || "",
-  installationDate: unit.installationDate || "",
+  installationDate: formatCustomerDate(unit.installationDate),
   status: unit.status || "Active",
   bestServicedByLabel:
-    unit.bestServicedBy ? `Best serviced by ${new Date(unit.bestServicedBy).toLocaleDateString()}` : "",
+    formatCustomerDate(unit.bestServicedBy),
   bestServicedBy: unit.bestServicedBy || "",
   recommendedService: unit.recommendedService || "regular_cleaning",
   recommendationBasis: unit.recommendationBasis || "",
   capacityAssessment: unit.capacityAssessment || null,
-  technicianReportSummary: "Installed unit synced from completed technician fulfillment.",
+  technicianReportSummary: "Installation completed and your AC is registered.",
   installEnvironmentNotes: [unit.placementArea, unit.installationEnvironment]
     .filter(Boolean)
     .join(" - "),
-  notes: "This unit was created from the backend order-to-installation handoff.",
+  notes: "Added to My Units automatically after installation.",
   warranty: unit.warranty || {},
   warrantyStatus: unit.warrantyStatus || unit.warranty?.status || "pending_activation",
   warrantyExpirationDate: unit.warrantyExpirationDate || unit.warranty?.expirationDate || "",
@@ -112,9 +120,9 @@ function MyUnit() {
           margin="0 0 32px"
         >
           <BoutiqueStack gap={4}>
-            <BoutiqueText variant="h2">My Facilities</BoutiqueText>
+            <BoutiqueText variant="h2">Your Registered AC Units</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
-              Track maintenance and service history for your units.
+              View your AC details, warranty coverage, and recommended service schedule.
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>
