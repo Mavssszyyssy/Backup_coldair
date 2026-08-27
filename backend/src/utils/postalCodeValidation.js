@@ -1,4 +1,4 @@
-const postalCodeRules = require("../../../shared/postalCodeRules.json");
+const postalCodeRules = require("./postalCodeRules.json");
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 const normalizedPostalCodeRules = Object.fromEntries(
