@@ -4,10 +4,15 @@
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 
-:root {
+.super-layout {
   --super-primary: #4f46e5;
   --super-primary-dark: #3730a3;
   --super-primary-soft: rgba(79, 70, 229, 0.14);
+  --role-primary: #4f46e5;
+  --role-primary-dark: #3730a3;
+  --role-primary-soft: #eef2ff;
+  --role-primary-border: #c7d2fe;
+  --role-primary-text: #3730a3;
   --super-bg: #f6f7fb;
   --super-card: #ffffff;
   --super-text: #1f2937;

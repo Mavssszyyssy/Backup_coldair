@@ -113,8 +113,8 @@
 
 .serialqr-count {
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--role-primary-soft, #e3f2fd);
+  color: var(--role-primary-text, #0d47a1);
   font-size: 12px;
   font-weight: 800;
   padding: 7px 10px;
@@ -184,7 +184,7 @@
 .serialqr-card-body code {
   display: block;
   color: #0f172a;
-  background: #e0f2fe;
+  background: var(--role-primary-soft, #e3f2fd);
   border-radius: 6px;
   padding: 6px;
   font-size: 12px;
@@ -198,14 +198,14 @@
   text-transform: capitalize;
 }
 
-.serialqr-edit,
-.serialqr-editor button {
+.admin-card .serialqr-edit,
+.admin-card .serialqr-editor button {
   width: fit-content;
   min-height: 32px;
-  border: 1px solid #2563eb;
+  border: 1px solid var(--role-primary, #1e88e5);
   border-radius: 6px;
   background: #fff;
-  color: #1d4ed8;
+  color: var(--role-primary-text, #0d47a1);
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
@@ -241,12 +241,12 @@
   gap: 6px;
 }
 
-.serialqr-editor button:first-child {
-  background: #2563eb;
+.admin-card .serialqr-editor button:first-child {
+  background: var(--role-primary, #1e88e5);
   color: #fff;
 }
 
-.serialqr-editor .serialqr-cancel {
+.admin-card .serialqr-editor .serialqr-cancel {
   border-color: #cbd5e1;
   color: #475569;
 }

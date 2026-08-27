@@ -92,7 +92,8 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
       {loading ? (
         <p>Loading…</p>
       ) : null}
-      <table className="admin-table">
+      <div className="inventory-table-scroll">
+        <table className="admin-table inventory-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -108,7 +109,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
           </tr>
         </thead>
         <tbody>
-          {pageProducts.map((product) => (
+          {pageProducts.map((product, rowIndex) => (
             <tr key={product.id}>
               <td>{product.name}</td>
               <td>{product.brand || '-'}</td>
@@ -121,21 +122,26 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                 </span>
               </td>
               <td className="inventory-serial-cell">
-                <InventorySerialQrPreview product={product} branch={branch} />
+                <InventorySerialQrPreview
+                  product={product}
+                  branch={branch}
+                  placement={rowIndex >= Math.max(0, pageProducts.length - 2) ? 'top' : 'bottom'}
+                />
               </td>
               <td>PHP {product.price}</td>
               {canManageStock && (
-                <td style={{ minWidth: 210 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <td className="inventory-stock-adjustment-cell">
+                  <div className="inventory-stock-adjustment">
                     <input
+                      className="inventory-stock-quantity"
                       type="number"
                       min="1"
                       value={getRowState(product.id).quantity}
                       onChange={(event) => setRowValue(product.id, { quantity: event.target.value })}
-                      placeholder="Add qty"
-                      style={{ width: 80 }}
+                      placeholder="Qty"
+                      aria-label={`Quantity to add for ${product.name}`}
                     />
-                    <button type="button" onClick={() => updateStock(product.id)} disabled={pendingId === product.id || !branch}>
+                    <button className="inventory-primary-action" type="button" onClick={() => updateStock(product.id)} disabled={pendingId === product.id || !branch}>
                       {pendingId === product.id ? 'Saving...' : 'Add stock'}
                     </button>
                   </div>
@@ -160,7 +166,8 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
             <tr><td colSpan={columnCount} className="inventory-empty-cell">No products match the current search and filters.</td></tr>
           ) : null}
         </tbody>
-      </table>
+        </table>
+      </div>
       {!loading && visibleProducts.length > 0 ? (
         <div className="inventory-pagination" aria-label="Inventory pagination">
           <span className="inventory-pagination-summary">
@@ -189,7 +196,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
           </div>
         </div>
       ) : null}
-      <button type="button" onClick={onRefresh} style={{ marginTop: 10 }}>
+      <button type="button" className="inventory-refresh-button" onClick={onRefresh}>
         Refresh
       </button>
     </div>

@@ -2,8 +2,8 @@ import { Copy, QrCode, X } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const HOVER_OPEN_DELAY_MS = 450;
-const HOVER_CLOSE_DELAY_MS = 1000;
+const HOVER_OPEN_DELAY_MS = 650;
+const HOVER_CLOSE_DELAY_MS = 1200;
 
 const getUnitKey = (unit, index) =>
   unit?.qrUnitId || unit?.serialNumber || `unit-${index}`;
@@ -11,7 +11,7 @@ const getUnitKey = (unit, index) =>
 const getProductModel = (product) =>
   product?.model || product?.modelName || product?.specs || product?.sku || "Model not recorded";
 
-function InventorySerialQrPreview({ product, branch }) {
+function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
   const units = useMemo(
     () =>
       (product?.serialUnits || []).filter(
@@ -124,7 +124,7 @@ function InventorySerialQrPreview({ product, branch }) {
 
       {open && selectedUnit ? (
         <section
-          className="inventory-serial-preview"
+          className={`inventory-serial-preview inventory-serial-preview--${placement}`}
           role="dialog"
           aria-label="AC unit serial and QR preview"
           onMouseEnter={openPreview}

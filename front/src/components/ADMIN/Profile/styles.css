@@ -2,16 +2,16 @@
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
 
-:root {
-  --brand-50: #f0efff;
-  --brand-100: #dddcfe;
-  --brand-200: #c4c2fc;
-  --brand-400: #8b86f7;
-  --brand-500: #5b54ef;
-  --brand-600: #4940d4;
-  --brand-700: #382fb8;
-  --brand-800: #2a2290;
-  --brand-900: #1c1760;
+.admin-profile-page {
+  --brand-50: #e3f2fd;
+  --brand-100: #bbdefb;
+  --brand-200: #90caf9;
+  --brand-400: #42a5f5;
+  --brand-500: #1e88e5;
+  --brand-600: #1565c0;
+  --brand-700: #0d47a1;
+  --brand-800: #0b3d91;
+  --brand-900: #082f6b;
 
   --surface-page: #f4f4f8;
   --surface-card: #ffffff;
@@ -54,7 +54,7 @@
   color: var(--text-primary);
 }
 
-.admin-grid-2 {
+.admin-profile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
@@ -62,7 +62,7 @@
 }
 
 @media (max-width: 768px) {
-  .admin-grid-2 {
+  .admin-profile-grid {
     grid-template-columns: 1fr;
   }
   .admin-profile-page {
@@ -72,7 +72,7 @@
 
 /* ── Cards ───────────────────────────────────────────────── */
 
-.admin-card {
+.admin-profile-card {
   background: var(--surface-card);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
@@ -82,12 +82,12 @@
   animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.admin-card:hover {
+.admin-profile-card:hover {
   box-shadow: var(--shadow-hover);
 }
 
-.admin-card:nth-child(2) { animation-delay: 0.07s; }
-.admin-card:nth-child(3) { animation-delay: 0.14s; }
+.admin-profile-card:nth-child(2) { animation-delay: 0.07s; }
+.admin-profile-card:nth-child(3) { animation-delay: 0.14s; }
 
 @keyframes cardIn {
   from {
@@ -100,7 +100,7 @@
   }
 }
 
-.admin-card h3 {
+.admin-profile-card h3 {
   font-family: var(--font-sans);
   font-size: 0.8rem;
   font-weight: 600;
@@ -114,7 +114,7 @@
 
 /* ── Profile Info rows ───────────────────────────────────── */
 
-.admin-card p {
+.admin-profile-card p {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -125,12 +125,12 @@
   border-bottom: 1px solid rgba(90, 80, 200, 0.05);
 }
 
-.admin-card p:last-of-type {
+.admin-profile-card p:last-of-type {
   border-bottom: none;
   margin-bottom: 1.25rem;
 }
 
-.admin-card p strong {
+.admin-profile-card p strong {
   font-weight: 500;
   color: var(--text-primary);
   min-width: 90px;
@@ -138,7 +138,7 @@
 
 /* ── Avatar ──────────────────────────────────────────────── */
 
-.admin-avatar {
+.admin-profile-avatar {
   width: 64px;
   height: 64px;
   border-radius: var(--radius-lg);
@@ -156,8 +156,8 @@
 
 /* ── Buttons ─────────────────────────────────────────────── */
 
-.admin-card button,
-button.admin-btn {
+.admin-profile-card button,
+button.admin-profile-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -173,33 +173,33 @@ button.admin-btn {
   letter-spacing: 0.01em;
 }
 
-.admin-card button,
-.admin-btn-primary {
+.admin-profile-card button,
+.admin-profile-btn-primary {
   background: var(--brand-500);
   color: var(--text-on-brand);
   box-shadow: var(--shadow-btn);
 }
 
-.admin-card button:hover,
-.admin-btn-primary:hover {
+.admin-profile-card button:hover,
+.admin-profile-btn-primary:hover {
   background: var(--brand-600);
   box-shadow: 0 4px 14px rgba(73, 64, 212, 0.45);
   transform: translateY(-1px);
 }
 
-.admin-card button:active,
-.admin-btn-primary:active {
+.admin-profile-card button:active,
+.admin-profile-btn-primary:active {
   transform: translateY(0);
   box-shadow: var(--shadow-btn);
 }
 
-.admin-btn-secondary {
+.admin-profile-btn-secondary {
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid var(--border-medium);
 }
 
-.admin-btn-secondary:hover {
+.admin-profile-btn-secondary:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
   border-color: var(--brand-400);
@@ -207,7 +207,7 @@ button.admin-btn {
 
 /* ── Form (shared admin-form used by ChangePassword) ─────── */
 
-.admin-form {
+.admin-profile-form {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -219,7 +219,7 @@ button.admin-btn {
   animation: cardIn 0.45s 0.07s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.admin-form h3 {
+.admin-profile-form h3 {
   font-family: var(--font-sans);
   font-size: 0.8rem;
   font-weight: 600;
@@ -231,9 +231,9 @@ button.admin-btn {
   border-bottom: 1px solid var(--border-light);
 }
 
-.admin-form input[type="password"],
-.admin-form input[type="text"],
-.admin-form input {
+.admin-profile-form input[type="password"],
+.admin-profile-form input[type="text"],
+.admin-profile-form input {
   width: 100%;
   background: var(--surface-input);
   border: 1px solid var(--border-light);
@@ -248,22 +248,22 @@ button.admin-btn {
   box-sizing: border-box;
 }
 
-.admin-form input::placeholder {
+.admin-profile-form input::placeholder {
   color: var(--text-muted);
 }
 
-.admin-form input:hover {
+.admin-profile-form input:hover {
   border-color: var(--border-medium);
   background: #fff;
 }
 
-.admin-form input:focus {
+.admin-profile-form input:focus {
   border-color: var(--brand-400);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(91, 84, 239, 0.12);
 }
 
-.admin-form button[type="submit"] {
+.admin-profile-form button[type="submit"] {
   margin-top: 0.5rem;
   background: var(--brand-500);
   color: var(--text-on-brand);
@@ -280,17 +280,17 @@ button.admin-btn {
   letter-spacing: 0.01em;
 }
 
-.admin-form button[type="submit"]:hover {
+.admin-profile-form button[type="submit"]:hover {
   background: var(--brand-600);
   box-shadow: 0 4px 14px rgba(73, 64, 212, 0.45);
   transform: translateY(-1px);
 }
 
-.admin-form button[type="submit"]:active {
+.admin-profile-form button[type="submit"]:active {
   transform: translateY(0);
 }
 
-.admin-form p {
+.admin-profile-form p {
   font-size: 0.82rem;
   margin: 0.75rem 0 0;
   padding: 0.7rem 1rem;
@@ -298,7 +298,7 @@ button.admin-btn {
   text-align: center;
 }
 
-.admin-form p:not(:empty) {
+.admin-profile-form p:not(:empty) {
   background: var(--brand-50);
   color: var(--brand-700);
   border: 1px solid var(--brand-100);
@@ -306,7 +306,7 @@ button.admin-btn {
 
 /* ── Modal ───────────────────────────────────────────────── */
 
-.app-modal-overlay {
+.admin-profile-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(15, 12, 50, 0.45);
@@ -324,7 +324,7 @@ button.admin-btn {
   to   { opacity: 1; }
 }
 
-.app-modal-card {
+.admin-profile-modal-card {
   background: var(--surface-card);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
@@ -350,7 +350,7 @@ button.admin-btn {
   }
 }
 
-.app-modal-card h3 {
+.admin-profile-modal-card h3 {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -360,7 +360,7 @@ button.admin-btn {
   letter-spacing: -0.01em;
 }
 
-.app-modal-card input {
+.admin-profile-modal-card input {
   width: 100%;
   background: var(--surface-input);
   border: 1px solid var(--border-light);
@@ -375,23 +375,23 @@ button.admin-btn {
   box-sizing: border-box;
 }
 
-.app-modal-card input::placeholder {
+.admin-profile-modal-card input::placeholder {
   color: var(--text-muted);
 }
 
-.app-modal-card input:focus {
+.admin-profile-modal-card input:focus {
   border-color: var(--brand-400);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(91, 84, 239, 0.12);
 }
 
-.app-modal-actions {
+.admin-profile-modal-actions {
   display: flex;
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
 
-.app-modal-actions button {
+.admin-profile-modal-actions button {
   flex: 1;
   padding: 0.72rem;
   font-family: var(--font-sans);
@@ -403,30 +403,30 @@ button.admin-btn {
   border: 1px solid var(--border-medium);
 }
 
-.app-modal-actions button[type="button"] {
+.admin-profile-modal-actions button[type="button"] {
   background: transparent;
   color: var(--text-secondary);
 }
 
-.app-modal-actions button[type="button"]:hover {
+.admin-profile-modal-actions button[type="button"]:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
 }
 
-.app-modal-actions button[type="submit"] {
+.admin-profile-modal-actions button[type="submit"] {
   background: var(--brand-500);
   color: var(--text-on-brand);
   border-color: transparent;
   box-shadow: var(--shadow-btn);
 }
 
-.app-modal-actions button[type="submit"]:hover {
+.admin-profile-modal-actions button[type="submit"]:hover {
   background: var(--brand-600);
   box-shadow: 0 4px 14px rgba(73, 64, 212, 0.45);
   transform: translateY(-1px);
 }
 
-.app-modal-actions button[type="submit"]:disabled {
+.admin-profile-modal-actions button[type="submit"]:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -455,7 +455,7 @@ button.admin-btn {
   Any ChangePassword-specific tweaks go below:
 */
 
-.admin-form .password-strength {
+.admin-profile-form .password-strength {
     height: 3px;
     border-radius: 99px;
     background: rgba(90, 80, 200, 0.1);

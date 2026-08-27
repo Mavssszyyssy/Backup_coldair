@@ -1,6 +1,11 @@
-:root {
+.admin-layout {
   --admin-primary: #1e88e5;
   --admin-primary-dark: #0d47a1;
+  --role-primary: #1e88e5;
+  --role-primary-dark: #0d47a1;
+  --role-primary-soft: #e3f2fd;
+  --role-primary-border: #90caf9;
+  --role-primary-text: #0d47a1;
   --admin-bg: #f8fafc;
   --admin-card: #ffffff;
   --admin-text: #0f172a;
@@ -131,7 +136,7 @@
   padding: 12px 18px;
   border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-dark));
+  background: linear-gradient(135deg, var(--role-primary, var(--admin-primary)), var(--role-primary-dark, var(--admin-primary-dark)));
   color: #fff;
   cursor: pointer;
   font-weight: 700;

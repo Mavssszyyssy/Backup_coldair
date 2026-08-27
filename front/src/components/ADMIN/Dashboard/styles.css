@@ -6,13 +6,13 @@
    ADMIN DASHBOARD — Complete Stylesheet
    ============================================ */
 
-:root {
-  --primary:        #4f46e5;
-  --primary-end:    #7c3aed;
-  --primary-dark:   #3730a3;
-  --primary-light:  #ede9fe;
-  --primary-mid:    #c4b5fd;
-  --primary-grad:   linear-gradient(135deg, #4f46e5, #7c3aed);
+.admin-dashboard {
+  --primary:        #1e88e5;
+  --primary-end:    #1565c0;
+  --primary-dark:   #0d47a1;
+  --primary-light:  #e3f2fd;
+  --primary-mid:    #90caf9;
+  --primary-grad:   linear-gradient(135deg, #1e88e5, #0d47a1);
 
   --success:        #059669;
   --success-light:  #d1fae5;

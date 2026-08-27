@@ -404,7 +404,7 @@
    ============================================ */
 
 /* ----- CSS VARIABLES ----- */
-:root {
+.admin-layout {
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --primary-light: #60a5fa;
