@@ -1,11 +1,11 @@
 .admin-layout {
-  --admin-primary: #1e88e5;
-  --admin-primary-dark: #0d47a1;
-  --role-primary: #1e88e5;
-  --role-primary-dark: #0d47a1;
-  --role-primary-soft: #e3f2fd;
-  --role-primary-border: #90caf9;
-  --role-primary-text: #0d47a1;
+  --admin-primary: #4f46e5;
+  --admin-primary-dark: #3730a3;
+  --role-primary: #4f46e5;
+  --role-primary-dark: #3730a3;
+  --role-primary-soft: #ede9fe;
+  --role-primary-border: #c4b5fd;
+  --role-primary-text: #3730a3;
   --admin-bg: #f8fafc;
   --admin-card: #ffffff;
   --admin-text: #0f172a;

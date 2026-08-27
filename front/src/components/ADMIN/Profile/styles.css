@@ -3,15 +3,15 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
 
 .admin-profile-page {
-  --brand-50: #e3f2fd;
-  --brand-100: #bbdefb;
-  --brand-200: #90caf9;
-  --brand-400: #42a5f5;
-  --brand-500: #1e88e5;
-  --brand-600: #1565c0;
-  --brand-700: #0d47a1;
-  --brand-800: #0b3d91;
-  --brand-900: #082f6b;
+  --brand-50: #f0efff;
+  --brand-100: #dddcfe;
+  --brand-200: #c4c2fc;
+  --brand-400: #8b86f7;
+  --brand-500: #5b54ef;
+  --brand-600: #4940d4;
+  --brand-700: #382fb8;
+  --brand-800: #2a2290;
+  --brand-900: #1c1760;
 
   --surface-page: #f4f4f8;
   --surface-card: #ffffff;
