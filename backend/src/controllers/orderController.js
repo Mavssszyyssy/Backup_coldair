@@ -629,7 +629,12 @@ const releaseOrderInventoryOnce = async (order, reason = "") => {
     return false;
   }
 
-  await restoreStockForCancelledOrder(order);
+  // COD orders do not reserve stock until they are dispatched. Mark the
+  // pending reservation released without incrementing inventory that was
+  // never deducted.
+  if (order.stockReservationStatus !== "pending") {
+    await restoreStockForCancelledOrder(order);
+  }
   await updateSerialUnitsForOrder(order, "cancelled");
   order.stockReservationStatus = "released";
   order.stockReleasedAt = new Date();
@@ -638,7 +643,7 @@ const releaseOrderInventoryOnce = async (order, reason = "") => {
 };
 
 const reReserveReleasedOrderInventory = async (order) => {
-  if (!order || order.stockReservationStatus !== "released") return;
+  if (!order || !["pending", "released"].includes(order.stockReservationStatus)) return;
 
   const completedReservations = [];
   try {
@@ -2152,6 +2157,7 @@ const createOrder = async (req, res) => {
     }
   }
   const usesOnlinePayment = isOnlinePaymentMethod(paymentMethod);
+  const deferStockUntilDispatch = String(paymentMethod || "").toLowerCase() === "cod";
   const checkoutReturnTarget = normalizePaymentReturnTarget(
     paymentReturnTarget || returnTarget || clientType || platform,
   );
@@ -2295,25 +2301,29 @@ const createOrder = async (req, res) => {
         }
 
         lastSourceBranch = finalBranch;
-        const serialUnits = await reserveSerialUnitsForOrder(
-          product,
-          finalBranch,
-          quantityNeeded,
-          orderCode,
-          session,
-        );
-        const serialNumbers = serialUnits.map((unit) => unit.serialNumber);
-        try {
-          await decrementProductStockForOrder(
+        let serialUnits = [];
+        let serialNumbers = [];
+        if (!deferStockUntilDispatch) {
+          serialUnits = await reserveSerialUnitsForOrder(
             product,
             finalBranch,
             quantityNeeded,
-            hasBranchSnapshot,
+            orderCode,
             session,
           );
-        } catch (error) {
-          await releaseReservedSerialUnits(product._id, serialNumbers, session);
-          throw error;
+          serialNumbers = serialUnits.map((unit) => unit.serialNumber);
+          try {
+            await decrementProductStockForOrder(
+              product,
+              finalBranch,
+              quantityNeeded,
+              hasBranchSnapshot,
+              session,
+            );
+          } catch (error) {
+            await releaseReservedSerialUnits(product._id, serialNumbers, session);
+            throw error;
+          }
         }
 
         completedReservations.push({
@@ -2408,7 +2418,7 @@ const createOrder = async (req, res) => {
       totalAmount: normalizedTotal,
       workflowStatus: "to_pay",
       status: "pending",
-      stockReservationStatus: "reserved",
+      stockReservationStatus: deferStockUntilDispatch ? "pending" : "reserved",
       fulfillmentTimeline: [
         {
           stage: "placed",
@@ -2628,6 +2638,12 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   }
   if (action === "dispatch" && linkedTaskBeforeAction && ["completed", "failed"].includes(String(linkedTaskBeforeAction.status || "").toLowerCase())) {
     throw new HttpError(409, `Order ${order.orderCode} has a ${linkedTaskBeforeAction.status} technician task and cannot be dispatched again.`);
+  }
+
+  if (action === "dispatch" && order.stockReservationStatus === "pending") {
+    // COD inventory is deducted only at the moment the order is dispatched.
+    // This also assigns the serial/QR units needed by the technician task.
+    await reReserveReleasedOrderInventory(order);
   }
 
   order.workflowStatus = config.to;

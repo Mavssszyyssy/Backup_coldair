@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema(
     idempotencyKey: { type: String, trim: true, index: true, sparse: true },
     stockReservationStatus: {
       type: String,
-      enum: ["reserved", "released", "consumed"],
+      enum: ["pending", "reserved", "released", "consumed"],
       default: "reserved",
       index: true,
     },
