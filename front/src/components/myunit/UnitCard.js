@@ -1,6 +1,7 @@
 import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitKebabMenu from "./UnitKebabMenu";
 import UnitProductVisual from "./UnitProductVisual";
+import { formatUnitHorsepower } from "../../domain/myunit/unitDisplay";
 
 function UnitCard({
   unit,
@@ -49,6 +50,10 @@ function UnitCard({
           <div className="info-row">
             <span className="info-label">Model</span>
             <span className="info-value">{unit.productSku || unit.model || "Not recorded"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Horsepower</span>
+            <span className="info-value">{formatUnitHorsepower(unit)}</span>
           </div>
           <div className="info-row">
             <span className="info-label">Serial Number</span>

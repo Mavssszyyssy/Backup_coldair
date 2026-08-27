@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { formatUnitHorsepower } from "../../services/unitDisplayService";
 import CustomerUnitImage from "./CustomerUnitImage";
 
 export default function CustomerUnitRow({
@@ -20,7 +21,7 @@ export default function CustomerUnitRow({
         activeOpacity={0.72}
         accessibilityRole="button"
         accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
-        style={{ flexDirection: "row", alignItems: "center", paddingVertical: SPACING.sm, minHeight: 84 }}
+        style={{ flexDirection: "row", alignItems: "center", paddingVertical: SPACING.sm, minHeight: 104 }}
       >
         <CustomerUnitImage unit={unit} size={68} style={{ marginRight: SPACING.sm }} />
         <View style={{ flex: 1 }}>
@@ -29,6 +30,9 @@ export default function CustomerUnitRow({
           </Text>
           <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.bold, marginTop: 3 }} numberOfLines={1}>
             {modelLabel}
+          </Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
+            Horsepower: {formatUnitHorsepower(unit)}
           </Text>
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={2}>
             Next maintenance: {maintenance?.date || maintenance?.label || "Not scheduled"}

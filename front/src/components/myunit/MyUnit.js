@@ -30,6 +30,7 @@ const buildUnitFromBackend = (unit = {}) => ({
   productId: unit.productId || "",
   productSku: unit.productSku || unit.sku || "",
   imageUrl: unit.imageUrl || unit.image || "",
+  capacityHp: Number(unit.capacityHp || unit.horsepower || 0),
   qrUnitId: unit.qrUnitId || "",
   brand: unit.brand || "Cold Air ACT",
   model: unit.model || unit.modelName || unit.unitName || "Installed AC Unit",

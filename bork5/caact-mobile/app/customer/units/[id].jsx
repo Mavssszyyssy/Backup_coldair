@@ -21,6 +21,7 @@ import {
   buildMaintenanceRecommendation,
 } from "../../../services/maintenanceRecommendationService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
+import { formatUnitHorsepower } from "../../../services/unitDisplayService";
 import {
   cacheUnitUpdate,
   getUnitByCode,
@@ -251,6 +252,10 @@ export default function CustomerUnitDetailsScreen() {
             <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Status</Text>
             <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.status || "Active"}</Text>
           </View>
+          <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Horsepower</Text>
+            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{formatUnitHorsepower(unit)}</Text>
+          </View>
         </View>
       </Card>
 
@@ -299,7 +304,7 @@ export default function CustomerUnitDetailsScreen() {
         <DetailRow label="Serial Number" value={unit?.serialNumber} />
         <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
         <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
-        <DetailRow label="HP Capacity" value={unit?.capacityHp ? `${unit.capacityHp} HP` : "Not recorded"} />
+        <DetailRow label="Horsepower" value={formatUnitHorsepower(unit)} />
         <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Room size (m²)</Text>
         <TextInput value={roomSize} onChangeText={setRoomSize} keyboardType="decimal-pad" placeholder="Enter room size" placeholderTextColor={COLORS.textMuted} style={{ marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text }} />
         <Button title="Save Room Size" loading={roomSaving} disabled={roomSaving} onPress={async () => {

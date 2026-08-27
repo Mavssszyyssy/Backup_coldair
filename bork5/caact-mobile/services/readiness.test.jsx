@@ -3,6 +3,7 @@ import path from "path";
 import { filterAndSortProducts } from "./ecommerceService";
 import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
+import { formatUnitHorsepower } from "./unitDisplayService";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -34,5 +35,11 @@ describe("mobile customer readiness rules", () => {
     expect(validatePhone("123")).toBeTruthy();
     expect(validatePassword("Aa1!1234")).toBe("");
     expect(validatePassword(`Aa1!${"x".repeat(22)}`)).toMatch(/25/);
+  });
+
+  test("registered AC units show their recorded horsepower", () => {
+    expect(formatUnitHorsepower({ capacityHp: 2.5 })).toBe("2.5 HP");
+    expect(formatUnitHorsepower({ horsepower: "1.0HP" })).toBe("1 HP");
+    expect(formatUnitHorsepower({})).toBe("Not recorded");
   });
 });
