@@ -1,7 +1,8 @@
 import { Redirect } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
+import LoadingLogo from "../../components/LoadingLogo";
 import { COLORS } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 
@@ -19,7 +20,7 @@ export default function ManagerLayout() {
           backgroundColor: COLORS.bg,
         }}
       >
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <LoadingLogo size={82} />
       </View>
     );
   }

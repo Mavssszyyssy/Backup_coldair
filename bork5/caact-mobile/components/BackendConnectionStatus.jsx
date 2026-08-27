@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, RADIUS, SPACING } from "../constants/theme";
 import { checkBackendConnection } from "../services/api";
 import { subscribeBackendConnection } from "../services/backendConnectionState";
+import LoadingLogo from "./LoadingLogo";
 
 // A small, app-wide status surface. It is deliberately separate from screen
 // loading placeholders: it tells the user whether the delay is network-related
@@ -38,20 +39,11 @@ export default function BackendConnectionStatus() {
   if (connection.state === "hidden") return null;
 
   const failed = connection.state === "failed";
-  const loaded = connection.state === "loaded";
-  const label = failed
-    ? "Connection failed"
-    : loaded
-      ? "Loaded"
-      : connection.activeRequests > 1
-        ? "Loading..."
-        : "Connecting...";
-
   return (
     <View pointerEvents="box-none" style={[styles.container, { top: insets.top + SPACING.sm }]}>
       <View style={[styles.card, failed ? styles.failedCard : styles.statusCard]}>
-        {failed ? null : <ActivityIndicator color={COLORS.primary} size="small" />}
-        <Text style={[styles.text, failed && styles.failedText]}>{failed ? connection.message : label}</Text>
+        {failed ? null : <LoadingLogo size={32} />}
+        {failed ? <Text style={[styles.text, styles.failedText]}>{connection.message}</Text> : null}
         {failed ? (
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>

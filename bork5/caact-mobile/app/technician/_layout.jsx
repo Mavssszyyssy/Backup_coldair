@@ -2,8 +2,9 @@
 // Role guard + Stack navigator for technician screens.
 import { Redirect, usePathname } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
+import LoadingLogo from "../../components/LoadingLogo";
 import TechnicianBottomNav from "../../components/technician/TechnicianBottomNav";
 import { COLORS } from "../../constants/theme";
 import { useRoleGuard } from "../../hooks/useRoleGuard";
@@ -30,7 +31,7 @@ export default function TechnicianLayout() {
           backgroundColor: COLORS.bg,
         }}
       >
-        <ActivityIndicator size="large" color={COLORS.tech} />
+        <LoadingLogo size={82} />
       </View>
     );
   }

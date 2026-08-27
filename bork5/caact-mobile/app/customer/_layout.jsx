@@ -2,8 +2,9 @@
 // Role guard + Stack navigator for customer screens.
 import { Redirect } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
+import LoadingLogo from "../../components/LoadingLogo";
 import BottomNav from "../../components/ui/BottomNav";
 import { COLORS } from "../../constants/theme";
 import { useRoleGuard } from "../../hooks/useRoleGuard";
@@ -21,7 +22,7 @@ export default function CustomerLayout() {
           backgroundColor: COLORS.bg,
         }}
       >
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <LoadingLogo size={82} />
       </View>
     );
   }

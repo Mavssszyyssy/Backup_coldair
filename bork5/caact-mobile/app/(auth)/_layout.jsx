@@ -1,8 +1,9 @@
 // app/(auth)/_layout.jsx
 // Guest guard: anyone with a valid session is bounced to their home screen.
 import { Redirect, Stack } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
+import LoadingLogo from "../../components/LoadingLogo";
 import { COLORS } from "../../constants/theme";
 import { useGuestGuard } from "../../hooks/useGuestGuard";
 
@@ -19,7 +20,7 @@ export default function AuthLayout() {
           backgroundColor: COLORS.bg,
         }}
       >
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <LoadingLogo size={82} />
       </View>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowClockwise, CloudWarning, Spinner } from "@phosphor-icons/react";
+import { ArrowClockwise, CloudWarning } from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
+import LoadingLogo from "./LoadingLogo";
 
 function BackendConnectionBanner() {
   const [state, setState] = useState("loaded");
@@ -19,12 +20,12 @@ function BackendConnectionBanner() {
       }
       if (detail.state === "connecting") {
         setState("connecting");
-        setMessage("Connecting...");
+        setMessage("loading");
         return;
       }
       if (detail.activeRequests > 0) return;
       setState("loaded");
-      setMessage("Loaded");
+      setMessage("loading");
       hideTimerRef.current = window.setTimeout(() => setMessage(""), 1300);
     };
     window.addEventListener("aeropulse:connection", onConnection);
@@ -60,11 +61,11 @@ function BackendConnectionBanner() {
   const failed = state === "failed";
   return (
     <div className={`backend-connection-banner ${failed ? "is-failed" : ""}`} role={failed ? "alert" : "status"}>
-      {failed ? <CloudWarning size={18} weight="fill" /> : <Spinner className={state === "connecting" ? "backend-spin" : ""} size={18} weight="bold" />}
-      <span>{message}</span>
+      {failed ? <CloudWarning size={18} weight="fill" /> : <LoadingLogo compact />}
+      {failed ? <span>{message}</span> : null}
       {failed ? (
         <button type="button" onClick={retry} disabled={retrying}>
-          <ArrowClockwise size={15} weight="bold" /> {retrying ? "Connecting..." : "Retry"}
+          {retrying ? <LoadingLogo compact label="Retrying connection" /> : <><ArrowClockwise size={15} weight="bold" /> Retry</>}
         </button>
       ) : null}
     </div>
