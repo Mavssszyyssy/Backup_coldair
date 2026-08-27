@@ -26,7 +26,6 @@ import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDas
 import SuperAdminInventory from "./components/SUPERADMIN/Dashboard/SuperAdminInventory";
 import SuperAdminSales from "./components/SUPERADMIN/Dashboard/SuperAdminSales";
 import SuperAdminServices from "./components/SUPERADMIN/Dashboard/SuperAdminServices";
-import SuperAdminTasks from "./components/SUPERADMIN/Dashboard/SuperAdminTasks";
 import SuperAdminSettings from "./components/SUPERADMIN/Dashboard/SuperAdminSettings";
 import SuperAdminProfile from "./components/SUPERADMIN/Dashboard/SuperAdminProfile";
 import CustomerChatbot from "./components/chatbot/CustomerChatbot";
@@ -554,14 +553,6 @@ function AppContent() {
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
               <SuperAdminProfile />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/superadmin/tasks"
-          element={
-            <RoleRoute allowedRoles={["superadmin"]}>
-              <SuperAdminTasks />
             </RoleRoute>
           }
         />

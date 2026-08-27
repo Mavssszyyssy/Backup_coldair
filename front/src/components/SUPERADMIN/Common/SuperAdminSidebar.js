@@ -20,7 +20,6 @@ const links = [
   { to: "/superadmin/sales", label: "Processing Sales", icon: ShoppingCart },
   { to: "/superadmin/services", label: "Services", icon: Wrench },
   { to: "/superadmin/reports", label: "AMP / Reports", icon: ShieldCheck },
-  { to: "/superadmin/tasks", label: "Processing Tech Tasks", icon: Wrench },
   { to: "/superadmin/alerts", label: "Customer Support Alerts", icon: WarningCircle },
   { to: "/superadmin/profile", label: "My Profile", icon: Users },
   { to: "/superadmin/settings", label: "Settings", icon: Gear },
