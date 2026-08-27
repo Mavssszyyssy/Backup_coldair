@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 
 import {
   CustomerRecommendationPanel,
@@ -183,7 +183,20 @@ export default function CustomerUnitDetailsScreen() {
     }, [current, unitId]),
   );
 
-  if (!loading && !unit) {
+  if (loading) {
+    return (
+      <CustomerScreen title="AC Unit Details" subtitle="Loading your registered AC unit">
+        <Card style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
+          <ActivityIndicator color={COLORS.primary} size="large" />
+          <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
+            Getting the latest unit, warranty, and service details...
+          </Text>
+        </Card>
+      </CustomerScreen>
+    );
+  }
+
+  if (!unit) {
     return (
       <CustomerScreen title="AC Unit Details" subtitle="AC unit not found">
         <Card>

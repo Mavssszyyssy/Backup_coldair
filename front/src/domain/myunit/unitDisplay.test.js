@@ -11,6 +11,7 @@ describe("customer AC unit display", () => {
 
   it("does not invent horsepower when the unit has no recorded capacity", () => {
     expect(formatUnitHorsepower({})).toBe("Not recorded");
+    expect(formatUnitHorsepower(null)).toBe("Not recorded");
   });
 
   it("keeps the AC action menu above the product image", () => {

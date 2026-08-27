@@ -41,5 +41,6 @@ describe("mobile customer readiness rules", () => {
     expect(formatUnitHorsepower({ capacityHp: 2.5 })).toBe("2.5 HP");
     expect(formatUnitHorsepower({ horsepower: "1.0HP" })).toBe("1 HP");
     expect(formatUnitHorsepower({})).toBe("Not recorded");
+    expect(formatUnitHorsepower(null)).toBe("Not recorded");
   });
 });
