@@ -25,6 +25,7 @@ export async function getCustomerServiceHistory(userId) {
 
   const linkedTasks = tasks.filter((task) => {
     return (
+      String(task.customerId || "") === String(userId) ||
       requestTaskIds.has(String(task.id)) ||
       requests.some((request) => String(request.id) === String(task.requestId || ""))
     );

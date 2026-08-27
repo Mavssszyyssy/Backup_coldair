@@ -16,7 +16,7 @@ const {
 const router = express.Router();
 
 router.use(requireAuth);
-router.get("/", allowRoles("technician", "admin", "superadmin"), listTasks);
+router.get("/", allowRoles("customer", "technician", "admin", "superadmin"), listTasks);
 router.post("/", allowRoles("admin", "superadmin"), createTask);
 router.get("/registration-context/:serialNumber", allowRoles("technician", "admin", "superadmin"), getRegistrationContextBySerial);
 router.get("/unit-history/:serialNumber", allowRoles("technician", "admin", "superadmin"), getTechnicianUnitHistoryBySerial);

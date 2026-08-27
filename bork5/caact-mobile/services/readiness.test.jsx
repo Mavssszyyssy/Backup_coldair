@@ -43,4 +43,21 @@ describe("mobile customer readiness rules", () => {
     expect(formatUnitHorsepower({})).toBe("Not recorded");
     expect(formatUnitHorsepower(null)).toBe("Not recorded");
   });
+
+  test("AC unit details use pages, a room-size selector, and customer-visible GPS check-in", () => {
+    const detailsSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "units", "[id].jsx"),
+      "utf8",
+    );
+    const historySource = fs.readFileSync(
+      path.join(__dirname, "customerHistoryService.jsx"),
+      "utf8",
+    );
+
+    expect(detailsSource).toContain("DETAIL_PAGES");
+    expect(detailsSource).toContain("BottomSheetSelect");
+    expect(detailsSource).toContain("Technician Check-in");
+    expect(detailsSource).toContain("Open Check-in Map");
+    expect(historySource).toContain('String(task.customerId || "") === String(userId)');
+  });
 });

@@ -61,5 +61,11 @@
 .tech-work-orders { display: grid; gap: 14px; }
 .tech-work-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .45fr); gap: 16px; align-items: center; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
 .tech-work-item .tech-task-status { justify-self: start; margin-bottom: 7px; }
+.tech-check-in { display: grid; gap: 3px; width: fit-content; max-width: 100%; margin-top: 10px; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; color: #64748b; font-size: 11px; }
+.tech-check-in strong { color: #475569; font-size: 11px; }
+.tech-check-in.is-verified { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
+.tech-check-in.is-verified strong { color: #065f46; }
+.tech-check-in a { width: fit-content; margin-top: 2px; color: var(--role-primary, #4f46e5); font-weight: 800; text-decoration: none; }
+.tech-check-in a:hover { text-decoration: underline; }
 @media (max-width: 1120px) { .tech-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tech-management-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-add-staff-form, .tech-work-item { grid-template-columns: 1fr; } .tech-filter-heading, .tech-section-heading, .tech-person-card { align-items: stretch; flex-direction: column; } .tech-filter-heading, .tech-section-heading { display: flex; } .tech-filter-heading .tech-secondary-button, .tech-add-staff-form > button { width: 100%; } .tech-add-staff-form .tech-form-row, .tech-add-staff-form > button, .tech-credential-preview { grid-column: auto; } .tech-credential-preview { grid-template-columns: 1fr; } .tech-person-card { grid-template-columns: 1fr; } .tech-person-meta { text-align: left; } .tech-account-status, .tech-availability { justify-self: start; } .tech-inline-select, .tech-person-card > button { width: 100%; } .tech-pagination { align-items: flex-start; flex-direction: column; } }

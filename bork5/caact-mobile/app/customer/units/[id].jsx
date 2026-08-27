@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Text, TextInput, View } from "react-native";
 
 import {
   CustomerRecommendationPanel,
@@ -14,6 +14,7 @@ import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
 import EmptyState from "../../../components/ui/EmptyState";
+import BottomSheetSelect from "../../../components/ui/BottomSheetSelect";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
@@ -40,8 +41,33 @@ function formatDate(value = "") {
     : date.toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" });
 }
 
+function formatDateTime(value = "") {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+}
+
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
+const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "AMP Reports"];
+const ROOM_SIZE_OPTIONS = [6, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 50].map((size) => ({
+  id: String(size),
+  value: size,
+  label: `Approximately ${size} m²`,
+}));
+
+function checkInForTask(task = {}) {
+  return task?.checkIn || task?.payload?.checkIn || null;
+}
+
+function checkInMapUrl(checkIn = {}) {
+  const latitude = Number(checkIn?.latitude);
+  const longitude = Number(checkIn?.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "";
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
 
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
@@ -62,6 +88,7 @@ export default function CustomerUnitDetailsScreen() {
   const [ampReportLoading, setAmpReportLoading] = useState("");
   const [roomSize, setRoomSize] = useState("");
   const [roomSaving, setRoomSaving] = useState(false);
+  const [detailPage, setDetailPage] = useState(0);
 
   const unitId = readParam(params.id);
 
@@ -155,6 +182,9 @@ export default function CustomerUnitDetailsScreen() {
           const relatedTasks = loadedHistory.linkedTasks.filter(
             (task) =>
               String(task.unitId || "") === String(loadedUnit.id) ||
+              (Array.isArray(task.serialNumbers) && task.serialNumbers.some(
+                (serialNumber) => String(serialNumber || "").toLowerCase() === String(loadedUnit.serialNumber || "").toLowerCase(),
+              )) ||
               String(task.unitName || "").toLowerCase() ===
                 String(loadedUnit.unitName || "").toLowerCase() ||
               relatedRequestIds.has(String(task.requestId || "")),
@@ -222,6 +252,15 @@ export default function CustomerUnitDetailsScreen() {
   );
   const warrantyStatus = String(unit?.warrantyStatus || unit?.warranty?.status || "pending_activation").toLowerCase();
   const canSubmitWarrantyClaim = warrantyStatus === "active" && !activeServiceRequest && !activeWarrantyClaim;
+  const checkedInTask = history.linkedTasks.find((task) => checkInForTask(task)?.checkedInAt);
+  const latestCheckIn = checkInForTask(checkedInTask);
+  const latestCheckInMapUrl = checkInMapUrl(latestCheckIn);
+  const selectedRoomSize = ROOM_SIZE_OPTIONS.find(
+    (option) => String(option.value) === String(roomSize),
+  );
+  const goToDetailPage = (nextPage) => {
+    setDetailPage(Math.max(0, Math.min(DETAIL_PAGES.length - 1, nextPage)));
+  };
 
   return (
     <CustomerScreen
@@ -272,157 +311,178 @@ export default function CustomerUnitDetailsScreen() {
         </View>
       </Card>
 
-      <CustomerRecommendationPanel recommendation={recommendation} />
-
-      <CustomerMaintenancePanel maintenance={maintenance} />
-
-      <Card>
-        <CustomerSectionHeader title="AEROPULSE AMP Reports" />
-        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
-          Generate a maintenance plan or summary from your recorded installation and service history.
-        </Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
-          {[
-            ["predictive_maintenance", "Maintenance plan"],
-            ["maintenance_summary", "Summary"],
-          ].map(([type, label]) => (
-            <Button
-              key={type}
-              title={label}
-              size="sm"
-              variant="secondary"
-              onPress={() => handleAmpReport(type)}
-              loading={ampReportLoading === type}
-              disabled={Boolean(ampReportLoading)}
-              style={{ marginTop: 0, flexGrow: 1 }}
-            />
-          ))}
-        </View>
-        {ampReport ? (
-          <View style={{ marginTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.md }}>
-            <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
-            <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
-            <DetailRow label="Recommended Service Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
-            <DetailRow label="Recommended Service" value={String(ampReport.maintenance?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
-            <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
-            <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />
+      <Card style={{ paddingVertical: SPACING.sm + 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, fontWeight: FONT.bold }}>
+              PAGE {detailPage + 1} OF {DETAIL_PAGES.length}
+            </Text>
+            <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black, marginTop: 2 }}>
+              {DETAIL_PAGES[detailPage]}
+            </Text>
           </View>
-        ) : null}
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {DETAIL_PAGES.map((page, index) => (
+              <View
+                key={page}
+                accessibilityLabel={`${page}${index === detailPage ? ", current page" : ""}`}
+                style={{
+                  width: index === detailPage ? 22 : 8,
+                  height: 8,
+                  borderRadius: RADIUS.full,
+                  backgroundColor: index === detailPage ? COLORS.primary : COLORS.border,
+                }}
+              />
+            ))}
+          </View>
+        </View>
       </Card>
 
-      <Card>
-        <CustomerSectionHeader title="Your AC at a glance" />
-        <DetailRow label="Model" value={unit?.productSku || unit?.model || "Not recorded"} />
-        <DetailRow label="Serial Number" value={unit?.serialNumber} />
-        <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
-        <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
-        <DetailRow label="Horsepower" value={formatUnitHorsepower(unit)} />
-        <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Room size (m²)</Text>
-        <TextInput value={roomSize} onChangeText={setRoomSize} keyboardType="decimal-pad" placeholder="Enter room size" placeholderTextColor={COLORS.textMuted} style={{ marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text }} />
-        <Button title="Save Room Size" loading={roomSaving} disabled={roomSaving} onPress={async () => {
-          const value = Number(roomSize);
-          if (!value || value <= 0) return Alert.alert("Invalid room size", "Enter a room size greater than zero.");
-          setRoomSaving(true);
-          try {
-            const token = await getStoredToken(); const result = await updateAmpRoomSize(token, unit.id, value);
-            if (!result.success) throw new Error(result.error);
-            const nextUnit = { ...unit, roomSizeSqm: value, capacityAssessment: result.recommendation?.capacityAssessment };
-            setUnit(nextUnit); const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit }); setRecommendation(nextRecommendation); setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-            Alert.alert("Room size saved", result.recommendation?.capacityAssessment?.summary || "Capacity assessment updated.");
-          } catch (error) { Alert.alert("Unable to save", error.message || "Please try again."); } finally { setRoomSaving(false); }
-        }} />
-        <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
-      </Card>
-
-      <Card>
-        <CustomerSectionHeader title="Warranty" />
-        <DetailRow label="Status" value={String(unit?.warrantyStatus || unit?.warranty?.status || "pending activation").replace(/_/g, " ")} />
-        <DetailRow label="Warranty Type" value={unit?.warranty?.warrantyType || "Standard manufacturer warranty"} />
-        <DetailRow label="Coverage Start" value={formatDate(unit?.warranty?.startDate)} />
-        <DetailRow label="Expires" value={formatDate(unit?.warrantyExpirationDate || unit?.warranty?.expirationDate)} />
-        <DetailRow label="Covered Components" value={unit?.warranty?.coveredComponents?.join(", ") || "Coverage details pending"} multiline />
-        <DetailRow label="Limitations" value={unit?.warranty?.coverageLimitations?.join(" ") || "See warranty terms"} multiline />
-        <DetailRow label="Warranty Claims" value={String(unit?.warranty?.claims?.length || 0)} />
-        {(unit?.warranty?.claims || []).map((claim) => (
-          <DetailRow
-            key={claim.claimId}
-            label={`${claim.claimId} · ${String(claim.status || "submitted").replace(/_/g, " ")}`}
-            value={claim.issue || "Warranty claim"}
-            multiline
-          />
-        ))}
-        {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
-          <DetailRow
-            key={`${record.serviceDate}-${index}`}
-            label={`Warranty service · ${formatDate(record.serviceDate)}`}
-            value={record.summary || record.visitType || "Service record"}
-            multiline
-          />
-        ))}
-        {unit?.warrantyRecommendation ? <DetailRow label="AMP Recommendation" value={unit.warrantyRecommendation} multiline /> : null}
-        {activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-          This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
-        </Text> : null}
-        {activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-          Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. Once approved, its service request is created automatically.
-        </Text> : null}
-        {canSubmitWarrantyClaim ? (
-          <>
-            <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Request warranty support</Text>
-            <TextInput
-              value={claimIssue}
-              onChangeText={setClaimIssue}
-              placeholder="Describe the issue with your AC unit"
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              style={{ minHeight: 88, marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text, textAlignVertical: "top" }}
+      {detailPage === 0 ? (
+        <>
+          <CustomerRecommendationPanel recommendation={recommendation} />
+          <CustomerMaintenancePanel maintenance={maintenance} />
+          <Card>
+            <CustomerSectionHeader title="Your AC at a glance" />
+            <DetailRow label="Model" value={unit?.productSku || unit?.model || "Not recorded"} />
+            <DetailRow label="Serial Number" value={unit?.serialNumber} />
+            <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
+            <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
+            <DetailRow label="Horsepower" value={formatUnitHorsepower(unit)} />
+            <BottomSheetSelect
+              label="Room size"
+              value={selectedRoomSize?.label || (roomSize ? `${roomSize} m²` : "")}
+              placeholder="Choose the closest room size"
+              items={ROOM_SIZE_OPTIONS}
+              itemIcon="resize-sharp"
+              searchPlaceholder="Search room sizes"
+              getKey={(option) => option.id}
+              getLabel={(option) => option.label}
+              onSelect={(option) => setRoomSize(String(option.value))}
             />
-            <Button title="Submit Warranty Claim" onPress={handleWarrantyClaim} loading={claimSubmitting} disabled={claimSubmitting} />
-          </>
-        ) : null}
-        {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-          Warranty support is unavailable while coverage is {warrantyStatus.replace(/_/g, " ")}. You can still book a standard service request below.
-        </Text> : null}
-      </Card>
+            <Button title="Save Room Size" loading={roomSaving} disabled={roomSaving} onPress={async () => {
+              const value = Number(roomSize);
+              if (!value || value <= 0) return Alert.alert("Choose a room size", "Select the closest room size before saving.");
+              setRoomSaving(true);
+              try {
+                const token = await getStoredToken(); const result = await updateAmpRoomSize(token, unit.id, value);
+                if (!result.success) throw new Error(result.error);
+                const nextUnit = { ...unit, roomSizeSqm: value, capacityAssessment: result.recommendation?.capacityAssessment };
+                setUnit(nextUnit); const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit }); setRecommendation(nextRecommendation); setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
+                Alert.alert("Room size saved", result.recommendation?.capacityAssessment?.summary || "Capacity assessment updated.");
+              } catch (error) { Alert.alert("Unable to save", error.message || "Please try again."); } finally { setRoomSaving(false); }
+            }} />
+            <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
+          </Card>
+        </>
+      ) : null}
 
-      <Card>
-          <CustomerSectionHeader title="Service Request Status" />
-        <DetailRow label="Open Requests" value={String(history.requests.length)} />
-        <DetailRow
-          label="Assigned Work Orders"
-          value={String(history.linkedTasks.length)}
-        />
-        <DetailRow
-          label="Completed Services"
-          value={String(history.completedServices.length)}
-        />
-        <Button
-          title="Book Service for This AC"
-          onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })}
-          leftIcon={
-            <Ionicons
-              name="calendar-sharp"
-              size={18}
-              color={COLORS.surface}
-            />
-          }
-        />
-      </Card>
-
-      {unit?.serviceHistory?.length ? (
+      {detailPage === 1 ? (
         <Card>
-          <CustomerSectionHeader title="Service & Repair History" />
-          {unit.serviceHistory.slice(0, 5).map((service) => (
-            <DetailRow
-              key={service.id || `${service.date}-${service.serviceType}`}
-              label={`${service.serviceType || "Service"} · ${formatDate(service.date)}`}
-              value={service.details || service.conditionRating || "Service completed"}
-              multiline
-            />
+          <CustomerSectionHeader title="Warranty" />
+          <DetailRow label="Status" value={String(unit?.warrantyStatus || unit?.warranty?.status || "pending activation").replace(/_/g, " ")} />
+          <DetailRow label="Warranty Type" value={unit?.warranty?.warrantyType || "Standard manufacturer warranty"} />
+          <DetailRow label="Coverage Start" value={formatDate(unit?.warranty?.startDate)} />
+          <DetailRow label="Expires" value={formatDate(unit?.warrantyExpirationDate || unit?.warranty?.expirationDate)} />
+          <DetailRow label="Covered Components" value={unit?.warranty?.coveredComponents?.join(", ") || "Coverage details pending"} multiline />
+          <DetailRow label="Limitations" value={unit?.warranty?.coverageLimitations?.join(" ") || "See warranty terms"} multiline />
+          <DetailRow label="Warranty Claims" value={String(unit?.warranty?.claims?.length || 0)} />
+          {(unit?.warranty?.claims || []).map((claim) => (
+            <DetailRow key={claim.claimId} label={`${claim.claimId} · ${String(claim.status || "submitted").replace(/_/g, " ")}`} value={claim.issue || "Warranty claim"} multiline />
           ))}
+          {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
+            <DetailRow key={`${record.serviceDate}-${index}`} label={`Warranty service · ${formatDate(record.serviceDate)}`} value={record.summary || record.visitType || "Service record"} multiline />
+          ))}
+          {unit?.warrantyRecommendation ? <DetailRow label="AMP Recommendation" value={unit.warrantyRecommendation} multiline /> : null}
+          {activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
+          </Text> : null}
+          {activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. Once approved, its service request is created automatically.
+          </Text> : null}
+          {canSubmitWarrantyClaim ? (
+            <>
+              <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Request warranty support</Text>
+              <TextInput value={claimIssue} onChangeText={setClaimIssue} placeholder="Describe the issue with your AC unit" placeholderTextColor={COLORS.textMuted} multiline style={{ minHeight: 88, marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text, textAlignVertical: "top" }} />
+              <Button title="Submit Warranty Claim" onPress={handleWarrantyClaim} loading={claimSubmitting} disabled={claimSubmitting} />
+            </>
+          ) : null}
+          {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+            Warranty support is unavailable while coverage is {warrantyStatus.replace(/_/g, " ")}. You can still book a standard service request from the Service Visits page.
+          </Text> : null}
         </Card>
       ) : null}
+
+      {detailPage === 2 ? (
+        <>
+          <Card>
+            <CustomerSectionHeader title="Technician Check-in" />
+            {latestCheckIn ? (
+              <>
+                <View style={{ alignSelf: "flex-start", backgroundColor: COLORS.successLight, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm + 4, paddingVertical: 6, marginBottom: SPACING.sm }}>
+                  <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.sm }}>GPS ARRIVAL VERIFIED</Text>
+                </View>
+                <DetailRow label="Technician" value={checkedInTask?.assignedTechnicianName || "Assigned technician"} />
+                <DetailRow label="Checked in" value={formatDateTime(latestCheckIn.checkedInAt)} />
+                <DetailRow label="GPS location" value={`${Number(latestCheckIn.latitude).toFixed(5)}, ${Number(latestCheckIn.longitude).toFixed(5)}`} multiline />
+                <DetailRow label="Location accuracy" value={Number(latestCheckIn.accuracy) > 0 ? `Within approximately ${Math.round(Number(latestCheckIn.accuracy))} meters` : "Device GPS verified"} multiline />
+                {latestCheckInMapUrl ? <Button title="Open Check-in Map" variant="secondary" onPress={() => Linking.openURL(latestCheckInMapUrl)} leftIcon={<Ionicons name="map-sharp" size={18} color={COLORS.primary} />} /> : null}
+              </>
+            ) : (
+              <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>
+                No technician check-in has been recorded for this AC yet. The GPS arrival will appear here after the assigned technician checks in at your service address.
+              </Text>
+            )}
+          </Card>
+          <Card>
+            <CustomerSectionHeader title="Service Request Status" />
+            <DetailRow label="Open Requests" value={String(history.requests.length)} />
+            <DetailRow label="Assigned Work Orders" value={String(history.linkedTasks.length)} />
+            <DetailRow label="Completed Services" value={String(history.completedServices.length)} />
+            <Button title="Book Service for This AC" onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })} leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />} />
+          </Card>
+          {unit?.serviceHistory?.length ? (
+            <Card>
+              <CustomerSectionHeader title="Service & Repair History" />
+              {unit.serviceHistory.slice(0, 5).map((service) => (
+                <DetailRow key={service.id || `${service.date}-${service.serviceType}`} label={`${service.serviceType || "Service"} · ${formatDate(service.date)}`} value={service.details || service.conditionRating || "Service completed"} multiline />
+              ))}
+            </Card>
+          ) : null}
+        </>
+      ) : null}
+
+      {detailPage === 3 ? (
+        <Card>
+          <CustomerSectionHeader title="AEROPULSE AMP Reports" />
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
+            Generate a maintenance plan or summary from your recorded installation and service history.
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
+            {[["predictive_maintenance", "Maintenance plan"], ["maintenance_summary", "Summary"]].map(([type, label]) => (
+              <Button key={type} title={label} size="sm" variant="secondary" onPress={() => handleAmpReport(type)} loading={ampReportLoading === type} disabled={Boolean(ampReportLoading)} style={{ marginTop: 0, flexGrow: 1 }} />
+            ))}
+          </View>
+          {ampReport ? (
+            <View style={{ marginTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.md }}>
+              <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
+              <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
+              <DetailRow label="Recommended Service Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
+              <DetailRow label="Recommended Service" value={String(ampReport.maintenance?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
+              <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
+              <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
+      <Card style={{ paddingVertical: SPACING.sm }}>
+        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+          <Button title="Previous" variant="secondary" size="sm" disabled={detailPage === 0} onPress={() => goToDetailPage(detailPage - 1)} style={{ flex: 1, marginTop: 0 }} leftIcon={<Ionicons name="chevron-back-sharp" size={17} color={detailPage === 0 ? COLORS.textMuted : COLORS.primary} />} />
+          <Button title={detailPage === DETAIL_PAGES.length - 1 ? "Back to My Units" : "Next"} size="sm" onPress={() => detailPage === DETAIL_PAGES.length - 1 ? router.back() : goToDetailPage(detailPage + 1)} style={{ flex: 1, marginTop: 0 }} rightIcon={<Ionicons name={detailPage === DETAIL_PAGES.length - 1 ? "checkmark-sharp" : "chevron-forward-sharp"} size={17} color={COLORS.surface} />} />
+        </View>
+      </Card>
     </CustomerScreen>
   );
 }

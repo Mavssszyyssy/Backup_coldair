@@ -19,6 +19,29 @@ const branchScopeQuery = (req) => {
   return { $or: [{ branch }, { branch: "" }, { branch: { $exists: false } }] };
 };
 
+const buildCustomerTaskScopeQuery = (user = {}) => {
+  const customerId = String(user._id || user.id || "").trim();
+  const customerEmail = String(user.email || "").trim();
+  const ownership = [];
+
+  if (customerId) {
+    ownership.push(
+      { customerId },
+      { "payload.customerId": customerId },
+      { "payload.userId": customerId },
+    );
+  }
+  if (customerEmail) {
+    const escapedEmail = customerEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    ownership.push(
+      { customerEmail: new RegExp(`^${escapedEmail}$`, "i") },
+      { "payload.customerEmail": new RegExp(`^${escapedEmail}$`, "i") },
+    );
+  }
+
+  return ownership.length ? { $or: ownership } : { _id: { $exists: false } };
+};
+
 const findTaskForRequest = async (taskId, req) => {
   const conditions = [{ taskCode: taskId }];
   if (mongoose.Types.ObjectId.isValid(taskId)) {
@@ -805,7 +828,9 @@ const listTasks = async (req, res) => {
     const scopeQuery = branchScopeQuery(req);
     let query = { ...scopeQuery };
 
-    if (role === "technician") {
+    if (role === "customer") {
+      query = buildCustomerTaskScopeQuery(req.authUser);
+    } else if (role === "technician") {
       query = {
         $and: [
           scopeQuery,
@@ -1430,6 +1455,7 @@ const updateTaskStatus = async (req, res) => {
 };
 
 module.exports = {
+  buildCustomerTaskScopeQuery,
   listTasks,
   createTask,
   updateTask,
