@@ -1,4 +1,5 @@
 import { MapPin, ShieldCheck, User } from "@phosphor-icons/react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -17,13 +18,18 @@ import ServicesSupport from "./ServicesSupport";
 
 function Contact() {
   const navigate = useNavigate();
+  const [requestedCategory, setRequestedCategory] = useState("general");
 
   const handleBack = () => {
     navigate("/home");
   };
 
   const handleConsultation = () => {
-    alert("Schedule a consultation with our experts!");
+    setRequestedCategory("consultation");
+    window.setTimeout(() => {
+      document.getElementById("contact-message-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("contact-subject")?.focus();
+    }, 0);
   };
 
   return (
@@ -125,7 +131,7 @@ function Contact() {
 
           {/* CONTACT GRID */}
           <BoutiqueGrid columns="1.5fr 1fr" gap={32}>
-            <ContactForm />
+            <ContactForm requestedCategory={requestedCategory} />
             <ContactInfo />
           </BoutiqueGrid>
 

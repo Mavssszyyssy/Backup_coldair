@@ -28,6 +28,7 @@ const predictionRoutes = require("./routes/predictionRoutes");
 const partsRequestRoutes = require("./routes/partsRequestRoutes");
 const warrantyRoutes = require("./routes/warrantyRoutes");
 const branchCoverageRoutes = require("./routes/branchCoverageRoutes");
+const contactMessageRoutes = require("./routes/contactMessageRoutes");
 
 const app = express();
 const isProduction = env.nodeEnv === "production";
@@ -120,6 +121,7 @@ app.use("/api/predictions", predictionRoutes);
 app.use("/api/parts-requests", partsRequestRoutes);
 app.use("/api/warranties", warrantyRoutes);
 app.use("/api/branches", branchCoverageRoutes);
+app.use("/api/contact-messages", contactMessageRoutes);
 
 const buildPath = path.resolve(__dirname, "..", "..", "front", "build");
 const indexHtml = path.join(buildPath, "index.html");

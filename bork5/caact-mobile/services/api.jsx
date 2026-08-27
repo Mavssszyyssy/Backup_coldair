@@ -704,6 +704,15 @@ export async function createMyServiceRequest(token, payload) {
   };
 }
 
+export async function createContactMessage(token, payload) {
+  const { ok, data } = await post("/contact-messages", payload, token);
+  if (ok) return { success: true, message: data.message, duplicate: Boolean(data.duplicate) };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to send your message."),
+  };
+}
+
 export async function patchServiceRequestStatus(token, requestId, payload) {
   const { ok, data } = await patch(
     `/service-requests/${encodeURIComponent(requestId)}/status`,
