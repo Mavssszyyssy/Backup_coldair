@@ -1,5 +1,5 @@
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import icons from '../common/icons';
+import { COMPANY_CONTACT } from '../../config/company';
 
 function ServicesSupport() {
   const services = [
@@ -14,20 +14,20 @@ function ServicesSupport() {
   const support = [
     {
       title: "Sales",
-      phone: "09086854532",
-      email: "coldairairconditionaing@yahoo.com",
+      phone: COMPANY_CONTACT.hotline,
+      email: COMPANY_CONTACT.salesEmail,
       icon: icons.cartShoppingFast,
     },
     {
       title: "Customer Service",
-      phone: "09086854532",
-      email: "coldairairconditionaing@yahoo.com",
+      phone: COMPANY_CONTACT.hotline,
+      email: COMPANY_CONTACT.supportEmail,
       icon: icons.memberList,
     },
     {
       title: "Technical Support",
-      phone: "09086854532",
-      email: "coldairairconditionaing@yahoo.com",
+      phone: COMPANY_CONTACT.hotline,
+      email: COMPANY_CONTACT.supportEmail,
       icon: icons.tools,
     },
   ];
@@ -35,7 +35,8 @@ function ServicesSupport() {
   return (
     <>
       <div className="services-section">
-        <h3>Our Services</h3>
+        <h3>Mobile App Services</h3>
+        <p className="service-mobile-note">These service types can be requested and tracked only in the AeroPulse Mobile App.</p>
         <div className="services-list">
           {services.map((service, index) => (
             <div key={index} className="service-item">
@@ -43,7 +44,7 @@ function ServicesSupport() {
                 <img
                   src={service.icon}
                   alt=""
-                  className="inline-icon inline-icon--md"
+                  className="service-list-icon"
                 />
               </span>
               <span>{service.name}</span>
@@ -61,7 +62,7 @@ function ServicesSupport() {
                 <img
                   src={item.icon}
                   alt=""
-                  className="inline-icon inline-icon--lg"
+                  className="support-team-icon"
                 />
               </div>
               <h4>{item.title}</h4>

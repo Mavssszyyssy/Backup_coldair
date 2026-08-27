@@ -19,7 +19,7 @@ const FAQ_ITEMS = [
   {
     question: "Can I reschedule my installation appointment?",
     answer:
-      "Yes. You can manage your appointment through your 'My Unit' details page. Please ensure you reschedule at least 12 hours before the original time slot.",
+      "Yes. Open the AeroPulse Mobile App and use the service request for your registered AC. Service scheduling and appointment changes are mobile-only.",
   },
   {
     question: "Do you provide warranty service for all brands?",
@@ -34,7 +34,12 @@ const FAQ_ITEMS = [
   {
     question: "How do I register my unit for warranty?",
     answer:
-      "You can register your unit by scanning the QR code provided at installation or by manually adding the serial number in the 'My Units' section of your profile.",
+      "Your AC is registered automatically after the technician completes and verifies its installation. View coverage on the website or mobile app, and submit warranty support only through the mobile app.",
+  },
+  {
+    question: "Where do I book maintenance, cleaning, or repair?",
+    answer:
+      "All AC service types—including maintenance, cleaning, repair, installation support, and warranty requests—are available only in the AeroPulse Mobile App.",
   },
 ];
 

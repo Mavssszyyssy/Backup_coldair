@@ -1,5 +1,4 @@
-import { MapPin, ShieldCheck, User } from "@phosphor-icons/react";
-import { useState } from "react";
+import { DeviceMobile, ShieldCheck, Wrench } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -18,18 +17,9 @@ import ServicesSupport from "./ServicesSupport";
 
 function Contact() {
   const navigate = useNavigate();
-  const [requestedCategory, setRequestedCategory] = useState("general");
 
   const handleBack = () => {
     navigate("/home");
-  };
-
-  const handleConsultation = () => {
-    setRequestedCategory("consultation");
-    window.setTimeout(() => {
-      document.getElementById("contact-message-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      document.getElementById("contact-subject")?.focus();
-    }, 0);
   };
 
   return (
@@ -45,6 +35,7 @@ function Contact() {
         flex={1}
         width="100%"
         padding="40px 24px"
+        className="contact-page"
         style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <BoutiqueStack gap={40}>
@@ -81,23 +72,22 @@ function Contact() {
               <BoutiqueStack gap={24} flex={1} style={{ maxWidth: "600px" }}>
                 <BoutiqueStack gap={12}>
                   <BoutiqueText variant="h2" color="white">
-                    Need Expert Consultation?
+                    Need Maintenance or Warranty Support?
                   </BoutiqueText>
                   <BoutiqueText
                     color="rgba(255,255,255,0.8)"
                     size="15px"
                     style={{ lineHeight: 1.6 }}
                   >
-                    Let our specialists help you design the perfect climate
-                    solution for your space. We offer premium site visits and
-                    technical inspections.
+                    All maintenance, cleaning, repair, technician, and warranty
+                    requests are handled in the AeroPulse Mobile App.
                   </BoutiqueText>
                 </BoutiqueStack>
                 <BoutiqueBox direction="row" gap={32} wrap="wrap">
                   {[
-                    { icon: MapPin, text: "Free Site Visit" },
-                    { icon: ShieldCheck, text: "Official Warranty" },
-                    { icon: User, text: "Expert Advice" },
+                    { icon: DeviceMobile, text: "Mobile App Only" },
+                    { icon: ShieldCheck, text: "Warranty Support" },
+                    { icon: Wrench, text: "Maintenance Requests" },
                   ].map((feat, i) => (
                     <BoutiqueBox
                       key={i}
@@ -116,7 +106,7 @@ function Contact() {
               <BoutiqueButton
                 variant="outline"
                 size="lg"
-                onClick={handleConsultation}
+                onClick={() => navigate("/services")}
                 style={{
                   background: "white",
                   color: BQ_COLORS.brand,
@@ -124,14 +114,14 @@ function Contact() {
                   padding: "16px 32px",
                 }}
               >
-                Request Appointment
+                Mobile App Services
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueCard>
 
           {/* CONTACT GRID */}
           <BoutiqueGrid columns="1.5fr 1fr" gap={32}>
-            <ContactForm requestedCategory={requestedCategory} />
+            <ContactForm />
             <ContactInfo />
           </BoutiqueGrid>
 

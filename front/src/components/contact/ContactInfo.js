@@ -42,7 +42,7 @@ function ContactInfo() {
               <img
                 src={item.iconSrc}
                 alt=""
-                className="inline-icon inline-icon--lg"
+                className="contact-info-icon"
               />
             </div>
             <div className="contact-text">

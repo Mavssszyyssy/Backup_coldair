@@ -221,6 +221,7 @@ function AppContent() {
             </RoleRoute>
           }
         />
+        <Route path="/get-the-app" element={<Navigate to="/services" replace />} />
         <Route
           path="/checkout"
           element={

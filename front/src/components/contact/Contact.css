@@ -188,6 +188,22 @@
     font-size: 12px;
 }
 
+.contact-mobile-service-note {
+    margin-bottom: 22px;
+    padding: 14px 16px;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.contact-mobile-service-note a {
+    color: #1d4ed8;
+    font-weight: 800;
+}
+
 /* Contact Info Section */
 .info-section {
     background: white;
@@ -239,6 +255,23 @@
     justify-content: center;
     font-size: 24px;
     color: white;
+    flex: 0 0 50px;
+    overflow: hidden;
+}
+
+.contact-page .contact-icon .contact-info-icon {
+    display: block;
+    width: 24px !important;
+    height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.contact-page .contact-text {
+    flex: 1;
+    min-width: 0;
 }
 
 .contact-text h4 {
@@ -427,6 +460,28 @@
 .support-icon {
   font-size: 40px;
   margin-bottom: 15px;
+}
+
+.contact-page .service-list-icon {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  object-fit: contain;
+}
+
+.contact-page .support-team-icon {
+  width: 34px !important;
+  height: 34px !important;
+  max-width: 34px !important;
+  max-height: 34px !important;
+  object-fit: contain;
+}
+
+.service-mobile-note {
+  margin: 8px 0 18px;
+  color: #64748b;
+  line-height: 1.55;
 }
 
 .support-card h4 {

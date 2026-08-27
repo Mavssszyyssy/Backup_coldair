@@ -6,9 +6,6 @@ const CATEGORY_OPTIONS = [
   { value: "general", label: "General question" },
   { value: "product", label: "Product question" },
   { value: "order", label: "Help with an order" },
-  { value: "service", label: "Service or repair" },
-  { value: "warranty", label: "Warranty concern" },
-  { value: "consultation", label: "Request an appointment" },
   { value: "other", label: "Other concern" },
 ];
 
@@ -18,12 +15,12 @@ const makeRequestKey = () =>
 const getName = (user = {}) =>
   user.name || `${user.name_first || ""} ${user.name_last || ""}`.trim();
 
-function ContactForm({ requestedCategory = "general" }) {
+function ContactForm() {
   const { user } = useUser();
   const requestKey = useRef(makeRequestKey());
   const [formData, setFormData] = useState({
     name: getName(user), email: user?.email || "", phone: user?.phone || "",
-    category: requestedCategory, subject: "", message: "",
+    category: "general", subject: "", message: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -37,10 +34,6 @@ function ContactForm({ requestedCategory = "general" }) {
       phone: current.phone || user?.phone || "",
     }));
   }, [user]);
-
-  useEffect(() => {
-    setFormData((current) => ({ ...current, category: requestedCategory || "general" }));
-  }, [requestedCategory]);
 
   const update = (field, value) => {
     setError("");
@@ -73,6 +66,10 @@ function ContactForm({ requestedCategory = "general" }) {
     <div className="form-section" id="contact-message-form">
       <h2>Send Us a Message</h2>
       <p>Your message will be sent to the correct branch team and can also be reviewed by SuperAdmin.</p>
+      <div className="contact-mobile-service-note">
+        Maintenance, repair, cleaning, installation-support, and warranty requests must be submitted in the AeroPulse Mobile App. Messages sent here do not create service appointments.
+        <a href="/services"> View mobile service instructions.</a>
+      </div>
       {confirmation ? (
         <div className="contact-form-notice contact-form-notice--success" role="status">
           <strong>Message sent successfully.</strong>
