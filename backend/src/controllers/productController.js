@@ -390,6 +390,15 @@ let sampleSeedPromise = null;
 let sampleSeedDone = false;
 
 const DISTRIBUTION_FALLBACK_STOCK = 6;
+const NON_RETAIL_CATALOG_MARKER =
+  /(?:^|[\s_-])(?:test|demo|sample|e2e|qa)(?:$|[\s_-])/i;
+
+const isCustomerCatalogProduct = (product = {}) => {
+  const hasNonRetailMarker = [product.name, product.sku, product.brand].some(
+    (value) => NON_RETAIL_CATALOG_MARKER.test(String(value || "")),
+  );
+  return Number(product.stock || 0) > 0 && product.isActive !== false && !hasNonRetailMarker;
+};
 
 const distributeStockToBranches = (total) => {
   const safeTotal = Math.max(0, Number(total) || 0);
@@ -941,14 +950,12 @@ const listPublicProducts = async (req, res) => {
   const products = await Product.find({
     stock: { $gt: 0 },
     isActive: { $ne: false },
-    sku: { $not: /^TEST(?:-|_)/i },
-    name: { $not: /\btest\b/i },
   })
     .select("name sku brand category description specs features image stock branchStock price isActive")
     .sort({
       createdAt: -1,
     });
-  const publicProducts = products.map((product) => {
+  const publicProducts = products.filter(isCustomerCatalogProduct).map((product) => {
     // A customer shop can ask for its delivery branch. In that case `stock`
     // is deliberately branch-specific, matching what the branch inventory
     // screen shows. Without a branch, retain total stock but label the scope
@@ -1419,6 +1426,7 @@ const getProductImage = async (req, res) => {
 
 module.exports = {
   toPublicProduct,
+  isCustomerCatalogProduct,
   ensureProductSerialUnits,
   ensureSampleInventory,
   listProducts,

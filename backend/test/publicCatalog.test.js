@@ -1,6 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { toPublicProduct } = require("../src/controllers/productController");
+const {
+  isCustomerCatalogProduct,
+  toPublicProduct,
+} = require("../src/controllers/productController");
 
 const product = {
   _id: "product-1",
@@ -32,4 +35,12 @@ test("branch-scoped catalog reports only the selected branch quantity", () => {
   assert.equal(result.stock, 2);
   assert.equal(result.totalStock, 5);
   assert.equal(result.inventoryBranch, "Cavite");
+});
+
+test("customer catalog excludes test, demo, QA, and E2E inventory", () => {
+  assert.equal(isCustomerCatalogProduct(product), true);
+  assert.equal(isCustomerCatalogProduct({ ...product, name: "Installed Unit E2E 123" }), false);
+  assert.equal(isCustomerCatalogProduct({ ...product, sku: "TEST-PAYMENT-001" }), false);
+  assert.equal(isCustomerCatalogProduct({ ...product, brand: "AeroPulse QA" }), false);
+  assert.equal(isCustomerCatalogProduct({ ...product, name: "Demo Window Unit" }), false);
 });
