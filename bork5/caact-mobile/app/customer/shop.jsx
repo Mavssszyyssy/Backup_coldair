@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
 
 import {
@@ -28,7 +28,6 @@ import {
   filterAndSortProducts,
   formatPeso,
   mergeProducts,
-  resolveConfiguredInventoryBranch,
 } from "../../services/ecommerceService";
 
 const SORT_OPTIONS = [
@@ -284,7 +283,6 @@ export default function CustomerShopScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const { addToCart, cartCount } = useCart();
-  const [inventoryBranch, setInventoryBranch] = useState("");
   const [backendProducts, setBackendProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
@@ -295,22 +293,12 @@ export default function CustomerShopScreen() {
   const [sortBy, setSortBy] = useState("default");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  useEffect(() => {
-    const addresses = Array.isArray(current?.addresses) ? current.addresses : [];
-    const address = addresses.find((item) => item?.isDefault) || addresses[0] || current?.billingAddress || current?.location?.address || {};
-    let active = true;
-    resolveConfiguredInventoryBranch(address)
-      .then((branch) => { if (active) setInventoryBranch(branch); })
-      .catch(() => { if (active) setInventoryBranch(""); });
-    return () => { active = false; };
-  }, [current]);
-
   useFocusEffect(
     useCallback(() => {
       let active = true;
       const loadCatalogue = () => {
         setLoading(true);
-        fetchShopProducts(inventoryBranch)
+        fetchShopProducts()
           .then((products) => {
             if (active) setBackendProducts(products);
           })
@@ -328,7 +316,7 @@ export default function CustomerShopScreen() {
         active = false;
         clearInterval(pollId);
       };
-    }, [inventoryBranch]),
+    }, []),
   );
 
   const products = useMemo(() => mergeProducts(fallbackProducts, backendProducts), [backendProducts]);
@@ -361,7 +349,7 @@ export default function CustomerShopScreen() {
     <>
       <BoutiqueHeader
         title="Shop AC Units"
-        subtitle={inventoryBranch ? `Browse available units · ${inventoryBranch} branch` : "Browse available AC units"}
+        subtitle="Available stock across all branches"
         onBack={() => router.replace("/customer/home")}
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}

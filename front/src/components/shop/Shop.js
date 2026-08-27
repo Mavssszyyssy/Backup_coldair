@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
-import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import { deduplicateProducts } from "../../utils/productDeduplication";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
@@ -392,27 +391,6 @@ export const fallbackProducts = [
   },
 ];
 
-const getCustomerDeliveryAddress = (user = {}) => {
-  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
-  const candidate = (
-    addresses.find((address) => address?.isDefault) ||
-    addresses[0] ||
-    user?.billingAddress ||
-    user?.location?.address ||
-    null
-  );
-  // A skipped address is stored by the backend as an empty object. It is not a
-  // delivery destination and must not block the backend catalogue request.
-  const hasLocation = candidate && [
-    candidate.city,
-    candidate.province,
-    candidate.region,
-    candidate.barangay,
-    candidate.street,
-  ].some((value) => String(value || "").trim());
-  return hasLocation ? candidate : null;
-};
-
 const getModelImageUrl = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
   if (sku.startsWith("AHAC-MINV")) {
@@ -456,8 +434,6 @@ const Shop = () => {
     getCartTotal,
   } = useCart();
   const { user, isAuthenticated, logout } = useUser();
-  const [inventoryBranch, setInventoryBranch] = useState("");
-  const [inventoryBranchLoading, setInventoryBranchLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -467,34 +443,6 @@ const Shop = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    let active = true;
-    if (!isAuthenticated) {
-      setInventoryBranch("");
-      setInventoryBranchLoading(false);
-      return () => { active = false; };
-    }
-    const deliveryAddress = getCustomerDeliveryAddress(user);
-    if (!deliveryAddress) {
-      setInventoryBranch("");
-      setInventoryBranchLoading(false);
-      return () => { active = false; };
-    }
-    setInventoryBranchLoading(true);
-    resolveConfiguredBranch(deliveryAddress)
-      .then((branch) => {
-        if (!active) return;
-        setInventoryBranch(branch);
-        setInventoryBranchLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setInventoryBranch("");
-        setInventoryBranchLoading(false);
-      });
-    return () => { active = false; };
-  }, [isAuthenticated, user]);
 
   // Mark single notification as read
   const handleNotificationClick = async (notification) => {
@@ -566,17 +514,8 @@ const Shop = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchProducts = useCallback(async () => {
-    const hasDeliveryAddress = Boolean(isAuthenticated && getCustomerDeliveryAddress(user));
-    if (hasDeliveryAddress && inventoryBranchLoading) return;
-    if (hasDeliveryAddress && !inventoryBranch) {
-      setBackendProducts([]);
-      return;
-    }
     try {
-      const query = inventoryBranch
-        ? `?branch=${encodeURIComponent(inventoryBranch)}`
-        : "";
-      const response = await apiRequest(`/products/public${query}`);
+      const response = await apiRequest("/products/public");
       const mapped = (response.products || []).map((product) => {
           // Strip redundant "AC" from name and description
           const cleanName = (product.name || "")
@@ -600,10 +539,7 @@ const Shop = () => {
             description: cleanDesc,
             inStock: Number(product.stock) > 0,
             stock: Number(product.stock) || 0,
-            stockLabel:
-              product.stockScope === "branch"
-                ? `${Number(product.stock) || 0} Units · ${product.inventoryBranch}`
-                : `${Number(product.totalStock ?? product.stock) || 0} Units across branches`,
+            stockLabel: `${Number(product.totalStock ?? product.stock) || 0} Units available`,
             model: product.sku || "",
             warranty: product.warranty || "1 year parts, 5 years compressor",
             imageUrl: product.image || `${API_BASE_URL}/products/${product.id}/image`,
@@ -617,7 +553,7 @@ const Shop = () => {
       // static demo items with incorrect inventory.
       console.error("Failed to fetch products:", error);
     }
-  }, [inventoryBranch, inventoryBranchLoading, isAuthenticated, user]);
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -732,7 +668,7 @@ const Shop = () => {
     <BoutiqueScreen withHeader padding={0}>
       <BoutiqueHeader
         title="Shop AC Units"
-        subtitle={inventoryBranch ? `Available stock · ${inventoryBranch} branch` : "Available stock across branches"}
+        subtitle="Available stock across all branches"
         onLeftAction={() => setSidebarOpen(true)}
         leftAction="menu"
         cartCount={getCartCount()}
