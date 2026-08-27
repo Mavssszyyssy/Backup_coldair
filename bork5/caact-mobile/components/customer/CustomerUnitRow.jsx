@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Text, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
-import IconRow from "../ui/IconRow";
+import CustomerUnitImage from "./CustomerUnitImage";
 
 export default function CustomerUnitRow({
   unit,
@@ -10,16 +10,31 @@ export default function CustomerUnitRow({
   maintenance,
   onPress,
 }) {
+  const modelLabel = [unit?.brand, unit?.productSku || unit?.model]
+    .filter(Boolean)
+    .join(" · ") || "Model not recorded";
+
   return (
-      <IconRow
-        icon="snow-sharp"
-        title={unit?.unitName || "Unnamed AC Unit"}
-        subtitle={`Next recommended maintenance: ${maintenance?.date || maintenance?.label || "Not scheduled"}`}
-        color={COLORS.primary}
+      <TouchableOpacity
         onPress={onPress}
+        activeOpacity={0.72}
+        accessibilityRole="button"
         accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
-        right={
-          recommendation ? (
+        style={{ flexDirection: "row", alignItems: "center", paddingVertical: SPACING.sm, minHeight: 84 }}
+      >
+        <CustomerUnitImage unit={unit} size={68} style={{ marginRight: SPACING.sm }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }} numberOfLines={2}>
+            {unit?.unitName || "Unnamed AC Unit"}
+          </Text>
+          <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.bold, marginTop: 3 }} numberOfLines={1}>
+            {modelLabel}
+          </Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={2}>
+            Next maintenance: {maintenance?.date || maintenance?.label || "Not scheduled"}
+          </Text>
+        </View>
+        {recommendation ? (
             <View
               style={{
                 alignItems: "flex-end",
@@ -59,8 +74,7 @@ export default function CustomerUnitRow({
                 color={COLORS.textMuted}
               />
             </View>
-          )
-        }
-      />
+          )}
+      </TouchableOpacity>
   );
 }

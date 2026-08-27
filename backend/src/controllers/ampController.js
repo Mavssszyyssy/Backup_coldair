@@ -1,4 +1,6 @@
+const mongoose = require("mongoose");
 const Unit = require("../models/Unit");
+const Product = require("../models/Product");
 const ServiceHistory = require("../models/ServiceHistory");
 const Task = require("../models/Task");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
@@ -28,15 +30,21 @@ const serviceHistoryItem = (service) => ({
   partsUsed: Array.isArray(service.partsUsed) ? service.partsUsed : [],
 });
 
-const serializeCustomerUnit = (unit, history = [], recommendation = null) => {
+const serializeCustomerUnit = (unit, history = [], recommendation = null, product = null) => {
   const json = unit.toJSON ? unit.toJSON() : unit;
+  const productJson = product?.toJSON ? product.toJSON() : product || {};
+  const productId = String(json.productId || productJson.id || productJson._id || "");
+  const catalogImage = String(productJson.image || "").trim();
   const warranty = { ...(json.warranty || {}), status: effectiveWarrantyStatus(json.warranty || {}) };
   const bestServicedBy = recommendation?.bestServicedBy || json.amp?.bestServicedBy || json.amp?.nextIdealServiceDate || "";
   const recommendedService = recommendation?.recommendedService || json.amp?.recommendedService || "regular_cleaning";
   return {
     id: json.id || String(json._id || ""), userId: String(json.customer || ""),
+    productId,
     unitName: [json.brand, json.modelName].filter(Boolean).join(" ") || "Installed AC Unit",
-    brand: json.brand || "", model: json.modelName || "", category: json.category || "",
+    brand: json.brand || productJson.brand || "", model: json.modelName || productJson.name || "",
+    productSku: productJson.sku || "", category: json.category || productJson.category || "",
+    imageUrl: catalogImage || (productId ? `/api/products/${encodeURIComponent(productId)}/image` : ""),
     capacityHp: Number(json.capacityHp || 0), roomSizeSqm: json.roomSizeSqm || null,
     serialNumber: json.serialNumber || "", qrCode: json.qrCode || "", qrUnitId: json.qrUnitId || "",
     serviceBranch: json.serviceBranch || "",
@@ -122,12 +130,26 @@ const calculateNextServiceDate = async (req, res) => {
 const listMyUnits = async (req, res) => {
   try {
     const units = await Unit.find({ customer: req.authUser._id, status: { $ne: "retired" } }).sort({ updatedAt: -1 });
+    const productIds = units
+      .map((unit) => String(unit.productId || ""))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const products = productIds.length
+      ? await Product.find({ _id: { $in: productIds } }).select("name sku brand category image")
+      : [];
+    const productById = new Map(products.map((product) => [String(product._id), product]));
     const histories = units.length ? await ServiceHistory.find({ unit: { $in: units.map((unit) => unit._id) } }).sort({ serviceDate: -1 }).limit(500) : [];
     const historyByUnit = new Map();
     histories.forEach((item) => historyByUnit.set(String(item.unit), [...(historyByUnit.get(String(item.unit)) || []), item]));
     const recommendations = await Promise.all(units.map((unit) => calculateMaintenanceRecommendation(unit._id)));
     await Promise.all(units.map((unit, index) => notifyDueMaintenance(unit, recommendations[index]).catch(() => null)));
-    return res.json({ units: units.map((unit, index) => serializeCustomerUnit(unit, historyByUnit.get(String(unit._id)) || [], recommendations[index])) });
+    return res.json({
+      units: units.map((unit, index) => serializeCustomerUnit(
+        unit,
+        historyByUnit.get(String(unit._id)) || [],
+        recommendations[index],
+        productById.get(String(unit.productId || "")) || null,
+      )),
+    });
   } catch (error) {
     console.error("Failed to list customer AMP units:", error.message);
     return res.status(500).json({ message: "Unable to load installed AC units right now." });

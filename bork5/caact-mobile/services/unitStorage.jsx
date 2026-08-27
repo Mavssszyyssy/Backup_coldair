@@ -20,6 +20,9 @@ function normalizeUnit(unit = {}) {
   return {
     id: unit.id || `unit_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
     userId: unit.userId || null,
+    productId: unit.productId || "",
+    productSku: unit.productSku || unit.sku || "",
+    imageUrl: unit.imageUrl || unit.image || "",
     unitName: unit.unitName || "",
     brand: unit.brand || "",
     model: unit.model || "",

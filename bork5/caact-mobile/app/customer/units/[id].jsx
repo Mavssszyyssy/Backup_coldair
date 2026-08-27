@@ -9,6 +9,7 @@ import {
 } from "../../../components/customer/CustomerMaintenancePanels";
 import CustomerScreen from "../../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
+import CustomerUnitImage from "../../../components/customer/CustomerUnitImage";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
@@ -221,9 +222,7 @@ export default function CustomerUnitDetailsScreen() {
             marginBottom: SPACING.sm,
           }}
         >
-          <View style={{ width: 52, height: 52, borderRadius: RADIUS.lg, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
-            <Ionicons name="snow-sharp" size={28} color={COLORS.surface} />
-          </View>
+          <CustomerUnitImage unit={unit} size={88} style={{ marginRight: SPACING.md, borderWidth: 0 }} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#DBEAFE", fontSize: FONT.sm, fontWeight: FONT.bold }}>YOUR REGISTERED UNIT</Text>
             <Text
@@ -294,6 +293,7 @@ export default function CustomerUnitDetailsScreen() {
 
       <Card>
         <CustomerSectionHeader title="Your AC at a glance" />
+        <DetailRow label="Model" value={unit?.productSku || unit?.model || "Not recorded"} />
         <DetailRow label="Serial Number" value={unit?.serialNumber} />
         <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
         <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
