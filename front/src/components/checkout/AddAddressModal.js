@@ -5,6 +5,7 @@ import {
   getCitiesByProvince,
   getBarangaysByCity,
 } from '../../domain/location/addressSelectors';
+import { validatePostalCodeForAddress } from '../../domain/location/postalCodeValidation';
 
 const PHONE_MAX_DIGITS = 11;
 
@@ -25,9 +26,8 @@ const validateAddress = (address) => {
     errors.push('Phone number must be a valid PH mobile format (09XXXXXXXXX).');
   }
 
-  if (address.postalCode?.trim() && !/^\d{4}$/.test(address.postalCode.trim())) {
-    errors.push('Postal code must be 4 digits.');
-  }
+  const postalCodeError = validatePostalCodeForAddress(address);
+  if (postalCodeError) errors.push(postalCodeError);
 
   return errors;
 };

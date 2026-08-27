@@ -6,6 +6,7 @@ const Notification = require("../models/Notification");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { resolveConfiguredBranch } = require("../services/branchCoverageService");
 const env = require("../config/env");
+const { validatePostalCodeForAddress } = require("../utils/postalCodeValidation");
 const { canSendEmail, sendEmail } = require("../utils/email");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
@@ -118,9 +119,8 @@ const validateAddress = (address = {}) => {
   } else if (!/^09\d{9}$/.test(address.phone)) {
     errors.phone = "Phone number must be in format 09XXXXXXXXX";
   }
-  if (address.postalCode && !/^\d{4}$/.test(address.postalCode)) {
-    errors.postalCode = "Postal code must be exactly 4 digits";
-  }
+  const postalCodeError = validatePostalCodeForAddress(address);
+  if (postalCodeError) errors.postalCode = postalCodeError;
   return Object.keys(errors).length > 0 ? errors : null;
 };
 const normalizeDefaultAddress = (addresses = [], preferredDefaultIndex = -1) => {
@@ -325,6 +325,7 @@ const normalizeNotifications = (current, payload = {}) => {
 
 const isStrongPassword = (value = "") => {
   const password = String(value);
+  if (password.length > 25) return false;
   if (password.length < 8) return false;
   if (!/(?=.*[a-z])/.test(password)) return false;
   if (!/(?=.*[A-Z])/.test(password)) return false;

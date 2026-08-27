@@ -287,6 +287,7 @@ export default function RegisterProfilePasswordStep({
             }
             errorMessage={errors.password}
             style={{ fontFamily: "monospace" }}
+            maxLength={25}
             required
           />
         </BoutiqueBox>
@@ -316,6 +317,7 @@ export default function RegisterProfilePasswordStep({
             }
             errorMessage={errors.confirmPassword}
             style={{ fontFamily: "monospace" }}
+            maxLength={25}
             required
           >
             {/* Password Strength Meter */}

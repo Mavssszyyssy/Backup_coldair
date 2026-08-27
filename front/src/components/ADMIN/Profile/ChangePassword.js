@@ -24,6 +24,10 @@ const ChangePassword = () => {
       setMessage('New password and confirmation do not match.');
       return;
     }
+    if (form.next.length > 25) {
+      setMessage('New password must not exceed 25 characters.');
+      return;
+    }
     try {
       setLoading(true);
       await changePassword(form.current, form.next);
@@ -40,8 +44,8 @@ const ChangePassword = () => {
     <form className="admin-form" onSubmit={submit}>
       <h3>Change Password</h3>
       <input name="current" type="password" value={form.current} onChange={updateField} placeholder="Current password" />
-      <input name="next" type="password" value={form.next} onChange={updateField} placeholder="New password" />
-      <input name="confirm" type="password" value={form.confirm} onChange={updateField} placeholder="Confirm password" />
+      <input name="next" type="password" maxLength={25} value={form.next} onChange={updateField} placeholder="New password" />
+      <input name="confirm" type="password" maxLength={25} value={form.confirm} onChange={updateField} placeholder="Confirm password" />
       <button type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update Password'}</button>
       {message && <p>{message}</p>}
     </form>

@@ -5,6 +5,7 @@ import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
+import { validatePostalCodeForAddress } from "../../domain/location/postalCodeValidation";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
 import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
@@ -82,8 +83,7 @@ const isValidCheckoutAddress = (address) => {
   if (!hasRequired) return false;
   const phoneDigits = String(address.phone || "").replace(/\D/g, "");
   if (!/^09\d{9}$/.test(phoneDigits)) return false;
-  if (address.postalCode?.trim() && !/^\d{4}$/.test(address.postalCode.trim()))
-    return false;
+  if (validatePostalCodeForAddress(address)) return false;
   return true;
 };
 

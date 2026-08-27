@@ -15,7 +15,7 @@ import { useUserContext } from "../../context/UserContext";
 import { regenerateRecoveryCodes } from "../../services/customerSecurityService";
 import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
-import { canonicalizePhMobile, sanitizePhMobileInput, validatePhone } from "../../utils/authValidation";
+import { canonicalizePhMobile, sanitizePhMobileInput, validatePassword, validatePhone } from "../../utils/authValidation";
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
   return (
@@ -109,6 +109,13 @@ export default function TechProfile() {
     if (phoneError) {
       Alert.alert("Invalid contact number", phoneError);
       return;
+    }
+    if (password) {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        Alert.alert("Invalid password", passwordError);
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -266,6 +273,7 @@ export default function TechProfile() {
             label="New Password"
             value={password}
             onChangeText={setPassword}
+            maxLength={25}
             secureTextEntry
             placeholder="Leave blank to keep current password"
           />

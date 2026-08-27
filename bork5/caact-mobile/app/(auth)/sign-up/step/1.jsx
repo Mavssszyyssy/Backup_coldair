@@ -71,7 +71,7 @@ export default function SignUpStep1() {
     if (aliasError) nextErrors.alias = aliasError;
     if (!form.password) nextErrors.password = "Password is required.";
     else if (form.password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
-    else if (form.password.length > 72) nextErrors.password = "Password must not exceed 72 characters.";
+    else if (form.password.length > 25) nextErrors.password = "Password must not exceed 25 characters.";
     else if ((passwordScore ?? 0) < 65) nextErrors.password = "Password is not strong enough. Aim for Good strength.";
     if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
     setErrors(nextErrors);
@@ -138,9 +138,9 @@ export default function SignUpStep1() {
         {detectedRole !== "customer" ? <Card><Text style={{ color: COLORS.textSecondary }}>Role detected: <Text style={{ fontWeight: FONT.bold }}>{detectedRole.toUpperCase()}</Text></Text></Card> : null}
 
         <Card>
-          <PasswordField label="Password" value={form.password} onChangeText={(value) => updateField("password", value)} error={errors.password} />
+          <PasswordField label="Password" value={form.password} maxLength={25} onChangeText={(value) => updateField("password", value)} error={errors.password} />
           {passwordScore !== null ? <View style={{ flexDirection: "row", alignItems: "center", marginTop: SPACING.xs }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: scoreColor, marginRight: SPACING.xs }} /><Text style={{ color: scoreColor, fontWeight: FONT.bold, fontSize: FONT.sm }}>Strength: {scoreLabel} ({passwordScore}/100)</Text></View> : null}
-          <PasswordField label="Confirm Password" value={form.confirmPassword} onChangeText={(value) => updateField("confirmPassword", value)} error={errors.confirmPassword} />
+          <PasswordField label="Confirm Password" value={form.confirmPassword} maxLength={25} onChangeText={(value) => updateField("confirmPassword", value)} error={errors.confirmPassword} />
         </Card>
       </KeyboardAwareScrollView>
 

@@ -20,6 +20,7 @@ import {
   resolvePhilippineAddressSelection,
 } from "../../services/philippineAddressService";
 import { buildEditableProfile } from "../../services/profileService";
+import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
 import {
   canonicalizePhMobile,
   sanitizePhMobileInput,
@@ -85,7 +86,8 @@ function validateAddressForm(form) {
   if (cityError) errors.city = cityError;
   if (barangayError) errors.barangay = barangayError;
   if (streetError) errors.street = streetError;
-  if (form.postalCode && !/^\d{4}$/.test(toText(form.postalCode))) errors.postalCode = "Postal code must contain 4 digits.";
+  const postalCodeError = validatePostalCodeForAddress(form);
+  if (postalCodeError) errors.postalCode = postalCodeError;
   return errors;
 }
 

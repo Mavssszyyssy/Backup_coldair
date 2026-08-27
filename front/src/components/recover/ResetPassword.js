@@ -53,6 +53,11 @@ function ResetPassword() {
       setMessage("");
       return;
     }
+    if (password.length > 25) {
+      setError("Password must not exceed 25 characters.");
+      setMessage("");
+      return;
+    }
     if (passwordStrength.score < 40) {
       setError("Please choose a stronger password.");
       setMessage("");
@@ -122,6 +127,7 @@ function ResetPassword() {
           }
           disabled={loading}
           style={{ fontFamily: "monospace" }}
+          maxLength={25}
           required
         />
 
@@ -141,6 +147,7 @@ function ResetPassword() {
           }
           disabled={loading}
           style={{ fontFamily: "monospace" }}
+          maxLength={25}
           required
         >
           {/* Password Strength Meter */}

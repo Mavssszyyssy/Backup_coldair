@@ -63,13 +63,13 @@ export function validateRegistrationProfile(
     }
   }
 
-  // Password Constraint: Min 8, Max 72 + zxcvbn "Good" (log10 score >= 65)
+  // Password Constraint: Min 8, Max 25 + zxcvbn "Good" (log10 score >= 65)
   if (!formData.password) {
     errors.password = "Password is required";
   } else if (formData.password.length < 8) {
     errors.password = "Password must be at least 8 characters";
-  } else if (formData.password.length > 72) {
-    errors.password = "Password must not exceed 72 characters";
+  } else if (formData.password.length > 25) {
+    errors.password = "Password must not exceed 25 characters";
   } else {
     const strength = zxcvbn(formData.password);
     const score = Math.floor(strength.guesses_log10 * 10);
@@ -159,13 +159,13 @@ export function validateProfileAndSecurityStep(formData) {
     }
   }
 
-  // Password Constraint: Min 8, Max 72 + zxcvbn "Good" (log10 score >= 65)
+  // Password Constraint: Min 8, Max 25 + zxcvbn "Good" (log10 score >= 65)
   if (!formData.password) {
     errors.password = "Password is required";
   } else if (formData.password.length < 8) {
     errors.password = "Password must be at least 8 characters";
-  } else if (formData.password.length > 72) {
-    errors.password = "Password must not exceed 72 characters";
+  } else if (formData.password.length > 25) {
+    errors.password = "Password must not exceed 25 characters";
   } else {
     const strength = zxcvbn(formData.password);
     const score = Math.floor(strength.guesses_log10 * 10);

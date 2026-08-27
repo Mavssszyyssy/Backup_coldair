@@ -495,6 +495,9 @@ const register = async (req, res) => {
     registrationVerificationToken,
   } = req.body;
   try {
+    if (typeof password !== "string" || password.length < 8 || password.length > 25) {
+      return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
+    }
     const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = canonicalizePhMobile(phone);
     const registrationProgress = req.session?.registrationProgress?.formData || {};
@@ -752,6 +755,9 @@ const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
   try {
+    if (typeof password !== "string" || password.length < 8 || password.length > 25) {
+      return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
+    }
     const decoded = jwt.verify(token, env.jwtSecret);
     const user = await User.findById(decoded.sub);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -767,6 +773,9 @@ const resetPassword = async (req, res) => {
 const resetPasswordWithCode = async (req, res) => {
   const { email: requestedEmail, phone: requestedPhone, identifier, code, newPassword } = req.body;
   const channel = req.body.channel === "sms" ? "sms" : "email";
+  if (typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 25) {
+    return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
+  }
   const normalizedEmail = channel === "email"
     ? normalizeEmail(identifier || requestedEmail)
     : "";

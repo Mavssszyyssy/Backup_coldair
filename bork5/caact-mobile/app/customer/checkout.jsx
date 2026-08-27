@@ -22,6 +22,7 @@ import {
   resolveConfiguredInventoryBranch,
 } from "../../services/ecommerceService";
 import { validatePhone } from "../../utils/authValidation";
+import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
 
 const getProfileAddress = (user = {}) => {
   const billing = user?.billingAddress || user?.billing_address || {};
@@ -216,12 +217,13 @@ export default function CheckoutScreen() {
     const missingAddressField = ["region", "province", "city", "barangay", "street"]
       .some((field) => !String(checkoutAddress?.[field] || "").trim());
     const phoneError = checkoutAddress?.phone ? validatePhone(checkoutAddress.phone) : "Phone number is required.";
-    if (missingAddressField || phoneError) {
+    const postalCodeError = validatePostalCodeForAddress(checkoutAddress);
+    if (missingAddressField || phoneError || postalCodeError) {
       setSubmitting(false);
       setCheckoutMessage("");
       return Alert.alert(
         "Complete delivery address",
-        phoneError || "Choose Region, Province, City/Municipality, Barangay, and Street in Settings before checking out.",
+        phoneError || postalCodeError || "Choose Region, Province, City/Municipality, Barangay, and Street in Settings before checking out.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Open Settings", onPress: () => router.push("/customer/settings") },

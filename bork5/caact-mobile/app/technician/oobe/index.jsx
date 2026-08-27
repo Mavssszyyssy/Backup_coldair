@@ -11,7 +11,7 @@ import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { regenerateRecoveryCodes } from "../../../services/customerSecurityService";
-import { canonicalizePhMobile, sanitizePhMobileInput, validatePhone } from "../../../utils/authValidation";
+import { canonicalizePhMobile, sanitizePhMobileInput, validatePassword, validatePhone } from "../../../utils/authValidation";
 
 export default function TechnicianOobe() {
   const router = useRouter();
@@ -33,6 +33,11 @@ export default function TechnicianOobe() {
     }
     if (password !== confirmPassword) {
       Alert.alert("Password mismatch", "Please confirm the same password.");
+      return;
+    }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      Alert.alert("Invalid password", passwordError);
       return;
     }
     const phoneError = validatePhone(phone);
@@ -84,12 +89,14 @@ export default function TechnicianOobe() {
             label="Password"
             value={password}
             onChangeText={setPassword}
+            maxLength={25}
             secureTextEntry
           />
           <TextField
             label="Confirm Password"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
+            maxLength={25}
             secureTextEntry
           />
           <TechButton

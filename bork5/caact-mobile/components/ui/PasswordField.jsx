@@ -9,6 +9,7 @@ export default function PasswordField({
   value,
   onChangeText,
   error,
+  maxLength,
   style,
 }) {
   const [visible, setVisible] = useState(false);
@@ -46,6 +47,7 @@ export default function PasswordField({
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={!visible}
+          maxLength={maxLength}
           placeholderTextColor={COLORS.textMuted}
           style={{
             flex: 1,

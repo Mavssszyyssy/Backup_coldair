@@ -18,6 +18,7 @@ import {
 } from "../../../../services/api";
 import {
   validateConfirmPassword,
+  validatePassword,
   validatePasswordStrength,
 } from "../../../../utils/authValidation";
 
@@ -59,8 +60,9 @@ export default function RecoverPasswordScreen() {
     if (!otp.trim() || !/^\d{6}$/.test(otp.trim())) {
       nextErrors.otp = "Enter the 6-digit reset code sent to your email.";
     }
-    if (!newPassword) {
-      nextErrors.newPassword = "New password is required.";
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      nextErrors.newPassword = passwordError;
     } else if ((validatePasswordStrength(newPassword).score ?? 0) < 65) {
       nextErrors.newPassword =
         "Password is too weak. Choose a stronger password.";
@@ -161,6 +163,7 @@ export default function RecoverPasswordScreen() {
               <PasswordField
                 label="New Password"
                 value={newPassword}
+                maxLength={25}
                 onChangeText={(v) => {
                   setNewPassword(v);
                   setErrors((prev) => ({ ...prev, newPassword: "" }));
@@ -170,6 +173,7 @@ export default function RecoverPasswordScreen() {
               <PasswordField
                 label="Confirm New Password"
                 value={confirmPassword}
+                maxLength={25}
                 onChangeText={(v) => {
                   setConfirmPassword(v);
                   setErrors((prev) => ({ ...prev, confirmPassword: "" }));

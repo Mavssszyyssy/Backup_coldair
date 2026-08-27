@@ -1,6 +1,7 @@
 // utils/authValidation.js
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const PASSWORD_MAX_LENGTH = 25;
 
 export function normalizeEmail(value = "") {
   return String(value).trim().toLowerCase();
@@ -88,6 +89,10 @@ export function validatePassword(password) {
 
   if (String(password).length < 8) {
     return "Password must be at least 8 characters.";
+  }
+
+  if (String(password).length > PASSWORD_MAX_LENGTH) {
+    return `Password must not exceed ${PASSWORD_MAX_LENGTH} characters.`;
   }
 
   return "";
