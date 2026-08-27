@@ -4,13 +4,34 @@ const User = require("../models/User");
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { BRANCHES } = require("../domain/branchRouting");
 
+const credentialPart = (value = "") => String(value)
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ".")
+  .replace(/^\.+|\.+$/g, "")
+  .replace(/\.{2,}/g, ".");
+
+const buildTechnicianCredentials = ({ branch, loginName, nameFirst }) => {
+  const branchPart = credentialPart(branch);
+  const namePart = credentialPart(loginName || nameFirst);
+  return {
+    branchPart,
+    namePart,
+    loginIdentifier: branchPart && namePart ? `tech.${branchPart}.${namePart}` : "",
+    defaultPassword: branchPart && namePart ? `${branchPart}.${namePart}` : "",
+  };
+};
+
 // Only Super Admin can create staff
 const createStaff = async (req, res) => {
   if (req.authUser.role !== "superadmin") {
     return res.status(403).json({ message: "Only Super Admin can create staff accounts." });
   }
-  const { email, name_first, name_last, role, branch } = req.body;
-  if (!email || !name_first || !name_last || !role) {
+  const { email, name_first, name_last, role, branch, loginName } = req.body;
+  const firstName = String(name_first || "").trim();
+  const lastName = String(name_last || "").trim();
+  if (!firstName || !lastName || !role) {
     return res.status(400).json({ message: "Missing required fields." });
   }
   if (!['admin', 'technician'].includes(role)) {
@@ -19,18 +40,78 @@ const createStaff = async (req, res) => {
   if (!branch || !BRANCHES.includes(branch)) {
     return res.status(400).json({ message: "A valid branch is required." });
   }
-  const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    return res.status(409).json({ message: "Email already exists." });
+
+  if (role === "technician") {
+    const credentials = buildTechnicianCredentials({
+      branch,
+      loginName,
+      nameFirst: firstName,
+    });
+    if (!credentials.namePart || credentials.namePart.length < 2) {
+      return res.status(400).json({
+        message: "Enter a technician login name with at least 2 letters or numbers.",
+      });
+    }
+    if (credentials.loginIdentifier.length > 30) {
+      return res.status(400).json({
+        message: "The technician login name is too long for this branch.",
+      });
+    }
+    if (credentials.defaultPassword.length > 25) {
+      return res.status(400).json({
+        message: "The generated default password exceeds 25 characters. Use a shorter login name.",
+      });
+    }
+
+    const existingTechnician = await User.findOne({
+      $or: [
+        { username: credentials.loginIdentifier },
+        { alias: credentials.loginIdentifier },
+      ],
+    });
+    if (existingTechnician) {
+      return res.status(409).json({
+        message: `Login ID ${credentials.loginIdentifier} already exists. Use another login name.`,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(credentials.defaultPassword, 10);
+    const user = await User.create({
+      username: credentials.loginIdentifier,
+      alias: credentials.loginIdentifier,
+      name_first: firstName,
+      name_last: lastName,
+      name: `${firstName} ${lastName}`.trim(),
+      passwordHash,
+      role: "technician",
+      assignedBranch: branch,
+      activeBranch: branch,
+      isFirstLogin: true,
+      accountStatus: "active",
+    });
+    return res.status(201).json({
+      user: user.toJSON(),
+      loginIdentifier: credentials.loginIdentifier,
+      tempPassword: credentials.defaultPassword,
+      deliveryWarning: "",
+    });
   }
+
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    return res.status(400).json({ message: "Email is required for an Admin account." });
+  }
+  const existing = await User.findOne({ email: normalizedEmail });
+  if (existing) return res.status(409).json({ message: "Email already exists." });
+
   // Generate temp password
   const tempPassword = crypto.randomBytes(6).toString("base64");
   const passwordHash = await bcrypt.hash(tempPassword, 10);
   const user = await User.create({
-    email: email.toLowerCase(),
-    name_first,
-    name_last,
-    name: `${name_first} ${name_last}`.trim(),
+    email: normalizedEmail,
+    name_first: firstName,
+    name_last: lastName,
+    name: `${firstName} ${lastName}`.trim(),
     passwordHash,
     role,
     assignedBranch: branch,
@@ -63,4 +144,4 @@ const createStaff = async (req, res) => {
   });
 };
 
-module.exports = { createStaff };
+module.exports = { buildTechnicianCredentials, createStaff };

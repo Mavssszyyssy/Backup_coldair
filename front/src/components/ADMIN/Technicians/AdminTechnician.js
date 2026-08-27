@@ -10,7 +10,14 @@ const PAGE_SIZE = 8;
 const TIME_SLOTS = ["8:00 AM – 10:00 AM", "10:00 AM – 12:00 PM", "1:00 PM – 3:00 PM", "3:00 PM – 5:00 PM"];
 const today = () => new Date().toISOString().slice(0, 10);
 const displayName = (person = {}) =>
-  person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.email || "Technician";
+  person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.username || person.alias || person.email || "Technician";
+const credentialPart = (value = "") => String(value)
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ".")
+  .replace(/^\.+|\.+$/g, "")
+  .replace(/\.{2,}/g, ".");
 const openTask = (task) => !["completed"].includes(String(task.status || "").toLowerCase());
 const taskStatusLabel = (status = "") =>
   String(status || "pending").replace(/-/g, " ");
@@ -36,7 +43,7 @@ const initialDraft = (branch = "") => ({
 const initialStaffDraft = (branch = "") => ({
   firstName: "",
   lastName: "",
-  email: "",
+  loginName: "",
   branch,
 });
 
@@ -60,6 +67,7 @@ const AdminTechnician = ({ embedded = false }) => {
   const [savingStaff, setSavingStaff] = useState(false);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [createdLoginIdentifier, setCreatedLoginIdentifier] = useState("");
   const [updatingId, setUpdatingId] = useState("");
 
   const load = useCallback(async () => {
@@ -129,7 +137,7 @@ const AdminTechnician = ({ embedded = false }) => {
     const needle = search.trim().toLowerCase();
     return technicians.filter((technician) => {
       const openCount = openTasksByTechnician[String(technician.id)] || 0;
-      const textMatches = !needle || [technician.name, technician.email, technician.branch, technician.department, ...(technician.skills || [])]
+      const textMatches = !needle || [technician.name, technician.username, technician.alias, technician.email, technician.branch, technician.department, ...(technician.skills || [])]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
       const accountMatches = accountFilter === "all" || technician.accountStatus === accountFilter;
@@ -150,6 +158,14 @@ const AdminTechnician = ({ embedded = false }) => {
   });
   const activeCount = technicians.filter((technician) => technician.accountStatus === "active").length;
   const busyCount = technicians.filter((technician) => (openTasksByTechnician[String(technician.id)] || 0) >= 3).length;
+  const credentialPreview = useMemo(() => {
+    const branchPart = credentialPart(staffDraft.branch);
+    const namePart = credentialPart(staffDraft.loginName);
+    return {
+      loginIdentifier: branchPart && namePart ? `tech.${branchPart}.${namePart}` : "",
+      defaultPassword: branchPart && namePart ? `${branchPart}.${namePart}` : "",
+    };
+  }, [staffDraft.branch, staffDraft.loginName]);
 
   const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
   const updateStaffDraft = (field, value) => setStaffDraft((current) => ({ ...current, [field]: value }));
@@ -158,30 +174,34 @@ const AdminTechnician = ({ embedded = false }) => {
     event.preventDefault();
     const firstName = staffDraft.firstName.trim();
     const lastName = staffDraft.lastName.trim();
-    const email = staffDraft.email.trim().toLowerCase();
-    if (!firstName || !lastName || !email || !staffDraft.branch) {
-      setError("Enter the technician's name, email, and assigned branch.");
+    const loginName = credentialPart(staffDraft.loginName);
+    if (!firstName || !lastName || !loginName || !staffDraft.branch) {
+      setError("Enter the technician's name, login name, and assigned branch.");
+      return;
+    }
+    if (credentialPreview.loginIdentifier.length > 30 || credentialPreview.defaultPassword.length > 25) {
+      setError("Use a shorter login name so the Login ID and default password fit their limits.");
       return;
     }
     setSavingStaff(true);
     setError("");
     setNotice("");
     setTemporaryPassword("");
+    setCreatedLoginIdentifier("");
     try {
       const result = await apiRequest("/users/staff", {
         method: "POST",
         body: JSON.stringify({
           name_first: firstName,
           name_last: lastName,
-          email,
+          loginName,
           role: "technician",
           branch: staffDraft.branch,
         }),
       });
       setTemporaryPassword(result.tempPassword || "");
-      setNotice(result.deliveryWarning || (result.tempPassword
-        ? `${firstName} ${lastName} was added. Save the temporary password below and share it securely.`
-        : `${firstName} ${lastName} was added. Their sign-in email and temporary password were sent to ${email}.`));
+      setCreatedLoginIdentifier(result.loginIdentifier || result.user?.username || result.user?.alias || "");
+      setNotice(`${firstName} ${lastName} was added. Share the first-use credentials below securely.`);
       setStaffDraft(initialStaffDraft(staffDraft.branch));
       setShowAddStaff(false);
       await load();
@@ -286,7 +306,7 @@ const AdminTechnician = ({ embedded = false }) => {
         <section className="tech-filter-card admin-card" aria-label="Technician filters">
           <div className="tech-filter-heading"><div><h2>Find a technician</h2><p>Use the filters to match the right field team member to each job.</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
           <div className="tech-filter-grid">
-            <label className="tech-search-field"><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, skill, email, or branch" /></label>
+            <label className="tech-search-field"><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, login ID, skill, or branch" /></label>
             <label><span>Account status</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">All accounts</option><option value="active">Active</option><option value="disabled">Disabled</option></select></label>
             <label><span>Workload</span><select value={workloadFilter} onChange={(event) => setWorkloadFilter(event.target.value)}><option value="all">All workloads</option><option value="available">Available (under 3 open)</option><option value="busy">Busy (3+ open)</option></select></label>
             <label><span>Branch</span><select value={branchFilter} disabled={!isSuperAdmin && Boolean(homeBranch)} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
@@ -295,7 +315,7 @@ const AdminTechnician = ({ embedded = false }) => {
 
         {isSuperAdmin ? <section className="tech-add-staff-card admin-card" aria-label="Add technician staff">
           <div className="tech-filter-heading">
-            <div><h2>Add technician staff</h2><p>Create one technician account for a branch. The system sends a secure temporary password by email.</p></div>
+            <div><h2>Add technician staff</h2><p>Create a branch-based technician login without using an email address.</p></div>
             <button type="button" className="tech-primary-button" onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{showAddStaff ? "Close" : "Add technician"}</button>
           </div>
           {showAddStaff ? <form className="tech-add-staff-form" onSubmit={createTechnician}>
@@ -303,16 +323,17 @@ const AdminTechnician = ({ embedded = false }) => {
               <label><span>First name</span><input value={staffDraft.firstName} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
               <label><span>Last name</span><input value={staffDraft.lastName} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
             </div>
-            <label><span>Work email</span><input type="email" value={staffDraft.email} onChange={(event) => updateStaffDraft("email", event.target.value)} placeholder="technician@company.com" autoComplete="email" required /></label>
+            <label><span>Login name</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", credentialPart(event.target.value))} placeholder="name" autoComplete="off" required /><small>Use a short, unique name such as juan or j.delacruz.</small></label>
             <label><span>Assigned branch</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
-            <p className="tech-staff-note">The account is created as an active Technician. The technician must change their temporary password after their first sign-in.</p>
+            <div className="tech-credential-preview"><span>Login ID</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>Default password</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
+            <p className="tech-staff-note">The account is created as an active Technician. Email is not used. The technician must change the default password after their first sign-in.</p>
             <button type="submit" className="tech-primary-button" disabled={savingStaff}>{savingStaff ? "Adding technician…" : "Create technician account"}</button>
           </form> : null}
         </section> : null}
 
         {error ? <p className="tech-message tech-message--error">{error}</p> : null}
         {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
-        {temporaryPassword ? <p className="tech-message tech-message--temporary">Temporary password: <strong>{temporaryPassword}</strong>. Give it to the technician securely; it is not shown again.</p> : null}
+        {temporaryPassword ? <p className="tech-message tech-message--temporary">Login ID: <strong>{createdLoginIdentifier}</strong><br />Default password: <strong>{temporaryPassword}</strong><br />Give both to the technician securely; the password is not shown again.</p> : null}
 
         <div className="tech-management-grid">
           <section className="admin-card tech-roster-card">
@@ -334,7 +355,7 @@ const AdminTechnician = ({ embedded = false }) => {
                   : "Available";
               const changing = updatingId === `tech-${technician.id}`;
               return <article className="tech-person-card" key={technician.id}>
-                <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.email || "No email recorded"}</small></div></div>
+                <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.username || technician.alias || technician.email || "No login ID recorded"}</small></div></div>
                 <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{availability}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} assigned task{openCount === 1 ? "" : "s"}</strong></div>
                 <div className="tech-person-workflow" aria-label={`${technician.name} work summary`}>
                   <span>Current work: <strong>{taskStats.currentStatus || "No active task"}</strong></span>

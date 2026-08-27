@@ -481,6 +481,22 @@ const applyProfileUpdate = async (
     // Placeholder for a future verified-email-change flow.
   }
 
+  const technicianOnboardedAt =
+    payload.technician_onboarded_at ?? payload.technicianOnboardedAt;
+  if (technicianOnboardedAt !== undefined && user.role === "technician") {
+    const completedAt = technicianOnboardedAt
+      ? new Date(technicianOnboardedAt)
+      : null;
+    if (completedAt && Number.isNaN(completedAt.getTime())) {
+      return {
+        ok: false,
+        status: 400,
+        message: "Invalid technician onboarding completion date.",
+      };
+    }
+    user.technicianOnboardedAt = completedAt;
+  }
+
   const hasProfileAddressUpdate = [
     "address",
     "billingAddress",
@@ -718,7 +734,13 @@ const updateNotifications = async (req, res) => {
 };
 
 const changePassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body || {};
+  const {
+    currentPassword,
+    newPassword,
+    alias,
+    phone,
+    technicianOnboardedAt,
+  } = req.body || {};
   if (!newPassword) {
     return res.status(400).json({ message: "New password is required" });
   }
@@ -731,14 +753,28 @@ const changePassword = async (req, res) => {
     if (!isStrongPassword(newPassword)) {
       return res.status(400).json({
         message:
-          "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+          "New password must be 8-25 characters and include uppercase, lowercase, number, and special character.",
       });
+    }
+    if (req.authUser.role === "technician") {
+      const profileResult = await applyProfileUpdate(req.authUser, {
+        alias,
+        phone,
+        technician_onboarded_at:
+          technicianOnboardedAt || new Date().toISOString(),
+      });
+      if (!profileResult.ok) {
+        return res
+          .status(profileResult.status)
+          .json({ message: profileResult.message });
+      }
     }
     req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
     req.authUser.isFirstLogin = false;
     await req.authUser.save();
     return res.json({
-      message: "Password changed successfully. You may now log in.",
+      message: "Password changed successfully.",
+      user: req.authUser.toJSON(),
     });
   }
 
@@ -766,7 +802,7 @@ const changePassword = async (req, res) => {
   if (!isStrongPassword(newPassword)) {
     return res.status(400).json({
       message:
-        "New password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+        "New password must be 8-25 characters and include uppercase, lowercase, number, and special character.",
     });
   }
   if (String(currentPassword) === String(newPassword)) {

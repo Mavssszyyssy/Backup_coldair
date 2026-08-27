@@ -414,6 +414,21 @@ export async function updateProfile(token, payload) {
   };
 }
 
+export async function completeTechnicianOnboarding(token, payload) {
+  const { ok, data } = await patch("/users/password", payload, token);
+  if (ok) {
+    return {
+      success: true,
+      user: data.user,
+      message: data.message || "Technician onboarding completed.",
+    };
+  }
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to complete technician onboarding."),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Audit logs
 // ---------------------------------------------------------------------------

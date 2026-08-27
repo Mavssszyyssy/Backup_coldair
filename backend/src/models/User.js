@@ -182,6 +182,7 @@ const userSchema = new mongoose.Schema(
     deletedAt: { type: Date, default: null },
 
     isFirstLogin: { type: Boolean, default: false }, // For staff onboarding
+    technicianOnboardedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

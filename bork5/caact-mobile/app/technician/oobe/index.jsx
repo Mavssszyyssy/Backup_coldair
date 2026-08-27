@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,11 +10,16 @@ import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { regenerateRecoveryCodes } from "../../../services/customerSecurityService";
-import { canonicalizePhMobile, sanitizePhMobileInput, validatePassword, validatePhone } from "../../../utils/authValidation";
+import {
+  canonicalizePhMobile,
+  sanitizePhMobileInput,
+  validatePassword,
+  validatePasswordStrength,
+  validatePhone,
+} from "../../../utils/authValidation";
 
 export default function TechnicianOobe() {
-  const router = useRouter();
-  const { current, updateUser } = useUserContext();
+  const { current, completeTechnicianOnboarding } = useUserContext();
   const [alias, setAlias] = useState(current?.alias || "");
   const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
   const [password, setPassword] = useState("");
@@ -40,6 +44,13 @@ export default function TechnicianOobe() {
       Alert.alert("Invalid password", passwordError);
       return;
     }
+    if ((validatePasswordStrength(password).score ?? 0) < 65) {
+      Alert.alert(
+        "Password too weak",
+        "Use uppercase and lowercase letters, a number, and a special character.",
+      );
+      return;
+    }
     const phoneError = validatePhone(phone);
     if (phoneError) {
       Alert.alert("Invalid contact number", phoneError);
@@ -48,13 +59,19 @@ export default function TechnicianOobe() {
 
     setSaving(true);
     try {
-      await updateUser({
-        ...current,
+      const result = await completeTechnicianOnboarding({
         alias: alias.trim(),
         phone: canonicalizePhMobile(phone),
-        password,
+        newPassword: password,
         technicianOnboardedAt: new Date().toISOString(),
       });
+      if (!result.success) {
+        Alert.alert(
+          "Setup not completed",
+          result.error || "Please check your details and try again.",
+        );
+        return;
+      }
       const codes = await regenerateRecoveryCodes(current?.id);
       setRecoveryCodes(codes);
       Alert.alert("Onboarding complete", "Your technician profile is ready.");
@@ -103,12 +120,6 @@ export default function TechnicianOobe() {
             title={saving ? "Saving..." : "Finish Setup"}
             onPress={handleSubmit}
             loading={saving}
-          />
-          <TechButton
-            title="Go to Home"
-            onPress={() => router.replace("/technician/home")}
-            variant="secondary"
-            style={{ marginTop: SPACING.sm }}
           />
         </Card>
         {recoveryCodes.length > 0 && (

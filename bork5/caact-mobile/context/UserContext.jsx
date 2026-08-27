@@ -371,6 +371,27 @@ export function UserProvider({ children }) {
     }
   };
 
+  const completeTechnicianOnboarding = async (payload) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.completeTechnicianOnboarding(token, payload);
+      if (!result.success || !result.user) return result;
+      const normalized = normalizeUser(result.user);
+      setCurrent(normalized);
+      setUsers((prev) =>
+        prev.map((user) =>
+          String(user.id) === String(normalized.id) ? normalized : user,
+        ),
+      );
+      return { ...result, user: normalized };
+    } catch (error) {
+      return {
+        success: false,
+        error: error?.message || "Unable to complete technician onboarding.",
+      };
+    }
+  };
+
   const saveDeliveryAddress = async (address, addressId = "") => {
     if (!token) return { success: false, error: "Please sign in again." };
     try {
@@ -490,6 +511,7 @@ export function UserProvider({ children }) {
       removeProfilePhoto,
       refreshCurrentUser,
       updateMyAccount,
+      completeTechnicianOnboarding,
       saveDeliveryAddress,
       deleteDeliveryAddress,
       makeDefaultDeliveryAddress,
