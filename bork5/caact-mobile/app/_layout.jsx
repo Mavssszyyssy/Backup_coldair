@@ -20,6 +20,7 @@ function PushNotificationSetup() {
   const { token, current } = useUserContext();
 
   useEffect(() => {
+    if (Platform.OS === "web") return undefined;
     if (!token || !current?.role) return undefined;
 
     enablePushNotifications(token).catch(() => {});

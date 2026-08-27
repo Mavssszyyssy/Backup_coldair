@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -11,6 +12,7 @@ import LoadingLogo from "./LoadingLogo";
 // loading placeholders: it tells the user whether the delay is network-related
 // and gives them a safe retry without losing their current screen or form.
 export default function BackendConnectionStatus() {
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [connection, setConnection] = useState({ state: "loaded" });
   const loadedTimer = useRef(null);
@@ -36,7 +38,7 @@ export default function BackendConnectionStatus() {
     await checkBackendConnection();
   };
 
-  if (connection.state === "hidden") return null;
+  if (connection.state === "hidden" || pathname === "/") return null;
 
   const failed = connection.state === "failed";
   return (

@@ -37,9 +37,9 @@ export default function AuthLayout() {
       <Stack.Screen name="sign-up/step/0" />
       <Stack.Screen name="sign-up/step/1" />
       <Stack.Screen name="sign-up/step/2" />
-      <Stack.Screen name="recover" />
+      <Stack.Screen name="recover/index" />
       <Stack.Screen
-        name="recover/factor"
+        name="recover/factor/index"
         options={{
           presentation: "transparentModal",
           animation: "slide_from_bottom",

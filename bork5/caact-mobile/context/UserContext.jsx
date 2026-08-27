@@ -6,7 +6,7 @@ import * as api from "../services/api";
 import { clearOperationalSessionCache } from "../services/sessionCache";
 
 const TOKEN_KEY = "auth_token";
-const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
+const STAFF_ACCOUNT_ROLES = ["admin", "superadmin", "manager", "owner"];
 const SESSION_HYDRATE_TIMEOUT_MS = 10000;
 
 const UserContext = createContext(null);
@@ -479,14 +479,16 @@ export function UserProvider({ children }) {
     if (String(normalized.status || "active").toLowerCase() !== "active") {
       return "/sign-in";
     }
-    if (!MOBILE_ACCOUNT_ROLES.includes(normalized.role)) return "/manager";
+    if (STAFF_ACCOUNT_ROLES.includes(normalized.role)) return "/staff";
     switch (normalized.role) {
       case "technician":
         if (!normalized.technicianOnboardedAt) return "/technician/oobe";
         return "/technician";
-      default:
+      case "customer":
         if (!normalized.customerOnboardedAt) return "/customer/oobe";
         return "/customer/home";
+      default:
+        return "/sign-in";
     }
   };
 
