@@ -1,7 +1,5 @@
 import DynamicServiceSticker from "./DynamicServiceSticker";
-
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import UnitProductVisual from "./UnitProductVisual";
 
 function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
   const getStatusClass = () => {
@@ -27,19 +25,18 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
           </button>
         </div>
         <div className="modal-body">
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <div style={{ marginBottom: "8px" }}>
-              <img
-                src={icons.temperatureFrigid}
-                alt=""
-                style={{ width: 56, height: 56, objectFit: "contain" }}
-              />
-            </div>
+          <div className="unit-modal-product">
+            <UnitProductVisual unit={unit} size="modal" />
             <h2>
-              {unit.brand} {unit.model}
+              {unit.brand}
             </h2>
+            <p>{unit.productSku || unit.model || "Model not recorded"}</p>
           </div>
 
+          <div className="info-row">
+            <span className="info-label">Model</span>
+            <span className="info-value">{unit.productSku || unit.model || "Not recorded"}</span>
+          </div>
           <div className="info-row">
             <span className="info-label">Serial Number</span>
             <span className="info-value">{unit.serialNumber}</span>

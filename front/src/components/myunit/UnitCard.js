@@ -1,8 +1,6 @@
 import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitKebabMenu from "./UnitKebabMenu";
-
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import UnitProductVisual from "./UnitProductVisual";
 
 function UnitCard({
   unit,
@@ -26,26 +24,23 @@ function UnitCard({
   return (
     <div className="unit-card" onClick={() => onClick(unit)}>
       <div className="unit-header">
-        <div className="unit-brand-model">
-          {unit.brand} {unit.model}
-        </div>
+        <div className="unit-brand-model">{unit.brand}</div>
+        <div className="unit-model-code">{unit.productSku || unit.model || "Model not recorded"}</div>
         <div className="unit-header-actions">
           <UnitKebabMenu
             unit={unit}
             onViewHistory={onViewHistory}
             onWarrantyStatus={onWarrantyStatus}
           />
-          <div className="unit-icon">
-            <img
-              src={icons.temperatureFrigid}
-              alt=""
-              className="inline-icon inline-icon--lg"
-            />
-          </div>
         </div>
       </div>
+      <UnitProductVisual unit={unit} />
       <div className="unit-body">
         <div className="unit-info">
+          <div className="info-row">
+            <span className="info-label">Model</span>
+            <span className="info-value">{unit.productSku || unit.model || "Not recorded"}</span>
+          </div>
           <div className="info-row">
             <span className="info-label">Serial Number</span>
             <span className="info-value">{unit.serialNumber}</span>

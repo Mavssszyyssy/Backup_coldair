@@ -27,14 +27,27 @@ export default function CustomerUnitImage({ unit, size = 68, style }) {
           height: size,
           borderRadius: RADIUS.md,
           backgroundColor: COLORS.surface,
+          shadowColor: "#0F172A",
+          shadowOffset: { width: 0, height: Math.max(4, Math.round(size * 0.08)) },
+          shadowOpacity: 0.18,
+          shadowRadius: Math.max(7, Math.round(size * 0.12)),
+          elevation: 7,
+        },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          flex: 1,
+          width: "100%",
           borderWidth: 1,
           borderColor: COLORS.border,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
-        },
-        style,
-      ]}
+          borderRadius: RADIUS.md,
+          backgroundColor: COLORS.surface,
+        }}
     >
       {imageUrl && !broken ? (
         <Image
@@ -47,6 +60,7 @@ export default function CustomerUnitImage({ unit, size = 68, style }) {
       ) : (
         <Ionicons name="snow-sharp" size={Math.round(size * 0.42)} color={COLORS.primary} />
       )}
+      </View>
     </View>
   );
 }
