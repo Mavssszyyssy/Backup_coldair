@@ -33,6 +33,13 @@ const responseText = (payload = {}) => {
 const callStructuredAmpAnalysis = async (input) => {
   if (!env.openAiApiKey) return { provider: "system-fallback", insight: null };
   const requestId = `amp-${crypto.randomUUID()}`;
+  const safetyIdentifier = crypto
+    .createHash("sha256")
+    .update(String(input?.safetyIdentifier || "anonymous-amp-user"))
+    .digest("hex")
+    .slice(0, 32);
+  const providerInput = { ...(input || {}) };
+  delete providerInput.safetyIdentifier;
   const attempts = Math.max(1, Number(env.openAiMaxRetries || 2) + 1);
   let lastError = null;
 
@@ -51,6 +58,8 @@ const callStructuredAmpAnalysis = async (input) => {
         body: JSON.stringify({
           model: env.openAiModel,
           store: false,
+          max_output_tokens: env.openAiMaxOutputTokens,
+          safety_identifier: safetyIdentifier,
           input: [
             {
               role: "developer",
@@ -61,7 +70,7 @@ const callStructuredAmpAnalysis = async (input) => {
             },
             {
               role: "user",
-              content: [{ type: "input_text", text: JSON.stringify(input) }],
+              content: [{ type: "input_text", text: JSON.stringify(providerInput) }],
             },
           ],
           text: {

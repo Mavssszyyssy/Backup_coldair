@@ -21,7 +21,37 @@ const visitTypeFor = (serviceType) => {
   return "scheduled_service";
 };
 
+const validateStrictServicePayload = (payload = {}) => {
+  const errors = {};
+  const serviceType = resolveExplicitServiceType(payload);
+  const findings = clean(payload.findings || payload.notes || payload.proof_notes, 1000);
+  const actions = list(payload.service_actions || payload.serviceActions || payload.action_taken || payload.resolution);
+  const conditionRating = clean(payload.condition_rating || payload.conditionRating).toLowerCase();
+  const serviceDate = new Date(payload.service_date || payload.serviceDate || new Date());
+
+  if (!serviceType) errors.serviceType = "Choose the service type performed.";
+  if (findings.length < 10) errors.findings = "Record technician findings using at least 10 characters.";
+  if (!actions.length) errors.serviceActions = "Record at least one action performed.";
+  if (!["excellent", "good", "fair", "poor"].includes(conditionRating)) {
+    errors.conditionRating = "Choose excellent, good, fair, or poor for the unit condition.";
+  }
+  if (Number.isNaN(serviceDate.getTime())) errors.serviceDate = "Enter a valid service date.";
+
+  return {
+    ok: Object.keys(errors).length === 0,
+    errors,
+    values: { serviceType, findings, actions, conditionRating, serviceDate },
+  };
+};
+
 const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) => {
+  const validation = validateStrictServicePayload(payload);
+  if (!validation.ok) {
+    const error = new Error("Complete the required technician service report.");
+    error.status = 400;
+    error.errors = validation.errors;
+    throw error;
+  }
   const unit = await Unit.findById(unitId);
   if (!unit) {
     const error = new Error("Unit not found");
@@ -29,22 +59,7 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
     throw error;
   }
 
-  const serviceDate = payload.service_date || payload.serviceDate ? new Date(payload.service_date || payload.serviceDate) : new Date();
-  if (Number.isNaN(serviceDate.getTime())) {
-    const error = new Error("Enter a valid service date.");
-    error.status = 400;
-    throw error;
-  }
-  const explicitServiceType = resolveExplicitServiceType(payload);
-  // When the work order does not explicitly describe the visit, use the
-  // deterministic recommendation calculated from history before this new
-  // service is recorded. This preserves the regular-vs-deep cleaning rule.
-  const recommendationBeforeService = explicitServiceType
-    ? null
-    : await calculateMaintenanceRecommendation(unit._id, { asOfDate: serviceDate, persist: false });
-  const serviceType = explicitServiceType || recommendationBeforeService.recommendedService || "regular_cleaning";
-  const findings = clean(payload.findings || payload.notes || payload.proof_notes || "Service completed");
-  const actions = list(payload.service_actions || payload.serviceActions || payload.action_taken || payload.resolution);
+  const { serviceDate, serviceType, findings, actions, conditionRating } = validation.values;
   const partsUsed = list(payload.parts_used || payload.partsUsed);
 
   const serviceHistory = await ServiceHistory.create({
@@ -53,11 +68,9 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
     serviceDate,
     visitType: visitTypeFor(serviceType),
     serviceType,
-    conditionRating: ["excellent", "good", "fair", "poor"].includes(clean(payload.condition_rating || payload.conditionRating).toLowerCase())
-      ? clean(payload.condition_rating || payload.conditionRating).toLowerCase()
-      : "good",
+    conditionRating,
     findings,
-    actionTaken: actions.join(", ") || "Service completed",
+    actionTaken: actions.join(", "),
     partsUsed,
     technicianInputs: {
       usageHoursPerDay: Number(payload.usage_hours_per_day || payload.usageHoursPerDay || 8),
@@ -68,7 +81,7 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
       placementArea: clean(payload.placement_area || payload.placementArea || unit.installation?.addressLine),
       notes: findings,
     },
-    serviceActions: actions.length ? actions : ["Service completed"],
+    serviceActions: actions,
   });
 
   unit.status = "active";
@@ -107,7 +120,5 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
 
   return { unit, serviceHistory, recommendation };
 };
-
-const validateStrictServicePayload = () => ({ ok: true, errors: {}, values: {} });
 
 module.exports = { completeServiceForUnit, validateStrictServicePayload };

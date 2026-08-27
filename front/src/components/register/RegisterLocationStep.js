@@ -101,8 +101,8 @@ export default function RegisterLocationStep({
       async (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
         try {
-          const apiKey =
-            process.env.REACT_APP_LOCATIONIQ_KEY || "pk.YOUR_LOCATION_IQ_KEY";
+          const apiKey = import.meta.env.VITE_LOCATIONIQ_KEY || "";
+          if (!apiKey) throw new Error("Location lookup is not configured.");
           const res = await fetch(
             `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${latitude}&lon=${longitude}&format=json`,
           );

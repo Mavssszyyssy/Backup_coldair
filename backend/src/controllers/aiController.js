@@ -81,7 +81,11 @@ const getMaintenanceRecommendation = async (req, res) => {
     const unitId = String(req.body?.unitId || req.body?.unit?.id || "");
     const { unit, recommendation } = await loadUnitAndRecommendation(req, unitId);
     const history = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean();
-    const ai = await callStructuredAmpAnalysis({ recommendation, recordedHistory: history.map(formatHistory) });
+    const ai = await callStructuredAmpAnalysis({
+      safetyIdentifier: String(req.authUser._id),
+      recommendation,
+      recordedHistory: history.map(formatHistory),
+    });
     return res.json({
       provider: ai.provider,
       recommendation,
@@ -111,7 +115,12 @@ const generateAmpReport = async (req, res) => {
       Task.find({ $or: [{ unitId: String(unit._id) }, { "payload.serialNumbers": unit.serialNumber }, { "payload.serialNumber": unit.serialNumber }] }).sort({ updatedAt: -1 }).limit(20).lean(),
     ]);
     const aggregate = type === "inventory_reliability_analysis" ? await aggregateReliability(unit, branch) : null;
-    const ai = await callStructuredAmpAnalysis({ recommendation, recordedHistory: history.map(formatHistory), aggregateReliability: aggregate });
+    const ai = await callStructuredAmpAnalysis({
+      safetyIdentifier: String(req.authUser._id),
+      recommendation,
+      recordedHistory: history.map(formatHistory),
+      aggregateReliability: aggregate,
+    });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
     const generatedAt = new Date().toISOString(); const date = generatedAt.slice(0, 10);
     const identifier = slugSegment(unit.serialNumber || unit.qrUnitId, "AC-UNIT");

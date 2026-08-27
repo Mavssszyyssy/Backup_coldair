@@ -1,42 +1,8 @@
 const bcrypt = require("bcryptjs");
 const connectDb = require("../config/db");
 const User = require("../models/User");
-const Order = require("../models/Order");
 
 const users = [
-  {
-    email: "demo@example.com",
-    alias: "demo.user",
-    password: "demo123",
-    name: "Demo User",
-    name_first: "Demo",
-    name_last: "User",
-    phone: "09123456789",
-    address: "123 Demo Street, Molino I, Bacoor, Cavite, CALABARZON",
-    billingAddress: {
-      region: "CALABARZON",
-      province: "Cavite",
-      city: "Bacoor",
-      barangay: "Molino I",
-      street: "123 Demo Street",
-    },
-    addresses: [
-      {
-        label: "Billing Address",
-        type: "home",
-        name: "Demo User",
-        phone: "09123456789",
-        region: "CALABARZON",
-        province: "Cavite",
-        city: "Bacoor",
-        barangay: "Molino I",
-        street: "123 Demo Street",
-        postalCode: "4102",
-        isDefault: true,
-      },
-    ],
-    role: "customer",
-  },
   {
     email: "admin@example.com",
     alias: "admin.main",
@@ -49,20 +15,6 @@ const users = [
     role: "admin",
     assignedBranch: "Bulacan",
     activeBranch: "Bulacan",
-  },
-  {
-    email: "tech@example.com",
-    alias: "tech.main",
-    password: "tech123",
-    name: "Technician User",
-    name_first: "Tech",
-    name_last: "User",
-    phone: "09123456781",
-    address: "789 Tech Street",
-    role: "technician",
-    assignedBranch: "Bulacan",
-    activeBranch: "Bulacan",
-    skills: ["Electronics Repair", "AC Repair", "Plumbing"],
   },
   {
     email: "admin-bulacan@example.com",

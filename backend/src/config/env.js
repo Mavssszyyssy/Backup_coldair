@@ -114,6 +114,7 @@ const env = {
   openAiBaseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
   openAiTimeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 20000),
   openAiMaxRetries: Number(process.env.OPENAI_MAX_RETRIES || 2),
+  openAiMaxOutputTokens: boundedTimeout(process.env.OPENAI_MAX_OUTPUT_TOKENS, 600, 200, 2000),
   otpTtlMinutes: Number(process.env.OTP_TTL_MINUTES || 5),
   otpResendCooldownSeconds: Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60),
   otpRequestWindowMinutes: Number(process.env.OTP_REQUEST_WINDOW_MINUTES || 15),

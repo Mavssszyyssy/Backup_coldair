@@ -32,7 +32,7 @@ const matchesRule = (value, rule) => {
 
 const validatePostalCodeForAddress = (address = {}) => {
   const postalCode = String(address.postalCode || "").trim();
-  if (!postalCode) return "";
+  if (!postalCode) return "Postal code is required";
   if (!/^\d{4}$/.test(postalCode)) return "Postal code must be exactly 4 digits";
   const rules = getPostalCodeRules(address);
   if (!rules.length || rules.some((rule) => matchesRule(postalCode, rule))) return "";

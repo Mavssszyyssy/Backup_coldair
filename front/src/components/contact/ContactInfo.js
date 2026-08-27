@@ -1,30 +1,30 @@
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+import icons from '../common/icons';
+import { COMPANY_CONTACT } from '../../config/company';
 
 function ContactInfo() {
   const contactItems = [
     {
       iconSrc: icons.phoneCall,
       title: "Phone Number",
-      details: ["09086854532"],
+      details: [COMPANY_CONTACT.hotline],
     },
     {
       iconSrc: icons.envelope,
       title: "Email Address",
-      details: ["coldairairconditionaing@yahoo.com"],
+      details: [COMPANY_CONTACT.supportEmail],
     },
     {
       iconSrc: icons.clipboardList,
       title: "Office Hours",
       details: [
-        "8:00am - 5:00pm (Monday - Friday)",
+        COMPANY_CONTACT.officeHours,
         "Operations: Monday - Sunday (Online & Technician Tasks)",
       ],
     },
     {
       iconSrc: icons.marker,
       title: "Address",
-      details: ["192 Pandan Loop #06-29", "Singapore 128381"],
+      details: ["Main office: Plaridel, Bulacan", "Serving configured branches across Luzon"],
     },
   ];
 

@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "requireFullScreen": true
+      "requireFullScreen": true,
+      "bundleIdentifier": "com.maviitootie.coldair"
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -24,8 +25,7 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "package": "com.maviitootie.Coldair"
     },
@@ -42,15 +42,7 @@
           "cameraPermission": "Allow Coldair to scan unit QR codes and capture proof of installation photos."
         }
       ],
-      "expo-notifications",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "expo-notifications"
     ],
     "extra": {
       "apiBaseUrl": "https://api.coldair-act.online/api",

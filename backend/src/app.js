@@ -9,6 +9,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const env = require("./config/env");
 const { getInfobipEmailConfiguration } = require("./utils/email");
+const { createMemoryRateLimit } = require("./middleware/requestRateLimit");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -103,7 +104,17 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.use("/api/auth", authSession, authRoutes);
+app.use(
+  "/api/auth",
+  createMemoryRateLimit({
+    scope: "auth",
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: "Too many authentication requests. Please wait and try again.",
+  }),
+  authSession,
+  authRoutes,
+);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);
@@ -115,8 +126,26 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/inventory-change-requests", inventoryChangeRequestRoutes);
 app.use("/api/restock-orders", restockOrderRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/amp", ampRoutes);
+app.use(
+  "/api/ai",
+  createMemoryRateLimit({
+    scope: "ai",
+    windowMs: 10 * 60 * 1000,
+    max: 30,
+    message: "AMP analysis limit reached. Please wait before requesting another analysis.",
+  }),
+  aiRoutes,
+);
+app.use(
+  "/api/amp",
+  createMemoryRateLimit({
+    scope: "amp",
+    windowMs: 10 * 60 * 1000,
+    max: 120,
+    message: "AMP request limit reached. Please wait and try again.",
+  }),
+  ampRoutes,
+);
 app.use("/api/predictions", predictionRoutes);
 app.use("/api/parts-requests", partsRequestRoutes);
 app.use("/api/warranties", warrantyRoutes);
@@ -129,7 +158,7 @@ const indexHtml = path.join(buildPath, "index.html");
 if (fs.existsSync(indexHtml)) {
   app.use(express.static(buildPath));
 
-  app.get("*", (req, res, next) => {
+  app.get(/.*/, (req, res, next) => {
     if (req.path.startsWith("/api/")) {
       return next();
     }

@@ -15,6 +15,7 @@ const {
   canCustomerCancelServiceRequest,
 } = require("../domain/serviceRequestWorkflow");
 const env = require("../config/env");
+const { getScheduledDateError } = require("../utils/scheduling");
 
 const normalizeStatus = (value = "", fallback = "Pending") =>
   normalizeServiceRequestStatus(value, fallback);
@@ -259,6 +260,11 @@ const createServiceRequest = async (req, res) => {
     if (!customer || !issue || !address) {
       return res.status(400).json({ message: "customer, issue, and address are required" });
     }
+    const scheduleError = getScheduledDateError(
+      req.body?.scheduledDate || req.body?.preferredDate,
+      "Service date",
+    );
+    if (scheduleError) return res.status(400).json({ message: scheduleError });
     const normalizedStatus = normalizeStatus(status, null);
     if (!normalizedStatus) {
       return res.status(400).json({ message: "Invalid service request status." });
@@ -323,6 +329,11 @@ const createMyServiceRequest = async (req, res) => {
     if (!service) {
       return res.status(400).json({ message: "Choose a valid service type from the current service catalog." });
     }
+    const scheduleError = getScheduledDateError(payload.preferredDate, "Preferred date");
+    if (scheduleError) return res.status(400).json({ message: scheduleError });
+    if (!payload.preferredDate) {
+      return res.status(400).json({ message: "Choose a preferred service date." });
+    }
 
     if (idempotencyKey) {
       const existingRequest = await ServiceRequest.findOne({
@@ -374,11 +385,17 @@ const createMyServiceRequest = async (req, res) => {
             actor: customerName || "Customer",
           }),
         ];
+    const branch = await getRequestBranch({ req, payload, unit });
+    if (!branch) {
+      return res.status(422).json({
+        message: "This service address is outside the configured service areas.",
+      });
+    }
     const request = await ServiceRequest.create({
       customer: customerName,
       issue,
       address,
-      branch: await getRequestBranch({ req, payload, unit }),
+      branch,
       status: normalizeStatus(payload.status || "Submitted"),
       customerId: String(payload.customerId || payload.userId || req.authUser._id || ""),
       customerEmail: String(payload.customerEmail || req.authUser.email || ""),

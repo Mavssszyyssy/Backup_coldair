@@ -111,9 +111,23 @@ const notifyDueMaintenance = async (unit, recommendation) => {
 const calculateNextServiceDate = async (req, res) => {
   try {
     const unit = await loadAccessibleUnit(req);
-    const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: req.query.asOfDate, persist: req.query.persist !== "false" });
+    const persist = req.query.persist !== "false";
+    const requestedAsOfDate = String(req.query.asOfDate || "").trim();
+    if (requestedAsOfDate && (persist || req.authUser.role === "customer")) {
+      return res.status(400).json({
+        message: "Historical calculation dates are read-only and available only to authorized staff.",
+      });
+    }
+    const recommendation = await calculateMaintenanceRecommendation(unit._id, {
+      asOfDate: persist ? new Date() : requestedAsOfDate || new Date(),
+      persist,
+    });
     const history = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean();
-    const ai = await callStructuredAmpAnalysis({ recommendation, recordedHistory: history.map(serviceHistoryItem) });
+    const ai = await callStructuredAmpAnalysis({
+      safetyIdentifier: String(req.authUser._id),
+      recommendation,
+      recordedHistory: history.map(serviceHistoryItem),
+    });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
       best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
       recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,

@@ -2,32 +2,50 @@ export const COLD_AIR_WEBSITE = "https://coldair-act.online";
 
 export const COMPANY_CONTACT = {
   name: "Cold Air ACT",
-  supportEmail: "support@coldair-act.online",
-  salesEmail: "sales@coldair-act.online",
-  hotline: "+63 917 800 1122",
-  landline: "(02) 8812 4400",
+  supportEmail: "coldairairconditionaing@yahoo.com",
+  salesEmail: "coldairairconditionaing@yahoo.com",
+  hotline: "09086854532",
+  landline: "Not currently available",
   facebookPage: "https://facebook.com/coldairact",
   messengerHandle: "m.me/coldairact",
 };
 
 export const COMPANY_BRANCHES = [
   {
-    id: "branch_quezon_city",
-    name: "Quezon City Service Hub",
-    address: "121 Scout Area, South Triangle, Quezon City",
-    plusCode: "7Q63+M5 Quezon City, Metro Manila",
-  },
-  {
-    id: "branch_makati",
-    name: "Makati Operations Desk",
-    address: "245 Ayala Extension, San Lorenzo, Makati City",
-    plusCode: "7Q62+X8 Makati, Metro Manila",
+    id: "branch_bulacan",
+    name: "Bulacan (Main Branch)",
+    address: "Plaridel, Bulacan",
+    plusCode: "Contact support for the exact service location",
   },
   {
     id: "branch_cavite",
-    name: "Cavite Delivery and Service Point",
-    address: "88 Molino Boulevard, Bacoor, Cavite",
-    plusCode: "6QJX+7J Bacoor, Cavite",
+    name: "Cavite Branch",
+    address: "Dasmariñas, Cavite",
+    plusCode: "Contact support for the exact service location",
+  },
+  {
+    id: "branch_laguna",
+    name: "Laguna Branch",
+    address: "Cabuyao, Laguna",
+    plusCode: "Contact support for the exact service location",
+  },
+  {
+    id: "branch_bataan",
+    name: "Bataan Branch",
+    address: "Balanga, Bataan",
+    plusCode: "Contact support for the exact service location",
+  },
+  {
+    id: "branch_pangasinan",
+    name: "Pangasinan Branch",
+    address: "Dagupan, Pangasinan",
+    plusCode: "Contact support for the exact service location",
+  },
+  {
+    id: "branch_ilocos",
+    name: "Ilocos Branch",
+    address: "San Fernando, La Union",
+    plusCode: "Contact support for the exact service location",
   },
 ];
 

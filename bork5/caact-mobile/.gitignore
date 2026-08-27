@@ -36,6 +36,14 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# retired local backend/runtime data
+quart/
+*.db
+*.log
+*.err.log
+__pycache__/
+*.pyc
+
 # generated native folders
 /ios
 /android

@@ -9,6 +9,7 @@ const AuditLog = require("../models/AuditLog");
 const Unit = require("../models/Unit");
 const mongoose = require("mongoose");
 const env = require("../config/env");
+const { validatePostalCodeForAddress } = require("../utils/postalCodeValidation");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { ensureSampleInventory } = require("./productController");
 const { canSendEmail, sendEmail } = require("../utils/email");
@@ -156,8 +157,8 @@ const normalizePhMobile = (value = "") => {
 };
 
 const normalizePostalCode = (value = "") => {
-  const digits = String(value || "").replace(/\D/g, "");
-  return /^\d{4}$/.test(digits) ? digits : "";
+  const text = String(value || "").trim();
+  return /^\d{4}$/.test(text) ? text : "";
 };
 
 const normalizeAddress = (address = {}) => {
@@ -207,8 +208,18 @@ const mergeAddress = (primary = {}, fallback = {}) =>
   });
 
 const isValidAddress = (address = {}) => {
-  if (!address.name || !address.phone || !address.street) return false;
+  if (
+    !address.name ||
+    !address.phone ||
+    !address.region ||
+    !address.province ||
+    !address.city ||
+    !address.barangay ||
+    !address.street ||
+    !address.postalCode
+  ) return false;
   if (!/^09\d{9}$/.test(normalizePhMobile(address.phone))) return false;
+  if (validatePostalCodeForAddress(address)) return false;
   return true;
 };
 
@@ -219,6 +230,13 @@ const getAddressValidationMessage = (address = {}) => {
     return "phone number must be a valid Philippine mobile number";
   }
   if (!address.street) return "street or full address is missing";
+  if (!address.region) return "region is missing";
+  if (!address.province) return "province is missing";
+  if (!address.city) return "city or municipality is missing";
+  if (!address.barangay) return "barangay is missing";
+  if (!address.postalCode) return "postal code is missing";
+  const postalCodeError = validatePostalCodeForAddress(address);
+  if (postalCodeError) return postalCodeError.toLowerCase();
   return "";
 };
 

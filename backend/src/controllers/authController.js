@@ -19,6 +19,8 @@ const OTP_RESEND_COOLDOWN_SECONDS = Math.max(30, Math.min(300, Number(env.otpRes
 const OTP_REQUEST_WINDOW_MINUTES = Math.max(5, Math.min(60, Number(env.otpRequestWindowMinutes || 15)));
 const OTP_MAX_REQUESTS_PER_WINDOW = Math.max(2, Math.min(10, Number(env.otpMaxRequestsPerWindow || 5)));
 const OTP_MAX_ATTEMPTS = Math.max(3, Math.min(10, Number(env.otpMaxAttempts || 5)));
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
 const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
 const normalizeIdentifier = (value = "") => String(value).trim().toLowerCase();
@@ -628,9 +630,30 @@ const login = async (req, res) => {
       $or: lookupConditions,
     });
 
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (user?.lockoutUntil && user.lockoutUntil > new Date()) {
+      return res.status(429).json({ message: "Too many failed attempts. Try again later." });
+    }
+    if (
+      user &&
+      (user.isDeleted || ["disabled", "deleted"].includes(String(user.accountStatus || "")))
+    ) {
+      return res.status(403).json({ message: "This account is not active." });
+    }
+    if (!user || !(await bcrypt.compare(String(password || ""), user.passwordHash))) {
+      if (user) {
+        user.failedLoginAttempts = Number(user.failedLoginAttempts || 0) + 1;
+        if (user.failedLoginAttempts >= LOGIN_MAX_ATTEMPTS) {
+          user.lockoutUntil = new Date(Date.now() + LOGIN_LOCKOUT_MS);
+          user.failedLoginAttempts = 0;
+        }
+        await user.save();
+      }
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    user.failedLoginAttempts = 0;
+    user.lockoutUntil = null;
+    user.lastLogin = new Date();
+    await user.save();
     const token = signAccessToken({ sub: user.id, role: user.role });
     return res.json({ success: true, token, user: user.toJSON() });
   } catch (err) {

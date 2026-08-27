@@ -767,6 +767,12 @@ const createSampleDoc = (item) => {
 };
 
 const ensureSampleInventory = async () => {
+  // Sample inventory is strictly a local-development convenience. Production
+  // catalog reads must never recreate demo or payment-test products.
+  if (process.env.NODE_ENV === "production") {
+    sampleSeedDone = true;
+    return;
+  }
   if (sampleSeedDone) {
     return;
   }
@@ -851,6 +857,27 @@ const toBranchStockObject = (product) =>
     return acc;
   }, {});
 
+const toPublicProduct = (product, scopedBranch = "") => {
+  const branchStock = toBranchStockObject(product);
+  const totalStock = Number(product.stock || 0);
+  return {
+    id: String(product._id || product.id || ""),
+    name: product.name,
+    sku: product.sku,
+    brand: product.brand,
+    category: product.category,
+    description: product.description,
+    specs: product.specs,
+    features: Array.isArray(product.features) ? product.features : [],
+    image: product.image,
+    price: Number(product.price || 0),
+    stock: scopedBranch ? Number(branchStock[scopedBranch] || 0) : totalStock,
+    totalStock,
+    inventoryBranch: scopedBranch || null,
+    stockScope: scopedBranch ? "branch" : "all_branches",
+  };
+};
+
 const toRoleAwareProduct = (product, req) => {
   const base = product.toJSON();
   const branchStock = toBranchStockObject(product);
@@ -911,28 +938,22 @@ const listPublicProducts = async (req, res) => {
   await ensureSampleInventory();
   const requestedBranch = String(req.query?.branch || "").trim();
   const scopedBranch = BRANCHES.includes(requestedBranch) ? requestedBranch : "";
-  const products = await Product.find({ stock: { $gt: 0 } })
-    .select("-imageData")
+  const products = await Product.find({
+    stock: { $gt: 0 },
+    isActive: { $ne: false },
+    sku: { $not: /^TEST(?:-|_)/i },
+    name: { $not: /\btest\b/i },
+  })
+    .select("name sku brand category description specs features image stock branchStock price isActive")
     .sort({
       createdAt: -1,
     });
   const publicProducts = products.map((product) => {
-    const base = product.toJSON();
-    const branchStock = toBranchStockObject(product);
-    const totalStock = Number(product.stock || 0);
-
     // A customer shop can ask for its delivery branch. In that case `stock`
     // is deliberately branch-specific, matching what the branch inventory
     // screen shows. Without a branch, retain total stock but label the scope
     // clearly so clients never present it as a single branch quantity.
-    return {
-      ...base,
-      stock: scopedBranch ? Number(branchStock[scopedBranch] || 0) : totalStock,
-      totalStock,
-      branchStock,
-      inventoryBranch: scopedBranch || null,
-      stockScope: scopedBranch ? "branch" : "all_branches",
-    };
+    return toPublicProduct(product, scopedBranch);
   });
 
   return res.json({ products: publicProducts });
@@ -1397,6 +1418,7 @@ const getProductImage = async (req, res) => {
 };
 
 module.exports = {
+  toPublicProduct,
   ensureProductSerialUnits,
   ensureSampleInventory,
   listProducts,

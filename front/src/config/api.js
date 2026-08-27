@@ -12,23 +12,24 @@ const replaceRetiredBackend = (value = "") =>
     .replace(LEGACY_BACKEND_HOST, "https://api.coldair-act.online");
 
 const API_BASE_URL = replaceRetiredBackend(
-  process.env.REACT_APP_API_URL ||
-    process.env.REACT_APP_BACKEND_URL ||
+  import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.REACT_APP_API_URL ||
     LIVE_API_BASE_URL,
 );
 
 const API_FALLBACK_URL = replaceRetiredBackend(
-  process.env.REACT_APP_API_FALLBACK_URL || "",
+  import.meta.env.VITE_API_FALLBACK_URL || "",
 );
 
 if (
   typeof window !== "undefined" &&
-  process.env.NODE_ENV === "production" &&
+  import.meta.env.PROD &&
   API_BASE_URL.includes("localhost")
 ) {
   console.warn(
     "Frontend is running in production but API_BASE_URL is still pointing to localhost. " +
-    "Set REACT_APP_API_URL in Vercel to your deployed backend URL.",
+    "Set VITE_API_URL in Vercel to your deployed backend URL.",
   );
 }
 

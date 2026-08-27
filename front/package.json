@@ -14,18 +14,16 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1",
-    "react-scripts": "5.0.1",
+    "react-router-dom": "^7.18.2",
     "web-vitals": "^2.1.4",
     "zxcvbn": "^4.4.2"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "vite",
     "start:backend": "npm --prefix backend run dev",
-    "build": "react-scripts build",
+    "build": "vite build --configLoader runner",
     "check:imports": "node ../scripts/check-imports.js",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test": "vitest run --configLoader runner"
   },
   "eslintConfig": {
     "extends": [
@@ -46,6 +44,10 @@
     ]
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "jsdom": "latest",
+    "vite": "^7.1.7",
+    "vitest": "latest",
     "yaml": "^2.9.0"
   }
 }

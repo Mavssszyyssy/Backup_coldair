@@ -5,29 +5,30 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import "./App.css";
-import AdminDashboard from "./components/ADMIN/Dashboard/AdminDashboard";
-import AdminInventory from "./components/ADMIN/Inventory/AdminInventory";
-import AdminProfile from "./components/ADMIN/Profile/AdminProfile";
-import AdminReports from "./components/ADMIN/Reports/AdminReports";
-import AdminServices from "./components/ADMIN/Services/AdminServices";
-import AdminSettings from "./components/ADMIN/Settings/AdminSettings";
-import ManagerAmpDashboard from "./components/AMP/ManagerAmpDashboard";
-import OwnerAmpDashboard from "./components/AMP/OwnerAmpDashboard";
-import TechMainScreen from "./components/TECH/Dashboard/TechMainScreen";
-import ProfileTechnicianScreen from "./components/TECH/Profile/ProfileTechnicianScreen";
-import TechEditProfile from "./components/TECH/Profile/TechEditProfile";
-import FieldServiceRegistration from "./components/TECH/Tasks/FieldServiceRegistration";
-import TaskDetails from "./components/TECH/Tasks/TaskDetails";
-import TaskScreens from "./components/TECH/Tasks/TaskScreens";
-import SuperAdminAlerts from "./components/SUPERADMIN/Dashboard/SuperAdminAlerts";
-import SuperAdminBranches from "./components/SUPERADMIN/Dashboard/SuperAdminBranches";
-import SuperAdminDashboard from "./components/SUPERADMIN/Dashboard/SuperAdminDashboard";
-import SuperAdminInventory from "./components/SUPERADMIN/Dashboard/SuperAdminInventory";
-import SuperAdminSales from "./components/SUPERADMIN/Dashboard/SuperAdminSales";
-import SuperAdminServices from "./components/SUPERADMIN/Dashboard/SuperAdminServices";
-import SuperAdminSettings from "./components/SUPERADMIN/Dashboard/SuperAdminSettings";
-import SuperAdminProfile from "./components/SUPERADMIN/Dashboard/SuperAdminProfile";
+const AdminDashboard = lazy(() => import("./components/ADMIN/Dashboard/AdminDashboard"));
+const AdminInventory = lazy(() => import("./components/ADMIN/Inventory/AdminInventory"));
+const AdminProfile = lazy(() => import("./components/ADMIN/Profile/AdminProfile"));
+const AdminReports = lazy(() => import("./components/ADMIN/Reports/AdminReports"));
+const AdminServices = lazy(() => import("./components/ADMIN/Services/AdminServices"));
+const AdminSettings = lazy(() => import("./components/ADMIN/Settings/AdminSettings"));
+const ManagerAmpDashboard = lazy(() => import("./components/AMP/ManagerAmpDashboard"));
+const OwnerAmpDashboard = lazy(() => import("./components/AMP/OwnerAmpDashboard"));
+const TechMainScreen = lazy(() => import("./components/TECH/Dashboard/TechMainScreen"));
+const ProfileTechnicianScreen = lazy(() => import("./components/TECH/Profile/ProfileTechnicianScreen"));
+const TechEditProfile = lazy(() => import("./components/TECH/Profile/TechEditProfile"));
+const FieldServiceRegistration = lazy(() => import("./components/TECH/Tasks/FieldServiceRegistration"));
+const TaskDetails = lazy(() => import("./components/TECH/Tasks/TaskDetails"));
+const TaskScreens = lazy(() => import("./components/TECH/Tasks/TaskScreens"));
+const SuperAdminAlerts = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"));
+const SuperAdminBranches = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"));
+const SuperAdminDashboard = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminDashboard"));
+const SuperAdminInventory = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminInventory"));
+const SuperAdminSales = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSales"));
+const SuperAdminServices = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminServices"));
+const SuperAdminSettings = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSettings"));
+const SuperAdminProfile = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminProfile"));
 import CustomerChatbot from "./components/chatbot/CustomerChatbot";
 import Checkout from "./components/checkout/Checkout";
 import OrderConfirmation from "./components/checkout/OrderConfirmation";
@@ -140,6 +141,7 @@ function AppContent() {
 
   return (
     <>
+      <Suspense fallback={<div className="loading-screen"><LoadingLogo /></div>}>
       <Routes>
         {/* Shopping is the primary customer entry point. */}
         <Route path="/" element={<Navigate to="/shop" replace />} />
@@ -567,6 +569,7 @@ function AppContent() {
         {/* Catch all - redirect to the customer catalogue */}
         <Route path="*" element={<Navigate to="/shop" replace />} />
       </Routes>
+      </Suspense>
       {shouldShowCustomerChatbot && <CustomerChatbot />}
       <LoginPromptModal
         isOpen={showLoginPrompt}
