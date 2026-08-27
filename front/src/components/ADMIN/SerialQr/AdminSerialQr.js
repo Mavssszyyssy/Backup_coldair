@@ -47,6 +47,9 @@ const AdminSerialQr = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [serialKindFilter, setSerialKindFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [editingSerial, setEditingSerial] = useState(null);
   const [serialDraft, setSerialDraft] = useState("");
@@ -70,21 +73,53 @@ const AdminSerialQr = ({ embedded = false }) => {
     load();
   }, []);
 
+  const branchOptions = useMemo(
+    () => Array.from(new Set(products.flatMap((product) =>
+      (product.serialUnits || []).map((unit) => unit.branch).filter(Boolean),
+    ))).sort(),
+    [products],
+  );
+
+  const statusOptions = useMemo(
+    () => Array.from(new Set(products.flatMap((product) =>
+      (product.serialUnits || []).map((unit) => unit.status || "available"),
+    ))).sort(),
+    [products],
+  );
+
   const filteredProducts = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return products;
-    return products.filter((product) =>
-      [
+    const hasUnitFilter = branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all";
+    return products.map((product) => {
+      const modelMatches = !needle || [
         product.name,
         product.brand,
         product.sku,
         product.specs,
-        ...(product.serialUnits || []).map((unit) => unit.serialNumber),
       ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(needle)),
-    );
-  }, [products, query]);
+        .some((value) => String(value).toLowerCase().includes(needle));
+      const filteredSerialUnits = (product.serialUnits || []).filter((unit) => {
+        const status = unit.status || "available";
+        const serialKind = unit.serialKind || "temporary";
+        const unitMatches = !needle || [
+          unit.serialNumber,
+          unit.qrUnitId,
+          unit.branch,
+          status,
+          getUnitOwner(unit),
+        ].filter(Boolean).some((value) => String(value).toLowerCase().includes(needle));
+        return (modelMatches || unitMatches) &&
+          (branchFilter === "all" || unit.branch === branchFilter) &&
+          (statusFilter === "all" || status === statusFilter) &&
+          (serialKindFilter === "all" || serialKind === serialKindFilter);
+      });
+      const includeEmptyModel = !hasUnitFilter && (product.serialUnits || []).length === 0 && modelMatches;
+      return filteredSerialUnits.length || includeEmptyModel
+        ? { ...product, filteredSerialUnits }
+        : null;
+    }).filter(Boolean);
+  }, [branchFilter, products, query, serialKindFilter, statusFilter]);
 
   const totalSerials = products.reduce(
     (sum, product) => sum + (product.serialUnits?.length || 0),
@@ -104,7 +139,7 @@ const AdminSerialQr = ({ embedded = false }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [branchFilter, query, serialKindFilter, statusFilter]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -158,6 +193,24 @@ const AdminSerialQr = ({ embedded = false }) => {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search model, SKU, branch, or serial"
           />
+          <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label="Filter QR records by branch">
+            <option value="all">All branches</option>
+            {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter QR records by status">
+            <option value="all">All statuses</option>
+            {statusOptions.map((status) => <option key={status} value={status}>{status.replace(/-/g, " ")}</option>)}
+          </select>
+          <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label="Filter QR records by serial type">
+            <option value="all">All serial types</option>
+            <option value="manufacturer">Manufacturer serial</option>
+            <option value="temporary">Temporary serial</option>
+          </select>
+          {(query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
+            <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); }}>
+              Clear filters
+            </button>
+          ) : null}
           <button type="button" onClick={load} disabled={loading}>
             {loading ? "Syncing..." : "Sync unique QRs"}
           </button>
@@ -169,7 +222,7 @@ const AdminSerialQr = ({ embedded = false }) => {
 
       <div className="serialqr-model-list">
         {pageProducts.map((product) => {
-          const serialUnits = product.serialUnits || [];
+          const serialUnits = product.filteredSerialUnits || [];
           return (
             <section className="admin-card serialqr-model" key={product.id}>
               <header className="serialqr-model-header">

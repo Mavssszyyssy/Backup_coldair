@@ -1,6 +1,9 @@
-import { Copy, QrCode } from "@phosphor-icons/react";
+import { Copy, QrCode, X } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const HOVER_OPEN_DELAY_MS = 450;
+const HOVER_CLOSE_DELAY_MS = 1000;
 
 const getUnitKey = (unit, index) =>
   unit?.qrUnitId || unit?.serialNumber || `unit-${index}`;
@@ -17,14 +20,33 @@ function InventorySerialQrPreview({ product, branch }) {
     [branch, product?.serialUnits],
   );
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [selectedKey, setSelectedKey] = useState("");
   const [copied, setCopied] = useState(false);
+  const openTimerRef = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  const clearOpenTimer = () => {
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
+    openTimerRef.current = null;
+  };
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
 
   useEffect(() => {
     setOpen(false);
+    setPinned(false);
     setSelectedKey("");
     setCopied(false);
   }, [branch, product?.id]);
+
+  useEffect(() => () => {
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   const selectedUnit =
     units.find((unit, index) => getUnitKey(unit, index) === selectedKey) ||
@@ -32,8 +54,30 @@ function InventorySerialQrPreview({ product, branch }) {
 
   const openPreview = () => {
     if (!units.length) return;
+    clearOpenTimer();
+    clearCloseTimer();
     setSelectedKey((current) => current || getUnitKey(units[0], 0));
     setOpen(true);
+  };
+
+  const scheduleOpen = () => {
+    if (!units.length || open || openTimerRef.current) return;
+    clearCloseTimer();
+    openTimerRef.current = window.setTimeout(openPreview, HOVER_OPEN_DELAY_MS);
+  };
+
+  const scheduleClose = () => {
+    clearOpenTimer();
+    clearCloseTimer();
+    if (pinned) return;
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
+  };
+
+  const closePreview = () => {
+    clearOpenTimer();
+    clearCloseTimer();
+    setPinned(false);
+    setOpen(false);
   };
 
   const copySerial = async () => {
@@ -55,8 +99,8 @@ function InventorySerialQrPreview({ product, branch }) {
   return (
     <div
       className="inventory-serial-preview-wrap"
-      onMouseEnter={openPreview}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={scheduleOpen}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
@@ -65,8 +109,12 @@ function InventorySerialQrPreview({ product, branch }) {
         aria-label={`View serial and QR records for ${product?.name || "AC unit"}`}
         onFocus={openPreview}
         onClick={() => {
-          setSelectedKey((current) => current || getUnitKey(units[0], 0));
-          setOpen((current) => !current);
+          if (open && pinned) {
+            closePreview();
+            return;
+          }
+          openPreview();
+          setPinned(true);
         }}
       >
         <QrCode size={17} weight="bold" />
@@ -79,7 +127,17 @@ function InventorySerialQrPreview({ product, branch }) {
           className="inventory-serial-preview"
           role="dialog"
           aria-label="AC unit serial and QR preview"
+          onMouseEnter={openPreview}
+          onMouseLeave={scheduleClose}
         >
+          <button
+            type="button"
+            className="inventory-serial-preview-close"
+            onClick={closePreview}
+            aria-label="Close serial and QR details"
+          >
+            <X size={15} weight="bold" />
+          </button>
           <div className="inventory-serial-preview-heading">
             <div>
               <strong>{product?.name || "AC Unit"}</strong>
