@@ -536,6 +536,7 @@ const Shop = () => {
             category: product.category || "split",
             price: Number(product.price) || 0,
             specs: product.specs || "",
+            horsepower: Number(product.horsepower || parseHP(String(product.specs || ""))) || 0,
             description: cleanDesc,
             inStock: Number(product.stock) > 0,
             stock: Number(product.stock) || 0,

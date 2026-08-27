@@ -108,6 +108,11 @@ const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 };
 
+const formatHorsepower = (item = {}) => {
+  const parsed = Number(item.horsepower || String(item.specs || '').match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
+  return parsed > 0 ? `${parsed} HP` : 'Not specified';
+};
+
 const refundStatusLabel = (status = '') => {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'completed') return 'Refund completed';
@@ -618,6 +623,7 @@ const AdminOrders = ({ embedded = false }) => {
                           <strong>{item.name}</strong>
                           <span>x{item.quantity}</span>
                         </div>
+                        <div className="admin-order-item-horsepower">Horsepower: {formatHorsepower(item)}</div>
 
                         {units.length > 0 ? (
                           <div className="admin-order-unit-grid">

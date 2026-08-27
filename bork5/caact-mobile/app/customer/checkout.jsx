@@ -71,6 +71,11 @@ const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
 const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "aeropulse_mobile_checkout_idempotency_v1";
 const CHECKOUT_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
 
+const formatHorsepower = (item = {}) => {
+  const parsed = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
+  return parsed > 0 ? `${parsed} HP` : "Not specified";
+};
+
 const checkoutFingerprint = ({ cartItems = [], address = {}, paymentMethod = "" }) =>
   JSON.stringify({
     paymentMethod: String(paymentMethod || "").toLowerCase(),
@@ -259,6 +264,7 @@ export default function CheckoutScreen() {
             price: item.price,
             quantity: item.quantity,
             specs: item.specs || "",
+            horsepower: Number(item.horsepower || 0),
           })),
           addressId: checkoutAddress.id || checkoutAddress._id || "",
           address: checkoutAddress,
@@ -358,6 +364,7 @@ export default function CheckoutScreen() {
                 <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
                   <View style={{ flex: 1 }}>
                     <BoutiqueText variant="label">{item.name}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
                   </View>
                   <BoutiqueText variant="label">{formatPeso(item.quantity * item.price)}</BoutiqueText>

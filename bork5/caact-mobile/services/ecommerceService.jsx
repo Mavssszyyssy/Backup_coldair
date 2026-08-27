@@ -24,6 +24,7 @@ const normalizeProduct = (product = {}) => ({
   model: product.model || "",
   category: String(product.category || "split").toLowerCase(),
   specs: product.specs || product.horsepower || "",
+  horsepower: Number(product.horsepower || String(product.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0),
   price: Number(product.price || product.salePrice || 0),
   stock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0),
   inStock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0) > 0,

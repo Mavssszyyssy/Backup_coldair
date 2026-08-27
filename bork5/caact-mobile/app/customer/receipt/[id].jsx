@@ -61,6 +61,11 @@ const resolveDeliveryAddress = (order = {}) => {
   };
 };
 
+const formatHorsepower = (item = {}) => {
+  const parsed = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
+  return parsed > 0 ? `${parsed} HP` : "Not specified";
+};
+
 const deliveryAddressRows = (address = {}) => [
   ["Recipient", address.name],
   ["Contact number", address.phone],
@@ -260,6 +265,7 @@ export default function ReceiptScreen() {
                       <View style={{ flex: 1 }}>
                         <BoutiqueText variant="h3">{item.name}</BoutiqueText>
                         {!!item.specs && <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.specs}</BoutiqueText>}
+                        <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
                         {!!item.serialNumbers?.length && <BoutiqueText variant="caption" color={BQ_COLORS.success}>Serial: {item.serialNumbers.join(", ")}</BoutiqueText>}
                       </View>
                       <BoutiqueText variant="h3">{formatPeso(price * quantity)}</BoutiqueText>

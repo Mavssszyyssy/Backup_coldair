@@ -39,8 +39,9 @@ const normalizeOrder = (order = {}) => ({
   receiptAvailable: Boolean(order.receiptAvailable),
   address: order.address || {},
   items: (Array.isArray(order.items) ? order.items : []).map((it) => ({
-    ...it,
-    price: Number(it.price || 0),
+                    ...it,
+                    price: Number(it.price || 0),
+                    horsepower: Number(it.horsepower || String(it.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0),
   })),
 });
 
@@ -285,7 +286,12 @@ function OrderConfirmation() {
                       weight={600}
                       style={{ opacity: 0.8 }}
                     >
-                      {item.name}{" "}
+                      <span>
+                        {item.name}
+                        <span style={{ display: "block", fontSize: "12px", color: BQ_COLORS.inkMuted }}>
+                          Horsepower: {item.horsepower > 0 ? `${item.horsepower} HP` : "Not specified"}
+                        </span>
+                      </span>{" "}
                       <BoutiqueText
                         tag="span"
                         size="12px"

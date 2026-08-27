@@ -71,6 +71,7 @@ function normalizeOrderItem(item = {}) {
     quantity: Number(item.quantity || 1),
     price: Number(item.price || 0),
     specs: item.specs || "",
+    horsepower: Number(item.horsepower || 0),
     sourceBranch: item.sourceBranch || "",
     serialNumbers,
     serialUnits,

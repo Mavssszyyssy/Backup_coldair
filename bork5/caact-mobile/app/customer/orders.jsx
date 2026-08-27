@@ -153,6 +153,7 @@ function OrderItemSummary({ item }) {
     item.serialNumbers.length > 0
       ? item.serialNumbers.join(", ")
       : "Unit serial pending";
+  const horsepower = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
 
   return (
     <View
@@ -171,6 +172,9 @@ function OrderItemSummary({ item }) {
           {item.specs}
         </BoutiqueText>
       )}
+      <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
+        Horsepower: {horsepower > 0 ? `${horsepower} HP` : "Not specified"}
+      </BoutiqueText>
       <BoutiqueText variant="caption" color={BQ_COLORS.success}>
         {unitText}
       </BoutiqueText>

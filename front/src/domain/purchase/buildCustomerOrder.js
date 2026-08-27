@@ -49,6 +49,7 @@ export function buildCustomerOrder({
       price: item.price,
       quantity: item.quantity,
       specs: item.specs || '',
+      horsepower: Number(item.horsepower || 0),
       category: item.category
     })),
     subtotal: totals.subtotal,

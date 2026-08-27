@@ -3,6 +3,11 @@ import PurchaseCostBreakdown from "./PurchaseCostBreakdown";
 // import icons from '../common/icons';
 const icons = {}; // BOUTIQUE MIGRATION STUB
 
+const formatHorsepower = (item = {}) => {
+  const parsed = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
+  return parsed > 0 ? `${parsed} HP` : "Not specified";
+};
+
 function OrderSummary({
   cart,
   selectedPayment,
@@ -29,6 +34,9 @@ function OrderSummary({
             </div>
             <div className="summary-item-details">
               <div className="summary-item-name">{item.name}</div>
+              <div className="summary-item-horsepower">
+                Horsepower: {formatHorsepower(item)}
+              </div>
               <div className="summary-item-price">
                 ₱{item.price.toLocaleString()} each
               </div>

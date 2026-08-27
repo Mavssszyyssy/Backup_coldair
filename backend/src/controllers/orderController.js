@@ -2339,6 +2339,7 @@ const createOrder = async (req, res) => {
           price: Number(product.price || 0),
           quantity: quantityNeeded,
           specs: product.specs || "",
+          horsepower: parseCapacityHp(product.specs),
           serialNumbers,
           serialUnits,
           sourceBranch: finalBranch,
@@ -2368,7 +2369,7 @@ const createOrder = async (req, res) => {
     }
 
     const itemsSummary = resolvedItems
-      .map((item) => `${item.name} x${item.quantity}`)
+      .map((item) => `${item.name}${item.horsepower ? ` (${item.horsepower} HP)` : ""} x${item.quantity}`)
       .join(", ");
     const stockSourceBranch = lastSourceBranch || preferredBranch;
     const serverTotals = calculateOrderTotals(resolvedItems, stockSourceBranch);
