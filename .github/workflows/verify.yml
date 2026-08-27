@@ -16,12 +16,16 @@ jobs:
           cache-dependency-path: |
             front/package-lock.json
             backend/package-lock.json
+            bork5/caact-mobile/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
         working-directory: front
       - name: Install backend dependencies
         run: npm ci
         working-directory: backend
+      - name: Install mobile dependencies
+        run: npm ci
+        working-directory: bork5/caact-mobile
       - name: Validate imports and letter casing
         run: node scripts/check-imports.js
       - name: Build frontend
@@ -30,6 +34,15 @@ jobs:
         # a valid production build.
         run: CI=false npm run build
         working-directory: front
+      - name: Test frontend
+        run: npm test
+        working-directory: front
+      - name: Test backend
+        run: npm test
+        working-directory: backend
+      - name: Test mobile
+        run: npm test
+        working-directory: bork5/caact-mobile
       - name: Load backend modules
         # The app configures a Mongo-backed session store during import. That
         # store keeps a connection handle open, so explicitly finish after the

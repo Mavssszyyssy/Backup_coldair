@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   login,
+  verifyLoginTotp,
   startRegistration,
   verifyRegistrationCode,
   register,
@@ -24,6 +25,16 @@ router.post("/register/start", startRegistration);
 router.post("/register/verify", verifyRegistrationCode);
 router.post("/register", register);
 router.post("/login", login);
+router.post(
+  "/login/totp",
+  require("../middleware/requestRateLimit").createMemoryRateLimit({
+    scope: "login-totp",
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: "Too many authenticator attempts. Please wait and sign in again.",
+  }),
+  verifyLoginTotp,
+);
 router.post("/logout", logout);
 router.get("/session", getSession);
 router.post("/session/registration", updateRegistrationProgress);

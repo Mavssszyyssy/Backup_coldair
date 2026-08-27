@@ -1,15 +1,20 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Text } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../components/technician/TechButton";
 import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
+import QrCodeMatrix from "../../../components/ui/QrCodeMatrix";
 import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
-import { regenerateRecoveryCodes } from "../../../services/customerSecurityService";
+import {
+  ensureCustomerTotpSecret,
+  regenerateRecoveryCodes,
+} from "../../../services/customerSecurityService";
 import {
   canonicalizePhMobile,
   sanitizePhMobileInput,
@@ -19,13 +24,22 @@ import {
 } from "../../../utils/authValidation";
 
 export default function TechnicianOobe() {
-  const { current, completeTechnicianOnboarding } = useUserContext();
+  const router = useRouter();
+  const { current, completeTechnicianOnboarding, verifySecuritySetup } = useUserContext();
   const [alias, setAlias] = useState(current?.alias || "");
   const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [totpSecret, setTotpSecret] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [securityError, setSecurityError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const totpUri = totpSecret
+    ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.username || current?.alias || "technician")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
+    : "";
 
   const handleSubmit = async () => {
     if (!alias.trim() || !phone.trim() || !password) {
@@ -73,10 +87,33 @@ export default function TechnicianOobe() {
         return;
       }
       const codes = await regenerateRecoveryCodes(current?.id);
+      const secret = await ensureCustomerTotpSecret(current?.id);
       setRecoveryCodes(codes);
-      Alert.alert("Onboarding complete", "Your technician profile is ready.");
+      setTotpSecret(secret);
+      setProfileSaved(true);
+      Alert.alert("Profile saved", "Save the recovery codes, then verify your authenticator app.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleVerifyAuthenticator = async () => {
+    if (!/^\d{6}$/.test(totpCode)) {
+      setSecurityError("Enter the six-digit code from your authenticator app.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const result = await verifySecuritySetup(totpCode);
+      if (!result.success) {
+        setSecurityError(result.error || "Incorrect authenticator code.");
+        return;
+      }
+      Alert.alert("Setup complete", "Your technician account is secured.", [
+        { text: "Continue", onPress: () => router.replace("/technician/home") },
+      ]);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -88,7 +125,7 @@ export default function TechnicianOobe() {
           subtitle="Complete the details your owner-created account still needs"
           color={COLORS.tech}
         />
-        <Card>
+        {!profileSaved ? <Card>
           <TextField
             label="Sign-in Alias"
             value={alias}
@@ -121,7 +158,7 @@ export default function TechnicianOobe() {
             onPress={handleSubmit}
             loading={saving}
           />
-        </Card>
+        </Card> : null}
         {recoveryCodes.length > 0 && (
           <Card style={{ marginTop: SPACING.md }}>
             <Text
@@ -143,6 +180,40 @@ export default function TechnicianOobe() {
             ))}
           </Card>
         )}
+        {profileSaved ? (
+          <Card style={{ marginTop: SPACING.md }}>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.sm }}>
+              Authenticator App Setup
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>
+              Scan this QR code, then enter the six-digit code before continuing.
+            </Text>
+            <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
+              <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} />
+            </View>
+            <Text style={{ color: COLORS.tech, fontWeight: FONT.black, letterSpacing: 1, marginBottom: SPACING.md }}>
+              {totpSecret || "Loading..."}
+            </Text>
+            <TextField
+              label="Six-digit authenticator code"
+              value={totpCode}
+              onChangeText={(value) => {
+                setTotpCode(value.replace(/\D/g, "").slice(0, 6));
+                setSecurityError("");
+              }}
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholder="000000"
+              error={securityError}
+            />
+            <TechButton
+              title={verifying ? "Verifying..." : "Verify and Continue"}
+              onPress={handleVerifyAuthenticator}
+              loading={verifying}
+              disabled={verifying || !totpSecret}
+            />
+          </Card>
+        ) : null}
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

@@ -11,22 +11,27 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import TextField from "../../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../../../constants/theme";
-import { consumeRecoveryCode } from "../../../../services/customerSecurityService";
-import { normalizeEmail } from "../../../../utils/authValidation";
+import { useUserContext } from "../../../../context/UserContext";
 
 export default function RecoverCodeScreen() {
   const router = useRouter();
+  const { recoverWithCode } = useUserContext();
   const params = useLocalSearchParams();
-  const email = Array.isArray(params.email)
+  const initialIdentifier = Array.isArray(params.email)
     ? params.email[0]
     : params.email || "";
 
+  const [identifier, setIdentifier] = useState(initialIdentifier);
   const [recoveryCode, setRecoveryCode] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleVerify = async () => {
     const code = recoveryCode.trim().toUpperCase();
+    if (!identifier.trim()) {
+      setErrors({ identifier: "Email or sign-in alias is required." });
+      return;
+    }
     if (!code) {
       setErrors({ code: "Recovery code is required." });
       return;
@@ -38,17 +43,9 @@ export default function RecoverCodeScreen() {
 
     setLoading(true);
     try {
-      // We need the user's id to consume the code. Sign in via the API
-      // using a special recovery-code flow. Since we don't have the password,
-      // we use the recovery code as the credential via the API's recovery endpoint.
-      // For now, look up the user by email via the forgot-password API to get their
-      // id, then consume the code locally.
-      //
-      // Practical flow: attempt to consume the code from local storage keyed by
-      // the normalised email. If successful, redirect to the authenticator reset flow.
-      const result = await consumeRecoveryCode(normalizeEmail(email), code);
+      const result = await recoverWithCode(identifier.trim(), code);
       if (!result.success) {
-        setErrors({ code: "Invalid or already-used recovery code." });
+        setErrors({ code: result.error || "Invalid or already-used recovery code." });
         return;
       }
 
@@ -58,10 +55,7 @@ export default function RecoverCodeScreen() {
         [
           {
             text: "Continue",
-            onPress: () =>
-              router.replace({
-                pathname: "/customer/oobe/reset",
-              }),
+            onPress: () => router.replace(result.recoveryDestination || "/customer/oobe/reset"),
           },
         ],
       );
@@ -91,11 +85,15 @@ export default function RecoverCodeScreen() {
 
         <Card>
           <TextField
-            label="Email"
-            value={email}
-            onChangeText={() => {}}
-            editable={false}
-            style={{ color: COLORS.textMuted }}
+            label="Email or Sign-in Alias"
+            value={identifier}
+            onChangeText={(value) => {
+              setIdentifier(value);
+              setErrors((previous) => ({ ...previous, identifier: "" }));
+            }}
+            placeholder="you@example.com or tech.cavite.name"
+            error={errors.identifier}
+            autoCapitalize="none"
           />
           <TextField
             label="Recovery Code"

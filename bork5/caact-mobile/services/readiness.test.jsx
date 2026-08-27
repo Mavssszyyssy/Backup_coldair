@@ -1,8 +1,18 @@
+import fs from "fs";
+import path from "path";
 import { filterAndSortProducts } from "./ecommerceService";
 import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 
 describe("mobile customer readiness rules", () => {
+  test("account recovery is backend-authoritative and has no device-local fallback", () => {
+    const source = fs.readFileSync(path.join(__dirname, "customerSecurityService.jsx"), "utf8");
+    expect(source).not.toContain("AsyncStorage");
+    expect(source).not.toContain("Math.random");
+    expect(source).toContain("api.consumeRecoveryCode");
+    expect(source).toContain("api.verifyTotpSetup");
+  });
+
   test("postal code is required and must match the selected city", () => {
     const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
     expect(validatePostalCodeForAddress({ ...address, postalCode: "" })).toMatch(/required/i);

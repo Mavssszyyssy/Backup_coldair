@@ -1,140 +1,49 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
 
-const RECOVERY_CODES_KEY = "customer_recovery_codes_v1";
-const TOTP_SECRETS_KEY = "customer_totp_secrets_v1";
-
-function safeParse(value, fallback) {
-  try {
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
+async function requireToken() {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again.");
+  return token;
 }
 
-function randomCode(length = 12) {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-
-  for (let index = 0; index < length; index += 1) {
-    result += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-
-  return result;
+export async function getAccountSecurityStatus() {
+  const result = await api.fetchSecurityStatus(await requireToken());
+  if (!result.success) throw new Error(result.error || "Unable to load account security.");
+  return result.security;
 }
 
-function generateRecoveryCodes() {
-  return Array.from({ length: 6 }, () => ({
-    code: randomCode(12),
-    used: false,
-  }));
+export async function ensureRecoveryCodes() {
+  const token = await requireToken();
+  const current = await api.fetchRecoveryCodes(token);
+  if (!current.success) throw new Error(current.error || "Unable to load recovery codes.");
+  if (current.security?.recoveryCodesConfigured) return [];
+  const generated = await api.regenerateRecoveryCodes(token);
+  if (!generated.success) throw new Error(generated.error || "Unable to generate recovery codes.");
+  return generated.codes;
 }
 
-function generateTotpSecret() {
-  return randomCode(16);
+export async function regenerateRecoveryCodes() {
+  const result = await api.regenerateRecoveryCodes(await requireToken());
+  if (!result.success) throw new Error(result.error || "Unable to regenerate recovery codes.");
+  return result.codes;
 }
 
-async function loadMap(storageKey) {
-  const raw = await AsyncStorage.getItem(storageKey);
-  return safeParse(raw, {});
+export async function consumeRecoveryCode(identifier, code) {
+  return api.consumeRecoveryCode(identifier, code);
 }
 
-async function saveMap(storageKey, value) {
-  await AsyncStorage.setItem(storageKey, JSON.stringify(value));
-  return value;
+export async function ensureCustomerTotpSecret() {
+  const result = await api.fetchTotpSecret(await requireToken());
+  if (!result.success) throw new Error(result.error || "Unable to start authenticator setup.");
+  return result.secret;
 }
 
-export async function ensureRecoveryCodes(userId) {
-  if (!userId) return [];
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const result = await api.fetchRecoveryCodes(token);
-      if (result.success) return result.codes;
-    }
-  } catch {}
-
-  const map = await loadMap(RECOVERY_CODES_KEY);
-
-  if (!Array.isArray(map[userId]) || map[userId].length !== 6) {
-    map[userId] = generateRecoveryCodes();
-    await saveMap(RECOVERY_CODES_KEY, map);
-  }
-
-  return map[userId];
+export async function regenerateCustomerTotpSecret() {
+  const result = await api.regenerateTotpSecret(await requireToken());
+  if (!result.success) throw new Error(result.error || "Unable to regenerate authenticator setup.");
+  return result.secret;
 }
 
-export async function regenerateRecoveryCodes(userId) {
-  if (!userId) return [];
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const result = await api.regenerateRecoveryCodes(token);
-      if (result.success) return result.codes;
-    }
-  } catch {}
-
-  const map = await loadMap(RECOVERY_CODES_KEY);
-  map[userId] = generateRecoveryCodes();
-  await saveMap(RECOVERY_CODES_KEY, map);
-  return map[userId];
-}
-
-export async function consumeRecoveryCode(userId, code) {
-  if (!userId || !code) return { success: false };
-  try {
-    const result = await api.consumeRecoveryCode(userId, code);
-    if (result.success) return { success: true, code };
-  } catch {}
-
-  const map = await loadMap(RECOVERY_CODES_KEY);
-  const codes = Array.isArray(map[userId]) ? map[userId] : [];
-  const next = codes.map((entry) =>
-    entry.code === code && !entry.used ? { ...entry, used: true } : entry,
-  );
-  const matched = codes.find((entry) => entry.code === code && !entry.used);
-
-  if (!matched) {
-    return { success: false };
-  }
-
-  map[userId] = next;
-  await saveMap(RECOVERY_CODES_KEY, map);
-  return { success: true, code };
-}
-
-export async function ensureCustomerTotpSecret(userId) {
-  if (!userId) return "";
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const result = await api.fetchTotpSecret(token);
-      if (result.success) return result.secret;
-    }
-  } catch {}
-
-  const map = await loadMap(TOTP_SECRETS_KEY);
-
-  if (!map[userId]) {
-    map[userId] = generateTotpSecret();
-    await saveMap(TOTP_SECRETS_KEY, map);
-  }
-
-  return map[userId];
-}
-
-export async function regenerateCustomerTotpSecret(userId) {
-  if (!userId) return "";
-  try {
-    const token = await api.getStoredToken();
-    if (token) {
-      const result = await api.regenerateTotpSecret(token);
-      if (result.success) return result.secret;
-    }
-  } catch {}
-
-  const map = await loadMap(TOTP_SECRETS_KEY);
-  map[userId] = generateTotpSecret();
-  await saveMap(TOTP_SECRETS_KEY, map);
-  return map[userId];
+export async function verifyCustomerTotpCode(code) {
+  return api.verifyTotpSetup(await requireToken(), code);
 }

@@ -6,20 +6,26 @@ import CustomerScreen from "../../../components/customer/CustomerScreen";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import QrCodeMatrix from "../../../components/ui/QrCodeMatrix";
+import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
   ensureCustomerTotpSecret,
   ensureRecoveryCodes,
+  getAccountSecurityStatus,
   regenerateRecoveryCodes,
 } from "../../../services/customerSecurityService";
 
 export default function CustomerOobeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { current, updateUser } = useUserContext();
+  const { current, updateUser, verifySecuritySetup } = useUserContext();
   const [codes, setCodes] = useState([]);
   const [totpSecret, setTotpSecret] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [securityError, setSecurityError] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const totpUri = totpSecret
     ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.email || current?.alias || "customer")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
     : "";
@@ -28,14 +34,23 @@ export default function CustomerOobeScreen() {
     useCallback(() => {
       let active = true;
 
-      Promise.all([
-        ensureRecoveryCodes(current?.id),
-        ensureCustomerTotpSecret(current?.id),
-      ]).then(([nextCodes, nextSecret]) => {
-        if (!active) return;
-        setCodes(nextCodes);
-        setTotpSecret(nextSecret);
-      });
+      const loadSecurity = async () => {
+        try {
+          const status = await getAccountSecurityStatus();
+          const nextCodes = await ensureRecoveryCodes(current?.id);
+          const nextSecret = status.totpEnabled
+            ? ""
+            : await ensureCustomerTotpSecret(current?.id);
+          if (!active) return;
+          setCodes(nextCodes);
+          setTotpSecret(nextSecret);
+          setTotpEnabled(Boolean(status.totpEnabled));
+          setSecurityError("");
+        } catch (error) {
+          if (active) setSecurityError(error?.message || "Unable to load account security.");
+        }
+      };
+      loadSecurity();
 
       return () => {
         active = false;
@@ -50,6 +65,10 @@ export default function CustomerOobeScreen() {
   };
 
   const handleContinueHome = async () => {
+    if (!totpEnabled) {
+      Alert.alert("Authenticator required", "Verify the six-digit authenticator code before continuing.");
+      return;
+    }
     if (current?.id && !current?.customerOnboardedAt) {
       await updateUser({
         ...current,
@@ -57,6 +76,27 @@ export default function CustomerOobeScreen() {
       });
     }
     router.replace("/customer/home");
+  };
+
+  const handleVerifyTotp = async () => {
+    if (!/^\d{6}$/.test(totpCode)) {
+      setSecurityError("Enter the six-digit code from your authenticator app.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const result = await verifySecuritySetup(totpCode);
+      if (!result.success) {
+        setSecurityError(result.error || "Incorrect authenticator code.");
+        return;
+      }
+      setTotpEnabled(true);
+      setTotpCode("");
+      setSecurityError("");
+      Alert.alert("Authenticator Enabled", "Future sign-ins will require your authenticator code.");
+    } finally {
+      setVerifying(false);
+    }
   };
 
   return (
@@ -104,6 +144,11 @@ export default function CustomerOobeScreen() {
           These 12-character recovery codes are shown only during account setup.
           Each code can be used once to help you recover access.
         </Text>
+        {codes.length === 0 ? (
+          <Text style={{ color: COLORS.textSecondary }}>
+            Recovery codes are already configured. Generate new codes only if you no longer have your saved copy.
+          </Text>
+        ) : null}
         {codes.map((entry, index) => (
           <View
             key={`${entry.code}_${index}`}
@@ -160,9 +205,11 @@ export default function CustomerOobeScreen() {
           Authenticator App Setup
         </Text>
         <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>
-          Scan this QR code in an authenticator app, or enter the secret manually.
+          {totpEnabled
+            ? "Your authenticator app is verified and will be required at sign-in."
+            : "Scan this QR code in an authenticator app, then enter its six-digit code."}
         </Text>
-        <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
+        {!totpEnabled ? <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
           <View
             style={{
               backgroundColor: COLORS.surface,
@@ -174,8 +221,8 @@ export default function CustomerOobeScreen() {
           >
             <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} />
           </View>
-        </View>
-        <Text
+        </View> : null}
+        {!totpEnabled ? <Text
           style={{
             color: COLORS.primary,
             fontWeight: FONT.black,
@@ -183,14 +230,32 @@ export default function CustomerOobeScreen() {
           }}
         >
           {totpSecret || "Loading..."}
-        </Text>
+        </Text> : null}
+        {!totpEnabled ? (
+          <>
+            <TextField
+              label="Six-digit authenticator code"
+              value={totpCode}
+              onChangeText={(value) => {
+                setTotpCode(value.replace(/\D/g, "").slice(0, 6));
+                setSecurityError("");
+              }}
+              keyboardType="number-pad"
+              maxLength={6}
+              error={securityError}
+              placeholder="000000"
+            />
+            <Button
+              title={verifying ? "Verifying..." : "Verify Authenticator"}
+              onPress={handleVerifyTotp}
+              loading={verifying}
+              disabled={verifying || !totpSecret}
+            />
+          </>
+        ) : null}
+        {totpEnabled && securityError ? <Text style={{ color: COLORS.danger }}>{securityError}</Text> : null}
       </Card>
 
-      <Button
-        title="Test Account Recovery"
-        variant="secondary"
-        onPress={() => router.push("/customer/oobe/reset")}
-      />
       <Button title="Generate New Recovery Codes" onPress={handleRegenerate} />
       <Button
         title="Continue to Home"

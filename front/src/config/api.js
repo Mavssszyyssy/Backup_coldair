@@ -35,6 +35,11 @@ if (
 
 const getToken = () => getAuthSessionItem("accessToken");
 const getActiveBranch = () => getSessionActiveBranch();
+const isPublicApiPath = (path = "") =>
+  path === "/health" ||
+  path === "/products/public" ||
+  path === "/branches" ||
+  path.startsWith("/auth/");
 
 let activeRequestCount = 0;
 const inFlightReadRequests = new Map();
@@ -116,7 +121,7 @@ const performApiRequest = async (path, options = {}) => {
   );
   const url = `${API_BASE_URL}${path}`;
 
-  if (!token && !path.startsWith("/auth/") && path !== "/health") {
+  if (!token && !isPublicApiPath(path)) {
     console.warn("Attempting API request without auth token", { url, path });
   }
 

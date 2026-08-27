@@ -10,6 +10,10 @@ const { BRANCHES } = require("../domain/branchRouting");
 // are picked up immediately when a user saves them.
 const READ_AUTH_CACHE_TTL_MS = 5000;
 const readAuthCache = new Map();
+const isRecoveryRequestAllowed = (value = "") => {
+  const requestPath = String(value || "").split("?")[0];
+  return requestPath.startsWith("/api/security/") || requestPath === "/api/auth/me";
+};
 
 const readCachedUser = async (userId, requestMethod) => {
   const canUseCache = ["GET", "HEAD"].includes(String(requestMethod || "").toUpperCase());
@@ -60,6 +64,13 @@ const authenticate = async (req, res, next, options = {}) => {
 
     req.authUser = user;
     req.user = payload;
+    if (payload.recovery) {
+      if (!isRecoveryRequestAllowed(req.originalUrl || req.url)) {
+        return res.status(403).json({
+          message: "Complete authenticator recovery before using this account.",
+        });
+      }
+    }
     const headerBranch = typeof req.headers["x-branch"] === "string" ? req.headers["x-branch"].trim() : "";
     const isBranchScopedRole = user.role === "admin" || user.role === "manager" || user.role === "technician";
     req.activeBranch = "";
@@ -103,4 +114,4 @@ const allowRoles = (...allowedRoles) => (req, res, next) => {
   return next();
 };
 
-module.exports = { requireAuth, requireAuthNoBranch, allowRoles };
+module.exports = { requireAuth, requireAuthNoBranch, allowRoles, isRecoveryRequestAllowed };

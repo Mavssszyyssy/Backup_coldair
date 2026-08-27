@@ -10,6 +10,11 @@ const env = require("../config/env");
 const { BRANCHES } = require("../domain/branchRouting");
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { resolveConfiguredBranch } = require("../services/branchCoverageService");
+const {
+  decryptSecret,
+  generateOtpCode,
+  verifyTotpCode,
+} = require("../domain/accountSecurity");
 
 const OTP_TTL_MINUTES = Math.max(
   3,
@@ -112,8 +117,6 @@ const sendSmsViaInfobip = async ({ recipient, message }) => {
   return accepted;
 };
 
-const generateOtpCode = () =>
-  String(Math.floor(100000 + Math.random() * 900000)).padStart(6, "0");
 const hashValue = (value = "") =>
   crypto.createHash("sha256").update(String(value)).digest("hex");
 const isOtpExpired = (otp) =>
@@ -650,6 +653,19 @@ const login = async (req, res) => {
       }
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    if (user.security?.totpEnabled) {
+      const challengeToken = jwt.sign(
+        { purpose: "login_totp", sub: user.id },
+        env.jwtSecret,
+        { expiresIn: "5m" },
+      );
+      return res.json({
+        success: true,
+        requiresTotp: true,
+        challengeToken,
+        message: "Enter the six-digit code from your authenticator app.",
+      });
+    }
     user.failedLoginAttempts = 0;
     user.lockoutUntil = null;
     user.lastLogin = new Date();
@@ -658,6 +674,53 @@ const login = async (req, res) => {
     return res.json({ success: true, token, user: user.toJSON() });
   } catch (err) {
     return res.status(500).json({ message: "Login error" });
+  }
+};
+
+const verifyLoginTotp = async (req, res) => {
+  try {
+    const challengeToken = String(req.body?.challengeToken || "");
+    const code = String(req.body?.code || "").trim();
+    let payload;
+    try {
+      payload = jwt.verify(challengeToken, env.jwtSecret);
+    } catch (_error) {
+      return res.status(401).json({ message: "The sign-in verification has expired. Sign in again." });
+    }
+    if (payload?.purpose !== "login_totp" || !payload?.sub) {
+      return res.status(401).json({ message: "Invalid sign-in verification." });
+    }
+    const user = await User.findById(payload.sub).select("+security.totpSecretEncrypted");
+    if (!user || !user.security?.totpEnabled) {
+      return res.status(401).json({ message: "Authenticator verification is not available for this account." });
+    }
+    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+      return res.status(429).json({ message: "Too many failed attempts. Try again later." });
+    }
+    let secret = "";
+    try {
+      secret = decryptSecret(user.security.totpSecretEncrypted);
+    } catch (_error) {
+      return res.status(500).json({ message: "Authenticator verification is temporarily unavailable." });
+    }
+    if (!verifyTotpCode({ secret, code })) {
+      user.failedLoginAttempts = Number(user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= LOGIN_MAX_ATTEMPTS) {
+        user.lockoutUntil = new Date(Date.now() + LOGIN_LOCKOUT_MS);
+        user.failedLoginAttempts = 0;
+      }
+      await user.save();
+      return res.status(401).json({ message: "Incorrect authenticator code." });
+    }
+    user.failedLoginAttempts = 0;
+    user.lockoutUntil = null;
+    user.lastLogin = new Date();
+    await user.save();
+    const token = signAccessToken({ sub: user.id, role: user.role });
+    return res.json({ success: true, token, user: user.toJSON() });
+  } catch (error) {
+    console.error("TOTP login verification failed:", error.message);
+    return res.status(500).json({ message: "Unable to verify the authenticator code." });
   }
 };
 
@@ -827,6 +890,7 @@ module.exports = {
   verifyRegistrationCode,
   register,
   login,
+  verifyLoginTotp,
   logout,
   me,
   requestPasswordReset,

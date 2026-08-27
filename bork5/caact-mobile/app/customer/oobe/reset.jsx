@@ -19,55 +19,9 @@ function buildOtpAuthUrl(secret, email) {
   return `otpauth://totp/${issuer}:${accountName}?secret=${secret}&issuer=${issuer}`;
 }
 
-function base32Decode(encoded) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = 0;
-  let value = 0;
-  const output = [];
-  for (const char of encoded.toUpperCase().replace(/=+$/, "")) {
-    const idx = alphabet.indexOf(char);
-    if (idx === -1) continue;
-    value = (value << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      output.push((value >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-  return new Uint8Array(output);
-}
-
-async function generateTotpCode(secret, timeStep = 30) {
-  const counter = Math.floor(Date.now() / 1000 / timeStep);
-  const keyBytes = base32Decode(secret);
-  const counterBytes = new Uint8Array(8);
-  let c = counter;
-  for (let i = 7; i >= 0; i--) {
-    counterBytes[i] = c & 0xff;
-    c = Math.floor(c / 256);
-  }
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", cryptoKey, counterBytes);
-  const hmac = new Uint8Array(sig);
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const code =
-    (((hmac[offset] & 0x7f) << 24) |
-      ((hmac[offset + 1] & 0xff) << 16) |
-      ((hmac[offset + 2] & 0xff) << 8) |
-      (hmac[offset + 3] & 0xff)) %
-    1000000;
-  return String(code).padStart(6, "0");
-}
-
 export default function CustomerOobeResetScreen() {
   const router = useRouter();
-  const { current } = useUserContext();
+  const { current, verifySecuritySetup } = useUserContext();
   const [totpSecret, setTotpSecret] = useState("");
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -92,11 +46,11 @@ export default function CustomerOobeResetScreen() {
 
     setSubmitting(true);
     try {
-      const expected = await generateTotpCode(totpSecret, 30);
-      if (code.trim() !== expected) {
+      const result = await verifySecuritySetup(code.trim());
+      if (!result.success) {
         Alert.alert(
           "Incorrect Code",
-          "The authenticator code is incorrect. Check your authenticator app.",
+          result.error || "The authenticator code is incorrect. Check your authenticator app.",
         );
         return;
       }

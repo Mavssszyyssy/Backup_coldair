@@ -129,6 +129,7 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify({ identifier, password }),
     });
+    if (result.requiresTotp) return result;
     const userBranch =
       result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
@@ -137,6 +138,20 @@ export const UserProvider = ({ children }) => {
     setCurrentSession(result.user);
     setIsAuthenticated(true);
 
+    return result.user;
+  };
+
+  const verifyLoginTotp = async (challengeToken, code) => {
+    const result = await apiRequest("/auth/login/totp", {
+      method: "POST",
+      body: JSON.stringify({ challengeToken, code }),
+    });
+    const userBranch = result.user?.activeBranch || result.user?.assignedBranch || "";
+    saveSession(result.token, result.user, userBranch);
+    setUser(result.user);
+    setUserRole(result.user?.role || null);
+    setCurrentSession(result.user);
+    setIsAuthenticated(true);
     return result.user;
   };
 
@@ -308,6 +323,7 @@ export const UserProvider = ({ children }) => {
     loginPromptMessage,
     register,
     login,
+    verifyLoginTotp,
     logout,
     updateProfile,
     synchronizeAddresses,

@@ -175,6 +175,7 @@ export function UserProvider({ children }) {
   const login = async (email, password) => {
     try {
       const result = await api.login(email, password);
+      if (result.requiresTotp) return result;
       if (result.success) {
         const normalized = normalizeUser(result.user);
         await clearOperationalSessionCache();
@@ -186,6 +187,53 @@ export function UserProvider({ children }) {
     } catch (error) {
       console.error("Login error:", error);
       return { success: false, error: "Network error. Is the server running?" };
+    }
+  };
+
+  const verifyTotpLogin = async (challengeToken, code) => {
+    try {
+      const result = await api.verifyLoginTotp(challengeToken, code);
+      if (!result.success) return result;
+      const normalized = normalizeUser(result.user);
+      await clearOperationalSessionCache();
+      await storeToken(result.token);
+      setCurrent(normalized);
+      return { success: true, user: normalized };
+    } catch (error) {
+      return {
+        success: false,
+        error: error?.message || "Unable to verify the authenticator code.",
+      };
+    }
+  };
+
+  const recoverWithCode = async (identifier, code) => {
+    try {
+      const result = await api.consumeRecoveryCode(identifier, code);
+      if (!result.success) return result;
+      const normalized = normalizeUser(result.user);
+      await clearOperationalSessionCache();
+      await storeToken(result.token);
+      setCurrent(normalized);
+      return { ...result, user: normalized };
+    } catch (error) {
+      return {
+        success: false,
+        error: error?.message || "Unable to verify the recovery code.",
+      };
+    }
+  };
+
+  const verifySecuritySetup = async (code) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.verifyTotpSetup(token, code);
+      if (!result.success) return result;
+      if (result.token) await storeToken(result.token);
+      if (result.user) setCurrent(normalizeUser(result.user));
+      return result;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to verify the authenticator code." };
     }
   };
 
@@ -441,41 +489,17 @@ export function UserProvider({ children }) {
     return updateUser({ id: userId, profilePhoto: null });
   };
 
-  // ── Audit logs (kept for potential future use) ──────────────────────────
-
-  const loadAuditLogs = async () => {
-    if (!token) return [];
-    try {
-      const result = await api.fetchAuditLogs(token);
-      return result.success ? result.logs : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const createAuditLog = async ({ action, targetId, target_id, details }) => {
-    if (!token) return;
-    try {
-      await api.createAuditLog(token, {
-        action,
-        target_id: targetId || target_id,
-        details: details || "",
-      });
-    } catch (error) {
-      console.error("createAuditLog error:", error);
-    }
-  };
-
-  const clearAuditLogs = async () => {
-    // Audit log clearing is handled server-side; nothing to do locally.
-  };
-
   // ── Routing helper ────────────────────────────────────────────────────────
 
   // Returns the expo-router href for a user's home screen.
   const resolveHomeRoute = (user) => {
     if (!user) return "/sign-in";
     const normalized = normalizeUser(user);
+    if (normalized.security?.totpResetRequired) {
+      return normalized.role === "technician"
+        ? "/technician/oobe/reset"
+        : "/customer/oobe/reset";
+    }
     if (String(normalized.status || "active").toLowerCase() !== "active") {
       return "/sign-in";
     }
@@ -501,6 +525,9 @@ export function UserProvider({ children }) {
 
       // Auth
       login,
+      verifyTotpLogin,
+      recoverWithCode,
+      verifySecuritySetup,
       register,
       logout,
 
@@ -519,10 +546,6 @@ export function UserProvider({ children }) {
       // Routing
       resolveHomeRoute,
 
-      // Audit
-      loadAuditLogs,
-      createAuditLog,
-      clearAuditLogs,
     }),
     [users, current, token, initialized],
   );

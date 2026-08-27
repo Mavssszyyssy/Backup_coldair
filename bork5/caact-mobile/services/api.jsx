@@ -109,6 +109,14 @@ export async function login(identifier, password) {
     email: identifier,
     password,
   });
+  if (ok && data.requiresTotp) {
+    return {
+      success: false,
+      requiresTotp: true,
+      challengeToken: data.challengeToken,
+      message: data.message || "Enter your authenticator code.",
+    };
+  }
   if (ok) return { success: true, token: data.token, user: data.user };
   return {
     success: false,
@@ -350,21 +358,6 @@ export async function fetchUsers(token) {
 }
 
 /**
- * Create a new user (technician or customer).
- */
-export async function createUser(token, payload) {
-  const { ok, status, data } = await post("/users", payload, token);
-  if (ok) return { success: true, user: data.user };
-  return {
-    success: false,
-    error:
-      status === 409
-        ? "An account with this email already exists."
-        : getErrorMessage(data, "Failed to create user."),
-  };
-}
-
-/**
  * Update a user's fields.
  */
 export async function updateUser(token, userId, payload) {
@@ -414,6 +407,15 @@ export async function updateProfile(token, payload) {
   };
 }
 
+export async function verifyLoginTotp(challengeToken, code) {
+  const { ok, data } = await post("/auth/login/totp", { challengeToken, code });
+  if (ok) return { success: true, token: data.token, user: data.user };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Authenticator verification failed."),
+  };
+}
+
 export async function completeTechnicianOnboarding(token, payload) {
   const { ok, data } = await patch("/users/password", payload, token);
   if (ok) {
@@ -427,36 +429,6 @@ export async function completeTechnicianOnboarding(token, payload) {
     success: false,
     error: getErrorMessage(data, "Unable to complete technician onboarding."),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Audit logs
-// ---------------------------------------------------------------------------
-
-/**
- * Fetch all audit logs.
- */
-export async function fetchAuditLogs(token) {
-  const { ok, data } = await get("/audit-logs", token);
-  if (ok) return { success: true, logs: data.logs || [] };
-  return {
-    success: false,
-    error: data.error || "Failed to fetch logs.",
-    logs: [],
-  };
-}
-
-/**
- * Write an audit log entry.
- */
-export async function createAuditLog(token, { action, target_id, details }) {
-  const { ok, data } = await post(
-    "/audit-logs",
-    { action, target_id, details },
-    token,
-  );
-  if (ok) return { success: true, id: data.id };
-  return { success: false, error: data.error || "Failed to log action." };
 }
 
 // ---------------------------------------------------------------------------
@@ -866,13 +838,13 @@ export async function updateAmpRoomSize(token, unitId, roomSizeSqm) {
 
 export async function fetchRecoveryCodes(token) {
   const { ok, data } = await get("/security/recovery-codes", token);
-  if (ok) return { success: true, codes: data.codes || [] };
+  if (ok) return { success: true, codes: data.codes || [], security: data.security || {} };
   return { success: false, error: data.error || "Failed to fetch recovery codes." };
 }
 
 export async function regenerateRecoveryCodes(token) {
   const { ok, data } = await post("/security/recovery-codes/regenerate", {}, token);
-  if (ok) return { success: true, codes: data.codes || [] };
+  if (ok) return { success: true, codes: data.codes || [], security: data.security || {} };
   return { success: false, error: data.error || "Failed to regenerate recovery codes." };
 }
 
@@ -882,18 +854,46 @@ export async function consumeRecoveryCode(identifier, code) {
     email: identifier,
     code,
   });
-  if (ok) return { success: true };
+  if (ok) return {
+    success: true,
+    token: data.token,
+    user: data.user,
+    requiresTotpReset: Boolean(data.requiresTotpReset),
+    recoveryDestination: data.recoveryDestination,
+  };
   return { success: false, error: data.error || "Invalid recovery code." };
 }
 
 export async function fetchTotpSecret(token) {
-  const { ok, data } = await get("/security/totp-secret", token);
-  if (ok) return { success: true, secret: data.secret || "" };
+  const { ok, data } = await post("/security/totp/setup", {}, token);
+  if (ok) return {
+    success: true,
+    secret: data.secret || "",
+    provisioningUri: data.provisioningUri || "",
+    security: data.security || {},
+  };
   return { success: false, error: data.error || "Failed to fetch TOTP secret." };
 }
 
 export async function regenerateTotpSecret(token) {
-  const { ok, data } = await post("/security/totp-secret/regenerate", {}, token);
-  if (ok) return { success: true, secret: data.secret || "" };
+  const { ok, data } = await post("/security/totp/setup", { regenerate: true }, token);
+  if (ok) return {
+    success: true,
+    secret: data.secret || "",
+    provisioningUri: data.provisioningUri || "",
+    security: data.security || {},
+  };
   return { success: false, error: data.error || "Failed to regenerate TOTP secret." };
+}
+
+export async function fetchSecurityStatus(token) {
+  const { ok, data } = await get("/security/status", token);
+  if (ok) return { success: true, security: data.security || {} };
+  return { success: false, error: getErrorMessage(data, "Unable to load account security.") };
+}
+
+export async function verifyTotpSetup(token, code) {
+  const { ok, data } = await post("/security/totp/verify", { code }, token);
+  if (ok) return { success: true, security: data.security || {}, user: data.user, token: data.token };
+  return { success: false, error: getErrorMessage(data, "Incorrect authenticator code.") };
 }

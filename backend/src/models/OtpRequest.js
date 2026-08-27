@@ -28,6 +28,7 @@ otpRequestSchema.index({ email: 1, action: 1, channel: 1 });
 otpRequestSchema.index({ phone: 1, action: 1, channel: 1 });
 otpRequestSchema.index({ messenger_handle: 1, action: 1, channel: 1 });
 otpRequestSchema.index({ action: 1, channel: 1, requestedAt: -1 });
+otpRequestSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // We use a unique model name to bypass any global Mongoose caching issues
 module.exports = mongoose.model("OtpRequestV3", otpRequestSchema);

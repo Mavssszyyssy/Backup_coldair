@@ -113,8 +113,15 @@ const seedDemoUsers = async () => {
     if (exists) {
       continue;
     }
-    const passwordHash = await bcrypt.hash(item.password, 10);
-    await User.create({ ...item, passwordHash });
+    const configuredPassword = item.role === "superadmin"
+      ? process.env.SEED_SUPERADMIN_PASSWORD
+      : process.env.SEED_ADMIN_PASSWORD;
+    if (process.env.NODE_ENV === "production" && !configuredPassword) {
+      throw new Error(`Set a private seed password before creating the ${item.role} account.`);
+    }
+    const passwordHash = await bcrypt.hash(configuredPassword || item.password, 10);
+    const { password: _demoPassword, ...account } = item;
+    await User.create({ ...account, passwordHash, isFirstLogin: true });
   }
   console.log("Demo users seeded.");
 };

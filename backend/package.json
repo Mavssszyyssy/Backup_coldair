@@ -10,7 +10,8 @@
     "start:5001": "PORT=5001 node src/server.js",
     "seed": "node src/seed/seedDemoUsers.js",
     "check:vercel": "node -e \"require('./api'); console.log('Vercel entry loaded successfully.'); process.exit(0)\"",
-    "check:imports": "node ../scripts/check-imports.js"
+    "check:imports": "node ../scripts/check-imports.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowLeft, Info, Key, ShieldCheck } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
@@ -7,6 +7,7 @@ import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
+import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
 
@@ -33,7 +34,7 @@ const getCustomerLoginDestination = (location) => {
 };
 
 function Login() {
-  const { login } = useUser();
+  const { login, verifyLoginTotp } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,6 +42,8 @@ function Login() {
   const [errors, setErrors] = useState({});
   const [authMessage, setAuthMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [challengeToken, setChallengeToken] = useState("");
+  const [authenticatorCode, setAuthenticatorCode] = useState("");
 
   useEffect(() => {
     setAuthMessage("");
@@ -65,7 +68,16 @@ function Login() {
 
     setLoading(true);
     try {
-      const loggedInUser = await login(user.identifier, user.password);
+      const loggedInUser = challengeToken
+        ? await verifyLoginTotp(challengeToken, authenticatorCode)
+        : await login(user.identifier, user.password);
+      if (loggedInUser?.requiresTotp) {
+        setChallengeToken(loggedInUser.challengeToken);
+        setAuthenticatorCode("");
+        setErrors({});
+        setLoading(false);
+        return;
+      }
       setLoading(false);
       navigate(
         loggedInUser?.role === "customer"
@@ -74,7 +86,9 @@ function Login() {
         { replace: true },
       );
     } catch (err) {
-      setErrors((prev) => ({ ...prev, password: err.message }));
+      setErrors(challengeToken
+        ? { authenticatorCode: err.message }
+        : { password: err.message });
       setLoading(false);
     }
   };
@@ -112,7 +126,7 @@ function Login() {
           </BoutiqueBox>
         )}
 
-        <LoginForm
+        {!challengeToken ? <LoginForm
           identifier={user.identifier}
           password={user.password}
           errors={errors}
@@ -122,7 +136,35 @@ function Login() {
           loading={loading}
           disabled={false}
           onForgotPassword={() => navigate("/forgot-password")}
-        />
+        /> : (
+          <form className="bq-login-step" onSubmit={(event) => { event.preventDefault(); authenticateUser(); }}>
+            <BoutiqueInput
+              label="Six-digit authenticator code"
+              icon={Key}
+              inputMode="numeric"
+              maxLength="6"
+              placeholder="000000"
+              value={authenticatorCode}
+              onChange={(event) => {
+                setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                setErrors({});
+              }}
+              status={errors.authenticatorCode ? "error" : null}
+              errorMessage={errors.authenticatorCode}
+              required
+            />
+            <button type="submit" className="bq-login-btn bq-login-btn--primary" disabled={loading || authenticatorCode.length !== 6}>
+              {loading ? "Verifying..." : "Verify and Sign In"}
+            </button>
+            <button
+              type="button"
+              className="bq-login-forgot"
+              onClick={() => { setChallengeToken(""); setAuthenticatorCode(""); setErrors({}); }}
+            >
+              Use a different account
+            </button>
+          </form>
+        )}
 
         <BoutiqueBox align="center" margin="8px 0 0">
           <BoutiqueText color={BQ_COLORS.inkMuted} weight={500}>
@@ -197,6 +239,11 @@ function Login() {
         .bq-login-back-btn:hover { transform: translateX(-4px); box-shadow: ${BQ_SHADOWS.float}; }
 
         .bq-signup-link { background: none; border: none; color: ${BQ_COLORS.brand}; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0 4px; font-size: 15px; }
+
+        .bq-login-step { display: flex; flex-direction: column; gap: 24px; width: 100%; }
+        .bq-login-btn { width: 100%; padding: 18px; border-radius: 999px; font-family: inherit; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; border: none; }
+        .bq-login-btn--primary { background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .bq-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .bq-tips-list { list-style: none; padding: 0; margin: 0; }
         .bq-tips-list li { position: relative; padding-left: 18px; }
