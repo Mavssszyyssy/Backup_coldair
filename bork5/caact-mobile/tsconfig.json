@@ -1,5 +1,4 @@
 {
   "compilerOptions": {},
-  "extends": "expo/tsconfig.base",
-  "exclude": ["node_modules", "dist", "android", ".expo"]
+  "extends": "expo/tsconfig.base"
 }

@@ -21,10 +21,6 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   useImperativeHandle(forwardedRef, () => scrollRef.current);
 
   const scrollFocusedInputIntoView = useCallback((node) => {
-    // Browsers already keep focused inputs visible and react-native-web does
-    // not implement findNodeHandle. The native measurement path is only
-    // needed when a software keyboard covers part of the viewport.
-    if (Platform.OS === "web") return;
     const target = node || TextInput.State.currentlyFocusedInput?.();
     const scrollNode = findNodeHandle(scrollRef.current);
     const targetNode = findNodeHandle(target);
@@ -43,7 +39,6 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === "web") return undefined;
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const onShow = (event) => {

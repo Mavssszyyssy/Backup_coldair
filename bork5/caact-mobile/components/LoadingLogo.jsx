@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Animated, Platform, View } from "react-native";
+import { Animated, View } from "react-native";
 
 export default function LoadingLogo({ size = 42 }) {
   const pulse = useRef(new Animated.Value(0.86)).current;
@@ -10,12 +10,12 @@ export default function LoadingLogo({ size = 42 }) {
         Animated.timing(pulse, {
           toValue: 1,
           duration: 560,
-          useNativeDriver: Platform.OS !== "web",
+          useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0.86,
           duration: 560,
-          useNativeDriver: Platform.OS !== "web",
+          useNativeDriver: true,
         }),
       ]),
     );

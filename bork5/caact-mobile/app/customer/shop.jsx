@@ -281,7 +281,7 @@ function ProductModal({ product, visible, onClose, onAddToCart, onBuyNow }) {
 
 export default function CustomerShopScreen() {
   const router = useRouter();
-  const { current, resolveHomeRoute } = useUserContext();
+  const { current } = useUserContext();
   const { addToCart, cartCount } = useCart();
   const [backendProducts, setBackendProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -328,14 +328,9 @@ export default function CustomerShopScreen() {
   );
 
   const requireCustomer = () => {
-    if (current?.role === "customer") return true;
-    if (current) {
-      Alert.alert("Customer account required", "Purchases must be placed from a customer account.");
-      router.replace(resolveHomeRoute(current));
-    } else {
-      Alert.alert("Login required", "Please log in or create a customer account before checking out.");
-      router.push("/sign-in");
-    }
+    if (current) return true;
+    Alert.alert("Login required", "Please log in before checking out.");
+    router.push("/sign-in");
     return false;
   };
 
@@ -355,7 +350,7 @@ export default function CustomerShopScreen() {
       <BoutiqueHeader
         title="Shop AC Units"
         subtitle="Available stock across all branches"
-        onBack={() => router.replace(current?.role === "customer" ? "/customer/home" : current ? resolveHomeRoute(current) : "/sign-in")}
+        onBack={() => router.replace("/customer/home")}
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}
       />
