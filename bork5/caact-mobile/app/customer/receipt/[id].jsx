@@ -50,6 +50,52 @@ const formatAddress = (address = {}) =>
     .filter(Boolean)
     .join(", ");
 
+const resolveDeliveryAddress = (order = {}) => {
+  const savedAddress = order.address || {};
+  const invoiceAddress = order.invoice?.deliveryAddress || {};
+  return {
+    ...savedAddress,
+    ...invoiceAddress,
+    name: invoiceAddress.name || savedAddress.name || order.invoice?.customer?.name || order.customerName || "",
+    phone: invoiceAddress.phone || savedAddress.phone || order.invoice?.customer?.phone || "",
+  };
+};
+
+const deliveryAddressRows = (address = {}) => [
+  ["Recipient", address.name],
+  ["Contact number", address.phone],
+  ["Street address", address.street],
+  ["Barangay", address.barangay],
+  ["City / Municipality", address.city],
+  ["Province", address.province],
+  ["Region", address.region],
+  ["Postal code", address.postalCode],
+].filter(([, value]) => String(value || "").trim());
+
+function DeliveryAddressDetails({ address }) {
+  const rows = deliveryAddressRows(address);
+  return (
+    <View
+      style={{
+        width: "100%",
+        padding: BQ_SPACING.md,
+        gap: BQ_SPACING.sm,
+        backgroundColor: BQ_COLORS.surface,
+        borderBottomWidth: 1,
+        borderColor: BQ_COLORS.border,
+      }}
+    >
+      <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>DELIVERY ADDRESS DETAILS</BoutiqueText>
+      {rows.length ? rows.map(([label, value]) => (
+        <View key={label} style={{ flexDirection: "row", gap: BQ_SPACING.sm, alignItems: "flex-start" }}>
+          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} style={{ width: 112 }}>{label}</BoutiqueText>
+          <BoutiqueText variant="body" style={{ flex: 1, fontWeight: "700" }}>{value}</BoutiqueText>
+        </View>
+      )) : <BoutiqueText variant="h3">Pending</BoutiqueText>}
+    </View>
+  );
+}
+
 function DetailCell({ label, value, fullWidth = false }) {
   return (
     <View
@@ -125,7 +171,7 @@ export default function ReceiptScreen() {
 
   const receipt = receiptDetails(order || {});
   const invoice = order?.invoice || {};
-  const address = formatAddress(invoice.deliveryAddress || order?.address);
+  const deliveryAddress = resolveDeliveryAddress(order || {});
 
   return (
     <>
@@ -194,7 +240,7 @@ export default function ReceiptScreen() {
               <DetailCell label="BRANCH" value={invoice.branch || order.stockSourceBranch || order.customerBranch || "Pending"} />
               <DetailCell label="PAYMENT METHOD" value={receipt.paymentMethod} />
               <DetailCell label="PAYMENT REFERENCE" value={receipt.paymentReference} />
-              <DetailCell label="DELIVERY ADDRESS" value={address || "Pending"} />
+              <DeliveryAddressDetails address={deliveryAddress} />
               <DetailCell label="BILLING ADDRESS" value={formatAddress(invoice.billingAddress || order.address) || "Same as delivery"} />
               <DetailCell label="ORDER / DELIVERY" value={`${invoice.orderStatus || order.workflowLabel || "Pending"} · ${order.tracking?.currentLabel || "Order Placed"}`} />
               <DetailCell label="WARRANTY / TECHNICIAN" value={[invoice.warranty, invoice.technician?.name && `${invoice.technician.name} (${invoice.technician.status})`].filter(Boolean).join("\n") || "Warranty activates after installation."} />

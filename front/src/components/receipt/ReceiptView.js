@@ -22,6 +22,47 @@ const formatAddress = (address = {}) =>
     .filter(Boolean)
     .join(", ") || "Pending";
 
+const resolveDeliveryAddress = (order = {}) => {
+  const savedAddress = order.address || {};
+  const invoiceAddress = order.invoice?.deliveryAddress || {};
+  return {
+    ...savedAddress,
+    ...invoiceAddress,
+    name: invoiceAddress.name || savedAddress.name || order.invoice?.customer?.name || order.customerName || "",
+    phone: invoiceAddress.phone || savedAddress.phone || order.invoice?.customer?.phone || "",
+  };
+};
+
+const deliveryAddressRows = (address = {}) => [
+  ["Recipient", address.name],
+  ["Contact number", address.phone],
+  ["Street address", address.street],
+  ["Barangay", address.barangay],
+  ["City / Municipality", address.city],
+  ["Province", address.province],
+  ["Region", address.region],
+  ["Postal code", address.postalCode],
+].filter(([, value]) => String(value || "").trim());
+
+function DeliveryAddressDetails({ address }) {
+  const rows = deliveryAddressRows(address);
+  return (
+    <section className="receipt-address-details">
+      <span>Delivery Address Details</span>
+      {rows.length ? (
+        <dl>
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : <strong>Pending</strong>}
+    </section>
+  );
+}
+
 const normalizeOrder = (order = {}) => ({
   id: String(order.id || order._id || order.orderCode || ""),
   orderCode: String(order.orderCode || order.id || ""),
@@ -79,6 +120,8 @@ function ReceiptView() {
     // shown in the preview. Customers can select "Save as PDF" to download it.
     window.print();
   };
+
+  const deliveryAddress = resolveDeliveryAddress(order || {});
 
   if (loading || error || !order || !order.receiptAvailable) {
     return (
@@ -146,10 +189,7 @@ function ReceiptView() {
                 <span>Payment Reference</span>
                 <strong>{order.paymentReference || "Pending"}</strong>
               </div>
-              <div>
-                <span>Delivery Address</span>
-                <strong>{formatAddress(order.invoice?.deliveryAddress || order.address)}</strong>
-              </div>
+              <DeliveryAddressDetails address={deliveryAddress} />
               <div>
                 <span>Billing Address</span>
                 <strong>{formatAddress(order.invoice?.billingAddress || order.address)}</strong>
@@ -225,9 +265,15 @@ function ReceiptView() {
         .receipt-band div { padding: 18px 26px; display: grid; gap: 5px; }
         .receipt-band span, .receipt-grid span { color: #94a3b8; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #e2e8f0; }
-        .receipt-grid div { background: #fff; padding: 18px 26px; display: grid; gap: 6px; min-width: 0; }
+        .receipt-grid > div { background: #fff; padding: 18px 26px; display: grid; gap: 6px; min-width: 0; }
         .receipt-grid strong { overflow-wrap: anywhere; }
         .receipt-grid small, .receipt-table small { color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
+        .receipt-address-details { grid-column: 1 / -1; background: #fff; padding: 20px 26px; display: grid; gap: 12px; }
+        .receipt-address-details > span { color: #94a3b8; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .receipt-address-details dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 26px; }
+        .receipt-address-details dl div { display: grid; grid-template-columns: minmax(110px, 150px) 1fr; gap: 12px; align-items: baseline; }
+        .receipt-address-details dt { color: #64748b; font-size: 12px; font-weight: 700; }
+        .receipt-address-details dd { margin: 0; color: #0f172a; font-weight: 800; overflow-wrap: anywhere; }
         .receipt-table-wrap { padding: 24px 26px 0; overflow-x: auto; }
         .receipt-table { width: 100%; border-collapse: collapse; min-width: 640px; }
         .receipt-table th, .receipt-table td { padding: 13px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
@@ -254,6 +300,8 @@ function ReceiptView() {
           .receipt-actions, .receipt-brand, .receipt-bottom { grid-template-columns: 1fr; display: grid; }
           .receipt-status { justify-items: start; text-align: left; }
           .receipt-band, .receipt-grid { grid-template-columns: 1fr; }
+          .receipt-address-details dl { grid-template-columns: 1fr; }
+          .receipt-address-details dl div { grid-template-columns: 1fr; gap: 3px; }
         }
       `}</style>
     </BoutiqueScreen>
