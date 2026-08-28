@@ -1,35 +1,13 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const { demoUsers } = require("./seedDemoUsers");
 
-// This is deliberately limited to the two original demo staff accounts. It is
-// used only for controlled production recovery and never updates an existing
-// account, password, order, product, or customer record.
-const demoStaff = [
-  {
-    email: "admin@example.com",
-    alias: "admin.main",
-    password: "admin123",
-    name: "Admin User",
-    name_first: "Admin",
-    name_last: "User",
-    phone: "09123456780",
-    address: "456 Admin Street",
-    role: "admin",
-    assignedBranch: "Bulacan",
-    activeBranch: "Bulacan",
-  },
-  {
-    email: "superadmin@example.com",
-    alias: "superadmin.main",
-    password: "admin123",
-    name: "Super Admin",
-    name_first: "Super",
-    name_last: "Admin",
-    phone: "09123456799",
-    address: "Global Headquarters",
-    role: "superadmin",
-  },
-];
+// Controlled production recovery for the original seeded staff only. Existing
+// active accounts are never updated. A matching soft-deleted seed can be
+// restored in place so references to its original user id remain valid.
+const demoStaff = demoUsers.filter((user) =>
+  ["admin", "superadmin", "technician"].includes(user.role),
+);
 
 const matchesIdentity = (user, staff) =>
   String(user.email || "").toLowerCase() === staff.email ||
@@ -43,14 +21,21 @@ const restoreDemoStaff = async () => {
     { phone: staff.phone },
   ]);
   const existingUsers = await User.find({ $or: identities })
-    .select("email alias phone role")
-    .lean();
+    .select("email alias phone role accountStatus isDeleted");
 
   const conflicts = demoStaff.filter((staff) => {
     const matches = existingUsers.filter((user) => matchesIdentity(user, staff));
-    return matches.some(
-      (user) => String(user.email || "").toLowerCase() !== staff.email,
-    );
+    return matches.some((user) => {
+      const exactActiveEmail =
+        String(user.email || "").toLowerCase() === staff.email &&
+        !user.isDeleted &&
+        user.accountStatus !== "deleted";
+      const restorableSeed =
+        String(user.alias || "").toLowerCase() === staff.alias &&
+        user.role === staff.role &&
+        (user.isDeleted || user.accountStatus === "deleted");
+      return !exactActiveEmail && !restorableSeed;
+    });
   });
 
   if (conflicts.length) {
@@ -61,19 +46,50 @@ const restoreDemoStaff = async () => {
     );
   }
 
-  const result = { created: [], existing: [] };
+  const result = { created: [], restored: [], existing: [] };
   for (const staff of demoStaff) {
-    const exists = existingUsers.some(
-      (user) => String(user.email || "").toLowerCase() === staff.email,
+    const existing = existingUsers.find(
+      (user) =>
+        String(user.email || "").toLowerCase() === staff.email &&
+        !user.isDeleted &&
+        user.accountStatus !== "deleted",
     );
-    if (exists) {
-      result.existing.push(staff.role);
+    if (existing) {
+      result.existing.push(staff.alias);
       continue;
     }
 
-    const passwordHash = await bcrypt.hash(staff.password, 10);
-    await User.create({ ...staff, passwordHash, isFirstLogin: true });
-    result.created.push(staff.role);
+    const configuredPassword = staff.role === "superadmin"
+      ? process.env.SEED_SUPERADMIN_PASSWORD
+      : staff.role === "technician"
+        ? process.env.SEED_TECHNICIAN_PASSWORD || process.env.SEED_ADMIN_PASSWORD
+        : process.env.SEED_ADMIN_PASSWORD;
+    const passwordHash = await bcrypt.hash(configuredPassword || staff.password, 10);
+    const { password: _seedPassword, ...account } = staff;
+    const deletedSeed = existingUsers.find(
+      (user) =>
+        String(user.alias || "").toLowerCase() === staff.alias &&
+        user.role === staff.role &&
+        (user.isDeleted || user.accountStatus === "deleted"),
+    );
+
+    if (deletedSeed) {
+      Object.assign(deletedSeed, account, {
+        passwordHash,
+        accountStatus: "active",
+        isDeleted: false,
+        deletedAt: null,
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+        isFirstLogin: true,
+      });
+      await deletedSeed.save();
+      result.restored.push(staff.alias);
+      continue;
+    }
+
+    await User.create({ ...account, passwordHash, isFirstLogin: true });
+    result.created.push(staff.alias);
   }
 
   return result;

@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const connectDb = require("../config/db");
 const User = require("../models/User");
 
-const users = [
+const demoUsers = [
   {
     email: "admin@example.com",
     alias: "admin.main",
@@ -121,7 +121,7 @@ const users = [
 ];
 
 const seedDemoUsers = async () => {
-  for (const item of users) {
+  for (const item of demoUsers) {
     const exists = await User.findOne({ email: item.email });
     if (exists) {
       continue;
@@ -141,7 +141,7 @@ const seedDemoUsers = async () => {
   console.log("Demo users seeded.");
 };
 
-module.exports = { seedDemoUsers };
+module.exports = { demoUsers, seedDemoUsers };
 
 if (require.main === module) {
   connectDb()
