@@ -57,6 +57,7 @@ const callStructuredAmpAnalysis = async (input) => {
         },
         body: JSON.stringify({
           model: env.openAiModel,
+          reasoning: { effort: env.openAiReasoningEffort },
           store: false,
           max_output_tokens: env.openAiMaxOutputTokens,
           safety_identifier: safetyIdentifier,
