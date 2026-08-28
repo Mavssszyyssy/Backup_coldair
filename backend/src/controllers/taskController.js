@@ -357,7 +357,7 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
         status: "active",
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
   await calculateMaintenanceRecommendation(installedUnit._id);
   return installedUnit;

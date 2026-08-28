@@ -95,8 +95,25 @@ export const UserProvider = ({ children }) => {
         } else {
           removeAuthSessionItem(ACTIVE_BRANCH_KEY);
         }
-      } catch (_error) {
-        clearSession();
+      } catch (error) {
+        // A temporary network or rate-limit response must not sign out a valid
+        // customer. Only an actual authentication/authorization rejection can
+        // invalidate the stored session. Use the last verified user while the
+        // backend recovers so protected pages remain usable.
+        if (error?.status === 401 || error?.status === 403) {
+          clearSession();
+        } else {
+          try {
+            const storedUser = JSON.parse(getAuthSessionItem("currentUser") || "null");
+            if (!storedUser?.role) throw new Error("No verified user is stored.");
+            setUser(storedUser);
+            setUserRole(storedUser.role);
+            setCurrentSession(storedUser);
+            setIsAuthenticated(true);
+          } catch (_storageError) {
+            clearSession();
+          }
+        }
       } finally {
         setLoading(false);
       }

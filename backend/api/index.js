@@ -6,12 +6,36 @@ const { seedDashboardData } = require("../src/seed/seedDashboardData");
 
 let initialization;
 
-const healthResponse = (res) => res.json({
-  status: "ok",
-  service: "aeropulse-api",
-  environment: env.nodeEnv,
-  release: String(process.env.VERCEL_GIT_COMMIT_SHA || "local").slice(0, 7),
-});
+const applyHealthCors = (req, res) =>
+  new Promise((resolve) => {
+    const origin = req.headers?.origin;
+    env.corsOrigin(origin, (error, allowedOrigin) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Vary", "Origin");
+      if (!error && origin && allowedOrigin) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+        res.setHeader(
+          "Access-Control-Allow-Headers",
+          req.headers?.["access-control-request-headers"] ||
+            "Content-Type,Authorization",
+        );
+      }
+      resolve();
+    });
+  });
+
+const healthResponse = async (req, res) => {
+  await applyHealthCors(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  return res.json({
+    status: "ok",
+    service: "aeropulse-api",
+    environment: env.nodeEnv,
+    release: String(process.env.VERCEL_GIT_COMMIT_SHA || "local").slice(0, 7),
+  });
+};
 
 const initialize = async () => {
   if (!initialization) {
@@ -52,7 +76,7 @@ module.exports = async (req, res) => {
     // the web app as a connectivity probe and should not wait behind a stale
     // database socket or a payment-provider request.
     const path = new URL(req.url || "/", "http://localhost").pathname;
-    if (path === "/api/health") return healthResponse(res);
+    if (path === "/api/health") return healthResponse(req, res);
 
     await initialize();
     if (["/", "/api", "/api/index"].includes(path)) {

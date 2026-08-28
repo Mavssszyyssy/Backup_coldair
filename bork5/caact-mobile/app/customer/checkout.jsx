@@ -23,6 +23,7 @@ import {
 } from "../../services/ecommerceService";
 import { validatePhone } from "../../utils/authValidation";
 import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
+import { formatCartModel } from "../../services/cartDisplayService";
 
 const getProfileAddress = (user = {}) => {
   const billing = user?.billingAddress || user?.billing_address || {};
@@ -364,6 +365,7 @@ export default function CheckoutScreen() {
                 <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
                   <View style={{ flex: 1 }}>
                     <BoutiqueText variant="label">{item.name}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Model: {formatCartModel(item)}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
                   </View>

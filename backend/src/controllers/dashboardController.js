@@ -29,6 +29,7 @@ const isPaid = (order = {}) =>
 
 const safeAmount = (order = {}) => Math.max(0, Number(order.totalAmount || 0));
 const safeDate = (value) => {
+  if (value === null || value === undefined || value === "") return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 };

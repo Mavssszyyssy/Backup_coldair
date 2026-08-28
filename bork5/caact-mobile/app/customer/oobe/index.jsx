@@ -257,10 +257,22 @@ export default function CustomerOobeScreen() {
       </Card>
 
       <Button title="Generate New Recovery Codes" onPress={handleRegenerate} />
+      {!totpEnabled ? (
+        <Text
+          style={{
+            color: COLORS.textSecondary,
+            textAlign: "center",
+            lineHeight: 20,
+          }}
+        >
+          Verify your authenticator code above before continuing to your account.
+        </Text>
+      ) : null}
       <Button
-        title="Continue to Home"
+        title={totpEnabled ? "Continue to Home" : "Verify Authenticator to Continue"}
         variant="ghost"
         onPress={handleContinueHome}
+        disabled={!totpEnabled}
       />
     </CustomerScreen>
   );

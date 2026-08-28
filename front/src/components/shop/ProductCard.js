@@ -302,6 +302,12 @@ export default function ProductCard({
         .bq-old-price {
           line-height: 1;
         }
+
+        @media (hover: none), (max-width: 900px) {
+          .bq-card { min-height: 520px; }
+          .bq-card:hover { transform: none; }
+          .bq-reveal-group { transform: translateY(0); }
+        }
       `,
         }}
       />

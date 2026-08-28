@@ -2113,7 +2113,7 @@ const syncInstalledUnitsFromTask = async (task) => {
           status: "active",
         },
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
     if (installed) {
       await calculateMaintenanceRecommendation(installed._id);
@@ -2354,6 +2354,7 @@ const createOrder = async (req, res) => {
         resolvedItems.push({
           productId: String(product.id || ""),
           name: product.name,
+          model: String(product.sku || "").trim(),
           price: Number(product.price || 0),
           quantity: quantityNeeded,
           specs: product.specs || "",

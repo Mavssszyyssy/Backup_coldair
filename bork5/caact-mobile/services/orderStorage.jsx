@@ -69,6 +69,7 @@ function normalizeOrderItem(item = {}) {
     id: item.id || `order_item_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
     productId: item.productId || item.product_id || item.id || "",
     name: item.name || item.productName || "AC Product",
+    model: item.model || item.sku || item.productSku || serialUnits[0]?.productSku || "",
     quantity: Number(item.quantity || 1),
     price: Number(item.price || 0),
     specs: item.specs || "",

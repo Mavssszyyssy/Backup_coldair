@@ -111,7 +111,7 @@ const upsertMyAttendance = async (req, res) => {
           notes,
         },
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     return res.json({ attendance: toView(attendance, req.authUser) });

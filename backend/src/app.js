@@ -91,6 +91,7 @@ app.use(
 );
 
 app.get("/api/health", (_req, res) => {
+  res.set("Cache-Control", "no-store");
   res.json({
     status: "ok",
     service: "aeropulse-api",

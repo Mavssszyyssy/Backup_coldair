@@ -1,5 +1,11 @@
 export function formatCartModel(item = {}) {
-  return String(item?.model || item?.sku || item?.productSku || "").trim() || "Not specified";
+  return String(
+    item?.model ||
+      item?.sku ||
+      item?.productSku ||
+      item?.serialUnits?.[0]?.productSku ||
+      "",
+  ).trim() || "Not specified";
 }
 
 export function formatCartHorsepower(item = {}) {

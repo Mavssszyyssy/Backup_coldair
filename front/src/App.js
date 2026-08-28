@@ -257,9 +257,9 @@ function AppContent() {
         <Route
           path="/faq"
           element={
-            <RoleRoute allowedRoles={["customer"]}>
+            <HomeRoute>
               <FaqPage />
-            </RoleRoute>
+            </HomeRoute>
           }
         />
         {/* Role-based dashboards */}

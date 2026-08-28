@@ -504,7 +504,7 @@ export default function SignUpStep0() {
       <StickyActionBar>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <Button
-            title="Skip for Now"
+            title="Continue Without Address"
             onPress={handleSkipAddress}
             variant="secondary"
             style={{ flex: 1 }}

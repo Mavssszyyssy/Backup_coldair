@@ -433,7 +433,7 @@ const Shop = () => {
     getCartCount,
     getCartTotal,
   } = useCart();
-  const { user, isAuthenticated, logout } = useUser();
+  const { user, isAuthenticated, logout, showAuthRequiredPrompt } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -654,19 +654,27 @@ const Shop = () => {
   }, [products]);
 
   const handleAddToCart = (product, qty = 1) => {
-    if (!isAuthenticated) return navigate("/login");
+    if (!isAuthenticated) {
+      return showAuthRequiredPrompt(
+        "Sign in to add this AC unit to your cart.",
+      );
+    }
     addToCart(product, qty);
     setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
   };
 
   const handleBuyNow = (product) => {
-    if (!isAuthenticated) return navigate("/login");
+    if (!isAuthenticated) {
+      return showAuthRequiredPrompt("Sign in to buy this AC unit.");
+    }
     addToCart(product, 1);
     navigate("/checkout");
   };
 
   const handleCheckout = () => {
-    if (!isAuthenticated) return navigate("/login");
+    if (!isAuthenticated) {
+      return showAuthRequiredPrompt("Sign in to continue to checkout.");
+    }
     navigate("/checkout");
     setIsCartOpen(false);
   };

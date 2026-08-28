@@ -59,7 +59,7 @@ const updateBranchCoverage = async (req, res) => {
     const branch = await BranchCoverage.findOneAndUpdate(
       { name },
       { $set: { active, coverageAreas, nearbyBranches } },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     ).lean();
     clearBranchCoverageCache();
     return res.json({ branch });

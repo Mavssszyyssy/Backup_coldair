@@ -70,6 +70,8 @@ const normalizeOrder = (order = {}) => ({
   createdAt: order.createdAt || "",
   paymentMethod: String(order.paymentMethod || ""),
   paymentStatus: String(order.paymentStatus || order.receipt?.paymentStatus || ""),
+  status: String(order.status || ""),
+  workflowStatus: String(order.workflowStatus || ""),
   paymentProvider: String(order.paymentProvider || order.receipt?.paymentProvider || ""),
   paymentReference: String(order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || ""),
   receiptAvailable: Boolean(order.receiptAvailable),
@@ -122,6 +124,17 @@ function ReceiptView() {
   };
 
   const deliveryAddress = resolveDeliveryAddress(order || {});
+  const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
+  const isCompleted = [order?.status, order?.workflowStatus, order?.invoice?.orderStatus]
+    .some((value) => ["paid", "complete", "completed"].includes(String(value || "").toLowerCase()));
+  const paymentMethodLabel = isCashOnDelivery
+    ? "Cash on Delivery"
+    : order?.paymentProvider === "paymongo"
+      ? "Online payment via PayMongo"
+      : order?.paymentProvider || order?.paymentMethod || "Pending";
+  const paymentStatusLabel = isCashOnDelivery
+    ? isCompleted ? "Paid on delivery" : "Payment due on delivery"
+    : String(order?.invoice?.payment?.status || order?.paymentStatus || "pending").replaceAll("_", " ");
 
   if (loading || error || !order || !order.receiptAvailable) {
     return (
@@ -154,7 +167,7 @@ function ReceiptView() {
                 <h1>Coldair ACT</h1>
               </div>
               <div className="receipt-status">
-                <span>{(order.paymentStatus || "pending").toUpperCase()}</span>
+                <span>{paymentStatusLabel.toUpperCase()}</span>
                 <strong>{order.receipt?.receiptNumber || "Pending"}</strong>
               </div>
             </div>
@@ -182,12 +195,12 @@ function ReceiptView() {
               </div>
               <div>
                 <span>Payment Method</span>
-                <strong>{order.paymentProvider || order.paymentMethod || "Pending"}</strong>
-                <small>{(order.invoice?.payment?.status || order.paymentStatus || "pending").toUpperCase()}</small>
+                <strong>{paymentMethodLabel}</strong>
+                <small>{paymentStatusLabel}</small>
               </div>
               <div>
                 <span>Payment Reference</span>
-                <strong>{order.paymentReference || "Pending"}</strong>
+                <strong>{isCashOnDelivery ? "Cash collected upon delivery" : order.paymentReference || "Pending"}</strong>
               </div>
               <DeliveryAddressDetails address={deliveryAddress} />
               <div>

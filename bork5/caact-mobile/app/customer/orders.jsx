@@ -14,6 +14,7 @@ import {
   BQ_SPACING,
 } from "../../components/boutique";
 import { useUserContext } from "../../context/UserContext";
+import { formatCartModel } from "../../services/cartDisplayService";
 import { formatPeso } from "../../services/ecommerceService";
 import { getOrdersByUser, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
 
@@ -216,11 +217,9 @@ function OrderItemSummary({ item }) {
       <BoutiqueText variant="h3">
         {item.name} x{item.quantity}
       </BoutiqueText>
-      {!!item.specs && (
-        <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-          {item.specs}
-        </BoutiqueText>
-      )}
+      <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
+        Model: {formatCartModel(item)}
+      </BoutiqueText>
       <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
         Horsepower: {horsepower > 0 ? `${horsepower} HP` : "Not specified"}
       </BoutiqueText>

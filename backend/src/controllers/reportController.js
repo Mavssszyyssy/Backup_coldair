@@ -1,9 +1,12 @@
 const Order = require("../models/Order");
 const AuditLog = require("../models/AuditLog");
 
-const parseDate = (value) => {
+const parseDate = (value, { endOfDay = false } = {}) => {
   if (!value) return null;
-  const parsed = new Date(value);
+  const normalized = String(value).trim();
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+    ? new Date(`${normalized}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`)
+    : new Date(normalized);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 };
@@ -19,7 +22,7 @@ const getSalesReport = async (req, res) => {
   try {
     const interval = normalizeInterval(req.query.interval);
     const from = parseDate(req.query.from) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const to = parseDate(req.query.to) || new Date();
+    const to = parseDate(req.query.to, { endOfDay: true }) || new Date();
     const topN = Math.min(50, Math.max(1, Number(req.query.topN) || 10));
     const status = String(req.query.status || "paid").toLowerCase();
     const supportedStatuses = ["all", "paid", "complete", "to_pay", "to_deliver", "to_install", "cancelled"];
@@ -122,7 +125,7 @@ const getSalesReport = async (req, res) => {
 const getAuditLogs = async (req, res) => {
   try {
     const from = parseDate(req.query.from) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const to = parseDate(req.query.to) || new Date();
+    const to = parseDate(req.query.to, { endOfDay: true }) || new Date();
     const userFilter = String(req.query.user || "").trim();
     const actionFilter = String(req.query.action || "").trim();
     const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 100));

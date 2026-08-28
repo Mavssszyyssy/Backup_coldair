@@ -272,7 +272,7 @@ const reviewWarrantyClaim = async (req, res) => {
           unread: true,
           status: "unread",
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
     }
     await notifyOperationalStaff({

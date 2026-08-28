@@ -68,12 +68,23 @@ describe("mobile customer readiness rules", () => {
       path.join(__dirname, "..", "app", "customer", "shop.jsx"),
       "utf8",
     );
+    const checkoutSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "checkout.jsx"),
+      "utf8",
+    );
+    const ordersSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "orders.jsx"),
+      "utf8",
+    );
 
     expect(formatCartModel({ sku: "HSN24IPX3" })).toBe("HSN24IPX3");
+    expect(formatCartModel({ serialUnits: [{ productSku: "HSN24IPX3" }] })).toBe("HSN24IPX3");
     expect(formatCartHorsepower({ specs: "2.5HP Inverter" })).toBe("2.5 HP");
     expect(shopSource).toContain("Model: {formatCartModel(item)}");
     expect(shopSource).toContain("Horsepower: {formatCartHorsepower(item)}");
     expect(shopSource).toContain("Added to cart");
+    expect(checkoutSource).toContain("Model: {formatCartModel(item)}");
+    expect(ordersSource).toContain("Model: {formatCartModel(item)}");
   });
 
   test("authenticator login uses clear recovery wording", () => {

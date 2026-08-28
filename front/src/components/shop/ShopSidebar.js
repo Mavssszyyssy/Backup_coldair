@@ -8,6 +8,7 @@ import {
   SquaresFour,
   Wrench,
 } from "@phosphor-icons/react";
+import { useState } from "react";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
 import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
@@ -43,6 +44,8 @@ export default function ShopSidebar({
   onSearchChange,
   onClearFilters,
 }) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
   return (
     <BoutiqueBox
       tag="aside"
@@ -58,7 +61,20 @@ export default function ShopSidebar({
         overflowY: "auto",
       }}
     >
-      <BoutiqueStack gap={32}>
+      <button
+        type="button"
+        className="bq-mobile-filter-toggle"
+        aria-expanded={mobileFiltersOpen}
+        onClick={() => setMobileFiltersOpen((open) => !open)}
+      >
+        <span>Search &amp; filters</span>
+        <span aria-hidden="true">{mobileFiltersOpen ? "−" : "+"}</span>
+      </button>
+
+      <BoutiqueStack
+        gap={32}
+        className={`bq-sidebar-content ${mobileFiltersOpen ? "is-open" : ""}`}
+      >
         <BoutiqueStack gap={16} className="bq-sidebar-section">
           <BoutiqueText
             variant="label"
@@ -241,6 +257,22 @@ export default function ShopSidebar({
         .bq-sidebar::-webkit-scrollbar { display: none; }
         .bq-sidebar { scrollbar-width: none; }
 
+        .bq-mobile-filter-toggle {
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          border: 1px solid ${BQ_COLORS.border};
+          border-radius: ${BQ_GEOMETRY.radiusPill};
+          background: white;
+          color: ${BQ_COLORS.ink};
+          padding: 14px 18px;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
         .bq-cat-item { color: ${BQ_COLORS.inkMuted}; }
         .bq-cat-item:hover { background: white; color: ${BQ_COLORS.ink}; box-shadow: ${BQ_SHADOWS.soft}; transform: translateX(4px); }
         .bq-cat-item.active { background: ${BQ_COLORS.brand}; color: white; box-shadow: ${BQ_SHADOWS.float}; transform: translateX(0); }
@@ -253,6 +285,21 @@ export default function ShopSidebar({
           cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); margin-top: 16px;
         }
         .bq-clear-btn:hover { border-color: ${BQ_COLORS.ink}; color: ${BQ_COLORS.ink}; background: white; box-shadow: ${BQ_SHADOWS.soft}; transform: translateY(-2px); }
+
+        @media (max-width: 900px) {
+          .bq-sidebar {
+            width: 100% !important;
+            height: auto !important;
+            position: relative !important;
+            top: auto !important;
+            padding: 14px 16px !important;
+            overflow: visible !important;
+            border-bottom: 1px solid ${BQ_COLORS.border};
+          }
+          .bq-mobile-filter-toggle { display: flex; }
+          .bq-sidebar-content { display: none !important; padding-top: 18px; }
+          .bq-sidebar-content.is-open { display: flex !important; }
+        }
       `,
         }}
       />

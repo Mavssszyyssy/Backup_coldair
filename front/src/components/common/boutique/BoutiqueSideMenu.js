@@ -36,7 +36,7 @@ export default function BoutiqueSideMenu({
   ];
 
   const handleNavigation = (path) => {
-    if (!isAuthenticated && path !== "/shop" && path !== "/contact") {
+    if (!isAuthenticated && path !== "/shop" && path !== "/faq") {
       navigate("/login");
     } else {
       navigate(path);

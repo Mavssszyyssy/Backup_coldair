@@ -9,6 +9,7 @@ const orderSchema = new mongoose.Schema(
       {
         productId: { type: String, default: "" },
         name: { type: String, required: true },
+        model: { type: String, default: "" },
         price: { type: Number, required: true, min: 0 },
         quantity: { type: Number, required: true, min: 1 },
         specs: { type: String, default: "" },

@@ -125,7 +125,7 @@ const updateReorderStatus = async (req, res) => {
         reviewedAt: new Date(),
       },
     },
-    { new: true },
+    { returnDocument: "after" },
   ).populate("product");
 
   if (!reorder) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,6 +13,7 @@ import LoadingLogo from "./LoadingLogo";
 // and gives them a safe retry without losing their current screen or form.
 export default function BackendConnectionStatus() {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const [connection, setConnection] = useState({ state: "loaded" });
   const loadedTimer = useRef(null);
 
@@ -36,7 +38,9 @@ export default function BackendConnectionStatus() {
     await checkBackendConnection();
   };
 
-  if (connection.state === "hidden") return null;
+  // The entry screen owns the initial connection check and its retry action.
+  // Suppressing this global surface there prevents two competing error cards.
+  if (pathname === "/" || connection.state === "hidden") return null;
 
   const failed = connection.state === "failed";
   return (

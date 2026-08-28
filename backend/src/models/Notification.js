@@ -26,7 +26,11 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-notificationSchema.pre("save", function syncUnreadStatus(next) {
+// Mongoose 9 treats middleware without a returned promise as synchronous and
+// no longer supplies the legacy `next` callback to this hook. Keeping the
+// hook synchronous also guarantees notification failures cannot interrupt the
+// order or technician workflow with `next is not a function`.
+notificationSchema.pre("save", function syncUnreadStatus() {
   this.$locals.wasNew = this.isNew;
   if (this.isModified("status") && !this.isModified("unread")) {
     this.unread = this.status !== "read";
@@ -37,7 +41,6 @@ notificationSchema.pre("save", function syncUnreadStatus(next) {
   if (!this.status) {
     this.status = this.unread ? "unread" : "read";
   }
-  next();
 });
 
 notificationSchema.post("save", function sendPushForNewNotification(doc) {

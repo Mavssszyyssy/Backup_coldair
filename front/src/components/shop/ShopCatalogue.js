@@ -112,6 +112,41 @@ export default function ShopCatalogue({
           __html: `
         .bq-scrollview::-webkit-scrollbar { display: none; }
         .bq-scrollview { scrollbar-width: none; }
+
+        @media (max-width: 900px) {
+          .bq-shop-main {
+            flex-direction: column !important;
+            min-width: 0;
+          }
+          .bq-catalogue {
+            width: 100% !important;
+            height: auto !important;
+            min-width: 0;
+            position: relative !important;
+            top: auto !important;
+          }
+          .bq-scrollview {
+            overflow: visible !important;
+            padding: 18px 16px 28px !important;
+            border-left: 0 !important;
+          }
+          .bq-catalogue-header {
+            position: static !important;
+            margin: 0 0 20px !important;
+            padding: 0 0 14px !important;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .bq-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 16px !important;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .bq-grid { grid-template-columns: minmax(0, 1fr) !important; }
+          .bq-catalogue-header > * { width: 100%; }
+        }
       `,
         }}
       />
