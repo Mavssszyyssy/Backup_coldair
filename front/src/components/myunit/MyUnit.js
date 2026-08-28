@@ -2,6 +2,8 @@ import { Snowflake } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
+import AmpReportCenter from "../AMP/AmpReportCenter";
+import "../AMP/styles.css";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
@@ -154,20 +156,34 @@ function MyUnit() {
             </BoutiqueStack>
           </BoutiqueBox>
         ) : (
-          <BoutiqueGrid
-            columns="repeat(auto-fill, minmax(320px, 1fr))"
-            gap={24}
-          >
-            {units.map((unit) => (
-              <UnitCard
-                key={unit.id}
-                unit={unit}
-                onClick={handleViewDetails}
-                onViewHistory={handleViewHistory}
-                onWarrantyStatus={handleWarrantyStatus}
+          <>
+            <BoutiqueGrid
+              columns="repeat(auto-fill, minmax(320px, 1fr))"
+              gap={24}
+            >
+              {units.map((unit) => (
+                <UnitCard
+                  key={unit.id}
+                  unit={unit}
+                  onClick={handleViewDetails}
+                  onViewHistory={handleViewHistory}
+                  onWarrantyStatus={handleWarrantyStatus}
+                />
+              ))}
+            </BoutiqueGrid>
+
+            <div className="customer-amp-report-center">
+              <AmpReportCenter
+                units={units.map((unit) => ({
+                  ...unit,
+                  unitId: unit.backendUnitId || unit.id,
+                  modelName: unit.model,
+                }))}
+                title="Your AMP Maintenance Reports"
+                subtitle="Generate a maintenance summary for any of your registered AC units."
               />
-            ))}
-          </BoutiqueGrid>
+            </div>
+          </>
         )}
       </BoutiqueBox>
 

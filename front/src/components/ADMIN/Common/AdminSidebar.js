@@ -1,7 +1,9 @@
 import {
+  ChartBar,
   ClipboardText,
   Gear,
   Package,
+  Pulse,
   SignOut,
   Users,
   Wrench,
@@ -16,7 +18,8 @@ const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: ClipboardText },
   { to: "/admin/inventory", label: "Inventory", icon: Package },
   { to: "/admin/services", label: "Services", icon: Wrench },
-  { to: "/admin/reports", label: "AMP / Reports", icon: ClipboardText },
+  { to: "/manager/amp", label: "AMP Dashboard", icon: Pulse },
+  { to: "/admin/reports", label: "Reports", icon: ChartBar },
   { to: "/admin/profile", label: "Profile", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Gear },
 ];

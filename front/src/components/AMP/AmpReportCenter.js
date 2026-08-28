@@ -12,7 +12,11 @@ const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace
 const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
 const dateLabel = (value) => value ? new Date(value).toLocaleDateString("en-US") : "Not available";
 
-function AmpReportCenter({ units = [] }) {
+function AmpReportCenter({
+  units = [],
+  title = "AMP Report Center",
+  subtitle = "History-based maintenance planning with traceable branch reports.",
+}) {
   const { user } = useUser();
   const reportUnits = useMemo(() => units.filter((unit) => unit?.unitId || unit?.id), [units]);
   const types = useMemo(() => REPORT_TYPES.filter((item) => !item.internalOnly || ["admin", "superadmin", "owner", "manager"].includes(user?.role)), [user?.role]);
@@ -74,7 +78,7 @@ function AmpReportCenter({ units = [] }) {
   const maintenance = report?.maintenance || {};
   return (
     <section className="amp-card amp-report-center">
-      <div className="amp-card-header"><div><h2>AMP Report Center</h2><p className="amp-muted">History-based maintenance planning with traceable branch reports.</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
+      <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
       <div className="amp-report-controls">
         <label>Report type<select value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         <label>Installed AC unit<select value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{unit.modelName || unit.model || "AC Unit"} · {unit.serialNumber || value}</option>; })}</select></label>

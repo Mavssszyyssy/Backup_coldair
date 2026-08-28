@@ -39,6 +39,14 @@
   cursor: pointer;
 }
 
+.amp-sidebar .amp-return-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #334155;
+}
+
 .amp-sidebar a.active,
 .amp-sidebar a:hover,
 .amp-sidebar button:hover {
@@ -284,6 +292,16 @@
   margin-top: 18px;
   border-top: 1px solid #e2e8f0;
   padding-top: 16px;
+}
+
+.customer-amp-report-center {
+  margin-top: 32px;
+}
+
+.customer-amp-report-center .amp-card {
+  margin-bottom: 0;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
 }
 
 .amp-report-result h3,

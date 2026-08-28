@@ -40,4 +40,25 @@ describe("Admin and SuperAdmin theme isolation", () => {
     expect(inventory).toContain(".admin-card .inventory-stock-quantity");
     expect(inventory).toContain(".admin-card .inventory-page-controls button");
   });
+
+  it("keeps AMP and ordinary reports as distinct destinations", () => {
+    const adminSidebar = source("ADMIN", "Common", "AdminSidebar.js");
+    const superadminSidebar = source("SUPERADMIN", "Common", "SuperAdminSidebar.js");
+    const ampShell = source("AMP", "AmpDashboardShell.js");
+
+    expect(adminSidebar).toContain('{ to: "/manager/amp", label: "AMP Dashboard"');
+    expect(adminSidebar).toContain('{ to: "/admin/reports", label: "Reports"');
+    expect(superadminSidebar).toContain('{ to: "/owner/amp", label: "AMP Forecast"');
+    expect(superadminSidebar).toContain('{ to: "/superadmin/reports", label: "Reports"');
+    expect(ampShell).toContain('to: "/admin/dashboard"');
+    expect(ampShell).toContain('to: "/superadmin/dashboard"');
+  });
+
+  it("connects customer My Units to the AMP report center", () => {
+    const myUnits = source("myunit", "MyUnit.js");
+
+    expect(myUnits).toContain("AmpReportCenter");
+    expect(myUnits).toContain('title="Your AMP Maintenance Reports"');
+    expect(myUnits).toContain("unitId: unit.backendUnitId || unit.id");
+  });
 });
