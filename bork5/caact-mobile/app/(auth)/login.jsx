@@ -142,17 +142,19 @@ export function LoginScreen() {
             style={{ alignItems: "center", marginTop: SPACING.sm }}
           >
             <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-              Use a different account
+              I have a different account
             </Text>
           </TouchableOpacity>
         ) : null}
 
         <TouchableOpacity
-          onPress={() => router.push("/recover")}
+          onPress={() => challengeToken
+            ? router.push({ pathname: "/recover/factor/2", params: { email: normalizeEmail(form.email) } })
+            : router.push("/recover")}
           style={{ alignItems: "center", marginTop: SPACING.md }}
         >
           <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Forgot Password?
+            {challengeToken ? "I don't have my authenticator" : "Forgot Password?"}
           </Text>
         </TouchableOpacity>
 
@@ -161,7 +163,7 @@ export function LoginScreen() {
           style={{ alignItems: "center", marginTop: SPACING.sm }}
         >
           <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            New customer? Register
+            I don't have an account
           </Text>
         </TouchableOpacity>
       </KeyboardAwareScrollView>

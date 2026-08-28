@@ -5,6 +5,7 @@ import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
 import { formatCartHorsepower, formatCartModel } from "./cartDisplayService";
+import { resolveOrderDeliveryStatus } from "./orderStatusService";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -73,5 +74,46 @@ describe("mobile customer readiness rules", () => {
     expect(shopSource).toContain("Model: {formatCartModel(item)}");
     expect(shopSource).toContain("Horsepower: {formatCartHorsepower(item)}");
     expect(shopSource).toContain("Added to cart");
+  });
+
+  test("authenticator login uses clear recovery wording", () => {
+    const loginSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "(auth)", "login.jsx"),
+      "utf8",
+    );
+    expect(loginSource).toContain("I have a different account");
+    expect(loginSource).toContain("I don't have my authenticator");
+    expect(loginSource).toContain("I don't have an account");
+    expect(loginSource).toContain('pathname: "/recover/factor/2"');
+  });
+
+  test("pending warranties explain automatic activation without an acceptance action", () => {
+    const detailsSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "units", "[id].jsx"),
+      "utf8",
+    );
+    expect(detailsSource).toContain("Waiting for installation verification");
+    expect(detailsSource).toContain("No acceptance is required from you");
+    expect(detailsSource).toContain("What happens next");
+  });
+
+  test("completed orders override stale delivery state and use a readable progress timeline", () => {
+    const ordersSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "orders.jsx"),
+      "utf8",
+    );
+    expect(resolveOrderDeliveryStatus("complete", "pending")).toBe("DELIVERED");
+    expect(ordersSource).toContain("OrderStepTimeline");
+    expect(ordersSource).toContain("Cash on delivery");
+  });
+
+  test("address editing keeps one save action and a compact default-address choice", () => {
+    const settingsSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "settings.jsx"),
+      "utf8",
+    );
+    expect(settingsSource).toContain("Use as my default delivery address");
+    expect(settingsSource).toContain("This choice will be applied when you save the address");
+    expect(settingsSource).not.toContain('title={addressForm.isDefault ? "Default delivery address"');
   });
 });

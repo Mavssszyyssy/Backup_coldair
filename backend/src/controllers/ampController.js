@@ -7,19 +7,11 @@ const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenance
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
 const { getManagerServicePipeline, getOwnerServiceForecast } = require("../domain/ampDashboardService");
 const { completeServiceForUnit } = require("../domain/serviceCompletionService");
-const { effectiveWarrantyStatus } = require("../domain/warrantyService");
+const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
 const { createDedupedNotification } = require("../services/operationalNotificationService");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
 const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
-
-const getWarrantyRecommendation = (warranty = {}) => {
-  const status = effectiveWarrantyStatus(warranty);
-  if (status === "under_review") return "Your warranty claim is under review.";
-  if (status === "approved") return "Warranty service is approved. Keep the scheduled appointment.";
-  if (status === "expired") return "Warranty coverage has expired. Continue preventive maintenance.";
-  return "Warranty is active. Keep completed service records to protect coverage.";
-};
 
 const serviceHistoryItem = (service) => ({
   id: String(service._id || service.id || ""),

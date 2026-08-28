@@ -91,6 +91,48 @@ function formatDate(value = "") {
   return date.toLocaleDateString();
 }
 
+function humanizeStatus(value = "") {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function deliveryStatusLabel(order = {}) {
+  const workflow = String(order.workflowStatus || "").toLowerCase();
+  if (workflow === "complete") return "Delivered and installed";
+  const labels = {
+    not_started: "Not started",
+    pending: "Waiting for dispatch",
+    preparing: "Preparing your order",
+    out_for_delivery: "Out for delivery",
+    delivered: "Delivered",
+    failed_attempt: "Delivery attempt unsuccessful",
+  };
+  return labels[String(order.deliveryStatus || "").toLowerCase()] || humanizeStatus(order.deliveryStatus || "Not started");
+}
+
+function paymentStatusLabel(order = {}) {
+  const status = String(order.paymentStatus || "").toLowerCase();
+  const method = String(order.paymentMethod || "").toLowerCase();
+  if (status === "not_required") {
+    if (method === "cod") return "Cash on delivery";
+    if (["pay_on_installation", "pay-on-installation", "poi"].includes(method)) return "Pay on installation";
+    return "No online payment required";
+  }
+  const labels = {
+    paid: "Paid",
+    verified: "Payment verified",
+    cod_pending: "Cash on delivery",
+    pending: "Payment pending",
+    pending_verification: "Payment verification pending",
+    failed: "Payment failed",
+    cancelled: "Payment cancelled",
+    expired: "Payment link expired",
+  };
+  return labels[status] || humanizeStatus(status || "Pending");
+}
+
 function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.md }}>
@@ -116,31 +158,38 @@ function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
   );
 }
 
-function OrderStepStrip({ tracking = {}, activeStep = 0 }) {
+function OrderStepTimeline({ tracking = {}, activeStep = 0 }) {
   const steps = Array.isArray(tracking.timeline) && tracking.timeline.length
     ? tracking.timeline
     : ["Submitted", "Approved", "Installation", "Completed"].slice(0, Math.max(activeStep + 1, 1)).map((label) => ({ label }));
   return (
-    <View style={{ flexDirection: "row", gap: BQ_SPACING.xs }}>
+    <View style={{ padding: BQ_SPACING.md, borderRadius: 14, backgroundColor: BQ_COLORS.bgAlt }}>
+      <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
+        ORDER PROGRESS
+      </BoutiqueText>
       {steps.map((step, index) => {
-        const isActive = index < steps.length;
+        const isCurrent = index === steps.length - 1;
         return (
           <View
             key={step.stage || step.label}
             style={{
-              flex: 1,
-              borderRadius: 999,
-              paddingVertical: 6,
-              alignItems: "center",
-              backgroundColor: isActive ? BQ_COLORS.brand : BQ_COLORS.bgAlt,
+              flexDirection: "row",
+              minHeight: 46,
+              paddingTop: index === 0 ? BQ_SPACING.sm : 0,
             }}
           >
-            <BoutiqueText
-              variant="caption"
-              color={isActive ? "#fff" : BQ_COLORS.inkMuted}
-            >
-              {step.label}
-            </BoutiqueText>
+            <View style={{ width: 30, alignItems: "center" }}>
+              <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.brand }}>
+                <Ionicons name={isCurrent ? "location-sharp" : "checkmark-sharp"} size={15} color="#fff" />
+              </View>
+              {index < steps.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: BQ_COLORS.brand, opacity: 0.35 }} /> : null}
+            </View>
+            <View style={{ flex: 1, paddingLeft: BQ_SPACING.sm, paddingBottom: index < steps.length - 1 ? BQ_SPACING.md : 0 }}>
+              <BoutiqueText variant="h3">{step.label}</BoutiqueText>
+              <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
+                {isCurrent ? "Current order stage" : step.timestamp ? formatDate(step.timestamp) : "Completed"}
+              </BoutiqueText>
+            </View>
           </View>
         );
       })}
@@ -313,7 +362,7 @@ export default function CustomerOrdersScreen() {
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
                 </BoutiqueText>
 
-                <OrderStepStrip tracking={order.tracking} activeStep={progress.activeStep} />
+                <OrderStepTimeline tracking={order.tracking} activeStep={progress.activeStep} />
 
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
                   {progress.body}
@@ -325,8 +374,8 @@ export default function CustomerOrdersScreen() {
                     title="Order stage"
                     subtitle={order.tracking?.currentLabel || order.workflowLabel || progress.label}
                   />
-                  <OrderProgressRow icon="bicycle-sharp" title="Delivery" subtitle={order.deliveryStatus} />
-                  <OrderProgressRow icon="card-sharp" title="Payment" subtitle={order.paymentStatus} color={BQ_COLORS.success} />
+                  <OrderProgressRow icon="bicycle-sharp" title="Delivery" subtitle={deliveryStatusLabel(order)} />
+                  <OrderProgressRow icon="card-sharp" title="Payment" subtitle={paymentStatusLabel(order)} color={BQ_COLORS.success} />
                   {order.refundReview?.required ? (
                     <OrderProgressRow
                       icon="alert-circle-sharp"

@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const { validatePostalCodeForAddress } = require("../src/utils/postalCodeValidation");
 const { getScheduledDateError } = require("../src/utils/scheduling");
 const { validateStrictServicePayload } = require("../src/domain/serviceCompletionService");
+const { getWarrantyRecommendation } = require("../src/domain/warrantyService");
 
 test("postal codes must match the selected city", () => {
   const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
@@ -36,4 +37,19 @@ test("technician service completion requires real report details", () => {
   });
   assert.equal(valid.ok, true);
   assert.equal(valid.values.serviceType, "deep_cleaning");
+});
+
+test("pending warranty activation gives automatic, customer-safe guidance", () => {
+  assert.match(
+    getWarrantyRecommendation({ status: "pending_activation" }),
+    /no action is needed/i,
+  );
+  assert.match(
+    getWarrantyRecommendation({ status: "pending_activation" }),
+    /technician completes and verifies/i,
+  );
+  assert.doesNotMatch(
+    getWarrantyRecommendation({ status: "pending_activation" }),
+    /warranty is active/i,
+  );
 });

@@ -69,6 +69,27 @@ function checkInMapUrl(checkIn = {}) {
   return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
+function warrantyStatusLabel(status = "") {
+  const normalized = String(status || "pending_activation").toLowerCase();
+  const labels = {
+    pending_activation: "Activation pending",
+    active: "Active",
+    expired: "Expired",
+    under_review: "Claim under review",
+    approved: "Claim approved",
+    rejected: "Claim not approved",
+    void: "Unavailable",
+  };
+  return labels[normalized] || normalized.replace(/_/g, " ");
+}
+
+function warrantyGuidance(unit = {}, status = "") {
+  if (status === "pending_activation") {
+    return "No action is needed. Your warranty activates automatically after the technician completes and verifies your AC installation.";
+  }
+  return unit?.warrantyRecommendation || "Keep your installation and completed service records for future warranty support.";
+}
+
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -380,7 +401,18 @@ export default function CustomerUnitDetailsScreen() {
       {detailPage === 1 ? (
         <Card>
           <CustomerSectionHeader title="Warranty" />
-          <DetailRow label="Status" value={String(unit?.warrantyStatus || unit?.warranty?.status || "pending activation").replace(/_/g, " ")} />
+          {warrantyStatus === "pending_activation" ? (
+            <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.warningLight, marginBottom: SPACING.sm }}>
+              <Ionicons name="time-sharp" size={22} color={COLORS.warning} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Waiting for installation verification</Text>
+                <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 3 }}>
+                  No acceptance is required from you. Coverage dates and details will appear automatically after your technician completes the verified installation.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          <DetailRow label="Status" value={warrantyStatusLabel(warrantyStatus)} />
           <DetailRow label="Warranty Type" value={unit?.warranty?.warrantyType || "Standard manufacturer warranty"} />
           <DetailRow label="Coverage Start" value={formatDate(unit?.warranty?.startDate)} />
           <DetailRow label="Expires" value={formatDate(unit?.warrantyExpirationDate || unit?.warranty?.expirationDate)} />
@@ -393,7 +425,11 @@ export default function CustomerUnitDetailsScreen() {
           {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
             <DetailRow key={`${record.serviceDate}-${index}`} label={`Warranty service · ${formatDate(record.serviceDate)}`} value={record.summary || record.visitType || "Service record"} multiline />
           ))}
-          {unit?.warrantyRecommendation ? <DetailRow label="AMP Recommendation" value={unit.warrantyRecommendation} multiline /> : null}
+          <DetailRow
+            label={warrantyStatus === "pending_activation" ? "What happens next" : "Warranty guidance"}
+            value={warrantyGuidance(unit, warrantyStatus)}
+            multiline
+          />
           {activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
           </Text> : null}
@@ -408,7 +444,9 @@ export default function CustomerUnitDetailsScreen() {
             </>
           ) : null}
           {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            Warranty support is unavailable while coverage is {warrantyStatus.replace(/_/g, " ")}. You can still book a standard service request from the Service Visits page.
+            {warrantyStatus === "pending_activation"
+              ? "Need help before activation? You can still book a standard service visit from the Service Visits page."
+              : `Warranty support is unavailable while coverage is ${warrantyStatus.replace(/_/g, " ")}. You can still book a standard service visit from the Service Visits page.`}
           </Text> : null}
         </Card>
       ) : null}

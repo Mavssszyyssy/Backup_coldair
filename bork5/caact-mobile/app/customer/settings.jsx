@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Platform, Text, View } from "react-native";
+import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSettingsRow, { CustomerEditAction } from "../../components/customer/CustomerSettingsRow";
@@ -387,7 +387,38 @@ export default function CustomerSettingsScreen() {
           <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={selectBarangay} />
           <TextField label="Street address" value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder="House, block, lot, street" error={addressErrors.street} />
           <TextField label="Postal code" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" error={addressErrors.postalCode} />
-          <Button title={addressForm.isDefault ? "Default delivery address" : "Set as default address"} variant={addressForm.isDefault ? "primary" : "secondary"} disabled={addressForm.isDefault || saving} onPress={() => updateAddressField("isDefault", true)} />
+          <TouchableOpacity
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: Boolean(addressForm.isDefault), disabled: Boolean(addressForm.isDefault || saving) }}
+            disabled={addressForm.isDefault || saving}
+            onPress={() => updateAddressField("isDefault", true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.sm + 4,
+              padding: SPACING.md,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: addressForm.isDefault ? COLORS.primary : COLORS.border,
+              backgroundColor: addressForm.isDefault ? COLORS.primaryLight : COLORS.surfaceAlt,
+            }}
+          >
+            <Ionicons
+              name={addressForm.isDefault ? "checkmark-circle" : "ellipse-outline"}
+              size={24}
+              color={addressForm.isDefault ? COLORS.primary : COLORS.textMuted}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>
+                {addressForm.isDefault ? "Default delivery address" : "Use as my default delivery address"}
+              </Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
+                {addressForm.isDefault
+                  ? "This address is already selected automatically at checkout."
+                  : "This choice will be applied when you save the address."}
+              </Text>
+            </View>
+          </TouchableOpacity>
           {addressId(addressForm) ? <Button title="Delete this address" variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
         </Section>
       </> : <Section title="Account details">

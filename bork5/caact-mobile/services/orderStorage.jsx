@@ -5,6 +5,7 @@ import {
   retryPaymongoCheckout as retryPaymongoCheckoutRequest,
   verifyPaymongoCheckout as verifyPaymongoCheckoutRequest,
 } from "./api";
+import { resolveOrderDeliveryStatus } from "./orderStatusService";
 
 const STORAGE_KEY = "orders_storage_v1";
 
@@ -85,15 +86,6 @@ function paymentStatusFromOrder(order = {}) {
   return ORDER_PAYMENT_STATUS.PENDING_VERIFICATION;
 }
 
-function deliveryStatusFromWorkflow(workflowStatus = "", fallback = "") {
-  if (fallback) return fallback;
-  if (workflowStatus === "to_deliver") return ORDER_DELIVERY_STATUS.PREPARING;
-  if (workflowStatus === "to_install") return ORDER_DELIVERY_STATUS.OUT_FOR_DELIVERY;
-  if (workflowStatus === "complete") return ORDER_DELIVERY_STATUS.DELIVERED;
-  if (workflowStatus === "cancelled") return ORDER_DELIVERY_STATUS.FAILED_ATTEMPT;
-  return ORDER_DELIVERY_STATUS.NOT_STARTED;
-}
-
 function statusFromWorkflow(order = {}) {
   if (order.workflowStatus === "cancelled" || order.status === "cancelled") return ORDER_STATUS.CANCELLED;
   if (order.workflowStatus === "complete") return ORDER_STATUS.RELEASED;
@@ -142,7 +134,7 @@ export function normalizeOrder(order = {}) {
     cancelledAt: order.cancelledAt || null,
     cancellationReason: order.cancellationReason || "",
     deliveryStatus:
-      deliveryStatusFromWorkflow(order.workflowStatus, order.deliveryStatus),
+      resolveOrderDeliveryStatus(order.workflowStatus, order.deliveryStatus),
     paymentStatus:
       paymentStatusFromOrder(order),
     serviceRequestId: order.serviceRequestId || "",

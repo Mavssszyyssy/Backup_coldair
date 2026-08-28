@@ -38,6 +38,19 @@ const effectiveWarrantyStatus = (warranty = {}) => {
   return status || "active";
 };
 
+const getWarrantyRecommendation = (warranty = {}) => {
+  const status = effectiveWarrantyStatus(warranty);
+  if (status === "pending_activation") {
+    return "No action is needed. Your warranty activates automatically after a technician completes and verifies the installation.";
+  }
+  if (status === "under_review") return "Your warranty claim is under review.";
+  if (status === "approved") return "Warranty service is approved. Keep the scheduled appointment.";
+  if (status === "rejected") return "This warranty claim was not approved. Review the decision note or contact support if you need help.";
+  if (status === "expired") return "Warranty coverage has expired. Continue preventive maintenance.";
+  if (status === "void") return "Warranty coverage is unavailable. Contact support if you need an explanation.";
+  return "Warranty is active. Keep completed service records to protect coverage.";
+};
+
 const buildActivatedWarranty = (existingWarranty, installedAt) => {
   const current = asPlain(existingWarranty);
   const startDate = asDate(current.startDate || installedAt);
@@ -71,5 +84,6 @@ module.exports = {
   asDate,
   appendWarrantyEvent,
   effectiveWarrantyStatus,
+  getWarrantyRecommendation,
   buildActivatedWarranty,
 };
