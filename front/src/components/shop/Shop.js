@@ -441,8 +441,15 @@ const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartNotice, setCartNotice] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!cartNotice) return undefined;
+    const timeoutId = window.setTimeout(() => setCartNotice(null), 2200);
+    return () => window.clearTimeout(timeoutId);
+  }, [cartNotice]);
 
   // Mark single notification as read
   const handleNotificationClick = async (notification) => {
@@ -649,6 +656,7 @@ const Shop = () => {
   const handleAddToCart = (product, qty = 1) => {
     if (!isAuthenticated) return navigate("/login");
     addToCart(product, qty);
+    setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
   };
 
   const handleBuyNow = (product) => {
@@ -678,6 +686,35 @@ const Shop = () => {
         isAuthenticated={isAuthenticated}
         onCartClick={() => setIsCartOpen(true)}
       />
+
+      {cartNotice ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="bq-cart-success-toast"
+          style={{
+            position: "fixed",
+            top: "94px",
+            right: "20px",
+            zIndex: 1500,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            maxWidth: "min(360px, calc(100vw - 32px))",
+            padding: "12px 15px",
+            borderRadius: "14px",
+            background: "#111827",
+            color: "#ffffff",
+            boxShadow: "0 14px 35px rgba(15, 23, 42, 0.25)",
+          }}
+        >
+          <span aria-hidden="true" style={{ display: "grid", width: "24px", height: "24px", placeItems: "center", borderRadius: "50%", background: "#22c55e", fontWeight: 900 }}>✓</span>
+          <span style={{ display: "grid", lineHeight: 1.25 }}>
+            <strong style={{ fontSize: "13px" }}>Added to cart</strong>
+            <span style={{ color: "#d1d5db", fontSize: "12px" }}>{cartNotice.name}</span>
+          </span>
+        </div>
+      ) : null}
 
       <BoutiqueNotifications
         isOpen={showNotifications}

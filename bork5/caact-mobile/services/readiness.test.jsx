@@ -4,6 +4,7 @@ import { filterAndSortProducts } from "./ecommerceService";
 import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
+import { formatCartHorsepower, formatCartModel } from "./cartDisplayService";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -59,5 +60,18 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("Technician Check-in");
     expect(detailsSource).toContain("Open Check-in Map");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
+  });
+
+  test("mobile cart shows model and horsepower with add-to-cart feedback", () => {
+    const shopSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "shop.jsx"),
+      "utf8",
+    );
+
+    expect(formatCartModel({ sku: "HSN24IPX3" })).toBe("HSN24IPX3");
+    expect(formatCartHorsepower({ specs: "2.5HP Inverter" })).toBe("2.5 HP");
+    expect(shopSource).toContain("Model: {formatCartModel(item)}");
+    expect(shopSource).toContain("Horsepower: {formatCartHorsepower(item)}");
+    expect(shopSource).toContain("Added to cart");
   });
 });

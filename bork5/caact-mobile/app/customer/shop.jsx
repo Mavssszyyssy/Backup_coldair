@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
 
 import {
@@ -20,6 +20,7 @@ import {
 } from "../../components/boutique";
 import { useCart } from "../../context/CartContext";
 import { useUserContext } from "../../context/UserContext";
+import { formatCartHorsepower, formatCartModel } from "../../services/cartDisplayService";
 import {
   buildBrands,
   buildCategories,
@@ -199,6 +200,12 @@ function CartModal({ visible, onClose }) {
                     <BoutiqueText variant="h3" numberOfLines={1}>
                       {item.name}
                     </BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>
+                      Model: {formatCartModel(item)}
+                    </BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>
+                      Horsepower: {formatCartHorsepower(item)}
+                    </BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
                       {formatPeso(item.price)} each
                     </BoutiqueText>
@@ -286,12 +293,19 @@ export default function CustomerShopScreen() {
   const [backendProducts, setBackendProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cartNotice, setCartNotice] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [sortBy, setSortBy] = useState("default");
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (!cartNotice) return undefined;
+    const timeoutId = setTimeout(() => setCartNotice(null), 2200);
+    return () => clearTimeout(timeoutId);
+  }, [cartNotice]);
 
   useFocusEffect(
     useCallback(() => {
@@ -337,6 +351,7 @@ export default function CustomerShopScreen() {
   const handleAddToCart = (product) => {
     if (!requireCustomer()) return;
     addToCart(product, 1);
+    setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
   };
 
   const handleBuyNow = (product) => {
@@ -354,6 +369,36 @@ export default function CustomerShopScreen() {
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}
       />
+      {cartNotice ? (
+        <View
+          pointerEvents="none"
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          style={{
+            position: "absolute",
+            top: 86,
+            left: BQ_SPACING.md,
+            right: BQ_SPACING.md,
+            zIndex: 1000,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: BQ_SPACING.sm,
+            paddingHorizontal: BQ_SPACING.md,
+            paddingVertical: BQ_SPACING.sm + 3,
+            borderRadius: BQ_RADIUS.md,
+            backgroundColor: "#111827",
+            ...BQ_SHADOW.float,
+          }}
+        >
+          <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#22C55E" }}>
+            <Ionicons name="checkmark-sharp" size={18} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <BoutiqueText variant="label" color="#FFFFFF">Added to cart</BoutiqueText>
+            <BoutiqueText variant="caption" color="#D1D5DB" numberOfLines={1}>{cartNotice.name}</BoutiqueText>
+          </View>
+        </View>
+      ) : null}
       <BoutiqueScreen contentContainerStyle={{ gap: BQ_SPACING.md }}>
         <BoutiqueCard
           elevated={false}

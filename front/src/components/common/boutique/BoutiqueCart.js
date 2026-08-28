@@ -8,6 +8,7 @@ import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS, BQ_GEOMETRY } from "./BoutiqueTheme";
 
 import { getBrandLogo } from "../../../config/brandLogos";
+import { formatCartHorsepower, formatCartModel } from "../../../domain/cart/cartProductDetails";
 
 function CartItemImage({ item }) {
   const [imgBroken, setBroken] = useState(false);
@@ -124,22 +125,26 @@ export default function BoutiqueCart({
                   >
                     {item.name}
                   </BoutiqueText>
-                  {item.model && (
-                    <BoutiqueText
-                      variant="label"
-                      size="11px"
-                      weight={600}
-                      color={BQ_COLORS.inkFaint}
-                      margin="0 0 6px"
-                      className="bq-item-model"
-                      style={{
-                        textTransform: "uppercase",
-                        letterSpacing: "0.1em",
-                      }}
-                    >
-                      {item.model}
-                    </BoutiqueText>
-                  )}
+                  <BoutiqueText
+                    variant="label"
+                    size="11px"
+                    weight={600}
+                    color={BQ_COLORS.inkFaint}
+                    margin="0 0 2px"
+                    className="bq-item-model"
+                  >
+                    Model: {formatCartModel(item)}
+                  </BoutiqueText>
+                  <BoutiqueText
+                    variant="label"
+                    size="11px"
+                    weight={700}
+                    color={BQ_COLORS.inkMuted}
+                    margin="0 0 6px"
+                    className="bq-item-horsepower"
+                  >
+                    Horsepower: {formatCartHorsepower(item)}
+                  </BoutiqueText>
                   <BoutiqueBox
                     direction="row"
                     align="baseline"
