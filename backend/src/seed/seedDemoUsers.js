@@ -17,6 +17,97 @@ const users = [
     activeBranch: "Bulacan",
   },
   {
+    email: "admin-bulacan@example.com",
+    alias: "admin.bulacan",
+    password: "admin123",
+    name: "Bulacan Admin",
+    name_first: "Bulacan",
+    name_last: "Admin",
+    phone: "09123456783",
+    address: "Bulacan Branch Office",
+    role: "admin",
+    assignedBranch: "Bulacan",
+    activeBranch: "Bulacan",
+  },
+  {
+    email: "admin-cavite@example.com",
+    alias: "admin.cavite",
+    password: "admin123",
+    name: "Cavite Admin",
+    name_first: "Cavite",
+    name_last: "Admin",
+    phone: "09123456784",
+    address: "Cavite Branch Office",
+    role: "admin",
+    assignedBranch: "Cavite",
+    activeBranch: "Cavite",
+  },
+  {
+    email: "admin-laguna@example.com",
+    alias: "admin.laguna",
+    password: "admin123",
+    name: "Laguna Admin",
+    name_first: "Laguna",
+    name_last: "Admin",
+    phone: "09123456785",
+    address: "Laguna Branch Office",
+    role: "admin",
+    assignedBranch: "Laguna",
+    activeBranch: "Laguna",
+  },
+  {
+    email: "admin-bataan@example.com",
+    alias: "admin.bataan",
+    password: "admin123",
+    name: "Bataan Admin",
+    name_first: "Bataan",
+    name_last: "Admin",
+    phone: "09123456786",
+    address: "Bataan Branch Office",
+    role: "admin",
+    assignedBranch: "Bataan",
+    activeBranch: "Bataan",
+  },
+  {
+    email: "admin-pangasinan@example.com",
+    alias: "admin.pangasinan",
+    password: "admin123",
+    name: "Pangasinan Admin",
+    name_first: "Pangasinan",
+    name_last: "Admin",
+    phone: "09123456787",
+    address: "Pangasinan Branch Office",
+    role: "admin",
+    assignedBranch: "Pangasinan",
+    activeBranch: "Pangasinan",
+  },
+  {
+    email: "admin-ilocos@example.com",
+    alias: "admin.ilocos",
+    password: "admin123",
+    name: "Ilocos Admin",
+    name_first: "Ilocos",
+    name_last: "Admin",
+    phone: "09123456788",
+    address: "Ilocos Branch Office",
+    role: "admin",
+    assignedBranch: "Ilocos",
+    activeBranch: "Ilocos",
+  },
+  {
+    email: "tech@example.com",
+    alias: "tech.main",
+    password: "bulacan.user",
+    name: "Technician User",
+    name_first: "Technician",
+    name_last: "User",
+    phone: "09123456781",
+    address: "Bulacan Branch Office",
+    role: "technician",
+    assignedBranch: "Bulacan",
+    activeBranch: "Bulacan",
+  },
+  {
     email: "superadmin@example.com",
     alias: "superadmin.main",
     password: "admin123", // Using standard demo password
@@ -37,7 +128,9 @@ const seedDemoUsers = async () => {
     }
     const configuredPassword = item.role === "superadmin"
       ? process.env.SEED_SUPERADMIN_PASSWORD
-      : process.env.SEED_ADMIN_PASSWORD;
+      : item.role === "technician"
+        ? process.env.SEED_TECHNICIAN_PASSWORD || process.env.SEED_ADMIN_PASSWORD
+        : process.env.SEED_ADMIN_PASSWORD;
     if (process.env.NODE_ENV === "production" && !configuredPassword) {
       throw new Error(`Set a private seed password before creating the ${item.role} account.`);
     }
