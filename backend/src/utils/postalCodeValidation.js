@@ -35,7 +35,8 @@ const validatePostalCodeForAddress = (address = {}) => {
   if (!postalCode) return "Postal code is required";
   if (!/^\d{4}$/.test(postalCode)) return "Postal code must be exactly 4 digits";
   const rules = getPostalCodeRules(address);
-  if (!rules.length || rules.some((rule) => matchesRule(postalCode, rule))) return "";
+  if (!rules.length) return "Selected city, province, and region do not match a supported service area";
+  if (rules.some((rule) => matchesRule(postalCode, rule))) return "";
   return `Postal code does not match ${address.city || "the selected city"}`;
 };
 

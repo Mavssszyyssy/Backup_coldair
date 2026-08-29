@@ -1,6 +1,4 @@
 // components/ui/BottomNav.jsx
-// Customer bottom navigation bar — 5 tabs.
-// Reloads cart count whenever the screen that mounts this nav gains focus.
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,42 +16,40 @@ export default function BottomNav() {
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
-        height: 70 + bottomInset,
+        height: 68 + bottomInset,
         alignItems: "center",
         paddingBottom: bottomInset,
+        paddingHorizontal: 4,
       }}
     >
       <NavButton
         href="/customer/home"
-        icon={require("../../images/home.png")}
+        iconName="home-sharp"
         label="Home"
       />
 
       <NavButton
         href="/customer/shop"
-        icon={require("../../images/order.png")}
+        iconName="bag-handle-sharp"
         label="Shop"
       />
 
       <NavButton
         href="/customer/services"
-        icon={require("../../images/maintenance.png")}
+        iconName="construct-sharp"
         label="Services"
-        elevated
-        color="#FFFFFF"
-        flex={1.2}
       />
 
       <NavButton
         href="/customer/orders"
-        icon={require("../../images/service.png")}
+        iconName="receipt-sharp"
         label="Orders"
       />
 
       <NavButton
         href="/customer/settings"
-        icon={require("../../images/settings.png")}
-        label="Settings"
+        iconName="person-circle-sharp"
+        label="Account"
       />
     </View>
   );

@@ -22,6 +22,8 @@ function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
     <TouchableOpacity
       activeOpacity={onPress ? 0.74 : 1}
       onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={onPress ? title : undefined}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -76,6 +78,7 @@ function EditAction({ onPress }) {
     <TouchableOpacity
       activeOpacity={0.74}
       onPress={onPress}
+      accessibilityRole="button"
       accessibilityLabel="Edit technician profile"
       style={{
         width: 36,
@@ -158,7 +161,7 @@ export default function TechProfile() {
 
   return (
     <TechnicianScreen
-      title="Settings"
+      title="Profile"
       subtitle={isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
       icon="person-sharp"
       contentContainerStyle={{ paddingBottom: isEditing ? 160 : 96 }}

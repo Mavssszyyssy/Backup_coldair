@@ -21,6 +21,7 @@ describe("mobile customer readiness rules", () => {
     expect(validatePostalCodeForAddress({ ...address, postalCode: "" })).toMatch(/required/i);
     expect(validatePostalCodeForAddress({ ...address, postalCode: "4102" })).toBe("");
     expect(validatePostalCodeForAddress({ ...address, postalCode: "1000" })).toMatch(/does not match/i);
+    expect(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" })).toMatch(/service area/i);
   });
 
   test("customer product filters preserve real inventory records", () => {

@@ -8,6 +8,7 @@ export function CustomerEditAction({ onPress, color = COLORS.primary }) {
     <TouchableOpacity
       activeOpacity={0.74}
       onPress={onPress}
+      accessibilityRole="button"
       accessibilityLabel="Edit"
       style={{
         width: 36,

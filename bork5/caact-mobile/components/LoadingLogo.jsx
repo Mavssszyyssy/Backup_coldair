@@ -26,7 +26,7 @@ export default function LoadingLogo({ size = 42 }) {
   return (
     <View accessibilityRole="progressbar" accessibilityLabel="Loading">
       <Animated.Image
-        source={require("../images/cold logo.png")}
+        source={require("../assets/coldair-app-icon.png")}
         resizeMode="cover"
         style={{
           width: size,

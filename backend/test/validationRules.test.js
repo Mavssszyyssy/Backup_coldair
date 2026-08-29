@@ -10,6 +10,7 @@ test("postal codes must match the selected city", () => {
   assert.equal(validatePostalCodeForAddress({ ...address, postalCode: "4102" }), "");
   assert.match(validatePostalCodeForAddress({ ...address, postalCode: "1000" }), /does not match/i);
   assert.match(validatePostalCodeForAddress({ ...address, postalCode: "410" }), /exactly 4 digits/i);
+  assert.match(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" }), /service area/i);
 });
 
 test("service dates reject invalid and past calendar dates", () => {

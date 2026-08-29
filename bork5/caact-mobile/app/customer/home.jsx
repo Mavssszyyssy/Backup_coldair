@@ -32,26 +32,29 @@ export default function CustomerHomeScreen() {
   const [units, setUnits] = useState([]);
   const [recommendationMap, setRecommendationMap] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
+  const [activeOrderCount, setActiveOrderCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       const load = () => {
-        Promise.all([
+        Promise.allSettled([
           getUnitsByUser(current?.id),
           getOrdersByUser(current),
           getCustomerServiceHistory(current?.id),
-        ]).then(([nextUnits, nextOrders, history]) => {
+        ]).then(([unitsResult, ordersResult, historyResult]) => {
           if (!active) return;
-          setUnits(nextUnits);
-          setRecommendationMap(
-            buildUnitRecommendationMap(
-              nextUnits,
-              history.requests,
-              history.linkedTasks,
-            ),
-          );
-          setRecentOrders(nextOrders.slice(0, 3));
+          if (unitsResult.status === "fulfilled") {
+            const nextUnits = unitsResult.value;
+            setUnits(nextUnits);
+            const history = historyResult.status === "fulfilled" ? historyResult.value : { requests: [], linkedTasks: [] };
+            setRecommendationMap(buildUnitRecommendationMap(nextUnits, history.requests || [], history.linkedTasks || []));
+          }
+          if (ordersResult.status === "fulfilled") {
+            const nextOrders = ordersResult.value;
+            setRecentOrders(nextOrders.slice(0, 3));
+            setActiveOrderCount(nextOrders.filter((order) => !["complete", "completed", "cancelled"].includes(String(order.workflowStatus || order.status || "").toLowerCase())).length);
+          }
         });
       };
       load();
@@ -69,7 +72,7 @@ export default function CustomerHomeScreen() {
       title="Home"
       subtitle={`Welcome back, ${getDisplayName(current)}`}
       right={
-        <Pressable onPress={() => router.push("/customer/notifications")} hitSlop={12}>
+        <Pressable onPress={() => router.push("/customer/notifications")} hitSlop={12} accessibilityRole="button" accessibilityLabel="Notifications">
           <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />
         </Pressable>
       }
@@ -112,6 +115,8 @@ export default function CustomerHomeScreen() {
         }}
       >
         <CustomerMetricPill label="AC Units" value={units.length} icon="snow-sharp" color={COLORS.primary} />
+        <View style={{ width: 1, alignSelf: "stretch", backgroundColor: COLORS.border }} />
+        <CustomerMetricPill label="Active Orders" value={activeOrderCount} icon="receipt-sharp" color={COLORS.success} />
       </View>
 
       {units.length === 0 ? (

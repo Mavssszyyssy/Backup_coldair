@@ -234,6 +234,7 @@ export default function CustomerOrdersScreen() {
   const router = useRouter();
   const { current } = useUserContext();
   const [orders, setOrders] = useState([]);
+  const [expandedOrderId, setExpandedOrderId] = useState("");
   const [cancellingId, setCancellingId] = useState("");
   const [payingId, setPayingId] = useState("");
 
@@ -247,7 +248,9 @@ export default function CustomerOrdersScreen() {
       let active = true;
       const load = () => {
         getOrdersByUser(current).then((items) => {
-          if (active) setOrders(items);
+          if (active) {
+            setOrders(items);
+          }
         });
       };
       load();
@@ -309,7 +312,7 @@ export default function CustomerOrdersScreen() {
 
   return (
     <>
-      <BoutiqueHeader title="Orders" subtitle="Purchases and delivery updates" onBack={() => router.replace("/customer/home")} />
+      <BoutiqueHeader title="Orders" subtitle="Purchases and delivery updates" />
       <BoutiqueScreen>
         <BoutiqueCard style={{ gap: BQ_SPACING.md, backgroundColor: BQ_COLORS.brand }}>
           <BoutiqueText variant="label" color="rgba(255,255,255,0.72)">
@@ -343,6 +346,7 @@ export default function CustomerOrdersScreen() {
               ["to_pay", "to_deliver"].includes(String(order.workflowStatus || "").toLowerCase()) &&
               !order.cancellationRequest?.requested;
             const cancellationLabel = cancellationStatusLabel(order);
+            const isExpanded = expandedOrderId === String(order.id);
 
             return (
               <BoutiqueCard key={order.id} style={{ gap: BQ_SPACING.md }}>
@@ -360,6 +364,15 @@ export default function CustomerOrdersScreen() {
                   {itemCount} item{itemCount === 1 ? "" : "s"} submitted{" "}
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
                 </BoutiqueText>
+
+                <BoutiqueButton
+                  title={isExpanded ? "Hide details" : "View details"}
+                  variant="outline"
+                  onPress={() => setExpandedOrderId(isExpanded ? "" : String(order.id))}
+                />
+
+                {isExpanded ? (
+                  <>
 
                 <OrderStepTimeline tracking={order.tracking} activeStep={progress.activeStep} />
 
@@ -452,6 +465,8 @@ export default function CustomerOrdersScreen() {
                     <OrderItemSummary key={item.id} item={item} />
                   ))}
                 </View>
+                  </>
+                ) : null}
               </BoutiqueCard>
             );
           })

@@ -1,6 +1,6 @@
 // app/customer/_layout.jsx
 // Role guard + Stack navigator for customer screens.
-import { Redirect } from "expo-router";
+import { Redirect, usePathname } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { View } from "react-native";
 
@@ -11,6 +11,15 @@ import { useRoleGuard } from "../../hooks/useRoleGuard";
 
 export default function CustomerLayout() {
   const { initialized, allowed, redirectHref } = useRoleGuard(["customer"]);
+  const pathname = usePathname();
+  const topLevelScreens = new Set([
+    "/customer/home",
+    "/customer/shop",
+    "/customer/services",
+    "/customer/orders",
+    "/customer/settings",
+  ]);
+  const showBottomNav = topLevelScreens.has(pathname);
 
   if (!initialized) {
     return (
@@ -50,7 +59,7 @@ export default function CustomerLayout() {
         <Stack.Screen name="oobe/index" />
         <Stack.Screen name="oobe/reset" />
       </Stack>
-      <BottomNav />
+      {showBottomNav ? <BottomNav /> : null}
     </View>
   );
 }

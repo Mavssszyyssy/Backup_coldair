@@ -14,23 +14,25 @@ import LoadingLogo from "./LoadingLogo";
 export default function BackendConnectionStatus() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const [connection, setConnection] = useState({ state: "loaded" });
-  const loadedTimer = useRef(null);
+  const [connection, setConnection] = useState({ state: "hidden" });
+  const displayTimer = useRef(null);
 
   useEffect(() => {
     const unsubscribe = subscribeBackendConnection((next) => {
-      if (loadedTimer.current) clearTimeout(loadedTimer.current);
-      setConnection(next);
-      if (next.state === "loaded") {
-        loadedTimer.current = setTimeout(
-          () => setConnection((current) => ({ ...current, state: "hidden" })),
-          1200,
-        );
+      if (displayTimer.current) clearTimeout(displayTimer.current);
+      if (next.state === "failed") {
+        setConnection(next);
+        return;
       }
+      if (next.state === "connecting") {
+        displayTimer.current = setTimeout(() => setConnection(next), 700);
+        return;
+      }
+      setConnection({ ...next, state: "hidden" });
     });
     return () => {
       unsubscribe();
-      if (loadedTimer.current) clearTimeout(loadedTimer.current);
+      if (displayTimer.current) clearTimeout(displayTimer.current);
     };
   }, []);
 
@@ -44,7 +46,7 @@ export default function BackendConnectionStatus() {
 
   const failed = connection.state === "failed";
   return (
-    <View pointerEvents="box-none" style={[styles.container, { top: insets.top + SPACING.sm }]}>
+    <View pointerEvents="box-none" style={[styles.container, { bottom: Math.max(insets.bottom, SPACING.sm) + 72 }]}>
       <View style={[styles.card, failed ? styles.failedCard : styles.statusCard]}>
         {failed ? null : <LoadingLogo size={32} />}
         {failed ? <Text style={[styles.text, styles.failedText]}>{connection.message}</Text> : null}
@@ -60,8 +62,9 @@ export default function BackendConnectionStatus() {
 
 const styles = {
   container: {
-    alignItems: "center",
+    alignItems: "flex-end",
     left: 0,
+    paddingHorizontal: SPACING.md,
     position: "absolute",
     right: 0,
     zIndex: 9999,

@@ -98,7 +98,8 @@ export default function TechDashboard() {
         <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label="Pending" value={stats.pending} icon="time-sharp" color={COLORS.warning} /></View>
       </View>
       <View style={{ flexDirection: "row", marginBottom: SPACING.md }}>
-        <View style={{ flex: 1 }}><MetricCard label="All work orders" value={stats.total} icon="layers-sharp" color={COLORS.primary} /></View>
+        <View style={{ flex: 1, marginRight: SPACING.xs }}><MetricCard label="Completed" value={stats.completed} icon="checkmark-done-sharp" color={COLORS.success} /></View>
+        <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label="All work orders" value={stats.total} icon="layers-sharp" color={COLORS.primary} /></View>
       </View>
 
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>Work Orders</Text>
@@ -114,7 +115,7 @@ export default function TechDashboard() {
           </View>
         </Card>
       )) : <Card><Text style={{ color: COLORS.textSecondary }}>No work orders have been assigned to you yet.</Text></Card>}
-      <DashboardLink title="Notifications" subtitle="Review new assignments and service alerts." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
+      <DashboardLink title="Alerts" subtitle="Review new assignments and service updates." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
     </TechnicianScreen>
   );
 }

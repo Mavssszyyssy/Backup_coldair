@@ -21,6 +21,10 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   useImperativeHandle(forwardedRef, () => scrollRef.current);
 
   const scrollFocusedInputIntoView = useCallback((node) => {
+    // Web browsers already scroll the focused field into view. React Native
+    // Web does not support findNodeHandle/UIManager.measureLayout here and
+    // raises a full-screen development error if this native path is used.
+    if (Platform.OS === "web") return;
     const target = node || TextInput.State.currentlyFocusedInput?.();
     const scrollNode = findNodeHandle(scrollRef.current);
     const targetNode = findNodeHandle(target);

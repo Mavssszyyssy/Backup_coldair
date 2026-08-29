@@ -19,48 +19,40 @@ function NavItem({ item }) {
 
   return (
     <TouchableOpacity
-      onPress={() => router.push(item.href)}
+      onPress={() => router.replace(item.href)}
       activeOpacity={0.78}
+      accessibilityRole="tab"
+      accessibilityLabel={item.label}
+      accessibilityState={{ selected: active }}
       style={{
         flex: item.elevated ? 1.15 : 1,
         alignItems: "center",
         justifyContent: "center",
-        marginTop: item.elevated ? -28 : 0,
+        minHeight: 58,
       }}
     >
       <View
         style={{
-          width: item.elevated ? 58 : 40,
-          height: item.elevated ? 58 : 40,
+          width: 34,
+          height: 34,
           borderRadius: RADIUS.full,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: item.elevated
-            ? COLORS.tech
-            : active
-              ? COLORS.techLight
-              : COLORS.surfaceAlt,
-          borderWidth: item.elevated ? 4 : 1,
-          borderColor: item.elevated ? COLORS.surface : active ? COLORS.tech : COLORS.border,
-          shadowColor: COLORS.tech,
-          shadowOpacity: item.elevated ? 0.22 : 0,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: item.elevated ? 6 : 0,
+          backgroundColor: active ? COLORS.techLight : "transparent",
         }}
       >
         <Ionicons
           name={item.icon}
-          size={item.elevated ? 27 : 22}
-          color={item.elevated ? COLORS.surface : color}
+          size={22}
+          color={color}
         />
       </View>
       <Text
         style={{
-          color: item.elevated ? COLORS.tech : color,
-          fontSize: FONT.sm,
+          color,
+          fontSize: 11,
           fontWeight: active ? FONT.black : FONT.bold,
-          marginTop: item.elevated ? 1 : 2,
+          marginTop: 3,
         }}
       >
         {item.label}
@@ -76,24 +68,20 @@ export default function TechnicianBottomNav() {
   return (
     <View
       style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
         zIndex: 30,
         flexDirection: "row",
-        height: 76 + bottomInset,
+        height: 68 + bottomInset,
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         paddingHorizontal: SPACING.xs,
-        paddingTop: SPACING.xs,
+        paddingTop: 2,
         paddingBottom: bottomInset,
         alignItems: "center",
-        elevation: 20,
+        elevation: 8,
         shadowColor: "#0F172A",
         shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowRadius: 8,
         shadowOffset: { width: 0, height: -4 },
       }}
     >

@@ -97,7 +97,7 @@ const demoUsers = [
   {
     email: "tech@example.com",
     alias: "tech.main",
-    password: "bulacan.user",
+    password: "tech.123",
     name: "Technician User",
     name_first: "Technician",
     name_last: "User",
@@ -106,6 +106,7 @@ const demoUsers = [
     role: "technician",
     assignedBranch: "Bulacan",
     activeBranch: "Bulacan",
+    technicianOnboardedAt: "2026-01-01T00:00:00.000Z",
   },
   {
     email: "superadmin@example.com",
@@ -136,7 +137,11 @@ const seedDemoUsers = async () => {
     }
     const passwordHash = await bcrypt.hash(configuredPassword || item.password, 10);
     const { password: _demoPassword, ...account } = item;
-    await User.create({ ...account, passwordHash, isFirstLogin: true });
+    await User.create({
+      ...account,
+      passwordHash,
+      isFirstLogin: item.alias !== "tech.main",
+    });
   }
   console.log("Demo users seeded.");
 };

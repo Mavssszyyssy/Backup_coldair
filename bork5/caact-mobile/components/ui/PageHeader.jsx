@@ -10,21 +10,31 @@ export default function PageHeader({
   onBack,
   color = COLORS.primary,
 }) {
-  return (
-    <View style={{ marginBottom: SPACING.lg }}>
-      {onBack ? (
+  if (onBack) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
         <TouchableOpacity
           onPress={onBack}
           hitSlop={12}
-          style={{ marginBottom: SPACING.sm }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, marginRight: SPACING.sm }}
         >
-          <Ionicons name="arrow-back-sharp" size={24} color={COLORS.textSecondary} />
+          <Ionicons name="arrow-back-sharp" size={21} color={color} />
         </TouchableOpacity>
-      ) : null}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontSize: FONT.xl, fontWeight: FONT.black, color }}>{title}</Text>
+          {subtitle ? <Text numberOfLines={2} style={{ fontSize: FONT.sm, lineHeight: 18, color: COLORS.textSecondary, marginTop: 2 }}>{subtitle}</Text> : null}
+        </View>
+      </View>
+    );
+  }
 
-      <View style={{ alignItems: "center", marginTop: onBack ? 0 : SPACING.sm }}>
+  return (
+    <View style={{ marginBottom: SPACING.lg }}>
+      <View style={{ alignItems: "center", marginTop: SPACING.sm }}>
         <Image
-          source={require("../../images/cold logo.png")}
+          source={require("../../assets/coldair-app-icon.png")}
           style={{
             width: 90,
             height: 90,

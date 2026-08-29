@@ -143,6 +143,13 @@ export default function CheckoutScreen() {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
+  const addressIssue = useMemo(() => {
+    const missingField = ["region", "province", "city", "barangay", "street"]
+      .some((field) => !String(address?.[field] || "").trim());
+    if (missingField) return "Complete the region, province, city, barangay, and street address.";
+    const phoneError = address?.phone ? validatePhone(address.phone) : "Phone number is required.";
+    return phoneError || validatePostalCodeForAddress(address);
+  }, [address]);
   const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, inventoryBranch), [cart, inventoryBranch]);
 
   useEffect(() => {
@@ -348,13 +355,17 @@ export default function CheckoutScreen() {
               <BoutiqueText color={BQ_COLORS.inkMuted}>
                 {[address.street, address.barangay, address.city, address.province].filter(Boolean).join(", ") || current?.address || "No saved address"}
               </BoutiqueText>
-              <BoutiqueText variant="caption" color={inventoryBranch ? BQ_COLORS.success : BQ_COLORS.danger}>
-                {inventoryBranch ? `Assigned branch: ${inventoryBranch}` : "Choose a delivery address within a configured service area."}
+              <BoutiqueText variant="caption" color={addressIssue || !inventoryBranch ? BQ_COLORS.danger : BQ_COLORS.success}>
+                {addressIssue
+                  ? `Address needs review: ${addressIssue}`
+                  : inventoryBranch
+                    ? `Assigned branch: ${inventoryBranch}`
+                    : "Choose a delivery address within a configured service area."}
               </BoutiqueText>
             </BoutiqueCard>
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
-              <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={showOrderDetails ? "Hide order details" : "View order details"} accessibilityState={{ expanded: showOrderDetails }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View>
                   <BoutiqueText variant="h3">Order summary</BoutiqueText>
                   <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{cart.reduce((count, item) => count + Number(item.quantity || 0), 0)} item(s)</BoutiqueText>
@@ -398,7 +409,7 @@ export default function CheckoutScreen() {
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
               {checkoutMessage ? <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{checkoutMessage}</BoutiqueText> : null}
-              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting} fullWidth onPress={() => void submitOrder()} />
+              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting || Boolean(addressIssue) || !inventoryBranch} fullWidth onPress={() => void submitOrder()} />
             </BoutiqueCard>
           </>
         )}

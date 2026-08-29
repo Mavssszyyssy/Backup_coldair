@@ -172,7 +172,7 @@ function CartModal({ visible, onClose }) {
                 {cart.length} product line{cart.length === 1 ? "" : "s"}
               </BoutiqueText>
             </View>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close cart">
               <Ionicons name="close-sharp" size={24} color={BQ_COLORS.ink} />
             </Pressable>
           </View>
@@ -215,7 +215,7 @@ function CartModal({ visible, onClose }) {
                         max={Math.max(1, item.stock || 99)}
                         onChange={(next) => updateQuantity(item.id, next)}
                       />
-                      <Pressable onPress={() => removeFromCart(item.id)} hitSlop={8}>
+                      <Pressable onPress={() => removeFromCart(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${item.name} from cart`}>
                         <Ionicons name="trash-sharp" size={18} color={BQ_COLORS.danger} />
                       </Pressable>
                     </View>
@@ -261,7 +261,7 @@ function ProductModal({ product, visible, onClose, onAddToCart, onBuyNow }) {
                 </BoutiqueText>
                 <BoutiqueText variant="h2">{product.name}</BoutiqueText>
               </View>
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close product details">
                 <Ionicons name="close-sharp" size={24} color={BQ_COLORS.ink} />
               </Pressable>
             </View>
@@ -365,7 +365,6 @@ export default function CustomerShopScreen() {
       <BoutiqueHeader
         title="Shop AC Units"
         subtitle="Available stock across all branches"
-        onBack={() => router.replace("/customer/home")}
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}
       />

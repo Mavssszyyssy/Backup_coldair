@@ -352,7 +352,7 @@ export default function CustomerSettingsScreen() {
 
   return (
     <CustomerScreen
-      title="Settings"
+      title="Account"
       subtitle={subtitle}
       contentContainerStyle={{ paddingBottom: isEditing ? 176 : 96 }}
       stickyAction={isEditing ? <StickyActionBar><Button title={saving ? "Saving..." : isEditingAddress ? "Save Address" : "Save Account"} onPress={isEditingAddress ? saveAddress : saveProfile} loading={saving} disabled={saving} /><Button title="Cancel" variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}
@@ -365,7 +365,11 @@ export default function CustomerSettingsScreen() {
           <CustomerSettingsRow icon="call-sharp" title="Phone" subtitle={current?.phone || "No phone on file"} />
         </Section>
         <Section title="Delivery Addresses">
-          {addresses.length ? addresses.map((address) => <CustomerSettingsRow key={addressId(address)} icon={address.isDefault ? "location-sharp" : "location-outline"} title={`${address.label || "Delivery address"}${address.isDefault ? " · Default" : ""}`} subtitle={addressLine(address) || "Address details incomplete"} onPress={() => openAddressEditor(address)} right={<CustomerEditAction onPress={() => openAddressEditor(address)} />} />) : <View style={{ paddingVertical: SPACING.sm }}><Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>No delivery address saved yet. You can add one whenever you are ready to check out.</Text></View>}
+          {addresses.length ? addresses.map((address) => {
+            const details = addressLine(address) || "Address details incomplete";
+            const addressIssue = validatePostalCodeForAddress(address);
+            return <CustomerSettingsRow key={addressId(address)} icon={address.isDefault ? "location-sharp" : "location-outline"} title={`${address.label || "Delivery address"}${address.isDefault ? " · Default" : ""}`} subtitle={addressIssue ? `${details}\nNeeds review: ${addressIssue}` : details} color={addressIssue ? COLORS.warning : COLORS.primary} onPress={() => openAddressEditor(address)} />;
+          }) : <View style={{ paddingVertical: SPACING.sm }}><Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>No delivery address saved yet. You can add one whenever you are ready to check out.</Text></View>}
           <Button title={addresses.length ? "Add another address" : "Add delivery address"} variant="secondary" onPress={() => openAddressEditor()} />
         </Section>
         <Section title="Security & Session">

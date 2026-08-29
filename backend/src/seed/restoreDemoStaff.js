@@ -81,14 +81,18 @@ const restoreDemoStaff = async () => {
         deletedAt: null,
         failedLoginAttempts: 0,
         lockoutUntil: null,
-        isFirstLogin: true,
+        isFirstLogin: staff.alias !== "tech.main",
       });
       await deletedSeed.save();
       result.restored.push(staff.alias);
       continue;
     }
 
-    await User.create({ ...account, passwordHash, isFirstLogin: true });
+    await User.create({
+      ...account,
+      passwordHash,
+      isFirstLogin: staff.alias !== "tech.main",
+    });
     result.created.push(staff.alias);
   }
 

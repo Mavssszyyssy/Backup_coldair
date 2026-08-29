@@ -1,20 +1,19 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image, Pressable, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
 
-// Top-level tab routes that should show a home icon instead of a back arrow.
-const TAB_ROUTES = [
+// Top-level tab routes show the Cold Air brand instead of a redundant back action.
+const TAB_ROUTES = new Set([
   "/customer/home",
+  "/customer/shop",
   "/customer/orders",
   "/customer/services",
   "/customer/settings",
-  "/customer/contact",
-  "/customer/oobe",
-];
+]);
 
 export default function CustomerScreen({
   title,
@@ -29,22 +28,23 @@ export default function CustomerScreen({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-
-  const isTabRoute = TAB_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/"),
-  );
+  const insets = useSafeAreaInsets();
+  const isTabRoute = TAB_ROUTES.has(pathname);
+  const hasBottomNav = withBottomNav && isTabRoute;
+  const bottomClearance = hasBottomNav
+    ? SPACING.lg
+    : Math.max(insets.bottom, SPACING.sm) + SPACING.lg;
 
   const content = scroll ? (
     <KeyboardAwareScrollView
       contentContainerStyle={[
         {
           padding: SPACING.md,
-          // Keep the last action clear of the persistent shop-style tab bar.
-          paddingBottom: SPACING.xxl + 84,
+          paddingBottom: bottomClearance,
         },
         contentContainerStyle,
       ]}
-      minBottomPadding={stickyAction ? 176 : SPACING.xxl + 84}
+      minBottomPadding={stickyAction ? bottomClearance + 96 : bottomClearance}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -54,7 +54,7 @@ export default function CustomerScreen({
         {
           flex: 1,
           padding: SPACING.md,
-          paddingBottom: SPACING.xxl + 84,
+          paddingBottom: bottomClearance,
         },
         contentContainerStyle,
       ]}
@@ -75,12 +75,6 @@ export default function CustomerScreen({
     router.replace("/customer/home");
   };
 
-  const leftIcon = onBack
-    ? "arrow-back-sharp"
-    : isTabRoute
-      ? "home-sharp"
-      : "arrow-back-sharp";
-
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View
@@ -93,22 +87,30 @@ export default function CustomerScreen({
           paddingBottom: SPACING.sm,
         }}
       >
-        <Pressable onPress={handleLeftAction} hitSlop={12}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: RADIUS.md,
-              backgroundColor: COLORS.surface,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-            }}
-          >
-            <Ionicons name={leftIcon} size={21} color={COLORS.primary} />
-          </View>
-        </Pressable>
+        {isTabRoute && !onBack ? (
+          <Image
+            source={require("../../assets/coldair-app-icon.png")}
+            accessibilityLabel="Cold Air ACT"
+            style={{ width: 40, height: 40, borderRadius: RADIUS.md }}
+          />
+        ) : (
+          <Pressable onPress={handleLeftAction} hitSlop={12} accessibilityRole="button" accessibilityLabel="Go back">
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: RADIUS.md,
+                backgroundColor: COLORS.surface,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+              }}
+            >
+              <Ionicons name="arrow-back-sharp" size={21} color={COLORS.primary} />
+            </View>
+          </Pressable>
+        )}
 
         <View style={{ flex: 1, marginHorizontal: SPACING.sm }}>
           <Text

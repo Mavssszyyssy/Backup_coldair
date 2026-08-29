@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
@@ -116,9 +116,10 @@ export default function TechnicianScreen({
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const hasBottomNav = withBottomNav && BOTTOM_NAV_ROUTES.has(pathname);
+  const isTopLevel = BOTTOM_NAV_ROUTES.has(pathname);
+  const hasBottomNav = withBottomNav && isTopLevel;
   const bottomClearance = hasBottomNav
-    ? 76 + Math.max(insets.bottom, SPACING.xs) + 44
+    ? SPACING.lg
     : Math.max(insets.bottom, SPACING.md) + SPACING.lg;
 
   const content = scroll ? (
@@ -155,22 +156,30 @@ export default function TechnicianScreen({
           paddingBottom: SPACING.sm,
         }}
       >
-        <Pressable onPress={handleBack} hitSlop={12}>
-          <View
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: RADIUS.full,
-              backgroundColor: COLORS.surface,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: COLORS.border,
-            }}
-          >
-            <Ionicons name={onBack ? "arrow-back-sharp" : icon} size={20} color={COLORS.tech} />
-          </View>
-        </Pressable>
+        {isTopLevel && !onBack ? (
+          <Image
+            source={require("../../assets/coldair-app-icon.png")}
+            accessibilityLabel="Cold Air ACT"
+            style={{ width: 40, height: 40, borderRadius: RADIUS.md }}
+          />
+        ) : (
+          <Pressable onPress={handleBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Go back">
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: RADIUS.full,
+                backgroundColor: COLORS.surface,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: COLORS.border,
+              }}
+            >
+              <Ionicons name="arrow-back-sharp" size={20} color={COLORS.tech} />
+            </View>
+          </Pressable>
+        )}
         <View style={{ flex: 1, flexShrink: 1, marginHorizontal: SPACING.sm }}>
           <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.xl }}>
             {title}
