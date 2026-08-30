@@ -65,7 +65,9 @@ const buildOtpEmail = ({ code, action, expiresInMinutes }) => {
               <td class="email-header" style="padding:30px 40px;background:#0f2744;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr>
-                    <td width="52" height="52" align="center" valign="middle" style="width:52px;height:52px;border-radius:16px;background:#1e88e5;color:#ffffff;font-size:27px;line-height:52px;">&#10052;</td>
+                    <td width="56" height="56" align="center" valign="middle" style="width:56px;height:56px;">
+                      <img src="https://coldair-act.online/Cold%20Air%20Logo.jpg" width="56" height="56" alt="Cold Air ACT logo" style="display:block;width:56px;height:56px;border:0;border-radius:50%;background:#ffffff;">
+                    </td>
                     <td style="padding-left:14px;">
                       <div style="font-size:20px;line-height:26px;font-weight:800;color:#ffffff;">Cold Air ACT</div>
                       <div style="font-size:12px;line-height:18px;font-weight:700;letter-spacing:1.2px;color:#93c5fd;">AEROPULSE</div>

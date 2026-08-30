@@ -110,10 +110,13 @@ test("signup OTP email uses the branded responsive template", () => {
   assert.match(email.text, /Verification code: 123456/);
   assert.match(email.html, /Cold Air ACT/);
   assert.match(email.html, /AEROPULSE/);
+  assert.match(email.html, /https:\/\/coldair-act\.online\/Cold%20Air%20Logo\.jpg/);
+  assert.match(email.html, /alt="Cold Air ACT logo"/);
   assert.match(email.html, /123456/);
   assert.match(email.html, /expires in 5 minutes/);
   assert.match(email.html, /@media only screen and \(max-width: 620px\)/);
   assert.doesNotMatch(email.html, /register_email/);
+  assert.doesNotMatch(email.html, /&#10052;/);
 });
 
 test("password reset OTP email uses recovery-specific wording", () => {
