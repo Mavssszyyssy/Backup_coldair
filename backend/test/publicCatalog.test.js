@@ -37,6 +37,23 @@ test("branch-scoped catalog reports only the selected branch quantity", () => {
   assert.equal(result.inventoryBranch, "Cavite");
 });
 
+test("known seeded models use their verified storefront image", () => {
+  const result = toPublicProduct({
+    ...product,
+    sku: "53CNV030WTHP",
+    image: "https://images.pexels.com/old-room-photo.jpg",
+  });
+  assert.equal(
+    result.image,
+    "https://coldair-act.online/catalog/ac/carrier-opus-53cnv.jpg",
+  );
+});
+
+test("unknown products keep their uploaded catalog image", () => {
+  const result = toPublicProduct(product);
+  assert.equal(result.image, "https://example.invalid/ac.jpg");
+});
+
 test("customer catalog excludes test, demo, QA, and E2E inventory", () => {
   assert.equal(isCustomerCatalogProduct(product), true);
   assert.equal(isCustomerCatalogProduct({ ...product, name: "Installed Unit E2E 123" }), false);

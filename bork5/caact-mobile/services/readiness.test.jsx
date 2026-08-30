@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { filterAndSortProducts } from "./ecommerceService";
+import { filterAndSortProducts, getProductImageUrl } from "./ecommerceService";
 import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
@@ -31,6 +31,18 @@ describe("mobile customer readiness rules", () => {
     ];
     expect(filterAndSortProducts(products, { selectedBrand: "Cold Air" })).toHaveLength(1);
     expect(filterAndSortProducts(products, { searchTerm: "OT-1" })[0].id).toBe("2");
+  });
+
+  test("mobile shop uses the verified catalog image for each seeded model family", () => {
+    expect(getProductImageUrl({ sku: "TAC-10CSD-KEI-S-2" })).toContain(
+      "/catalog/ac/tcl-breezein-kei2.jpg",
+    );
+    expect(getProductImageUrl({ sku: "53CNV030WTHP" })).toContain(
+      "/catalog/ac/carrier-opus-53cnv.jpg",
+    );
+    expect(getProductImageUrl({ sku: "AR12TYHYE" })).toContain(
+      "/catalog/ac/samsung-ar9500t.png",
+    );
   });
 
   test("mobile credentials apply phone and password limits", () => {

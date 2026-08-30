@@ -5,67 +5,46 @@ const crypto = require("crypto");
 const { BRANCHES } = require("../domain/branchRouting");
 const { validateProductUniqueness } = require("../utils/productValidation");
 
-// A licensed stock photo used only when an administrator has not uploaded a
-// product image yet. Uploaded product images always take precedence.
+// Unknown products retain their uploaded image when one exists. The seeded
+// catalog models below use verified manufacturer/model-family assets hosted by
+// the storefront so web and mobile always render the same stable image.
 const DEFAULT_CATALOG_IMAGE_URL =
   "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+const CATALOG_ASSET_BASE_URL = String(
+  process.env.CATALOG_ASSET_BASE_URL ||
+    "https://coldair-act.online/catalog/ac",
+).replace(/\/+$/, "");
 
 // Seed items are model families, so each family gets a matching product photo
 // instead of every card showing the same generic air-conditioner image.
 const CATALOG_IMAGE_BY_SKU_PREFIX = [
-  [
-    "AHAC-MINV",
-    "https://ansons.ph/wp-content/uploads/2024/12/29_AHAC-MINV1023EHW-480x480.jpg",
-  ],
-  [
-    "TAC09-CWI",
-    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
-  ],
-  [
-    "TAC12-CWI",
-    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
-  ],
-  [
-    "TAC18-CWI",
-    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
-  ],
-  [
-    "TAC24-CWI",
-    "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946",
-  ],
-  [
-    "TAC-",
-    "https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&dpr=1&h=750&w=1260",
-  ],
-  [
-    "MSCE-",
-    "https://web-res.midea.com/content/dam/midea-aem/my/my-new/pdp/air-conditioner/residential/msce-25crfn8-id--msce-25crfn8-od/PD-air-conditioner-residential-MSCE-25CRFN8-ID%20%20MSCE-25CRFN8-OD-EF1-front-close-1040x1040.jpg",
-  ],
-  [
-    "AR",
-    "https://dienmayabc.com/media/product/3579_samsung_ar09tyhqasinsv_a_1_org.jpg",
-  ],
-  [
-    "HSN",
-    "https://www.lg.com/content/dam/channel/wcms/ph/images/residential-air-conditioners/hsn09ipx_attglcp_eacm_ph_c/gallery/Zoom_01.jpg?w=800",
-  ],
-  [
-    "53CNV",
-    "https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&dpr=1&h=750&w=1260",
-  ],
-  [
-    "53CLV",
-    "https://images.pexels.com/photos/1571459/pexels-photo-1571459.jpeg?auto=compress&dpr=1&h=750&w=1260",
-  ],
+  ["AHAC-MINV", "american-home-ahac-minv.jpg"],
+  ["TAC09-CWI", "tcl-uje-window.png"],
+  ["TAC12-CWI", "tcl-uje-window.png"],
+  ["TAC18-CWI", "tcl-uje-window.png"],
+  ["TAC24-CWI", "tcl-uje-window.png"],
+  ["TAC-", "tcl-breezein-kei2.jpg"],
+  ["MSCE-", "midea-celest-msce.jpg"],
+  ["AR09TY", "samsung-ar9500t.png"],
+  ["AR12TY", "samsung-ar9500t.png"],
+  ["AR18TY", "samsung-ar9500t.png"],
+  ["AR24TY", "samsung-ar9500t.png"],
+  ["HSN30", "lg-hsn30ipc.jpg"],
+  ["HSN", "lg-hsn-ipx.jpg"],
+  ["53CNV", "carrier-opus-53cnv.jpg"],
+  ["53CLV", "carrier-slim-53clv.jpg"],
 ];
 
-const getCatalogImage = (item = {}) => {
+const getVerifiedCatalogImage = (item = {}) => {
   const sku = String(item.sku || "").toUpperCase();
   const match = CATALOG_IMAGE_BY_SKU_PREFIX.find(([prefix]) =>
     sku.startsWith(prefix),
   );
-  return match?.[1] || DEFAULT_CATALOG_IMAGE_URL;
+  return match ? `${CATALOG_ASSET_BASE_URL}/${match[1]}` : "";
 };
+
+const getCatalogImage = (item = {}) =>
+  getVerifiedCatalogImage(item) || item.image || DEFAULT_CATALOG_IMAGE_URL;
 
 const SAMPLE_PRODUCTS = [
   {
@@ -878,7 +857,7 @@ const toPublicProduct = (product, scopedBranch = "") => {
     description: product.description,
     specs: product.specs,
     features: Array.isArray(product.features) ? product.features : [],
-    image: product.image,
+    image: getCatalogImage(product),
     price: Number(product.price || 0),
     stock: scopedBranch ? Number(branchStock[scopedBranch] || 0) : totalStock,
     totalStock,

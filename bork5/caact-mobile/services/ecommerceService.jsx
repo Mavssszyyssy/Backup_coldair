@@ -2,13 +2,38 @@ import { apiFetch } from "../constants/config";
 
 const DEFAULT_CATALOG_IMAGE_URL =
   "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+const CATALOG_ASSET_BASE_URL = "https://coldair-act.online/catalog/ac";
 
-const getProductImageUrl = (product = {}) => {
+export const getProductImageUrl = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
-  if (sku.includes("WINDOW")) {
-    return "https://www.kimstore.com/cdn/shop/files/DHMETCL0005.png?v=1757586903&width=1946";
+  if (sku.startsWith("AHAC-MINV")) {
+    return `${CATALOG_ASSET_BASE_URL}/american-home-ahac-minv.jpg`;
   }
-  return DEFAULT_CATALOG_IMAGE_URL;
+  if (sku.includes("CWI")) {
+    return `${CATALOG_ASSET_BASE_URL}/tcl-uje-window.png`;
+  }
+  if (sku.startsWith("TAC-")) {
+    return `${CATALOG_ASSET_BASE_URL}/tcl-breezein-kei2.jpg`;
+  }
+  if (sku.startsWith("MSCE-")) {
+    return `${CATALOG_ASSET_BASE_URL}/midea-celest-msce.jpg`;
+  }
+  if (/^AR(?:09|12|18|24)TY/.test(sku)) {
+    return `${CATALOG_ASSET_BASE_URL}/samsung-ar9500t.png`;
+  }
+  if (sku.startsWith("HSN30")) {
+    return `${CATALOG_ASSET_BASE_URL}/lg-hsn30ipc.jpg`;
+  }
+  if (sku.startsWith("HSN")) {
+    return `${CATALOG_ASSET_BASE_URL}/lg-hsn-ipx.jpg`;
+  }
+  if (sku.startsWith("53CNV")) {
+    return `${CATALOG_ASSET_BASE_URL}/carrier-opus-53cnv.jpg`;
+  }
+  if (sku.startsWith("53CLV")) {
+    return `${CATALOG_ASSET_BASE_URL}/carrier-slim-53clv.jpg`;
+  }
+  return "";
 };
 
 // Products must come from the API so every item shown in the mobile shop has
@@ -34,7 +59,11 @@ const normalizeProduct = (product = {}) => ({
       : `${Number(product.totalStock ?? product.stock ?? 0)} units across branches`,
   description: product.description || "",
   warranty: product.warranty || "Standard warranty",
-  imageUrl: product.imageUrl || product.image || getProductImageUrl(product),
+  imageUrl:
+    getProductImageUrl(product) ||
+    product.imageUrl ||
+    product.image ||
+    DEFAULT_CATALOG_IMAGE_URL,
 });
 
 export const formatPeso = (value) => new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(value || 0));
