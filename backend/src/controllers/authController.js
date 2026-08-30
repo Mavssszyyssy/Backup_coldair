@@ -128,7 +128,7 @@ const sendOtpMessage = async ({ recipient, channel, action, code }) => {
 
   if (channel === "email") {
     if (!canSendEmail()) {
-      throw new Error("Email delivery is not configured. Add an Infobip verified email sender and email API permission.");
+      throw new Error("Email delivery is not configured. Add the Resend API key and verified sender in Vercel.");
     }
     await sendEmail({
       to: recipient,

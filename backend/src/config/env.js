@@ -133,6 +133,8 @@ const env = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   smtpFrom: process.env.SMTP_FROM || "",
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || "",
   passwordResetTokenSecret:
     process.env.PASSWORD_RESET_TOKEN_SECRET ||
     process.env.JWT_SECRET ||
@@ -142,14 +144,8 @@ const env = {
   ),
   accountDeleteMode: process.env.ACCOUNT_DELETE_MODE || "soft",
   infobipApiKey: process.env.INFOBIP_API_KEY || "",
-  // Email can use a separate, least-privilege key while SMS continues to use
-  // INFOBIP_API_KEY. Fall back for installations that intentionally use one
-  // key for both channels.
-  infobipEmailApiKey:
-    process.env.INFOBIP_EMAIL_API_KEY || process.env.INFOBIP_API_KEY || "",
   infobipBaseUrl: process.env.INFOBIP_BASE_URL || "",
   infobipSender: process.env.INFOBIP_SENDER || "",
-  infobipEmailSender: process.env.INFOBIP_EMAIL_SENDER || "",
   serviceCatalogJson: process.env.SERVICE_CATALOG_JSON || "",
 };
 

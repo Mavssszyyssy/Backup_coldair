@@ -5,35 +5,26 @@ let cachedTransporter = null;
 
 const canSendEmail = () => {
   return Boolean(
-    (env.infobipEmailApiKey && env.infobipBaseUrl && env.infobipEmailSender) ||
+    (env.resendApiKey && env.resendFromEmail) ||
     (env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom),
   );
 };
 
-const getInfobipEmailConfiguration = () => ({
-  apiKey: Boolean(env.infobipEmailApiKey),
-  dedicatedApiKey: Boolean(process.env.INFOBIP_EMAIL_API_KEY),
-  baseUrl: Boolean(env.infobipBaseUrl),
-  sender: Boolean(env.infobipEmailSender),
+const getResendEmailConfiguration = () => ({
+  apiKey: Boolean(env.resendApiKey),
+  sender: Boolean(env.resendFromEmail),
 });
 
-const getMissingInfobipSettings = () =>
-  Object.entries(getInfobipEmailConfiguration())
+const getMissingResendSettings = () =>
+  Object.entries(getResendEmailConfiguration())
     .filter(([, configured]) => !configured)
     .map(
       ([key]) =>
         ({
-          apiKey: "INFOBIP_EMAIL_API_KEY or INFOBIP_API_KEY",
-          baseUrl: "INFOBIP_BASE_URL",
-          sender: "INFOBIP_EMAIL_SENDER",
+          apiKey: "RESEND_API_KEY",
+          sender: "RESEND_FROM_EMAIL",
         }[key]),
     );
-
-const infobipBaseUrl = () =>
-  String(env.infobipBaseUrl || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/+$/, "");
 
 const getTransporter = () => {
   if (!env.smtpHost || !env.smtpUser || !env.smtpPass || !env.smtpFrom)
@@ -53,77 +44,65 @@ const getTransporter = () => {
   return cachedTransporter;
 };
 
-const sendEmailViaInfobip = async ({ to, subject, text, html }) => {
-  const url = `https://${infobipBaseUrl()}/email/4/messages`;
+const sendEmailViaResend = async ({ to, subject, text, html }) => {
+  const recipients = Array.isArray(to) ? to : [to];
   const headers = {
-    Authorization: `App ${env.infobipEmailApiKey}`,
+    Authorization: `Bearer ${env.resendApiKey}`,
     "Content-Type": "application/json",
     Accept: "application/json",
   };
+  const body = {
+    from: env.resendFromEmail,
+    to: recipients,
+    subject,
+  };
+  if (text) body.text = text;
+  if (html) body.html = html;
 
-  const body = JSON.stringify({
-    messages: [
-      {
-        sender: env.infobipEmailSender,
-        destinations: [
-          {
-            to: [{ destination: to }],
-          },
-        ],
-        content: {
-          subject,
-          text,
-          html,
-        },
-      },
-    ],
-  });
-
-  const res = await fetch(url, {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers,
-    body,
+    body: JSON.stringify(body),
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      `Infobip Email failed: ${data.message || JSON.stringify(data)}`,
-    );
+    const detail = data.message || data.error || `HTTP ${res.status}`;
+    throw new Error(`Resend email failed: ${detail}`);
   }
 
   return data;
 };
 
 const sendEmail = async ({ to, subject, text, html }) => {
-  // 1. Try Infobip first if API Key is present
-  let infobipError = null;
-  if (env.infobipEmailApiKey && env.infobipBaseUrl && env.infobipEmailSender) {
+  // Resend is the primary transactional email provider.
+  let resendError = null;
+  if (env.resendApiKey && env.resendFromEmail) {
     try {
-      await sendEmailViaInfobip({ to, subject, text, html });
-      console.log(`[INFOBIP] Email dispatched to ${to}`);
+      await sendEmailViaResend({ to, subject, text, html });
+      console.log(`[RESEND] Email dispatched to ${Array.isArray(to) ? to.join(", ") : to}`);
       return;
     } catch (err) {
-      console.error("[INFOBIP] Email dispatch error:", err.message);
-      infobipError = err;
-      // Fall through to SMTP if configured
+      console.error("[RESEND] Email dispatch error:", err.message);
+      resendError = err;
+      // Fall through to SMTP when it is intentionally configured.
     }
   }
 
-  // 2. Fallback to Nodemailer SMTP
+  // Optional Nodemailer SMTP fallback.
   const transporter = getTransporter();
   if (!transporter) {
-    if (infobipError) {
+    if (resendError) {
       throw new Error(
-        `Infobip rejected the email request: ${infobipError.message}. ` +
-          "Check the API key's email:message:send permission, account status, and verified email sender.",
+        `Resend rejected the email request: ${resendError.message}. ` +
+          "Check the API key, sending permission, and verified sender domain.",
       );
     }
-    const missing = getMissingInfobipSettings();
+    const missing = getMissingResendSettings();
     throw new Error(
       missing.length
         ? `Email delivery is not configured. In Vercel, set: ${missing.join(", ")}.`
-        : "No email transport configured. Set Infobip Email or SMTP settings in Vercel.",
+        : "No email transport configured. Set Resend or SMTP settings in Vercel.",
     );
   }
 
@@ -139,6 +118,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
 
 module.exports = {
   canSendEmail,
-  getInfobipEmailConfiguration,
+  getResendEmailConfiguration,
   sendEmail,
+  sendEmailViaResend,
 };

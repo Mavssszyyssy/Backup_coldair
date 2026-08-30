@@ -33,7 +33,7 @@ export default function RecoverScreen() {
       return;
     }
 
-    // The backend sends the reset OTP through the configured Infobip email
+    // The backend sends the reset OTP through its configured email provider
     // channel.  Go directly to the working code-and-password step.
     router.push({
       pathname: "/recover/factor/1",
@@ -53,7 +53,7 @@ export default function RecoverScreen() {
       >
         <PageHeader
           title="Recover Account"
-          subtitle="Use your registered email to receive an Infobip verification code"
+          subtitle="Use your registered email to receive a verification code"
           color={COLORS.primary}
           onBack={() => router.push("/sign-in")}
         />
