@@ -9,6 +9,7 @@ const { signAccessToken } = require("../utils/token");
 const env = require("../config/env");
 const { BRANCHES } = require("../domain/branchRouting");
 const { canSendEmail, sendEmail } = require("../utils/email");
+const { buildOtpEmail } = require("../utils/otpEmailTemplate");
 const { resolveConfiguredBranch } = require("../services/branchCoverageService");
 const {
   decryptSecret,
@@ -24,6 +25,11 @@ const OTP_RESEND_COOLDOWN_SECONDS = Math.max(30, Math.min(300, Number(env.otpRes
 const OTP_REQUEST_WINDOW_MINUTES = Math.max(5, Math.min(60, Number(env.otpRequestWindowMinutes || 15)));
 const OTP_MAX_REQUESTS_PER_WINDOW = Math.max(2, Math.min(10, Number(env.otpMaxRequestsPerWindow || 5)));
 const OTP_MAX_ATTEMPTS = Math.max(3, Math.min(10, Number(env.otpMaxAttempts || 5)));
+const OTP_ACTION_CHANNELS = {
+  register_email: ["email"],
+  register_phone: ["sms"],
+  password_reset: ["email", "sms"],
+};
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
@@ -123,19 +129,18 @@ const isOtpExpired = (otp) =>
   !otp || !otp.expiresAt || otp.expiresAt.getTime() < Date.now();
 
 const sendOtpMessage = async ({ recipient, channel, action, code }) => {
-  const subject = `Your AeroPulse verification code`;
   const message = `Your AeroPulse ${action.replace("_", " ")} code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`;
 
   if (channel === "email") {
     if (!canSendEmail()) {
       throw new Error("Email delivery is not configured. Add the Resend API key and verified sender in Vercel.");
     }
-    await sendEmail({
-      to: recipient,
-      subject,
-      text: `${message}\n\nIf you did not request this, ignore this message.`,
-      html: `<p>${message}</p><p>If you did not request this, ignore this message.</p>`,
+    const email = buildOtpEmail({
+      code,
+      action,
+      expiresInMinutes: OTP_TTL_MINUTES,
     });
+    await sendEmail({ to: recipient, ...email });
     return;
   }
 
@@ -274,6 +279,9 @@ const requestOtp = async (req, res) => {
   }
   if (!["email", "sms"].includes(channel)) {
     return res.status(400).json({ message: "Choose SMS or email verification." });
+  }
+  if (!OTP_ACTION_CHANNELS[action]?.includes(channel)) {
+    return res.status(400).json({ message: "This verification request is not supported." });
   }
   if (channel === "email" && !normalizeEmail(email)) {
     return res.status(400).json({ message: "A valid email address is required for email verification." });

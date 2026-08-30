@@ -7,6 +7,7 @@ const {
   getResendEmailConfiguration,
   sendEmailViaResend,
 } = require("../src/utils/email");
+const { buildOtpEmail } = require("../src/utils/otpEmailTemplate");
 
 const originalFetch = global.fetch;
 const originalSettings = {
@@ -96,4 +97,33 @@ test("Resend provider errors are surfaced without exposing the API key", async (
       return true;
     },
   );
+});
+
+test("signup OTP email uses the branded responsive template", () => {
+  const email = buildOtpEmail({
+    code: "123456",
+    action: "register_email",
+    expiresInMinutes: 5,
+  });
+
+  assert.equal(email.subject, "Confirm your Cold Air ACT email");
+  assert.match(email.text, /Verification code: 123456/);
+  assert.match(email.html, /Cold Air ACT/);
+  assert.match(email.html, /AEROPULSE/);
+  assert.match(email.html, /123456/);
+  assert.match(email.html, /expires in 5 minutes/);
+  assert.match(email.html, /@media only screen and \(max-width: 620px\)/);
+  assert.doesNotMatch(email.html, /register_email/);
+});
+
+test("password reset OTP email uses recovery-specific wording", () => {
+  const email = buildOtpEmail({
+    code: "654321",
+    action: "password_reset",
+    expiresInMinutes: 5,
+  });
+
+  assert.equal(email.subject, "Reset your Cold Air ACT password");
+  assert.match(email.html, /Reset your password/);
+  assert.match(email.text, /never share this code/i);
 });
