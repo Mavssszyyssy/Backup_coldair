@@ -25,6 +25,8 @@ function ProductImage({ product }) {
       <img
         src={product.imageUrl}
         alt={product.name}
+        loading="lazy"
+        decoding="async"
         className="product-img"
         onError={() => setBroken(true)}
       />

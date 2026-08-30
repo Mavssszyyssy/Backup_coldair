@@ -397,7 +397,7 @@ const getModelImageUrl = (product = {}) => {
     return "/catalog/ac/american-home-ahac-minv.jpg";
   }
   if (sku.includes("CWI")) {
-    return "/catalog/ac/tcl-uje-window.png";
+    return "/catalog/ac/tcl-uje-window.jpg";
   }
   if (sku.startsWith("TAC-")) {
     return "/catalog/ac/tcl-breezein-kei2.jpg";
@@ -559,7 +559,7 @@ const Shop = () => {
             imageUrl:
               getModelImageUrl(product) ||
               product.image ||
-              "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260",
+              "/catalog/ac/generic-ac.jpg",
             discount: product.discount || 0,
             featured: product.featured || false,
           };

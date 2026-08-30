@@ -14,7 +14,12 @@ export default function HomeBrands({ brands }) {
           {brands.map((brand) => (
             <div key={brand.id} className="brand-card">
               <div className="brand-logo-wrap">
-                <img src={brand.logoUrl} alt={brand.name} />
+                <img
+                  src={brand.logoUrl}
+                  alt={brand.name}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div className="brand-info">
                 <span className="brand-name">{brand.name}</span>

@@ -19,8 +19,7 @@ import {
   BQ_WEIGHTS,
 } from "../common/boutique/BoutiqueTheme";
 
-const DEFAULT_CATALOG_IMAGE_URL =
-  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
+const DEFAULT_CATALOG_IMAGE_URL = "/catalog/ac/generic-ac.jpg";
 
 function productPlaceholderIcon(product) {
   if (product?.category === "window") return SquareSplitHorizontal;
@@ -40,6 +39,7 @@ function ModalProductImage({ product }) {
       <img
         src={imageUrl}
         alt={product.name}
+        decoding="async"
         onError={() => setBroken(true)}
         className="bq-modal-img"
       />
@@ -113,7 +113,11 @@ function ProductModal({ product, onClose, onAddToCart }) {
               <div className="bq-header-top-row">
                 <div className="bq-modal-brand-line">
                   <div className="bq-modal-logo">
-                    <img src={brandLogoUrl} alt={product.brand} />
+                    <img
+                      src={brandLogoUrl}
+                      alt={product.brand}
+                      decoding="async"
+                    />
                   </div>
                   <div className="bq-modal-title-stack">
                     <span className="bq-modal-model-label">

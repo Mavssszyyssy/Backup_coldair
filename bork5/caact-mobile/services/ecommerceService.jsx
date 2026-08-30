@@ -1,8 +1,8 @@
 import { apiFetch } from "../constants/config";
 
 const DEFAULT_CATALOG_IMAGE_URL =
-  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
-const CATALOG_ASSET_BASE_URL = "https://coldair-act.online/catalog/ac";
+  "https://www.coldair-act.online/catalog/ac/generic-ac.jpg";
+const CATALOG_ASSET_BASE_URL = "https://www.coldair-act.online/catalog/ac";
 
 export const getProductImageUrl = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
@@ -10,7 +10,7 @@ export const getProductImageUrl = (product = {}) => {
     return `${CATALOG_ASSET_BASE_URL}/american-home-ahac-minv.jpg`;
   }
   if (sku.includes("CWI")) {
-    return `${CATALOG_ASSET_BASE_URL}/tcl-uje-window.png`;
+    return `${CATALOG_ASSET_BASE_URL}/tcl-uje-window.jpg`;
   }
   if (sku.startsWith("TAC-")) {
     return `${CATALOG_ASSET_BASE_URL}/tcl-breezein-kei2.jpg`;

@@ -62,7 +62,7 @@ function ProductImage({ product, size = 136 }) {
     >
       {product.imageUrl && !broken ? (
         <Image
-          source={{ uri: product.imageUrl }}
+          source={{ uri: product.imageUrl, cache: "force-cache" }}
           onError={() => setBroken(true)}
           resizeMode="contain"
           style={{ width: "100%", height: "100%" }}

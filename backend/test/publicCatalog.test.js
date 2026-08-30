@@ -45,7 +45,7 @@ test("known seeded models use their verified storefront image", () => {
   });
   assert.equal(
     result.image,
-    "https://coldair-act.online/catalog/ac/carrier-opus-53cnv.jpg",
+    "https://www.coldair-act.online/catalog/ac/carrier-opus-53cnv.jpg",
   );
 });
 

@@ -8,21 +8,20 @@ const { validateProductUniqueness } = require("../utils/productValidation");
 // Unknown products retain their uploaded image when one exists. The seeded
 // catalog models below use verified manufacturer/model-family assets hosted by
 // the storefront so web and mobile always render the same stable image.
-const DEFAULT_CATALOG_IMAGE_URL =
-  "https://images.pexels.com/photos/16592625/pexels-photo-16592625/free-photo-of-air-conditioner-in-a-house.jpeg?auto=compress&dpr=1&h=750&w=1260";
 const CATALOG_ASSET_BASE_URL = String(
   process.env.CATALOG_ASSET_BASE_URL ||
-    "https://coldair-act.online/catalog/ac",
+    "https://www.coldair-act.online/catalog/ac",
 ).replace(/\/+$/, "");
+const DEFAULT_CATALOG_IMAGE_URL = `${CATALOG_ASSET_BASE_URL}/generic-ac.jpg`;
 
 // Seed items are model families, so each family gets a matching product photo
 // instead of every card showing the same generic air-conditioner image.
 const CATALOG_IMAGE_BY_SKU_PREFIX = [
   ["AHAC-MINV", "american-home-ahac-minv.jpg"],
-  ["TAC09-CWI", "tcl-uje-window.png"],
-  ["TAC12-CWI", "tcl-uje-window.png"],
-  ["TAC18-CWI", "tcl-uje-window.png"],
-  ["TAC24-CWI", "tcl-uje-window.png"],
+  ["TAC09-CWI", "tcl-uje-window.jpg"],
+  ["TAC12-CWI", "tcl-uje-window.jpg"],
+  ["TAC18-CWI", "tcl-uje-window.jpg"],
+  ["TAC24-CWI", "tcl-uje-window.jpg"],
   ["TAC-", "tcl-breezein-kei2.jpg"],
   ["MSCE-", "midea-celest-msce.jpg"],
   ["AR09TY", "samsung-ar9500t.png"],
