@@ -12,10 +12,16 @@ const { canSendEmail, sendEmail } = require("../utils/email");
 const { buildOtpEmail } = require("../utils/otpEmailTemplate");
 const { resolveConfiguredBranch } = require("../services/branchCoverageService");
 const {
+  duplicateIdentityMessage,
+} = require("../utils/optionalIdentity");
+const {
   decryptSecret,
   generateOtpCode,
   verifyTotpCode,
 } = require("../domain/accountSecurity");
+const {
+  mergeClientRegistrationProgress,
+} = require("../domain/registrationProgress");
 
 const OTP_TTL_MINUTES = Math.max(
   3,
@@ -573,8 +579,8 @@ const register = async (req, res) => {
       name_first,
       name_last,
       alias: finalAlias,
-      email: normalizedEmail,
-      phone: normalizedPhone,
+      ...(normalizedEmail ? { email: normalizedEmail } : {}),
+      ...(normalizedPhone ? { phone: normalizedPhone } : {}),
       passwordHash,
       messenger_handle,
       // Public registration must never be allowed to provision a privileged
@@ -619,7 +625,14 @@ const register = async (req, res) => {
     const token = signAccessToken({ sub: newUser.id, role: newUser.role });
     return res.json({ success: true, token, user: newUser.toJSON() });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    const conflictMessage = duplicateIdentityMessage(err);
+    if (conflictMessage) {
+      return res.status(409).json({ message: conflictMessage });
+    }
+    console.error("Registration failed:", err.message);
+    return res.status(500).json({
+      message: "Unable to create your account right now. Please try again.",
+    });
   }
 };
 
@@ -772,32 +785,10 @@ const updateRegistrationProgress = async (req, res) => {
     return res.status(400).json({ message: "Registration progress is required." });
   }
 
-  const existing = req.session.registrationProgress || {};
-  const incomingForm = incoming.formData && typeof incoming.formData === "object"
-    ? incoming.formData
-    : {};
-  const existingForm = existing.formData && typeof existing.formData === "object"
-    ? existing.formData
-    : {};
-  const email = normalizeEmail(incoming.email || existing.email || incomingForm.email || existingForm.email);
-
-  // Passwords belong only in the encrypted browser draft and final register
-  // request. This session is for resumable verification and form progress.
-  delete incomingForm.password;
-  delete incomingForm.confirmPassword;
-
-  const mergedForm = {
-    ...existingForm,
-    ...incomingForm,
-    email: email || existingForm.email || "",
-    emailVerified: Boolean(existingForm.emailVerified || incomingForm.emailVerified),
-  };
-
-  req.session.registrationProgress = {
-    email,
-    stepIndex: Math.max(0, Math.min(Number(incoming.stepIndex) || 0, 4)),
-    formData: mergedForm,
-  };
+  req.session.registrationProgress = mergeClientRegistrationProgress({
+    existing: req.session.registrationProgress || {},
+    incoming,
+  });
   return req.session.save((error) => {
     if (error) return res.status(500).json({ message: "Unable to save registration progress." });
     return res.json({ success: true, registrationProgress: req.session.registrationProgress });

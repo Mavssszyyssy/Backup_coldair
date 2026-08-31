@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import {
+  createInitialRegistrationFormData,
+  resolveRegistrationResumeState,
+} from "../../domain/register/registrationResume";
+import {
   loadEncrypted,
   removeEncrypted,
   saveEncrypted,
@@ -32,25 +36,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
 
-  const [formData, setFormData] = useState({
-    email: "",
-    emailVerified: false,
-    verificationChannel: "email",
-    registrationVerificationToken: "",
-    firstName: "",
-    lastName: "",
-    alias: "",
-    password: "",
-    phone: "",
-    phoneVerified: false,
-    role: "customer",
-    branch: "",
-    locations: [], // Array of { coordinates, address, source }
-    agreeTermsWarranty: false,
-    agreeTermsService: false,
-    agreeTermsApp: false,
-    agreePrivacyRa10173: false,
-  });
+  const [formData, setFormData] = useState(createInitialRegistrationFormData);
 
   const [errors, setErrors] = useState({});
 
@@ -59,39 +45,27 @@ export default function Register() {
     let active = true;
     const init = async () => {
       const saved = await loadEncrypted(STORAGE_KEY);
-      const hasLocalProgress = Boolean(saved && saved.formData);
-      if (active && hasLocalProgress) {
-        setFormData((prev) => ({
-          ...prev,
-          ...saved.formData,
-          // Ensure locations exists even if loading old saved data
-          locations: saved.formData.locations || [],
-        }));
-        setStepIndex(saved.stepIndex || 0);
+      let serverProgress = null;
+      let sessionLoaded = false;
+      try {
+        const response = await apiRequest("/auth/session");
+        serverProgress = response?.session?.registrationProgress || null;
+        sessionLoaded = true;
+      } catch (_error) {
+        // Offline registration can continue from encrypted local state.
       }
 
-      // The server session is a recovery source for the verified-email stage.
-      // Local encrypted state takes precedence because it may contain progress
-      // that has not reached the server yet.
-      if (!hasLocalProgress) {
-        try {
-          const response = await apiRequest("/auth/session");
-          const progress = response?.session?.registrationProgress;
-          if (active && progress?.formData) {
-            setFormData((prev) => ({
-              ...prev,
-              ...progress.formData,
-              emailVerified: Boolean(progress.formData.emailVerified),
-              locations: progress.formData.locations || [],
-            }));
-            setStepIndex(Math.max(0, Math.min(Number(progress.stepIndex) || 0, STEPS.length - 1)));
-          }
-        } catch (_error) {
-          // Offline registration can continue from encrypted local state.
-        }
+      if (active) {
+        const resolved = resolveRegistrationResumeState({
+          saved,
+          serverProgress,
+          sessionLoaded,
+        });
+        if (resolved.discardLocalDraft) removeEncrypted(STORAGE_KEY);
+        setFormData(resolved.formData);
+        setStepIndex(resolved.stepIndex);
+        registrationStateReady.current = true;
       }
-
-      if (active) registrationStateReady.current = true;
     };
     init();
     return () => {
@@ -167,25 +141,7 @@ export default function Register() {
       removeEncrypted(STORAGE_KEY);
 
       // 3. Force reset local state to absolute defaults
-      setFormData({
-        email: "",
-        emailVerified: false,
-        verificationChannel: "email",
-        registrationVerificationToken: "",
-        firstName: "",
-        lastName: "",
-        alias: "",
-        password: "",
-        phone: "",
-        phoneVerified: false,
-        role: "customer",
-        branch: "",
-        locations: [],
-        agreeTermsWarranty: false,
-        agreeTermsService: false,
-        agreeTermsApp: false,
-        agreePrivacyRa10173: false,
-      });
+      setFormData(createInitialRegistrationFormData());
       setStepIndex(0);
 
       // 4. Return to Login

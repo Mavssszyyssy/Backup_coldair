@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const {
+  normalizeOptionalIdentity,
+} = require("../utils/optionalIdentity");
 
 const addressSchema = new mongoose.Schema(
   {
@@ -49,6 +52,7 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       lowercase: true,
       trim: true,
+      set: normalizeOptionalIdentity,
     },
     username: {
       type: String,
@@ -59,6 +63,7 @@ const userSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 30,
       match: /^[a-z0-9_.-]+$/,
+      set: normalizeOptionalIdentity,
     },
     alias: {
       type: String,
@@ -66,15 +71,27 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       lowercase: true,
       trim: true,
+      set: normalizeOptionalIdentity,
     },
-    phone: { type: String, unique: true, sparse: true, trim: true },
+    phone: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      set: normalizeOptionalIdentity,
+    },
     passwordHash: { type: String },
     authProvider: {
       type: String,
       enum: ["local", "google"],
       default: "local",
     },
-    googleId: { type: String, unique: true, sparse: true },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      set: normalizeOptionalIdentity,
+    },
     avatarUrl: { type: String, default: "" },
     role: {
       type: String,
