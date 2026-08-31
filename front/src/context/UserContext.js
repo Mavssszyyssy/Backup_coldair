@@ -172,6 +172,21 @@ export const UserProvider = ({ children }) => {
     return result.user;
   };
 
+  const completeAuthenticatorSetup = async (code) => {
+    const result = await apiRequest("/security/totp/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    const nextUser = result.user;
+    const userBranch = nextUser?.activeBranch || nextUser?.assignedBranch || "";
+    saveSession(result.token, nextUser, userBranch);
+    setUser(nextUser);
+    setUserRole(nextUser?.role || null);
+    setCurrentSession(nextUser);
+    setIsAuthenticated(true);
+    return nextUser;
+  };
+
   const register = async (userData) => {
     const result = await apiRequest("/auth/register", {
       method: "POST",
@@ -341,6 +356,7 @@ export const UserProvider = ({ children }) => {
     register,
     login,
     verifyLoginTotp,
+    completeAuthenticatorSetup,
     logout,
     updateProfile,
     synchronizeAddresses,

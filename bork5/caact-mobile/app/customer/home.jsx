@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -33,10 +33,12 @@ export default function CustomerHomeScreen() {
   const [recommendationMap, setRecommendationMap] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
   const [activeOrderCount, setActiveOrderCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      setLoading(true);
       const load = () => {
         Promise.allSettled([
           getUnitsByUser(current?.id),
@@ -55,6 +57,8 @@ export default function CustomerHomeScreen() {
             setRecentOrders(nextOrders.slice(0, 3));
             setActiveOrderCount(nextOrders.filter((order) => !["complete", "completed", "cancelled"].includes(String(order.workflowStatus || order.status || "").toLowerCase())).length);
           }
+        }).finally(() => {
+          if (active) setLoading(false);
         });
       };
       load();
@@ -114,12 +118,19 @@ export default function CustomerHomeScreen() {
           paddingVertical: SPACING.sm,
         }}
       >
-        <CustomerMetricPill label="AC Units" value={units.length} icon="snow-sharp" color={COLORS.primary} />
+        <CustomerMetricPill label="AC Units" value={loading ? "—" : units.length} icon="snow-sharp" color={COLORS.primary} />
         <View style={{ width: 1, alignSelf: "stretch", backgroundColor: COLORS.border }} />
-        <CustomerMetricPill label="Active Orders" value={activeOrderCount} icon="receipt-sharp" color={COLORS.success} />
+        <CustomerMetricPill label="Active Orders" value={loading ? "—" : activeOrderCount} icon="receipt-sharp" color={COLORS.success} />
       </View>
 
-      {units.length === 0 ? (
+      {loading ? (
+        <Card>
+          <View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}>
+            <ActivityIndicator color={COLORS.primary} />
+            <Text style={{ color: COLORS.textSecondary }}>Loading your latest account activity...</Text>
+          </View>
+        </Card>
+      ) : units.length === 0 ? (
         <Card>
           <EmptyState
             title="No AC units registered yet"
@@ -166,7 +177,12 @@ export default function CustomerHomeScreen() {
           actionLabel="View all"
           onAction={() => router.push("/customer/orders")}
         />
-        {recentOrders.length === 0 ? (
+        {loading ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
+            <ActivityIndicator color={COLORS.primary} />
+            <Text style={{ color: COLORS.textSecondary }}>Loading recent orders...</Text>
+          </View>
+        ) : recentOrders.length === 0 ? (
           <Text style={{ color: COLORS.textSecondary }}>No website orders found yet.</Text>
         ) : (
           recentOrders.map((order) => (

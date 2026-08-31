@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 const { validatePostalCodeForAddress } = require("../src/utils/postalCodeValidation");
 const { getScheduledDateError } = require("../src/utils/scheduling");
 const { validateStrictServicePayload } = require("../src/domain/serviceCompletionService");
-const { getWarrantyRecommendation } = require("../src/domain/warrantyService");
+const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../src/domain/warrantyService");
+const { formatDateKeyInTimeZone } = require("../src/utils/dateTime");
 
 test("postal codes must match the selected city", () => {
   const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
@@ -52,5 +53,32 @@ test("pending warranty activation gives automatic, customer-safe guidance", () =
   assert.doesNotMatch(
     getWarrantyRecommendation({ status: "pending_activation" }),
     /warranty is active/i,
+  );
+});
+
+test("claim decisions never replace active warranty coverage", () => {
+  assert.equal(effectiveWarrantyStatus({ status: "under_review" }), "active");
+  assert.equal(effectiveWarrantyStatus({ status: "approved" }), "active");
+  assert.equal(effectiveWarrantyStatus({ status: "rejected" }), "active");
+  assert.match(
+    getWarrantyRecommendation({
+      status: "active",
+      claims: [{ status: "approved", serviceRequestId: "SR-100", reviewedAt: "2026-08-31T20:00:00.000Z" }],
+    }),
+    /service request was created/i,
+  );
+  assert.doesNotMatch(
+    getWarrantyRecommendation({
+      status: "active",
+      claims: [{ status: "approved", serviceRequestId: "SR-100", reviewedAt: "2026-08-31T20:00:00.000Z" }],
+    }),
+    /scheduled/i,
+  );
+});
+
+test("business dates use the Philippine calendar boundary", () => {
+  assert.equal(
+    formatDateKeyInTimeZone(new Date("2026-08-31T16:30:00.000Z")),
+    "2026-09-01",
   );
 });

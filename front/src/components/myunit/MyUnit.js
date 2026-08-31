@@ -64,6 +64,9 @@ const buildUnitFromBackend = (unit = {}) => ({
 function MyUnit() {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [unitLoadError, setUnitLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -73,13 +76,20 @@ function MyUnit() {
     let mounted = true;
 
     const loadUnits = async () => {
+      setLoadingUnits(true);
+      setUnitLoadError("");
       try {
         const result = await apiRequest("/amp/customer/units");
         const backendUnits = (result.units || []).map(buildUnitFromBackend);
         if (!mounted) return;
         setUnits(backendUnits);
-      } catch (_error) {
-        if (mounted) setUnits([]);
+      } catch (loadError) {
+        if (mounted) {
+          setUnits([]);
+          setUnitLoadError(loadError.message || "Unable to load your registered AC units.");
+        }
+      } finally {
+        if (mounted) setLoadingUnits(false);
       }
     };
 
@@ -87,7 +97,7 @@ function MyUnit() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const handleViewHistory = (unit) => {
     setSelectedUnit(unit);
@@ -133,7 +143,11 @@ function MyUnit() {
           </BoutiqueStack>
         </BoutiqueBox>
 
-        {units.length === 0 ? (
+        {loadingUnits ? (
+          <BoutiqueBox flex={1} align="center" justify="center" padding={60} background="white" aria-live="polite">
+            <BoutiqueText variant="h3">Loading your registered AC units...</BoutiqueText>
+          </BoutiqueBox>
+        ) : units.length === 0 ? (
           <BoutiqueBox
             flex={1}
             align="center"
@@ -147,15 +161,17 @@ function MyUnit() {
           >
             <BoutiqueStack gap={20} align="center">
               <Snowflake size={64} weight="bold" color={BQ_COLORS.inkFaint} />
-              <BoutiqueText variant="h3">No Installed AC Units Yet</BoutiqueText>
+              <BoutiqueText variant="h3">{unitLoadError ? "We couldn't load your AC units" : "No Installed AC Units Yet"}</BoutiqueText>
               <BoutiqueText
                 color={BQ_COLORS.inkMuted}
                 align="center"
                 style={{ maxWidth: "320px" }}
               >
-                Completed technician installations automatically appear here
-                with their serial number, warranty, AMP, and service history.
+                {unitLoadError || "Completed technician installations automatically appear here with their serial number, warranty, AMP, and service history."}
               </BoutiqueText>
+              {unitLoadError ? (
+                <button type="button" className="bq-my-unit-retry" onClick={() => setReloadKey((value) => value + 1)}>Try again</button>
+              ) : null}
             </BoutiqueStack>
           </BoutiqueBox>
         ) : (

@@ -79,6 +79,10 @@ function Login() {
         return;
       }
       setLoading(false);
+      if (loggedInUser?.role === "customer" && !loggedInUser?.security?.totpEnabled) {
+        navigate("/security/setup-authenticator", { replace: true });
+        return;
+      }
       navigate(
         loggedInUser?.role === "customer"
           ? getCustomerLoginDestination(location)

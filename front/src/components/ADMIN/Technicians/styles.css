@@ -69,3 +69,25 @@
 .tech-check-in a:hover { text-decoration: underline; }
 @media (max-width: 1120px) { .tech-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tech-management-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-add-staff-form, .tech-work-item { grid-template-columns: 1fr; } .tech-filter-heading, .tech-section-heading, .tech-person-card { align-items: stretch; flex-direction: column; } .tech-filter-heading, .tech-section-heading { display: flex; } .tech-filter-heading .tech-secondary-button, .tech-add-staff-form > button { width: 100%; } .tech-add-staff-form .tech-form-row, .tech-add-staff-form > button, .tech-credential-preview { grid-column: auto; } .tech-credential-preview { grid-template-columns: 1fr; } .tech-person-card { grid-template-columns: 1fr; } .tech-person-meta { text-align: left; } .tech-account-status, .tech-availability { justify-self: start; } .tech-inline-select, .tech-person-card > button { width: 100%; } .tech-pagination { align-items: flex-start; flex-direction: column; } }
+.tech-completed-assignee {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  padding: 10px 12px;
+  border: 1px solid #d9e2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.tech-completed-assignee span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tech-completed-assignee strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+}

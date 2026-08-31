@@ -32,10 +32,16 @@ const appendWarrantyEvent = (warranty = {}, event, detail = "", timestamp = new 
 
 const effectiveWarrantyStatus = (warranty = {}) => {
   const status = String(warranty.status || "").toLowerCase();
-  if (["under_review", "approved", "rejected", "void"].includes(status)) return status;
+  if (status === "void") return status;
   const expiration = warranty.expirationDate ? new Date(warranty.expirationDate) : null;
   if (expiration && !Number.isNaN(expiration.getTime()) && expiration < new Date()) return "expired";
-  return status || "active";
+  // Older records stored a claim decision in warranty.status. Coverage and
+  // claim workflow are separate concerns, so normalize those legacy values
+  // back to active coverage while keeping the decision on the claim itself.
+  if (["under_review", "approved", "rejected"].includes(status)) return "active";
+  return ["pending_activation", "active", "expired"].includes(status)
+    ? status
+    : "active";
 };
 
 const getWarrantyRecommendation = (warranty = {}) => {
@@ -43,11 +49,25 @@ const getWarrantyRecommendation = (warranty = {}) => {
   if (status === "pending_activation") {
     return "No action is needed. Your warranty activates automatically after a technician completes and verifies the installation.";
   }
-  if (status === "under_review") return "Your warranty claim is under review.";
-  if (status === "approved") return "Warranty service is approved. Keep the scheduled appointment.";
-  if (status === "rejected") return "This warranty claim was not approved. Review the decision note or contact support if you need help.";
   if (status === "expired") return "Warranty coverage has expired. Continue preventive maintenance.";
   if (status === "void") return "Warranty coverage is unavailable. Contact support if you need an explanation.";
+  const claims = Array.isArray(warranty.claims) ? warranty.claims : [];
+  const latestClaim = [...claims].sort((left, right) =>
+    new Date(right?.reviewedAt || right?.requestedAt || 0) -
+    new Date(left?.reviewedAt || left?.requestedAt || 0),
+  )[0];
+  const claimStatus = String(latestClaim?.status || "").toLowerCase();
+  if (["submitted", "under_review"].includes(claimStatus)) {
+    return "Your warranty coverage remains active while this claim is reviewed. We will notify you when the decision changes.";
+  }
+  if (claimStatus === "approved") {
+    return latestClaim?.serviceRequestId
+      ? "Your warranty claim was approved and a service request was created. The branch team will notify you when a technician and schedule are assigned."
+      : "Your warranty claim was approved. The branch team will contact you with the next service step.";
+  }
+  if (claimStatus === "rejected") {
+    return "This claim was not approved, but your remaining warranty coverage stays active. Review the decision note or contact support if you need help.";
+  }
   return "Warranty is active. Keep completed service records to protect coverage.";
 };
 

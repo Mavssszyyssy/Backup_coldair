@@ -60,10 +60,11 @@ function ProductImage({ product, size = 136 }) {
         overflow: "hidden",
       }}
     >
-      {product.imageUrl && !broken ? (
+      {(product.imageSource || product.imageUrl) && !broken ? (
         <Image
-          source={{ uri: product.imageUrl, cache: "force-cache" }}
+          source={product.imageSource || { uri: product.imageUrl, cache: "force-cache" }}
           onError={() => setBroken(true)}
+          accessibilityLabel={`${product.brand} ${product.model || product.name} product image`}
           resizeMode="contain"
           style={{ width: "100%", height: "100%" }}
         />

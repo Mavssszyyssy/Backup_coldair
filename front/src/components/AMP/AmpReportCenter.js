@@ -11,6 +11,19 @@ const REPORT_TYPES = [
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
 const dateLabel = (value) => value ? new Date(value).toLocaleDateString("en-US") : "Not available";
+const capacityAssessmentLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  const labels = {
+    suitable: "Suitable for the room",
+    insufficient: "May be too small for the room",
+    higher_than_necessary: "May be larger than needed",
+    room_size_required: "Room size needed",
+    capacity_required: "Horsepower needed",
+  };
+  return labels[normalized] || (normalized
+    ? normalized.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : "Not assessed");
+};
 
 function AmpReportCenter({
   units = [],
@@ -46,7 +59,7 @@ function AmpReportCenter({
       <div class="summary">
         <div class="summary-item"><strong>${escapeHtml(dateLabel(m.bestServicedBy))}</strong><span>Best serviced by</span></div>
         <div class="summary-item"><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong><span>Recommended service</span></div>
-        <div class="summary-item"><strong>${escapeHtml(m.capacityAssessment?.status || "Not assessed")}</strong><span>Room size vs HP</span></div>
+        <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
         <div class="summary-item"><strong>${escapeHtml(m.environmentRisk?.level || "Not assessed")}</strong><span>Operating environment</span></div>
       </div>
       <h2>Maintenance recommendation</h2><p>${escapeHtml(m.interpretation || m.recommendationBasis || "")}</p>
@@ -91,7 +104,7 @@ function AmpReportCenter({
       {report ? <div className="amp-report-result">
         <div className="amp-report-meta"><span>{report.reportId}</span><span>Branch: {report.branch}</span><span>{provider === "openai" ? "OpenAI-assisted interpretation" : "System recommendation"}</span></div>
         <h3>{report.title}</h3>
-        <div className="amp-metrics"><article><span>Best serviced by</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room size vs HP</span><strong>{maintenance.capacityAssessment?.status || "Not assessed"}</strong></article></div>
+        <div className="amp-metrics"><article><span>Best serviced by</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room size vs HP</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div>
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
         {maintenance.environmentAssessment ? <p><strong>Operating environment:</strong> {maintenance.environmentAssessment}</p> : null}
         <p className="amp-muted">{report.note}</p>

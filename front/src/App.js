@@ -15,6 +15,7 @@ const AdminServices = lazy(() => import("./components/ADMIN/Services/AdminServic
 const AdminSettings = lazy(() => import("./components/ADMIN/Settings/AdminSettings"));
 const ManagerAmpDashboard = lazy(() => import("./components/AMP/ManagerAmpDashboard"));
 const OwnerAmpDashboard = lazy(() => import("./components/AMP/OwnerAmpDashboard"));
+const AuthenticatorSetup = lazy(() => import("./components/security/AuthenticatorSetup"));
 const TechMainScreen = lazy(() => import("./components/TECH/Dashboard/TechMainScreen"));
 const ProfileTechnicianScreen = lazy(() => import("./components/TECH/Profile/ProfileTechnicianScreen"));
 const TechEditProfile = lazy(() => import("./components/TECH/Profile/TechEditProfile"));
@@ -71,7 +72,7 @@ const getRoleHomePath = (role) => {
 };
 
 const RoleRoute = ({ allowedRoles, children }) => {
-  const { isAuthenticated, loading, userRole } = useUser();
+  const { isAuthenticated, loading, user, userRole } = useUser();
   const location = useLocation();
 
   if (loading) {
@@ -82,11 +83,24 @@ const RoleRoute = ({ allowedRoles, children }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (userRole === "customer" && allowedRoles.includes("customer") && !user?.security?.totpEnabled) {
+    return <Navigate to="/security/setup-authenticator" replace />;
+  }
+
   return allowedRoles.includes(userRole) ? (
     children
   ) : (
     <Navigate to={getRoleHomePath(userRole)} replace />
   );
+};
+
+const AuthenticatedCustomerSetupRoute = ({ children }) => {
+  const { isAuthenticated, loading, userRole } = useUser();
+  const location = useLocation();
+  if (loading) return <div className="loading-screen"><LoadingLogo /></div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
+  if (userRole !== "customer") return <Navigate to={getRoleHomePath(userRole)} replace />;
+  return children;
 };
 
 // Public Route wrapper redirects signed-in customers to the catalogue.
@@ -106,10 +120,14 @@ const PublicRoute = ({ children }) => {
 
 // Home Route - Accessible to both authenticated and unauthenticated users
 const HomeRoute = ({ children }) => {
-  const { loading } = useUser();
+  const { isAuthenticated, loading, user, userRole } = useUser();
 
   if (loading) {
     return <div className="loading-screen"><LoadingLogo /></div>;
+  }
+
+  if (isAuthenticated && userRole === "customer" && !user?.security?.totpEnabled) {
+    return <Navigate to="/security/setup-authenticator" replace />;
   }
 
   return children;
@@ -164,6 +182,10 @@ function AppContent() {
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route
+          path="/security/setup-authenticator"
+          element={<AuthenticatedCustomerSetupRoute><AuthenticatorSetup /></AuthenticatedCustomerSetupRoute>}
+        />
         {/* Home route - accessible to both authenticated and unauthenticated users */}
         <Route
           path="/home"

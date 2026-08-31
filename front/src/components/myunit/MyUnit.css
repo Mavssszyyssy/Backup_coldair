@@ -794,3 +794,12 @@
     padding: 15px;
   }
 }
+.bq-my-unit-retry {
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

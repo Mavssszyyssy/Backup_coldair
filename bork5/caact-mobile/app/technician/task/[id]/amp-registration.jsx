@@ -10,6 +10,7 @@ import UnitHistoryPanel from "../../../../components/technician/UnitHistoryPanel
 import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
 import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
+import { getTodayDateKey } from "../../../../components/ui/CalendarDatePicker";
 import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
@@ -53,7 +54,7 @@ const automaticAmpPayload = (serialNumber, environment) => {
   return {
     serialNumber,
     registrationSource: "qr_scan",
-    installationDate: now.toISOString().slice(0, 10),
+    installationDate: getTodayDateKey(),
     installationTime: now.toTimeString().slice(0, 5),
     lastServiceDate: now.toISOString(),
     ...environment,

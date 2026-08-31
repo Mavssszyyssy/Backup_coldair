@@ -22,6 +22,22 @@ const getStage = (status = '') => {
 const stageLabel = (order) => STAGES.find((stage) => stage.id === getStage(order.workflowStatus))?.label || 'Pending';
 const orderBranch = (order) => String(order.stockSourceBranch || order.customerBranch || 'Unassigned').trim() || 'Unassigned';
 const formatAmount = (amount) => `₱${Number(amount || 0).toLocaleString()}`;
+const paymentSummary = (order = {}) => {
+  const method = String(order.paymentMethod || '').trim().toLowerCase();
+  const status = String(order.paymentStatus || '').trim().toLowerCase();
+  const methodLabel = method === 'cod' ? 'Cash on Delivery' : method === 'gcash' ? 'GCash' : method === 'card' || method === 'credit' ? 'Card' : method ? method.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Payment method not recorded';
+  if (method === 'cod') {
+    if (order.workflowStatus === 'cancelled') return `${methodLabel} · Cancelled before payment`;
+    return `${methodLabel} · ${order.workflowStatus === 'complete' ? 'Paid on delivery' : 'Payment due on delivery'}`;
+  }
+  const statusLabel = status === 'paid' || status === 'completed' || status === 'succeeded'
+    ? 'Paid'
+    : status === 'failed' ? 'Payment failed'
+      : status === 'refunded' ? 'Refunded'
+        : status === 'cancelled' ? 'Payment cancelled'
+          : 'Payment pending';
+  return `${methodLabel} · ${statusLabel}`;
+};
 
 const SuperAdminSales = () => {
   const [orders, setOrders] = useState([]);
@@ -61,7 +77,7 @@ const SuperAdminSales = () => {
         {error ? <div className="sales-error">{error}</div> : null}
         {loading ? <div className="sales-empty">Loading processing sales…</div> : null}
         {!loading && !error && visibleOrders.length === 0 ? <div className="sales-empty">No orders match the current branch and stage filters.</div> : null}
-        <div className="sales-branch-list">{groups.map((group) => <section className="sales-branch-group" key={group.branch}><header><div><h3>{group.branch}</h3><p>{group.orders.length} matching order{group.orders.length === 1 ? '' : 's'}</p></div></header><div className="sales-order-list">{group.orders.map((order) => <article className="sales-order-card" key={order.id}><div className="sales-order-top"><div><p>{order.orderCode || order.id}</p><h4>{order.customerName || 'Customer not recorded'}</h4></div><span className={`sales-stage sales-stage--${getStage(order.workflowStatus)}`}>{stageLabel(order)}</span></div><div className="sales-order-meta"><span><b>Total</b>{formatAmount(order.totalAmount || order.total)}</span><span><b>Payment</b>{order.paymentMethod || 'Not recorded'} · {order.paymentStatus || 'pending'}</span><span><b>Purchase branch</b>{orderBranch(order)}</span>{order.customerBranch && order.customerBranch !== orderBranch(order) ? <span><b>Customer branch</b>{order.customerBranch}</span> : null}</div><p className="sales-items">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No item details recorded.'}</p></article>)}</div></section>)}</div>
+        <div className="sales-branch-list">{groups.map((group) => <section className="sales-branch-group" key={group.branch}><header><div><h3>{group.branch}</h3><p>{group.orders.length} matching order{group.orders.length === 1 ? '' : 's'}</p></div></header><div className="sales-order-list">{group.orders.map((order) => <article className="sales-order-card" key={order.id}><div className="sales-order-top"><div><p>{order.orderCode || order.id}</p><h4>{order.customerName || 'Customer not recorded'}</h4></div><span className={`sales-stage sales-stage--${getStage(order.workflowStatus)}`}>{stageLabel(order)}</span></div><div className="sales-order-meta"><span><b>Total</b>{formatAmount(order.totalAmount || order.total)}</span><span><b>Payment</b>{paymentSummary(order)}</span><span><b>Purchase branch</b>{orderBranch(order)}</span>{order.customerBranch && order.customerBranch !== orderBranch(order) ? <span><b>Customer branch</b>{order.customerBranch}</span> : null}</div><p className="sales-items">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No item details recorded.'}</p></article>)}</div></section>)}</div>
       </section>
     </SuperAdminLayout>
   );

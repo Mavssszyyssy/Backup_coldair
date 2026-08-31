@@ -31,19 +31,38 @@ const statusVariant = (status = "") => {
   return "warning";
 };
 
-const receiptDetails = (order = {}) => ({
-  receiptNumber: order.invoice?.invoiceNumber || order.receipt?.receiptNumber || order.orderCode || order.id,
-  issuedAt: order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt,
-  paymentStatus: order.paymentStatus || order.receipt?.paymentStatus || "Pending",
-  paymentMethod: order.paymentProvider || order.receipt?.paymentProvider || order.paymentMethod || "Pending",
-  paymentReference:
-    order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || "Pending",
-  subtotal: Number(order.subtotal || order.receipt?.subtotalAmount || 0),
-  vat: Number(order.vatAmount || order.receipt?.vatAmount || 0),
-  delivery: Number(order.shippingFee || order.receipt?.shippingFee || 0),
-  discount: Number(order.discountAmount || order.receipt?.discountAmount || 0),
-  total: Number(order.total || order.receipt?.amountPaid || 0),
-});
+const readablePaymentValue = (value = "") => String(value || "")
+  .replace(/[_-]+/g, " ")
+  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const receiptDetails = (order = {}) => {
+  const rawMethod = order.paymentMethod || order.receipt?.paymentProvider || order.paymentProvider || "";
+  const normalizedMethod = String(rawMethod).toLowerCase();
+  const isCod = normalizedMethod === "cod" || normalizedMethod.includes("cash on delivery");
+  const orderComplete = ["complete", "completed", "released"].includes(
+    String(order.workflowStatus || order.status || "").toLowerCase(),
+  );
+
+  return {
+    receiptNumber: order.invoice?.invoiceNumber || order.receipt?.receiptNumber || order.orderCode || order.id,
+    issuedAt: order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt,
+    paymentStatus: isCod
+      ? (orderComplete ? "Paid on Delivery" : "Payment Due on Delivery")
+      : readablePaymentValue(order.paymentStatus || order.receipt?.paymentStatus || "Pending"),
+    paymentMethod: isCod
+      ? "Cash on Delivery"
+      : (String(order.paymentProvider || "").toLowerCase() === "paymongo" ? "Online Payment" : readablePaymentValue(rawMethod || "Pending")),
+    paymentReference: isCod
+      ? (orderComplete ? "Cash collected upon delivery" : "No reference needed")
+      : order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || "Pending",
+    subtotal: Number(order.subtotal || order.receipt?.subtotalAmount || 0),
+    vat: Number(order.vatAmount || order.receipt?.vatAmount || 0),
+    delivery: Number(order.shippingFee || order.receipt?.shippingFee || 0),
+    discount: Number(order.discountAmount || order.receipt?.discountAmount || 0),
+    total: Number(order.total || order.receipt?.amountPaid || 0),
+    totalLabel: isCod && !orderComplete ? "Amount Due" : "Total Paid",
+  };
+};
 
 const formatAddress = (address = {}) =>
   address?.formatted || [address?.street, address?.barangay, address?.city, address?.province, address?.region, address?.postalCode]
@@ -293,7 +312,7 @@ export default function ReceiptScreen() {
                 <AmountRow label="VAT" value={receipt.vat} />
                 <AmountRow label="Delivery" value={receipt.delivery} />
                 <AmountRow label="Discount" value={receipt.discount} negative />
-                <AmountRow label="Total Paid" value={receipt.total} strong />
+                <AmountRow label={receipt.totalLabel} value={receipt.total} strong />
               </View>
             </View>
           </View>

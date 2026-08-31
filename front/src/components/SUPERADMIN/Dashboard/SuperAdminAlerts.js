@@ -19,6 +19,22 @@ const getOrderCodeFromAlert = (alert = {}) => {
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
 const getPurchaseBranch = (order) => order?.stockSourceBranch || order?.customerBranch || 'Not linked to an order';
+const paymentSummary = (order = {}) => {
+  const method = String(order.paymentMethod || '').trim().toLowerCase();
+  const status = String(order.paymentStatus || '').trim().toLowerCase();
+  const methodLabel = method === 'cod' ? 'Cash on Delivery' : method === 'gcash' ? 'GCash' : method === 'card' || method === 'credit' ? 'Card' : method ? method.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Payment method not recorded';
+  if (method === 'cod') {
+    if (order.workflowStatus === 'cancelled') return `${methodLabel} · Cancelled before payment`;
+    return `${methodLabel} · ${order.workflowStatus === 'complete' ? 'Paid on delivery' : 'Payment due on delivery'}`;
+  }
+  const statusLabel = status === 'paid' || status === 'completed' || status === 'succeeded'
+    ? 'Paid'
+    : status === 'failed' ? 'Payment failed'
+      : status === 'refunded' ? 'Refunded'
+        : status === 'cancelled' ? 'Payment cancelled'
+          : 'Payment pending';
+  return `${methodLabel} · ${statusLabel}`;
+};
 
 const SuperAdminAlerts = () => {
   const navigate = useNavigate();
@@ -99,7 +115,7 @@ const SuperAdminAlerts = () => {
                 <div><dt>Customer</dt><dd>{order?.customerName || 'Not linked to a customer order'}</dd></div>
                 <div><dt>Purchase branch</dt><dd>{alert.branch}</dd></div>
                 <div><dt>Customer location branch</dt><dd>{order?.customerBranch || 'Not recorded'}</dd></div>
-                <div><dt>Payment</dt><dd>{order ? `${order.paymentMethod || 'Not recorded'} · ${order.paymentStatus || 'pending'}` : 'Not linked to an order'}</dd></div>
+                <div><dt>Payment</dt><dd>{order ? paymentSummary(order) : 'Not linked to an order'}</dd></div>
                 <div className="alert-detail-grid-wide"><dt>Items</dt><dd>{itemSummary}</dd></div>
                 <div><dt>Received</dt><dd>{formatDate(alert.createdAt)}</dd></div>
               </dl>

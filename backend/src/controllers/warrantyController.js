@@ -5,7 +5,7 @@ const ServiceRequest = require("../models/ServiceRequest");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
-const { appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
+const { appendWarrantyEvent, effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
 
 const displayName = (user = {}) =>
@@ -64,7 +64,12 @@ const listWarranty = async (req, res) => {
       unit.warranty.status = warranty.status;
       await unit.save();
     }
-    return res.json({ unitId: String(unit._id), serialNumber: unit.serialNumber, warranty });
+    return res.json({
+      unitId: String(unit._id),
+      serialNumber: unit.serialNumber,
+      warranty,
+      recommendation: getWarrantyRecommendation(warranty),
+    });
   } catch (error) {
     console.error("Failed to load warranty:", error);
     return res.status(500).json({ message: "Unable to load warranty details." });
@@ -115,7 +120,7 @@ const createWarrantyClaim = async (req, res) => {
       return res.status(409).json({ message: `This warranty is ${warranty.status} and cannot accept a new claim.` });
     }
     const activeClaim = warranty.claims.find((claim) =>
-      ["submitted", "under_review", "approved"].includes(String(claim?.status || "")),
+      ["submitted", "under_review"].includes(String(claim?.status || "")),
     );
     if (activeClaim) {
       return res.status(200).json({
@@ -146,7 +151,7 @@ const createWarrantyClaim = async (req, res) => {
       decisionNote: String(req.body?.notes || "").trim(),
     };
     warranty.claims = [...warranty.claims, claim];
-    warranty.status = "under_review";
+    warranty.status = effectiveWarrantyStatus(warranty);
     warranty.timeline = appendWarrantyEvent(warranty, "Warranty Claim Submitted", issue);
     unit.warranty = warranty;
     await unit.save();
@@ -161,7 +166,12 @@ const createWarrantyClaim = async (req, res) => {
       targetType: "warranty",
       dedupeKey: `warranty-claim:${claim.claimId}`,
     });
-    return res.status(201).json({ claim, warranty: warrantySnapshot(unit) });
+    const savedWarranty = warrantySnapshot(unit);
+    return res.status(201).json({
+      claim,
+      warranty: savedWarranty,
+      recommendation: getWarrantyRecommendation(savedWarranty),
+    });
   } catch (error) {
     console.error("Failed to create warranty claim:", error);
     return res.status(500).json({ message: "Unable to submit warranty claim." });
@@ -236,12 +246,10 @@ const reviewWarrantyClaim = async (req, res) => {
     }
 
     warranty.claims[index] = claim;
-    // A rejected claim does not revoke the whole warranty. Coverage returns to
-    // active (or expired based on its date) while the individual claim keeps
-    // its rejected decision for history and future customer visibility.
-    warranty.status = status === "rejected"
-      ? effectiveWarrantyStatus({ ...warranty, status: "active" })
-      : status;
+    // Claim decisions never replace the unit's coverage status. The claim
+    // keeps its own workflow state while the warranty remains active, expired,
+    // pending activation, or void according to the actual coverage record.
+    warranty.status = effectiveWarrantyStatus(warranty);
     warranty.timeline = appendWarrantyEvent(
       warranty,
       status === "approved" ? "Warranty Claim Approved" : status === "rejected" ? "Warranty Claim Rejected" : "Warranty Claim Under Review",
@@ -286,7 +294,12 @@ const reviewWarrantyClaim = async (req, res) => {
       targetType: "warranty",
       dedupeKey: `warranty-claim:${claim.claimId}:${status}`,
     });
-    return res.json({ claim, warranty: warrantySnapshot(unit) });
+    const savedWarranty = warrantySnapshot(unit);
+    return res.json({
+      claim,
+      warranty: savedWarranty,
+      recommendation: getWarrantyRecommendation(savedWarranty),
+    });
   } catch (error) {
     console.error("Failed to review warranty claim:", error);
     return res.status(500).json({ message: "Unable to update warranty claim." });

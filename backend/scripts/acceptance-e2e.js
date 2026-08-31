@@ -4,6 +4,7 @@
 // support ticket. Never point this script at the production backend.
 const path = require("path");
 const jwt = require("jsonwebtoken");
+const { formatDateKeyInTimeZone } = require("../src/utils/dateTime");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const baseUrl = process.env.ACCEPTANCE_API_BASE || "http://127.0.0.1:5002/api";
@@ -263,7 +264,7 @@ const main = async () => {
     method: "PATCH",
     body: {
       serialNumber,
-      installationDate: new Date().toISOString().slice(0, 10),
+      installationDate: formatDateKeyInTimeZone(new Date()),
       installationTime: "10:30",
       placementArea: "Living room",
       roomSizeSqm: 30,
@@ -303,6 +304,20 @@ const main = async () => {
   }
   record("Installation completion, order synchronization, receipt address, and horsepower");
 
+  const completedTaskList = await request("/tasks?limit=75", { token: superadmin.token });
+  const summarizedTask = (completedTaskList.data.tasks || []).find((item) => String(item.id || item._id) === String(taskId));
+  if (!summarizedTask?.proof?.hasAfterPhotos || Array.isArray(summarizedTask.proof?.afterPhotos)) {
+    throw new Error("Task list did not summarize proof media safely.");
+  }
+  if (JSON.stringify(completedTaskList.data).length > 250000) {
+    throw new Error("Task list response is unexpectedly large after proof-media summarization.");
+  }
+  const fullTaskProof = await request(`/tasks/${taskId}`, { token: superadmin.token });
+  if (!fullTaskProof.data.task?.proof?.afterPhotos?.some((photo) => photo?.uri)) {
+    throw new Error("On-demand task detail did not retain proof photos.");
+  }
+  record("Task list stays lightweight while on-demand proof remains available");
+
   const unitsResult = await request("/amp/customer/units", { token: customerToken });
   const unit = (unitsResult.data.units || []).find((item) => item.serialNumber === serialNumber);
   if (!unit || unit.capacityHp !== 2.5 || unit.warrantyStatus !== "active") {
@@ -336,7 +351,7 @@ const main = async () => {
       unitName: unit.unitName,
       address: `${address.street}, ${address.barangay}, ${address.city}`,
       issueDescription: "Acceptance maintenance request for synchronization testing.",
-      preferredDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+      preferredDate: formatDateKeyInTimeZone(new Date(Date.now() + 3 * 86400000)),
     },
   });
   await request(`/service-requests/${serviceRequest.data.request.id || serviceRequest.data.request._id}/status`, {
@@ -359,8 +374,12 @@ const main = async () => {
     body: { status: "approved", decisionNote: "Covered by acceptance warranty" },
   });
   const warranty = await request(`/warranties/units/${unitId}`, { token: customerToken });
-  if (!warranty.data.warranty?.claims?.some((claim) => claim.claimId === claimId && claim.status === "approved")) {
-    throw new Error("Approved warranty state was not visible to the customer.");
+  if (
+    warranty.data.warranty?.status !== "active" ||
+    !warranty.data.warranty?.claims?.some((claim) => claim.claimId === claimId && claim.status === "approved") ||
+    !/service request was created/i.test(String(warranty.data.recommendation || ""))
+  ) {
+    throw new Error("Approved claim did not preserve active coverage and clear customer guidance.");
   }
   record("Warranty claim submission, administration review, and customer synchronization");
 

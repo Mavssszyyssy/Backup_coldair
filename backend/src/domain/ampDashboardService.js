@@ -98,7 +98,15 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
     ServiceHistory.find({ partsUsed: { $exists: true, $ne: [] } }).select("partsUsed serviceDate").sort({ serviceDate: -1 }).limit(2000).lean(),
     Unit.aggregate([
       { $match: { status: { $in: ["active", "service_due"] }, "amp.bestServicedBy": { $gte: firstMonth, $lt: afterLastMonth } } },
-      { $group: { _id: { $ifNull: ["$serviceBranch", "Unassigned"] }, upcomingServices: { $sum: 1 } } },
+      { $group: {
+        _id: {
+          $let: {
+            vars: { branch: { $trim: { input: { $ifNull: ["$serviceBranch", ""] } } } },
+            in: { $cond: [{ $eq: ["$$branch", ""] }, "Unassigned", "$$branch"] },
+          },
+        },
+        upcomingServices: { $sum: 1 },
+      } },
       { $sort: { upcomingServices: -1 } },
     ]),
     buildRecordedMaintenanceTrends(),

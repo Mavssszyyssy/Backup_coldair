@@ -445,6 +445,8 @@ const Shop = () => {
   const location = useLocation();
 
   const [backendProducts, setBackendProducts] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -564,10 +566,14 @@ const Shop = () => {
           };
       });
       setBackendProducts(mapped);
+      setCatalogError("");
     } catch (error) {
       // Keep the last confirmed server catalogue visible rather than showing
       // static demo items with incorrect inventory.
       console.error("Failed to fetch products:", error);
+      setCatalogError("The product catalogue could not be refreshed. Please try again.");
+    } finally {
+      setCatalogLoading(false);
     }
   }, []);
 
@@ -769,6 +775,9 @@ const Shop = () => {
 
         <ShopCatalogue
           products={filteredProducts}
+          loading={catalogLoading}
+          error={catalogError}
+          onRetry={fetchProducts}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           onProductClick={setSelectedProduct}

@@ -90,14 +90,17 @@ const buildTrackingTimeline = (order = {}, task = null) => {
     ensure("dispatched", order.dispatchedAt || order.updatedAt, "Order dispatched");
   }
   const taskStatus = String(task?.status || "").toLowerCase();
+  const arrivedAt = task?.payload?.checkIn?.checkedInAt || task?.updatedAt;
+  const onTheWayAt = task?.payload?.onTheWayAt || arrivedAt || task?.updatedAt;
+  const installationStartedAt = task?.payload?.installationStartedAt || arrivedAt || task?.updatedAt;
   if (["on-the-way", "arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
-    ensure("out_for_delivery", task?.payload?.onTheWayAt || task?.updatedAt, "Technician is on the way");
+    ensure("out_for_delivery", onTheWayAt, "Technician is on the way");
   }
   if (["arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
-    ensure("arrived", task?.payload?.checkIn?.checkedInAt || task?.updatedAt, "Technician arrived at the address");
+    ensure("arrived", arrivedAt, "Technician arrived at the address");
   }
   if (["installing", "in-progress", "completed"].includes(taskStatus)) {
-    ensure("installation", task?.payload?.installationStartedAt || task?.updatedAt, "Installation in progress");
+    ensure("installation", installationStartedAt, "Installation in progress");
   }
   if (order.workflowStatus === "complete") {
     ensure("completed", task?.completedAt || order.updatedAt, "Installation completed");

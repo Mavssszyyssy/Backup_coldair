@@ -1,23 +1,30 @@
 const mongoose = require("mongoose");
 const env = require("./env");
 
-const buildMongoUri = () => {
-  const directHosts = String(env.mongoDirectHosts || "").trim();
-  if (!directHosts || !String(env.mongoUri || "").startsWith("mongodb+srv://")) {
-    return env.mongoUri;
+const buildDirectMongoUri = ({ mongoUri = "", directHosts = "", replicaSet = "" } = {}) => {
+  const normalizedDirectHosts = String(directHosts || "").trim();
+  if (!normalizedDirectHosts || !String(mongoUri || "").startsWith("mongodb+srv://")) {
+    return mongoUri;
   }
 
-  const source = new URL(env.mongoUri);
+  const source = new URL(mongoUri);
   const options = new URLSearchParams(source.search);
   options.set("tls", "true");
-  if (env.mongoReplicaSet) options.set("replicaSet", env.mongoReplicaSet);
+  if (replicaSet) options.set("replicaSet", replicaSet);
   if (!options.has("authSource")) options.set("authSource", "admin");
 
   const credentials = source.username
     ? `${source.username}${source.password ? `:${source.password}` : ""}@`
     : "";
-  return `mongodb://${credentials}${directHosts}/?${options.toString()}`;
+  const databasePath = source.pathname && source.pathname !== "/" ? source.pathname : "/";
+  return `mongodb://${credentials}${normalizedDirectHosts}${databasePath}?${options.toString()}`;
 };
+
+const buildMongoUri = () => buildDirectMongoUri({
+  mongoUri: env.mongoUri,
+  directHosts: env.mongoDirectHosts,
+  replicaSet: env.mongoReplicaSet,
+});
 
 const displayMongoTarget = (uri) => {
   try {
@@ -134,3 +141,4 @@ const connectDb = async () => {
 };
 
 module.exports = connectDb;
+module.exports.buildDirectMongoUri = buildDirectMongoUri;

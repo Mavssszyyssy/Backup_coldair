@@ -9,6 +9,12 @@ const peso = new Intl.NumberFormat("en-PH", {
   currency: "PHP",
   maximumFractionDigits: 0,
 });
+const serviceLabel = (value) => {
+  const normalized = String(value || "regular_cleaning").trim().toLowerCase();
+  if (normalized === "deep_cleaning") return "Deep cleaning";
+  if (normalized === "regular_cleaning") return "Regular cleaning";
+  return normalized.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
 
 function ForecastBars({ forecast }) {
   const maxVolume = Math.max(1, ...forecast.map((item) => item.serviceVolume));
@@ -128,7 +134,7 @@ function OwnerAmpDashboard() {
           <div className="amp-table-wrap">
             <table className="amp-table compact">
               <thead><tr><th>Recommended Service</th><th>Units</th></tr></thead>
-              <tbody>{serviceDemand.map((item) => <tr key={item.serviceType}><td>{String(item.serviceType || "regular_cleaning").replaceAll("_", " ")}</td><td>{item.count}</td></tr>)}</tbody>
+              <tbody>{serviceDemand.map((item) => <tr key={item.serviceType}><td>{serviceLabel(item.serviceType)}</td><td>{item.count}</td></tr>)}</tbody>
             </table>
           </div>
           {!serviceDemand.length && !loading ? <p className="amp-empty">No maintenance demand is recorded yet.</p> : null}

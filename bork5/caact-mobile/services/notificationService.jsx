@@ -31,7 +31,7 @@ function normalizeNotification(item = {}) {
     type: item.type || "info",
     category: item.category || "",
     severity: item.severity || "info",
-    route: item.route || resolveNotificationRoute(item),
+    route: resolveNotificationRoute(item),
     targetId: item.targetId || "",
     targetType: item.targetType || "",
     read,
@@ -41,18 +41,17 @@ function normalizeNotification(item = {}) {
 }
 
 export function resolveNotificationRoute(item = {}, role = "") {
-  if (item.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category)) {
-    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}` : "/customer/units";
-  }
-  if (typeof item.route === "string" && item.route.startsWith("/")) {
-    return item.route;
-  }
-
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
   const normalizedRole = String(role || item.role || "").toLowerCase();
 
   if (item.type === "warranty" || item.targetType === "warranty" || text.includes("warranty")) {
-    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}` : "/customer/units";
+    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=warranty` : "/customer/units";
+  }
+  if (item.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category)) {
+    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=amp` : "/customer/units";
+  }
+  if (typeof item.route === "string" && item.route.startsWith("/")) {
+    return item.route;
   }
 
   if (normalizedRole === "technician") {

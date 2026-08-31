@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Text, TextInput, View } from "react-native";
 
 import {
@@ -50,8 +50,14 @@ function formatDateTime(value = "") {
 }
 
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
-const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review"]);
 const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "AMP Reports"];
+const DETAIL_PAGE_INDEX = { overview: 0, warranty: 1, service: 2, services: 2, amp: 3 };
+
+function detailPageFromParam(value) {
+  const normalized = String(readParam(value) || "").trim().toLowerCase();
+  return DETAIL_PAGE_INDEX[normalized] ?? 0;
+}
 const ROOM_SIZE_OPTIONS = [6, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 50].map((size) => ({
   id: String(size),
   value: size,
@@ -90,6 +96,17 @@ function warrantyGuidance(unit = {}, status = "") {
   return unit?.warrantyRecommendation || "Keep your installation and completed service records for future warranty support.";
 }
 
+function serviceName(value = "") {
+  const normalized = String(value || "regular_cleaning").trim().toLowerCase();
+  const labels = {
+    regular_cleaning: "Regular cleaning",
+    deep_cleaning: "Deep cleaning",
+    maintenance: "Maintenance",
+    repair: "Repair",
+  };
+  return labels[normalized] || normalized.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -109,9 +126,13 @@ export default function CustomerUnitDetailsScreen() {
   const [ampReportLoading, setAmpReportLoading] = useState("");
   const [roomSize, setRoomSize] = useState("");
   const [roomSaving, setRoomSaving] = useState(false);
-  const [detailPage, setDetailPage] = useState(0);
+  const [detailPage, setDetailPage] = useState(() => detailPageFromParam(params.page));
 
   const unitId = readParam(params.id);
+
+  useEffect(() => {
+    setDetailPage(detailPageFromParam(params.page));
+  }, [params.page]);
 
   const handleWarrantyClaim = async () => {
     if (!claimIssue.trim()) {
@@ -434,7 +455,7 @@ export default function CustomerUnitDetailsScreen() {
             This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
           </Text> : null}
           {activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. Once approved, its service request is created automatically.
+            Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. No duplicate request is needed; you will be notified after the review.
           </Text> : null}
           {canSubmitWarrantyClaim ? (
             <>
@@ -494,10 +515,10 @@ export default function CustomerUnitDetailsScreen() {
         <Card>
           <CustomerSectionHeader title="AEROPULSE AMP Reports" />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
-            Generate a maintenance plan or summary from your recorded installation and service history.
+            The next maintenance plan estimates when service is due. The service history summary organizes your recorded installation and completed visits.
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
-            {[["predictive_maintenance", "Maintenance plan"], ["maintenance_summary", "Summary"]].map(([type, label]) => (
+            {[["predictive_maintenance", "Next maintenance plan"], ["maintenance_summary", "Service history summary"]].map(([type, label]) => (
               <Button key={type} title={label} size="sm" variant="secondary" onPress={() => handleAmpReport(type)} loading={ampReportLoading === type} disabled={Boolean(ampReportLoading)} style={{ marginTop: 0, flexGrow: 1 }} />
             ))}
           </View>
@@ -507,7 +528,7 @@ export default function CustomerUnitDetailsScreen() {
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
               <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
               <DetailRow label="Recommended Service Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
-              <DetailRow label="Recommended Service" value={String(ampReport.maintenance?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
+              <DetailRow label="Recommended Service" value={serviceName(ampReport.maintenance?.recommendedService)} />
               <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
               <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />
             </View>

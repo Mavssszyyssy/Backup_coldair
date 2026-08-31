@@ -3,12 +3,13 @@ import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
 import { apiRequest } from "../../../config/api";
+import { formatBusinessDateKey } from "../../../utils/dateTime";
 import "../adminShared.css";
 import "./styles.css";
 
 const PAGE_SIZE = 8;
 const TIME_SLOTS = ["8:00 AM – 10:00 AM", "10:00 AM – 12:00 PM", "1:00 PM – 3:00 PM", "3:00 PM – 5:00 PM"];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => formatBusinessDateKey();
 const displayName = (person = {}) =>
   person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.username || person.alias || person.email || "Technician";
 const credentialPart = (value = "") => String(value)
@@ -34,6 +35,20 @@ const formatCheckInTime = (value) => {
   return Number.isNaN(date.getTime())
     ? String(value)
     : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+};
+const formatScheduledDate = (value) => {
+  if (!value) return "Date not set";
+  const key = /^\d{4}-\d{2}-\d{2}$/.test(String(value))
+    ? String(value)
+    : formatBusinessDateKey(new Date(value));
+  const [year, month, day] = key.split("-").map(Number);
+  if (!year || !month || !day) return String(value);
+  return new Date(Date.UTC(year, month - 1, day, 12)).toLocaleDateString("en-PH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Manila",
+  });
 };
 const checkInMapUrl = (checkIn = {}) => {
   const latitude = Number(checkIn?.latitude);
@@ -406,8 +421,8 @@ const AdminTechnician = ({ embedded = false }) => {
         </div>
 
         <section className="admin-card tech-work-orders">
-          <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Reassign open work and verify the technician’s recorded GPS arrival.</p></div></div>
-          {tasks.filter(openTask).slice(0, 8).length === 0 ? <p className="tech-empty">There are no open work orders.</p> : <div className="tech-work-list">{tasks.filter(openTask).slice(0, 8).map((task) => {
+          <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Reassign open work and review GPS arrival history for active and completed jobs.</p></div></div>
+          {tasks.slice(0, 12).length === 0 ? <p className="tech-empty">There are no work orders yet.</p> : <div className="tech-work-list">{tasks.slice(0, 12).map((task) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
             return <article key={task.id} className="tech-work-item">
@@ -415,7 +430,7 @@ const AdminTechnician = ({ embedded = false }) => {
                 <span className={`tech-task-status is-${String(task.status || "pending").replace(/\s+/g, "-")}`}>{task.status || "pending"}</span>
                 <h3>{task.title}</h3>
                 <p>{task.customerName || task.customer || "Customer"} · {task.branch || "No branch"}</p>
-                <small>{task.scheduledDate || "Date not set"} · {task.timeSlot || "Time not set"}</small>
+                <small>{formatScheduledDate(task.scheduledDate)} · {task.timeSlot || "Time not set"}</small>
                 {checkIn?.checkedInAt ? <div className="tech-check-in is-verified">
                   <strong>GPS check-in verified</strong>
                   <span>{formatCheckInTime(checkIn.checkedInAt)}</span>
@@ -423,7 +438,7 @@ const AdminTechnician = ({ embedded = false }) => {
                   {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer">Open check-in map</a> : null}
                 </div> : <div className="tech-check-in"><strong>Not checked in</strong><span>The technician’s GPS arrival has not been recorded.</span></div>}
               </div>
-              <label><span>Assigned technician</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">Select technician</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label>
+              {openTask(task) ? <label><span>Assigned technician</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">Select technician</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <div className="tech-completed-assignee"><span>Completed by</span><strong>{task.assignedTechnicianName || "Technician"}</strong></div>}
             </article>;
           })}</div>}
         </section>

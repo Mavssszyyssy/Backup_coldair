@@ -1,6 +1,7 @@
 const Unit = require("../models/Unit");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { createDedupedNotification, notifyOperationalStaff } = require("./operationalNotificationService");
+const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
@@ -10,7 +11,7 @@ const maintenanceAlertForRecommendation = (recommendation, now = new Date()) => 
   if (Number.isNaN(due.getTime())) return null;
   const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / MS_PER_DAY);
   if (daysUntilDue > 30) return null;
-  const dateKey = due.toISOString().slice(0, 10);
+  const dateKey = formatDateKeyInTimeZone(due);
   if (daysUntilDue < 0) return {
     tier: "amp_overdue", severity: "critical", title: "AC maintenance is overdue",
     message: `${displayService(recommendation.recommendedService)} was recommended by ${due.toLocaleDateString("en-US")}. Open My AC Units to review it.`, dateKey, daysUntilDue,
@@ -77,7 +78,7 @@ const runAmpDailyMonitor = async ({ now = new Date(), limit = 500 } = {}) => {
     }
   }
 
-  const dateKey = now.toISOString().slice(0, 10);
+  const dateKey = formatDateKeyInTimeZone(now);
   for (const [branch, summary] of branchSummary) {
     await notifyOperationalStaff({
       branch: branch === "Unassigned" ? "" : branch,

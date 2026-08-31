@@ -1,7 +1,7 @@
 export const COMPANY_CONTACT = {
   name: "Cold Air ACT",
-  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || "coldairairconditionaing@yahoo.com",
-  salesEmail: import.meta.env.VITE_SALES_EMAIL || "coldairairconditionaing@yahoo.com",
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || "coldairairconditioning@yahoo.com",
+  salesEmail: import.meta.env.VITE_SALES_EMAIL || "coldairairconditioning@yahoo.com",
   hotline: import.meta.env.VITE_SUPPORT_PHONE || "09086854532",
   officeHours: "8:00 AM–5:00 PM, Monday–Friday",
 };

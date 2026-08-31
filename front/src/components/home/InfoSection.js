@@ -19,7 +19,7 @@ function InfoSection() {
         <ul className="contact-info">
           <li><span><img src={icons.marker} alt="" className="inline-icon" /></span><span>192 Pandan Loop #06-29, Singapore 128381</span></li>
           <li><span><img src={icons.phoneCall} alt="" className="inline-icon" /></span><span>09086854532</span></li>
-          <li><span><img src={icons.envelope} alt="" className="inline-icon" /></span><span>coldairairconditionaing@yahoo.com</span></li>
+          <li><span><img src={icons.envelope} alt="" className="inline-icon" /></span><span>coldairairconditioning@yahoo.com</span></li>
         </ul>
       </div>
     </div>

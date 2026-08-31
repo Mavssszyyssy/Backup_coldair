@@ -2,8 +2,8 @@ export const COLD_AIR_WEBSITE = "https://coldair-act.online";
 
 export const COMPANY_CONTACT = {
   name: "Cold Air ACT",
-  supportEmail: "coldairairconditionaing@yahoo.com",
-  salesEmail: "coldairairconditionaing@yahoo.com",
+  supportEmail: "coldairairconditioning@yahoo.com",
+  salesEmail: "coldairairconditioning@yahoo.com",
   hotline: "09086854532",
   landline: "Not currently available",
   facebookPage: "https://facebook.com/coldairact",

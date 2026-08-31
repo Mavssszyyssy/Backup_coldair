@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Linking, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
@@ -35,7 +35,7 @@ const getServiceAddress = (user = {}) => {
 };
 
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
-const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review"]);
 
 const readableStatus = (value = "") => String(value || "").replace(/_/g, " ");
 
@@ -67,6 +67,7 @@ export default function CustomerServicesScreen() {
   const [requestMode, setRequestMode] = useState("service");
   const [dateError, setDateError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(true);
 
   const loadServiceCatalog = useCallback(async () => {
     const token = await getStoredToken();
@@ -83,18 +84,23 @@ export default function CustomerServicesScreen() {
 
   useFocusEffect(useCallback(() => {
     let active = true;
+    setLoadingUnits(true);
     loadServiceCatalog();
-    Promise.all([
+    Promise.allSettled([
       getUnitsByUser(current?.id),
       getCustomerServiceHistory(current?.id),
-    ]).then(([items, history]) => {
+    ]).then(([unitsResult, historyResult]) => {
       if (!active) return;
+      const items = unitsResult.status === "fulfilled" ? unitsResult.value : [];
+      const history = historyResult.status === "fulfilled" ? historyResult.value : { requests: [] };
       setUnits(items);
       setRequests(history.requests || []);
       setSelectedUnitId((currentId) => {
         if (currentId && items.some((item) => String(item.id) === String(currentId))) return currentId;
         return items[0]?.id || "";
       });
+    }).finally(() => {
+      if (active) setLoadingUnits(false);
     });
     return () => { active = false; };
   }, [current?.id, loadServiceCatalog]));
@@ -248,8 +254,9 @@ export default function CustomerServicesScreen() {
         : "Submit Service Request";
 
   return (
-    <CustomerScreen title="Services" subtitle="Book maintenance, repair, or warranty support for your AC" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={submitting ? "Submitting..." : submitTitle} onPress={handleSubmit} loading={submitting} disabled={submitting || units.length === 0 || !selectedService || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
-      {units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
+    <CustomerScreen title="Services" subtitle="Book maintenance, repair, or warranty support for your AC" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={loadingUnits ? "Loading AC Units..." : submitting ? "Submitting..." : submitTitle} onPress={handleSubmit} loading={submitting} disabled={loadingUnits || submitting || units.length === 0 || !selectedService || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
+      {loadingUnits ? <Card><View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}><ActivityIndicator color={COLORS.primary} /><Text style={{ color: COLORS.textSecondary }}>Loading registered AC units and open requests...</Text></View></Card> : null}
+      {!loadingUnits && units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title="Available Services" />
         <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
@@ -273,7 +280,9 @@ export default function CustomerServicesScreen() {
         {activeWarrantyClaim ? <>
           <StatusChip label={`Claim ${readableStatus(activeWarrantyClaim.status)}`} color={COLORS.warning} />
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            No duplicate request is needed. Once approved, the service request will be created automatically and assigned by the service team.
+            {String(activeWarrantyClaim.status).toLowerCase() === "approved"
+              ? "Your claim was approved and a service request was created. The branch will notify you when a technician and schedule are assigned."
+              : "No duplicate request is needed. Your claim is being reviewed, and you will be notified when its status changes."}
           </Text>
         </> : null}
         {warrantyEligible ? <>

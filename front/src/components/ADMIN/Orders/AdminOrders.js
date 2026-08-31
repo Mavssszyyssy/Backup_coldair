@@ -3,6 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
 import { apiRequest } from '../../../config/api';
+import { formatBusinessDateKey } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
@@ -20,10 +21,7 @@ const TIME_SLOT_OPTIONS = [
   '4:00 PM - 6:00 PM',
 ];
 
-const getTodayDateInput = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-};
+const getTodayDateInput = () => formatBusinessDateKey();
 
 const isPastCalendarDate = (value) => Boolean(value && String(value) < getTodayDateInput());
 
@@ -129,13 +127,19 @@ const getTechnicianName = (technician = {}) =>
 
 const dateInputValue = (value = '') => {
   if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
-  return date.toISOString().slice(0, 10);
+  return formatBusinessDateKey(date);
 };
 
 const getDeliveryStatus = (order = {}) => {
-  if (order.deliveryStatus) return String(order.deliveryStatus);
+  const recorded = String(order.deliveryStatus || '').toLowerCase().replace(/[\s_-]+/g, ' ');
+  if (recorded === 'completed' || recorded === 'delivered') return 'Delivered';
+  if (recorded === 'out for delivery' || recorded === 'dispatched') return 'Out for delivery';
+  if (recorded === 'cancelled') return 'Cancelled';
+  if (recorded === 'pending') return 'Preparing for dispatch';
+  if (recorded) return recorded.replace(/\b\w/g, (letter) => letter.toUpperCase());
   if (order.workflowStatus === 'complete') return 'Completed';
   if (order.workflowStatus === 'to_install') return 'Delivered / installation pending';
   if (order.workflowStatus === 'to_deliver') return 'Preparing for dispatch';
@@ -143,11 +147,36 @@ const getDeliveryStatus = (order = {}) => {
   return order.workflowLabel || 'Not recorded';
 };
 
+const getPaymentStatus = (order = {}) => {
+  const method = String(order.paymentMethod || '').toLowerCase();
+  const status = String(order.paymentStatus || '').toLowerCase();
+  const isCod = method === 'cod' || method.includes('cash on delivery');
+  if (isCod) {
+    return order.workflowStatus === 'complete' ? 'Paid on delivery' : 'Payment due on delivery';
+  }
+  if (status === 'paid' || status === 'verified') return 'Paid online';
+  if (status === 'failed') return 'Payment failed';
+  if (status === 'refunded') return 'Refunded';
+  if (status === 'pending' || !status) return 'Payment pending';
+  return status.replace(/[\s_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
 const getInstallationStatus = (order = {}, task = null) => {
-  if (task?.status) return String(task.status).replace(/-/g, ' ');
+  if (task?.status) {
+    const status = String(task.status).replace(/[\s_-]+/g, ' ');
+    return status.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
   if (order.workflowStatus === 'complete') return 'Completed';
   if (order.workflowStatus === 'to_install') return 'Awaiting technician';
   return 'Not started';
+};
+
+const getPaymentMethodLabel = (order = {}) => {
+  const method = String(order.paymentMethod || '').toLowerCase();
+  if (method === 'cod' || method.includes('cash on delivery')) return 'Cash on Delivery';
+  if (method === 'gcash') return 'GCash';
+  if (method.includes('credit') || method.includes('card')) return 'Card';
+  return order.paymentMethod || 'Not recorded';
 };
 
 const AdminOrders = ({ embedded = false }) => {
@@ -160,6 +189,8 @@ const AdminOrders = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState('');
+  const [taskDetailsById, setTaskDetailsById] = useState({});
+  const [proofLoadingId, setProofLoadingId] = useState('');
   const [orderViewFilter, setOrderViewFilter] = useState('all');
   const [orderPage, setOrderPage] = useState(1);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
@@ -190,6 +221,21 @@ const AdminOrders = ({ embedded = false }) => {
       orderLoadInFlightRef.current = false;
     }
   }, []);
+
+  const loadTaskProof = async (task) => {
+    const taskId = task?.id || task?._id || task?.taskCode;
+    if (!taskId || taskDetailsById[String(taskId)]) return;
+    setProofLoadingId(String(taskId));
+    try {
+      const result = await apiRequest(`/tasks/${encodeURIComponent(taskId)}`);
+      const detailedTask = result.task || result;
+      setTaskDetailsById((current) => ({ ...current, [String(taskId)]: detailedTask }));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load installation photos.');
+    } finally {
+      setProofLoadingId('');
+    }
+  };
 
   useEffect(() => {
     loadOrders();
@@ -475,14 +521,20 @@ const AdminOrders = ({ embedded = false }) => {
               String(order.paymentStatus || '').toLowerCase() !== 'paid' &&
               order.workflowStatus === 'to_pay';
             const linkedTask = tasksByOrder[String(order.id || '').trim()] || tasksByOrder[String(order.orderCode || '').trim()];
-            const proof = linkedTask?.proof || null;
-            const ampRecords = Object.values(linkedTask?.ampRegistrations || {})
+            const taskDetailKey = linkedTask?.id || linkedTask?._id || linkedTask?.taskCode;
+            const detailedTask = taskDetailsById[String(taskDetailKey || '')] || linkedTask;
+            const proof = detailedTask?.proof || linkedTask?.proof || {};
+            const ampRecords = Object.values(detailedTask?.ampRegistrations || linkedTask?.ampRegistrations || {})
               .filter((registration) => registration?.status === 'registered');
-            const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) => photo?.uri);
-            const hasCustomerSignoff = Boolean(proof?.customerSignature?.name || linkedTask?.customerSignatureName);
-            const hasTechnicianSummary = Boolean(linkedTask?.findings || linkedTask?.resolution);
+            const hasInstallationPhoto = Boolean(
+              proof?.hasAfterPhotos ||
+              Number(proof?.afterPhotoCount || 0) > 0 ||
+              (proof?.afterPhotos || []).some((photo) => photo?.uri),
+            );
+            const hasCustomerSignoff = Boolean(proof?.customerSignature?.name || detailedTask?.customerSignatureName);
+            const hasTechnicianSummary = Boolean(detailedTask?.findings || detailedTask?.resolution);
             const taskCompleted = String(linkedTask?.status || '').toLowerCase() === 'completed';
-            const registrationComplete = Boolean(linkedTask?.registrationProgress?.isComplete);
+            const registrationComplete = Boolean(detailedTask?.registrationProgress?.isComplete);
             const hasProof = taskCompleted && registrationComplete && hasInstallationPhoto && hasCustomerSignoff && hasTechnicianSummary;
             const hasAnyInstallationEvidence = Boolean(proof?.submittedAt || hasInstallationPhoto || hasCustomerSignoff || ampRecords.length);
             const isWaitingTechnician =
@@ -491,7 +543,7 @@ const AdminOrders = ({ embedded = false }) => {
               (!taskCompleted || !hasProof);
             const canRepairTask = ['to_deliver', 'to_install', 'complete'].includes(order.workflowStatus);
             const canSyncInstalledUnits = taskCompleted || order.workflowStatus === 'complete';
-            const paymentStatus = order.paymentStatus || (order.workflowStatus === 'to_pay' ? 'pending' : 'not recorded');
+            const paymentStatus = getPaymentStatus(order);
             const deliveryStatus = getDeliveryStatus(order);
             const installationStatus = getInstallationStatus(order, linkedTask);
             return (
@@ -510,8 +562,8 @@ const AdminOrders = ({ embedded = false }) => {
                   <p className="admin-order-meta">Contact: {order.address.phone}</p>
                 ) : null}
                 <p className="admin-order-meta">
-                  Amount: PHP {Number(order.totalAmount || 0).toLocaleString()} | Payment: {order.paymentMethod || 'N/A'}
-                  {order.paymentProvider === 'paymongo' ? ` | PayMongo: ${order.paymentStatus || 'pending'}` : ''}
+                  Amount: PHP {Number(order.totalAmount || 0).toLocaleString()} | Payment: {getPaymentMethodLabel(order)}
+                  {order.paymentProvider === 'paymongo' ? ` | Online status: ${getPaymentStatus(order)}` : ''}
                 </p>
                 <div className="admin-order-workflow-summary" aria-label="Order service workflow">
                   <span><b>Payment</b>{paymentStatus}</span>
@@ -672,11 +724,11 @@ const AdminOrders = ({ embedded = false }) => {
                 {hasAnyInstallationEvidence ? (
                   <div className="admin-order-proof">
                     <strong>Proof of Installation</strong>
-                    <span>Technician: {proof.technicianName || linkedTask.assignedTechnicianName || 'Technician'}</span>
-                    <span>Customer Sign-off: {proof.customerSignature?.name || linkedTask.customerSignatureName || 'No sign-off yet'}</span>
-                    <span>Submitted: {formatDateTime(proof.submittedAt || linkedTask.proofSubmittedAt)}</span>
-                    {linkedTask?.findings ? <span>Work completed: {linkedTask.findings}</span> : null}
-                    {linkedTask?.afterCondition ? <span>Final condition: {linkedTask.afterCondition}</span> : null}
+                    <span>Technician: {proof.technicianName || detailedTask.assignedTechnicianName || 'Technician'}</span>
+                    <span>Customer Sign-off: {proof.customerSignature?.name || detailedTask.customerSignatureName || 'No sign-off yet'}</span>
+                    <span>Submitted: {formatDateTime(proof.submittedAt || detailedTask.proofSubmittedAt)}</span>
+                    {detailedTask?.findings ? <span>Work completed: {detailedTask.findings}</span> : null}
+                    {detailedTask?.afterCondition ? <span>Final condition: {detailedTask.afterCondition}</span> : null}
                     {ampRecords.length ? (
                       <div className="admin-order-amp-records">
                         <strong>AMP registration record</strong>
@@ -705,6 +757,16 @@ const AdminOrders = ({ embedded = false }) => {
                         </a>
                       ))}
                     </div>
+                    {hasInstallationPhoto && !(proof?.afterPhotos || []).some((photo) => photo?.uri) ? (
+                      <button
+                        type="button"
+                        className="admin-process-btn admin-proof-load-btn"
+                        onClick={() => loadTaskProof(linkedTask)}
+                        disabled={proofLoadingId === String(taskDetailKey || '')}
+                      >
+                        {proofLoadingId === String(taskDetailKey || '') ? 'Loading photos...' : 'View proof photos'}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
                 {isWaitingTechnician ? (

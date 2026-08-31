@@ -8,6 +8,9 @@ import ProductCard from "./ProductCard";
 
 export default function ShopCatalogue({
   products,
+  loading = false,
+  error = "",
+  onRetry,
   onAddToCart,
   onBuyNow,
   onProductClick,
@@ -70,7 +73,7 @@ export default function ShopCatalogue({
               opacity: 0.6,
             }}
           >
-            Found {products.length} products
+            {loading ? "Loading products..." : `Found ${products.length} products`}
           </BoutiqueText>
           <BoutiqueSelect
             options={sortOptions}
@@ -79,7 +82,18 @@ export default function ShopCatalogue({
           />
         </BoutiqueBox>
 
-        {products.length === 0 ? (
+        {loading ? (
+          <BoutiqueBox
+            className="bq-empty-state"
+            align="center"
+            justify="center"
+            padding="100px 20px"
+            color={BQ_COLORS.inkFaint}
+            aria-live="polite"
+          >
+            <BoutiqueText variant="h3">Loading the latest available AC units...</BoutiqueText>
+          </BoutiqueBox>
+        ) : products.length === 0 ? (
           <BoutiqueBox
             className="bq-empty-state"
             align="center"
@@ -89,8 +103,11 @@ export default function ShopCatalogue({
           >
             <WarningDiamond size={64} weight="bold" />
             <BoutiqueText variant="h3" margin="16px 0 0">
-              No products found matching your filters.
+              {error || "No products found matching your filters."}
             </BoutiqueText>
+            {error && onRetry ? (
+              <button type="button" className="bq-catalogue-retry" onClick={onRetry}>Try again</button>
+            ) : null}
           </BoutiqueBox>
         ) : (
           <BoutiqueGrid className="bq-grid">
@@ -112,6 +129,10 @@ export default function ShopCatalogue({
           __html: `
         .bq-scrollview::-webkit-scrollbar { display: none; }
         .bq-scrollview { scrollbar-width: none; }
+        .bq-catalogue-retry {
+          margin-top: 18px; padding: 11px 20px; border: 0; border-radius: 999px;
+          background: #0f172a; color: white; font-weight: 700; cursor: pointer;
+        }
 
         @media (max-width: 900px) {
           .bq-shop-main {

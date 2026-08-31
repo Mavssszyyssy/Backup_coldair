@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { filterAndSortProducts, getProductImageUrl } from "./ecommerceService";
+import { filterAndSortProducts, getProductImageAssetKey } from "./ecommerceService";
 import { validatePostalCodeForAddress } from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
@@ -33,16 +33,17 @@ describe("mobile customer readiness rules", () => {
     expect(filterAndSortProducts(products, { searchTerm: "OT-1" })[0].id).toBe("2");
   });
 
-  test("mobile shop uses the verified catalog image for each seeded model family", () => {
-    expect(getProductImageUrl({ sku: "TAC-10CSD-KEI-S-2" })).toContain(
-      "/catalog/ac/tcl-breezein-kei2.jpg",
+  test("mobile shop uses bundled catalog images for each seeded model family", () => {
+    expect(getProductImageAssetKey({ sku: "TAC-10CSD-KEI-S-2" })).toBe(
+      "tcl-breezein-kei2.jpg",
     );
-    expect(getProductImageUrl({ sku: "53CNV030WTHP" })).toContain(
-      "/catalog/ac/carrier-opus-53cnv.jpg",
+    expect(getProductImageAssetKey({ sku: "53CNV030WTHP" })).toBe(
+      "carrier-opus-53cnv.jpg",
     );
-    expect(getProductImageUrl({ sku: "AR12TYHYE" })).toContain(
-      "/catalog/ac/samsung-ar9500t.png",
+    expect(getProductImageAssetKey({ sku: "AR12TYHYE" })).toBe(
+      "samsung-ar9500t.png",
     );
+    expect(getProductImageAssetKey({ sku: "unknown-model" })).toBe("generic-ac.jpg");
   });
 
   test("mobile credentials apply phone and password limits", () => {
@@ -73,6 +74,8 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("BottomSheetSelect");
     expect(detailsSource).toContain("Technician Check-in");
     expect(detailsSource).toContain("Open Check-in Map");
+    expect(detailsSource).toContain("Next maintenance plan");
+    expect(detailsSource).toContain("Service history summary");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
   });
 
@@ -154,5 +157,25 @@ describe("mobile customer readiness rules", () => {
     expect(registrationSource).toContain("Save environment and verify unit");
     expect(notificationSource).toContain('["maintenance_due", "amp_due_soon", "amp_overdue"]');
     expect(notificationSource).toContain("/customer/units/${encodeURIComponent(item.targetId)}");
+    expect(notificationSource).toContain("?page=amp");
+    expect(notificationSource).toContain("?page=warranty");
+  });
+
+  test("customer screens distinguish loading from a real empty account", () => {
+    const homeSource = fs.readFileSync(path.join(__dirname, "..", "app", "customer", "home.jsx"), "utf8");
+    const servicesSource = fs.readFileSync(path.join(__dirname, "..", "app", "customer", "services.jsx"), "utf8");
+    expect(homeSource).toContain("Loading your latest account activity");
+    expect(homeSource).toContain("loading ? (");
+    expect(servicesSource).toContain("loadingUnits");
+    expect(servicesSource).toContain("Loading registered AC units and open requests");
+  });
+
+  test("COD receipts use customer-friendly payment wording", () => {
+    const receiptSource = fs.readFileSync(path.join(__dirname, "..", "app", "customer", "receipt", "[id].jsx"), "utf8");
+    const orderStorageSource = fs.readFileSync(path.join(__dirname, "orderStorage.jsx"), "utf8");
+    expect(receiptSource).toContain("Paid on Delivery");
+    expect(receiptSource).toContain("Cash on Delivery");
+    expect(receiptSource).toContain("Cash collected upon delivery");
+    expect(orderStorageSource).toContain("paymongo: order.paymongo || null");
   });
 });

@@ -1,40 +1,51 @@
 import { apiFetch } from "../constants/config";
 
-const DEFAULT_CATALOG_IMAGE_URL =
-  "https://www.coldair-act.online/catalog/ac/generic-ac.jpg";
-const CATALOG_ASSET_BASE_URL = "https://www.coldair-act.online/catalog/ac";
+const CATALOG_IMAGE_SOURCES = {
+  "american-home-ahac-minv.jpg": require("../assets/catalog/ac/american-home-ahac-minv.jpg"),
+  "tcl-uje-window.jpg": require("../assets/catalog/ac/tcl-uje-window.jpg"),
+  "tcl-breezein-kei2.jpg": require("../assets/catalog/ac/tcl-breezein-kei2.jpg"),
+  "midea-celest-msce.jpg": require("../assets/catalog/ac/midea-celest-msce.jpg"),
+  "samsung-ar9500t.png": require("../assets/catalog/ac/samsung-ar9500t.png"),
+  "lg-hsn30ipc.jpg": require("../assets/catalog/ac/lg-hsn30ipc.jpg"),
+  "lg-hsn-ipx.jpg": require("../assets/catalog/ac/lg-hsn-ipx.jpg"),
+  "carrier-opus-53cnv.jpg": require("../assets/catalog/ac/carrier-opus-53cnv.jpg"),
+  "carrier-slim-53clv.jpg": require("../assets/catalog/ac/carrier-slim-53clv.jpg"),
+  "generic-ac.jpg": require("../assets/catalog/ac/generic-ac.jpg"),
+};
 
-export const getProductImageUrl = (product = {}) => {
+export const getProductImageAssetKey = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
   if (sku.startsWith("AHAC-MINV")) {
-    return `${CATALOG_ASSET_BASE_URL}/american-home-ahac-minv.jpg`;
+    return "american-home-ahac-minv.jpg";
   }
   if (sku.includes("CWI")) {
-    return `${CATALOG_ASSET_BASE_URL}/tcl-uje-window.jpg`;
+    return "tcl-uje-window.jpg";
   }
   if (sku.startsWith("TAC-")) {
-    return `${CATALOG_ASSET_BASE_URL}/tcl-breezein-kei2.jpg`;
+    return "tcl-breezein-kei2.jpg";
   }
   if (sku.startsWith("MSCE-")) {
-    return `${CATALOG_ASSET_BASE_URL}/midea-celest-msce.jpg`;
+    return "midea-celest-msce.jpg";
   }
   if (/^AR(?:09|12|18|24)TY/.test(sku)) {
-    return `${CATALOG_ASSET_BASE_URL}/samsung-ar9500t.png`;
+    return "samsung-ar9500t.png";
   }
   if (sku.startsWith("HSN30")) {
-    return `${CATALOG_ASSET_BASE_URL}/lg-hsn30ipc.jpg`;
+    return "lg-hsn30ipc.jpg";
   }
   if (sku.startsWith("HSN")) {
-    return `${CATALOG_ASSET_BASE_URL}/lg-hsn-ipx.jpg`;
+    return "lg-hsn-ipx.jpg";
   }
   if (sku.startsWith("53CNV")) {
-    return `${CATALOG_ASSET_BASE_URL}/carrier-opus-53cnv.jpg`;
+    return "carrier-opus-53cnv.jpg";
   }
   if (sku.startsWith("53CLV")) {
-    return `${CATALOG_ASSET_BASE_URL}/carrier-slim-53clv.jpg`;
+    return "carrier-slim-53clv.jpg";
   }
-  return "";
+  return "generic-ac.jpg";
 };
+
+export const getProductImageSource = (product = {}) => CATALOG_IMAGE_SOURCES[getProductImageAssetKey(product)];
 
 // Products must come from the API so every item shown in the mobile shop has
 // a real inventory record and can be checked out. Do not expose placeholder
@@ -59,11 +70,11 @@ const normalizeProduct = (product = {}) => ({
       : `${Number(product.totalStock ?? product.stock ?? 0)} units across branches`,
   description: product.description || "",
   warranty: product.warranty || "Standard warranty",
+  imageSource: getProductImageSource(product),
   imageUrl:
-    getProductImageUrl(product) ||
     product.imageUrl ||
     product.image ||
-    DEFAULT_CATALOG_IMAGE_URL,
+    "",
 });
 
 export const formatPeso = (value) => new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(value || 0));

@@ -4,6 +4,12 @@ import AmpDashboardShell from "./AmpDashboardShell";
 import AmpReportCenter from "./AmpReportCenter";
 import "./styles.css";
 
+const humanLabel = (value, fallback) => String(value || fallback || "")
+  .trim()
+  .toLowerCase()
+  .replaceAll("_", " ")
+  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
 function ManagerAmpDashboard() {
   const [pipeline, setPipeline] = useState([]);
   const [reportUnits, setReportUnits] = useState([]);
@@ -93,13 +99,13 @@ function ManagerAmpDashboard() {
                     </td>
                     <td>
                       <strong>
-                        {String(unit.recommendedService || "regular_cleaning").replaceAll("_", " ")}
+                        {humanLabel(unit.recommendedService, "regular_cleaning")}
                       </strong>
                       <span>
                         {unit.lastServiceDate ? `Last service ${new Date(unit.lastServiceDate).toLocaleDateString()}` : "First scheduled service"}
                       </span>
                     </td>
-                    <td><strong>{String(unit.warrantyStatus || "pending_activation").replaceAll("_", " ")}</strong><span>{unit.serviceBranch || "Branch pending"}</span></td>
+                    <td><strong>{humanLabel(unit.warrantyStatus, "pending_activation")}</strong><span>{unit.serviceBranch || "Branch pending"}</span></td>
                     <td>
                       {unit.environmentRisk ? <strong>{unit.environmentRisk.recorded ? `${String(unit.environmentRisk.level || "low").replaceAll("_", " ")} environment risk` : "Environment not recorded"}</strong> : null}
                       <span>{unit.recommendationBasis}</span>

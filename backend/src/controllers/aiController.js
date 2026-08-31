@@ -6,6 +6,7 @@ const Task = require("../models/Task");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
+const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const REPORT_TYPES = {
   predictive_maintenance: { label: "Predictive Maintenance", filenameLabel: "Predictive_Maintenance" },
@@ -123,7 +124,7 @@ const generateAmpReport = async (req, res) => {
       aggregateReliability: aggregate,
     });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
-    const generatedAt = new Date().toISOString(); const date = generatedAt.slice(0, 10);
+    const generatedAt = new Date().toISOString(); const date = formatDateKeyInTimeZone(generatedAt);
     const identifier = slugSegment(unit.serialNumber || unit.qrUnitId, "AC-UNIT");
     const fileIdentifier = aggregate ? `Branch-${slugSegment(branch, "AEROPULSE")}` : identifier;
     const fileNameBase = `AMP_${definition.filenameLabel}_${fileIdentifier}_${date}`;

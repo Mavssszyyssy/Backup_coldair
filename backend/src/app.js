@@ -8,7 +8,7 @@ const MongoStore = require("connect-mongo");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const env = require("./config/env");
-const { getInfobipEmailConfiguration } = require("./utils/email");
+const { getResendEmailConfiguration } = require("./utils/email");
 const { createMemoryRateLimit } = require("./middleware/requestRateLimit");
 
 const authRoutes = require("./routes/authRoutes");
@@ -99,7 +99,7 @@ app.get("/api/health", (_req, res) => {
     environment: env.nodeEnv,
     release: String(process.env.VERCEL_GIT_COMMIT_SHA || "local").slice(0, 7),
     email: {
-      infobip: getInfobipEmailConfiguration(),
+      resend: getResendEmailConfiguration(),
       smtpConfigured: Boolean(
         env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom,
       ),

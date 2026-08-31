@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Task = require("../models/Task");
 const Order = require("../models/Order");
 const ServiceRequest = require("../models/ServiceRequest");
+const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ORDER_STAGE_LABELS = {
@@ -50,7 +51,7 @@ const bucketForDate = (date, interval) => {
   const copy = new Date(date);
   if (interval === "monthly") return `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, "0")}`;
   if (interval === "quarterly") return `${copy.getFullYear()}-Q${Math.floor(copy.getMonth() / 3) + 1}`;
-  return copy.toISOString().slice(0, 10);
+  return formatDateKeyInTimeZone(copy);
 };
 
 const buildSalesSeries = (paidOrders, interval) => {

@@ -21,6 +21,19 @@ export default defineConfig({
   build: {
     outDir: "build",
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalized = id.replaceAll("\\", "/");
+          if (!normalized.includes("/node_modules/")) return undefined;
+          if (normalized.includes("/react-router") || normalized.includes("/react-dom/") || normalized.includes("/react/")) return "react-vendor";
+          if (normalized.includes("/@phosphor-icons/")) return "icons";
+          if (normalized.includes("/qrcode.react/")) return "qrcode";
+          if (normalized.includes("/zxcvbn/")) return "password-strength";
+          return "vendor";
+        },
+      },
+    },
   },
   test: {
     environment: "jsdom",

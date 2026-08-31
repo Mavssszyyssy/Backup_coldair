@@ -517,6 +517,21 @@ const withoutEmbeddedProofMedia = (value = {}) => {
   return sanitized;
 };
 
+const summarizeTaskProof = (proof = {}) => {
+  const beforePhotos = Array.isArray(proof.beforePhotos) ? proof.beforePhotos : [];
+  const afterPhotos = Array.isArray(proof.afterPhotos) ? proof.afterPhotos : [];
+  return {
+    submittedAt: proof.submittedAt || null,
+    technicianName: proof.technicianName || "",
+    customerSignature: proof.customerSignature || null,
+    notes: proof.notes || "",
+    beforePhotoCount: beforePhotos.filter((photo) => String(photo?.uri || "").trim()).length,
+    afterPhotoCount: afterPhotos.filter((photo) => String(photo?.uri || "").trim()).length,
+    hasBeforePhotos: beforePhotos.some((photo) => String(photo?.uri || "").trim()),
+    hasAfterPhotos: afterPhotos.some((photo) => String(photo?.uri || "").trim()),
+  };
+};
+
 const taskTrackingStages = {
   "on-the-way": { stage: "out_for_delivery", label: "Out for Delivery", detail: "Technician is on the way" },
   arrived: { stage: "arrived", label: "Arrived", detail: "Technician arrived at the address" },
@@ -787,17 +802,18 @@ const canTechnicianAcceptTask = (task, technician) => {
   return isBranchNearby(task.branch, technician.assignedBranch) || isBranchNearby(task.branch, technician.activeBranch);
 };
 
-const hydrateTaskResponse = (task) => {
+const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
   const payload = task.payload && Object.keys(task.payload).length
     ? withoutEmbeddedProofMedia(task.payload)
     : null;
   const progress = getRegistrationProgress(task);
   const base = task.toJSON();
+  const proof = includeProofMedia ? (task.proof || {}) : summarizeTaskProof(task.proof || {});
   if (base.payload) base.payload = payload || {};
   if (!payload) {
     return {
       ...base,
-      proof: task.proof || {},
+      proof,
       registrationProgress: progress,
     };
   }
@@ -827,7 +843,7 @@ const hydrateTaskResponse = (task) => {
     priority: task.priority,
     assignedTechnicianId: task.assignedTechnicianId,
     assignedTechnicianName: task.assignedTechnicianName,
-    proof: task.proof || {},
+    proof,
     registrationProgress: progress,
     status: task.status,
     createdAt: payload.createdAt || task.createdAt,
@@ -864,7 +880,7 @@ const listTasks = async (req, res) => {
       ? Math.min(Math.max(Math.floor(requestedLimit), 1), 200)
       : 200;
     const tasks = await Task.find(query).sort({ updatedAt: -1 }).limit(limit);
-    return res.json({ tasks: tasks.map(hydrateTaskResponse) });
+    return res.json({ tasks: tasks.map((task) => hydrateTaskResponse(task, { includeProofMedia: false })) });
   } catch (error) {
     console.error("Failed to list tasks:", error);
     return res.status(500).json({ message: "Unable to fetch tasks right now." });
