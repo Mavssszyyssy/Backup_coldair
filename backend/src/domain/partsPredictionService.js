@@ -1,7 +1,7 @@
 const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
 
-const predictLikelyFailingParts = async ({ unitId }) => {
+const buildRecordedPartsPreparation = async ({ unitId }) => {
   const unit = await Unit.findById(unitId).lean();
   if (!unit) { const error = new Error("Unit not found"); error.status = 404; throw error; }
   const comparableUnits = await Unit.find({
@@ -26,4 +26,4 @@ const predictLikelyFailingParts = async ({ unitId }) => {
   };
 };
 
-module.exports = { predictLikelyFailingParts };
+module.exports = { buildRecordedPartsPreparation };

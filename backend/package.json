@@ -11,6 +11,8 @@
     "seed": "node src/seed/seedDemoUsers.js",
     "check:vercel": "node -e \"require('./api'); console.log('Vercel entry loaded successfully.'); process.exit(0)\"",
     "check:imports": "node ../scripts/check-imports.js",
+    "audit:data": "node scripts/audit-data-consistency.js",
+    "cleanup:data": "node scripts/cleanup-live-data.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

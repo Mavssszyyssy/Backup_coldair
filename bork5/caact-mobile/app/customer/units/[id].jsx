@@ -22,6 +22,7 @@ import {
   buildMaintenanceRecommendation,
 } from "../../../services/maintenanceRecommendationService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
+import { getLatestTaskCheckIn, isActiveServiceRequest } from "../../../services/customerHistoryLogic";
 import { formatUnitHorsepower } from "../../../services/unitDisplayService";
 import {
   cacheUnitUpdate,
@@ -49,7 +50,6 @@ function formatDateTime(value = "") {
     : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review"]);
 const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "AMP Reports"];
 const DETAIL_PAGE_INDEX = { overview: 0, warranty: 1, service: 2, services: 2, amp: 3 };
@@ -63,10 +63,6 @@ const ROOM_SIZE_OPTIONS = [6, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 50].map((si
   value: size,
   label: `Approximately ${size} m²`,
 }));
-
-function checkInForTask(task = {}) {
-  return task?.checkIn || task?.payload?.checkIn || null;
-}
 
 function checkInMapUrl(checkIn = {}) {
   const latitude = Number(checkIn?.latitude);
@@ -286,16 +282,16 @@ export default function CustomerUnitDetailsScreen() {
     );
   }
 
-  const activeServiceRequest = history.requests.find((request) =>
-    ACTIVE_REQUEST_STATUSES.has(String(request?.status || "").toLowerCase()),
-  );
+  const activeRequests = history.requests.filter(isActiveServiceRequest);
+  const activeServiceRequest = activeRequests[0];
   const activeWarrantyClaim = (unit?.warranty?.claims || []).find((claim) =>
     ACTIVE_CLAIM_STATUSES.has(String(claim?.status || "").toLowerCase()),
   );
   const warrantyStatus = String(unit?.warrantyStatus || unit?.warranty?.status || "pending_activation").toLowerCase();
   const canSubmitWarrantyClaim = warrantyStatus === "active" && !activeServiceRequest && !activeWarrantyClaim;
-  const checkedInTask = history.linkedTasks.find((task) => checkInForTask(task)?.checkedInAt);
-  const latestCheckIn = checkInForTask(checkedInTask);
+  const latestCheckInRecord = getLatestTaskCheckIn(history.linkedTasks);
+  const checkedInTask = latestCheckInRecord?.task || null;
+  const latestCheckIn = latestCheckInRecord?.checkIn || null;
   const latestCheckInMapUrl = checkInMapUrl(latestCheckIn);
   const selectedRoomSize = ROOM_SIZE_OPTIONS.find(
     (option) => String(option.value) === String(roomSize),
@@ -495,7 +491,7 @@ export default function CustomerUnitDetailsScreen() {
           </Card>
           <Card>
             <CustomerSectionHeader title="Service Request Status" />
-            <DetailRow label="Open Requests" value={String(history.requests.length)} />
+            <DetailRow label="Open Requests" value={String(activeRequests.length)} />
             <DetailRow label="Assigned Work Orders" value={String(history.linkedTasks.length)} />
             <DetailRow label="Completed Services" value={String(history.completedServices.length)} />
             <Button title="Book Service for This AC" onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })} leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />} />

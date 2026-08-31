@@ -5,7 +5,12 @@ const { getMaintenanceRecommendation, generateAmpReport } = require("../controll
 
 const router = express.Router();
 
-router.post("/maintenance-recommendation", requireAuthNoBranch, getMaintenanceRecommendation);
+router.post(
+  "/maintenance-recommendation",
+  requireAuthNoBranch,
+  allowRoles("customer", "technician", "manager", "owner", "admin", "superadmin"),
+  getMaintenanceRecommendation,
+);
 router.post(
   "/amp-report",
   requireAuthNoBranch,

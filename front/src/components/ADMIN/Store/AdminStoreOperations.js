@@ -5,7 +5,6 @@ import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import '../adminShared.css';
 
-const TOTP_DEMO = '123456';
 const DEFAULT_BRANCH_LOCATIONS = {
   Bulacan: 'Bulacan',
   Cavite: 'Cavite',
@@ -50,9 +49,6 @@ const AdminStoreOperations = () => {
           <p><strong>Store:</strong> {assignedBranch?.storeStatus}</p>
           <p><strong>Server:</strong> {assignedBranch?.serverStatus}</p>
           <p><strong>Network:</strong> {assignedBranch?.networkHealth}</p>
-          <p style={{ color: '#64748b', marginBottom: 0 }}>
-            Demo TOTP: <strong>{TOTP_DEMO}</strong>
-          </p>
         </div>
 
       </div>

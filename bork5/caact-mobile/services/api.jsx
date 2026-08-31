@@ -768,7 +768,7 @@ export async function registerPushToken(token, expoPushToken) {
 // AMP technician service completion
 // ---------------------------------------------------------------------------
 
-export async function fetchPredictedParts(token, unitId) {
+export async function fetchRecordedPartsPreparation(token, unitId) {
   const { ok, data } = await get(
     `/predictions/parts?unitId=${encodeURIComponent(unitId)}`,
     token,
@@ -776,7 +776,7 @@ export async function fetchPredictedParts(token, unitId) {
   if (ok) return { success: true, parts: data.parts || [], generatedAt: data.generatedAt };
   return {
     success: false,
-    error: getErrorMessage(data, "Failed to fetch predicted parts."),
+    error: getErrorMessage(data, "Failed to load recorded parts preparation."),
     parts: [],
   };
 }

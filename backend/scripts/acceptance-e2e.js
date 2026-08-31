@@ -11,6 +11,10 @@ const baseUrl = process.env.ACCEPTANCE_API_BASE || "http://127.0.0.1:5002/api";
 if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+\/api\/?$/i.test(baseUrl)) {
   throw new Error("Acceptance tests are restricted to a localhost API.");
 }
+const expectedDatabase = String(process.env.ACCEPTANCE_EXPECTED_DATABASE || "").trim();
+if (!/(_qa|_e2e)$/i.test(expectedDatabase)) {
+  throw new Error("Set ACCEPTANCE_EXPECTED_DATABASE to an isolated database name ending in _qa or _e2e.");
+}
 
 const runId = String(Date.now()).slice(-8);
 const customerEmail = `acceptance.${runId}@example.test`;
@@ -72,6 +76,12 @@ const findProduct = async (token, productId) => {
 const main = async () => {
   const health = await request("/health");
   if (health.data.status !== "ok") throw new Error("Local acceptance backend is not healthy.");
+  if (health.data.environment === "production") {
+    throw new Error("Acceptance tests cannot run against a production backend.");
+  }
+  if (String(health.data.databaseName || "") !== expectedDatabase) {
+    throw new Error(`Acceptance database mismatch. Expected ${expectedDatabase}, but the local backend reported ${health.data.databaseName || "no isolated database"}.`);
+  }
   record("Backend health and routing");
 
   const superadmin = await login("superadmin.main", "admin123");

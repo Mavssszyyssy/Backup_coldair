@@ -9,10 +9,10 @@ const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/o
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const REPORT_TYPES = {
-  predictive_maintenance: { label: "Predictive Maintenance", filenameLabel: "Predictive_Maintenance" },
+  predictive_maintenance: { label: "Next Maintenance Recommendation", filenameLabel: "Maintenance_Recommendation" },
   maintenance_summary: { label: "Maintenance Summary", filenameLabel: "Maintenance_Summary" },
   summary_report: { label: "Maintenance Summary", filenameLabel: "Maintenance_Summary" },
-  inventory_reliability_analysis: { label: "Aggregate Inventory Reliability Analysis", filenameLabel: "Inventory_Reliability" },
+  inventory_reliability_analysis: { label: "Aggregate Recorded Service Analysis", filenameLabel: "Recorded_Service_Analysis" },
 };
 const AGGREGATE_ROLES = new Set(["admin", "superadmin", "owner", "manager"]);
 const cleanText = (value, max = 300) => String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
@@ -107,7 +107,7 @@ const generateAmpReport = async (req, res) => {
     const definition = REPORT_TYPES[type];
     if (!definition) return res.status(400).json({ message: "Unsupported AMP report type." });
     if (type === "inventory_reliability_analysis" && !AGGREGATE_ROLES.has(req.authUser.role)) {
-      return res.status(403).json({ message: "Aggregate inventory reliability reports are available to authorized operations staff only." });
+      return res.status(403).json({ message: "Aggregate recorded-service reports are available to authorized operations staff only." });
     }
     const { unit, recommendation } = await loadUnitAndRecommendation(req, String(req.body?.unitId || ""));
     const branch = await resolveResponsibleBranch(req, unit, req.body?.branch);
@@ -149,7 +149,7 @@ const generateAmpReport = async (req, res) => {
         serviceHistory: history.map(formatHistory), serviceRequests: requests.map((item) => ({ date: item.createdAt, type: item.serviceType || item.issueType || "service", status: item.status || "" })),
         technicianTasks: tasks.map((item) => ({ date: item.completedAt || item.updatedAt, title: cleanText(item.title), status: item.status || "" })),
         aggregateReliability: aggregate,
-        note: ai.error || "Prediction is decision support based on recorded history; final service findings require technician inspection.",
+        note: ai.error || "This maintenance recommendation is decision support based on recorded history; final service findings require technician inspection.",
       },
     });
   } catch (error) {

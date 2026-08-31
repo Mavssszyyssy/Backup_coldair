@@ -4,6 +4,7 @@ import {
   SERVICE_REQUEST_STATUS,
 } from "./serviceRequestStorage";
 import { getAllTasks, TASK_STATUS } from "./taskStorage";
+import { isActiveServiceRequest } from "./customerHistoryLogic";
 
 export async function getCustomerServiceHistory(userId) {
   if (!userId) {
@@ -55,6 +56,7 @@ export async function getCustomerServiceHistory(userId) {
 export function getCustomerServiceStats(requests = [], completedServices = []) {
   return {
     totalRequests: requests.length,
+    openRequests: requests.filter(isActiveServiceRequest).length,
     submitted: requests.filter(
       (request) => request.status === SERVICE_REQUEST_STATUS.SUBMITTED
     ).length,

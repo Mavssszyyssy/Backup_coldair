@@ -1,8 +1,8 @@
-const { predictLikelyFailingParts } = require("../domain/partsPredictionService");
+const { buildRecordedPartsPreparation } = require("../domain/partsPredictionService");
 const Unit = require("../models/Unit");
 const Task = require("../models/Task");
 
-const getPredictedParts = async (req, res) => {
+const getRecordedPartsPreparation = async (req, res) => {
   try {
     const unitId = req.query.unitId || req.query.unit_id;
     if (!unitId) {
@@ -39,14 +39,14 @@ const getPredictedParts = async (req, res) => {
       }
     }
 
-    const result = await predictLikelyFailingParts({ unitId });
+    const result = await buildRecordedPartsPreparation({ unitId });
     return res.json(result);
   } catch (error) {
-    console.error("Failed to predict likely failing parts:", error);
+    console.error("Failed to load recorded parts preparation:", error);
     return res.status(error.status || 500).json({
-      message: error.message || "Unable to load predicted parts.",
+      message: error.message || "Unable to load recorded parts preparation.",
     });
   }
 };
 
-module.exports = { getPredictedParts };
+module.exports = { getRecordedPartsPreparation };

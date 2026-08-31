@@ -22,6 +22,8 @@
 # misc
 /backend/.env
 *.log
+*_out.txt
+inspect_out.txt
 .runtime/
 .vercel/
 .DS_Store

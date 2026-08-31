@@ -45,6 +45,17 @@ describe("cross-surface readiness gaps", () => {
     expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain('humanLabel(unit.recommendedService, "regular_cleaning")');
   });
 
+  test("AMP labels distinguish recorded recommendations from predictions and booked revenue", () => {
+    const reports = source("src/components/AMP/AmpReportCenter.js");
+    const owner = source("src/components/AMP/OwnerAmpDashboard.js");
+    expect(reports).toContain("Next Maintenance Recommendation");
+    expect(reports).toContain("Aggregate Recorded Service Analysis");
+    expect(reports).not.toContain('label: "Predictive Maintenance"');
+    expect(owner).toContain("these are not confirmed bookings");
+    expect(owner).toContain("Assumed service value");
+    expect(owner).toContain("It is not a failure rate, reliability score, or unit diagnosis");
+  });
+
   test("superadmin queues translate internal payment codes", () => {
     for (const component of ["SuperAdminAlerts.js", "SuperAdminSales.js"]) {
       const contents = source(`src/components/SUPERADMIN/Dashboard/${component}`);

@@ -43,6 +43,7 @@ function OwnerAmpDashboard() {
     totalForecastedServices: 0,
     totalProjectedRevenue: 0,
     averageServiceRevenue: 0,
+    revenueDisclaimer: "",
   });
   const [serviceDemand, setServiceDemand] = useState([]);
   const [partsTrend, setPartsTrend] = useState([]);
@@ -65,6 +66,7 @@ function OwnerAmpDashboard() {
           totalForecastedServices: result.totalForecastedServices || 0,
           totalProjectedRevenue: result.totalProjectedRevenue || 0,
           averageServiceRevenue: result.averageServiceRevenue || 0,
+          revenueDisclaimer: result.revenueDisclaimer || "",
         });
         setServiceDemand(result.recommendedServiceDemand || []);
         setPartsTrend(result.recordedPartsTrend || []);
@@ -97,7 +99,7 @@ function OwnerAmpDashboard() {
   return (
     <AmpDashboardShell
       title="Fleet Service Forecast"
-      subtitle="Projected service demand and revenue from AMP service periods."
+      subtitle="Scenario estimate from upcoming maintenance dates; these are not confirmed bookings."
     >
       <div className="amp-metrics">
         <article>
@@ -105,11 +107,11 @@ function OwnerAmpDashboard() {
           <strong>{summary.totalForecastedServices}</strong>
         </article>
         <article>
-          <span>Projected revenue</span>
+          <span>Scenario revenue</span>
           <strong>{peso.format(summary.totalProjectedRevenue)}</strong>
         </article>
         <article>
-          <span>Avg service value</span>
+          <span>Assumed service value</span>
           <strong>{peso.format(summary.averageServiceRevenue)}</strong>
         </article>
         <article>
@@ -153,14 +155,15 @@ function OwnerAmpDashboard() {
       </div>
 
       <section className="amp-card">
-        <h2>Revenue Forecast Detail</h2>
+        <h2>Revenue Scenario Detail</h2>
+        <p className="amp-muted">{summary.revenueDisclaimer || "Scenario revenue equals upcoming recommended services multiplied by the assumed service value; it is not booked revenue."}</p>
         <div className="amp-table-wrap">
           <table className="amp-table compact">
             <thead>
               <tr>
                 <th>Month</th>
                 <th>Service Volume</th>
-                <th>Projected Revenue</th>
+                <th>Scenario Revenue</th>
               </tr>
             </thead>
             <tbody>
@@ -183,10 +186,10 @@ function OwnerAmpDashboard() {
           {!branchDemand.length && !loading ? <p className="amp-empty">No upcoming branch workload is recorded.</p> : null}
         </section>
         <section className="amp-card">
-          <h2>Model / Brand Reliability Trends</h2>
-          <p className="amp-muted">Frequency is calculated from recorded service history and is not a unit diagnosis.</p>
+          <h2>Recorded Service Frequency by Model / Brand</h2>
+          <p className="amp-muted">Frequency is calculated from completed service records. It is not a failure rate, reliability score, or unit diagnosis.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Scope</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} (brand)</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
-          {!modelTrends.length && !brandTrends.length && !loading ? <p className="amp-empty">No recorded reliability trend is available yet.</p> : null}
+          {!modelTrends.length && !brandTrends.length && !loading ? <p className="amp-empty">No recorded service-frequency trend is available yet.</p> : null}
         </section>
       </div>
       <AmpReportCenter units={reportUnits} />

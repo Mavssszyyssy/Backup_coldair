@@ -12,6 +12,11 @@ const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenance
 const { normalizeEnvironmentProfile } = require("../domain/ampEnvironmentRisk");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
 const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
+const {
+  getTaskMutationBlocker,
+  normalizeTaskStatus: normalizeStatus,
+  parseTaskStatus,
+} = require("../domain/taskWorkflow");
 
 const branchScopeQuery = (req) => {
   if (req.authUser.role === "superadmin") return {};
@@ -53,26 +58,6 @@ const findTaskForRequest = async (taskId, req) => {
     scopes.push({ assignedTechnicianId: String(req.authUser._id || "") });
   }
   return Task.findOne({ $and: scopes });
-};
-
-const normalizeStatus = (value = "") => {
-  const normalized = String(value || "").toLowerCase().trim().replace(/[\s_]+/g, "-");
-  if ([
-    "pending",
-    "accepted",
-    "on-the-way",
-    "arrived",
-    "installing",
-    "in-progress",
-    "on-hold",
-    "failed",
-    "rescheduled",
-    "cancelled",
-    "completed",
-  ].includes(normalized)) return normalized;
-  if (normalized === "in_progress") return "in-progress";
-  if (normalized === "on_hold") return "on-hold";
-  return "pending";
 };
 
 const getTaskSerialNumbers = (task) => {
@@ -939,6 +924,11 @@ const updateTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    const mutationBlocker = getTaskMutationBlocker(task.status);
+    if (mutationBlocker) {
+      return res.status(409).json({ message: mutationBlocker });
+    }
+
     if (req.authUser.role === "technician") {
       const currentTechId = String(req.authUser._id || "");
       if (!task.assignedTechnicianId || String(task.assignedTechnicianId) !== currentTechId) {
@@ -1403,15 +1393,20 @@ const registerAmpUnit = async (req, res) => {
 
 const updateTaskStatus = async (req, res) => {
   try {
-    const status = normalizeStatus(req.body?.status);
+    const status = parseTaskStatus(req.body?.status);
     const allowed = ["pending", "accepted", "on-the-way", "arrived", "installing", "in-progress", "on-hold", "failed", "rescheduled", "completed"];
-    if (!allowed.includes(status)) {
+    if (!status || !allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid task status." });
     }
 
     const task = await findTaskForRequest(req.params.taskId, req);
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
+    }
+
+    const mutationBlocker = getTaskMutationBlocker(task.status);
+    if (mutationBlocker) {
+      return res.status(409).json({ message: mutationBlocker });
     }
 
     if (req.authUser.role === "technician") {

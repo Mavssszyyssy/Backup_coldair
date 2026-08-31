@@ -4,19 +4,6 @@ const User = require("../models/User");
 
 const demoUsers = [
   {
-    email: "admin@example.com",
-    alias: "admin.main",
-    password: "admin123",
-    name: "Admin User",
-    name_first: "Admin",
-    name_last: "User",
-    phone: "09123456780",
-    address: "456 Admin Street",
-    role: "admin",
-    assignedBranch: "Bulacan",
-    activeBranch: "Bulacan",
-  },
-  {
     email: "admin-bulacan@example.com",
     alias: "admin.bulacan",
     password: "admin123",

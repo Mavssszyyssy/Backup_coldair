@@ -4,9 +4,9 @@ import { useUser } from "../../context/UserContext";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 
 const REPORT_TYPES = [
-  { value: "predictive_maintenance", label: "Predictive Maintenance" },
+  { value: "predictive_maintenance", label: "Next Maintenance Recommendation" },
   { value: "maintenance_summary", label: "Maintenance Summary" },
-  { value: "inventory_reliability_analysis", label: "Aggregate Inventory Reliability Analysis", internalOnly: true },
+  { value: "inventory_reliability_analysis", label: "Aggregate Recorded Service Analysis", internalOnly: true },
 ];
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
@@ -75,7 +75,7 @@ function AmpReportCenter({
       <p><strong>Environment assessment:</strong> ${escapeHtml(m.environmentAssessment || "Operating conditions have not been recorded yet.")}</p>
       <h2>Technician preparation</h2><ul>${(m.technicianPreparation || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>No component suggestion is supported by current recorded history.</li>"}</ul>
       <h2>Recorded service history</h2><table><thead><tr><th>Date</th><th>Service</th><th>Findings</th><th>Action</th><th>Parts</th></tr></thead><tbody>${historyRows}</tbody></table>
-      ${report.aggregateReliability ? `<h2>Aggregate inventory reliability</h2><p>${escapeHtml(report.aggregateReliability.note)}</p><p><strong>Scope:</strong> ${escapeHtml(report.aggregateReliability.scope)} · <strong>Units:</strong> ${escapeHtml(report.aggregateReliability.unitCount)} · <strong>Recorded services:</strong> ${escapeHtml(report.aggregateReliability.recordedServiceCount)}</p><table><thead><tr><th>Model</th><th>Recorded services</th></tr></thead><tbody>${modelRows}</tbody></table><h3>Recorded parts use</h3><ul>${(report.aggregateReliability.partsByRecordedUse || []).map((item) => `<li>${escapeHtml(item.component)} — ${escapeHtml(item.count)} recorded use(s)</li>`).join("") || "<li>No recorded parts-use data.</li>"}</ul>` : ""}
+      ${report.aggregateReliability ? `<h2>Aggregate recorded service analysis</h2><p>${escapeHtml(report.aggregateReliability.note)}</p><p><strong>Scope:</strong> ${escapeHtml(report.aggregateReliability.scope)} · <strong>Units:</strong> ${escapeHtml(report.aggregateReliability.unitCount)} · <strong>Recorded services:</strong> ${escapeHtml(report.aggregateReliability.recordedServiceCount)}</p><table><thead><tr><th>Model</th><th>Recorded services</th></tr></thead><tbody>${modelRows}</tbody></table><h3>Recorded parts use</h3><ul>${(report.aggregateReliability.partsByRecordedUse || []).map((item) => `<li>${escapeHtml(item.component)} — ${escapeHtml(item.count)} recorded use(s)</li>`).join("") || "<li>No recorded parts-use data.</li>"}</ul>` : ""}
       <p class="meta">${escapeHtml(report.note || "")}</p>`;
     exportHtmlToPdfViaPrint({
       title: report.reportLabel || report.title,

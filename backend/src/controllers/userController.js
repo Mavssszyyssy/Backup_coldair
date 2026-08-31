@@ -3,11 +3,16 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const Order = require("../models/Order");
 const Notification = require("../models/Notification");
+const Unit = require("../models/Unit");
+const Task = require("../models/Task");
+const ServiceRequest = require("../models/ServiceRequest");
+const ContactMessage = require("../models/ContactMessage");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { resolveConfiguredBranch } = require("../services/branchCoverageService");
 const env = require("../config/env");
 const { validatePostalCodeForAddress } = require("../utils/postalCodeValidation");
 const { canSendEmail, sendEmail } = require("../utils/email");
+const { isProtectedDemoStaff } = require("../domain/demoStaffPolicy");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
 const NOTIFICATION_TYPES = ["account", "order", "system"];
@@ -863,18 +868,80 @@ const requestPasswordChangeEmail = async (req, res) => {
 
 const anonymizeRelatedData = async (userId) => {
   const maskedName = "Deleted User";
-  await Order.updateMany(
-    { customer: userId },
-    {
-      $set: {
-        customer: null,
-        customerName: maskedName,
-        "address.name": maskedName,
-        "address.phone": "",
+  const userIdText = String(userId);
+  await Promise.all([
+    Order.updateMany(
+      { customer: userId },
+      {
+        $set: {
+          customer: null,
+          customerName: maskedName,
+          "address.name": maskedName,
+          "address.phone": "",
+          "address.street": "Removed with deleted account",
+          "address.barangay": "",
+          "address.city": "",
+          "address.province": "",
+          "address.region": "",
+          "address.postalCode": "",
+        },
       },
-    },
-  );
-  await Notification.deleteMany({ user: userId });
+    ),
+    Unit.updateMany(
+      { customer: userId },
+      {
+        $set: {
+          customerName: maskedName,
+          status: "retired",
+          "warranty.status": "void",
+        },
+      },
+    ),
+    ServiceRequest.updateMany(
+      { $or: [{ createdBy: userId }, { customerId: userIdText }] },
+      {
+        $set: {
+          customer: maskedName,
+          customerEmail: "",
+          customerPhone: "",
+          address: "Removed with deleted account",
+        },
+        $unset: {
+          "payload.customerEmail": "",
+          "payload.customerPhone": "",
+          "payload.address": "",
+        },
+      },
+    ),
+    Task.updateMany(
+      { $or: [{ customerId: userIdText }, { "payload.customerId": userIdText }, { "payload.userId": userIdText }] },
+      {
+        $set: {
+          customer: maskedName,
+          customerEmail: "",
+          customerPhone: "",
+          address: "Removed with deleted account",
+        },
+        $unset: {
+          "payload.customerEmail": "",
+          "payload.customerPhone": "",
+          "payload.address": "",
+        },
+      },
+    ),
+    ContactMessage.updateMany(
+      { customer: userId },
+      {
+        $set: {
+          customerName: maskedName,
+          email: "",
+          phone: "",
+          message: "Message removed with deleted account.",
+        },
+      },
+    ),
+    Notification.deleteMany({ user: userId }),
+  ]);
 };
 
 const deleteAccount = async (req, res) => {
@@ -886,6 +953,12 @@ const deleteAccount = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Please type DELETE to confirm account deletion." });
+  }
+
+  if (isProtectedDemoStaff(req.authUser)) {
+    return res.status(409).json({
+      message: "This seeded presentation account is protected and cannot be deleted.",
+    });
   }
 
   if (req.authUser.passwordHash) {
@@ -974,6 +1047,12 @@ const deleteUserById = async (req, res) => {
 
   if (!canManageTargetProfile(req.authUser, target)) {
     return res.status(403).json({ message: "Forbidden" });
+  }
+
+  if (isProtectedDemoStaff(target)) {
+    return res.status(409).json({
+      message: "This seeded presentation account is protected and cannot be deleted.",
+    });
   }
 
   const mode =
@@ -1102,6 +1181,12 @@ const updateUserStatus = async (req, res) => {
     .toLowerCase();
   if (!nextStatus || !["active", "disabled"].includes(nextStatus)) {
     return res.status(400).json({ message: "Invalid status" });
+  }
+
+  if (nextStatus === "disabled" && isProtectedDemoStaff(user)) {
+    return res.status(409).json({
+      message: "This seeded presentation account must remain active.",
+    });
   }
 
   user.accountStatus = nextStatus;

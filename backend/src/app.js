@@ -7,6 +7,7 @@ const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const mongoose = require("mongoose");
 const env = require("./config/env");
 const { getResendEmailConfiguration } = require("./utils/email");
 const { createMemoryRateLimit } = require("./middleware/requestRateLimit");
@@ -98,6 +99,9 @@ app.get("/api/health", (_req, res) => {
     service: "aeropulse-api",
     environment: env.nodeEnv,
     release: String(process.env.VERCEL_GIT_COMMIT_SHA || "local").slice(0, 7),
+    ...(isProduction || mongoose.connection.readyState !== 1
+      ? {}
+      : { databaseName: mongoose.connection.name || "" }),
     email: {
       resend: getResendEmailConfiguration(),
       smtpConfigured: Boolean(

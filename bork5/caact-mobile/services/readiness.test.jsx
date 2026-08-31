@@ -6,6 +6,7 @@ import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
 import { formatCartHorsepower, formatCartModel } from "./cartDisplayService";
 import { resolveOrderDeliveryStatus } from "./orderStatusService";
+import { getLatestTaskCheckIn, isActiveServiceRequest } from "./customerHistoryLogic";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -77,6 +78,13 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("Next maintenance plan");
     expect(detailsSource).toContain("Service history summary");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
+    expect(detailsSource).toContain('value={String(activeRequests.length)}');
+    expect(isActiveServiceRequest({ status: "Completed" })).toBe(false);
+    expect(isActiveServiceRequest({ status: "In Progress" })).toBe(true);
+    expect(getLatestTaskCheckIn([
+      { id: "old", payload: { checkIn: { checkedInAt: "2026-01-01T00:00:00.000Z" } } },
+      { id: "new", checkIn: { checkedInAt: "2026-02-01T00:00:00.000Z" } },
+    ])?.task?.id).toBe("new");
   });
 
   test("mobile cart shows model and horsepower with add-to-cart feedback", () => {

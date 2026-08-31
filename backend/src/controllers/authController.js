@@ -40,6 +40,7 @@ const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
 const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
+const isValidEmail = (email = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 const normalizeIdentifier = (value = "") => String(value).trim().toLowerCase();
 const normalizePhone = (phone = "") => String(phone).replace(/\D/g, "");
 const canonicalizePhMobile = (phone = "") => {
@@ -80,7 +81,7 @@ const sendSmsViaInfobip = async ({ recipient, message }) => {
   const destination = toInternationalFormat(recipient);
 
   if (!env.infobipApiKey || !baseUrl || !sender) {
-    throw new Error("SMS delivery is not configured. Add the Infobip API key, base URL, and sender.");
+    throw new Error("SMS verification is temporarily unavailable.");
   }
   if (!/^\d{8,15}$/.test(destination)) {
     throw new Error("Enter a valid mobile number, including the country code.");
@@ -139,7 +140,7 @@ const sendOtpMessage = async ({ recipient, channel, action, code }) => {
 
   if (channel === "email") {
     if (!canSendEmail()) {
-      throw new Error("Email delivery is not configured. Add the Resend API key and verified sender in Vercel.");
+      throw new Error("Email verification is temporarily unavailable.");
     }
     const email = buildOtpEmail({
       code,
@@ -289,11 +290,11 @@ const requestOtp = async (req, res) => {
   if (!OTP_ACTION_CHANNELS[action]?.includes(channel)) {
     return res.status(400).json({ message: "This verification request is not supported." });
   }
-  if (channel === "email" && !normalizeEmail(email)) {
+  if (channel === "email" && !isValidEmail(email)) {
     return res.status(400).json({ message: "A valid email address is required for email verification." });
   }
-  if (channel === "sms" && !canonicalizePhMobile(phone)) {
-    return res.status(400).json({ message: "A mobile number is required for SMS verification." });
+  if (channel === "sms" && !/^09\d{9}$/.test(canonicalizePhMobile(phone))) {
+    return res.status(400).json({ message: "Enter a valid 11-digit Philippine mobile number for SMS verification." });
   }
 
   // 1. Validation for specific actions
@@ -337,8 +338,11 @@ const requestOtp = async (req, res) => {
     });
   } catch (err) {
     console.error("[OTP] Request failed:", err?.message || err);
-    return res.status(err.status || 502).json({
-      message: err?.message || "SMS delivery could not be completed. Please try again.",
+    const isRateLimit = Number(err.status) === 429;
+    return res.status(isRateLimit ? 429 : 503).json({
+      message: isRateLimit
+        ? err.message
+        : `${channel === "email" ? "Email" : "SMS"} verification could not be sent right now. Please try again later${channel === "email" ? " or choose SMS" : " or choose email"}.`,
       retryAfterSeconds: err.retryAfterSeconds || undefined,
     });
   }

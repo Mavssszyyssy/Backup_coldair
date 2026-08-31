@@ -3,6 +3,17 @@ const ServiceHistory = require("../models/ServiceHistory");
 
 const MS_PER_DAY = 86400000;
 const DEFAULT_AVERAGE_SERVICE_REVENUE = 2500;
+const REVENUE_DISCLAIMER = "Scenario revenue is calculated from upcoming recommended maintenance dates multiplied by the assumed average service value; it is not booked or confirmed revenue.";
+const boundedNumber = (value, { fallback, min, max, integer = false, label }) => {
+  if (value === undefined || value === null || String(value).trim() === "") return fallback;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < min || numeric > max || (integer && !Number.isInteger(numeric))) {
+    const error = new Error(`${label} must be ${integer ? "a whole number" : "a number"} from ${min} to ${max}.`);
+    error.status = 400;
+    throw error;
+  }
+  return numeric;
+};
 const addDays = (date, days) => new Date(date.getTime() + Number(days || 0) * MS_PER_DAY);
 const startOfMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 const addMonths = (date, months) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
@@ -48,8 +59,9 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
 };
 
 const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
+  const windowDays = boundedNumber(days, { fallback: 30, min: 1, max: 365, integer: true, label: "Pipeline window" });
   const now = new Date();
-  const windowEnd = addDays(now, Number(days || 30));
+  const windowEnd = addDays(now, windowDays);
   const [units, aggregate] = await Promise.all([Unit.aggregate([
     { $match: {
       status: { $in: ["active", "service_due"] },
@@ -64,7 +76,7 @@ const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
     { $sort: { "amp.bestServicedBy": 1 } }, { $limit: 200 },
   ]), buildRecordedMaintenanceTrends({ branch })]);
   return {
-    generatedAt: new Date().toISOString(), windowDays: Number(days || 30), aggregate,
+    generatedAt: new Date().toISOString(), windowDays, aggregate,
     units: units.map((unit) => {
       const dueDate = new Date(unit.amp.bestServicedBy);
       return {
@@ -83,8 +95,9 @@ const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
 };
 
 const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => {
-  const now = new Date(); const firstMonth = startOfMonth(now); const afterLastMonth = addMonths(firstMonth, Number(months || 12));
-  const serviceRevenue = Number(averageRevenue || DEFAULT_AVERAGE_SERVICE_REVENUE);
+  const forecastMonths = boundedNumber(months, { fallback: 12, min: 1, max: 24, integer: true, label: "Forecast months" });
+  const serviceRevenue = boundedNumber(averageRevenue, { fallback: DEFAULT_AVERAGE_SERVICE_REVENUE, min: 1, max: 1000000, label: "Assumed service value" });
+  const now = new Date(); const firstMonth = startOfMonth(now); const afterLastMonth = addMonths(firstMonth, forecastMonths);
   const [buckets, serviceTypes, componentRows, branchRows, recordedTrends] = await Promise.all([
     Unit.aggregate([
       { $match: { status: { $in: ["active", "service_due"] }, "amp.bestServicedBy": { $gte: firstMonth, $lt: afterLastMonth } } },
@@ -112,14 +125,15 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
     buildRecordedMaintenanceTrends(),
   ]);
   const bucketMap = new Map(buckets.map((item) => [`${item._id.year}-${String(item._id.month).padStart(2, "0")}`, item.serviceVolume]));
-  const forecast = Array.from({ length: Number(months || 12) }, (_unused, index) => {
+  const forecast = Array.from({ length: forecastMonths }, (_unused, index) => {
     const date = addMonths(firstMonth, index); const volume = bucketMap.get(monthKey(date)) || 0;
     return { month: monthKey(date), label: monthLabel(date), serviceVolume: volume, projectedRevenue: volume * serviceRevenue };
   });
   const parts = new Map();
   componentRows.forEach((row) => (row.partsUsed || []).forEach((part) => { const name = String(part || "").trim(); if (name) parts.set(name, (parts.get(name) || 0) + 1); }));
   return {
-    generatedAt: new Date().toISOString(), months: Number(months || 12), averageServiceRevenue: serviceRevenue,
+    generatedAt: new Date().toISOString(), months: forecastMonths, averageServiceRevenue: serviceRevenue,
+    revenueBasis: "scenario_estimate", revenueDisclaimer: REVENUE_DISCLAIMER,
     totalForecastedServices: forecast.reduce((sum, item) => sum + item.serviceVolume, 0),
     totalProjectedRevenue: forecast.reduce((sum, item) => sum + item.projectedRevenue, 0), forecast,
     recommendedServiceDemand: serviceTypes.map((item) => ({ serviceType: item._id, count: item.count })),
@@ -130,4 +144,4 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
   };
 };
 
-module.exports = { getManagerServicePipeline, getOwnerServiceForecast };
+module.exports = { boundedNumber, getManagerServicePipeline, getOwnerServiceForecast };

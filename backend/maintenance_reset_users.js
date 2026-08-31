@@ -2,6 +2,20 @@ const mongoose = require("mongoose");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
+const resetConfirmation = String(process.env.DESTRUCTIVE_RESET_CONFIRM || "");
+let databaseName = "";
+try {
+  databaseName = new URL(process.env.MONGODB_URI || "").pathname.replace(/^\/+/, "").split("/")[0];
+} catch (_error) {
+  databaseName = "";
+}
+
+if (resetConfirmation !== "RESET_ISOLATED_QA" || !/(_qa|_e2e)$/i.test(databaseName)) {
+  throw new Error(
+    "Refusing destructive reset. Use an isolated database ending in _qa or _e2e and set DESTRUCTIVE_RESET_CONFIRM=RESET_ISOLATED_QA.",
+  );
+}
+
 // Fixed paths to point into src/ directory
 const User = require("./src/models/User");
 const OtpRequest = require("./src/models/OtpRequest");
