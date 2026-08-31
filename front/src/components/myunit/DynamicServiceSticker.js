@@ -44,10 +44,13 @@ function DynamicServiceSticker({ unit }) {
   const recommendation = result?.recommendation;
   if (!recommendation) return null;
   const roomGuidance = capacityMessage(recommendation.capacityAssessment);
+  const environmentRisk = recommendation.environmentRisk;
   return <section className="service-sticker" aria-label="Recommended service schedule">
     <div className="service-sticker-header"><div><span className="service-sticker-label">Recommended Service Date</span><strong>{dateLabel(recommendation.bestServicedBy)}</strong></div></div>
     <div className="service-sticker-insight"><strong>{serviceLabel(recommendation.recommendedService)}</strong><p>{serviceExplanation(recommendation.recommendedService)}</p></div>
     {roomGuidance ? <p>{roomGuidance}</p> : null}
+    {environmentRisk ? <p><strong>Operating environment:</strong> {environmentRisk.recorded ? `${String(environmentRisk.level || "low").replace(/_/g, " ")} risk · ${environmentRisk.adjustedIntervalDays || "—"}-day maintenance interval.` : "Not recorded yet; the neutral maintenance interval is being used."}</p> : null}
+    {recommendation.environmentAssessment ? <p>{recommendation.environmentAssessment}</p> : null}
     <p className="service-sticker-app-note">Book this service in the Cold Air mobile app using your Cold Air account.</p>
   </section>;
 }

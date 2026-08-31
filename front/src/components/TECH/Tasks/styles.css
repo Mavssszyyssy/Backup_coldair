@@ -1083,6 +1083,19 @@
   gap: 10px;
 }
 
+.tech-form .field-registration-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+}
+
+.tech-form .field-registration-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
 .field-registration-required {
   margin-top: 14px;
 }

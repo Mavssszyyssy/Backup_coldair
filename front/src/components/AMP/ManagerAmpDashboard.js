@@ -37,7 +37,7 @@ function ManagerAmpDashboard() {
   return (
     <AmpDashboardShell
       title="Service Pipeline"
-      subtitle="Units due or approaching their history-based maintenance date."
+      subtitle="Units due or approaching their maintenance date based on recorded history and operating conditions."
     >
       <div className="amp-metrics">
         <article>
@@ -72,7 +72,7 @@ function ManagerAmpDashboard() {
                   <th>Best Serviced By</th>
                   <th>Recommended Service</th>
                   <th>Warranty / Branch</th>
-                  <th>Historical Basis</th>
+                  <th>Environment / Basis</th>
                 </tr>
               </thead>
               <tbody>
@@ -101,6 +101,7 @@ function ManagerAmpDashboard() {
                     </td>
                     <td><strong>{String(unit.warrantyStatus || "pending_activation").replaceAll("_", " ")}</strong><span>{unit.serviceBranch || "Branch pending"}</span></td>
                     <td>
+                      {unit.environmentRisk ? <strong>{unit.environmentRisk.recorded ? `${String(unit.environmentRisk.level || "low").replaceAll("_", " ")} environment risk` : "Environment not recorded"}</strong> : null}
                       <span>{unit.recommendationBasis}</span>
                     </td>
                   </tr>

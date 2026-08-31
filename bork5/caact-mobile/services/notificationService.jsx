@@ -29,6 +29,8 @@ function normalizeNotification(item = {}) {
     title: item.title || "Notification",
     message: item.message || "",
     type: item.type || "info",
+    category: item.category || "",
+    severity: item.severity || "info",
     route: item.route || resolveNotificationRoute(item),
     targetId: item.targetId || "",
     targetType: item.targetType || "",
@@ -39,6 +41,9 @@ function normalizeNotification(item = {}) {
 }
 
 export function resolveNotificationRoute(item = {}, role = "") {
+  if (item.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category)) {
+    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}` : "/customer/units";
+  }
   if (typeof item.route === "string" && item.route.startsWith("/")) {
     return item.route;
   }

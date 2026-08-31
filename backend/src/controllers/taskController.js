@@ -9,6 +9,7 @@ const Notification = require("../models/Notification");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
+const { normalizeEnvironmentProfile } = require("../domain/ampEnvironmentRisk");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
 const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
 
@@ -314,6 +315,11 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
 
   const address = task.payload?.customerAddress || {};
   const ampParameters = registration.ampParameters || {};
+  const environmentProfile = normalizeEnvironmentProfile({
+    ...ampParameters,
+    capturedBy: registration.technicianId || task.assignedTechnicianId || undefined,
+    capturedAt: registration.submittedAt || new Date(),
+  });
   const installedAt = ampParameters.installationTimestamp
     ? new Date(ampParameters.installationTimestamp)
     : ampParameters.installationDate
@@ -336,6 +342,7 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
         category: String(product?.category || ""),
         capacityHp: parseCapacityHp(product?.specs),
         roomSizeSqm: Number(ampParameters.roomSizeSqm || 0) || null,
+        environmentProfile,
         customer: customerId,
         customerName: String(task.customer || ""),
         serviceBranch: String(task.branch || serialUnit?.branch || ""),
@@ -718,8 +725,15 @@ const buildRegistrationRecord = ({ req, task, serialNumber, payload, status }) =
     installationTimestamp: `${installationDate}T${installationTime}:00`,
     lastServiceDate: String(payload.lastServiceDate || payload.installationDate || new Date().toISOString()),
     placementArea: String(payload.placementArea || ""),
+    placementType: String(payload.placementType || "other"),
     roomSizeSqm: Number(payload.roomSizeSqm || 0) || null,
     usageHoursPerDay: Number(payload.usageHoursPerDay || 8),
+    occupancyLevel: String(payload.occupancyLevel || "normal"),
+    dustExposure: String(payload.dustExposure || "normal"),
+    humidityExposure: String(payload.humidityExposure || "normal"),
+    greaseSmokeExposure: String(payload.greaseSmokeExposure || "none"),
+    coastalExposure: payload.coastalExposure === true || String(payload.coastalExposure).toLowerCase() === "true",
+    directSunExposure: String(payload.directSunExposure || "normal"),
     filterCondition: String(payload.filterCondition || "normal"),
     coilCondition: String(payload.coilCondition || "normal"),
     drainageCondition: String(payload.drainageCondition || "clear"),

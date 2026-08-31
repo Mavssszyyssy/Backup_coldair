@@ -15,21 +15,28 @@ const createDedupedNotification = async (payload = {}, { dedupeMinutes = 60 } = 
   if (!payload.user || !mongoose.Types.ObjectId.isValid(String(payload.user))) return null;
   const dedupeKey = String(payload.dedupeKey || "").trim();
   if (dedupeKey) {
-    const since = new Date(Date.now() - Math.max(1, Number(dedupeMinutes || 60)) * 60 * 1000);
-    const existing = await Notification.findOne({
+    const query = {
       user: payload.user,
       dedupeKey,
-      createdAt: { $gte: since },
-    }).sort({ createdAt: -1 });
-    if (existing) return existing;
+    };
+    if (Number(dedupeMinutes) !== 0) {
+      query.createdAt = { $gte: new Date(Date.now() - Math.max(1, Number(dedupeMinutes || 60)) * 60 * 1000) };
+    }
+    const existing = await Notification.findOne(query).sort({ createdAt: -1 });
+    if (existing) {
+      existing.$locals.wasDeduplicated = true;
+      return existing;
+    }
   }
-  return Notification.create({
+  const created = await Notification.create({
     unread: true,
     status: "unread",
     severity: "info",
     ...payload,
     dedupeKey,
   });
+  created.$locals.wasDeduplicated = false;
+  return created;
 };
 
 const notifyOperationalStaff = async ({
@@ -41,7 +48,9 @@ const notifyOperationalStaff = async ({
   severity = "info",
   targetId = "",
   targetType = "",
+  route = "",
   dedupeKey = "",
+  dedupeMinutes = 60,
   roles = ["admin", "superadmin"],
 } = {}) => {
   if (!title || !message) return [];
@@ -68,8 +77,9 @@ const notifyOperationalStaff = async ({
         message,
         targetId: String(targetId || ""),
         targetType,
+        route,
         dedupeKey: dedupeKey ? `${dedupeKey}:${user._id}` : "",
-      }),
+      }, { dedupeMinutes }),
     ),
   );
 };

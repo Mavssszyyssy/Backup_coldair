@@ -17,5 +17,11 @@
     "api/[...path].js": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/amp-maintenance",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }

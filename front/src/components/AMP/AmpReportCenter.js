@@ -15,7 +15,7 @@ const dateLabel = (value) => value ? new Date(value).toLocaleDateString("en-US")
 function AmpReportCenter({
   units = [],
   title = "AMP Report Center",
-  subtitle = "History-based maintenance planning with traceable branch reports.",
+  subtitle = "Recorded-history and environment-based maintenance planning with traceable branch reports.",
 }) {
   const { user } = useUser();
   const reportUnits = useMemo(() => units.filter((unit) => unit?.unitId || unit?.id), [units]);
@@ -47,6 +47,7 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(dateLabel(m.bestServicedBy))}</strong><span>Best serviced by</span></div>
         <div class="summary-item"><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong><span>Recommended service</span></div>
         <div class="summary-item"><strong>${escapeHtml(m.capacityAssessment?.status || "Not assessed")}</strong><span>Room size vs HP</span></div>
+        <div class="summary-item"><strong>${escapeHtml(m.environmentRisk?.level || "Not assessed")}</strong><span>Operating environment</span></div>
       </div>
       <h2>Maintenance recommendation</h2><p>${escapeHtml(m.interpretation || m.recommendationBasis || "")}</p>
       <table><tbody>
@@ -58,6 +59,7 @@ function AmpReportCenter({
       </tbody></table>
       <p><strong>Historical basis:</strong> ${escapeHtml(m.recommendationBasis || "")}</p>
       <p><strong>Capacity assessment:</strong> ${escapeHtml(m.capacityAssessment?.summary || "Room size has not been supplied.")}</p>
+      <p><strong>Environment assessment:</strong> ${escapeHtml(m.environmentAssessment || "Operating conditions have not been recorded yet.")}</p>
       <h2>Technician preparation</h2><ul>${(m.technicianPreparation || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>No component suggestion is supported by current recorded history.</li>"}</ul>
       <h2>Recorded service history</h2><table><thead><tr><th>Date</th><th>Service</th><th>Findings</th><th>Action</th><th>Parts</th></tr></thead><tbody>${historyRows}</tbody></table>
       ${report.aggregateReliability ? `<h2>Aggregate inventory reliability</h2><p>${escapeHtml(report.aggregateReliability.note)}</p><p><strong>Scope:</strong> ${escapeHtml(report.aggregateReliability.scope)} · <strong>Units:</strong> ${escapeHtml(report.aggregateReliability.unitCount)} · <strong>Recorded services:</strong> ${escapeHtml(report.aggregateReliability.recordedServiceCount)}</p><table><thead><tr><th>Model</th><th>Recorded services</th></tr></thead><tbody>${modelRows}</tbody></table><h3>Recorded parts use</h3><ul>${(report.aggregateReliability.partsByRecordedUse || []).map((item) => `<li>${escapeHtml(item.component)} — ${escapeHtml(item.count)} recorded use(s)</li>`).join("") || "<li>No recorded parts-use data.</li>"}</ul>` : ""}
@@ -91,6 +93,7 @@ function AmpReportCenter({
         <h3>{report.title}</h3>
         <div className="amp-metrics"><article><span>Best serviced by</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room size vs HP</span><strong>{maintenance.capacityAssessment?.status || "Not assessed"}</strong></article></div>
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
+        {maintenance.environmentAssessment ? <p><strong>Operating environment:</strong> {maintenance.environmentAssessment}</p> : null}
         <p className="amp-muted">{report.note}</p>
       </div> : null}
     </section>

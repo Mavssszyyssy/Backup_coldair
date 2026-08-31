@@ -13,7 +13,14 @@ const defaultForm = {
   installationTime: new Date().toTimeString().slice(0, 5),
   lastServiceDate: today(),
   placementArea: '',
+  placementType: 'other',
   usageHoursPerDay: 8,
+  occupancyLevel: 'normal',
+  dustExposure: 'normal',
+  humidityExposure: 'normal',
+  greaseSmokeExposure: 'none',
+  coastalExposure: false,
+  directSunExposure: 'normal',
   roomSizeSqm: '',
   filterCondition: 'normal',
   coilCondition: 'normal',
@@ -234,12 +241,53 @@ const FieldServiceRegistration = () => {
               <input value={form.placementArea} onChange={(event) => updateField('placementArea', event.target.value)} placeholder="Living room, office bay, bedroom..." />
             </label>
             <label>
+              Room type
+              <select value={form.placementType} onChange={(event) => updateField('placementType', event.target.value)}>
+                <option value="bedroom">Bedroom</option><option value="living_room">Living room</option><option value="office">Office</option>
+                <option value="kitchen">Kitchen</option><option value="commercial">Commercial space</option><option value="other">Other</option>
+              </select>
+            </label>
+            <label>
               Daily usage hours
               <input type="number" min="1" max="24" value={form.usageHoursPerDay} onChange={(event) => updateField('usageHoursPerDay', event.target.value)} />
             </label>
             <label>
               Room size (m²)
               <input type="number" min="1" value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)} placeholder="Optional; used for HP suitability" />
+            </label>
+            <label>
+              Room occupancy
+              <select value={form.occupancyLevel} onChange={(event) => updateField('occupancyLevel', event.target.value)}>
+                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Dust exposure
+              <select value={form.dustExposure} onChange={(event) => updateField('dustExposure', event.target.value)}>
+                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Humidity exposure
+              <select value={form.humidityExposure} onChange={(event) => updateField('humidityExposure', event.target.value)}>
+                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Grease or smoke exposure
+              <select value={form.greaseSmokeExposure} onChange={(event) => updateField('greaseSmokeExposure', event.target.value)}>
+                <option value="none">None</option><option value="moderate">Moderate</option><option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Direct sunlight
+              <select value={form.directSunExposure} onChange={(event) => updateField('directSunExposure', event.target.value)}>
+                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+              </select>
+            </label>
+            <label className="field-registration-checkbox">
+              <input type="checkbox" checked={Boolean(form.coastalExposure)} onChange={(event) => updateField('coastalExposure', event.target.checked)} />
+              Coastal or salty-air exposure
             </label>
             <label>
               Filter condition

@@ -147,6 +147,7 @@ const env = {
   infobipBaseUrl: process.env.INFOBIP_BASE_URL || "",
   infobipSender: process.env.INFOBIP_SENDER || "",
   serviceCatalogJson: process.env.SERVICE_CATALOG_JSON || "",
+  cronSecret: process.env.CRON_SECRET || "",
 };
 
 module.exports = env;

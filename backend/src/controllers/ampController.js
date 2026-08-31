@@ -8,7 +8,7 @@ const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/o
 const { getManagerServicePipeline, getOwnerServiceForecast } = require("../domain/ampDashboardService");
 const { completeServiceForUnit } = require("../domain/serviceCompletionService");
 const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
-const { createDedupedNotification } = require("../services/operationalNotificationService");
+const { notifyMaintenanceForUnit } = require("../services/ampDailyMonitorService");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
 const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
@@ -50,6 +50,9 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
     recommendationBasis: recommendation?.recommendationBasis || json.amp?.recommendationBasis || "",
     historicalBasis: recommendation?.historicalBasis || null,
     capacityAssessment: recommendation?.capacityAssessment || json.amp?.capacityAssessment || null,
+    environmentProfile: recommendation?.environmentProfile || json.environmentProfile || null,
+    environmentRisk: recommendation?.environmentRisk || json.amp?.environmentRisk || null,
+    environmentAssessment: recommendation?.environmentAssessment || "",
     commonComponents: recommendation?.commonComponents || [], overdue: Boolean(recommendation?.overdue), amp: json.amp || {},
     warranty: { ...warranty, claims: Array.isArray(warranty.claims) ? warranty.claims : [], serviceRecords: Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : [], timeline: Array.isArray(warranty.timeline) ? warranty.timeline : [] },
     warrantyStatus: warranty.status || "pending_activation", warrantyExpirationDate: warranty.expirationDate || "",
@@ -86,18 +89,7 @@ const loadAccessibleUnit = async (req) => {
 };
 
 const notifyDueMaintenance = async (unit, recommendation) => {
-  if (!unit.customer || !recommendation.bestServicedBy) return;
-  const due = new Date(recommendation.bestServicedBy);
-  const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
-  if (days > 30) return;
-  const dateKey = due.toISOString().slice(0, 10);
-  await createDedupedNotification({
-    user: unit.customer, type: "service", category: "maintenance_due", severity: days < 0 ? "warning" : "info",
-    title: days < 0 ? "AC maintenance is overdue" : "Upcoming AC maintenance",
-    message: `${displayService(recommendation.recommendedService)} is recommended by ${due.toLocaleDateString("en-US")}.`,
-    route: `/customer/units/${unit._id}`, targetId: String(unit._id), targetType: "unit",
-    dedupeKey: `amp-due:${unit._id}:${dateKey}`,
-  }, { dedupeMinutes: 24 * 60 });
+  return notifyMaintenanceForUnit(unit, recommendation);
 };
 
 const calculateNextServiceDate = async (req, res) => {
@@ -123,6 +115,7 @@ const calculateNextServiceDate = async (req, res) => {
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
       best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
       recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
+      environment_assessment: recommendation.environmentAssessment,
       technician_preparation: recommendation.commonComponents.map((item) => item.component),
     };
     await notifyDueMaintenance(unit, recommendation);

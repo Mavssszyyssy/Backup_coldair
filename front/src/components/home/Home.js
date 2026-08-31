@@ -14,6 +14,7 @@ import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { resolveCustomerNotificationRoute } from "../../domain/notifications/resolveCustomerNotificationRoute";
 
 // Home Specific Modular Sections
 import HomeBrands from "./HomeBrands";
@@ -50,9 +51,7 @@ function Home() {
     } catch (err) {
       console.error("Failed to mark notification as read", err);
     }
-    const route = notification?.route ||
-      (notification?.type === "order" || notification?.targetType === "order" ? "/my-orders" :
-        ["service", "warranty"].includes(notification?.type) ? "/get-the-app" : "/settings");
+    const route = resolveCustomerNotificationRoute(notification);
     setShowNotifications(false);
     navigate(route);
   };

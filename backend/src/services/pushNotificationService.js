@@ -3,6 +3,9 @@ const User = require("../models/User");
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
 function resolveRoute(notification, role) {
+  if (notification.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(notification.category)) {
+    return notification.targetId ? `/customer/units/${encodeURIComponent(notification.targetId)}` : "/customer/units";
+  }
   if (notification.route) return notification.route;
 
   const text = `${notification.title || ""} ${notification.message || ""}`.toLowerCase();

@@ -2,6 +2,7 @@ const Unit = require("../models/Unit");
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("./ampMaintenanceService");
 const { appendWarrantyEvent, effectiveWarrantyStatus } = require("./warrantyService");
+const { normalizeEnvironmentProfile } = require("./ampEnvironmentRisk");
 
 const clean = (value, max = 1000) => String(value || "").trim().slice(0, max);
 const list = (value) => (Array.isArray(value) ? value : String(value || "").split(","))
@@ -84,6 +85,25 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
     serviceActions: actions,
   });
 
+  unit.environmentProfile = normalizeEnvironmentProfile({
+    ...(unit.environmentProfile?.toObject?.() || unit.environmentProfile || {}),
+    placementArea: payload.placement_area || payload.placementArea || unit.environmentProfile?.placementArea,
+    placementType: payload.placement_type || payload.placementType || unit.environmentProfile?.placementType,
+    usageHoursPerDay: payload.usage_hours_per_day || payload.usageHoursPerDay || unit.environmentProfile?.usageHoursPerDay,
+    occupancyLevel: payload.occupancy_level || payload.occupancyLevel || unit.environmentProfile?.occupancyLevel,
+    dustExposure: payload.dust_exposure || payload.dustExposure || unit.environmentProfile?.dustExposure,
+    humidityExposure: payload.humidity_exposure || payload.humidityExposure || unit.environmentProfile?.humidityExposure,
+    greaseSmokeExposure: payload.grease_smoke_exposure || payload.greaseSmokeExposure || unit.environmentProfile?.greaseSmokeExposure,
+    coastalExposure: payload.coastal_exposure ?? payload.coastalExposure ?? unit.environmentProfile?.coastalExposure,
+    directSunExposure: payload.direct_sun_exposure || payload.directSunExposure || unit.environmentProfile?.directSunExposure,
+    filterCondition: payload.filter_condition || payload.filterCondition || unit.environmentProfile?.filterCondition,
+    coilCondition: payload.coil_condition || payload.coilCondition || unit.environmentProfile?.coilCondition,
+    drainageCondition: payload.drainage_condition || payload.drainageCondition || unit.environmentProfile?.drainageCondition,
+    voltageStability: payload.voltage_stability || payload.voltageStability || unit.environmentProfile?.voltageStability,
+    notes: findings,
+    capturedBy: technicianId,
+    capturedAt: serviceDate,
+  });
   unit.status = "active";
   await unit.save();
   const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: serviceDate });

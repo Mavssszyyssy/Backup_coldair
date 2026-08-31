@@ -32,6 +32,7 @@ test("AMP sends the configured GPT-5.6 Terra reasoning profile", async () => {
           best_serviced_by: "2027-05-11",
           recommended_service: "regular_cleaning",
           recommendation_summary: "Service is recommended based on recorded history.",
+          environment_assessment: "Recorded operating conditions are low risk.",
           capacity_assessment: "suitable",
           technician_preparation: [],
         }),
@@ -59,17 +60,20 @@ test("validated AI output cannot replace authoritative calculations", () => {
     recommendedService: "regular_cleaning",
     recommendationBasis: "Recorded maintenance interval.",
     capacityAssessment: { status: "suitable" },
+    environmentAssessment: "Recorded operating conditions are low risk.",
     commonComponents: [{ component: "Filter" }],
   };
   const result = validateAmpInsight({
     best_serviced_by: "2099-01-01",
     recommended_service: "deep_cleaning",
     recommendation_summary: "Concise explanation.",
+    environment_assessment: "Low environmental risk.",
     capacity_assessment: "insufficient",
     technician_preparation: ["Filter", "Invented compressor"],
   }, deterministic);
   assert.equal(result.best_serviced_by, "2027-05-11");
   assert.equal(result.recommended_service, "regular_cleaning");
   assert.equal(result.capacity_assessment, "suitable");
+  assert.equal(result.environment_assessment, "Recorded operating conditions are low risk.");
   assert.deepEqual(result.technician_preparation, ["Filter"]);
 });

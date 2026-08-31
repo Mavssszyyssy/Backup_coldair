@@ -31,6 +31,7 @@ const warrantyRoutes = require("./routes/warrantyRoutes");
 const branchCoverageRoutes = require("./routes/branchCoverageRoutes");
 const contactMessageRoutes = require("./routes/contactMessageRoutes");
 const securityRoutes = require("./routes/securityRoutes");
+const cronRoutes = require("./routes/cronRoutes");
 
 const app = express();
 const isProduction = env.nodeEnv === "production";
@@ -105,6 +106,8 @@ app.get("/api/health", (_req, res) => {
     },
   });
 });
+
+app.use("/api/cron", cronRoutes);
 
 app.use(
   "/api/auth",

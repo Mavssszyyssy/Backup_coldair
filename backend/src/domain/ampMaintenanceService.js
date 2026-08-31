@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
+const { assessEnvironmentRisk, environmentSummary, normalizeEnvironmentProfile } = require("./ampEnvironmentRisk");
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_SERVICE_INTERVAL_DAYS = 270;
@@ -187,24 +188,36 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
   const asOfDate = startOfUtcDay(options.asOfDate || new Date());
   const ownHistory = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(200).lean();
   const cohort = await collectHistoricalCohort(unit);
+  const environmentProfile = normalizeEnvironmentProfile(unit.environmentProfile?.toObject?.() || unit.environmentProfile || {});
+  const environmentRisk = assessEnvironmentRisk(environmentProfile, cohort.intervalDays);
   const lastService = ownHistory.find((history) => normalizeServiceType(history) !== "installation") || null;
   const lastCleaning = ownHistory.find((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history))) || null;
   const lastServiceDate = asDate(lastService?.serviceDate);
   const lastCleaningDate = asDate(lastCleaning?.serviceDate);
   const installedAt = asDate(unit.installation?.installedAt) || asOfDate;
   const anchor = lastServiceDate || installedAt;
-  const bestServicedBy = addDays(startOfUtcDay(anchor), cohort.intervalDays);
+  const bestServicedBy = addDays(startOfUtcDay(anchor), environmentRisk.adjustedIntervalDays);
   const cleaningReferenceDate = lastCleaningDate || lastServiceDate;
   const daysSinceCleaning = cleaningReferenceDate ? daysBetween(startOfUtcDay(cleaningReferenceDate), asOfDate) : null;
-  const recommendedService = daysSinceCleaning !== null && daysSinceCleaning >= 365
+  const environmentNeedsDeepCleaning = environmentProfile.filterCondition === "clogged"
+    || ["dusty", "iced"].includes(environmentProfile.coilCondition)
+    || environmentProfile.dustExposure === "high"
+    || environmentProfile.greaseSmokeExposure === "high";
+  const recommendedService = (daysSinceCleaning !== null && daysSinceCleaning >= 365) || environmentNeedsDeepCleaning
     ? "deep_cleaning"
     : "regular_cleaning";
   const capacityAssessment = capacityAssessmentFor(unit);
-  const basis = basisText(cohort);
+  const historicalBasis = basisText(cohort);
+  const basis = environmentRisk.level === "low"
+    ? historicalBasis
+    : `${historicalBasis} ${environmentSummary(environmentRisk)}`;
   const similarHistories = cohort.unitIds.length
     ? await ServiceHistory.find({ unit: { $in: cohort.unitIds } }).sort({ serviceDate: -1 }).limit(1000).lean()
     : [];
   const commonComponents = commonRecordedComponents(similarHistories);
+  const safeEnvironmentProfile = { ...environmentProfile };
+  delete safeEnvironmentProfile.capturedBy;
+  delete safeEnvironmentProfile.notes;
 
   if (options.persist !== false) {
     unit.amp = {
@@ -213,11 +226,13 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
       recommendedService,
       recommendationBasis: basis,
       basisLevel: cohort.level,
-      intervalDays: cohort.intervalDays,
+      intervalDays: environmentRisk.adjustedIntervalDays,
+      baseIntervalDays: cohort.intervalDays,
       comparableSampleSize: cohort.sampleSize,
       lastServiceDate,
       lastCleaningDate,
       capacityAssessment,
+      environmentRisk,
       nextIdealServiceDate: bestServicedBy,
       nextIdealServicePeriod: `Best serviced by ${bestServicedBy.toLocaleDateString("en-US")}`,
       lastCalculatedAt: new Date(),
@@ -243,10 +258,14 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
     recommendationBasis: basis,
     historicalBasis: {
       level: cohort.level,
-      intervalDays: cohort.intervalDays,
+      intervalDays: environmentRisk.adjustedIntervalDays,
+      baseIntervalDays: cohort.intervalDays,
       sampleSize: cohort.sampleSize,
       comparableUnitCount: cohort.comparableUnitCount,
     },
+    environmentProfile: safeEnvironmentProfile,
+    environmentRisk,
+    environmentAssessment: environmentSummary(environmentRisk),
     capacityAssessment,
     commonComponents,
     overdue: bestServicedBy < asOfDate,

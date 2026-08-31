@@ -76,6 +76,7 @@ const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
         overdue: dueDate < now, lastServiceDate: unit.lastVisit?.serviceDate || null,
         warrantyStatus: unit.warranty?.status || "pending_activation",
         capacityAssessment: unit.amp.capacityAssessment || null,
+        environmentRisk: unit.amp.environmentRisk || null,
       };
     }),
   };

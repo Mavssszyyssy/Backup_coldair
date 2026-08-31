@@ -75,6 +75,12 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
               <span className="info-value">{unit.installEnvironmentNotes}</span>
             </div>
           )}
+          {unit.environmentRisk && (
+            <div className="info-row">
+              <span className="info-label">Operating Environment</span>
+              <span className="info-value">{unit.environmentRisk.recorded ? `${String(unit.environmentRisk.level || "low").replace(/_/g, " ")} risk` : "Not recorded yet"}</span>
+            </div>
+          )}
           {unit.notes && (
             <div className="info-row">
               <span className="info-label">Registration</span>

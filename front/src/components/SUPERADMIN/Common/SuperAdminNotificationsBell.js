@@ -6,6 +6,7 @@ import { apiRequest } from '../../../config/api';
 const routeForNotification = (item = {}) => {
   if (String(item.route || '').startsWith('/superadmin/')) return item.route;
   const targetType = String(item.targetType || item.category || '').toLowerCase();
+  if (['amp_pipeline', 'maintenance_pipeline'].includes(targetType)) return '/manager/amp';
   if (['contact', 'contact_message'].includes(targetType)) return '/superadmin/services?tab=customer-messages';
   if (['inventory', 'stock', 'reorder'].includes(targetType)) return '/superadmin/inventory';
   if (['warranty', 'claim', 'service', 'parts_request'].includes(targetType)) return '/superadmin/services?tab=service-requests';

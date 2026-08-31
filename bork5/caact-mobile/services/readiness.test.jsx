@@ -140,4 +140,19 @@ describe("mobile customer readiness rules", () => {
     expect(settingsSource).toContain("This choice will be applied when you save the address");
     expect(settingsSource).not.toContain('title={addressForm.isDefault ? "Default delivery address"');
   });
+
+  test("technician installation captures environment data and AMP alerts open the unit", () => {
+    const registrationSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "technician", "task", "[id]", "amp-registration.jsx"),
+      "utf8",
+    );
+    const notificationSource = fs.readFileSync(path.join(__dirname, "notificationService.jsx"), "utf8");
+
+    expect(registrationSource).toContain("Installation environment");
+    expect(registrationSource).toContain("dustExposure");
+    expect(registrationSource).toContain("coastalExposure");
+    expect(registrationSource).toContain("Save environment and verify unit");
+    expect(notificationSource).toContain('["maintenance_due", "amp_due_soon", "amp_overdue"]');
+    expect(notificationSource).toContain("/customer/units/${encodeURIComponent(item.targetId)}");
+  });
 });

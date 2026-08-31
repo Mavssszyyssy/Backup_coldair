@@ -13,6 +13,7 @@ import BoutiqueCart from "../common/boutique/BoutiqueCart";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
+import { resolveCustomerNotificationRoute } from "../../domain/notifications/resolveCustomerNotificationRoute";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import ShopCatalogue from "./ShopCatalogue";
 import ShopSidebar from "./ShopSidebar";
@@ -468,9 +469,7 @@ const Shop = () => {
     } catch (err) {
       console.error("Failed to mark notification as read", err);
     }
-    const route = notification?.route ||
-      (notification?.type === "order" || notification?.targetType === "order" ? "/my-orders" :
-        ["service", "warranty"].includes(notification?.type) ? "/get-the-app" : "/settings");
+    const route = resolveCustomerNotificationRoute(notification);
     setShowNotifications(false);
     navigate(route);
   };

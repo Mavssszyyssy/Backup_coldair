@@ -19,6 +19,8 @@ import {
 
 function NotificationRow({ item, onPress }) {
   const unread = item.unread && !item.read;
+  const maintenance = ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category);
+  const alertColor = item.severity === "critical" ? COLORS.danger : item.severity === "warning" ? "#b45309" : BQ_COLORS.brand;
   return (
     <Pressable
       accessibilityRole="button"
@@ -35,7 +37,7 @@ function NotificationRow({ item, onPress }) {
       >
         <View style={{ flexDirection: "row", gap: BQ_SPACING.sm, alignItems: "flex-start" }}>
           <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: unread ? "#dbeafe" : "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name={unread ? "notifications" : "notifications-outline"} size={19} color={BQ_COLORS.brand} />
+            <Ionicons name={maintenance ? "construct" : unread ? "notifications" : "notifications-outline"} size={19} color={alertColor} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.xs }}>
@@ -43,6 +45,7 @@ function NotificationRow({ item, onPress }) {
               {unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: BQ_COLORS.brand }} /> : null}
             </View>
             <BoutiqueText color={BQ_COLORS.inkMuted}>{item.message || "Open to view the update."}</BoutiqueText>
+            {maintenance ? <BoutiqueText style={{ color: alertColor, fontSize: 11, fontWeight: "800", textTransform: "uppercase", marginTop: 5 }}>AC maintenance · Open unit</BoutiqueText> : null}
           </View>
           <Ionicons name="chevron-forward" size={20} color={BQ_COLORS.inkFaint} />
         </View>

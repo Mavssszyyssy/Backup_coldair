@@ -40,6 +40,7 @@ const resolveNotificationRoute = (item = {}) => {
     return adminRouteAliases[item.route] || item.route;
   }
   const targetType = String(item.targetType || item.category || "").toLowerCase();
+  if (["amp_pipeline", "maintenance_pipeline"].includes(targetType)) return "/manager/amp";
   if (["contact", "contact_message"].includes(targetType)) return "/admin/services?tab=customer-messages";
   if (["inventory", "stock", "reorder"].includes(targetType)) return "/admin/inventory";
   if (["warranty", "claim"].includes(targetType)) return "/admin/services/service-requests";

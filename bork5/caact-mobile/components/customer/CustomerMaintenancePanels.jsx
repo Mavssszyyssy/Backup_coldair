@@ -43,5 +43,7 @@ export function CustomerMaintenancePanel({ maintenance }) {
     </View>
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{serviceExplanation(maintenance.recommendedService)}</Text>
     {roomSizeMessage(maintenance.capacityAssessment) ? <DetailRow label="Room and AC Size Match" value={roomSizeMessage(maintenance.capacityAssessment)} multiline /> : null}
+    {maintenance.environmentRisk ? <DetailRow label="Operating Environment" value={maintenance.environmentRisk.recorded ? `${String(maintenance.environmentRisk.level || "low").replace(/_/g, " ")} risk · ${maintenance.environmentRisk.adjustedIntervalDays || "—"} day interval` : "Not recorded yet · neutral interval used"} multiline /> : null}
+    {maintenance.environmentAssessment ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.xs }}>{maintenance.environmentAssessment}</Text> : null}
   </Card>;
 }

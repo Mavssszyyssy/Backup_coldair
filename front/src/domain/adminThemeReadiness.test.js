@@ -61,4 +61,14 @@ describe("Admin and SuperAdmin theme isolation", () => {
     expect(myUnits).toContain('title="Your AMP Maintenance Reports"');
     expect(myUnits).toContain("unitId: unit.backendUnitId || unit.id");
   });
+
+  it("opens daily AMP pipeline alerts in the maintenance dashboard", () => {
+    const adminNotifications = source("ADMIN", "Common", "AdminNotificationsBell.js");
+    const superadminNotifications = source("SUPERADMIN", "Common", "SuperAdminNotificationsBell.js");
+
+    expect(adminNotifications).toContain('["amp_pipeline", "maintenance_pipeline"]');
+    expect(superadminNotifications).toContain("['amp_pipeline', 'maintenance_pipeline']");
+    expect(adminNotifications).toContain('return "/manager/amp"');
+    expect(superadminNotifications).toContain("return '/manager/amp'");
+  });
 });

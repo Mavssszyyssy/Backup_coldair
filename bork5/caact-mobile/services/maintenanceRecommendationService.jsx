@@ -11,6 +11,8 @@ export function buildMaintenanceRecommendation({ unit } = {}) {
     bestServicedBy, recommendedService,
     recommendationBasis: unit?.recommendationBasis || unit?.amp?.recommendationBasis || "Maintenance timing is being calculated from recorded service history.",
     capacityAssessment: unit?.capacityAssessment || unit?.amp?.capacityAssessment || null,
+    environmentRisk: unit?.environmentRisk || unit?.amp?.environmentRisk || null,
+    environmentAssessment: unit?.environmentAssessment || "",
     lastServiceDate: unit?.lastServiceDate || unit?.amp?.lastServiceDate || null,
     lastCleaningDate: unit?.lastCleaningDate || unit?.amp?.lastCleaningDate || null,
     commonComponents: unit?.commonComponents || [],
@@ -30,6 +32,8 @@ export function buildNextRecommendedMaintenance(recommendation) {
     message: `${serviceLabel}. ${recommendation?.recommendationBasis || ""}`.trim(),
     recommendedService: recommendation?.recommendedService || "regular_cleaning",
     capacityAssessment: recommendation?.capacityAssessment || null,
+    environmentRisk: recommendation?.environmentRisk || null,
+    environmentAssessment: recommendation?.environmentAssessment || "",
   };
 }
 

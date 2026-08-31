@@ -92,6 +92,7 @@ const getMaintenanceRecommendation = async (req, res) => {
       insight: ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
         best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
         recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
+        environment_assessment: recommendation.environmentAssessment,
         technician_preparation: recommendation.commonComponents.map((item) => item.component),
       },
       warning: ai.error || "", generatedAt: new Date().toISOString(),
@@ -139,6 +140,8 @@ const generateAmpReport = async (req, res) => {
           lastServiceDate: recommendation.lastServiceDate, lastCleaningDate: recommendation.lastCleaningDate,
           recommendedServiceLabel: displayService(recommendation.recommendedService), recommendationBasis: recommendation.recommendationBasis,
           historicalBasis: recommendation.historicalBasis, capacityAssessment: recommendation.capacityAssessment,
+          environmentProfile: recommendation.environmentProfile, environmentRisk: recommendation.environmentRisk,
+          environmentAssessment: insight?.environment_assessment || recommendation.environmentAssessment,
           technicianPreparation: insight?.technician_preparation || recommendation.commonComponents.map((item) => item.component),
           interpretation: insight?.recommendation_summary || recommendation.recommendationBasis,
         },
