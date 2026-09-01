@@ -13,6 +13,7 @@ const Unit = require("../src/models/Unit");
 const Product = require("../src/models/Product");
 const ServiceRequest = require("../src/models/ServiceRequest");
 const { PROTECTED_DEMO_STAFF } = require("../src/domain/demoStaffPolicy");
+const { isNonRetailCatalogProduct } = require("../src/domain/catalogVisibility");
 
 const normalized = (value) => String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
 const uniqueNonEmpty = (values) => [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
@@ -32,7 +33,7 @@ const main = async () => {
     Order.find({}).select("orderCode workflowStatus deliveryStatus stockReservationStatus items customer assignedTechnician").limit(5000).lean(),
     Task.find({}).select("taskCode status completedAt orderId requestId customerId payload assignedTechnicianId").limit(5000).lean(),
     Unit.find({ status: { $ne: "retired" } }).select("serialNumber qrUnitId customer productId capacityHp status warranty serviceBranch").limit(5000).lean(),
-    Product.find({}).select("sku name stock branchStock serialUnits image specs").limit(2000).lean(),
+    Product.find({}).select("sku name brand stock branchStock serialUnits image specs isActive").limit(2000).lean(),
     ServiceRequest.find({}).select("requestCode status linkedTaskId payload customerId unitId").limit(5000).lean(),
   ]);
 
@@ -67,6 +68,9 @@ const main = async () => {
   const missingCapacityUnits = units.filter((unit) => !(Number(unit.capacityHp) > 0));
   const negativeInventory = products.filter((product) => Number(product.stock || 0) < 0 ||
     Object.values(product.branchStock || {}).some((value) => Number(value || 0) < 0));
+  const activeNonRetailInventory = products.filter(
+    (product) => product.isActive !== false && isNonRetailCatalogProduct(product),
+  );
 
   const result = {
     generatedAt: new Date().toISOString(),
@@ -99,6 +103,7 @@ const main = async () => {
       missingProductUnits: { count: missingProductUnits.length, samples: missingProductUnits.slice(0, 10).map((unit) => unit.serialNumber) },
       missingCapacityUnits: { count: missingCapacityUnits.length, samples: missingCapacityUnits.slice(0, 10).map((unit) => unit.serialNumber) },
       negativeInventory: { count: negativeInventory.length, samples: negativeInventory.slice(0, 10).map((product) => product.sku) },
+      activeNonRetailInventory: { count: activeNonRetailInventory.length, samples: activeNonRetailInventory.slice(0, 10).map((product) => product.sku) },
     },
   };
   console.log(JSON.stringify(result, null, 2));

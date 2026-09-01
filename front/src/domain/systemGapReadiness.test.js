@@ -64,4 +64,12 @@ describe("cross-surface readiness gaps", () => {
       expect(contents).toContain("paymentSummary(order)");
     }
   });
+
+  test("branch admins see a fixed QR branch scope while Superadmin keeps the branch filter", () => {
+    const registry = source("src/components/ADMIN/SerialQr/AdminSerialQr.js");
+    expect(registry).toContain('const isSuperAdmin = user?.role === "superadmin"');
+    expect(registry).toContain('className="serialqr-branch-scope"');
+    expect(registry).toContain("{assignedBranch} branch");
+    expect(registry).toContain('<option value="all">All branches</option>');
+  });
 });

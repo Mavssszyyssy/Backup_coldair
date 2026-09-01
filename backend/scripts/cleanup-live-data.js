@@ -14,6 +14,7 @@ const Product = require("../src/models/Product");
 const ServiceRequest = require("../src/models/ServiceRequest");
 const Notification = require("../src/models/Notification");
 const { PROTECTED_DEMO_STAFF, isProtectedDemoStaff } = require("../src/domain/demoStaffPolicy");
+const { isNonRetailCatalogProduct } = require("../src/domain/catalogVisibility");
 
 const args = new Set(process.argv.slice(2));
 const shouldApply = args.has("--apply");
@@ -22,17 +23,15 @@ const confirmation = process.env.LIVE_DATA_CLEANUP_CONFIRM || "";
 const expectedDatabase = String(process.env.LIVE_DATA_CLEANUP_EXPECTED_DATABASE || "").trim();
 const CONFIRMATION = "CLEAN_APPROVED_PRESENTATION_DATA";
 const normalized = (value) => String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
-const unique = (values) => [...new Set(values.map(String).filter(Boolean))];
-
 const buildPlan = async () => {
   const [users, orders, tasks, units, products, serviceRequests] = await Promise.all([
     User.find({ isDeleted: { $ne: true }, accountStatus: { $ne: "deleted" } })
       .select("alias email role assignedBranch activeBranch name name_first name_last")
       .lean(),
-    Order.find({}).select("orderCode workflowStatus deliveryStatus stockReservationStatus cancelledAt updatedAt").limit(5000).lean(),
+    Order.find({}).select("orderCode workflowStatus deliveryStatus stockReservationStatus cancelledAt updatedAt items.productId").limit(5000).lean(),
     Task.find({}).select("taskCode status completedAt orderId payload assignedTechnicianId").limit(5000).lean(),
     Unit.find({ status: { $ne: "retired" } }).select("serialNumber customer productId status").limit(5000).lean(),
-    Product.find({}).select("_id").limit(5000).lean(),
+    Product.find({}).select("name sku brand stock isActive serialUnits.status").limit(5000).lean(),
     ServiceRequest.find({}).select("status linkedTaskId payload").limit(5000).lean(),
   ]);
 
@@ -62,6 +61,21 @@ const buildPlan = async () => {
   });
   const unownedUnits = units.filter((unit) => unit.customer && !activeUserIds.has(String(unit.customer)));
   const missingProductUnits = units.filter((unit) => unit.productId && !productIds.has(String(unit.productId)));
+  const openOrderProductIds = new Set(
+    orders
+      .filter((order) => !["complete", "cancelled"].includes(normalized(order.workflowStatus)))
+      .flatMap((order) => (order.items || []).map((item) => String(item.productId || "")))
+      .filter(Boolean),
+  );
+  const activeNonRetailProducts = products.filter(
+    (product) => product.isActive !== false && isNonRetailCatalogProduct(product),
+  );
+  const nonRetailProductsBlockedByOpenOrders = activeNonRetailProducts.filter((product) =>
+    openOrderProductIds.has(String(product._id)),
+  );
+  const nonRetailProductsToArchive = activeNonRetailProducts.filter((product) =>
+    !openOrderProductIds.has(String(product._id)),
+  );
 
   return {
     users,
@@ -73,6 +87,8 @@ const buildPlan = async () => {
     staleServiceRequests,
     unownedUnits,
     missingProductUnits,
+    nonRetailProductsToArchive,
+    nonRetailProductsBlockedByOpenOrders,
   };
 };
 
@@ -87,6 +103,8 @@ const summarize = (plan) => ({
   staleServiceRequestLinksToClear: plan.staleServiceRequests.map((request) => String(request._id)),
   unownedUnitsToRetire: plan.unownedUnits.map((unit) => unit.serialNumber),
   missingProductUnitsToRetire: plan.missingProductUnits.map((unit) => unit.serialNumber),
+  nonRetailProductsToArchive: plan.nonRetailProductsToArchive.map((product) => ({ name: product.name, sku: product.sku })),
+  nonRetailProductsBlockedByOpenOrders: plan.nonRetailProductsBlockedByOpenOrders.map((product) => ({ name: product.name, sku: product.sku })),
 });
 
 const runCleanupOperations = async (plan, session = null) => {
@@ -222,6 +240,20 @@ const runCleanupOperations = async (plan, session = null) => {
           { _id: { $in: plan.missingProductUnits.map((unit) => unit._id) } },
           { $set: { productId: "", status: "retired", "warranty.status": "void" } },
           options,
+        );
+      }
+      if (plan.nonRetailProductsToArchive.length) {
+        await Product.collection.updateMany(
+          { _id: { $in: plan.nonRetailProductsToArchive.map((product) => product._id) } },
+          {
+            $set: {
+              isActive: false,
+              stock: 0,
+              branchStock: {},
+              "serialUnits.$[availableUnit].status": "retired",
+            },
+          },
+          { ...options, arrayFilters: [{ "availableUnit.status": "available" }] },
         );
       }
 };

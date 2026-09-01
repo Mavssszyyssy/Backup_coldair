@@ -11,5 +11,7 @@ test("live data cleanup is dry-run by default and requires an exact database and
   assert.match(source, /withTransaction/);
   assert.match(source, /--allow-nontransactional/);
   assert.match(source, /guarded idempotent operations/);
+  assert.match(source, /nonRetailProductsToArchive/);
+  assert.match(source, /availableUnit\.status/);
   assert.match(source, /Dry run only\. No records were changed\./);
 });

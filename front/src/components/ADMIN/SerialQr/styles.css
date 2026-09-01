@@ -48,6 +48,20 @@
   text-transform: capitalize;
 }
 
+.serialqr-branch-scope {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
 .serialqr-actions button {
   flex: 0 0 auto;
   white-space: nowrap;

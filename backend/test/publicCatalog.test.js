@@ -4,6 +4,7 @@ const {
   isCustomerCatalogProduct,
   toPublicProduct,
 } = require("../src/controllers/productController");
+const { isNonRetailCatalogProduct } = require("../src/domain/catalogVisibility");
 
 const product = {
   _id: "product-1",
@@ -60,4 +61,12 @@ test("customer catalog excludes test, demo, QA, and E2E inventory", () => {
   assert.equal(isCustomerCatalogProduct({ ...product, sku: "TEST-PAYMENT-001" }), false);
   assert.equal(isCustomerCatalogProduct({ ...product, brand: "AeroPulse QA" }), false);
   assert.equal(isCustomerCatalogProduct({ ...product, name: "Demo Window Unit" }), false);
+  assert.equal(isNonRetailCatalogProduct({ ...product, brand: "AeroPulse QA" }), true);
+  assert.equal(isNonRetailCatalogProduct(product), false);
+});
+
+test("authenticated inventory uses the same non-retail marker for internal QR lists", () => {
+  assert.equal(isNonRetailCatalogProduct({ ...product, sku: "QA-INTERNAL-001" }), true);
+  assert.equal(isNonRetailCatalogProduct({ ...product, name: "Installed Unit E2E 123" }), true);
+  assert.equal(isNonRetailCatalogProduct({ ...product, name: "LG Premium Dual Inverter" }), false);
 });

@@ -42,7 +42,9 @@ const getTechnicianQrValue = (unit) =>
 
 const AdminSerialQr = ({ embedded = false }) => {
   const { user } = useUser();
-  const canManageSerials = user?.role === "superadmin";
+  const isSuperAdmin = user?.role === "superadmin";
+  const canManageSerials = isSuperAdmin;
+  const assignedBranch = user?.activeBranch || user?.assignedBranch || "Assigned branch";
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -193,10 +195,16 @@ const AdminSerialQr = ({ embedded = false }) => {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search model, SKU, branch, or serial"
           />
-          <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label="Filter QR records by branch">
-            <option value="all">All branches</option>
-            {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
-          </select>
+          {isSuperAdmin ? (
+            <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label="Filter QR records by branch">
+              <option value="all">All branches</option>
+              {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+            </select>
+          ) : (
+            <span className="serialqr-branch-scope" aria-label="QR records assigned branch">
+              {assignedBranch} branch
+            </span>
+          )}
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter QR records by status">
             <option value="all">All statuses</option>
             {statusOptions.map((status) => <option key={status} value={status}>{status.replace(/-/g, " ")}</option>)}

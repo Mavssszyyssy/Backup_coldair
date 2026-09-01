@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const Unit = require("../models/Unit");
 const crypto = require("crypto");
 const { BRANCHES } = require("../domain/branchRouting");
+const { isNonRetailCatalogProduct } = require("../domain/catalogVisibility");
 const { validateProductUniqueness } = require("../utils/productValidation");
 
 // Unknown products retain their uploaded image when one exists. The seeded
@@ -368,14 +369,10 @@ let sampleSeedPromise = null;
 let sampleSeedDone = false;
 
 const DISTRIBUTION_FALLBACK_STOCK = 6;
-const NON_RETAIL_CATALOG_MARKER =
-  /(?:^|[\s_-])(?:test|demo|sample|e2e|qa)(?:$|[\s_-])/i;
-
 const isCustomerCatalogProduct = (product = {}) => {
-  const hasNonRetailMarker = [product.name, product.sku, product.brand].some(
-    (value) => NON_RETAIL_CATALOG_MARKER.test(String(value || "")),
-  );
-  return Number(product.stock || 0) > 0 && product.isActive !== false && !hasNonRetailMarker;
+  return Number(product.stock || 0) > 0 &&
+    product.isActive !== false &&
+    !isNonRetailCatalogProduct(product);
 };
 
 const distributeStockToBranches = (total) => {
@@ -908,12 +905,13 @@ const requireInventoryOwner = (req, res) => {
 const listProducts = async (req, res) => {
   res.set("Cache-Control", "no-store");
   await ensureSampleInventory();
-  const products = await Product.find({})
+  const products = await Product.find({ isActive: { $ne: false } })
     .select("-imageData")
     .sort({ createdAt: -1 });
-  await ensureSerialUnitsForProducts(products);
+  const visibleProducts = products.filter((product) => !isNonRetailCatalogProduct(product));
+  await ensureSerialUnitsForProducts(visibleProducts);
   return res.json({
-    products: products.map((p) => toRoleAwareProduct(p, req)),
+    products: visibleProducts.map((p) => toRoleAwareProduct(p, req)),
   });
 };
 
