@@ -90,7 +90,7 @@ export default function UnitHistoryPanel({ history }) {
         <HistoryTable
           columns={[
             { key: "date", label: "Calculated", format: formatDate },
-            { key: "bestServicedBy", label: "Best Serviced By", format: formatDate },
+            { key: "bestServicedBy", label: "Suggested Servicing Date", format: formatDate },
             { key: "recommendedService", label: "Recommended Service", format: (value) => String(value || "").replace(/_/g, " ") },
             { key: "recommendationBasis", label: "Historical Basis", width: 260 },
           ]}
@@ -100,16 +100,15 @@ export default function UnitHistoryPanel({ history }) {
       </Card>
 
       <Card>
-        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Preparation Recommendation</Text>
+        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance Recommendation</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginBottom: SPACING.sm }}>
-          Suggestions below come only from components recorded for comparable AC units. They are preparation guidance, not a diagnosis.
+          The servicing date comes from completed records for the same model or brand. This is scheduling guidance, not a unit diagnosis.
         </Text>
-        <InfoCard label="Best Serviced By" value={formatDate(recommendation?.bestServicedBy)} />
+        <InfoCard label="Suggested Servicing Date" value={formatDate(recommendation?.bestServicedBy)} />
         <InfoCard label="Recommended Service" value={String(recommendation?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
         <InfoCard label="Historical Pattern" value={recommendation?.recommendationBasis || "Comparable service history is still limited."} />
-        {(recommendation?.commonComponents || []).length ? (
-          (recommendation.commonComponents || []).map((item) => <InfoCard key={item.component} label="Consider Preparing" value={`${item.component} · ${item.count} recorded use(s)`} />)
-        ) : <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>No component preparation suggestion is supported by recorded history.</Text>}
+        <InfoCard label="Room Size and Horsepower" value={recommendation?.capacityAssessment?.summary || "Room size is still needed for the horsepower suitability check."} />
+        <InfoCard label="Major-Component Policy" value="If major-part work is necessary, coordinate both the compressor/motor and control board for the service trip. Confirm the actual fault by inspection." />
       </Card>
     </>
   );

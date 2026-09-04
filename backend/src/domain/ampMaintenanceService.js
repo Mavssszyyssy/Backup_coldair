@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
-const { assessEnvironmentRisk, environmentSummary, normalizeEnvironmentProfile } = require("./ampEnvironmentRisk");
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_SERVICE_INTERVAL_DAYS = 270;
@@ -44,7 +43,7 @@ const normalizeServiceType = (history = {}) => {
 };
 
 const serviceDatesFor = (histories = []) => histories
-  .filter((history) => normalizeServiceType(history) !== "installation")
+  .filter((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history)))
   .map((history) => asDate(history.serviceDate))
   .filter(Boolean)
   .sort((a, b) => a.getTime() - b.getTime());
@@ -71,6 +70,26 @@ const intervalSamplesForUnits = (units = [], histories = []) => {
   return samples;
 };
 
+const selectHistoricalCohort = (levels = []) => {
+  const selected = levels.find((item) => item.samples.length >= MIN_HISTORICAL_SAMPLES);
+  if (selected) {
+    return {
+      level: selected.level,
+      intervalDays: clamp(median(selected.samples), 90, 365),
+      sampleSize: selected.samples.length,
+      comparableUnitCount: selected.units.length,
+      unitIds: selected.units.map((candidate) => candidate._id),
+    };
+  }
+  return {
+    level: "system_default",
+    intervalDays: DEFAULT_SERVICE_INTERVAL_DAYS,
+    sampleSize: 0,
+    comparableUnitCount: 0,
+    unitIds: [],
+  };
+};
+
 const resolveProductCategory = async (unit) => {
   if (unit.category) return normalize(unit.category);
   if (!mongoose.isValidObjectId(String(unit.productId || ""))) return "";
@@ -94,13 +113,6 @@ const collectHistoricalCohort = async (unit) => {
     const capacityMatch = hp && targetHp && Math.abs(hp - targetHp) <= 0.5;
     return normalize(candidate.modelName) !== normalize(unit.modelName) && (categoryMatch || capacityMatch);
   });
-  const similarCategory = allComparable.filter((candidate) => {
-    if (!category || normalize(candidate.category) !== category) return false;
-    const hp = Number(candidate.capacityHp || 0);
-    const targetHp = Number(unit.capacityHp || 0);
-    return !hp || !targetHp || Math.abs(hp - targetHp) <= 0.5;
-  });
-
   const ids = allComparable.map((candidate) => candidate._id);
   const histories = ids.length
     ? await ServiceHistory.find({ unit: { $in: ids } }).sort({ serviceDate: 1 }).limit(5000).lean()
@@ -111,25 +123,8 @@ const collectHistoricalCohort = async (unit) => {
     { level: "same_model", units: sameModel, samples: samplesFor(sameModel) },
     { level: "same_brand_type", units: sameBrandType, samples: samplesFor(sameBrandType) },
     { level: "same_brand", units: sameBrand, samples: samplesFor(sameBrand) },
-    { level: "similar_category", units: similarCategory, samples: samplesFor(similarCategory) },
   ];
-  const selected = levels.find((item) => item.samples.length >= MIN_HISTORICAL_SAMPLES);
-  if (selected) {
-    return {
-      level: selected.level,
-      intervalDays: clamp(median(selected.samples), 90, 365),
-      sampleSize: selected.samples.length,
-      comparableUnitCount: selected.units.length,
-      unitIds: selected.units.map((candidate) => candidate._id),
-    };
-  }
-  return {
-    level: "system_default",
-    intervalDays: DEFAULT_SERVICE_INTERVAL_DAYS,
-    sampleSize: 0,
-    comparableUnitCount: 0,
-    unitIds: [],
-  };
+  return selectHistoricalCohort(levels);
 };
 
 const basisText = ({ level, intervalDays, sampleSize }) => {
@@ -137,7 +132,6 @@ const basisText = ({ level, intervalDays, sampleSize }) => {
   if (level === "same_model") return `Based on ${sampleSize} recorded service interval(s) from the same AC model, typically about ${months} month(s).`;
   if (level === "same_brand_type") return `Based on ${sampleSize} recorded service interval(s) from similar AC units of the same brand and type, typically about ${months} month(s).`;
   if (level === "same_brand") return `Based on ${sampleSize} recorded service interval(s) from the same AC brand, typically about ${months} month(s).`;
-  if (level === "similar_category") return `Based on ${sampleSize} recorded service interval(s) from comparable AC units of the same type, typically about ${months} month(s).`;
   return "Based on the standard preventive-maintenance interval because limited comparable service history is currently available.";
 };
 
@@ -153,29 +147,13 @@ const capacityAssessmentFor = ({ roomSizeSqm, capacityHp }) => {
   return { status: "suitable", summary: "AC horsepower appears appropriate for the provided room size." };
 };
 
-const commonRecordedComponents = (histories = []) => {
-  const counts = new Map();
-  histories.forEach((history) => {
-    const values = [
-      ...(Array.isArray(history.partsUsed) ? history.partsUsed : []),
-      ...(Array.isArray(history.serviceActions) ? history.serviceActions : []),
-    ];
-    values.forEach((value) => {
-      const text = String(value || "").trim();
-      if (!text) return;
-      const normalized = normalize(text);
-      const category = normalized.includes("board") || normalized.includes("pcb")
-        ? "Board / Electronics"
-        : normalized.includes("compressor") || normalized.includes("motor")
-          ? "Compressor / Motor"
-          : text;
-      counts.set(category, (counts.get(category) || 0) + 1);
-    });
-  });
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([component, count]) => ({ component, count }));
+const cleaningMethodForDates = ({ lastCleaningDate, installationDate, asOfDate = new Date() } = {}) => {
+  const referenceDate = startOfUtcDay(asDate(lastCleaningDate) || asDate(installationDate) || asDate(asOfDate) || new Date());
+  const oneYearAnniversary = new Date(referenceDate.getTime());
+  oneYearAnniversary.setUTCFullYear(oneYearAnniversary.getUTCFullYear() + 1);
+  return startOfUtcDay(asOfDate) > oneYearAnniversary
+    ? "deep_cleaning"
+    : "regular_cleaning";
 };
 
 const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
@@ -188,36 +166,20 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
   const asOfDate = startOfUtcDay(options.asOfDate || new Date());
   const ownHistory = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(200).lean();
   const cohort = await collectHistoricalCohort(unit);
-  const environmentProfile = normalizeEnvironmentProfile(unit.environmentProfile?.toObject?.() || unit.environmentProfile || {});
-  const environmentRisk = assessEnvironmentRisk(environmentProfile, cohort.intervalDays);
   const lastService = ownHistory.find((history) => normalizeServiceType(history) !== "installation") || null;
   const lastCleaning = ownHistory.find((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history))) || null;
   const lastServiceDate = asDate(lastService?.serviceDate);
   const lastCleaningDate = asDate(lastCleaning?.serviceDate);
   const installedAt = asDate(unit.installation?.installedAt) || asOfDate;
-  const anchor = lastServiceDate || installedAt;
-  const bestServicedBy = addDays(startOfUtcDay(anchor), environmentRisk.adjustedIntervalDays);
-  const cleaningReferenceDate = lastCleaningDate || lastServiceDate;
-  const daysSinceCleaning = cleaningReferenceDate ? daysBetween(startOfUtcDay(cleaningReferenceDate), asOfDate) : null;
-  const environmentNeedsDeepCleaning = environmentProfile.filterCondition === "clogged"
-    || ["dusty", "iced"].includes(environmentProfile.coilCondition)
-    || environmentProfile.dustExposure === "high"
-    || environmentProfile.greaseSmokeExposure === "high";
-  const recommendedService = (daysSinceCleaning !== null && daysSinceCleaning >= 365) || environmentNeedsDeepCleaning
-    ? "deep_cleaning"
-    : "regular_cleaning";
+  const anchor = lastCleaningDate || installedAt;
+  const bestServicedBy = addDays(startOfUtcDay(anchor), cohort.intervalDays);
+  const recommendedService = cleaningMethodForDates({
+    lastCleaningDate,
+    installationDate: installedAt,
+    asOfDate,
+  });
   const capacityAssessment = capacityAssessmentFor(unit);
-  const historicalBasis = basisText(cohort);
-  const basis = environmentRisk.level === "low"
-    ? historicalBasis
-    : `${historicalBasis} ${environmentSummary(environmentRisk)}`;
-  const similarHistories = cohort.unitIds.length
-    ? await ServiceHistory.find({ unit: { $in: cohort.unitIds } }).sort({ serviceDate: -1 }).limit(1000).lean()
-    : [];
-  const commonComponents = commonRecordedComponents(similarHistories);
-  const safeEnvironmentProfile = { ...environmentProfile };
-  delete safeEnvironmentProfile.capturedBy;
-  delete safeEnvironmentProfile.notes;
+  const basis = basisText(cohort);
 
   if (options.persist !== false) {
     unit.amp = {
@@ -226,15 +188,14 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
       recommendedService,
       recommendationBasis: basis,
       basisLevel: cohort.level,
-      intervalDays: environmentRisk.adjustedIntervalDays,
+      intervalDays: cohort.intervalDays,
       baseIntervalDays: cohort.intervalDays,
       comparableSampleSize: cohort.sampleSize,
       lastServiceDate,
       lastCleaningDate,
       capacityAssessment,
-      environmentRisk,
       nextIdealServiceDate: bestServicedBy,
-      nextIdealServicePeriod: `Best serviced by ${bestServicedBy.toLocaleDateString("en-US")}`,
+      nextIdealServicePeriod: `Suggested servicing date: ${bestServicedBy.toLocaleDateString("en-US")}`,
       lastCalculatedAt: new Date(),
     };
     unit.status = bestServicedBy < asOfDate ? "service_due" : "active";
@@ -258,16 +219,12 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
     recommendationBasis: basis,
     historicalBasis: {
       level: cohort.level,
-      intervalDays: environmentRisk.adjustedIntervalDays,
+      intervalDays: cohort.intervalDays,
       baseIntervalDays: cohort.intervalDays,
       sampleSize: cohort.sampleSize,
       comparableUnitCount: cohort.comparableUnitCount,
     },
-    environmentProfile: safeEnvironmentProfile,
-    environmentRisk,
-    environmentAssessment: environmentSummary(environmentRisk),
     capacityAssessment,
-    commonComponents,
     overdue: bestServicedBy < asOfDate,
     generatedAt: new Date().toISOString(),
   };
@@ -277,5 +234,7 @@ module.exports = {
   DEFAULT_SERVICE_INTERVAL_DAYS,
   calculateMaintenanceRecommendation,
   capacityAssessmentFor,
+  cleaningMethodForDates,
   normalizeServiceType,
+  selectHistoricalCohort,
 };

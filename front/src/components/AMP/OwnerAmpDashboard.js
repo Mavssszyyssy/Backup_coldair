@@ -142,15 +142,15 @@ function OwnerAmpDashboard() {
           {!serviceDemand.length && !loading ? <p className="amp-empty">No maintenance demand is recorded yet.</p> : null}
         </section>
         <section className="amp-card">
-          <h2>Recorded Parts Demand</h2>
-          <p className="amp-muted">Inventory guidance from parts actually recorded in completed service history.</p>
+          <h2>Major-Component Inventory History</h2>
+          <p className="amp-muted">Aggregate recorded use of compressor/motor and control board for inventory planning. This is not a diagnosis of a specific unit.</p>
           <div className="amp-table-wrap">
             <table className="amp-table compact">
-              <thead><tr><th>Component / Part</th><th>Recorded Uses</th></tr></thead>
+              <thead><tr><th>Major Component</th><th>Recorded Uses</th></tr></thead>
               <tbody>{partsTrend.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody>
             </table>
           </div>
-          {!partsTrend.length && !loading ? <p className="amp-empty">No parts-use history is available for forecasting.</p> : null}
+          {!partsTrend.length && !loading ? <p className="amp-empty">No major-component history is available for inventory planning.</p> : null}
         </section>
       </div>
 
@@ -181,7 +181,7 @@ function OwnerAmpDashboard() {
       <div className="amp-report-grid">
         <section className="amp-card">
           <h2>Branch Maintenance Volume</h2>
-          <p className="amp-muted">Upcoming service workload from stored Best Serviced By dates.</p>
+          <p className="amp-muted">Upcoming service workload from stored suggested servicing dates.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Branch</th><th>Upcoming services</th></tr></thead><tbody>{branchDemand.map((item) => <tr key={item.branch}><td>{item.branch}</td><td>{item.upcomingServices}</td></tr>)}</tbody></table></div>
           {!branchDemand.length && !loading ? <p className="amp-empty">No upcoming branch workload is recorded.</p> : null}
         </section>

@@ -21,7 +21,6 @@ import {
 } from "../../services/philippineAddressService";
 import { buildEditableProfile } from "../../services/profileService";
 import {
-  getPostalCodeHint,
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from "../../services/postalCodeValidation";
@@ -362,8 +361,6 @@ export default function CustomerSettingsScreen() {
   };
 
   const subtitle = isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
-  const zipCodeHint = addressForm ? getPostalCodeHint(addressForm) : "";
-
   return (
     <CustomerScreen
       title="Account"
@@ -404,7 +401,7 @@ export default function CustomerSettingsScreen() {
           <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first."} onSelect={selectLocality} />
           <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={selectBarangay} />
           <TextField label="Street address" value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder="House, block, lot, street" error={addressErrors.street} />
-          <TextField label="ZIP Code *" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} helperText={zipCodeHint} showKeyboardDone />
+          <TextField label="ZIP Code *" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} showKeyboardDone />
           <TouchableOpacity
             accessibilityRole="checkbox"
             accessibilityState={{ checked: Boolean(addressForm.isDefault), disabled: Boolean(addressForm.isDefault || saving) }}

@@ -46,7 +46,6 @@ function normalizeUnit(unit = {}) {
     recommendedService: unit.recommendedService || unit.amp?.recommendedService || "regular_cleaning",
     recommendationBasis: unit.recommendationBasis || unit.amp?.recommendationBasis || "",
     capacityAssessment: unit.capacityAssessment || unit.amp?.capacityAssessment || null,
-    commonComponents: Array.isArray(unit.commonComponents) ? unit.commonComponents : [],
     lastServiceDate: unit.lastServiceDate || unit.amp?.lastServiceDate || null,
     lastCleaningDate: unit.lastCleaningDate || unit.amp?.lastCleaningDate || null,
     warranty: unit.warranty || {},

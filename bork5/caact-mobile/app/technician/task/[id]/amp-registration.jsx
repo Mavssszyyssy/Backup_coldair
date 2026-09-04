@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
@@ -9,7 +9,6 @@ import QrCameraScanner from "../../../../components/technician/QrCameraScanner";
 import UnitHistoryPanel from "../../../../components/technician/UnitHistoryPanel";
 import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
-import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
 import { getTodayDateKey } from "../../../../components/ui/CalendarDatePicker";
 import TextField from "../../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
@@ -28,44 +27,20 @@ const taskSerials = (task = {}) => {
     .map((serial) => String(serial || "").trim()).filter(Boolean)));
 };
 
-const OPTIONS = {
-  placementType: [["bedroom", "Bedroom"], ["living_room", "Living room"], ["office", "Office"], ["kitchen", "Kitchen"], ["commercial", "Commercial space"], ["other", "Other"]],
-  level: [["low", "Low"], ["normal", "Normal"], ["high", "High"]],
-  grease: [["none", "None"], ["moderate", "Moderate"], ["high", "High"]],
-};
-const optionItems = (items) => items.map(([id, name]) => ({ id, name }));
-const optionLabel = (items, id) => items.find(([value]) => value === id)?.[1] || "Select";
-
-const defaultEnvironment = {
-  placementArea: "",
-  placementType: "other",
-  usageHoursPerDay: "8",
+const defaultRoomDetails = {
   roomSizeSqm: "",
-  occupancyLevel: "normal",
-  dustExposure: "normal",
-  humidityExposure: "normal",
-  greaseSmokeExposure: "none",
-  coastalExposure: false,
-  directSunExposure: "normal",
 };
 
-const automaticAmpPayload = (serialNumber, environment) => {
+const automaticAmpPayload = (serialNumber, roomDetails) => {
   const now = new Date();
   return {
     serialNumber,
     registrationSource: "qr_scan",
     installationDate: getTodayDateKey(),
     installationTime: now.toTimeString().slice(0, 5),
-    lastServiceDate: now.toISOString(),
-    ...environment,
-    usageHoursPerDay: Number(environment.usageHoursPerDay || 8),
-    roomSizeSqm: Number(environment.roomSizeSqm || 0) || null,
-    filterCondition: "normal",
-    coilCondition: "normal",
-    drainageCondition: "clear",
-    voltageStability: "stable",
+    roomSizeSqm: Number(roomDetails.roomSizeSqm),
     conditionRating: "good",
-    notes: "Initial AMP registration completed by QR scan.",
+    notes: "Initial registration completed by assigned QR scan.",
   };
 };
 
@@ -79,7 +54,7 @@ export default function AmpRegistrationScreen() {
   const [message, setMessage] = useState("");
   const [unitHistory, setUnitHistory] = useState(null);
   const [pendingSerial, setPendingSerial] = useState("");
-  const [environment, setEnvironment] = useState(defaultEnvironment);
+  const [roomDetails, setRoomDetails] = useState(defaultRoomDetails);
 
   const serials = useMemo(() => taskSerials(task), [task]);
   const progress = task?.registrationProgress;
@@ -135,23 +110,19 @@ export default function AmpRegistrationScreen() {
 
     setScannerActive(false);
     setPendingSerial(assignedSerial);
-    setEnvironment(defaultEnvironment);
+    setRoomDetails(defaultRoomDetails);
   };
 
-  const submitEnvironmentProfile = async () => {
+  const submitRoomCapacity = async () => {
     if (!pendingSerial || saving) return;
-    const usage = Number(environment.usageHoursPerDay);
-    if (!environment.placementArea.trim()) {
-      Alert.alert("Placement needed", "Enter where the AC unit is installed, such as the bedroom or front office.");
-      return;
-    }
-    if (!Number.isFinite(usage) || usage <= 0 || usage > 24) {
-      Alert.alert("Check daily usage", "Daily usage must be between 1 and 24 hours.");
+    const roomSizeSqm = Number(roomDetails.roomSizeSqm);
+    if (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000) {
+      Alert.alert("Check room size", "Enter a valid room size from 1 to 10,000 m² so the AC horsepower can be checked.");
       return;
     }
     setSaving(true);
     try {
-      const result = await registerTaskAmpUnit(id, automaticAmpPayload(pendingSerial, environment));
+      const result = await registerTaskAmpUnit(id, automaticAmpPayload(pendingSerial, roomDetails));
       const updatedTask = result.task;
       setTask(updatedTask);
       const history = await loadUnitHistory(pendingSerial);
@@ -217,7 +188,7 @@ export default function AmpRegistrationScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Scan assigned QR</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Scan the inventory label, then record the real room conditions used by AMP.</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Scan the inventory label, then record the room size used for the horsepower suitability check.</Text>
               </View>
             </View>
             {pendingSerial ? <InfoCard label="QR captured" value={pendingSerial} /> : scannerActive ? <QrCameraScanner active={scannerActive} onScanned={handleScanned} /> : <TechButton title={saving ? "Verifying…" : "Open QR scanner"} onPress={() => setScannerActive(true)} loading={saving} variant="secondary" leftIcon={<Ionicons name="camera-sharp" size={18} color={COLORS.tech} />} />}
@@ -226,22 +197,10 @@ export default function AmpRegistrationScreen() {
 
         {pendingSerial ? (
           <Card>
-            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Installation environment</Text>
-            <Text style={{ color: COLORS.textSecondary, marginTop: 4, marginBottom: SPACING.md }}>S/N {pendingSerial}. Record what you observe; AMP uses this to adjust the maintenance date.</Text>
-            <TextField label="Exact placement" value={environment.placementArea} onChangeText={(value) => setEnvironment((current) => ({ ...current, placementArea: value }))} placeholder="Bedroom, front office, dining area…" />
-            <BottomSheetSelect label="Room type" value={optionLabel(OPTIONS.placementType, environment.placementType)} items={optionItems(OPTIONS.placementType)} onSelect={(item) => setEnvironment((current) => ({ ...current, placementType: item.id }))} />
-            <TextField label="Daily usage hours" value={environment.usageHoursPerDay} onChangeText={(value) => setEnvironment((current) => ({ ...current, usageHoursPerDay: value }))} keyboardType="decimal-pad" placeholder="8" />
-            <TextField label="Room size (m², optional)" value={environment.roomSizeSqm} onChangeText={(value) => setEnvironment((current) => ({ ...current, roomSizeSqm: value }))} keyboardType="decimal-pad" placeholder="Used to check horsepower suitability" />
-            <BottomSheetSelect label="Room occupancy" value={optionLabel(OPTIONS.level, environment.occupancyLevel)} items={optionItems(OPTIONS.level)} onSelect={(item) => setEnvironment((current) => ({ ...current, occupancyLevel: item.id }))} />
-            <BottomSheetSelect label="Dust exposure" value={optionLabel(OPTIONS.level, environment.dustExposure)} items={optionItems(OPTIONS.level)} onSelect={(item) => setEnvironment((current) => ({ ...current, dustExposure: item.id }))} />
-            <BottomSheetSelect label="Humidity exposure" value={optionLabel(OPTIONS.level, environment.humidityExposure)} items={optionItems(OPTIONS.level)} onSelect={(item) => setEnvironment((current) => ({ ...current, humidityExposure: item.id }))} />
-            <BottomSheetSelect label="Grease or smoke exposure" value={optionLabel(OPTIONS.grease, environment.greaseSmokeExposure)} items={optionItems(OPTIONS.grease)} onSelect={(item) => setEnvironment((current) => ({ ...current, greaseSmokeExposure: item.id }))} />
-            <BottomSheetSelect label="Direct sunlight" value={optionLabel(OPTIONS.level, environment.directSunExposure)} items={optionItems(OPTIONS.level)} onSelect={(item) => setEnvironment((current) => ({ ...current, directSunExposure: item.id }))} />
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: SPACING.sm, marginBottom: SPACING.md }}>
-              <View style={{ flex: 1, paddingRight: SPACING.md }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>Coastal or salty air</Text><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>Enable only when the installation is exposed to coastal air.</Text></View>
-              <Switch value={environment.coastalExposure} onValueChange={(value) => setEnvironment((current) => ({ ...current, coastalExposure: value }))} trackColor={{ false: COLORS.border, true: COLORS.techLight }} thumbColor={environment.coastalExposure ? COLORS.tech : COLORS.surface} />
-            </View>
-            <TechButton title="Save environment and verify unit" onPress={submitEnvironmentProfile} loading={saving} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} />
+            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Room capacity check</Text>
+            <Text style={{ color: COLORS.textSecondary, marginTop: 4, marginBottom: SPACING.md }}>S/N {pendingSerial}. Room size is compared with the AC horsepower. It does not change the history-based servicing interval.</Text>
+            <TextField label="Room size (m²)" value={roomDetails.roomSizeSqm} onChangeText={(value) => setRoomDetails({ roomSizeSqm: value })} keyboardType="decimal-pad" inputMode="decimal" returnKeyType="done" showKeyboardDone placeholder="Required for horsepower suitability" />
+            <TechButton title="Save room size and verify unit" onPress={submitRoomCapacity} loading={saving} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} />
             <TechButton title="Cancel and scan again" variant="secondary" onPress={() => { setPendingSerial(""); setScannerActive(true); }} disabled={saving} style={{ marginTop: SPACING.sm }} />
           </Card>
         ) : null}

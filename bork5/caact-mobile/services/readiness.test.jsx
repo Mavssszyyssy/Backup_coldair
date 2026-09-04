@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import { filterAndSortProducts, getProductImageAssetKey } from "./ecommerceService";
 import {
-  getPostalCodeHint,
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from "./postalCodeValidation";
@@ -37,7 +36,6 @@ describe("mobile customer readiness rules", () => {
     };
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" })).toBe("");
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" })).toMatch(/does not match/i);
-    expect(getPostalCodeHint(pasayAddress)).toContain("1300\u20131309");
   });
 
   test("customer product filters preserve real inventory records", () => {
@@ -162,24 +160,39 @@ describe("mobile customer readiness rules", () => {
       path.join(__dirname, "..", "app", "customer", "settings.jsx"),
       "utf8",
     );
+    const bottomSheetSource = fs.readFileSync(
+      path.join(__dirname, "..", "components", "ui", "BottomSheetSelect.jsx"),
+      "utf8",
+    );
     expect(settingsSource).toContain("Use as my default delivery address");
     expect(settingsSource).toContain("This choice will be applied when you save the address");
     expect(settingsSource).toContain('label="ZIP Code *"');
     expect(settingsSource).toContain("showKeyboardDone");
+    expect(settingsSource).not.toContain("Valid ZIP code range");
+    expect(bottomSheetSource).toContain("searchInputRef.current?.blur?.()");
+    expect(bottomSheetSource).toContain("onDismiss={dismissKeyboard}");
     expect(settingsSource).not.toContain('title={addressForm.isDefault ? "Default delivery address"');
   });
 
-  test("technician installation captures environment data and AMP alerts open the unit", () => {
+  test("technician installation captures room capacity and AMP alerts open the unit", () => {
     const registrationSource = fs.readFileSync(
       path.join(__dirname, "..", "app", "technician", "task", "[id]", "amp-registration.jsx"),
       "utf8",
     );
     const notificationSource = fs.readFileSync(path.join(__dirname, "notificationService.jsx"), "utf8");
 
-    expect(registrationSource).toContain("Installation environment");
-    expect(registrationSource).toContain("dustExposure");
-    expect(registrationSource).toContain("coastalExposure");
-    expect(registrationSource).toContain("Save environment and verify unit");
+    expect(registrationSource).toContain("Room capacity check");
+    expect(registrationSource).toContain("roomSizeSqm");
+    expect(registrationSource).toContain("Save room size and verify unit");
+    expect(registrationSource).toContain("It does not change the history-based servicing interval");
+    expect(registrationSource).not.toContain("dustExposure");
+    expect(registrationSource).not.toContain("coastalExposure");
+    const historySource = fs.readFileSync(
+      path.join(__dirname, "..", "components", "technician", "UnitHistoryPanel.jsx"),
+      "utf8",
+    );
+    expect(historySource).toContain("Major-Component Policy");
+    expect(historySource).toContain("compressor/motor and control board");
     expect(notificationSource).toContain('["maintenance_due", "amp_due_soon", "amp_overdue"]');
     expect(notificationSource).toContain("/customer/units/${encodeURIComponent(item.targetId)}");
     expect(notificationSource).toContain("?page=amp");

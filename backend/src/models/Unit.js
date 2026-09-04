@@ -27,25 +27,6 @@ const unitSchema = new mongoose.Schema(
     category: { type: String, default: "", trim: true, index: true },
     roomSizeSqm: { type: Number, default: null, min: 1, max: 10000 },
 
-    environmentProfile: {
-      placementType: { type: String, enum: ["bedroom", "living_room", "office", "kitchen", "commercial", "other"], default: "other" },
-      placementArea: { type: String, default: "", trim: true },
-      usageHoursPerDay: { type: Number, default: 8, min: 0, max: 24 },
-      occupancyLevel: { type: String, enum: ["low", "normal", "high"], default: "normal" },
-      dustExposure: { type: String, enum: ["low", "normal", "high"], default: "normal" },
-      humidityExposure: { type: String, enum: ["low", "normal", "high"], default: "normal" },
-      greaseSmokeExposure: { type: String, enum: ["none", "moderate", "high"], default: "none" },
-      coastalExposure: { type: Boolean, default: false },
-      directSunExposure: { type: String, enum: ["low", "normal", "high"], default: "normal" },
-      filterCondition: { type: String, enum: ["clean", "normal", "dusty", "clogged"], default: "normal" },
-      coilCondition: { type: String, enum: ["clean", "normal", "dusty", "iced"], default: "normal" },
-      drainageCondition: { type: String, enum: ["clear", "slow", "blocked"], default: "clear" },
-      voltageStability: { type: String, enum: ["stable", "fluctuating", "unstable"], default: "stable" },
-      notes: { type: String, default: "", trim: true },
-      capturedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      capturedAt: { type: Date, default: null },
-    },
-
     customer: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
     customerName: { type: String, default: "", trim: true },
     // The operating branch responsible for this installed unit. This is kept
@@ -87,15 +68,6 @@ const unitSchema = new mongoose.Schema(
           default: "room_size_required",
         },
         summary: { type: String, default: "", trim: true },
-      },
-      environmentRisk: {
-        recorded: { type: Boolean, default: false },
-        score: { type: Number, default: 0, min: 0 },
-        level: { type: String, enum: ["low", "moderate", "high", "severe"], default: "low" },
-        multiplier: { type: Number, default: 1, min: 0.1, max: 1 },
-        baseIntervalDays: { type: Number, default: 270, min: 30, max: 730 },
-        adjustedIntervalDays: { type: Number, default: 270, min: 30, max: 730 },
-        reasons: [{ type: String, trim: true }],
       },
       // Compatibility fields for older clients. They mirror bestServicedBy.
       nextIdealServicePeriod: { type: String, default: "", trim: true },

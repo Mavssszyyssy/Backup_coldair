@@ -75,7 +75,7 @@ function UnitCard({
           </div>
           {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">Recommended Service Date</span>
+              <span className="info-label">Suggested Servicing Date</span>
               <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}

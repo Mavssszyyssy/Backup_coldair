@@ -11,21 +11,7 @@ const today = () => new Date().toISOString().split('T')[0];
 const defaultForm = {
   installationDate: today(),
   installationTime: new Date().toTimeString().slice(0, 5),
-  lastServiceDate: today(),
-  placementArea: '',
-  placementType: 'other',
-  usageHoursPerDay: 8,
-  occupancyLevel: 'normal',
-  dustExposure: 'normal',
-  humidityExposure: 'normal',
-  greaseSmokeExposure: 'none',
-  coastalExposure: false,
-  directSunExposure: 'normal',
   roomSizeSqm: '',
-  filterCondition: 'normal',
-  coilCondition: 'normal',
-  drainageCondition: 'clear',
-  voltageStability: 'stable',
   conditionRating: 'good',
   notes: '',
   defectReason: ''
@@ -68,6 +54,11 @@ const FieldServiceRegistration = () => {
     setLoading(true);
     setError('');
     setHistory(null);
+    setForm({
+      ...defaultForm,
+      installationDate: today(),
+      installationTime: new Date().toTimeString().slice(0, 5),
+    });
     try {
       const response = await apiRequest(`/tasks/registration-context/${encodeURIComponent(serial)}`);
       setContext({ task: response.task, unit: response.unit });
@@ -82,7 +73,14 @@ const FieldServiceRegistration = () => {
         .catch(() => setHistory(null));
       const previous = response.unit?.ampRegistration?.ampParameters || response.task?.ampRegistrations?.[serial]?.ampParameters;
       if (previous) {
-        setForm((prev) => ({ ...prev, ...previous, lastServiceDate: today() }));
+        setForm((current) => ({
+          ...current,
+          installationDate: previous.installationDate || current.installationDate,
+          installationTime: previous.installationTime || current.installationTime,
+          roomSizeSqm: previous.roomSizeSqm || current.roomSizeSqm,
+          conditionRating: previous.conditionRating || current.conditionRating,
+          notes: previous.notes || current.notes,
+        }));
       }
     } catch (err) {
       setContext({ task: null, unit: null });
@@ -129,8 +127,9 @@ const FieldServiceRegistration = () => {
       setError('No assigned installation task was found for this QR label.');
       return;
     }
-    if (!defectiveHold && !String(form.placementArea || '').trim()) {
-      setError('Add the unit placement area before registering it.');
+    const roomSizeSqm = Number(form.roomSizeSqm);
+    if (!defectiveHold && (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000)) {
+      setError('Enter a valid room size from 1 to 10,000 m² so the AC horsepower can be checked.');
       return;
     }
     if (defectiveHold && !String(form.defectReason || '').trim()) {
@@ -222,7 +221,8 @@ const FieldServiceRegistration = () => {
         </section>
 
         <section className="tech-form field-registration-panel">
-          <h3>Required AMP Parameters</h3>
+          <h3>Installation and Room Capacity</h3>
+          <p className="amp-muted">Room size is used only to check whether the AC horsepower suits the area. Servicing dates come from completed records for the same model or brand.</p>
           <div className="field-registration-form-grid">
             <label>
               Installation date
@@ -233,95 +233,8 @@ const FieldServiceRegistration = () => {
               <input type="time" value={form.installationTime} onChange={(event) => updateField('installationTime', event.target.value)} />
             </label>
             <label>
-              Last service date
-              <input type="date" value={form.lastServiceDate} onChange={(event) => updateField('lastServiceDate', event.target.value)} />
-            </label>
-            <label>
-              Placement area
-              <input value={form.placementArea} onChange={(event) => updateField('placementArea', event.target.value)} placeholder="Living room, office bay, bedroom..." />
-            </label>
-            <label>
-              Room type
-              <select value={form.placementType} onChange={(event) => updateField('placementType', event.target.value)}>
-                <option value="bedroom">Bedroom</option><option value="living_room">Living room</option><option value="office">Office</option>
-                <option value="kitchen">Kitchen</option><option value="commercial">Commercial space</option><option value="other">Other</option>
-              </select>
-            </label>
-            <label>
-              Daily usage hours
-              <input type="number" min="1" max="24" value={form.usageHoursPerDay} onChange={(event) => updateField('usageHoursPerDay', event.target.value)} />
-            </label>
-            <label>
-              Room size (m²)
-              <input type="number" min="1" value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)} placeholder="Optional; used for HP suitability" />
-            </label>
-            <label>
-              Room occupancy
-              <select value={form.occupancyLevel} onChange={(event) => updateField('occupancyLevel', event.target.value)}>
-                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
-              </select>
-            </label>
-            <label>
-              Dust exposure
-              <select value={form.dustExposure} onChange={(event) => updateField('dustExposure', event.target.value)}>
-                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
-              </select>
-            </label>
-            <label>
-              Humidity exposure
-              <select value={form.humidityExposure} onChange={(event) => updateField('humidityExposure', event.target.value)}>
-                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
-              </select>
-            </label>
-            <label>
-              Grease or smoke exposure
-              <select value={form.greaseSmokeExposure} onChange={(event) => updateField('greaseSmokeExposure', event.target.value)}>
-                <option value="none">None</option><option value="moderate">Moderate</option><option value="high">High</option>
-              </select>
-            </label>
-            <label>
-              Direct sunlight
-              <select value={form.directSunExposure} onChange={(event) => updateField('directSunExposure', event.target.value)}>
-                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
-              </select>
-            </label>
-            <label className="field-registration-checkbox">
-              <input type="checkbox" checked={Boolean(form.coastalExposure)} onChange={(event) => updateField('coastalExposure', event.target.checked)} />
-              Coastal or salty-air exposure
-            </label>
-            <label>
-              Filter condition
-              <select value={form.filterCondition} onChange={(event) => updateField('filterCondition', event.target.value)}>
-                <option value="clean">Clean</option>
-                <option value="normal">Normal</option>
-                <option value="dusty">Dusty</option>
-                <option value="clogged">Clogged</option>
-              </select>
-            </label>
-            <label>
-              Coil condition
-              <select value={form.coilCondition} onChange={(event) => updateField('coilCondition', event.target.value)}>
-                <option value="clean">Clean</option>
-                <option value="normal">Normal</option>
-                <option value="dusty">Dusty</option>
-                <option value="iced">Iced</option>
-              </select>
-            </label>
-            <label>
-              Drainage
-              <select value={form.drainageCondition} onChange={(event) => updateField('drainageCondition', event.target.value)}>
-                <option value="clear">Clear</option>
-                <option value="slow">Slow</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </label>
-            <label>
-              Voltage stability
-              <select value={form.voltageStability} onChange={(event) => updateField('voltageStability', event.target.value)}>
-                <option value="stable">Stable</option>
-                <option value="fluctuating">Fluctuating</option>
-                <option value="unstable">Unstable</option>
-              </select>
+              Room size (m²) <span aria-hidden="true">*</span>
+              <input type="number" min="1" max="10000" step="0.1" required value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)} placeholder="Required for HP suitability" />
             </label>
             <label>
               Overall condition
@@ -334,8 +247,8 @@ const FieldServiceRegistration = () => {
             </label>
           </div>
           <label>
-            Technician notes
-            <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} rows={3} />
+            Installation notes (optional)
+            <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} rows={3} placeholder="Add only details relevant to the installation or observed condition." />
           </label>
           <label>
             Defect reason
@@ -343,7 +256,7 @@ const FieldServiceRegistration = () => {
           </label>
           <div className="field-registration-actions">
             <button type="button" onClick={() => submitRegistration(false)} disabled={saving || !serialNumber}>
-              {saving ? 'Submitting...' : 'Submit AMP Registration'}
+              {saving ? 'Submitting...' : 'Save Room Capacity and Register'}
             </button>
             <button type="button" className="field-registration-hold" onClick={() => submitRegistration(true)} disabled={saving || !serialNumber}>
               Mark Defective and Hold
@@ -362,7 +275,7 @@ const FieldServiceRegistration = () => {
         <h4 style={{ marginTop: 20 }}>Repair History</h4>
         <HistoryTable columns={['Date', 'Issue', 'Diagnosis', 'Parts Used', 'Technician', 'Status']} rows={history.repairHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.issue, item.diagnosis, item.partsUsed, item.technician, item.status]} />
         <h4 style={{ marginTop: 20 }}>Maintenance Recommendations</h4>
-        <HistoryTable columns={['Calculated', 'Best Serviced By', 'Recommended Service', 'Historical Basis']} rows={history.ampHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.bestServicedBy ? new Date(item.bestServicedBy).toLocaleDateString() : 'Not available', String(item.recommendedService || '').replace(/_/g, ' '), item.recommendationBasis]} />
+        <HistoryTable columns={['Calculated', 'Suggested Servicing Date', 'Recommended Service', 'Historical Basis']} rows={history.ampHistory} values={(item) => [item.date ? new Date(item.date).toLocaleDateString() : '', item.bestServicedBy ? new Date(item.bestServicedBy).toLocaleDateString() : 'Not available', String(item.recommendedService || '').replace(/_/g, ' '), item.recommendationBasis]} />
       </section> : null}
 
       {requiredSerials(context.task).length > 0 ? (

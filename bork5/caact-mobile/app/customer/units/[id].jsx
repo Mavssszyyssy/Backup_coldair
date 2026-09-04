@@ -523,7 +523,7 @@ export default function CustomerUnitDetailsScreen() {
               <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
               <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
-              <DetailRow label="Recommended Service Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
+              <DetailRow label="Suggested Servicing Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
               <DetailRow label="Recommended Service" value={serviceName(ampReport.maintenance?.recommendedService)} />
               <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
               <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />

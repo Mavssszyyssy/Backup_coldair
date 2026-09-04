@@ -303,7 +303,7 @@ export default function TaskInformationScreen() {
               <DetailItem icon="pricetag-sharp" label="Brand / Model" value={[unit?.brand, unit?.model].filter(Boolean).join(" / ") || "Not provided"} />
               <DetailItem icon="barcode-sharp" label="Serial" value={unit?.serialNumber || assignedSerials.join(", ") || "Not provided"} />
               <DetailItem icon="shield-checkmark-sharp" label="Warranty Status" value={unit?.installationDate ? "Check purchase date and warranty terms" : "Unknown"} accent={COLORS.success} />
-              {unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Best Serviced By" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
+              {unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
             </Card>
           ) : null}
 

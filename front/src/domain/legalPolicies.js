@@ -255,7 +255,7 @@ export const LEGAL_POLICIES = {
         id: "amp",
         title: "7. AeroPulse and AI-assisted features",
         paragraphs: [
-          "AeroPulse may provide forecasts, maintenance recommendations, summaries, or other decision-support outputs using available unit, environment, usage, order, and service data. These outputs are recommendations and may be incomplete or inaccurate; they do not replace an on-site diagnosis, manufacturer instruction, safety requirement, or authorized human decision.",
+          "AeroPulse may provide suggested servicing dates, cleaning-method recommendations, summaries, room-size and horsepower suitability checks, or aggregate inventory insights using available unit, order, and completed service data. These outputs are recommendations and may be incomplete or inaccurate; they do not replace an on-site diagnosis, manufacturer instruction, safety requirement, or authorized human decision.",
           "When an AI-assisted feature is enabled, the interface will identify its purpose and the relevant Privacy Notice will govern the personal data used. Cold Air ACT will not treat an AI recommendation alone as final approval or denial of a warranty claim or other decision with legal effect without an appropriate lawful basis and human review.",
         ],
       },
@@ -323,7 +323,7 @@ export const LEGAL_POLICIES = {
           "Identity and account data, such as name, email address, mobile number, alias, role, and authentication or security status.",
           "Address and location data, such as region, province, city, barangay, street address, ZIP code, saved facilities, optional map position, and technician check-in records.",
           "Order and payment-related data, such as cart items, order status, delivery details, transaction references, receipts, and payment status. Full card credentials are handled by the applicable payment provider and should not be submitted to Cold Air ACT support fields.",
-          "AC unit and warranty data, such as brand, model, horsepower, serial or QR identifier, installation date, environment details, coverage, and service history.",
+          "AC unit and warranty data, such as brand, model, horsepower, serial or QR identifier, installation date, room size, coverage, and service history.",
           "Service data, such as concern descriptions, schedules, assigned branch or technician, work status, notes, photos, parts, diagnosis, and completion reports.",
           "Technical and communications data, such as device or browser information, security and access logs, preferences, OTP delivery status, support messages, and notification status.",
           "When AI-assisted AeroPulse features are enabled, relevant input data, generated recommendations, summaries, and review outcomes needed to provide and monitor those features.",

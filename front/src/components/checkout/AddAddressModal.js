@@ -6,7 +6,6 @@ import {
   getBarangaysByCity,
 } from '../../domain/location/addressSelectors';
 import {
-  getPostalCodeHint,
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from '../../domain/location/postalCodeValidation';
@@ -81,8 +80,6 @@ function AddAddressModal({
       return { ...prev, [field]: value };
     });
   };
-  const zipCodeHint = getPostalCodeHint(address);
-
   const handleSubmit = () => {
     const normalized = {
       ...address,
@@ -206,18 +203,8 @@ function AddAddressModal({
                 maxLength={4}
                 inputMode="numeric"
                 autoComplete="postal-code"
-                aria-describedby={zipCodeHint ? 'zip-code-hint' : undefined}
                 onChange={(e) => setAddressField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 4))}
               />
-              {zipCodeHint && (
-                <small
-                  id="zip-code-hint"
-                  className="form-help-text"
-                  style={{ display: 'block', marginTop: '6px', color: '#64748b', lineHeight: 1.4 }}
-                >
-                  {zipCodeHint}
-                </small>
-              )}
             </div>
             <div className="form-group">
               <label>Phone Number *</label>

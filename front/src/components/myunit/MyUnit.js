@@ -46,9 +46,6 @@ const buildUnitFromBackend = (unit = {}) => ({
   recommendedService: unit.recommendedService || "regular_cleaning",
   recommendationBasis: unit.recommendationBasis || "",
   capacityAssessment: unit.capacityAssessment || null,
-  environmentProfile: unit.environmentProfile || null,
-  environmentRisk: unit.environmentRisk || unit.amp?.environmentRisk || null,
-  environmentAssessment: unit.environmentAssessment || "",
   technicianReportSummary: "Installation completed and your AC is registered.",
   installEnvironmentNotes: [unit.placementArea, unit.installationEnvironment]
     .filter(Boolean)

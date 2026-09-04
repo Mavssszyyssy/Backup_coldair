@@ -48,28 +48,6 @@ const serviceHistorySchema = new mongoose.Schema(
       visualWearRating: { type: Number, min: 1, max: 10 },
       estimatedHoursUsed: { type: Number, min: 0 },
       refrigerantLevel: { type: Number, min: 0, max: 100 },
-      usageHoursPerDay: { type: Number, default: 8, min: 0, max: 24 },
-      filterCondition: {
-        type: String,
-        enum: ["clean", "normal", "dusty", "clogged"],
-        default: "normal",
-      },
-      coilCondition: {
-        type: String,
-        enum: ["clean", "normal", "dusty", "iced"],
-        default: "normal",
-      },
-      drainageCondition: {
-        type: String,
-        enum: ["clear", "slow", "blocked"],
-        default: "clear",
-      },
-      voltageStability: {
-        type: String,
-        enum: ["stable", "fluctuating", "unstable"],
-        default: "stable",
-      },
-      placementArea: { type: String, default: "", trim: true },
       notes: { type: String, default: "", trim: true },
     },
 

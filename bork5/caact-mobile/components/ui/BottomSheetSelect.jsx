@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -33,9 +33,15 @@ export default function BottomSheetSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const searchInputRef = useRef(null);
+
+  const dismissKeyboard = () => {
+    searchInputRef.current?.blur?.();
+    Keyboard.dismiss();
+  };
 
   const closeSheet = () => {
-    Keyboard.dismiss();
+    dismissKeyboard();
     setQuery("");
     setOpen(false);
   };
@@ -104,7 +110,13 @@ export default function BottomSheetSelect({
         </Text>
       )}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={closeSheet}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        onRequestClose={closeSheet}
+        onDismiss={dismissKeyboard}
+      >
         <Pressable
           onPress={closeSheet}
           style={{
@@ -145,11 +157,14 @@ export default function BottomSheetSelect({
             </View>
 
             <TextField
+              ref={searchInputRef}
               label=""
               value={query}
               onChangeText={setQuery}
               placeholder={searchPlaceholder || `Search ${String(label || "options").toLowerCase()}`}
               autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={dismissKeyboard}
             />
 
             {loading ? (
@@ -178,8 +193,8 @@ export default function BottomSheetSelect({
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => {
-                      onSelect?.(item);
                       closeSheet();
+                      onSelect?.(item);
                     }}
                     activeOpacity={0.75}
                     style={{

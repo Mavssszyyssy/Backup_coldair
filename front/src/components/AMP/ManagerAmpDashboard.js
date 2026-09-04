@@ -43,7 +43,7 @@ function ManagerAmpDashboard() {
   return (
     <AmpDashboardShell
       title="Service Pipeline"
-      subtitle="Units due or approaching their maintenance date based on recorded history and operating conditions."
+      subtitle="Units due or approaching their suggested servicing date based on completed records for the same model or brand."
     >
       <div className="amp-metrics">
         <article>
@@ -75,10 +75,10 @@ function ManagerAmpDashboard() {
                 <tr>
                   <th>Unit</th>
                   <th>Customer</th>
-                  <th>Best Serviced By</th>
+                  <th>Suggested Servicing Date</th>
                   <th>Recommended Service</th>
                   <th>Warranty / Branch</th>
-                  <th>Environment / Basis</th>
+                  <th>Historical Basis / Room Match</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,7 +107,7 @@ function ManagerAmpDashboard() {
                     </td>
                     <td><strong>{humanLabel(unit.warrantyStatus, "pending_activation")}</strong><span>{unit.serviceBranch || "Branch pending"}</span></td>
                     <td>
-                      {unit.environmentRisk ? <strong>{unit.environmentRisk.recorded ? `${String(unit.environmentRisk.level || "low").replaceAll("_", " ")} environment risk` : "Environment not recorded"}</strong> : null}
+                      <strong>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</strong>
                       <span>{unit.recommendationBasis}</span>
                     </td>
                   </tr>
@@ -125,8 +125,8 @@ function ManagerAmpDashboard() {
           {!aggregate.modelTrends.length && !loading ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
         </section>
         <section className="amp-card">
-          <h2>Recorded Component Demand</h2>
-          <p className="amp-muted">Parts preparation data from components actually recorded during service.</p>
+          <h2>Major-Component Inventory History</h2>
+          <p className="amp-muted">Aggregate recorded use of the two service-trip components: compressor/motor and control board. This is inventory planning, not a unit diagnosis.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Component</th><th>Recorded uses</th></tr></thead><tbody>{aggregate.componentReplacements.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody></table></div>
           {!aggregate.componentReplacements.length && !loading ? <p className="amp-empty">No recorded component use is available yet.</p> : null}
         </section>

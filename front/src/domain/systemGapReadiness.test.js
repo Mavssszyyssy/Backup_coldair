@@ -54,6 +54,10 @@ describe("cross-surface readiness gaps", () => {
     expect(owner).toContain("these are not confirmed bookings");
     expect(owner).toContain("Assumed service value");
     expect(owner).toContain("It is not a failure rate, reliability score, or unit diagnosis");
+    expect(reports).toContain("Suggested servicing date");
+    expect(reports).not.toContain("Operating environment");
+    expect(reports).not.toContain("Technician preparation");
+    expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain("compressor/motor and control board");
   });
 
   test("superadmin queues translate internal payment codes", () => {

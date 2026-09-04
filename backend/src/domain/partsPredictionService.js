@@ -1,5 +1,6 @@
 const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
+const { MAJOR_COMPONENTS, summarizeMajorComponentUse } = require("./ampComponentCategories");
 
 const buildRecordedPartsPreparation = async ({ unitId }) => {
   const unit = await Unit.findById(unitId).lean();
@@ -11,18 +12,19 @@ const buildRecordedPartsPreparation = async ({ unitId }) => {
   }).select("_id modelName").limit(500).lean();
   const ids = [unit._id, ...comparableUnits.map((item) => item._id)];
   const histories = await ServiceHistory.find({ unit: { $in: ids }, partsUsed: { $exists: true, $ne: [] } }).select("unit partsUsed serviceDate").sort({ serviceDate: -1 }).limit(2000).lean();
-  const counts = new Map();
-  histories.forEach((history) => (history.partsUsed || []).forEach((part) => {
-    const component = String(part || "").trim(); if (component) counts.set(component, (counts.get(component) || 0) + 1);
-  }));
-  const parts = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, recordedCount]) => ({
-    name, recordedCount,
-    reason: `This component appears in ${recordedCount} recorded service record${recordedCount === 1 ? "" : "s"} for this unit or comparable units. Bring only for inspection readiness; this is not a failure diagnosis.`,
+  const trends = summarizeMajorComponentUse(histories);
+  const parts = trends.map(({ component: name, count: recordedCount }) => ({
+    name,
+    recordedCount,
+    reason: recordedCount
+      ? `${name} appears in ${recordedCount} completed service record${recordedCount === 1 ? "" : "s"} for this brand.`
+      : `No completed service record currently reports ${name.toLowerCase()} use for this brand.`,
   }));
   return {
     unitId: String(unit._id), serialNumber: unit.serialNumber, generatedAt: new Date().toISOString(), parts,
-    label: "Technician preparation suggestions",
-    note: "Suggestions are based only on recorded component history and do not confirm a fault.",
+    majorComponents: MAJOR_COMPONENTS,
+    label: "Major-component inventory history",
+    note: "This is aggregate inventory planning, not a unit diagnosis. If major-part preparation is necessary, verify both the compressor/motor and control board before dispatch.",
   };
 };
 

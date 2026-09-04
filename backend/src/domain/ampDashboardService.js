@@ -1,5 +1,7 @@
 const Unit = require("../models/Unit");
 const ServiceHistory = require("../models/ServiceHistory");
+const { summarizeMajorComponentUse } = require("./ampComponentCategories");
+const { normalizeServiceType } = require("./ampMaintenanceService");
 
 const MS_PER_DAY = 86400000;
 const DEFAULT_AVERAGE_SERVICE_REVENUE = 2500;
@@ -28,15 +30,16 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   }).select("brand modelName serviceBranch amp.recommendedService").limit(1000).lean();
   const unitIds = units.map((unit) => unit._id);
   const histories = unitIds.length
-    ? await ServiceHistory.find({ unit: { $in: unitIds } }).select("unit partsUsed serviceDate").sort({ serviceDate: -1 }).limit(5000).lean()
+    ? await ServiceHistory.find({ unit: { $in: unitIds } }).select("unit partsUsed serviceDate serviceType visitType actionTaken serviceActions").sort({ serviceDate: -1 }).limit(5000).lean()
     : [];
+  const maintenanceHistories = histories.filter((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history)));
   const unitMap = new Map(units.map((unit) => [String(unit._id), unit]));
-  const modelMap = new Map(); const brandMap = new Map(); const componentMap = new Map(); const serviceMap = new Map();
+  const modelMap = new Map(); const brandMap = new Map(); const serviceMap = new Map();
   units.forEach((unit) => {
     const serviceType = unit.amp?.recommendedService || "regular_cleaning";
     serviceMap.set(serviceType, (serviceMap.get(serviceType) || 0) + 1);
   });
-  histories.forEach((history) => {
+  maintenanceHistories.forEach((history) => {
     const unit = unitMap.get(String(history.unit));
     if (!unit) return;
     const model = [unit.brand, unit.modelName].filter(Boolean).join(" ") || "Unspecified model";
@@ -45,7 +48,6 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
     modelRow.serviceCount += 1; modelRow.units.add(String(history.unit)); modelMap.set(model, modelRow);
     const brandRow = brandMap.get(brand) || { label: brand, serviceCount: 0, units: new Set() };
     brandRow.serviceCount += 1; brandRow.units.add(String(history.unit)); brandMap.set(brand, brandRow);
-    (history.partsUsed || []).forEach((part) => { const label = String(part || "").trim(); if (label) componentMap.set(label, (componentMap.get(label) || 0) + 1); });
   });
   const finish = (map) => Array.from(map.values()).map((item) => ({
     label: item.label, recordedServices: item.serviceCount, servicedUnits: item.units.size,
@@ -53,7 +55,7 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   })).sort((a, b) => b.servicesPerUnit - a.servicesPerUnit || b.recordedServices - a.recordedServices).slice(0, 10);
   return {
     modelTrends: finish(modelMap), brandTrends: finish(brandMap),
-    componentReplacements: Array.from(componentMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([component, count]) => ({ component, count })),
+    componentReplacements: summarizeMajorComponentUse(histories),
     serviceDemand: Array.from(serviceMap.entries()).map(([serviceType, count]) => ({ serviceType, count })).sort((a, b) => b.count - a.count),
   };
 };
@@ -88,7 +90,6 @@ const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
         overdue: dueDate < now, lastServiceDate: unit.lastVisit?.serviceDate || null,
         warrantyStatus: unit.warranty?.status || "pending_activation",
         capacityAssessment: unit.amp.capacityAssessment || null,
-        environmentRisk: unit.amp.environmentRisk || null,
       };
     }),
   };
@@ -129,15 +130,14 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
     const date = addMonths(firstMonth, index); const volume = bucketMap.get(monthKey(date)) || 0;
     return { month: monthKey(date), label: monthLabel(date), serviceVolume: volume, projectedRevenue: volume * serviceRevenue };
   });
-  const parts = new Map();
-  componentRows.forEach((row) => (row.partsUsed || []).forEach((part) => { const name = String(part || "").trim(); if (name) parts.set(name, (parts.get(name) || 0) + 1); }));
+  const parts = summarizeMajorComponentUse(componentRows);
   return {
     generatedAt: new Date().toISOString(), months: forecastMonths, averageServiceRevenue: serviceRevenue,
     revenueBasis: "scenario_estimate", revenueDisclaimer: REVENUE_DISCLAIMER,
     totalForecastedServices: forecast.reduce((sum, item) => sum + item.serviceVolume, 0),
     totalProjectedRevenue: forecast.reduce((sum, item) => sum + item.projectedRevenue, 0), forecast,
     recommendedServiceDemand: serviceTypes.map((item) => ({ serviceType: item._id, count: item.count })),
-    recordedPartsTrend: Array.from(parts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([component, count]) => ({ component, count })),
+    recordedPartsTrend: parts,
     branchMaintenanceVolume: branchRows.map((item) => ({ branch: item._id, upcomingServices: item.upcomingServices })),
     modelTrends: recordedTrends.modelTrends,
     brandTrends: recordedTrends.brandTrends,

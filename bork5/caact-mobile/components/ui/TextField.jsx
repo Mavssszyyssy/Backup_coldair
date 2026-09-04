@@ -1,5 +1,5 @@
 // components/ui/TextField.jsx
-import React, { useId } from "react";
+import React, { forwardRef, useId } from "react";
 import {
   InputAccessoryView,
   Keyboard,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
-export default function TextField({
+const TextField = forwardRef(function TextField({
   label,
   value,
   onChangeText,
@@ -27,7 +27,7 @@ export default function TextField({
   blurOnSubmit,
   style,
   ...props
-}) {
+}, forwardedRef) {
   const generatedId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const accessoryId = inputAccessoryViewID || `coldair-keyboard-${generatedId}`;
   const usesAccessory = Platform.OS === "ios" && showKeyboardDone;
@@ -48,6 +48,7 @@ export default function TextField({
       ) : null}
 
       <TextInput
+        ref={forwardedRef}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -125,4 +126,6 @@ export default function TextField({
       ) : null}
     </View>
   );
-}
+});
+
+export default TextField;

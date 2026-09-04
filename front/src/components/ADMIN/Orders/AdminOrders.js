@@ -736,7 +736,7 @@ const AdminOrders = ({ embedded = false }) => {
                           <div className="admin-order-amp-record" key={registration.serialNumber}>
                             <b>{registration.serialNumber}</b>
                             <span>
-                              {registration.ampParameters?.placementArea || 'Placement not recorded'} · Filter: {registration.ampParameters?.filterCondition || 'normal'} · Coil: {registration.ampParameters?.coilCondition || 'normal'} · Condition: {registration.ampParameters?.conditionRating || 'good'}
+                              Room size: {registration.ampParameters?.roomSizeSqm ? `${registration.ampParameters.roomSizeSqm} m²` : 'Not recorded'} · Condition: {registration.ampParameters?.conditionRating || 'good'}
                             </span>
                             {registration.ampParameters?.notes ? <small>{registration.ampParameters.notes}</small> : null}
                           </div>

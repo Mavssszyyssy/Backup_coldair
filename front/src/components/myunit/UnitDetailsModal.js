@@ -58,7 +58,7 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
           </div>
           {unit.bestServicedByLabel && (
             <div className="info-row">
-              <span className="info-label">Recommended Service Date</span>
+              <span className="info-label">Suggested Servicing Date</span>
               <span className="info-value">{unit.bestServicedByLabel}</span>
             </div>
           )}
@@ -73,12 +73,6 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
             <div className="info-row">
               <span className="info-label">Installed At</span>
               <span className="info-value">{unit.installEnvironmentNotes}</span>
-            </div>
-          )}
-          {unit.environmentRisk && (
-            <div className="info-row">
-              <span className="info-label">Operating Environment</span>
-              <span className="info-value">{unit.environmentRisk.recorded ? `${String(unit.environmentRisk.level || "low").replace(/_/g, " ")} risk` : "Not recorded yet"}</span>
             </div>
           )}
           {unit.notes && (

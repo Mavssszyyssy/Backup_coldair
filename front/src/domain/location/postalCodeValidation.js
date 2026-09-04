@@ -40,21 +40,9 @@ const cityExistsAtAnotherLocation = (address = {}) => {
   return Boolean(city) && normalizedRuleLocations.some((location) => location.city === city);
 };
 
-const formatRule = (rule) => String(rule || '').replace('-', '\u2013');
-
 export const getSuggestedPostalCode = (address = {}) => {
   const rules = getPostalCodeRules(address);
   return rules.length === 1 && /^\d{4}$/.test(rules[0]) ? rules[0] : '';
-};
-
-export const getPostalCodeHint = (address = {}) => {
-  const rules = getPostalCodeRules(address);
-  if (!rules.length || !address.city) return '';
-  const label = rules.length === 1 ? formatRule(rules[0]) : rules.map(formatRule).join(', ');
-  const descriptor = rules.length === 1
-    ? (rules[0].includes('-') ? 'code range' : 'code')
-    : 'codes';
-  return `Valid ZIP ${descriptor} for ${address.city}: ${label}`;
 };
 
 const matchesRule = (value, rule) => {

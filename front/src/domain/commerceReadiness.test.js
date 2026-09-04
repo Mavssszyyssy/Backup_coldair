@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  getPostalCodeHint,
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from "./location/postalCodeValidation";
@@ -19,7 +18,6 @@ describe("customer commerce rules", () => {
     const pasayAddress = { region: "NCR", province: "Metro Manila", city: "Pasay City", barangay: "Barangay 142" };
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" })).toBe("");
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" })).toMatch(/does not match/i);
-    expect(getPostalCodeHint(pasayAddress)).toContain("1300\u20131309");
     expect(getBarangaysByCity("NCR", "Metro Manila", "Pasay City")).toHaveLength(201);
   });
 

@@ -6,6 +6,7 @@ const Task = require("../models/Task");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
+const { summarizeMajorComponentUse } = require("../domain/ampComponentCategories");
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const REPORT_TYPES = {
@@ -41,16 +42,15 @@ const aggregateReliability = async (unit, branch) => {
   const histories = ids.length ? await ServiceHistory.find({ unit: { $in: ids } }).select("unit serviceType visitType findings actionTaken partsUsed serviceDate").sort({ serviceDate: -1 }).limit(5000).lean() : [];
   const byModel = new Map();
   units.forEach((item) => byModel.set(String(item._id), `${item.brand || "Unknown"} ${item.modelName || "Unknown"}`.trim()));
-  const serviceCounts = new Map(); const partCounts = new Map();
+  const serviceCounts = new Map();
   histories.forEach((item) => {
     const model = byModel.get(String(item.unit)) || "Unknown model"; serviceCounts.set(model, (serviceCounts.get(model) || 0) + 1);
-    (item.partsUsed || []).forEach((part) => { const name = cleanText(part, 100); if (name) partCounts.set(name, (partCounts.get(name) || 0) + 1); });
   });
   return {
     scope: unit?.brand ? `${unit.brand} units at ${branch}` : branch,
     unitCount: units.length, recordedServiceCount: histories.length,
     modelsByRecordedService: Array.from(serviceCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([model, count]) => ({ model, count })),
-    partsByRecordedUse: Array.from(partCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([component, count]) => ({ component, count })),
+    partsByRecordedUse: summarizeMajorComponentUse(histories),
     note: "Counts describe recorded history only and do not diagnose a specific AC unit.",
   };
 };
@@ -93,8 +93,6 @@ const getMaintenanceRecommendation = async (req, res) => {
       insight: ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
         best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
         recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
-        environment_assessment: recommendation.environmentAssessment,
-        technician_preparation: recommendation.commonComponents.map((item) => item.component),
       },
       warning: ai.error || "", generatedAt: new Date().toISOString(),
     });
@@ -141,9 +139,6 @@ const generateAmpReport = async (req, res) => {
           lastServiceDate: recommendation.lastServiceDate, lastCleaningDate: recommendation.lastCleaningDate,
           recommendedServiceLabel: displayService(recommendation.recommendedService), recommendationBasis: recommendation.recommendationBasis,
           historicalBasis: recommendation.historicalBasis, capacityAssessment: recommendation.capacityAssessment,
-          environmentProfile: recommendation.environmentProfile, environmentRisk: recommendation.environmentRisk,
-          environmentAssessment: insight?.environment_assessment || recommendation.environmentAssessment,
-          technicianPreparation: insight?.technician_preparation || recommendation.commonComponents.map((item) => item.component),
           interpretation: insight?.recommendation_summary || recommendation.recommendationBasis,
         },
         serviceHistory: history.map(formatHistory), serviceRequests: requests.map((item) => ({ date: item.createdAt, type: item.serviceType || item.issueType || "service", status: item.status || "" })),

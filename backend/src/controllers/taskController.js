@@ -9,7 +9,6 @@ const Notification = require("../models/Notification");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
-const { normalizeEnvironmentProfile } = require("../domain/ampEnvironmentRisk");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
 const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
 const {
@@ -300,11 +299,6 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
 
   const address = task.payload?.customerAddress || {};
   const ampParameters = registration.ampParameters || {};
-  const environmentProfile = normalizeEnvironmentProfile({
-    ...ampParameters,
-    capturedBy: registration.technicianId || task.assignedTechnicianId || undefined,
-    capturedAt: registration.submittedAt || new Date(),
-  });
   const installedAt = ampParameters.installationTimestamp
     ? new Date(ampParameters.installationTimestamp)
     : ampParameters.installationDate
@@ -327,7 +321,6 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
         category: String(product?.category || ""),
         capacityHp: parseCapacityHp(product?.specs),
         roomSizeSqm: Number(ampParameters.roomSizeSqm || 0) || null,
-        environmentProfile,
         customer: customerId,
         customerName: String(task.customer || ""),
         serviceBranch: String(task.branch || serialUnit?.branch || ""),
@@ -614,12 +607,6 @@ const recordCompletedServiceHistory = async (task, request) => {
     serviceType: recordedServiceType,
     conditionRating: validConditionRating,
     technicianInputs: {
-      usageHoursPerDay: Number(task.payload?.usageHoursPerDay || 8),
-      filterCondition: String(task.payload?.filterCondition || "normal").toLowerCase(),
-      coilCondition: String(task.payload?.coilCondition || "normal").toLowerCase(),
-      drainageCondition: String(task.payload?.drainageCondition || "clear").toLowerCase(),
-      voltageStability: String(task.payload?.voltageStability || "stable").toLowerCase(),
-      placementArea: String(task.payload?.placementArea || unit.installation?.addressLine || ""),
       notes: String(task.payload?.findings || task.findings || task.proof?.notes || task.description || "Service completed"),
     },
     serviceActions: actions.length ? actions : ["Service completed"],
@@ -635,7 +622,7 @@ const recordCompletedServiceHistory = async (task, request) => {
     recommendedService: recommendation.recommendedService,
     recommendationBasis: recommendation.recommendationBasis,
     nextIdealServiceDate: recommendation.bestServicedBy,
-    nextIdealServicePeriod: `Best serviced by ${new Date(recommendation.bestServicedBy).toLocaleDateString("en-US")}`,
+    nextIdealServicePeriod: `Suggested servicing date: ${new Date(recommendation.bestServicedBy).toLocaleDateString("en-US")}`,
     calculatedAt: new Date(),
   };
   await history.save();
@@ -723,21 +710,7 @@ const buildRegistrationRecord = ({ req, task, serialNumber, payload, status }) =
     installationDate,
     installationTime,
     installationTimestamp: `${installationDate}T${installationTime}:00`,
-    lastServiceDate: String(payload.lastServiceDate || payload.installationDate || new Date().toISOString()),
-    placementArea: String(payload.placementArea || ""),
-    placementType: String(payload.placementType || "other"),
     roomSizeSqm: Number(payload.roomSizeSqm || 0) || null,
-    usageHoursPerDay: Number(payload.usageHoursPerDay || 8),
-    occupancyLevel: String(payload.occupancyLevel || "normal"),
-    dustExposure: String(payload.dustExposure || "normal"),
-    humidityExposure: String(payload.humidityExposure || "normal"),
-    greaseSmokeExposure: String(payload.greaseSmokeExposure || "none"),
-    coastalExposure: payload.coastalExposure === true || String(payload.coastalExposure).toLowerCase() === "true",
-    directSunExposure: String(payload.directSunExposure || "normal"),
-    filterCondition: String(payload.filterCondition || "normal"),
-    coilCondition: String(payload.coilCondition || "normal"),
-    drainageCondition: String(payload.drainageCondition || "clear"),
-    voltageStability: String(payload.voltageStability || "stable"),
     conditionRating: String(payload.conditionRating || "good"),
     notes: String(payload.notes || ""),
   };
@@ -752,10 +725,7 @@ const buildRegistrationRecord = ({ req, task, serialNumber, payload, status }) =
     submittedAt: new Date().toISOString(),
     ampParameters,
     installationProof: {
-      placementArea: ampParameters.placementArea,
-      filterCondition: ampParameters.filterCondition,
-      coilCondition: ampParameters.coilCondition,
-      drainageCondition: ampParameters.drainageCondition,
+      roomSizeSqm: ampParameters.roomSizeSqm,
       conditionRating: ampParameters.conditionRating,
       notes: ampParameters.notes,
       recordedAt: new Date().toISOString(),
@@ -1326,6 +1296,10 @@ const registerAmpUnit = async (req, res) => {
     if (isDefectiveHold && !String(payload.defectReason || "").trim()) {
       return res.status(400).json({ message: "Add a defect reason before holding task completion." });
     }
+    const roomSizeSqm = Number(payload.roomSizeSqm);
+    if (!isDefectiveHold && (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000)) {
+      return res.status(400).json({ message: "Enter a room size from 1 to 10,000 square meters before registering this AC unit." });
+    }
 
     const normalizedSerialNumber = assignedSerial || serialNumber;
     const { product, serialUnit } = await findProductSerialUnit(normalizedSerialNumber);
@@ -1398,7 +1372,6 @@ const updateTaskStatus = async (req, res) => {
     if (!status || !allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid task status." });
     }
-
     const task = await findTaskForRequest(req.params.taskId, req);
     if (!task) {
       return res.status(404).json({ message: "Task not found" });

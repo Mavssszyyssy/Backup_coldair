@@ -69,9 +69,9 @@ const FAQ_ITEMS = [
   {
     id: "amp-maintenance",
     category: "AMP",
-    question: "What is the recommended service date?",
+    question: "What is the suggested servicing date?",
     answer:
-      "It is the suggested date for your next AC cleaning or maintenance. Following it can help keep your unit cooling efficiently and reduce unexpected problems.",
+      "It is the suggested date for your next AC cleaning, based on completed cleaning records for the same model or brand. Regular cleaning applies within one year of the last cleaning; deep cleaning applies after more than one year.",
   },
   {
     id: "qr-scanning",

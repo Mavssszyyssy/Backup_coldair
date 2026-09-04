@@ -50,10 +50,7 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
     recommendationBasis: recommendation?.recommendationBasis || json.amp?.recommendationBasis || "",
     historicalBasis: recommendation?.historicalBasis || null,
     capacityAssessment: recommendation?.capacityAssessment || json.amp?.capacityAssessment || null,
-    environmentProfile: recommendation?.environmentProfile || json.environmentProfile || null,
-    environmentRisk: recommendation?.environmentRisk || json.amp?.environmentRisk || null,
-    environmentAssessment: recommendation?.environmentAssessment || "",
-    commonComponents: recommendation?.commonComponents || [], overdue: Boolean(recommendation?.overdue), amp: json.amp || {},
+    overdue: Boolean(recommendation?.overdue), amp: json.amp || {},
     warranty: { ...warranty, claims: Array.isArray(warranty.claims) ? warranty.claims : [], serviceRecords: Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : [], timeline: Array.isArray(warranty.timeline) ? warranty.timeline : [] },
     warrantyStatus: warranty.status || "pending_activation", warrantyExpirationDate: warranty.expirationDate || "",
     warrantyRecommendation: getWarrantyRecommendation(warranty), serviceHistory: history.map(serviceHistoryItem),
@@ -115,8 +112,6 @@ const calculateNextServiceDate = async (req, res) => {
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
       best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
       recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
-      environment_assessment: recommendation.environmentAssessment,
-      technician_preparation: recommendation.commonComponents.map((item) => item.component),
     };
     await notifyDueMaintenance(unit, recommendation);
     return res.json({ provider: ai.provider, recommendation, insight, warning: ai.error || "" });
