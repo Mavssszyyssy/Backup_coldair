@@ -275,7 +275,14 @@ export default function CustomerServicesScreen() {
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             {selectedActiveRequest.serviceType || selectedActiveRequest.issueType || "Service"} is already being handled. Updates will synchronize here and in notifications.
           </Text>
-          <Button title="Open AC Details" variant="secondary" onPress={() => router.push(`/customer/units/${selectedUnit.id}`)} />
+          <Button
+            title="View Request Details"
+            variant="secondary"
+            onPress={() => router.push({
+              pathname: "/customer/units/[id]",
+              params: { id: selectedUnit.id, page: "service" },
+            })}
+          />
         </> : null}
         {activeWarrantyClaim ? <>
           <StatusChip label={`Claim ${readableStatus(activeWarrantyClaim.status)}`} color={COLORS.warning} />

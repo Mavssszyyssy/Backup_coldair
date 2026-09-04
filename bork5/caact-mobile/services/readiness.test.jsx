@@ -9,7 +9,11 @@ import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
 import { formatCartHorsepower, formatCartModel } from "./cartDisplayService";
 import { resolveOrderDeliveryStatus } from "./orderStatusService";
-import { getLatestTaskCheckIn, isActiveServiceRequest } from "./customerHistoryLogic";
+import {
+  canCustomerCancelServiceRequest,
+  getLatestTaskCheckIn,
+  isActiveServiceRequest,
+} from "./customerHistoryLogic";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -92,8 +96,19 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("Service history summary");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
     expect(detailsSource).toContain('value={String(activeRequests.length)}');
+    expect(detailsSource).toContain("Request Timeline");
+    expect(detailsSource).toContain("Cancel Request");
+    expect(detailsSource).toContain("cancelServiceRequest");
+    expect(fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "services.jsx"),
+      "utf8",
+    )).toContain('params: { id: selectedUnit.id, page: "service" }');
     expect(isActiveServiceRequest({ status: "Completed" })).toBe(false);
     expect(isActiveServiceRequest({ status: "In Progress" })).toBe(true);
+    expect(canCustomerCancelServiceRequest({ status: "Submitted" })).toBe(true);
+    expect(canCustomerCancelServiceRequest({ status: "Assigned" })).toBe(true);
+    expect(canCustomerCancelServiceRequest({ status: "In Progress" })).toBe(false);
+    expect(canCustomerCancelServiceRequest({ status: "Completed" })).toBe(false);
     expect(getLatestTaskCheckIn([
       { id: "old", payload: { checkIn: { checkedInAt: "2026-01-01T00:00:00.000Z" } } },
       { id: "new", checkIn: { checkedInAt: "2026-02-01T00:00:00.000Z" } },

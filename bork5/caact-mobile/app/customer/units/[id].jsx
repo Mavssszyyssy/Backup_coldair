@@ -22,7 +22,12 @@ import {
   buildMaintenanceRecommendation,
 } from "../../../services/maintenanceRecommendationService";
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
-import { getLatestTaskCheckIn, isActiveServiceRequest } from "../../../services/customerHistoryLogic";
+import {
+  canCustomerCancelServiceRequest,
+  getLatestTaskCheckIn,
+  isActiveServiceRequest,
+} from "../../../services/customerHistoryLogic";
+import { cancelServiceRequest } from "../../../services/serviceRequestStorage";
 import { formatUnitHorsepower } from "../../../services/unitDisplayService";
 import {
   cacheUnitUpdate,
@@ -103,6 +108,47 @@ function serviceName(value = "") {
   return labels[normalized] || normalized.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function serviceRequestHistoryForUnit(loadedUnit = {}, loadedHistory = {}) {
+  const requests = Array.isArray(loadedHistory.requests) ? loadedHistory.requests : [];
+  const linkedTasks = Array.isArray(loadedHistory.linkedTasks) ? loadedHistory.linkedTasks : [];
+  const unitId = String(loadedUnit.id || "");
+  const unitName = String(loadedUnit.unitName || "").trim().toLowerCase();
+  const serialNumber = String(loadedUnit.serialNumber || "").trim().toLowerCase();
+
+  const relatedRequests = requests.filter((request) =>
+    (unitId && String(request.unitId || "") === unitId) ||
+    (unitName && String(request.unitName || "").trim().toLowerCase() === unitName) ||
+    (serialNumber && String(request.unitSerialNumber || "").trim().toLowerCase() === serialNumber),
+  );
+  const relatedRequestIds = new Set(
+    relatedRequests.map((request) => String(request.id || "")).filter(Boolean),
+  );
+  const relatedTasks = linkedTasks.filter((task) =>
+    (unitId && String(task.unitId || "") === unitId) ||
+    (serialNumber && Array.isArray(task.serialNumbers) && task.serialNumbers.some(
+      (value) => String(value || "").trim().toLowerCase() === serialNumber,
+    )) ||
+    (unitName && String(task.unitName || "").trim().toLowerCase() === unitName) ||
+    relatedRequestIds.has(String(task.requestId || "")),
+  );
+
+  return {
+    requests: relatedRequests,
+    linkedTasks: relatedTasks,
+    completedServices: relatedTasks.filter(
+      (task) => String(task.status || "").trim().toLowerCase() === "completed",
+    ),
+  };
+}
+
+function requestStatusColors(status = "") {
+  const normalized = String(status).trim().toLowerCase();
+  if (normalized === "completed") return { background: COLORS.successLight, text: COLORS.success };
+  if (normalized === "cancelled") return { background: COLORS.dangerLight, text: COLORS.danger };
+  if (["assigned", "in progress"].includes(normalized)) return { background: COLORS.primaryLight, text: COLORS.primaryDark };
+  return { background: COLORS.warningLight, text: COLORS.warning };
+}
+
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -122,6 +168,7 @@ export default function CustomerUnitDetailsScreen() {
   const [ampReportLoading, setAmpReportLoading] = useState("");
   const [roomSize, setRoomSize] = useState("");
   const [roomSaving, setRoomSaving] = useState(false);
+  const [cancellingRequestId, setCancellingRequestId] = useState("");
   const [detailPage, setDetailPage] = useState(() => detailPageFromParam(params.page));
 
   const unitId = readParam(params.id);
@@ -185,6 +232,59 @@ export default function CustomerUnitDetailsScreen() {
     }
   };
 
+  const handleCancelServiceRequest = (request) => {
+    if (!canCustomerCancelServiceRequest(request)) {
+      Alert.alert(
+        "Cancellation unavailable",
+        "This request can no longer be cancelled because the technician has already started or completed the work.",
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Cancel this service request?",
+      "The branch and assigned technician will be notified. You can book another visit afterward.",
+      [
+        { text: "Keep Request", style: "cancel" },
+        {
+          text: "Cancel Request",
+          style: "destructive",
+          onPress: async () => {
+            setCancellingRequestId(String(request.id));
+            try {
+              const updatedRequest = await cancelServiceRequest(
+                request.id,
+                current?.name || current?.email || "Customer",
+                "Service request cancelled by the customer before work began.",
+              );
+              try {
+                const refreshedHistory = await getCustomerServiceHistory(current?.id);
+                setHistory(serviceRequestHistoryForUnit(unit, refreshedHistory));
+              } catch {
+                setHistory((previous) => ({
+                  ...previous,
+                  requests: previous.requests.map((item) =>
+                    String(item.id) === String(updatedRequest.id) ? updatedRequest : item,
+                  ),
+                  linkedTasks: previous.linkedTasks.map((task) =>
+                    String(task.id || "") === String(updatedRequest.linkedTaskId || "")
+                      ? { ...task, status: "cancelled" }
+                      : task,
+                  ),
+                }));
+              }
+              Alert.alert("Request cancelled", "The service request and any scheduled work have been cancelled.");
+            } catch (error) {
+              Alert.alert("Unable to cancel request", error?.message || "Please try again.");
+            } finally {
+              setCancellingRequestId("");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -208,34 +308,8 @@ export default function CustomerUnitDetailsScreen() {
             return;
           }
 
-          const relatedRequests = loadedHistory.requests.filter(
-            (request) =>
-              String(request.unitId || "") === String(loadedUnit.id) ||
-              String(request.unitName || "").toLowerCase() ===
-                String(loadedUnit.unitName || "").toLowerCase(),
-          );
-          const relatedRequestIds = new Set(
-            relatedRequests.map((request) => String(request.id)),
-          );
-          const relatedTasks = loadedHistory.linkedTasks.filter(
-            (task) =>
-              String(task.unitId || "") === String(loadedUnit.id) ||
-              (Array.isArray(task.serialNumbers) && task.serialNumbers.some(
-                (serialNumber) => String(serialNumber || "").toLowerCase() === String(loadedUnit.serialNumber || "").toLowerCase(),
-              )) ||
-              String(task.unitName || "").toLowerCase() ===
-                String(loadedUnit.unitName || "").toLowerCase() ||
-              relatedRequestIds.has(String(task.requestId || "")),
-          );
-
           setUnit(loadedUnit);
-          setHistory({
-            requests: relatedRequests,
-            linkedTasks: relatedTasks,
-            completedServices: relatedTasks.filter(
-              (task) => String(task.status || "").toLowerCase() === "completed",
-            ),
-          });
+          setHistory(serviceRequestHistoryForUnit(loadedUnit, loadedHistory));
           const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
           setRecommendation(nextRecommendation);
           setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
@@ -490,11 +564,117 @@ export default function CustomerUnitDetailsScreen() {
             )}
           </Card>
           <Card>
-            <CustomerSectionHeader title="Service Request Status" />
+            <CustomerSectionHeader title="Service Requests" />
             <DetailRow label="Open Requests" value={String(activeRequests.length)} />
-            <DetailRow label="Assigned Work Orders" value={String(history.linkedTasks.length)} />
+            <DetailRow label="Linked Work Orders" value={String(history.linkedTasks.length)} />
             <DetailRow label="Completed Services" value={String(history.completedServices.length)} />
-            <Button title="Book Service for This AC" onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })} leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />} />
+            {history.requests.length ? history.requests.map((request, requestIndex) => {
+              const statusColors = requestStatusColors(request.status);
+              const requestTimeline = Array.isArray(request.timeline)
+                ? [...request.timeline].sort(
+                    (left, right) => new Date(left.timestamp || 0) - new Date(right.timestamp || 0),
+                  )
+                : [];
+              const linkedTask = history.linkedTasks.find(
+                (task) =>
+                  String(task.id || "") === String(request.linkedTaskId || "") ||
+                  String(task.requestId || "") === String(request.id || ""),
+              );
+              const requestReference = String(request.id || "").slice(-8).toUpperCase();
+
+              return (
+                <View
+                  key={request.id || `service-request-${requestIndex}`}
+                  style={{
+                    borderTopWidth: 1,
+                    borderTopColor: COLORS.border,
+                    paddingTop: SPACING.md,
+                    marginTop: SPACING.md,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: SPACING.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.black }}>
+                        {serviceName(request.serviceType || request.issueType)}
+                      </Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, marginTop: 2 }}>
+                        Request {requestReference || requestIndex + 1}
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: statusColors.background, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm + 3, paddingVertical: 6 }}>
+                      <Text style={{ color: statusColors.text, fontSize: FONT.sm, fontWeight: FONT.black }}>
+                        {request.status || "Submitted"}
+                      </Text>
+                    </View>
+                  </View>
+                  <DetailRow label="Concern" value={request.issueDescription || request.concern || "Service requested"} multiline />
+                  <DetailRow label="Preferred visit" value={formatDate(request.preferredDate)} />
+                  <DetailRow label="Submitted" value={formatDateTime(request.createdAt)} />
+                  <DetailRow label="Responsible branch" value={request.branch || "Being assigned"} />
+                  <DetailRow
+                    label="Technician"
+                    value={request.assignedTechnicianName || linkedTask?.assignedTechnicianName || "Not assigned yet"}
+                  />
+                  {request.taskCode || linkedTask?.taskCode ? (
+                    <DetailRow label="Work order" value={request.taskCode || linkedTask.taskCode} />
+                  ) : null}
+
+                  <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.md }}>
+                    Request Timeline
+                  </Text>
+                  {requestTimeline.length ? requestTimeline.map((event, eventIndex) => (
+                    <View
+                      key={event.id || `${event.title}-${event.timestamp}-${eventIndex}`}
+                      style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}
+                    >
+                      <View style={{ alignItems: "center", width: 18 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: RADIUS.full, backgroundColor: statusColors.text, marginTop: 4 }} />
+                        {eventIndex < requestTimeline.length - 1 ? (
+                          <View style={{ width: 2, flex: 1, minHeight: 34, backgroundColor: COLORS.border, marginTop: 3 }} />
+                        ) : null}
+                      </View>
+                      <View style={{ flex: 1, paddingBottom: SPACING.xs }}>
+                        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>
+                          {event.title || "Request updated"}
+                        </Text>
+                        {event.description ? (
+                          <Text style={{ color: COLORS.textSecondary, lineHeight: 19, marginTop: 2 }}>{event.description}</Text>
+                        ) : null}
+                        <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, marginTop: 3 }}>
+                          {[event.actor, formatDateTime(event.timestamp)].filter(Boolean).join(" · ")}
+                        </Text>
+                      </View>
+                    </View>
+                  )) : (
+                    <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
+                      The request was submitted. Further updates will appear here.
+                    </Text>
+                  )}
+
+                  {canCustomerCancelServiceRequest(request) ? (
+                    <Button
+                      title="Cancel Request"
+                      variant="danger"
+                      size="sm"
+                      loading={String(cancellingRequestId) === String(request.id)}
+                      disabled={Boolean(cancellingRequestId)}
+                      onPress={() => handleCancelServiceRequest(request)}
+                      leftIcon={<Ionicons name="close-circle-sharp" size={17} color={COLORS.surface} />}
+                    />
+                  ) : null}
+                </View>
+              );
+            }) : (
+              <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
+                No service request has been submitted for this AC yet.
+              </Text>
+            )}
+            <Button
+              title={activeServiceRequest ? "An Open Request Already Exists" : "Book Service for This AC"}
+              disabled={Boolean(activeServiceRequest)}
+              onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })}
+              leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />}
+            />
           </Card>
           {unit?.serviceHistory?.length ? (
             <Card>
