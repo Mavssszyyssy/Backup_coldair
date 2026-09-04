@@ -2,9 +2,11 @@ const Unit = require("../models/Unit");
 const ServiceHistory = require("../models/ServiceHistory");
 const { summarizeMajorComponentUse } = require("./ampComponentCategories");
 const { normalizeServiceType } = require("./ampMaintenanceService");
+const { BRANCHES } = require("./branchRouting");
 
 const MS_PER_DAY = 86400000;
 const DEFAULT_AVERAGE_SERVICE_REVENUE = 2500;
+const UNASSIGNED_BRANCH = "Unassigned";
 const REVENUE_DISCLAIMER = "Scenario revenue is calculated from upcoming recommended maintenance dates multiplied by the assumed average service value; it is not booked or confirmed revenue.";
 const boundedNumber = (value, { fallback, min, max, integer = false, label }) => {
   if (value === undefined || value === null || String(value).trim() === "") return fallback;
@@ -22,11 +24,25 @@ const addMonths = (date, months) => new Date(Date.UTC(date.getUTCFullYear(), dat
 const monthKey = (date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 const monthLabel = (date) => date.toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 const daysBetween = (from, to) => Math.ceil((to.getTime() - from.getTime()) / MS_PER_DAY);
+const branchFilterMatch = (branch = "") => {
+  if (!branch) return {};
+  if (branch === UNASSIGNED_BRANCH) {
+    return {
+      $or: [
+        { serviceBranch: { $exists: false } },
+        { serviceBranch: null },
+        { serviceBranch: "" },
+        { serviceBranch: UNASSIGNED_BRANCH },
+      ],
+    };
+  }
+  return { serviceBranch: branch };
+};
 
 const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   const units = await Unit.find({
     status: { $ne: "retired" },
-    ...(branch ? { serviceBranch: branch } : {}),
+    ...branchFilterMatch(branch),
   }).select("brand modelName serviceBranch amp.recommendedService").limit(1000).lean();
   const unitIds = units.map((unit) => unit._id);
   const histories = unitIds.length
@@ -60,25 +76,57 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   };
 };
 
-const getManagerServicePipeline = async ({ days = 30, branch = "" } = {}) => {
+const getManagerServicePipeline = async ({ days = 30, branch = "", includeAllBranches = false } = {}) => {
   const windowDays = boundedNumber(days, { fallback: 30, min: 1, max: 365, integer: true, label: "Pipeline window" });
   const now = new Date();
   const windowEnd = addDays(now, windowDays);
-  const [units, aggregate] = await Promise.all([Unit.aggregate([
-    { $match: {
-      status: { $in: ["active", "service_due"] },
-      "amp.bestServicedBy": { $lte: windowEnd },
-      ...(branch ? { serviceBranch: branch } : {}),
-    } },
+  const baseMatch = {
+    status: { $in: ["active", "service_due"] },
+    "amp.bestServicedBy": { $lte: windowEnd },
+  };
+  const unitMatch = { ...baseMatch, ...branchFilterMatch(branch) };
+  const summaryMatch = {
+    ...baseMatch,
+    ...(!includeAllBranches ? branchFilterMatch(branch) : {}),
+  };
+  const [units, aggregate, recordedBranchSummary] = await Promise.all([Unit.aggregate([
+    { $match: unitMatch },
     { $lookup: { from: "servicehistories", let: { unitId: "$_id" }, pipeline: [
       { $match: { $expr: { $eq: ["$unit", "$$unitId"] } } }, { $sort: { serviceDate: -1 } }, { $limit: 1 },
       { $project: { serviceDate: 1, serviceType: 1, visitType: 1, findings: 1, actionTaken: 1, partsUsed: 1 } },
     ], as: "lastVisit" } },
     { $addFields: { lastVisit: { $first: "$lastVisit" } } },
     { $sort: { "amp.bestServicedBy": 1 } }, { $limit: 200 },
-  ]), buildRecordedMaintenanceTrends({ branch })]);
+  ]), buildRecordedMaintenanceTrends({ branch }), Unit.aggregate([
+    { $match: summaryMatch },
+    { $group: {
+      _id: {
+        $let: {
+          vars: { branch: { $trim: { input: { $ifNull: ["$serviceBranch", ""] } } } },
+          in: { $cond: [{ $eq: ["$$branch", ""] }, UNASSIGNED_BRANCH, "$$branch"] },
+        },
+      },
+      total: { $sum: 1 },
+      overdue: { $sum: { $cond: [{ $lt: ["$amp.bestServicedBy", now] }, 1, 0] } },
+      upcoming: { $sum: { $cond: [{ $gte: ["$amp.bestServicedBy", now] }, 1, 0] } },
+    } },
+    { $sort: { _id: 1 } },
+  ])]);
+  const summaryByBranch = new Map(recordedBranchSummary.map((item) => [item._id, item]));
+  const visibleBranches = includeAllBranches
+    ? [...BRANCHES, UNASSIGNED_BRANCH]
+    : [branch || UNASSIGNED_BRANCH];
+  const branchSummary = visibleBranches.map((branchName) => {
+    const item = summaryByBranch.get(branchName) || {};
+    return {
+      branch: branchName,
+      total: Number(item.total || 0),
+      overdue: Number(item.overdue || 0),
+      upcoming: Number(item.upcoming || 0),
+    };
+  });
   return {
-    generatedAt: new Date().toISOString(), windowDays, aggregate,
+    generatedAt: new Date().toISOString(), windowDays, aggregate, branchSummary,
     units: units.map((unit) => {
       const dueDate = new Date(unit.amp.bestServicedBy);
       return {
@@ -144,4 +192,4 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
   };
 };
 
-module.exports = { boundedNumber, getManagerServicePipeline, getOwnerServiceForecast };
+module.exports = { boundedNumber, branchFilterMatch, getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH };

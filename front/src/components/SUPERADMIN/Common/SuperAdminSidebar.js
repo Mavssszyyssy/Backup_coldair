@@ -21,7 +21,7 @@ const links = [
   { to: "/superadmin/branches", label: "Branch Management", icon: MapPin },
   { to: "/superadmin/sales", label: "Processing Sales", icon: ShoppingCart },
   { to: "/superadmin/services", label: "Services", icon: Wrench },
-  { to: "/owner/amp", label: "AMP Forecast", icon: Pulse },
+  { to: "/manager/amp", label: "AMP Planning", icon: Pulse },
   { to: "/superadmin/reports", label: "Reports", icon: ChartBar },
   { to: "/superadmin/alerts", label: "Customer Support Alerts", icon: WarningCircle },
   { to: "/superadmin/profile", label: "My Profile", icon: Users },

@@ -24,7 +24,7 @@ function AmpDashboardShell({ title, subtitle, children }) {
             </NavLink>
           ) : null}
           <NavLink to="/manager/amp" className={({ isActive }) => (isActive ? "active" : "")}>
-            Service Pipeline
+            {isOwner ? "All-Branch Service Overview" : "Service Pipeline"}
           </NavLink>
           {isOwner ? (
             <NavLink to="/owner/amp" className={({ isActive }) => (isActive ? "active" : "")}>

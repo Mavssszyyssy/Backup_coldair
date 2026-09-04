@@ -60,6 +60,22 @@ describe("cross-surface readiness gaps", () => {
     expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain("compressor/motor and control board");
   });
 
+  test("Superadmin AMP is a filtered all-branch oversight view instead of a duplicate branch workspace", () => {
+    const manager = source("src/components/AMP/ManagerAmpDashboard.js");
+    const shell = source("src/components/AMP/AmpDashboardShell.js");
+    expect(manager).toContain('"All-Branch Service Overview"');
+    expect(manager).toContain('<option value="all">All branches</option>');
+    expect(manager).toContain("branch=${encodeURIComponent(selectedBranch)}");
+    expect(manager).toContain("const SERVICE_WINDOWS = [30, 90, 180, 365]");
+    expect(manager).toContain("[...BRANCHES, UNASSIGNED_BRANCH]");
+    expect(manager).toContain("unit{unassignedCount === 1 ? \" has\" : \"s have\"} no responsible branch");
+    expect(manager).toContain("days=${serviceWindow}");
+    expect(manager).toContain("Branch admins remain responsible for service processing");
+    expect(manager).toContain('<PipelineTable units={group.units} />');
+    expect(shell).toContain('isOwner ? "All-Branch Service Overview" : "Service Pipeline"');
+    expect(source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js")).toContain('{ to: "/manager/amp", label: "AMP Planning"');
+  });
+
   test("superadmin queues translate internal payment codes", () => {
     for (const component of ["SuperAdminAlerts.js", "SuperAdminSales.js"]) {
       const contents = source(`src/components/SUPERADMIN/Dashboard/${component}`);

@@ -5,13 +5,35 @@ const ServiceHistory = require("../models/ServiceHistory");
 const Task = require("../models/Task");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
-const { getManagerServicePipeline, getOwnerServiceForecast } = require("../domain/ampDashboardService");
+const { getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH } = require("../domain/ampDashboardService");
 const { completeServiceForUnit } = require("../domain/serviceCompletionService");
 const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
 const { notifyMaintenanceForUnit } = require("../services/ampDailyMonitorService");
+const { BRANCHES } = require("../domain/branchRouting");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
 const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
+
+const resolveManagerPipelineScope = ({ role, requestedBranch = "", activeBranch = "" }) => {
+  const canViewAllBranches = role === "superadmin" || role === "owner";
+  if (!canViewAllBranches) {
+    const branch = String(activeBranch || "").trim();
+    if (!BRANCHES.includes(branch)) {
+      const error = new Error("This account does not have a valid branch assignment.");
+      error.status = 403;
+      throw error;
+    }
+    return { branch, includeAllBranches: false };
+  }
+
+  const branch = String(requestedBranch || "").trim();
+  if (branch && !BRANCHES.includes(branch) && branch !== UNASSIGNED_BRANCH) {
+    const error = new Error("Select a valid operating branch.");
+    error.status = 400;
+    throw error;
+  }
+  return { branch, includeAllBranches: true };
+};
 
 const serviceHistoryItem = (service) => ({
   id: String(service._id || service.id || ""),
@@ -173,7 +195,14 @@ const completeService = async (req, res) => {
 };
 
 const getManagerPipeline = async (req, res) => {
-  try { return res.json(await getManagerServicePipeline({ days: req.query.days, branch: req.authUser.role === "superadmin" ? "" : req.activeBranch })); }
+  try {
+    const scope = resolveManagerPipelineScope({
+      role: req.authUser.role,
+      requestedBranch: req.query.branch,
+      activeBranch: req.activeBranch,
+    });
+    return res.json(await getManagerServicePipeline({ days: req.query.days, ...scope }));
+  }
   catch (error) { return res.status(error.status || 500).json({ message: error.message || "Unable to load the maintenance pipeline." }); }
 };
 const getReportUnits = async (req, res) => {
@@ -204,4 +233,4 @@ const getOwnerForecast = async (req, res) => {
   catch (error) { return res.status(error.status || 500).json({ message: error.message || "Unable to load the maintenance forecast." }); }
 };
 
-module.exports = { listMyUnits, calculateNextServiceDate, updateRoomSize, completeService, getManagerPipeline, getReportUnits, getOwnerForecast };
+module.exports = { listMyUnits, calculateNextServiceDate, updateRoomSize, completeService, getManagerPipeline, getReportUnits, getOwnerForecast, resolveManagerPipelineScope };
