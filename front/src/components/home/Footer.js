@@ -34,6 +34,12 @@ function Footer() {
             <Link className="footer-link" to="/faq">
               FAQs
             </Link>
+            <Link className="footer-link" to="/terms/app">
+              Terms & Conditions
+            </Link>
+            <Link className="footer-link" to="/privacy">
+              Privacy Notice
+            </Link>
           </div>
         </div>
         <div className="footer-section">

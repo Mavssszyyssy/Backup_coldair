@@ -86,17 +86,20 @@ export function validateRegistrationProfile(
   }
 
   if (!formData.agreeTermsWarranty) {
-    errors.agreeTermsWarranty = "Required";
+    errors.agreeTermsWarranty =
+      "Accept the Warranty Terms and Conditions to continue.";
   }
   if (!formData.agreeTermsService) {
-    errors.agreeTermsService = "Required";
+    errors.agreeTermsService =
+      "Accept the Service Terms and Conditions to continue.";
   }
   if (!formData.agreeTermsApp) {
-    errors.agreeTermsApp = "Required";
+    errors.agreeTermsApp =
+      "Accept the App Terms and Conditions to continue.";
   }
   if (!formData.agreePrivacyRa10173) {
     errors.agreePrivacyRa10173 =
-      "You must acknowledge the Data Privacy Act (RA 10173) disclosure";
+      "Acknowledge the Data Privacy Notice (RA 10173) to continue.";
   }
 
   if (detectedRole === "customer") {

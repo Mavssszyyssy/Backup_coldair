@@ -26,7 +26,7 @@ export default function BoutiqueFooter() {
       style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
     >
       <BoutiqueGrid
-        columns="1.5fr 1fr 1fr"
+        columns="1.5fr 1fr 1fr 1fr"
         gap={64}
         margin="0 auto 80px"
         className="bq-footer-content"
@@ -126,6 +126,38 @@ export default function BoutiqueFooter() {
             </li>
             <li>
               <a href="/faq">FAQ</a>
+            </li>
+          </BoutiqueStack>
+        </BoutiqueStack>
+
+        <BoutiqueStack gap={32} className="bq-footer-column">
+          <BoutiqueText
+            variant="label"
+            size="13px"
+            weight={700}
+            style={{ letterSpacing: "0.25em", opacity: 0.8 }}
+          >
+            Legal
+          </BoutiqueText>
+          <BoutiqueStack
+            gap={16}
+            tag="ul"
+            className="bq-footer-links"
+            padding={0}
+            margin={0}
+            style={{ listStyle: "none" }}
+          >
+            <li>
+              <a href="/terms/app">App Terms</a>
+            </li>
+            <li>
+              <a href="/terms/warranty">Warranty Terms</a>
+            </li>
+            <li>
+              <a href="/terms/service">Service Terms</a>
+            </li>
+            <li>
+              <a href="/privacy">Privacy Notice</a>
             </li>
           </BoutiqueStack>
         </BoutiqueStack>

@@ -15,6 +15,7 @@ const AdminServices = lazy(() => import("./components/ADMIN/Services/AdminServic
 const AdminSettings = lazy(() => import("./components/ADMIN/Settings/AdminSettings"));
 const ManagerAmpDashboard = lazy(() => import("./components/AMP/ManagerAmpDashboard"));
 const OwnerAmpDashboard = lazy(() => import("./components/AMP/OwnerAmpDashboard"));
+const LegalPolicyPage = lazy(() => import("./components/legal/LegalPolicyPage"));
 const AuthenticatorSetup = lazy(() => import("./components/security/AuthenticatorSetup"));
 const TechMainScreen = lazy(() => import("./components/TECH/Dashboard/TechMainScreen"));
 const ProfileTechnicianScreen = lazy(() => import("./components/TECH/Profile/ProfileTechnicianScreen"));
@@ -149,12 +150,14 @@ function AppContent() {
     return <div className="loading-screen"><LoadingLogo /></div>;
   }
 
-  const hiddenChatbotRoutes = ["/login", "/register", "/forgot-password"];
+  const hiddenChatbotRoutes = ["/login", "/register", "/forgot-password", "/privacy"];
   const isResetPasswordRoute = location.pathname.startsWith("/reset-password/");
+  const isTermsRoute = location.pathname.startsWith("/terms");
   const shouldShowCustomerChatbot =
     isAuthenticated &&
     userRole === "customer" &&
     !hiddenChatbotRoutes.includes(location.pathname) &&
+    !isTermsRoute &&
     !isResetPasswordRoute;
 
   return (
@@ -182,6 +185,24 @@ function AppContent() {
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        {/* Public legal documents used during registration and checkout. */}
+        <Route path="/terms" element={<Navigate to="/terms/app" replace />} />
+        <Route
+          path="/terms/warranty"
+          element={<LegalPolicyPage policyId="warranty" />}
+        />
+        <Route
+          path="/terms/service"
+          element={<LegalPolicyPage policyId="service" />}
+        />
+        <Route
+          path="/terms/app"
+          element={<LegalPolicyPage policyId="app" />}
+        />
+        <Route
+          path="/privacy"
+          element={<LegalPolicyPage policyId="privacy" />}
+        />
         <Route
           path="/security/setup-authenticator"
           element={<AuthenticatedCustomerSetupRoute><AuthenticatorSetup /></AuthenticatedCustomerSetupRoute>}
