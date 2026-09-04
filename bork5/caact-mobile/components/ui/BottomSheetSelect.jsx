@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Modal,
   Pressable,
   Text,
@@ -33,6 +34,12 @@ export default function BottomSheetSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  const closeSheet = () => {
+    Keyboard.dismiss();
+    setQuery("");
+    setOpen(false);
+  };
+
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return items;
@@ -54,7 +61,11 @@ export default function BottomSheetSelect({
         </Text>
       )}
       <TouchableOpacity
-        onPress={() => !disabled && setOpen(true)}
+        onPress={() => {
+          if (disabled) return;
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         activeOpacity={0.75}
         disabled={disabled}
         style={{
@@ -93,9 +104,9 @@ export default function BottomSheetSelect({
         </Text>
       )}
 
-      <Modal visible={open} transparent animationType="slide">
+      <Modal visible={open} transparent animationType="slide" onRequestClose={closeSheet}>
         <Pressable
-          onPress={() => setOpen(false)}
+          onPress={closeSheet}
           style={{
             flex: 1,
             backgroundColor: "rgba(15, 23, 42, 0.42)",
@@ -128,7 +139,7 @@ export default function BottomSheetSelect({
               >
                 Select {label || "Option"}
               </Text>
-              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={12}>
+              <TouchableOpacity onPress={closeSheet} hitSlop={12}>
                 <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -168,8 +179,7 @@ export default function BottomSheetSelect({
                   <TouchableOpacity
                     onPress={() => {
                       onSelect?.(item);
-                      setQuery("");
-                      setOpen(false);
+                      closeSheet();
                     }}
                     activeOpacity={0.75}
                     style={{

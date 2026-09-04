@@ -5,7 +5,11 @@ import {
   getCitiesByProvince,
   getBarangaysByCity,
 } from '../../domain/location/addressSelectors';
-import { validatePostalCodeForAddress } from '../../domain/location/postalCodeValidation';
+import {
+  getPostalCodeHint,
+  getSuggestedPostalCode,
+  validatePostalCodeForAddress,
+} from '../../domain/location/postalCodeValidation';
 
 const PHONE_MAX_DIGITS = 11;
 
@@ -65,17 +69,19 @@ function AddAddressModal({
   const setAddressField = (field, value) => {
     setAddress((prev) => {
       if (field === 'region') {
-        return { ...prev, region: value, province: '', city: '', barangay: '' };
+        return { ...prev, region: value, province: '', city: '', barangay: '', postalCode: '' };
       }
       if (field === 'province') {
-        return { ...prev, province: value, city: '', barangay: '' };
+        return { ...prev, province: value, city: '', barangay: '', postalCode: '' };
       }
       if (field === 'city') {
-        return { ...prev, city: value, barangay: '' };
+        const nextAddress = { ...prev, city: value, barangay: '', postalCode: '' };
+        return { ...nextAddress, postalCode: getSuggestedPostalCode(nextAddress) };
       }
       return { ...prev, [field]: value };
     });
   };
+  const zipCodeHint = getPostalCodeHint(address);
 
   const handleSubmit = () => {
     const normalized = {
@@ -192,15 +198,26 @@ function AddAddressModal({
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Postal Code</label>
+              <label>ZIP Code *</label>
               <input
                 type="text"
-                placeholder="Postal code"
+                placeholder="4-digit ZIP code"
                 value={address.postalCode}
-              maxLength={4}
-              inputMode="numeric"
-              onChange={(e) => setAddressField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                maxLength={4}
+                inputMode="numeric"
+                autoComplete="postal-code"
+                aria-describedby={zipCodeHint ? 'zip-code-hint' : undefined}
+                onChange={(e) => setAddressField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 4))}
               />
+              {zipCodeHint && (
+                <small
+                  id="zip-code-hint"
+                  className="form-help-text"
+                  style={{ display: 'block', marginTop: '6px', color: '#64748b', lineHeight: 1.4 }}
+                >
+                  {zipCodeHint}
+                </small>
+              )}
             </div>
             <div className="form-group">
               <label>Phone Number *</label>

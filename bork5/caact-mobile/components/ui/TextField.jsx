@@ -1,6 +1,14 @@
 // components/ui/TextField.jsx
-import React from "react";
-import { Text, TextInput, View } from "react-native";
+import React, { useId } from "react";
+import {
+  InputAccessoryView,
+  Keyboard,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 export default function TextField({
@@ -9,11 +17,21 @@ export default function TextField({
   onChangeText,
   placeholder,
   error,
+  helperText,
   keyboardType,
   autoCapitalize,
+  showKeyboardDone = false,
+  inputAccessoryViewID,
+  onSubmitEditing,
+  returnKeyType,
+  blurOnSubmit,
   style,
   ...props
 }) {
+  const generatedId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const accessoryId = inputAccessoryViewID || `coldair-keyboard-${generatedId}`;
+  const usesAccessory = Platform.OS === "ios" && showKeyboardDone;
+
   return (
     <View style={{ marginBottom: SPACING.sm + 6 }}>
       {label ? (
@@ -36,6 +54,10 @@ export default function TextField({
         placeholderTextColor={COLORS.textMuted}
         keyboardType={keyboardType ?? "default"}
         autoCapitalize={autoCapitalize ?? "sentences"}
+        inputAccessoryViewID={usesAccessory ? accessoryId : inputAccessoryViewID}
+        onSubmitEditing={onSubmitEditing || (showKeyboardDone ? Keyboard.dismiss : undefined)}
+        returnKeyType={returnKeyType || (showKeyboardDone ? "done" : undefined)}
+        blurOnSubmit={showKeyboardDone || blurOnSubmit}
         style={[
           {
             backgroundColor: COLORS.surface,
@@ -62,6 +84,44 @@ export default function TextField({
         >
           {error}
         </Text>
+      ) : helperText ? (
+        <Text
+          style={{
+            color: COLORS.textSecondary,
+            marginTop: SPACING.xs,
+            fontSize: FONT.sm,
+          }}
+        >
+          {helperText}
+        </Text>
+      ) : null}
+
+      {usesAccessory ? (
+        <InputAccessoryView nativeID={accessoryId}>
+          <View
+            style={{
+              minHeight: 44,
+              alignItems: "flex-end",
+              justifyContent: "center",
+              paddingHorizontal: SPACING.md,
+              backgroundColor: COLORS.surface,
+              borderTopWidth: 1,
+              borderTopColor: COLORS.border,
+            }}
+          >
+            <Pressable
+              onPress={Keyboard.dismiss}
+              accessibilityRole="button"
+              accessibilityLabel="Close keyboard"
+              hitSlop={10}
+              style={{ paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs }}
+            >
+              <Text style={{ color: COLORS.primary, fontSize: FONT.base, fontWeight: "700" }}>
+                Done
+              </Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
       ) : null}
     </View>
   );

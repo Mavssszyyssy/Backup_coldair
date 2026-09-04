@@ -1,3 +1,8 @@
+const numberedBarangays = (count) => Array.from(
+  { length: count },
+  (_, index) => `Barangay ${index + 1}`,
+);
+
 export const LUZON_ADDRESS_DATA = [
   {
     region: 'NCR',
@@ -9,6 +14,7 @@ export const LUZON_ADDRESS_DATA = [
           { city: 'Manila', barangays: ['Ermita', 'Malate', 'Sampaloc', 'Tondo', 'Paco', 'Binondo', 'Santa Cruz', 'Quiapo', 'San Andres', 'San Miguel'] },
           { city: 'Makati', barangays: ['Bel-Air', 'Poblacion', 'San Lorenzo', 'Urdaneta', 'Bangkal', 'Cembo', 'Comembo', 'Guadalupe Nuevo', 'Guadalupe Viejo', 'Magallanes'] },
           { city: 'Pasig', barangays: ['Kapitolyo', 'San Antonio', 'Rosario', 'Ugong', 'Caniogan', 'Bagong Ilog', 'Maybunga', 'Manggahan', 'Pinagbuhatan', 'Santolan'] },
+          { city: 'Pasay City', barangays: numberedBarangays(201) },
         ],
       },
     ],

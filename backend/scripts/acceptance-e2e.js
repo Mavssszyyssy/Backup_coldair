@@ -147,7 +147,7 @@ const main = async () => {
     expected: [400],
     body: { ...address, label: "Invalid QA address", postalCode: "4102", isDefault: false },
   });
-  record("Postal code rejection when it does not match the selected city");
+  record("ZIP code rejection when it does not match the selected city");
 
   await request("/users", { token: customerToken, expected: [403] });
   record("Customer role cannot access staff records");

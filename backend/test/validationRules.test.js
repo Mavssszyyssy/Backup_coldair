@@ -6,12 +6,21 @@ const { validateStrictServicePayload } = require("../src/domain/serviceCompletio
 const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../src/domain/warrantyService");
 const { formatDateKeyInTimeZone } = require("../src/utils/dateTime");
 
-test("postal codes must match the selected city", () => {
+test("ZIP codes must match the selected city", () => {
   const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
   assert.equal(validatePostalCodeForAddress({ ...address, postalCode: "4102" }), "");
   assert.match(validatePostalCodeForAddress({ ...address, postalCode: "1000" }), /does not match/i);
   assert.match(validatePostalCodeForAddress({ ...address, postalCode: "410" }), /exactly 4 digits/i);
-  assert.match(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" }), /service area/i);
+  assert.match(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" }), /city, province, and region/i);
+
+  const pasayAddress = {
+    region: "NCR",
+    province: "Metro Manila",
+    city: "Pasay City",
+    barangay: "Barangay 142",
+  };
+  assert.equal(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" }), "");
+  assert.match(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" }), /does not match/i);
 });
 
 test("service dates reject invalid and past calendar dates", () => {

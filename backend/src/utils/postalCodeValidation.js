@@ -19,8 +19,16 @@ const normalizedPostalCodeRules = Object.fromEntries(
     return [keyFor({ region, province, city }), value];
   }),
 );
+const normalizedRuleLocations = Object.keys(normalizedPostalCodeRules).map((key) => {
+  const [region, province, city] = key.split("|");
+  return { region, province, city };
+});
 
 const getPostalCodeRules = (address = {}) => normalizedPostalCodeRules[keyFor(address)] || [];
+const cityExistsAtAnotherLocation = (address = {}) => {
+  const city = normalize(address.city);
+  return Boolean(city) && normalizedRuleLocations.some((location) => location.city === city);
+};
 const matchesRule = (value, rule) => {
   if (/^\d{4}-\d{4}$/.test(rule)) {
     const [start, end] = rule.split("-").map(Number);
@@ -32,12 +40,17 @@ const matchesRule = (value, rule) => {
 
 const validatePostalCodeForAddress = (address = {}) => {
   const postalCode = String(address.postalCode || "").trim();
-  if (!postalCode) return "Postal code is required";
-  if (!/^\d{4}$/.test(postalCode)) return "Postal code must be exactly 4 digits";
+  if (!postalCode) return "ZIP code is required";
+  if (!/^\d{4}$/.test(postalCode)) return "ZIP code must contain exactly 4 digits";
   const rules = getPostalCodeRules(address);
-  if (!rules.length) return "Selected city, province, and region do not match a supported service area";
+  if (!rules.length) {
+    if (cityExistsAtAnotherLocation(address)) {
+      return "Selected city, province, and region do not match";
+    }
+    return "";
+  }
   if (rules.some((rule) => matchesRule(postalCode, rule))) return "";
-  return `Postal code does not match ${address.city || "the selected city"}`;
+  return `ZIP code does not match ${address.city || "the selected city"}`;
 };
 
 module.exports = { getPostalCodeRules, validatePostalCodeForAddress };

@@ -1,14 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { validatePostalCodeForAddress } from "./location/postalCodeValidation";
+import {
+  getPostalCodeHint,
+  getSuggestedPostalCode,
+  validatePostalCodeForAddress,
+} from "./location/postalCodeValidation";
+import { getBarangaysByCity } from "./location/addressSelectors";
 import { computePurchaseTotals } from "./purchase/computePurchaseTotals";
 import { buildCustomerOrder } from "./purchase/buildCustomerOrder";
 
 describe("customer commerce rules", () => {
-  it("requires a postal code that matches the selected city", () => {
+  it("requires a ZIP code that matches the selected city", () => {
     const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
     expect(validatePostalCodeForAddress({ ...address, postalCode: "" })).toMatch(/required/i);
     expect(validatePostalCodeForAddress({ ...address, postalCode: "4102" })).toBe("");
     expect(validatePostalCodeForAddress({ ...address, postalCode: "1000" })).toMatch(/does not match/i);
+    expect(getSuggestedPostalCode(address)).toBe("4102");
+
+    const pasayAddress = { region: "NCR", province: "Metro Manila", city: "Pasay City", barangay: "Barangay 142" };
+    expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" })).toBe("");
+    expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" })).toMatch(/does not match/i);
+    expect(getPostalCodeHint(pasayAddress)).toContain("1300\u20131309");
+    expect(getBarangaysByCity("NCR", "Metro Manila", "Pasay City")).toHaveLength(201);
   });
 
   it("preserves horsepower and delivery details in a COD order", () => {

@@ -19,8 +19,34 @@ const normalizedPostalCodeRules = Object.fromEntries(
     return [keyFor({ region, province, city }), value];
   }),
 );
+const normalizedRuleLocations = Object.keys(normalizedPostalCodeRules).map((key) => {
+  const [region, province, city] = key.split("|");
+  return { region, province, city };
+});
 
 export const getPostalCodeRules = (address = {}) => normalizedPostalCodeRules[keyFor(address)] || [];
+
+const cityExistsAtAnotherLocation = (address = {}) => {
+  const city = normalize(address.city);
+  return Boolean(city) && normalizedRuleLocations.some((location) => location.city === city);
+};
+
+const formatRule = (rule) => String(rule || "").replace("-", "\u2013");
+
+export const getSuggestedPostalCode = (address = {}) => {
+  const rules = getPostalCodeRules(address);
+  return rules.length === 1 && /^\d{4}$/.test(rules[0]) ? rules[0] : "";
+};
+
+export const getPostalCodeHint = (address = {}) => {
+  const rules = getPostalCodeRules(address);
+  if (!rules.length || !address.city) return "";
+  const label = rules.length === 1 ? formatRule(rules[0]) : rules.map(formatRule).join(", ");
+  const descriptor = rules.length === 1
+    ? (rules[0].includes("-") ? "code range" : "code")
+    : "codes";
+  return `Valid ZIP ${descriptor} for ${address.city}: ${label}`;
+};
 
 const matchesRule = (value, rule) => {
   if (/^\d{4}-\d{4}$/.test(rule)) {
@@ -33,10 +59,17 @@ const matchesRule = (value, rule) => {
 
 export function validatePostalCodeForAddress(address = {}) {
   const postalCode = String(address.postalCode || "").trim();
-  if (!postalCode) return "Postal code is required.";
-  if (!/^\d{4}$/.test(postalCode)) return "Postal code must contain 4 digits.";
+  if (!postalCode) return "ZIP code is required.";
+  if (!/^\d{4}$/.test(postalCode)) return "ZIP code must contain exactly 4 digits.";
   const rules = getPostalCodeRules(address);
-  if (!rules.length) return "Selected city, province, and region do not match a supported service area.";
+  if (!rules.length) {
+    if (cityExistsAtAnotherLocation(address)) {
+      return "Selected city, province, and region do not match.";
+    }
+    // The PSGC address picker covers more localities than the curated ZIP
+    // table. Service availability is checked separately by branch coverage.
+    return "";
+  }
   if (rules.some((rule) => matchesRule(postalCode, rule))) return "";
-  return `Postal code does not match ${address.city || "the selected city"}.`;
+  return `ZIP code does not match ${address.city || "the selected city"}.`;
 }

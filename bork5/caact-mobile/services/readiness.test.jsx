@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { filterAndSortProducts, getProductImageAssetKey } from "./ecommerceService";
-import { validatePostalCodeForAddress } from "./postalCodeValidation";
+import {
+  getPostalCodeHint,
+  getSuggestedPostalCode,
+  validatePostalCodeForAddress,
+} from "./postalCodeValidation";
 import { validatePassword, validatePhone } from "../utils/authValidation";
 import { formatUnitHorsepower } from "./unitDisplayService";
 import { formatCartHorsepower, formatCartModel } from "./cartDisplayService";
@@ -17,12 +21,23 @@ describe("mobile customer readiness rules", () => {
     expect(source).toContain("api.verifyTotpSetup");
   });
 
-  test("postal code is required and must match the selected city", () => {
+  test("ZIP code is required and must match the selected city", () => {
     const address = { region: "CALABARZON", province: "Cavite", city: "Bacoor" };
     expect(validatePostalCodeForAddress({ ...address, postalCode: "" })).toMatch(/required/i);
     expect(validatePostalCodeForAddress({ ...address, postalCode: "4102" })).toBe("");
     expect(validatePostalCodeForAddress({ ...address, postalCode: "1000" })).toMatch(/does not match/i);
-    expect(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" })).toMatch(/service area/i);
+    expect(getSuggestedPostalCode(address)).toBe("4102");
+    expect(validatePostalCodeForAddress({ ...address, city: "Quezon City", postalCode: "1100" })).toMatch(/city, province, and region/i);
+
+    const pasayAddress = {
+      region: "NCR",
+      province: "Metro Manila",
+      city: "Pasay City",
+      barangay: "Barangay 142",
+    };
+    expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" })).toBe("");
+    expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" })).toMatch(/does not match/i);
+    expect(getPostalCodeHint(pasayAddress)).toContain("1300\u20131309");
   });
 
   test("customer product filters preserve real inventory records", () => {
@@ -149,6 +164,8 @@ describe("mobile customer readiness rules", () => {
     );
     expect(settingsSource).toContain("Use as my default delivery address");
     expect(settingsSource).toContain("This choice will be applied when you save the address");
+    expect(settingsSource).toContain('label="ZIP Code *"');
+    expect(settingsSource).toContain("showKeyboardDone");
     expect(settingsSource).not.toContain('title={addressForm.isDefault ? "Default delivery address"');
   });
 

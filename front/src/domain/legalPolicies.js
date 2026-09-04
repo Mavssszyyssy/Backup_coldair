@@ -321,7 +321,7 @@ export const LEGAL_POLICIES = {
         title: "2. Personal data we may collect",
         bullets: [
           "Identity and account data, such as name, email address, mobile number, alias, role, and authentication or security status.",
-          "Address and location data, such as region, province, city, barangay, street address, postal code, saved facilities, optional map position, and technician check-in records.",
+          "Address and location data, such as region, province, city, barangay, street address, ZIP code, saved facilities, optional map position, and technician check-in records.",
           "Order and payment-related data, such as cart items, order status, delivery details, transaction references, receipts, and payment status. Full card credentials are handled by the applicable payment provider and should not be submitted to Cold Air ACT support fields.",
           "AC unit and warranty data, such as brand, model, horsepower, serial or QR identifier, installation date, environment details, coverage, and service history.",
           "Service data, such as concern descriptions, schedules, assigned branch or technician, work status, notes, photos, parts, diagnosis, and completion reports.",
@@ -435,4 +435,3 @@ export const LEGAL_POLICY_LIST = Object.values(LEGAL_POLICIES);
 export function getLegalPolicy(policyId) {
   return LEGAL_POLICIES[policyId] || null;
 }
-

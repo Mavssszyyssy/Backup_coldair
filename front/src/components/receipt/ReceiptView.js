@@ -41,7 +41,7 @@ const deliveryAddressRows = (address = {}) => [
   ["City / Municipality", address.city],
   ["Province", address.province],
   ["Region", address.region],
-  ["Postal code", address.postalCode],
+  ["ZIP Code", address.postalCode],
 ].filter(([, value]) => String(value || "").trim());
 
 function DeliveryAddressDetails({ address }) {

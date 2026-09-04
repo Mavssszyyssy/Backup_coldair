@@ -237,7 +237,7 @@ const getAddressValidationMessage = (address = {}) => {
   if (!address.province) return "province is missing";
   if (!address.city) return "city or municipality is missing";
   if (!address.barangay) return "barangay is missing";
-  if (!address.postalCode) return "postal code is missing";
+  if (!address.postalCode) return "ZIP code is missing";
   const postalCodeError = validatePostalCodeForAddress(address);
   if (postalCodeError) return postalCodeError.toLowerCase();
   return "";

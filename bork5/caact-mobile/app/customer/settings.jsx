@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Keyboard, Platform, Text, TouchableOpacity, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSettingsRow, { CustomerEditAction } from "../../components/customer/CustomerSettingsRow";
@@ -20,7 +20,11 @@ import {
   resolvePhilippineAddressSelection,
 } from "../../services/philippineAddressService";
 import { buildEditableProfile } from "../../services/profileService";
-import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
+import {
+  getPostalCodeHint,
+  getSuggestedPostalCode,
+  validatePostalCodeForAddress,
+} from "../../services/postalCodeValidation";
 import {
   canonicalizePhMobile,
   sanitizePhMobileInput,
@@ -202,6 +206,7 @@ export default function CustomerSettingsScreen() {
     }
   };
   const closeEditor = () => {
+    Keyboard.dismiss();
     addressEditorRequest.current += 1;
     setEditingProfile(false);
     setAddressForm(null);
@@ -220,8 +225,9 @@ export default function CustomerSettingsScreen() {
       municipalityCode: "",
       barangay: "",
       submunicipalityCode: "",
+      postalCode: "",
     }));
-    setAddressErrors((previous) => ({ ...previous, region: "", province: "", city: "", barangay: "" }));
+    setAddressErrors((previous) => ({ ...previous, region: "", province: "", city: "", barangay: "", postalCode: "" }));
   };
 
   const selectProvince = (item) => {
@@ -233,19 +239,24 @@ export default function CustomerSettingsScreen() {
       municipalityCode: "",
       barangay: "",
       submunicipalityCode: "",
+      postalCode: "",
     }));
-    setAddressErrors((previous) => ({ ...previous, province: "", city: "", barangay: "" }));
+    setAddressErrors((previous) => ({ ...previous, province: "", city: "", barangay: "", postalCode: "" }));
   };
 
   const selectLocality = (item) => {
-    setAddressForm((previous) => ({
-      ...previous,
-      city: item.name,
-      municipalityCode: item.code,
-      barangay: "",
-      submunicipalityCode: "",
-    }));
-    setAddressErrors((previous) => ({ ...previous, city: "", barangay: "" }));
+    setAddressForm((previous) => {
+      const nextAddress = {
+        ...previous,
+        city: item.name,
+        municipalityCode: item.code,
+        barangay: "",
+        submunicipalityCode: "",
+        postalCode: "",
+      };
+      return { ...nextAddress, postalCode: getSuggestedPostalCode(nextAddress) };
+    });
+    setAddressErrors((previous) => ({ ...previous, city: "", barangay: "", postalCode: "" }));
   };
 
   const selectBarangay = (item) => {
@@ -258,6 +269,7 @@ export default function CustomerSettingsScreen() {
   };
 
   const saveProfile = async () => {
+    Keyboard.dismiss();
     const errors = {};
     const firstNameError = validatePersonName(profileForm.name_first, "First name");
     const lastNameError = validatePersonName(profileForm.name_last, "Last name");
@@ -287,6 +299,7 @@ export default function CustomerSettingsScreen() {
   };
 
   const saveAddress = async () => {
+    Keyboard.dismiss();
     const errors = validateAddressForm(addressForm || {});
     setAddressErrors(errors);
     if (Object.keys(errors).length) return;
@@ -349,6 +362,7 @@ export default function CustomerSettingsScreen() {
   };
 
   const subtitle = isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
+  const zipCodeHint = addressForm ? getPostalCodeHint(addressForm) : "";
 
   return (
     <CustomerScreen
@@ -384,13 +398,13 @@ export default function CustomerSettingsScreen() {
         <Section title="Address details">
           <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />
           <TextField label="Recipient name" value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
-          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={addressErrors.phone} />
+          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={addressErrors.phone} showKeyboardDone />
           <BottomSheetSelect label="Region" value={addressForm.region} placeholder="Select region" items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage="No regions found. Check your connection and try again." onSelect={selectRegion} />
           <BottomSheetSelect label="Province" value={addressForm.province} placeholder="Select province" items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={addressForm.regionCode ? "No provinces found." : "Select a region first."} onSelect={selectProvince} />
           <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first."} onSelect={selectLocality} />
           <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={selectBarangay} />
           <TextField label="Street address" value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder="House, block, lot, street" error={addressErrors.street} />
-          <TextField label="Postal code" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" error={addressErrors.postalCode} />
+          <TextField label="ZIP Code *" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} helperText={zipCodeHint} showKeyboardDone />
           <TouchableOpacity
             accessibilityRole="checkbox"
             accessibilityState={{ checked: Boolean(addressForm.isDefault), disabled: Boolean(addressForm.isDefault || saving) }}
@@ -431,7 +445,7 @@ export default function CustomerSettingsScreen() {
         <TextField label="Suffix (optional)" value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
         <TextField label="Sign-in alias" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField label="Email" value={profileForm.email} editable={false} />
-        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={profileErrors.phone} />
+        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={profileErrors.phone} showKeyboardDone />
       </Section>}
     </CustomerScreen>
   );

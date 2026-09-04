@@ -429,7 +429,7 @@ function Checkout() {
 
     if (!isValidCheckoutAddress(checkoutAddress)) {
       alert(
-        "Please provide a valid address. Phone must be 11 digits (09XXXXXXXXX) and postal code must be 4 digits.",
+        "Please provide a valid address. Phone must be 11 digits (09XXXXXXXXX) and ZIP code must be 4 digits.",
       );
       return;
     }

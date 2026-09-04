@@ -2,7 +2,8 @@
 // Role guard + Stack navigator for customer screens.
 import { Redirect, usePathname } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { View } from "react-native";
+import { useEffect, useState } from "react";
+import { Keyboard, View } from "react-native";
 
 import LoadingLogo from "../../components/LoadingLogo";
 import BottomNav from "../../components/ui/BottomNav";
@@ -12,6 +13,7 @@ import { useRoleGuard } from "../../hooks/useRoleGuard";
 export default function CustomerLayout() {
   const { initialized, allowed, redirectHref } = useRoleGuard(["customer"]);
   const pathname = usePathname();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const topLevelScreens = new Set([
     "/customer/home",
     "/customer/shop",
@@ -19,7 +21,16 @@ export default function CustomerLayout() {
     "/customer/orders",
     "/customer/settings",
   ]);
-  const showBottomNav = topLevelScreens.has(pathname);
+  const showBottomNav = topLevelScreens.has(pathname) && !keyboardVisible;
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideListener = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
 
   if (!initialized) {
     return (

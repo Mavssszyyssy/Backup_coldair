@@ -62,7 +62,7 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
     <ScrollView
       ref={scrollRef}
       keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       automaticallyAdjustKeyboardInsets
       onFocus={(event) => scrollFocusedInputIntoView(event?.target)}
       contentContainerStyle={[
