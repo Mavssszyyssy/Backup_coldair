@@ -6,12 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/coldair-app-icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/coldair-app-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
@@ -23,7 +17,6 @@
         "foregroundImage": "./assets/coldair-adaptive-icon.png",
         "backgroundColor": "#EAF8FC"
       },
-      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA"
       ],
@@ -42,7 +35,18 @@
           "cameraPermission": "Allow Coldair to scan unit QR codes and capture proof of installation photos."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/coldair-app-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://api.coldair-act.online/api",
