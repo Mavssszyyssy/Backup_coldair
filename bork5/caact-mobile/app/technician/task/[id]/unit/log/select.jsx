@@ -6,6 +6,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../../../components/technician/TechButton";
 import Card from "../../../../../../components/ui/Card";
+import UnitHistoryPanel from "../../../../../../components/technician/UnitHistoryPanel";
+import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../../../services/api";
 import EmptyState from "../../../../../../components/ui/EmptyState";
 import PageHeader from "../../../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
@@ -21,18 +23,38 @@ export default function LogSelectScreen() {
   const { id: taskId } = useLocalSearchParams();
   const [task, setTask] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [unitHistory, setUnitHistory] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
       async function load() {
+        setLoading(true);
+        setLoadError("");
+        setUnitHistory(null);
+        try {
         const loadedTask = await getTaskById(taskId);
+        if (!loadedTask) throw new Error("This work order is no longer available.");
         const loadedLogs = loadedTask?.id
           ? await getServiceLogsByTask(loadedTask.id)
           : [];
         if (active) {
           setTask(loadedTask);
           setLogs(loadedLogs);
+        }
+        const serialNumber = loadedTask.unit?.serialNumber;
+        if (serialNumber) {
+          const token = await getStoredToken();
+          const history = await fetchTechnicianUnitHistory(token, serialNumber, loadedTask.id);
+          if (!history.success) throw new Error(history.error || "Unable to load previous AC service history.");
+          if (active) setUnitHistory(history);
+        }
+        } catch (error) {
+          if (active) setLoadError(error?.message || "Unable to load service notes.");
+        } finally {
+          if (active) setLoading(false);
         }
       }
       load();
@@ -110,10 +132,12 @@ export default function LogSelectScreen() {
           </Card>
         )}
 
-        {logs.length === 0 ? (
+        {loading ? <Text style={{ color: COLORS.textSecondary }}>Loading work-order notes and AC history...</Text> : null}
+        {loadError ? <Text style={{ color: COLORS.danger }}>{loadError}</Text> : null}
+        {!loading && !loadError && logs.length === 0 ? (
           <EmptyState
-            title="No service notes"
-            message="Previous service notes for this AC unit will appear here."
+            title="No notes for this work order yet"
+            message="Notes you add here belong to this visit. Earlier completed visits are listed separately below."
           />
         ) : (
           logs.map((log) => (
@@ -161,6 +185,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           ))
         )}
+        {!loading && unitHistory ? <UnitHistoryPanel history={unitHistory} /> : null}
       </ScrollView>
     </SafeAreaView>
   );

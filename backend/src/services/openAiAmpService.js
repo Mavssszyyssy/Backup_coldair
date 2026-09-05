@@ -30,6 +30,7 @@ const responseText = (payload = {}) => {
 };
 
 const callStructuredAmpAnalysis = async (input) => {
+  if (!input?.recommendation?.bestServicedBy || !input?.recommendation?.recommendedService) return { provider: "system-fallback", insight: null };
   if (!env.openAiApiKey) return { provider: "system-fallback", insight: null };
   const requestId = `amp-${crypto.randomUUID()}`;
   const safetyIdentifier = crypto
@@ -120,7 +121,7 @@ const callStructuredAmpAnalysis = async (input) => {
 
 const validateAmpInsight = (raw, deterministic) => {
   return {
-    best_serviced_by: deterministic.bestServicedBy.slice(0, 10),
+    best_serviced_by: deterministic.bestServicedBy?.slice(0, 10) || "",
     recommended_service: deterministic.recommendedService,
     recommendation_summary: cleanText(raw?.recommendation_summary, 500) || deterministic.recommendationBasis,
     capacity_assessment: deterministic.capacityAssessment.status,

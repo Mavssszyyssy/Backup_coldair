@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import ServiceHistoryFilters from './ServiceHistoryFilters';
+import { serviceLabel, serviceDateLabel, serviceDetails, servicePriceLabel } from '../../domain/myunit/serviceHistoryDisplay';
 
 function ServiceHistory({ unit, onClose }) {
   const [sortBy, setSortBy] = useState('newest');
@@ -45,10 +46,11 @@ function ServiceHistory({ unit, onClose }) {
             <div className="history-list">
               {filteredSorted.map((service) => (
                 <div key={service.id || `${service.date}-${service.serviceType}`} className="history-item">
-                  <div className="history-date">{service.date}</div>
-                  <div className="history-service">{service.serviceType}</div>
-                  <div className="history-details">{service.details}</div>
-                  <div className="history-price">₱{(service.price ?? 0).toLocaleString()}</div>
+                  <div className="history-date">{serviceDateLabel(service.date)}</div>
+                  <div className="history-service">{serviceLabel(service.serviceType)}</div>
+                  <div className="history-details">{serviceDetails(service)}</div>
+                  {servicePriceLabel(service) ? <div className="history-price">{servicePriceLabel(service)}</div> : null}
+                  {service.evidence?.eligible === false ? <div className="history-details">{service.evidence.reason}</div> : null}
                   {service.technician && (
                     <div className="history-details">Technician: {service.technician}</div>
                   )}

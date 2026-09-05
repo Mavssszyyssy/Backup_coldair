@@ -1784,17 +1784,19 @@ const resolveTechnicianAssignment = async (options = {}) => {
   if (!technicianId) {
     return { assignedTechnicianId: "", assignedTechnicianName: technicianName };
   }
+  if (!mongoose.Types.ObjectId.isValid(technicianId)) throw new HttpError(400, "Choose a valid technician account.");
 
   const technician = await User.findOne({
     _id: technicianId,
     role: "technician",
     isDeleted: { $ne: true },
     accountStatus: { $nin: ["deleted", "disabled"] },
-  }).select("name name_first name_last email");
+  }).select("name name_first name_last email activeBranch assignedBranch");
 
   if (!technician) {
     throw new HttpError(404, "Selected technician was not found.");
   }
+  if (options.branch && (technician.activeBranch || technician.assignedBranch) !== options.branch) throw new HttpError(409, "Choose a technician from the order's fulfillment branch.");
 
   return {
     assignedTechnicianId: String(technician._id || ""),
@@ -1849,7 +1851,7 @@ const createTaskForOrder = async (order, options = {}) => {
   if (!order) return null;
   const activateTask = Boolean(options.activate);
   const existingTask = await findLinkedTaskForOrder(order);
-  const assignment = await resolveTechnicianAssignment(options);
+  const assignment = await resolveTechnicianAssignment({ ...options, branch: order.stockSourceBranch || order.customerBranch || "" });
   const taskItems = buildOrderTaskItems(order);
   const taskSerialNumbers = Array.from(
     new Set(
@@ -1874,6 +1876,10 @@ const createTaskForOrder = async (order, options = {}) => {
       changed = true;
     }
     if (assignment.assignedTechnicianId || assignment.assignedTechnicianName) {
+      if (assignment.assignedTechnicianId && existingTask.assignedTechnicianId && String(assignment.assignedTechnicianId) !== String(existingTask.assignedTechnicianId)) {
+        existingTask.payload = { ...(existingTask.payload || {}), checkIn: null };
+        existingTask.proof = {};
+      }
       existingTask.assignedTechnicianId =
         assignment.assignedTechnicianId || existingTask.assignedTechnicianId;
       existingTask.assignedTechnicianName =
@@ -2076,63 +2082,7 @@ const getTaskCompletionBlocker = (order, linkedTask) => {
 };
 
 const syncInstalledUnitsFromTask = async (task) => {
-  const registrations = getAmpRegistrations(task);
-  const registeredSerials = getTaskSerialNumbers(task).filter(
-    (serial) => registrations[serial]?.status === "registered",
-  );
-  const installedUnits = [];
-
-  for (const serialNumber of registeredSerials) {
-    const { product, serialUnit } = await findProductSerialUnit(serialNumber);
-    if (!product || !serialUnit) continue;
-    const registration = registrations[serialNumber] || {};
-    const address = task.payload?.customerAddress || {};
-    const ampParameters = registration.ampParameters || {};
-    const customerId = String(task.customerId || task.payload?.customerId || "").trim();
-    if (!customerId) continue;
-
-    const installed = await Unit.findOneAndUpdate(
-      { serialNumber: serialUnit.serialNumber },
-      {
-        $set: {
-          serialNumber: serialUnit.serialNumber,
-          qrCode: String(serialUnit.qrCode || ""),
-          qrUnitId: String(serialUnit.qrUnitId || ""),
-          productId: String(product._id || product.id || ""),
-          modelName: [product.name, product.specs].filter(Boolean).join(" ") || product.sku || "AC Unit",
-          brand: String(product.brand || ""),
-          category: String(product.category || ""),
-          capacityHp: parseCapacityHp(product.specs),
-          roomSizeSqm: Number(ampParameters.roomSizeSqm || 0) || null,
-          customer: customerId,
-          customerName: String(task.customer || task.payload?.customerName || ""),
-          serviceBranch: String(task.branch || serialUnit.branch || ""),
-          installation: {
-            installedAt: ampParameters.installationDate
-              ? new Date(ampParameters.installationDate)
-              : new Date(),
-            installedBy: task.assignedTechnicianId || registration.technicianId || undefined,
-            addressLine: String(address.street || task.address || ""),
-            city: String(address.city || ""),
-            province: String(address.province || ""),
-            zipCode: String(address.postalCode || address.zipCode || "0000"),
-            coordinates: {},
-          },
-          amp: {
-            lastCalculatedAt: new Date(),
-          },
-          status: "active",
-        },
-      },
-      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
-    );
-    if (installed) {
-      await calculateMaintenanceRecommendation(installed._id);
-      installedUnits.push(installed);
-    }
-  }
-
-  return installedUnits;
+  return require("./taskController").ensureInstalledCustomerUnitsForTask(task);
 };
 
 const createOrder = async (req, res) => {
@@ -2663,7 +2613,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
         assignedTechnicianName: options.assignedTechnicianName || order.assignedTechnician || linkedTaskBeforeAction?.assignedTechnicianName || "",
       }
     : options;
-  const assignment = await resolveTechnicianAssignment(assignmentOptions);
+  const assignment = await resolveTechnicianAssignment({ ...assignmentOptions, branch: order.stockSourceBranch || order.customerBranch || "" });
   if (action === "dispatch" && !assignment.assignedTechnicianId) {
     throw new HttpError(400, "Assign a technician before marking this order dispatched. The technician work order must be created at dispatch.");
   }
@@ -2997,6 +2947,7 @@ const recoverOrder = async (req, res) => {
 
   if (action === "recreate_task") {
     const technician = await resolveTechnicianAssignment({
+      branch: order.stockSourceBranch || order.customerBranch || "",
       assignedTechnicianId: form.assignedTechnicianId || "",
       assignedTechnicianName: form.assignedTechnicianName || order.assignedTechnician || "",
     });
@@ -3018,6 +2969,7 @@ const recoverOrder = async (req, res) => {
 
   if (action === "assign_technician") {
     const technician = await resolveTechnicianAssignment({
+      branch: order.stockSourceBranch || order.customerBranch || "",
       assignedTechnicianId: form.assignedTechnicianId || "",
       assignedTechnicianName: form.assignedTechnicianName || "",
     });

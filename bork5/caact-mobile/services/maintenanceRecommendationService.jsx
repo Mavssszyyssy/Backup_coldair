@@ -6,30 +6,37 @@ function parseDate(value) {
 
 export function buildMaintenanceRecommendation({ unit } = {}) {
   const bestServicedBy = unit?.bestServicedBy || unit?.amp?.bestServicedBy || unit?.amp?.nextIdealServiceDate || "";
-  const recommendedService = unit?.recommendedService || unit?.amp?.recommendedService || "regular_cleaning";
+  const recommendedService = unit?.recommendedService ?? unit?.amp?.recommendedService ?? "";
   return {
     bestServicedBy, recommendedService,
     recommendationBasis: unit?.recommendationBasis || unit?.amp?.recommendationBasis || "Maintenance timing is being calculated from recorded service history.",
     capacityAssessment: unit?.capacityAssessment || unit?.amp?.capacityAssessment || null,
     lastServiceDate: unit?.lastServiceDate || unit?.amp?.lastServiceDate || null,
     lastCleaningDate: unit?.lastCleaningDate || unit?.amp?.lastCleaningDate || null,
-    overdue: bestServicedBy ? parseDate(bestServicedBy)?.getTime() < Date.now() : false,
+    dataQuality: unit?.dataQuality || unit?.amp?.dataQuality || null,
+    overdue: bestServicedBy ? businessDayNumber(bestServicedBy) < businessDayNumber(new Date()) : false,
   };
 }
 
 export function buildNextRecommendedMaintenance(recommendation) {
   const due = parseDate(recommendation?.bestServicedBy);
-  const daysUntil = due ? Math.ceil((due.getTime() - Date.now()) / 86400000) : null;
-  const serviceLabel = recommendation?.recommendedService === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
+  const daysUntil = due ? businessDayNumber(due) - businessDayNumber(new Date()) : null;
+  const serviceLabel = recommendation?.recommendedService === "deep_cleaning" ? "Deep cleaning" : recommendation?.recommendedService === "regular_cleaning" ? "Regular cleaning" : "Service details needed";
   return {
     date: due ? due.toISOString().slice(0, 10) : "",
-    label: due ? (daysUntil < 0 ? `${Math.abs(daysUntil)} day(s) overdue` : `Due in ${daysUntil} day(s)`) : "Date being calculated",
-    urgency: daysUntil === null ? "Pending" : daysUntil < 0 ? "Overdue" : daysUntil <= 30 ? "Due Soon" : "Scheduled",
+    label: due ? (daysUntil < 0 ? `${Math.abs(daysUntil)} day(s) overdue` : daysUntil === 0 ? "Suggested for today" : `Suggested in ${daysUntil} day(s)`) : "Installation or cleaning date needed",
+    urgency: daysUntil === null ? "Pending" : daysUntil < 0 ? "Overdue" : daysUntil <= 30 ? "Due Soon" : "Suggested",
     color: daysUntil === null ? "#6B7280" : daysUntil < 0 ? "#DC2626" : daysUntil <= 30 ? "#D97706" : "#059669",
     message: `${serviceLabel}. ${recommendation?.recommendationBasis || ""}`.trim(),
-    recommendedService: recommendation?.recommendedService || "regular_cleaning",
+    recommendedService: recommendation?.recommendedService || "",
     capacityAssessment: recommendation?.capacityAssessment || null,
+    dataQuality: recommendation?.dataQuality || null,
   };
+}
+
+function businessDayNumber(value) {
+  const date = parseDate(value);
+  return date ? Math.floor((date.getTime() + 8 * 3600000) / 86400000) : NaN;
 }
 
 export function buildUnitRecommendationMap(units = []) {

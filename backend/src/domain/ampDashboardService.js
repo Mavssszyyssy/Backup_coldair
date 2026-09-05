@@ -1,7 +1,10 @@
 const Unit = require("../models/Unit");
 const ServiceHistory = require("../models/ServiceHistory");
 const { summarizeMajorComponentUse } = require("./ampComponentCategories");
-const { normalizeServiceType } = require("./ampMaintenanceService");
+const { normalizeServiceType, refreshMaintenanceRecommendations } = require("./ampMaintenanceService");
+const { assessServiceEvidence } = require("./serviceEvidence");
+const { effectiveWarrantyStatus } = require("./warrantyService");
+const { businessDay } = require("../utils/dateTime");
 const { BRANCHES } = require("./branchRouting");
 
 const MS_PER_DAY = 86400000;
@@ -41,18 +44,21 @@ const branchFilterMatch = (branch = "") => {
 
 const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   const units = await Unit.find({
-    status: { $ne: "retired" },
+    status: { $in: ["active", "service_due"] },
     ...branchFilterMatch(branch),
-  }).select("brand modelName serviceBranch amp.recommendedService").limit(1000).lean();
+  }).select("brand modelName serviceBranch installation.installedAt amp.recommendedService").lean();
   const unitIds = units.map((unit) => unit._id);
   const histories = unitIds.length
-    ? await ServiceHistory.find({ unit: { $in: unitIds } }).select("unit partsUsed serviceDate serviceType visitType actionTaken serviceActions").sort({ serviceDate: -1 }).limit(5000).lean()
+    ? await ServiceHistory.find({ unit: { $in: unitIds } }).select("unit partsUsed serviceDate serviceType visitType findings technicianInputs actionTaken serviceActions").sort({ serviceDate: -1 }).lean()
     : [];
-  const maintenanceHistories = histories.filter((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history)));
+  const installedDates = new Map(units.map((unit) => [String(unit._id), unit.installation?.installedAt]));
+  const eligibleHistories = histories.filter((history) => assessServiceEvidence(history, { installedAt: installedDates.get(String(history.unit)) }).eligible);
+  const maintenanceHistories = eligibleHistories.filter((history) => ["regular_cleaning", "deep_cleaning"].includes(normalizeServiceType(history)));
   const unitMap = new Map(units.map((unit) => [String(unit._id), unit]));
   const modelMap = new Map(); const brandMap = new Map(); const serviceMap = new Map();
   units.forEach((unit) => {
-    const serviceType = unit.amp?.recommendedService || "regular_cleaning";
+    const serviceType = unit.amp?.recommendedService;
+    if (!["regular_cleaning", "deep_cleaning"].includes(serviceType)) return;
     serviceMap.set(serviceType, (serviceMap.get(serviceType) || 0) + 1);
   });
   maintenanceHistories.forEach((history) => {
@@ -71,18 +77,19 @@ const buildRecordedMaintenanceTrends = async ({ branch = "" } = {}) => {
   })).sort((a, b) => b.servicesPerUnit - a.servicesPerUnit || b.recordedServices - a.recordedServices).slice(0, 10);
   return {
     modelTrends: finish(modelMap), brandTrends: finish(brandMap),
-    componentReplacements: summarizeMajorComponentUse(histories),
+    componentReplacements: summarizeMajorComponentUse(eligibleHistories),
     serviceDemand: Array.from(serviceMap.entries()).map(([serviceType, count]) => ({ serviceType, count })).sort((a, b) => b.count - a.count),
   };
 };
 
 const getManagerServicePipeline = async ({ days = 30, branch = "", includeAllBranches = false } = {}) => {
   const windowDays = boundedNumber(days, { fallback: 30, min: 1, max: 365, integer: true, label: "Pipeline window" });
-  const now = new Date();
+  const now = businessDay();
+  await refreshMaintenanceRecommendations(includeAllBranches ? {} : branchFilterMatch(branch));
   const windowEnd = addDays(now, windowDays);
   const baseMatch = {
     status: { $in: ["active", "service_due"] },
-    "amp.bestServicedBy": { $lte: windowEnd },
+    "amp.bestServicedBy": { $ne: null, $lte: windowEnd },
   };
   const unitMatch = { ...baseMatch, ...branchFilterMatch(branch) };
   const summaryMatch = {
@@ -135,8 +142,8 @@ const getManagerServicePipeline = async ({ days = 30, branch = "", includeAllBra
         zipCode: unit.installation?.zipCode || "", addressLine: unit.installation?.addressLine || "",
         bestServicedBy: dueDate.toISOString(), recommendedService: unit.amp.recommendedService || "regular_cleaning",
         recommendationBasis: unit.amp.recommendationBasis || "", daysUntilDue: daysBetween(now, dueDate),
-        overdue: dueDate < now, lastServiceDate: unit.lastVisit?.serviceDate || null,
-        warrantyStatus: unit.warranty?.status || "pending_activation",
+        overdue: dueDate < now, lastServiceDate: unit.amp.lastServiceDate || null,
+        warrantyStatus: effectiveWarrantyStatus(unit.warranty || {}),
         capacityAssessment: unit.amp.capacityAssessment || null,
       };
     }),
@@ -146,7 +153,10 @@ const getManagerServicePipeline = async ({ days = 30, branch = "", includeAllBra
 const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => {
   const forecastMonths = boundedNumber(months, { fallback: 12, min: 1, max: 24, integer: true, label: "Forecast months" });
   const serviceRevenue = boundedNumber(averageRevenue, { fallback: DEFAULT_AVERAGE_SERVICE_REVENUE, min: 1, max: 1000000, label: "Assumed service value" });
-  const now = new Date(); const firstMonth = startOfMonth(now); const afterLastMonth = addMonths(firstMonth, forecastMonths);
+  const now = businessDay(); const firstMonth = startOfMonth(now); const afterLastMonth = addMonths(firstMonth, forecastMonths);
+  await refreshMaintenanceRecommendations();
+  const activeUnits = await Unit.find({ status: { $in: ["active", "service_due"] } }).select("_id installation.installedAt").lean();
+  const installedDates = new Map(activeUnits.map((unit) => [String(unit._id), unit.installation?.installedAt]));
   const [buckets, serviceTypes, componentRows, branchRows, recordedTrends] = await Promise.all([
     Unit.aggregate([
       { $match: { status: { $in: ["active", "service_due"] }, "amp.bestServicedBy": { $gte: firstMonth, $lt: afterLastMonth } } },
@@ -154,10 +164,10 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]),
     Unit.aggregate([
-      { $match: { status: { $in: ["active", "service_due"] } } },
+      { $match: { status: { $in: ["active", "service_due"] }, "amp.recommendedService": { $in: ["regular_cleaning", "deep_cleaning"] } } },
       { $group: { _id: { $ifNull: ["$amp.recommendedService", "regular_cleaning"] }, count: { $sum: 1 } } },
     ]),
-    ServiceHistory.find({ partsUsed: { $exists: true, $ne: [] } }).select("partsUsed serviceDate").sort({ serviceDate: -1 }).limit(2000).lean(),
+    ServiceHistory.find({ unit: { $in: activeUnits.map((unit) => unit._id) }, partsUsed: { $exists: true, $ne: [] } }).select("unit partsUsed serviceDate serviceType visitType findings actionTaken serviceActions").sort({ serviceDate: -1 }).lean(),
     Unit.aggregate([
       { $match: { status: { $in: ["active", "service_due"] }, "amp.bestServicedBy": { $gte: firstMonth, $lt: afterLastMonth } } },
       { $group: {
@@ -178,7 +188,7 @@ const getOwnerServiceForecast = async ({ months = 12, averageRevenue } = {}) => 
     const date = addMonths(firstMonth, index); const volume = bucketMap.get(monthKey(date)) || 0;
     return { month: monthKey(date), label: monthLabel(date), serviceVolume: volume, projectedRevenue: volume * serviceRevenue };
   });
-  const parts = summarizeMajorComponentUse(componentRows);
+  const parts = summarizeMajorComponentUse(componentRows.filter((row) => assessServiceEvidence(row, { installedAt: installedDates.get(String(row.unit)) }).eligible));
   return {
     generatedAt: new Date().toISOString(), months: forecastMonths, averageServiceRevenue: serviceRevenue,
     revenueBasis: "scenario_estimate", revenueDisclaimer: REVENUE_DISCLAIMER,

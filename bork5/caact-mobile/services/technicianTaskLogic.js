@@ -12,8 +12,8 @@ export function getTaskSerialNumbers(task = {}) {
     : [];
   const directSerials = Array.isArray(task?.serialNumbers) ? task.serialNumbers : [];
   const itemSerials = (Array.isArray(task?.items) ? task.items : []).flatMap((item = {}) => [
-    ...(Array.isArray(item.serialNumbers) ? item.serialNumbers : []),
-    ...(Array.isArray(item.serialUnits) ? item.serialUnits.map((unit) => unit?.serialNumber) : []),
+    ...(Array.isArray(item?.serialNumbers) ? item.serialNumbers : []),
+    ...(Array.isArray(item?.serialUnits) ? item.serialUnits.map((unit) => unit?.serialNumber) : []),
   ]);
   return Array.from(new Set([...progressSerials, ...directSerials, ...itemSerials]
     .map((serial) => text(serial))
@@ -21,6 +21,7 @@ export function getTaskSerialNumbers(task = {}) {
 }
 
 export function isInstallationWorkOrder(task = {}) {
+  if (!task || typeof task !== "object") return false;
   if (getTaskSerialNumbers(task).length > 0) return true;
   if (text(task.requestId || task?.payload?.requestId)) return false;
   if (text(task.orderId || task.orderCode || task?.payload?.orderId || task?.payload?.orderCode)) return true;
@@ -46,6 +47,7 @@ export function formatWarrantyStatus(status, { installationPending = false } = {
 }
 
 export function suggestedServiceType(task = {}) {
+  if (!task || typeof task !== "object") return "inspection";
   const source = `${task.issueType || ""} ${task.title || ""} ${task.description || ""}`.toLowerCase();
   if (source.includes("warranty") || source.includes("repair")) return "repair";
   if (source.includes("deep")) return "deep_cleaning";

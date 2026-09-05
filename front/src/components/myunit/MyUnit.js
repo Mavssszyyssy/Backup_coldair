@@ -43,7 +43,7 @@ const buildUnitFromBackend = (unit = {}) => ({
   bestServicedByLabel:
     formatCustomerDate(unit.bestServicedBy),
   bestServicedBy: unit.bestServicedBy || "",
-  recommendedService: unit.recommendedService || "regular_cleaning",
+  recommendedService: unit.recommendedService ?? "",
   recommendationBasis: unit.recommendationBasis || "",
   capacityAssessment: unit.capacityAssessment || null,
   technicianReportSummary: "Installation completed and your AC is registered.",

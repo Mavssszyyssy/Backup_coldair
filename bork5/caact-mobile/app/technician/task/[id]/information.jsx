@@ -329,10 +329,11 @@ export default function TaskInformationScreen() {
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />
               <DetailItem icon="search-sharp" label="Findings" value={task?.findings || "No findings yet"} accent={COLORS.warning} />
               <DetailItem icon="checkmark-circle-sharp" label="Resolution" value={task?.resolution || "No resolution yet"} accent={COLORS.success} />
-              <DetailItem icon="cash-sharp" label="Total Cost" value={money(task?.totalServiceCost)} accent={COLORS.success} />
+              <DetailItem icon="cash-sharp" label="Recorded labor / parts costs" value={money(task?.totalServiceCost)} accent={COLORS.success} />
+              <Text style={{ color: COLORS.textSecondary }}>These cost entries are not a customer invoice.</Text>
             </Card>
             <Card>
-              <SectionHeading icon="time-sharp" title="Service History" subtitle={`${logs.length} service note(s) · ${requests.length} related request(s)`} />
+              <SectionHeading icon="time-sharp" title="Service History" subtitle={`${logs.length} note(s) for this work order · ${requests.length} related request(s)`} />
               {!task?.unitId ? <Text style={{ color: COLORS.textSecondary }}>No linked AC unit is available for service notes.</Text> : null}
               <View style={{ gap: SPACING.sm }}>
                 {!!task?.unitId ? <TechButton title="View Service Notes" onPress={() => router.push(`/technician/task/${task.id}/unit/log/select`)} size="sm" leftIcon={<Ionicons name="reader-sharp" size={17} color={COLORS.surface} />} /> : null}

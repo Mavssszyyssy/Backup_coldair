@@ -8,6 +8,8 @@ const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenance
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
 const { summarizeMajorComponentUse } = require("../domain/ampComponentCategories");
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
+const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
+const { effectiveWarrantyStatus } = require("../domain/warrantyService");
 
 const REPORT_TYPES = {
   predictive_maintenance: { label: "Next Maintenance Recommendation", filenameLabel: "Maintenance_Recommendation" },
@@ -18,28 +20,30 @@ const REPORT_TYPES = {
 const AGGREGATE_ROLES = new Set(["admin", "superadmin", "owner", "manager"]);
 const cleanText = (value, max = 300) => String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 const slugSegment = (value, fallback) => cleanText(value, 80).replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || fallback;
-const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
+const displayService = serviceLabel;
 
 async function resolveResponsibleBranch(req, unit, requestedBranch = "") {
-  if (req.authUser.role === "superadmin" && cleanText(requestedBranch)) return cleanText(requestedBranch, 80);
   const routed = unit ? await resolvePreferredBranch({ city: unit.installation?.city || "", province: unit.installation?.province || "", street: unit.installation?.addressLine || "" }) : "";
   return cleanText(unit?.serviceBranch || req.activeBranch || req.authUser.activeBranch || req.authUser.assignedBranch || requestedBranch || routed || "AEROPULSE Central", 80);
 }
 
 const formatHistory = (item = {}) => ({
-  date: item.serviceDate || item.createdAt || "", type: item.serviceType || item.visitType || "service",
+  date: item.serviceDate || "", type: serviceTypeFor(item), serviceLabel: serviceLabel(serviceTypeFor(item)),
   findings: cleanText(item.findings || item.technicianInputs?.notes || "", 500),
   actionTaken: cleanText(item.actionTaken || (item.serviceActions || []).join(", "), 500),
   partsUsed: Array.isArray(item.partsUsed) ? item.partsUsed.slice(0, 20) : [],
+  evidence: assessServiceEvidence(item),
 });
 
 const aggregateReliability = async (unit, branch) => {
   const query = { status: { $ne: "retired" } };
   if (branch && branch !== "AEROPULSE Central") query.serviceBranch = branch;
   if (unit?.brand) query.brand = unit.brand;
-  const units = await Unit.find(query).select("brand modelName serialNumber serviceBranch").limit(500).lean();
+  const units = await Unit.find(query).select("brand modelName serialNumber serviceBranch installation.installedAt").lean();
+  const installedDates = new Map(units.map((item) => [String(item._id), item.installation?.installedAt]));
   const ids = units.map((item) => item._id);
-  const histories = ids.length ? await ServiceHistory.find({ unit: { $in: ids } }).select("unit serviceType visitType findings actionTaken partsUsed serviceDate").sort({ serviceDate: -1 }).limit(5000).lean() : [];
+  const recorded = ids.length ? await ServiceHistory.find({ unit: { $in: ids } }).select("unit serviceType visitType findings actionTaken serviceActions partsUsed serviceDate").sort({ serviceDate: -1 }).lean() : [];
+  const histories = recorded.filter((history) => assessServiceEvidence(history, { installedAt: installedDates.get(String(history.unit)) }).eligible && serviceTypeFor(history) !== "installation");
   const byModel = new Map();
   units.forEach((item) => byModel.set(String(item._id), `${item.brand || "Unknown"} ${item.modelName || "Unknown"}`.trim()));
   const serviceCounts = new Map();
@@ -85,13 +89,13 @@ const getMaintenanceRecommendation = async (req, res) => {
     const ai = await callStructuredAmpAnalysis({
       safetyIdentifier: String(req.authUser._id),
       recommendation,
-      recordedHistory: history.map(formatHistory),
+    recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(formatHistory),
     });
     return res.json({
       provider: ai.provider,
       recommendation,
       insight: ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
-        best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
+        best_serviced_by: recommendation.bestServicedBy?.slice(0, 10) || "", recommended_service: recommendation.recommendedService,
         recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
       },
       warning: ai.error || "", generatedAt: new Date().toISOString(),
@@ -112,13 +116,13 @@ const generateAmpReport = async (req, res) => {
     const [history, requests, tasks] = await Promise.all([
       ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean(),
       ServiceRequest.find({ unitId: String(unit._id) }).sort({ createdAt: -1 }).limit(20).lean(),
-      Task.find({ $or: [{ unitId: String(unit._id) }, { "payload.serialNumbers": unit.serialNumber }, { "payload.serialNumber": unit.serialNumber }] }).sort({ updatedAt: -1 }).limit(20).lean(),
+      Task.find({ $or: [{ unitId: String(unit._id) }, { "payload.unitId": String(unit._id) }, { "payload.serialNumbers": unit.serialNumber }, { "payload.serialNumber": unit.serialNumber }, { "payload.items.serialNumbers": unit.serialNumber }, { "payload.items.serialUnits.serialNumber": unit.serialNumber }] }).sort({ updatedAt: -1 }).limit(20).lean(),
     ]);
     const aggregate = type === "inventory_reliability_analysis" ? await aggregateReliability(unit, branch) : null;
     const ai = await callStructuredAmpAnalysis({
       safetyIdentifier: String(req.authUser._id),
       recommendation,
-      recordedHistory: history.map(formatHistory),
+      recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(formatHistory),
       aggregateReliability: aggregate,
     });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
@@ -132,19 +136,20 @@ const generateAmpReport = async (req, res) => {
         reportType: type, reportLabel: definition.label,
         reportId: `AMP-${slugSegment(definition.filenameLabel, "REPORT").toUpperCase()}-${fileIdentifier}-${date.replaceAll("-", "")}`,
         title: definition.label, fileNameBase, fileName: `${fileNameBase}.pdf`, generatedAt,
-        branch, preparedBy: `${branch} Branch`, systemName: "AEROPULSE", watermark: "AEROPULSE",
-        unit: { unitId: String(unit._id), qrUnitId: unit.qrUnitId || "", serialNumber: unit.serialNumber, brand: unit.brand, model: unit.modelName, category: unit.category || "", capacityHp: unit.capacityHp || 0, roomSizeSqm: unit.roomSizeSqm || null, installedAt: unit.installation?.installedAt || null, serviceBranch: branch, warrantyStatus: unit.warranty?.status || "" },
+        branch, preparedBy: "AEROPULSE system-generated report", systemName: "AEROPULSE", watermark: "AEROPULSE",
+        unit: { unitId: String(unit._id), qrUnitId: unit.qrUnitId || "", serialNumber: unit.serialNumber, brand: unit.brand, model: unit.modelName, category: unit.category || "", capacityHp: unit.capacityHp || 0, roomSizeSqm: unit.roomSizeSqm || null, installedAt: unit.installation?.installedAt || null, serviceBranch: branch, warrantyStatus: effectiveWarrantyStatus(unit.warranty || {}) },
         maintenance: {
           bestServicedBy: recommendation.bestServicedBy, recommendedService: recommendation.recommendedService,
           lastServiceDate: recommendation.lastServiceDate, lastCleaningDate: recommendation.lastCleaningDate,
           recommendedServiceLabel: displayService(recommendation.recommendedService), recommendationBasis: recommendation.recommendationBasis,
           historicalBasis: recommendation.historicalBasis, capacityAssessment: recommendation.capacityAssessment,
+          dataQuality: recommendation.dataQuality, overdue: recommendation.overdue,
           interpretation: insight?.recommendation_summary || recommendation.recommendationBasis,
         },
-        serviceHistory: history.map(formatHistory), serviceRequests: requests.map((item) => ({ date: item.createdAt, type: item.serviceType || item.issueType || "service", status: item.status || "" })),
+        serviceHistory: history.map((item) => ({ ...formatHistory(item), evidence: assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }) })), serviceRequests: requests.map((item) => ({ date: item.createdAt, type: item.serviceType || item.issueType || "service", status: item.status || "" })),
         technicianTasks: tasks.map((item) => ({ date: item.completedAt || item.updatedAt, title: cleanText(item.title), status: item.status || "" })),
         aggregateReliability: aggregate,
-        note: ai.error || "This maintenance recommendation is decision support based on recorded history; final service findings require technician inspection.",
+        note: "This is a suggested maintenance schedule, not a confirmed booking or technician diagnosis. Book a service visit in the Cold Air mobile app." + (ai.error ? ` ${ai.error}` : ""),
       },
     });
   } catch (error) {

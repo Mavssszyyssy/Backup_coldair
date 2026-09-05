@@ -1,7 +1,7 @@
 const Unit = require("../models/Unit");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { createDedupedNotification, notifyOperationalStaff } = require("./operationalNotificationService");
-const { formatDateKeyInTimeZone } = require("../utils/dateTime");
+const { formatDateKeyInTimeZone, businessDay } = require("../utils/dateTime");
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
@@ -9,7 +9,7 @@ const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : 
 const maintenanceAlertForRecommendation = (recommendation, now = new Date()) => {
   const due = new Date(recommendation?.bestServicedBy || "");
   if (Number.isNaN(due.getTime())) return null;
-  const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / MS_PER_DAY);
+  const daysUntilDue = Math.round((businessDay(due).getTime() - businessDay(now).getTime()) / MS_PER_DAY);
   if (daysUntilDue > 30) return null;
   const dateKey = formatDateKeyInTimeZone(due);
   if (daysUntilDue < 0) return {
@@ -27,7 +27,7 @@ const maintenanceAlertForRecommendation = (recommendation, now = new Date()) => 
 };
 
 const notifyMaintenanceForUnit = async (unit, recommendation, now = new Date()) => {
-  if (!unit?.customer) return null;
+  if (!unit?.customer || ["retired", "on_hold"].includes(unit.status)) return null;
   const alert = maintenanceAlertForRecommendation(recommendation, now);
   if (!alert) return null;
   return createDedupedNotification({
@@ -44,25 +44,20 @@ const notifyMaintenanceForUnit = async (unit, recommendation, now = new Date()) 
 };
 
 const runAmpDailyMonitor = async ({ now = new Date(), limit = 500 } = {}) => {
-  const horizon = new Date(now.getTime() + 30 * MS_PER_DAY);
   const units = await Unit.find({
     status: { $in: ["active", "service_due"] },
     customer: { $ne: null },
-    $or: [
-      { "amp.bestServicedBy": { $lte: horizon } },
-      { "amp.bestServicedBy": null },
-      { "amp.bestServicedBy": { $exists: false } },
-    ],
   })
     .select("customer brand modelName serviceBranch status")
     .sort({ "amp.bestServicedBy": 1, _id: 1 })
     .limit(Math.min(Math.max(Number(limit) || 500, 1), 1000));
   const stats = { scanned: units.length, alertsCreated: 0, dueSoon: 0, overdue: 0, errors: 0 };
   const branchSummary = new Map();
+  const cohortCache = new Map();
 
   for (const unit of units) {
     try {
-      const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: now });
+      const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: now, cohortCache });
       const alert = maintenanceAlertForRecommendation(recommendation, now);
       if (!alert) continue;
       const notification = await notifyMaintenanceForUnit(unit, recommendation, now);

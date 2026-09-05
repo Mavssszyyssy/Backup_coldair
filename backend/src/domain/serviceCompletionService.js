@@ -2,6 +2,8 @@ const Unit = require("../models/Unit");
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("./ampMaintenanceService");
 const { appendWarrantyEvent, effectiveWarrantyStatus } = require("./warrantyService");
+const { isDetailedFinding, detailedActions } = require("./serviceEvidence");
+const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const clean = (value, max = 1000) => String(value || "").trim().slice(0, max);
 const list = (value) => (Array.isArray(value) ? value : String(value || "").split(","))
@@ -30,12 +32,13 @@ const validateStrictServicePayload = (payload = {}) => {
   const serviceDate = new Date(payload.service_date || payload.serviceDate || new Date());
 
   if (!serviceType) errors.serviceType = "Choose the service type performed.";
-  if (findings.length < 10) errors.findings = "Record technician findings using at least 10 characters.";
-  if (!actions.length) errors.serviceActions = "Record at least one action performed.";
+  if (!isDetailedFinding(findings)) errors.findings = "Record actual technician findings using at least 10 characters. A service recommendation is not a finding.";
+  if (!detailedActions(actions).length) errors.serviceActions = "Describe the work performed. 'Service completed' alone is not a service report.";
   if (!["excellent", "good", "fair", "poor"].includes(conditionRating)) {
     errors.conditionRating = "Choose excellent, good, fair, or poor for the unit condition.";
   }
   if (Number.isNaN(serviceDate.getTime())) errors.serviceDate = "Enter a valid service date.";
+  else if (serviceDate > new Date()) errors.serviceDate = "Completed service cannot have a future date or time.";
 
   return {
     ok: Object.keys(errors).length === 0,
@@ -44,7 +47,7 @@ const validateStrictServicePayload = (payload = {}) => {
   };
 };
 
-const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) => {
+const completeServiceForUnit = async ({ unitId, technicianId, sourceTaskId, payload = {} }) => {
   const validation = validateStrictServicePayload(payload);
   if (!validation.ok) {
     const error = new Error("Complete the required technician service report.");
@@ -60,10 +63,17 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
   }
 
   const { serviceDate, serviceType, findings, actions, conditionRating } = validation.values;
+  if (["retired", "on_hold"].includes(unit.status)) {
+    const error = new Error("This AC unit is unavailable for service completion. Ask the branch team to review its status."); error.status = 409; throw error;
+  }
+  if (unit.installation?.installedAt && formatDateKeyInTimeZone(serviceDate) < formatDateKeyInTimeZone(unit.installation.installedAt)) {
+    const error = new Error("A service date cannot precede the recorded installation date."); error.status = 400; throw error;
+  }
   const partsUsed = list(payload.parts_used || payload.partsUsed);
 
-  const serviceHistory = await ServiceHistory.create({
+  const historyData = {
     unit: unit._id,
+    ...(sourceTaskId ? { sourceTaskId: String(sourceTaskId) } : {}),
     technician: technicianId,
     serviceDate,
     visitType: visitTypeFor(serviceType),
@@ -76,16 +86,17 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
       notes: findings,
     },
     serviceActions: actions,
-  });
-  unit.status = "active";
-  await unit.save();
-  const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: serviceDate });
+  };
+  const serviceHistory = sourceTaskId
+    ? await ServiceHistory.findOneAndUpdate({ unit: unit._id, sourceTaskId: String(sourceTaskId) }, { $setOnInsert: historyData }, { upsert: true, returnDocument: "after", runValidators: true })
+    : await ServiceHistory.create(historyData);
+  const recommendation = await calculateMaintenanceRecommendation(unit._id);
   serviceHistory.ampSnapshot = {
     bestServicedBy: recommendation.bestServicedBy,
     recommendedService: recommendation.recommendedService,
     recommendationBasis: recommendation.recommendationBasis,
     nextIdealServiceDate: recommendation.bestServicedBy,
-    nextIdealServicePeriod: `Suggested servicing date: ${new Date(recommendation.bestServicedBy).toLocaleDateString("en-US")}`,
+    nextIdealServicePeriod: recommendation.bestServicedBy ? `Suggested servicing date: ${recommendation.bestServicedBy.slice(0, 10)}` : "Date required",
     calculatedAt: new Date(),
   };
   await serviceHistory.save();
@@ -95,14 +106,15 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
     const claimId = clean(payload.warranty_claim_id || payload.warrantyClaimId);
     const claims = Array.isArray(warranty.claims) ? warranty.claims : [];
     const claimIndex = claimId ? claims.findIndex((claim) => String(claim?.claimId || "") === claimId) : -1;
-    if (claimIndex >= 0) claims[claimIndex] = { ...claims[claimIndex], status: "service_completed", resolvedAt: new Date(), serviceHistoryId: String(serviceHistory._id) };
+    if (claimIndex >= 0 && ["approved", "service_completed"].includes(claims[claimIndex].status)) claims[claimIndex] = { ...claims[claimIndex], status: "service_completed", resolvedAt: claims[claimIndex].resolvedAt || new Date(), serviceHistoryId: String(serviceHistory._id) };
     warranty.claims = claims;
+    const alreadyRecorded = (warranty.serviceRecords || []).some((entry) => String(entry.serviceHistoryId) === String(serviceHistory._id));
     warranty.serviceRecords = [
       ...(Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : []),
-      { serviceDate, visitType: serviceType, summary: findings, serviceHistoryId: String(serviceHistory._id), claimId },
+      ...(alreadyRecorded ? [] : [{ serviceDate, visitType: serviceType, summary: findings, serviceHistoryId: String(serviceHistory._id), claimId }]),
     ];
-    warranty.status = effectiveWarrantyStatus({ ...warranty, status: "active" });
-    warranty.timeline = appendWarrantyEvent(
+    warranty.status = effectiveWarrantyStatus(warranty);
+    if (!alreadyRecorded) warranty.timeline = appendWarrantyEvent(
       warranty,
       claimIndex >= 0 ? "Warranty Service Completed" : "Warranty Service Record Added",
       claimIndex >= 0 ? "Approved warranty claim service was completed." : "Service history and AMP recommendation were updated.",
@@ -111,7 +123,7 @@ const completeServiceForUnit = async ({ unitId, technicianId, payload = {} }) =>
     await unit.save();
   }
 
-  return { unit, serviceHistory, recommendation };
+  return { unit: await Unit.findById(unit._id), serviceHistory, recommendation };
 };
 
 module.exports = { completeServiceForUnit, validateStrictServicePayload };

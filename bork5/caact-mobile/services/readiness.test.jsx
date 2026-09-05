@@ -91,7 +91,8 @@ describe("mobile customer readiness rules", () => {
 
     expect(detailsSource).toContain("DETAIL_PAGES");
     expect(detailsSource).toContain("BottomSheetSelect");
-    expect(detailsSource).toContain("Technician Check-in");
+    expect(detailsSource).toContain("Current Visit Check-in");
+    expect(detailsSource).toContain("Latest Recorded Check-in");
     expect(detailsSource).toContain("Open Check-in Map");
     expect(detailsSource).toContain("Next maintenance plan");
     expect(detailsSource).toContain("Service history summary");

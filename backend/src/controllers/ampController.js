@@ -6,13 +6,14 @@ const Task = require("../models/Task");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
 const { getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH } = require("../domain/ampDashboardService");
-const { completeServiceForUnit } = require("../domain/serviceCompletionService");
+const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
 const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
 const { notifyMaintenanceForUnit } = require("../services/ampDailyMonitorService");
 const { BRANCHES } = require("../domain/branchRouting");
+const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
-const displayService = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
+const displayService = serviceLabel;
 
 const resolveManagerPipelineScope = ({ role, requestedBranch = "", activeBranch = "" }) => {
   const canViewAllBranches = role === "superadmin" || role === "owner";
@@ -38,10 +39,11 @@ const resolveManagerPipelineScope = ({ role, requestedBranch = "", activeBranch 
 const serviceHistoryItem = (service) => ({
   id: String(service._id || service.id || ""),
   date: service.serviceDate,
-  serviceType: service.serviceType || service.visitType || "service",
+  serviceType: serviceTypeFor(service),
   findings: service.findings || service.technicianInputs?.notes || "",
   actionTaken: service.actionTaken || (service.serviceActions || []).join(", "),
   partsUsed: Array.isArray(service.partsUsed) ? service.partsUsed : [],
+  evidence: assessServiceEvidence(service),
 });
 
 const serializeCustomerUnit = (unit, history = [], recommendation = null, product = null) => {
@@ -50,8 +52,8 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
   const productId = String(json.productId || productJson.id || productJson._id || "");
   const catalogImage = String(productJson.image || "").trim();
   const warranty = { ...(json.warranty || {}), status: effectiveWarrantyStatus(json.warranty || {}) };
-  const bestServicedBy = recommendation?.bestServicedBy || json.amp?.bestServicedBy || json.amp?.nextIdealServiceDate || "";
-  const recommendedService = recommendation?.recommendedService || json.amp?.recommendedService || "regular_cleaning";
+  const bestServicedBy = recommendation ? recommendation.bestServicedBy : json.amp?.bestServicedBy || json.amp?.nextIdealServiceDate || "";
+  const recommendedService = recommendation ? recommendation.recommendedService : json.amp?.recommendedService || "";
   return {
     id: json.id || String(json._id || ""), userId: String(json.customer || ""),
     productId,
@@ -62,20 +64,21 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
     capacityHp: Number(json.capacityHp || 0), roomSizeSqm: json.roomSizeSqm || null,
     serialNumber: json.serialNumber || "", qrCode: json.qrCode || "", qrUnitId: json.qrUnitId || "",
     serviceBranch: json.serviceBranch || "",
-    status: json.status === "service_due" ? "Service Due" : json.status === "on_hold" ? "On Hold" : "Active",
-    installationDate: json.installation?.installedAt ? new Date(json.installation.installedAt).toISOString().split("T")[0] : "",
+    status: json.status === "on_hold" ? "On Hold" : json.status === "retired" ? "Retired" : (recommendation ? recommendation.overdue : json.status === "service_due") ? "Service Due" : "Active",
+    installationDate: json.installation?.installedAt ? formatDateKeyInTimeZone(json.installation.installedAt) : "",
     placementArea: json.installation?.addressLine || "",
     installationEnvironment: [json.installation?.city, json.installation?.province].filter(Boolean).join(", "),
     bestServicedBy, recommendedService, recommendedServiceLabel: displayService(recommendedService),
-    lastServiceDate: recommendation?.lastServiceDate || json.amp?.lastServiceDate || null,
-    lastCleaningDate: recommendation?.lastCleaningDate || json.amp?.lastCleaningDate || null,
+    lastServiceDate: recommendation ? recommendation.lastServiceDate : json.amp?.lastServiceDate || null,
+    lastCleaningDate: recommendation ? recommendation.lastCleaningDate : json.amp?.lastCleaningDate || null,
     recommendationBasis: recommendation?.recommendationBasis || json.amp?.recommendationBasis || "",
     historicalBasis: recommendation?.historicalBasis || null,
     capacityAssessment: recommendation?.capacityAssessment || json.amp?.capacityAssessment || null,
-    overdue: Boolean(recommendation?.overdue), amp: json.amp || {},
+    dataQuality: recommendation?.dataQuality || json.amp?.dataQuality || null,
+    overdue: Boolean(recommendation?.overdue), amp: { ...json.amp, ...(recommendation || {}), nextIdealServiceDate: bestServicedBy },
     warranty: { ...warranty, claims: Array.isArray(warranty.claims) ? warranty.claims : [], serviceRecords: Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : [], timeline: Array.isArray(warranty.timeline) ? warranty.timeline : [] },
     warrantyStatus: warranty.status || "pending_activation", warrantyExpirationDate: warranty.expirationDate || "",
-    warrantyRecommendation: getWarrantyRecommendation(warranty), serviceHistory: history.map(serviceHistoryItem),
+    warrantyRecommendation: getWarrantyRecommendation(warranty), serviceHistory: history.map((service) => ({ ...serviceHistoryItem(service), evidence: assessServiceEvidence(service, { installedAt: json.installation?.installedAt }) })),
     createdAt: json.createdAt, updatedAt: json.updatedAt,
   };
 };
@@ -129,13 +132,13 @@ const calculateNextServiceDate = async (req, res) => {
     const ai = await callStructuredAmpAnalysis({
       safetyIdentifier: String(req.authUser._id),
       recommendation,
-      recordedHistory: history.map(serviceHistoryItem),
+      recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(serviceHistoryItem),
     });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
-      best_serviced_by: recommendation.bestServicedBy.slice(0, 10), recommended_service: recommendation.recommendedService,
+      best_serviced_by: recommendation.bestServicedBy?.slice(0, 10) || "", recommended_service: recommendation.recommendedService,
       recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
     };
-    await notifyDueMaintenance(unit, recommendation);
+    if (persist && !["on_hold", "retired"].includes(unit.status)) await notifyDueMaintenance(unit, recommendation);
     return res.json({ provider: ai.provider, recommendation, insight, warning: ai.error || "" });
   } catch (error) {
     console.error("Failed to calculate AMP maintenance recommendation:", error.message);
@@ -157,7 +160,7 @@ const listMyUnits = async (req, res) => {
     const historyByUnit = new Map();
     histories.forEach((item) => historyByUnit.set(String(item.unit), [...(historyByUnit.get(String(item.unit)) || []), item]));
     const recommendations = await Promise.all(units.map((unit) => calculateMaintenanceRecommendation(unit._id)));
-    await Promise.all(units.map((unit, index) => notifyDueMaintenance(unit, recommendations[index]).catch(() => null)));
+    await Promise.all(units.filter((unit) => unit.status !== "on_hold").map((unit) => notifyDueMaintenance(unit, recommendations[units.indexOf(unit)]).catch(() => null)));
     return res.json({
       units: units.map((unit, index) => serializeCustomerUnit(
         unit,
@@ -179,15 +182,21 @@ const updateRoomSize = async (req, res) => {
     if (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000) return res.status(400).json({ message: "Enter a valid room size in square meters." });
     unit.roomSizeSqm = roomSizeSqm; await unit.save();
     const recommendation = await calculateMaintenanceRecommendation(unit._id);
-    return res.json({ message: "Room size saved.", recommendation, unit: serializeCustomerUnit(unit, [], recommendation) });
+    const [history, product] = await Promise.all([ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }), mongoose.isValidObjectId(unit.productId) ? Product.findById(unit.productId).select("name sku brand category image") : null]);
+    return res.json({ message: "Room size saved.", recommendation, unit: serializeCustomerUnit(unit, history, recommendation, product) });
   } catch (error) { return res.status(error.status || 500).json({ message: error.message || "Unable to update room size." }); }
 };
 
 const completeService = async (req, res) => {
   try {
-    await loadAccessibleUnit(req);
-    const result = await completeServiceForUnit({ unitId: req.params.unitId, technicianId: req.authUser._id, payload: req.body || {} });
-    return res.status(201).json({ serviceHistory: result.serviceHistory.toJSON(), recommendation: result.recommendation, unit: result.unit.toJSON() });
+    const unit = await loadAccessibleUnit(req);
+    const taskId = String(req.body?.taskId || "");
+    if (!mongoose.isValidObjectId(taskId)) return res.status(409).json({ message: "Complete the service report from its assigned work order so check-in, service history, and request status stay synchronized." });
+    const task = await Task.findById(taskId);
+    if (!task || String(task.unitId || task.payload?.unitId || "") !== String(unit._id)) return res.status(403).json({ message: "This work order does not belong to the selected AC unit." });
+    req.params.taskId = taskId;
+    req.body = { ...req.body, status: "completed" };
+    return require("./taskController").updateTaskStatus(req, res);
   } catch (error) {
     console.error("Failed to complete service:", error.message);
     return res.status(error.status || 500).json({ message: error.message || "Unable to complete service.", errors: error.errors || null });
@@ -233,4 +242,4 @@ const getOwnerForecast = async (req, res) => {
   catch (error) { return res.status(error.status || 500).json({ message: error.message || "Unable to load the maintenance forecast." }); }
 };
 
-module.exports = { listMyUnits, calculateNextServiceDate, updateRoomSize, completeService, getManagerPipeline, getReportUnits, getOwnerForecast, resolveManagerPipelineScope };
+module.exports = { listMyUnits, calculateNextServiceDate, updateRoomSize, completeService, getManagerPipeline, getReportUnits, getOwnerForecast, resolveManagerPipelineScope, serializeCustomerUnit };

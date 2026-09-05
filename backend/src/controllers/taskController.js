@@ -6,12 +6,15 @@ const Order = require("../models/Order");
 const Unit = require("../models/Unit");
 const ServiceRequest = require("../models/ServiceRequest");
 const Notification = require("../models/Notification");
-const { notifyOperationalStaff } = require("../services/operationalNotificationService");
+const { notifyOperationalStaff, createDedupedNotification } = require("../services/operationalNotificationService");
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
 const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
 const { validateTechnicianTaskCompletion } = require("../domain/technicianTaskCompletion");
+const { completeServiceForUnit } = require("../domain/serviceCompletionService");
+const { assessServiceEvidence, serviceTypeFor } = require("../domain/serviceEvidence");
+const { formatDateKeyInTimeZone, parseInstallationDateTime } = require("../utils/dateTime");
 const {
   getTaskMutationBlocker,
   normalizeTaskStatus: normalizeStatus,
@@ -300,19 +303,17 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
 
   const address = task.payload?.customerAddress || {};
   const ampParameters = registration.ampParameters || {};
-  const installedAt = ampParameters.installationTimestamp
-    ? new Date(ampParameters.installationTimestamp)
-    : ampParameters.installationDate
-      ? new Date(ampParameters.installationDate)
-      : new Date();
+  const installedAt = parseInstallationDateTime(ampParameters.installationDate, ampParameters.installationTime || "00:00");
+  if (!installedAt) throw new Error("The installation record needs a valid date and time before completion.");
 
-  const existingUnit = await Unit.findOne({ serialNumber }).select("warranty");
+  const existingUnit = await Unit.findOne({ serialNumber });
+  if (existingUnit?.customer && String(existingUnit.customer) !== customerId) throw new Error("This serial already belongs to another customer. Ask an administrator to review the assignment.");
   const warranty = buildActivatedWarranty(existingUnit?.warranty, installedAt);
 
   const installedUnit = await Unit.findOneAndUpdate(
     { serialNumber },
     {
-      $set: {
+      [existingUnit ? "$setOnInsert" : "$set"]: {
         serialNumber,
         qrCode: String(serialUnit?.qrCode || ""),
         qrUnitId: String(serialUnit?.qrUnitId || ""),
@@ -353,8 +354,9 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
       visitType: "installation",
     });
     if (!installationHistory) {
-      installationHistory = await ServiceHistory.create({
+      installationHistory = await ServiceHistory.findOneAndUpdate({ unit: installedUnit._id, sourceTaskId: String(task._id) }, { $setOnInsert: {
         unit: installedUnit._id,
+        sourceTaskId: String(task._id),
         technician: technicianId,
         serviceDate: installedAt,
         visitType: "installation",
@@ -366,7 +368,7 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
         technicianInputs: {
           notes: String(registration.ampParameters?.notes || "Installation completed and unit registration verified."),
         },
-      });
+      } }, { upsert: true, returnDocument: "after", runValidators: true });
     }
   }
   const recommendation = await calculateMaintenanceRecommendation(installedUnit._id);
@@ -640,77 +642,16 @@ const completeWarrantyClaimForServiceTask = async (task, request) => {
 
 const recordCompletedServiceHistory = async (task, request) => {
   const existingHistoryId = String(task.payload?.serviceHistoryId || "").trim();
-  if (existingHistoryId) return;
+  if (existingHistoryId && await ServiceHistory.exists({ _id: existingHistoryId })) return;
+  if (getTaskSerialNumbers(task).length) return;
   const unitId = String(task.unitId || request.unitId || "").trim();
   const technicianId = String(task.assignedTechnicianId || "").trim();
   if (!mongoose.Types.ObjectId.isValid(unitId) || !mongoose.Types.ObjectId.isValid(technicianId)) return;
 
-  const unit = await Unit.findById(unitId);
-  if (!unit) return;
-  const source = `${task.issueType || ""} ${request.issueType || ""} ${task.title || ""}`.toLowerCase();
-  const visitType = source.includes("repair") || source.includes("warranty")
-    ? "repair"
-    : source.includes("installation")
-      ? "installation"
-      : source.includes("inspection") || source.includes("check")
-        ? "inspection"
-        : "scheduled_service";
-  const submitted = task.proof?.submittedAt || task.completedAt || new Date();
-  const explicitServiceType = String(
-    task.payload?.serviceType ||
-    task.payload?.service_type ||
-    task.payload?.cleaningType ||
-    request.payload?.serviceType ||
-    request.payload?.service_type ||
-    "",
-  ).trim().toLowerCase().replace(/[\s-]+/g, "_");
-  const historyRecommendation = ["regular_cleaning", "deep_cleaning"].includes(explicitServiceType)
-    ? null
-    : await calculateMaintenanceRecommendation(unit._id, { asOfDate: submitted, persist: false });
-  const recordedServiceType = visitType === "repair"
-    ? "repair"
-    : visitType === "installation"
-      ? "installation"
-      : visitType === "inspection"
-        ? "inspection"
-        : ["regular_cleaning", "deep_cleaning"].includes(explicitServiceType)
-          ? explicitServiceType
-          : historyRecommendation?.recommendedService || "regular_cleaning";
-  const validConditionRating = ["excellent", "good", "fair", "poor"].includes(String(task.payload?.conditionRating || "").toLowerCase())
-    ? String(task.payload.conditionRating).toLowerCase()
-    : "good";
-  const actions = [
-    ...(Array.isArray(task.payload?.serviceActions) ? task.payload.serviceActions : []),
-    task.payload?.resolution || task.resolution || "",
-    task.payload?.partsUsed || task.partsUsed ? `Parts used: ${task.payload?.partsUsed || task.partsUsed}` : "",
-  ].map((value) => String(value || "").trim()).filter(Boolean);
-  const history = await ServiceHistory.create({
-    unit: unit._id,
-    technician: technicianId,
-    serviceDate: submitted,
-    visitType,
-    serviceType: recordedServiceType,
-    conditionRating: validConditionRating,
-    technicianInputs: {
-      notes: String(task.payload?.findings || task.findings || task.proof?.notes || task.description || "Service completed"),
-    },
-    serviceActions: actions.length ? actions : ["Service completed"],
-    findings: String(task.payload?.findings || task.findings || task.proof?.notes || task.description || "Service completed"),
-    actionTaken: actions.join(", ") || "Service completed",
-    partsUsed: Array.isArray(task.payload?.partsUsed)
-      ? task.payload.partsUsed
-      : String(task.payload?.partsUsed || task.partsUsed || "").split(",").map((item) => item.trim()).filter(Boolean),
+  const { serviceHistory: history } = await completeServiceForUnit({
+    unitId, technicianId, sourceTaskId: task._id,
+    payload: { ...task.payload, serviceDate: task.completedAt || new Date(), warrantyClaimId: request.payload?.warrantyClaimId || task.payload?.warrantyClaimId },
   });
-  const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: submitted });
-  history.ampSnapshot = {
-    bestServicedBy: recommendation.bestServicedBy,
-    recommendedService: recommendation.recommendedService,
-    recommendationBasis: recommendation.recommendationBasis,
-    nextIdealServiceDate: recommendation.bestServicedBy,
-    nextIdealServicePeriod: `Suggested servicing date: ${new Date(recommendation.bestServicedBy).toLocaleDateString("en-US")}`,
-    calculatedAt: new Date(),
-  };
-  await history.save();
   task.payload = { ...(task.payload || {}), serviceHistoryId: String(history._id), updatedAt: new Date().toISOString() };
   await task.save();
 };
@@ -730,6 +671,8 @@ const syncServiceRequestForTask = async (task, status) => {
 
   const request = await ServiceRequest.findById(requestId);
   if (!request) return;
+  // A completed request must have its service evidence persisted first.
+  if (nextStatus === "Completed") await recordCompletedServiceHistory(task, request);
 
   const previousStatus = String(request.status || "").trim().toLowerCase();
   const statusChanged = previousStatus !== nextStatus.toLowerCase();
@@ -801,28 +744,36 @@ const syncServiceRequestForTask = async (task, status) => {
   }
   const customerId = String(request.customerId || task.customerId || "").trim();
   if (nextStatus === "Completed" && !task.payload?.orderId && !task.orderId && customerId && mongoose.Types.ObjectId.isValid(customerId)) {
-    const targetId = String(task._id || task.id || request._id || "");
+    const targetId = String(request._id);
     const alreadyNotified = await Notification.exists({ user: customerId, targetId, title: "Service completed" });
     if (!alreadyNotified) {
       await Notification.create({
         user: customerId,
-        type: "order",
+        type: "service",
+        category: "service",
+        targetType: "service_request",
         title: "Service completed",
         message: `Your technician service request for ${request.issue || "your AC unit"} has been completed.`,
         route: "/customer/service-requests",
-        targetId,
+        targetId: String(request._id),
       });
     }
   }
 };
 
+const reconcileCompletedTask = async (task) => {
+  await syncOrderWorkflowForTask(task, "completed");
+  await syncServiceRequestForTask(task, "completed");
+  if (!String(task.payload?.requestId || task.requestId || "").trim()) await recordCompletedServiceHistory(task, {});
+};
+
 const buildRegistrationRecord = ({ req, task, serialNumber, payload, status }) => {
-  const installationDate = String(payload.installationDate || new Date().toISOString().split("T")[0]);
-  const installationTime = String(payload.installationTime || new Date().toTimeString().slice(0, 5));
+  const installationDate = String(payload.installationDate || formatDateKeyInTimeZone(new Date()));
+  const installationTime = String(payload.installationTime || "00:00");
   const ampParameters = {
     installationDate,
     installationTime,
-    installationTimestamp: `${installationDate}T${installationTime}:00`,
+    installationTimestamp: parseInstallationDateTime(installationDate, installationTime).toISOString(),
     roomSizeSqm: Number(payload.roomSizeSqm || 0) || null,
     conditionRating: String(payload.conditionRating || "good"),
     notes: String(payload.notes || ""),
@@ -983,6 +934,22 @@ const listTasks = async (req, res) => {
   }
 };
 
+const resolveTaskTechnician = async (id, branch) => {
+  if (!id) return null;
+  const technician = mongoose.Types.ObjectId.isValid(id) ? await User.findById(id) : null;
+  if (!technician || technician.role !== "technician" || technician.isDeleted || ["disabled", "deleted"].includes(technician.accountStatus)) {
+    const error = new Error("Choose an active technician account."); error.status = 400; throw error;
+  }
+  const assignedBranch = technician.activeBranch || technician.assignedBranch;
+  if (branch && assignedBranch !== branch) { const error = new Error("Choose a technician assigned to this work order's branch."); error.status = 409; throw error; }
+  return technician;
+};
+const notifyTaskAssignment = async (task) => {
+  if (!task.assignedTechnicianId) return;
+  await createDedupedNotification({ user: task.assignedTechnicianId, type: "technician", category: "task", title: "Work order assigned", message: `${task.title} is assigned to you. Open My Work for details.`, targetId: String(task._id), targetType: "task", route: "/technician/tasks", dedupeKey: `work-assignment:${task._id}:${task.assignedTechnicianId}` });
+  await notifyOperationalStaff({ branch: task.branch, type: "technician", category: "task", title: "Work order assigned", message: `${task.title} is assigned to ${task.assignedTechnicianName}.`, targetId: String(task._id), targetType: "task", route: "/admin/services/technicians", dedupeKey: `work-assignment:${task._id}:${task.assignedTechnicianId}` });
+};
+
 const createTask = async (req, res) => {
   try {
     if (!["admin", "superadmin"].includes(req.authUser.role)) {
@@ -995,6 +962,9 @@ const createTask = async (req, res) => {
     const title = String(payload.title || payload.issueType || "Service Task").trim();
     const customerName = String(payload.customerName || payload.customer || "Customer").trim();
     const address = String(payload.address || "TBD").trim();
+    if (["completed", "cancelled"].includes(normalizeStatus(payload.status))) return res.status(400).json({ message: "Create the work order first, then complete it through the verified technician workflow." });
+    const taskBranch = req.authUser.role === "superadmin" ? String(payload.branch || "") : req.activeBranch;
+    const technician = await resolveTaskTechnician(String(payload.assignedTechnicianId || ""), taskBranch);
 
     const task = await Task.create({
       taskCode,
@@ -1010,21 +980,22 @@ const createTask = async (req, res) => {
       issueType: String(payload.issueType || ""),
       description: String(payload.description || payload.concern || ""),
       assignedTechnicianId: String(payload.assignedTechnicianId || ""),
-      assignedTechnicianName: String(payload.assignedTechnicianName || ""),
+      assignedTechnicianName: technician ? getTechnicianDisplayName(technician) : "",
       status: normalizeStatus(payload.status),
       priority: String(payload.priority || "medium").toLowerCase(),
       scheduledDate: String(payload.scheduledDate || payload.preferredDate || "TBD"),
       timeSlot: String(payload.timeSlot || payload.preferredSchedule || "TBD"),
       assignedRole: String(payload.assignedRole || "technician"),
-      branch: req.authUser.role === "superadmin" ? String(payload.branch || "") : req.activeBranch,
+      branch: taskBranch || technician?.activeBranch || technician?.assignedBranch || "",
       completedAt: normalizeStatus(payload.status) === "completed" ? new Date() : null,
       payload: { ...payload, createdAt: payload.createdAt || nowIso, updatedAt: payload.updatedAt || nowIso },
     });
 
+    await notifyTaskAssignment(task);
     return res.status(201).json({ task: hydrateTaskResponse(task) });
   } catch (error) {
     console.error("Failed to create task:", error);
-    return res.status(500).json({ message: "Unable to create task right now." });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : "Unable to create task right now." });
   }
 };
 
@@ -1038,12 +1009,23 @@ const updateTask = async (req, res) => {
     const payload = req.body || {};
     const requestedStatus = parseTaskStatus(payload.status);
     if (normalizeStatus(task.status) === "completed" && requestedStatus === "completed") {
+      await reconcileCompletedTask(task);
       return res.json({ task: hydrateTaskResponse(task), replayed: true });
     }
 
     const mutationBlocker = getTaskMutationBlocker(task.status);
     if (mutationBlocker) {
       return res.status(409).json({ message: mutationBlocker });
+    }
+
+    const reassigned = req.authUser.role !== "technician" && payload.assignedTechnicianId && String(payload.assignedTechnicianId) !== String(task.assignedTechnicianId);
+    if (reassigned) {
+      const technician = await resolveTaskTechnician(String(payload.assignedTechnicianId), task.branch);
+      payload.assignedTechnicianName = getTechnicianDisplayName(technician);
+      // The incoming technician must record their own arrival and service proof.
+      task.proof = {};
+      task.payload = { ...(task.payload || {}) };
+      for (const field of ["checkIn", "proof", "serviceLogs", "findings", "resolution", "serviceActions", "serviceHistoryId"]) { delete task.payload[field]; delete payload[field]; }
     }
 
     if (req.authUser.role === "technician") {
@@ -1139,12 +1121,14 @@ const updateTask = async (req, res) => {
     task.payload = updatedPayload;
 
     await task.save();
+    if (reassigned) await notifyTaskAssignment(task);
     await syncOrderWorkflowForTask(task, nextStatus);
     await syncServiceRequestForTask(task, nextStatus);
+    if (nextStatus === "completed" && !String(task.payload?.requestId || task.requestId || "").trim()) await recordCompletedServiceHistory(task, {});
     return res.json({ task: hydrateTaskResponse(task) });
   } catch (error) {
     console.error("Failed to update task:", error);
-    return res.status(500).json({ message: "Unable to update task right now." });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : "Unable to update task right now." });
   }
 };
 
@@ -1196,6 +1180,7 @@ const checkInTask = async (req, res) => {
     }
 
     const coordinates = req.body?.coordinates || req.body?.location?.coordinates || {};
+    if (coordinates.latitude === null || coordinates.longitude === null || coordinates.latitude === "" || coordinates.longitude === "") return res.status(400).json({ message: "A valid GPS location is required to check in." });
     const latitude = Number(coordinates.latitude);
     const longitude = Number(coordinates.longitude);
     const accuracy = Number(coordinates.accuracy || 0);
@@ -1309,7 +1294,11 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
     if (String(task.assignedTechnicianId || "") !== String(req.authUser._id || "")) {
       return res.status(403).json({ message: "This work order is assigned to another technician." });
     }
-    if (!containsSerial(task, serialNumber)) {
+    const assignedUnitId = String(task.unitId || task.payload?.unitId || "");
+    const assignedUnit = mongoose.Types.ObjectId.isValid(assignedUnitId)
+      ? await Unit.findById(assignedUnitId).select("serialNumber").lean() : null;
+    const matchesAssignedUnit = assignedUnit && String(assignedUnit.serialNumber).toLowerCase() === serialNumber.toLowerCase();
+    if (!containsSerial(task, serialNumber) && !matchesAssignedUnit) {
       return res.status(403).json({ message: "This AC unit is not assigned to the selected work order." });
     }
 
@@ -1336,6 +1325,7 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
         {
           $or: [
             { unitId: String(unit._id) },
+            { "payload.unitId": String(unit._id) },
             { "payload.serialNumbers": unit.serialNumber },
             { "payload.items.serialNumbers": unit.serialNumber },
             { "payload.items.serialUnits.serialNumber": unit.serialNumber },
@@ -1349,12 +1339,11 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
       .map((service) => ({
       id: String(service._id),
       date: service.serviceDate,
-      serviceType: service.serviceType || service.visitType,
+      serviceType: serviceTypeFor(service),
       technician: technicianName(service.technician),
-      findings: service.technicianInputs?.notes || service.conditionRating || "No findings recorded",
-      actionTaken: Array.isArray(service.serviceActions) && service.serviceActions.length
-        ? service.serviceActions.join(", ")
-        : "Service completed",
+      findings: service.findings || service.technicianInputs?.notes || "No findings recorded",
+      actionTaken: service.actionTaken || (service.serviceActions || []).join(", ") || "Actions not recorded",
+      evidence: assessServiceEvidence(service),
       status: "Completed",
       }));
     const repairRows = [
@@ -1363,15 +1352,15 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
         .map((service) => ({
           id: String(service._id),
           date: service.serviceDate,
-          issue: service.technicianInputs?.notes || "Repair visit",
-          diagnosis: service.conditionRating || "Technician diagnosis recorded",
-          partsUsed: Array.isArray(service.serviceActions) && service.serviceActions.length
-            ? service.serviceActions.join(", ")
-            : "Not recorded",
+          issue: service.findings || service.technicianInputs?.notes || "Repair visit",
+          diagnosis: service.findings || service.technicianInputs?.notes || "Findings not recorded",
+          actionTaken: service.actionTaken || (service.serviceActions || []).join(", ") || "Actions not recorded",
+          partsUsed: (service.partsUsed || []).join(", ") || "None recorded",
+          evidence: assessServiceEvidence(service),
           technician: technicianName(service.technician),
           status: "Completed",
         })),
-      ...relatedTasks.filter((relatedTask) => containsSerial(relatedTask, unit.serialNumber) && /repair|warranty/i.test(`${relatedTask.issueType || ""} ${relatedTask.title || ""}`)).map((relatedTask) => ({
+      ...relatedTasks.filter((relatedTask) => !serviceHistory.some((history) => String(history._id) === String(relatedTask.payload?.serviceHistoryId) || String(history.sourceTaskId) === String(relatedTask._id)) && containsSerial(relatedTask, unit.serialNumber) && /repair|warranty/i.test(`${relatedTask.issueType || ""} ${relatedTask.title || ""}`)).map((relatedTask) => ({
         id: String(relatedTask._id),
         date: relatedTask.completedAt || relatedTask.updatedAt || relatedTask.createdAt,
         issue: relatedTask.description || relatedTask.issueType || relatedTask.title || "Repair request",
@@ -1385,6 +1374,7 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
     const warrantyStatus = effectiveWarrantyStatus(warranty);
     const recommendation = await calculateMaintenanceRecommendation(unit._id);
     const ampHistory = serviceHistory
+      .filter((service) => assessServiceEvidence(service).eligible)
       .filter((service) => service.ampSnapshot?.calculatedAt || service.ampSnapshot?.bestServicedBy || service.ampSnapshot?.nextIdealServiceDate)
       .map((service) => ({
         id: String(service._id),
@@ -1472,6 +1462,8 @@ const registerAmpUnit = async (req, res) => {
       return res.status(400).json({ message: "Add a defect reason before holding task completion." });
     }
     const roomSizeSqm = Number(payload.roomSizeSqm);
+    const installedAt = parseInstallationDateTime(String(payload.installationDate || formatDateKeyInTimeZone(new Date())), String(payload.installationTime || "00:00"));
+    if (!installedAt || installedAt > new Date()) return res.status(400).json({ message: "Record a valid installation date and time that is not in the future." });
     if (!isDefectiveHold && (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000)) {
       return res.status(400).json({ message: "Enter a room size from 1 to 10,000 square meters before registering this AC unit." });
     }
@@ -1553,6 +1545,7 @@ const updateTaskStatus = async (req, res) => {
     }
 
     if (normalizeStatus(task.status) === "completed" && status === "completed") {
+      await reconcileCompletedTask(task);
       return res.json({ task: hydrateTaskResponse(task), replayed: true });
     }
 
@@ -1649,6 +1642,7 @@ const updateTaskStatus = async (req, res) => {
 };
 
 module.exports = {
+  ensureInstalledCustomerUnitsForTask,
   buildCustomerTaskScopeQuery,
   listTasks,
   createTask,

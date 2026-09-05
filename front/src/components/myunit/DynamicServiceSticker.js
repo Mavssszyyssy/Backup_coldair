@@ -5,18 +5,20 @@ const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
 const dateLabel = (value) => value
   ? new Date(value).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })
   : "Not available";
-const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
+const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : value === "regular_cleaning" ? "Regular cleaning" : "Service details needed";
 
 const serviceExplanation = (service) =>
   service === "deep_cleaning"
     ? "Deep cleaning applies when the unit has gone more than one year without cleaning. The entire AC is taken down for a more thorough cleaning."
-    : "Regular cleaning applies when the unit was last cleaned within one year.";
+    : service === "regular_cleaning"
+      ? "Regular cleaning applies when the unit was last cleaned within one year."
+      : "A verified installation or cleaning date is needed before a service method can be suggested.";
 
 const capacityMessage = (assessment = {}) => {
   const messages = {
     room_size_required: "Add your room size in the Cold Air mobile app to check whether this AC is the right size for your space.",
     capacity_required: "Your AC capacity needs to be confirmed before we can check whether it suits your room.",
-    suitable: "This AC is a good match for the room size you provided.",
+    suitable: "This AC appears suitable based on an approximate room-size check. Confirm the sizing with our service team.",
     insufficient: "This AC may be too small for the room size you provided. Ask our service team for advice.",
     higher_than_necessary: "This AC may be larger than needed for the room size you provided. Ask our service team for advice.",
   };
@@ -47,6 +49,8 @@ function DynamicServiceSticker({ unit }) {
   return <section className="service-sticker" aria-label="Recommended service schedule">
     <div className="service-sticker-header"><div><span className="service-sticker-label">Suggested Servicing Date</span><strong>{dateLabel(recommendation.bestServicedBy)}</strong></div></div>
     <div className="service-sticker-insight"><strong>{serviceLabel(recommendation.recommendedService)}</strong><p>{serviceExplanation(recommendation.recommendedService)}</p></div>
+    <p>{recommendation.recommendationBasis}</p>
+    {recommendation.dataQuality?.message ? <p role="status">{recommendation.dataQuality.message}</p> : null}
     {roomGuidance ? <p>{roomGuidance}</p> : null}
     <p className="service-sticker-app-note">Book this service in the Cold Air mobile app using your Cold Air account.</p>
   </section>;

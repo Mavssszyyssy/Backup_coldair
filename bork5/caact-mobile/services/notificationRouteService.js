@@ -7,7 +7,10 @@ export function resolveNotificationRoute(item = {}, role = "") {
     if (route.startsWith("/technician/")) return route;
     if (route === "/tech/tasks" || route.startsWith("/tech/tasks/")) return "/technician/tasks";
     if (route === "/tech/dashboard") return "/technician/dashboard";
+    return item.targetType === "task" || /task|work order|warranty|service|part/.test(text) ? "/technician/tasks" : "/technician/dashboard";
   }
+
+  if (["service_request", "service"].includes(item.targetType) || route === "/customer/service-requests") return "/customer/services";
 
   if (item.type === "warranty" || item.targetType === "warranty" || text.includes("warranty")) {
     return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=warranty` : "/customer/units";

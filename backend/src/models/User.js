@@ -211,6 +211,7 @@ const userSchema = new mongoose.Schema(
 
     isFirstLogin: { type: Boolean, default: false }, // For staff onboarding
     technicianOnboardedAt: { type: Date, default: null },
+    customerOnboardedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

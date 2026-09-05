@@ -1,6 +1,7 @@
 import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitProductVisual from "./UnitProductVisual";
 import { formatUnitHorsepower } from "../../domain/myunit/unitDisplay";
+import { serviceLabel, serviceDateLabel, serviceDetails, servicePriceLabel } from '../../domain/myunit/serviceHistoryDisplay';
 
 function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
   const getStatusClass = () => {
@@ -88,12 +89,11 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
               <div className="history-list">
                 {unit.serviceHistory.map((service, idx) => (
                   <div key={idx} className="history-item">
-                    <div className="history-date">{service.date}</div>
-                    <div className="history-service">{service.serviceType}</div>
-                    <div className="history-details">{service.details}</div>
-                    <div className="history-price">
-                      ₱{service.price.toLocaleString()}
-                    </div>
+                    <div className="history-date">{serviceDateLabel(service.date)}</div>
+                    <div className="history-service">{serviceLabel(service.serviceType)}</div>
+                    <div className="history-details">{serviceDetails(service)}</div>
+                    {servicePriceLabel(service) ? <div className="history-price">{servicePriceLabel(service)}</div> : null}
+                    {service.evidence?.eligible === false ? <div className="history-details">{service.evidence.reason}</div> : null}
                   </div>
                 ))}
               </div>

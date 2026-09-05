@@ -19,13 +19,14 @@ import {
 export default function CustomerOobeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { current, updateUser, verifySecuritySetup } = useUserContext();
+  const { current, updateMyAccount, verifySecuritySetup, logout } = useUserContext();
   const [codes, setCodes] = useState([]);
   const [totpSecret, setTotpSecret] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [securityError, setSecurityError] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const totpUri = totpSecret
     ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.email || current?.alias || "customer")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
     : "";
@@ -64,18 +65,33 @@ export default function CustomerOobeScreen() {
     Alert.alert("Recovery Codes Refreshed", "Your recovery codes were regenerated.");
   };
 
+  const handleSwitchAccount = async () => {
+    await logout();
+    router.replace("/sign-in");
+  };
+
   const handleContinueHome = async () => {
     if (!totpEnabled) {
       Alert.alert("Authenticator required", "Verify the six-digit authenticator code before continuing.");
       return;
     }
-    if (current?.id && !current?.customerOnboardedAt) {
-      await updateUser({
-        ...current,
-        customerOnboardedAt: new Date().toISOString(),
-      });
+    if (finishing) return;
+    setFinishing(true);
+    setSecurityError("");
+    try {
+      if (!current?.customerOnboardedAt) {
+        const result = await updateMyAccount({ customer_onboarded_at: new Date().toISOString() });
+        if (!result.success || !result.user?.customerOnboardedAt) {
+          setSecurityError(result.error || "Unable to finish account setup. Please try again.");
+          return;
+        }
+      }
+      router.replace("/customer/home");
+    } catch (error) {
+      setSecurityError(error?.message || "Unable to finish account setup. Please try again.");
+    } finally {
+      setFinishing(false);
     }
-    router.replace("/customer/home");
   };
 
   const handleVerifyTotp = async () => {
@@ -101,6 +117,7 @@ export default function CustomerOobeScreen() {
 
   return (
     <CustomerScreen
+      onBack={handleSwitchAccount}
       title={params.registered ? "Registration Complete" : "Account Security"}
       subtitle={
         params.registered
@@ -272,8 +289,10 @@ export default function CustomerOobeScreen() {
         title={totpEnabled ? "Continue to Home" : "Verify Authenticator to Continue"}
         variant="ghost"
         onPress={handleContinueHome}
-        disabled={!totpEnabled}
+        loading={finishing}
+        disabled={!totpEnabled || finishing}
       />
+      <Button title="I have a different account" variant="ghost" onPress={handleSwitchAccount} disabled={verifying || finishing} />
     </CustomerScreen>
   );
 }

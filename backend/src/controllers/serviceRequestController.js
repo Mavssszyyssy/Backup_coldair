@@ -16,6 +16,7 @@ const {
 } = require("../domain/serviceRequestWorkflow");
 const env = require("../config/env");
 const { getScheduledDateError } = require("../utils/scheduling");
+const { formatServiceAddress } = require("../domain/serviceAddress");
 
 const normalizeStatus = (value = "", fallback = "Pending") =>
   normalizeServiceRequestStatus(value, fallback);
@@ -75,7 +76,7 @@ const getRequestBranch = async ({ req, payload = {}, unit = null }) => {
   });
 };
 
-const notifyUser = async ({ userId, title, message, type = "service", targetId = "", dedupeKey = "" }) => {
+const notifyUser = async ({ userId, title, message, type = "service", targetId = "", targetType = "service_request", route = "/customer/services", dedupeKey = "" }) => {
   if (!userId || !mongoose.Types.ObjectId.isValid(String(userId))) return null;
   try {
     return await createDedupedNotification({
@@ -84,7 +85,8 @@ const notifyUser = async ({ userId, title, message, type = "service", targetId =
       category: "service_request",
       title,
       message,
-      targetType: "service",
+      targetType,
+      route,
       targetId: String(targetId || ""),
       dedupeKey,
     });
@@ -132,13 +134,14 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
     error.statusCode = 409;
     throw error;
   }
-  const technicianName = String(
-    payload.assignedTechnicianName || request.assignedTechnicianName || getTechnicianDisplayName(technician),
-  ).trim();
+  const technicianName = getTechnicianDisplayName(technician);
   const existingTaskId = String(request.payload?.linkedTaskId || payload.linkedTaskId || "").trim();
   const nowIso = new Date().toISOString();
   const commonPayload = {
-    ...(request.payload || {}),
+    preferredDate: request.payload?.preferredDate || "",
+    preferredSchedule: request.payload?.preferredSchedule || "",
+    pricing: request.payload?.pricing || null,
+    warrantyClaimId: request.payload?.warrantyClaimId || "",
     requestId: String(request._id || request.id || ""),
     source: "service_request",
     customerName: request.customer,
@@ -168,7 +171,7 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
       taskCode: `TSK-${Date.now()}`,
       title: `${request.issueType || request.payload?.serviceType || "Service"} - ${request.unitName || "AC Unit"}`,
       customer: request.customer,
-      address: request.address,
+      address: formatServiceAddress(request.address, request.payload || {}),
       customerId: request.customerId,
       customerEmail: request.customerEmail,
       customerPhone: request.customerPhone,
@@ -186,10 +189,17 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
       payload: { ...commonPayload, createdAt: request.payload?.createdAt || nowIso },
     });
   }
+  if (String(task.payload?.requestId || task.requestId || "") && String(task.payload?.requestId || task.requestId) !== String(request._id)) {
+    const error = new Error("The linked work order belongs to another service request."); error.statusCode = 409; throw error;
+  }
 
   const previousTechnicianId = String(task.assignedTechnicianId || "").trim();
   const currentTaskStatus = String(task.status || "pending").trim().toLowerCase();
   const isReassignment = Boolean(previousTechnicianId && previousTechnicianId !== technicianId);
+  if (isReassignment) {
+    task.payload = { ...(task.payload || {}), checkIn: null, serviceLogs: [], findings: "", resolution: "", serviceActions: [], serviceHistoryId: "" };
+    task.proof = {};
+  }
   const shouldActivateTask =
     !["completed", "cancelled"].includes(currentTaskStatus) &&
     (isReassignment || ["pending", "accepted", "on-hold", "failed", "rescheduled"].includes(currentTaskStatus));
@@ -197,7 +207,7 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
   task.assignedTechnicianId = technicianId;
   task.assignedTechnicianName = technicianName;
   task.customer = request.customer;
-  task.address = request.address;
+  task.address = formatServiceAddress(request.address, request.payload || {});
   task.customerId = request.customerId;
   task.customerEmail = request.customerEmail;
   task.customerPhone = request.customerPhone;
@@ -269,6 +279,7 @@ const createServiceRequest = async (req, res) => {
     if (!normalizedStatus) {
       return res.status(400).json({ message: "Invalid service request status." });
     }
+    if (!["Pending", "Submitted", "Reviewed"].includes(normalizedStatus)) return res.status(400).json({ message: "Create the request first, then assign and complete its technician work order." });
     const nowIso = new Date().toISOString();
     const request = await ServiceRequest.create({
       customer,
@@ -284,7 +295,7 @@ const createServiceRequest = async (req, res) => {
       issueType: String(req.body?.issueType || ""),
       assignedTechnicianId: String(req.body?.assignedTechnicianId || ""),
       assignedTechnicianName: String(req.body?.assignedTechnicianName || ""),
-      payload: { ...req.body, createdAt: req.body?.createdAt || nowIso, updatedAt: req.body?.updatedAt || nowIso },
+      payload: { ...req.body, status: normalizedStatus, createdAt: nowIso, updatedAt: nowIso },
       createdBy: req.authUser._id,
     });
     return res.status(201).json({ request: hydrateRequestResponse(request) });
@@ -296,7 +307,7 @@ const createServiceRequest = async (req, res) => {
 
 const listMyServiceRequests = async (req, res) => {
   try {
-    const requests = await ServiceRequest.find({ createdBy: req.authUser._id })
+    const requests = await ServiceRequest.find({ $or: [{ createdBy: req.authUser._id }, { customerId: String(req.authUser._id) }] })
       .sort({ createdAt: -1 })
       .limit(200);
     return res.json({ requests: requests.map(hydrateRequestResponse) });
@@ -316,14 +327,15 @@ const createMyServiceRequest = async (req, res) => {
     const idempotencyKey = String(req.get("Idempotency-Key") || payload.idempotencyKey || "").trim().slice(0, 160);
     const customerName = String(payload.customerName || payload.customer || getUserDisplayName(req.authUser)).trim();
     const issue = String(payload.issueDescription || payload.issue || payload.concern || "").trim();
-    const address = String(payload.address || "").trim();
+    const rawAddress = String(payload.address || "").trim();
+    const address = formatServiceAddress(rawAddress, payload);
     const unitId = String(payload.unitId || "").trim();
     const service = findServiceOffering(
       getServiceCatalog(env.serviceCatalogJson),
       payload.serviceId || payload.serviceType || payload.issueType,
     );
 
-    if (!customerName || !issue || !address) {
+    if (!customerName || !issue || !rawAddress) {
       return res.status(400).json({ message: "customer, issue, and address are required" });
     }
     if (!service) {
@@ -349,6 +361,8 @@ const createMyServiceRequest = async (req, res) => {
     if (unitId && !unit) {
       return res.status(404).json({ message: "Selected installed AC unit was not found for this customer." });
     }
+    if (["maintenance", "cleaning", "repair"].includes(service.id) && !unit) return res.status(400).json({ message: "Select your registered AC unit for this service." });
+    if (unit && ["on_hold", "retired"].includes(unit.status)) return res.status(409).json({ message: "This AC unit is unavailable for service booking. Contact the branch team for assistance." });
 
     if (unitId) {
       const existingActiveRequest = await ServiceRequest.findOne({
@@ -376,9 +390,7 @@ const createMyServiceRequest = async (req, res) => {
     }
 
     const nowIso = new Date().toISOString();
-    const timeline = Array.isArray(payload.timeline) && payload.timeline.length > 0
-      ? payload.timeline
-      : [
+    const timeline = [
           buildTimelineEvent({
             title: "Request Submitted",
             description: "Service request submitted successfully.",
@@ -396,17 +408,25 @@ const createMyServiceRequest = async (req, res) => {
       issue,
       address,
       branch,
-      status: normalizeStatus(payload.status || "Submitted"),
-      customerId: String(payload.customerId || payload.userId || req.authUser._id || ""),
-      customerEmail: String(payload.customerEmail || req.authUser.email || ""),
-      customerPhone: String(payload.customerPhone || req.authUser.phone || ""),
+      status: "Submitted",
+      customerId: String(req.authUser._id),
+      customerEmail: String(req.authUser.email || ""),
+      customerPhone: String(req.authUser.phone || ""),
       unitId,
       unitName: String(payload.unitName || unit?.modelName || ""),
       issueType: service.defaultIssueType,
-      assignedTechnicianId: String(payload.assignedTechnicianId || ""),
-      assignedTechnicianName: String(payload.assignedTechnicianName || ""),
+      assignedTechnicianId: "",
+      assignedTechnicianName: "",
       payload: {
-        ...payload,
+        address,
+        city: String(payload.city || unit?.installation?.city || ""),
+        province: String(payload.province || unit?.installation?.province || ""),
+        barangay: String(payload.barangay || ""),
+        preferredDate: payload.preferredDate,
+        preferredSchedule: String(payload.preferredSchedule || ""),
+        notes: String(payload.notes || "").trim().slice(0, 2000),
+        issueDescription: issue,
+        status: "Submitted",
         userId: String(req.authUser._id || ""),
         customerName,
         serviceId: service.id,
@@ -417,12 +437,12 @@ const createMyServiceRequest = async (req, res) => {
         // records on one source of truth.
         pricing: service.pricing,
         unitId,
-        unitName: String(payload.unitName || unit?.modelName || ""),
-        unitSerialNumber: String(payload.unitSerialNumber || unit?.serialNumber || ""),
-        qrCode: String(payload.qrCode || unit?.qrCode || ""),
+        unitName: String(unit?.modelName || payload.unitName || ""),
+        unitSerialNumber: String(unit?.serialNumber || ""),
+        qrCode: String(unit?.qrCode || ""),
         timeline,
-        createdAt: payload.createdAt || nowIso,
-        updatedAt: payload.updatedAt || nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
       },
       createdBy: req.authUser._id,
       idempotencyKey,
@@ -480,7 +500,7 @@ const updateServiceRequestStatus = async (req, res) => {
       }
     }
     if (role === "customer" || role === "technician") {
-      const isOwner = String(request.createdBy || "") === String(req.authUser._id || "");
+      const isOwner = [request.createdBy, request.customerId].some((value) => String(value || "") === String(req.authUser._id || ""));
       if (!isOwner && role === "customer") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -495,6 +515,9 @@ const updateServiceRequestStatus = async (req, res) => {
       if (role === "customer" && !canCustomerCancelServiceRequest(request.status)) {
         return res.status(409).json({ message: "This request can no longer be cancelled because work has already started." });
       }
+      // Cancellation is the customer's only write permission, not a way to
+      // alter assignment, history, ownership, or proof fields in the payload.
+      req.body = { status: "Cancelled", description: String(req.body?.description || "Customer cancelled the request.").slice(0, 1000) };
     }
     if (!canTransitionServiceRequest(request.status, nextStatus)) {
       return res.status(409).json({
@@ -508,8 +531,9 @@ const updateServiceRequestStatus = async (req, res) => {
       const conditions = [{ taskCode: linkedTaskId }];
       if (mongoose.Types.ObjectId.isValid(linkedTaskId)) conditions.unshift({ _id: linkedTaskId });
       linkedTask = await Task.findOne({ $or: conditions });
+      if (linkedTask && String(linkedTask.requestId || "") !== String(request._id)) return res.status(409).json({ message: "The linked work order does not match this service request. Ask the branch team to review it." });
     }
-    if (nextStatus === "Completed" && linkedTask && String(linkedTask.status || "").toLowerCase() !== "completed") {
+    if (nextStatus === "Completed" && (!linkedTask || String(linkedTask.status || "").toLowerCase() !== "completed")) {
       return res.status(409).json({ message: "The assigned technician must submit proof and complete the work order before this request can be completed." });
     }
     if (nextStatus === "Cancelled" && linkedTask && !["completed", "cancelled"].includes(String(linkedTask.status || "").toLowerCase())) {
@@ -535,6 +559,7 @@ const updateServiceRequestStatus = async (req, res) => {
     if (request.assignedTechnicianId && ["Assigned", "In Progress"].includes(request.status)) {
       request.status = "In Progress";
     }
+    if (["Assigned", "In Progress"].includes(nextStatus) && !String(req.body?.assignedTechnicianId || request.assignedTechnicianId || "").trim()) return res.status(400).json({ message: "Assign an active technician before starting this service request." });
     const timeline = Array.isArray(request.payload?.timeline) ? request.payload.timeline : [];
     const statusChanged = previousRequestStatus !== request.status;
     const technicianChanged = previousTechnicianId !== String(request.assignedTechnicianId || "");
@@ -580,6 +605,8 @@ const updateServiceRequestStatus = async (req, res) => {
         title: "New service task assigned",
         message: `${request.customer}'s ${request.unitName || "AC unit"} service request is assigned to you.`,
         targetId: String(task._id || task.id || ""),
+        targetType: "task",
+        route: "/technician/tasks",
         dedupeKey: `service-task-assigned:${task._id || task.id}:${task.assignedTechnicianId}`,
       });
     }

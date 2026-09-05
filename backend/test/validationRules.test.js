@@ -44,7 +44,7 @@ test("technician service completion requires real report details", () => {
     findings: "Evaporator coil had heavy dust buildup.",
     serviceActions: ["Cleaned evaporator coil", "Flushed drain line"],
     conditionRating: "fair",
-    serviceDate: "2099-01-15",
+    serviceDate: "2026-01-15",
   });
   assert.equal(valid.ok, true);
   assert.equal(valid.values.serviceType, "deep_cleaning");
@@ -66,11 +66,13 @@ test("pending warranty activation gives automatic, customer-safe guidance", () =
 });
 
 test("claim decisions never replace active warranty coverage", () => {
-  assert.equal(effectiveWarrantyStatus({ status: "under_review" }), "active");
-  assert.equal(effectiveWarrantyStatus({ status: "approved" }), "active");
-  assert.equal(effectiveWarrantyStatus({ status: "rejected" }), "active");
+  const coverage = { startDate: "2026-01-01", expirationDate: "2031-01-01" };
+  assert.equal(effectiveWarrantyStatus({ ...coverage, status: "under_review" }), "active");
+  assert.equal(effectiveWarrantyStatus({ ...coverage, status: "approved" }), "active");
+  assert.equal(effectiveWarrantyStatus({ ...coverage, status: "rejected" }), "active");
   assert.match(
     getWarrantyRecommendation({
+      ...coverage,
       status: "active",
       claims: [{ status: "approved", serviceRequestId: "SR-100", reviewedAt: "2026-08-31T20:00:00.000Z" }],
     }),
@@ -78,6 +80,7 @@ test("claim decisions never replace active warranty coverage", () => {
   );
   assert.doesNotMatch(
     getWarrantyRecommendation({
+      ...coverage,
       status: "active",
       claims: [{ status: "approved", serviceRequestId: "SR-100", reviewedAt: "2026-08-31T20:00:00.000Z" }],
     }),

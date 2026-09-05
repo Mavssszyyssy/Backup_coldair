@@ -228,6 +228,8 @@ export default function CustomerServicesScreen() {
         address: serviceAddress.street || current?.address || selectedUnit.placementArea || "",
         city: serviceAddress.city || current?.municipality || "",
         province: serviceAddress.province || "",
+        region: serviceAddress.region || "",
+        postalCode: serviceAddress.postalCode || "",
         barangay: serviceAddress.barangay || current?.submunicipality || "",
         landmark: current?.landmark || "",
         plusCode: current?.plusCode || "",

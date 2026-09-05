@@ -1,6 +1,7 @@
 const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
 const { MAJOR_COMPONENTS, summarizeMajorComponentUse } = require("./ampComponentCategories");
+const { assessServiceEvidence } = require("./serviceEvidence");
 
 const buildRecordedPartsPreparation = async ({ unitId }) => {
   const unit = await Unit.findById(unitId).lean();
@@ -9,10 +10,11 @@ const buildRecordedPartsPreparation = async ({ unitId }) => {
     _id: { $ne: unit._id },
     brand: { $regex: new RegExp(`^${String(unit.brand || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
     status: { $ne: "retired" },
-  }).select("_id modelName").limit(500).lean();
+  }).select("_id modelName installation.installedAt").lean();
+  const installedDates = new Map([unit, ...comparableUnits].map((item) => [String(item._id), item.installation?.installedAt]));
   const ids = [unit._id, ...comparableUnits.map((item) => item._id)];
-  const histories = await ServiceHistory.find({ unit: { $in: ids }, partsUsed: { $exists: true, $ne: [] } }).select("unit partsUsed serviceDate").sort({ serviceDate: -1 }).limit(2000).lean();
-  const trends = summarizeMajorComponentUse(histories);
+  const histories = await ServiceHistory.find({ unit: { $in: ids }, partsUsed: { $exists: true, $ne: [] } }).select("unit partsUsed serviceDate serviceType visitType findings actionTaken serviceActions").sort({ serviceDate: -1 }).lean();
+  const trends = summarizeMajorComponentUse(histories.filter((history) => assessServiceEvidence(history, { installedAt: installedDates.get(String(history.unit)) }).eligible));
   const parts = trends.map(({ component: name, count: recordedCount }) => ({
     name,
     recordedCount,

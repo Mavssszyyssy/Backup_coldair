@@ -53,7 +53,7 @@ test("order and service technician events route staff to the correct admin scree
   assert.match(taskController, /if \(statusChanged\)/);
   assert.match(taskController, /visitType: "installation"/);
   assert.match(taskController, /ServiceHistory\.findOne\(\{[\s\S]*visitType: "installation"/);
-  assert.match(taskController, /serviceType: service\.serviceType \|\| service\.visitType/);
+  assert.match(taskController, /serviceType: serviceTypeFor\(service\)/);
   assert.match(taskController, /Admin controls work-order activation/);
   assert.match(taskController, /normalizeStatus\(task\.status\) === "completed" && requestedStatus === "completed"/);
   assert.match(taskController, /normalizeStatus\(task\.status\) === "completed" && status === "completed"/);

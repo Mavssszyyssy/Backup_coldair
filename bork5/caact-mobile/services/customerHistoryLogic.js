@@ -40,3 +40,16 @@ export function getLatestTaskCheckIn(linkedTasks = []) {
         new Date(left.checkIn.checkedInAt).getTime(),
     )[0] || null;
 }
+
+// A previous visit is history, not proof that the current technician arrived.
+export function getUnitVisitCheckIn(requests = [], linkedTasks = []) {
+  const activeRequests = requests.filter(isActiveServiceRequest);
+  const activeIds = new Set(activeRequests.map((request) => String(request.id || request._id || "")).filter(Boolean));
+  const activeTaskIds = new Set(activeRequests.map((request) => String(request.linkedTaskId || "")).filter(Boolean));
+  const activeTasks = linkedTasks.filter((task) => !["completed", "cancelled", "canceled"].includes(normalizeStatus(task.status)));
+  const hasCurrentVisit = activeRequests.length > 0 || activeTasks.length > 0;
+  const candidates = activeRequests.length
+    ? activeTasks.filter((task) => activeTaskIds.has(String(task.id || task._id || "")) || activeIds.has(String(task.requestId || task.payload?.requestId || "")))
+    : hasCurrentVisit ? activeTasks : linkedTasks.filter((task) => !["cancelled", "canceled"].includes(normalizeStatus(task.status)));
+  return { hasCurrentVisit, record: getLatestTaskCheckIn(candidates) };
+}

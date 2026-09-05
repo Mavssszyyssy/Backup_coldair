@@ -2,9 +2,18 @@ import {
   formatWarrantyStatus,
   isInstallationWorkOrder,
   ROOM_SIZE_OPTIONS,
+  getTaskSerialNumbers,
+  suggestedServiceType,
 } from "./technicianTaskLogic";
 
 describe("technician work order logic", () => {
+  test("unloaded tasks and incomplete serial items cannot crash work-order screens", () => {
+    expect(isInstallationWorkOrder(null)).toBe(false);
+    expect(isInstallationWorkOrder(undefined)).toBe(false);
+    expect(getTaskSerialNumbers(null)).toEqual([]);
+    expect(getTaskSerialNumbers({ items: [null, { serialUnits: [null, { serialNumber: "CAA-001" }] }] })).toEqual(["CAA-001"]);
+    expect(suggestedServiceType(null)).toBe("inspection");
+  });
   test("keeps maintenance separate from installation verification", () => {
     expect(isInstallationWorkOrder({ requestId: "request-1", title: "Maintenance" })).toBe(false);
     expect(isInstallationWorkOrder({ orderId: "order-1", serialNumbers: ["CAA-001"] })).toBe(true);

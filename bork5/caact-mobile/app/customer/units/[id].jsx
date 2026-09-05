@@ -5,7 +5,6 @@ import { ActivityIndicator, Alert, Linking, Text, TextInput, View } from "react-
 
 import {
   CustomerRecommendationPanel,
-  CustomerMaintenancePanel,
 } from "../../../components/customer/CustomerMaintenancePanels";
 import CustomerScreen from "../../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
@@ -24,7 +23,7 @@ import {
 import { getCustomerServiceHistory } from "../../../services/customerHistoryService";
 import {
   canCustomerCancelServiceRequest,
-  getLatestTaskCheckIn,
+  getUnitVisitCheckIn,
   isActiveServiceRequest,
 } from "../../../services/customerHistoryLogic";
 import { cancelServiceRequest } from "../../../services/serviceRequestStorage";
@@ -98,7 +97,8 @@ function warrantyGuidance(unit = {}, status = "") {
 }
 
 function serviceName(value = "") {
-  const normalized = String(value || "regular_cleaning").trim().toLowerCase();
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "Service details needed";
   const labels = {
     regular_cleaning: "Regular cleaning",
     deep_cleaning: "Deep cleaning",
@@ -363,7 +363,7 @@ export default function CustomerUnitDetailsScreen() {
   );
   const warrantyStatus = String(unit?.warrantyStatus || unit?.warranty?.status || "pending_activation").toLowerCase();
   const canSubmitWarrantyClaim = warrantyStatus === "active" && !activeServiceRequest && !activeWarrantyClaim;
-  const latestCheckInRecord = getLatestTaskCheckIn(history.linkedTasks);
+  const { hasCurrentVisit, record: latestCheckInRecord } = getUnitVisitCheckIn(history.requests, history.linkedTasks);
   const checkedInTask = latestCheckInRecord?.task || null;
   const latestCheckIn = latestCheckInRecord?.checkIn || null;
   const latestCheckInMapUrl = checkInMapUrl(latestCheckIn);
@@ -452,8 +452,7 @@ export default function CustomerUnitDetailsScreen() {
 
       {detailPage === 0 ? (
         <>
-          <CustomerRecommendationPanel recommendation={recommendation} />
-          <CustomerMaintenancePanel maintenance={maintenance} />
+          <CustomerRecommendationPanel recommendation={recommendation} maintenance={maintenance} />
           <Card>
             <CustomerSectionHeader title="Your AC at a glance" />
             <DetailRow label="Model" value={unit?.productSku || unit?.model || "Not recorded"} />
@@ -514,7 +513,7 @@ export default function CustomerUnitDetailsScreen() {
             <DetailRow key={claim.claimId} label={`${claim.claimId} · ${String(claim.status || "submitted").replace(/_/g, " ")}`} value={claim.issue || "Warranty claim"} multiline />
           ))}
           {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
-            <DetailRow key={`${record.serviceDate}-${index}`} label={`Warranty service · ${formatDate(record.serviceDate)}`} value={record.summary || record.visitType || "Service record"} multiline />
+            <DetailRow key={`${record.serviceDate}-${index}`} label={`${record.claimId ? "Warranty support" : serviceName(record.visitType)} · ${formatDate(record.serviceDate)}`} value={record.summary || "Service record"} multiline />
           ))}
           <DetailRow
             label={warrantyStatus === "pending_activation" ? "What happens next" : "Warranty guidance"}
@@ -545,11 +544,11 @@ export default function CustomerUnitDetailsScreen() {
       {detailPage === 2 ? (
         <>
           <Card>
-            <CustomerSectionHeader title="Technician Check-in" />
+            <CustomerSectionHeader title={hasCurrentVisit ? "Current Visit Check-in" : "Latest Recorded Check-in"} />
             {latestCheckIn ? (
               <>
                 <View style={{ alignSelf: "flex-start", backgroundColor: COLORS.successLight, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm + 4, paddingVertical: 6, marginBottom: SPACING.sm }}>
-                  <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.sm }}>GPS ARRIVAL VERIFIED</Text>
+                  <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.sm }}>{hasCurrentVisit ? "CURRENT VISIT CHECK-IN" : "PREVIOUS VISIT CHECK-IN"}</Text>
                 </View>
                 <DetailRow label="Technician" value={checkedInTask?.assignedTechnicianName || "Assigned technician"} />
                 <DetailRow label="Checked in" value={formatDateTime(latestCheckIn.checkedInAt)} />
@@ -559,7 +558,9 @@ export default function CustomerUnitDetailsScreen() {
               </>
             ) : (
               <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>
-                No technician check-in has been recorded for this AC yet. The GPS arrival will appear here after the assigned technician checks in at your service address.
+                {hasCurrentVisit
+                  ? "The technician has not checked in for your current request. A previous visit does not confirm arrival for this request."
+                  : "No technician check-in has been recorded for this AC yet. The GPS arrival will appear here after the assigned technician checks in at your service address."}
               </Text>
             )}
           </Card>
@@ -680,7 +681,10 @@ export default function CustomerUnitDetailsScreen() {
             <Card>
               <CustomerSectionHeader title="Service & Repair History" />
               {unit.serviceHistory.slice(0, 5).map((service) => (
-                <DetailRow key={service.id || `${service.date}-${service.serviceType}`} label={`${service.serviceType || "Service"} · ${formatDate(service.date)}`} value={service.details || service.conditionRating || "Service completed"} multiline />
+                <View key={service.id || `${service.date}-${service.serviceType}`}>
+                  <DetailRow label={`${serviceName(service.serviceType)} · ${formatDate(service.date)}`} value={[service.findings || service.details, service.actionTaken].filter(Boolean).join("\n") || "Findings and actions not recorded"} multiline />
+                  {service.evidence?.eligible === false ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm }}>{service.evidence.reason}</Text> : null}
+                </View>
               ))}
             </Card>
           ) : null}
@@ -706,7 +710,12 @@ export default function CustomerUnitDetailsScreen() {
               <DetailRow label="Suggested Servicing Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
               <DetailRow label="Recommended Service" value={serviceName(ampReport.maintenance?.recommendedService)} />
               <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
-              <DetailRow label="Report file" value={ampReport.fileName || "Available from the AEROPULSE web portal."} multiline />
+              {ampReport.maintenance?.dataQuality?.message ? <DetailRow label="Record review needed" value={ampReport.maintenance.dataQuality.message} multiline /> : null}
+              <DetailRow label="Last verified cleaning" value={formatDate(ampReport.maintenance?.lastCleaningDate)} />
+              {(ampReport.serviceHistory || []).map((service, index) => <View key={`${service.date}-${index}`}><DetailRow label={`${service.serviceLabel || serviceName(service.type)} · ${formatDate(service.date)}`} value={[service.findings, service.actionTaken].filter(Boolean).join("\n") || "Detailed service report not recorded"} multiline />{service.evidence?.eligible === false ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm }}>{service.evidence.reason}</Text> : null}</View>)}
+              {!ampReport.serviceHistory?.length ? <Text style={{ color: COLORS.textSecondary }}>No service history has been recorded.</Text> : null}
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{ampReport.note}</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>For a PDF copy, generate this report in My AC Units on the Cold Air website, then choose Export PDF.</Text>
             </View>
           ) : null}
         </Card>

@@ -33,7 +33,9 @@ const appendWarrantyEvent = (warranty = {}, event, detail = "", timestamp = new 
 const effectiveWarrantyStatus = (warranty = {}) => {
   const status = String(warranty.status || "").toLowerCase();
   if (status === "void") return status;
+  const start = warranty.startDate ? new Date(warranty.startDate) : null;
   const expiration = warranty.expirationDate ? new Date(warranty.expirationDate) : null;
+  if (!start || !expiration || !Number.isFinite(start.getTime()) || !Number.isFinite(expiration.getTime()) || start > new Date()) return "pending_activation";
   if (expiration && !Number.isNaN(expiration.getTime()) && expiration < new Date()) return "expired";
   // Older records stored a claim decision in warranty.status. Coverage and
   // claim workflow are separate concerns, so normalize those legacy values
@@ -41,7 +43,7 @@ const effectiveWarrantyStatus = (warranty = {}) => {
   if (["under_review", "approved", "rejected"].includes(status)) return "active";
   return ["pending_activation", "active", "expired"].includes(status)
     ? status
-    : "active";
+    : "pending_activation";
 };
 
 const getWarrantyRecommendation = (warranty = {}) => {
@@ -86,7 +88,7 @@ const buildActivatedWarranty = (existingWarranty, installedAt) => {
     coverageLimitations: Array.isArray(current.coverageLimitations) && current.coverageLimitations.length
       ? current.coverageLimitations
       : DEFAULT_LIMITATIONS,
-    status: effectiveWarrantyStatus({ ...current, status: current.status || "active", expirationDate: current.expirationDate || addMonths(startDate, durationMonths) }),
+    status: effectiveWarrantyStatus({ ...current, startDate, status: ["void", "expired"].includes(current.status) ? current.status : "active", expirationDate: current.expirationDate || addMonths(startDate, durationMonths) }),
     claims: Array.isArray(current.claims) ? current.claims : [],
     serviceRecords: Array.isArray(current.serviceRecords) ? current.serviceRecords : [],
     timeline: Array.isArray(current.timeline) ? current.timeline : [],

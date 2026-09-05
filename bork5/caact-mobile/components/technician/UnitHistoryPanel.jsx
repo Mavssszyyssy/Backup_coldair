@@ -56,7 +56,7 @@ export default function UnitHistoryPanel({ history }) {
         <HistoryTable
           columns={[
             { key: "date", label: "Date", format: formatDate },
-            { key: "serviceType", label: "Service Type" },
+            { key: "serviceType", label: "Service Type", format: (value) => String(value || "Not recorded").replace(/_/g, " ") },
             { key: "technician", label: "Technician" },
             { key: "findings", label: "Findings", width: 170 },
             { key: "actionTaken", label: "Action Taken", width: 170 },
@@ -75,6 +75,7 @@ export default function UnitHistoryPanel({ history }) {
             { key: "date", label: "Date", format: formatDate },
             { key: "issue", label: "Issue", width: 160 },
             { key: "diagnosis", label: "Diagnosis", width: 150 },
+            { key: "actionTaken", label: "Work Performed", width: 170 },
             { key: "partsUsed", label: "Parts Used", width: 150 },
             { key: "technician", label: "Technician" },
             { key: "status", label: "Status" },
@@ -102,10 +103,10 @@ export default function UnitHistoryPanel({ history }) {
       <Card>
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance Recommendation</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginBottom: SPACING.sm }}>
-          The servicing date comes from completed records for the same model or brand. This is scheduling guidance, not a unit diagnosis.
+          The servicing date uses comparable completed records when available, or the provisional fallback explained below. This is scheduling guidance, not a unit diagnosis.
         </Text>
         <InfoCard label="Suggested Servicing Date" value={formatDate(recommendation?.bestServicedBy)} />
-        <InfoCard label="Recommended Service" value={String(recommendation?.recommendedService || "regular cleaning").replace(/_/g, " ")} />
+        <InfoCard label="Recommended Service" value={String(recommendation?.recommendedService || "Service details needed").replace(/_/g, " ")} />
         <InfoCard label="Historical Pattern" value={recommendation?.recommendationBasis || "Comparable service history is still limited."} />
         <InfoCard label="Room Size and Horsepower" value={recommendation?.capacityAssessment?.summary || "Room size is still needed for the horsepower suitability check."} />
         <InfoCard label="Major-Component Policy" value="If major-part work is necessary, coordinate both the compressor/motor and control board for the service trip. Confirm the actual fault by inspection." />

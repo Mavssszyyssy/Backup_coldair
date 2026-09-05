@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
+import { serviceLabel, serviceDateLabel as dateLabel } from "../../domain/myunit/serviceHistoryDisplay";
 
 const REPORT_TYPES = [
   { value: "predictive_maintenance", label: "Next Maintenance Recommendation" },
@@ -9,8 +10,6 @@ const REPORT_TYPES = [
   { value: "inventory_reliability_analysis", label: "Aggregate Recorded Service Analysis", internalOnly: true },
 ];
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-const serviceLabel = (value) => value === "deep_cleaning" ? "Deep cleaning" : "Regular cleaning";
-const dateLabel = (value) => value ? new Date(value).toLocaleDateString("en-US") : "Not available";
 const capacityAssessmentLabel = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   const labels = {
@@ -39,10 +38,14 @@ function AmpReportCenter({
   const [provider, setProvider] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => { setReport(null); setProvider(""); setError(""); }, [unitId, reportType]);
+  useEffect(() => {
+    if (unitId && !reportUnits.some((unit) => String(unit.unitId || unit.id) === unitId)) setUnitId("");
+  }, [reportUnits, unitId]);
 
   const generate = async () => {
     if (!unitId) return setError("Select an installed AC unit first.");
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setReport(null);
     try {
       const result = await apiRequest("/ai/amp-report", { method: "POST", body: JSON.stringify({ reportType, unitId }) });
       setReport(result.report || null); setProvider(result.provider || "");
@@ -53,7 +56,7 @@ function AmpReportCenter({
   const exportPdf = () => {
     if (!report) return;
     const m = report.maintenance || {};
-    const historyRows = (report.serviceHistory || []).map((item) => `<tr><td>${escapeHtml(dateLabel(item.date))}</td><td>${escapeHtml(serviceLabel(item.type))}</td><td>${escapeHtml(item.findings || "Not recorded")}</td><td>${escapeHtml(item.actionTaken || "Not recorded")}</td><td>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</td></tr>`).join("");
+    const historyRows = (report.serviceHistory || []).map((item) => `<tr><td>${escapeHtml(dateLabel(item.date))}</td><td>${escapeHtml(item.serviceLabel || serviceLabel(item.type))}</td><td>${escapeHtml(item.findings || "Not recorded")}${item.evidence?.eligible === false ? `<p>${escapeHtml(item.evidence.reason)}</p>` : ""}</td><td>${escapeHtml(item.actionTaken || "Not recorded")}</td><td>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</td></tr>`).join("") || '<tr><td colspan="5">No service history has been recorded.</td></tr>';
     const modelRows = (report.aggregateReliability?.modelsByRecordedService || []).map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.count)}</td></tr>`).join("");
     const html = `
       <div class="summary">
@@ -62,6 +65,7 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
       </div>
       <h2>Maintenance recommendation</h2><p>${escapeHtml(m.interpretation || m.recommendationBasis || "")}</p>
+      ${m.dataQuality?.message ? `<p><strong>Record review needed:</strong> ${escapeHtml(m.dataQuality.message)}</p>` : ""}
       <table><tbody>
         <tr><th>AC Unit ID</th><td>${escapeHtml(report.unit?.unitId || "Not recorded")}</td><th>Serial Number</th><td>${escapeHtml(report.unit?.serialNumber || "Not recorded")}</td></tr>
         <tr><th>Brand</th><td>${escapeHtml(report.unit?.brand || "Not recorded")}</td><th>Model</th><td>${escapeHtml(report.unit?.model || "Not recorded")}</td></tr>
@@ -81,7 +85,7 @@ function AmpReportCenter({
       metadata: {
         reportId: report.reportId, branch: report.branch, reportType: report.reportLabel,
         generatedAt: new Date(report.generatedAt).toLocaleString(), systemName: report.systemName, watermark: report.watermark,
-        representative: user?.name || user?.email || "AEROPULSE Representative",
+        representative: user?.role === "customer" ? "" : user?.name || "AEROPULSE Staff",
         representativeRole: user?.role === "superadmin" ? "Super Admin · Authorized Representative" : "Branch Representative",
       },
     });
@@ -92,8 +96,8 @@ function AmpReportCenter({
     <section className="amp-card amp-report-center">
       <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
       <div className="amp-report-controls">
-        <label>Report type<select value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label>Installed AC unit<select value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{unit.modelName || unit.model || "AC Unit"} · {unit.serialNumber || value}</option>; })}</select></label>
+        <label>Report type<select disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        <label>Installed AC unit<select disabled={loading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{unit.modelName || unit.model || "AC Unit"} · {unit.serialNumber || value}</option>; })}</select></label>
         <button type="button" onClick={generate} disabled={loading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
       </div>
       {!reportUnits.length ? <p className="amp-empty">No eligible installed units are currently in this AMP view.</p> : null}
@@ -103,6 +107,12 @@ function AmpReportCenter({
         <h3>{report.title}</h3>
         <div className="amp-metrics"><article><span>Suggested servicing date</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room size vs HP</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div>
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
+        {maintenance.dataQuality?.message ? <p role="status" className="amp-error">Record review needed: {maintenance.dataQuality.message}</p> : null}
+        <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last verified cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
+        <p className="amp-muted">{maintenance.capacityAssessment?.summary}</p>
+        <h4>Recorded service history</h4>
+        <div className="amp-table-wrap"><table className="amp-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{(report.serviceHistory || []).map((item, index) => <tr key={`${item.date}-${index}`}><td>{dateLabel(item.date)}</td><td>{item.serviceLabel || serviceLabel(item.type)}</td><td>{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}</td></tr>)}</tbody></table></div>
+        {!report.serviceHistory?.length ? <p className="amp-empty">No service history has been recorded.</p> : null}
         <p className="amp-muted">{report.note}</p>
       </div> : null}
     </section>

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const serviceHistorySchema = new mongoose.Schema(
   {
+    sourceTaskId: { type: String, trim: true },
     unit: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
@@ -66,6 +67,7 @@ const serviceHistorySchema = new mongoose.Schema(
 );
 
 serviceHistorySchema.index({ unit: 1, serviceDate: -1 });
+serviceHistorySchema.index({ unit: 1, sourceTaskId: 1 }, { unique: true, partialFilterExpression: { sourceTaskId: { $type: "string" } } });
 
 serviceHistorySchema.set("toJSON", {
   transform: (_doc, ret) => {

@@ -39,7 +39,7 @@ test("AMP sends the configured GPT-5.6 Terra reasoning profile", async () => {
   };
 
   try {
-    const result = await callStructuredAmpAnalysis({ recommendation: {} });
+    const result = await callStructuredAmpAnalysis({ recommendation: { bestServicedBy: "2027-05-11", recommendedService: "regular_cleaning" } });
     assert.equal(result.provider, "openai");
     assert.equal(requestBody.model, "gpt-5.6-terra");
     assert.deepEqual(requestBody.reasoning, { effort: "none" });

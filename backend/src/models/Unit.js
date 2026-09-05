@@ -47,7 +47,7 @@ const unitSchema = new mongoose.Schema(
       bestServicedBy: { type: Date, default: null, index: true },
       recommendedService: {
         type: String,
-        enum: ["regular_cleaning", "deep_cleaning"],
+        enum: ["", "regular_cleaning", "deep_cleaning"],
         default: "regular_cleaning",
       },
       recommendationBasis: { type: String, default: "", trim: true },
@@ -61,6 +61,11 @@ const unitSchema = new mongoose.Schema(
       comparableSampleSize: { type: Number, default: 0, min: 0 },
       lastServiceDate: { type: Date, default: null },
       lastCleaningDate: { type: Date, default: null },
+      dataQuality: {
+        excludedRecordCount: { type: Number, default: 0 },
+        message: { type: String, default: "" },
+        anchorType: { type: String, default: "" },
+      },
       capacityAssessment: {
         status: {
           type: String,

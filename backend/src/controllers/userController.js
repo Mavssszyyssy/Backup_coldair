@@ -502,6 +502,19 @@ const applyProfileUpdate = async (
     user.technicianOnboardedAt = completedAt;
   }
 
+  const customerOnboardedAt = payload.customer_onboarded_at ?? payload.customerOnboardedAt;
+  if (customerOnboardedAt !== undefined && user.role === "customer") {
+    if (!user.security?.totpEnabled) {
+      return { ok: false, status: 409, message: "Verify your authenticator before completing account setup." };
+    }
+    if (!customerOnboardedAt || Number.isNaN(new Date(customerOnboardedAt).getTime())) {
+      return { ok: false, status: 400, message: "Invalid customer onboarding completion date." };
+    }
+    // Record completion on the server once; profile updates cannot reset setup
+    // or inject an arbitrary client-supplied completion timestamp.
+    if (!user.customerOnboardedAt) user.customerOnboardedAt = new Date();
+  }
+
   const hasProfileAddressUpdate = [
     "address",
     "billingAddress",
