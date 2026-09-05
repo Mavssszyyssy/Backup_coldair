@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import * as api from "../services/api";
 import { clearOperationalSessionCache } from "../services/sessionCache";
+import { requiredSetupRoute } from "../services/accountSetupRoute";
 
 const TOKEN_KEY = "auth_token";
 const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
@@ -497,6 +498,8 @@ export function UserProvider({ children }) {
   const resolveHomeRoute = (user) => {
     if (!user) return "/sign-in";
     const normalized = normalizeUser(user);
+    const setupRoute = requiredSetupRoute(normalized);
+    if (setupRoute) return setupRoute;
     if (normalized.security?.totpResetRequired) {
       return normalized.role === "technician"
         ? "/technician/oobe/reset"

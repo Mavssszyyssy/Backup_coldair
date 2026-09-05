@@ -7,7 +7,7 @@ const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenance
 const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
 const { getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH } = require("../domain/ampDashboardService");
 const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
-const { effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
+const { effectiveWarrantyStatus, getWarrantyRecommendation, getWarrantyCoverage } = require("../domain/warrantyService");
 const { notifyMaintenanceForUnit } = require("../services/ampDailyMonitorService");
 const { BRANCHES } = require("../domain/branchRouting");
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
@@ -51,7 +51,7 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
   const productJson = product?.toJSON ? product.toJSON() : product || {};
   const productId = String(json.productId || productJson.id || productJson._id || "");
   const catalogImage = String(productJson.image || "").trim();
-  const warranty = { ...(json.warranty || {}), status: effectiveWarrantyStatus(json.warranty || {}) };
+  const warranty = { ...(json.warranty || {}), ...getWarrantyCoverage(json.warranty || {}), status: effectiveWarrantyStatus(json.warranty || {}) };
   const bestServicedBy = recommendation ? recommendation.bestServicedBy : json.amp?.bestServicedBy || json.amp?.nextIdealServiceDate || "";
   const recommendedService = recommendation ? recommendation.recommendedService : json.amp?.recommendedService || "";
   return {

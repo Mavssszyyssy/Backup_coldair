@@ -1,9 +1,13 @@
 import { useMemo } from "react";
+import { usePathname } from "expo-router";
+import { requiredSetupRoute } from "../services/accountSetupRoute";
 
 import { useUserContext } from "../context/UserContext";
 
 export function useRoleGuard(allowedRoles = []) {
   const { current, initialized, resolveHomeRoute } = useUserContext();
+  const pathname = usePathname().replace(/\/$/, "");
+  const setupRoute = requiredSetupRoute(current);
   const normalizedRoles = useMemo(
     () =>
       allowedRoles.map((role) =>
@@ -19,7 +23,7 @@ export function useRoleGuard(allowedRoles = []) {
   return {
     current,
     initialized,
-    allowed: initialized && !!current && normalizedRoles.includes(role),
-    redirectHref: current ? resolveHomeRoute(current) : "/sign-in",
+    allowed: initialized && !!current && normalizedRoles.includes(role) && (!setupRoute || pathname === setupRoute),
+    redirectHref: setupRoute || (current ? resolveHomeRoute(current) : "/sign-in"),
   };
 }

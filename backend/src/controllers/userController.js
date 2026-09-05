@@ -489,6 +489,9 @@ const applyProfileUpdate = async (
   const technicianOnboardedAt =
     payload.technician_onboarded_at ?? payload.technicianOnboardedAt;
   if (technicianOnboardedAt !== undefined && user.role === "technician") {
+    if (user.isFirstLogin || !user.security?.totpEnabled || user.security?.totpResetRequired) {
+      return { ok: false, status: 409, message: "Set your password and verify your authenticator before completing technician setup." };
+    }
     const completedAt = technicianOnboardedAt
       ? new Date(technicianOnboardedAt)
       : null;
@@ -499,7 +502,8 @@ const applyProfileUpdate = async (
         message: "Invalid technician onboarding completion date.",
       };
     }
-    user.technicianOnboardedAt = completedAt;
+    if (!completedAt) return { ok: false, status: 400, message: "Invalid technician onboarding completion date." };
+    if (!user.technicianOnboardedAt) user.technicianOnboardedAt = new Date();
   }
 
   const customerOnboardedAt = payload.customer_onboarded_at ?? payload.customerOnboardedAt;
@@ -778,8 +782,6 @@ const changePassword = async (req, res) => {
       const profileResult = await applyProfileUpdate(req.authUser, {
         alias,
         phone,
-        technician_onboarded_at:
-          technicianOnboardedAt || new Date().toISOString(),
       });
       if (!profileResult.ok) {
         return res
@@ -789,6 +791,9 @@ const changePassword = async (req, res) => {
     }
     req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
     req.authUser.isFirstLogin = false;
+    if (req.authUser.role === "technician" && req.authUser.security?.totpEnabled && !req.authUser.security?.totpResetRequired && !req.authUser.technicianOnboardedAt) {
+      req.authUser.technicianOnboardedAt = new Date();
+    }
     await req.authUser.save();
     return res.json({
       message: "Password changed successfully.",

@@ -2,7 +2,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const speakeasy = require("speakeasy");
 const User = require("../src/models/User");
-const { isRecoveryRequestAllowed } = require("../src/middleware/auth");
+const { isRecoveryRequestAllowed, requireAuth } = require("../src/middleware/auth");
+const jwt = require("jsonwebtoken");
+const env = require("../src/config/env");
 const {
   buildTotpSetup,
   decryptSecret,
@@ -73,4 +75,15 @@ test("recovery sessions can only access authenticator setup and session hydratio
   assert.equal(isRecoveryRequestAllowed("/api/auth/me"), true);
   assert.equal(isRecoveryRequestAllowed("/api/orders/me"), false);
   assert.equal(isRecoveryRequestAllowed("/api/users/profile"), false);
+});
+
+test("challenge and incomplete tokens cannot be used as signed-in sessions", async () => {
+  for (const payload of [{ sub: 'qa-user', role: 'customer', purpose: 'login_totp' }, { sub: 'qa-user' }, { role: 'customer' }]) {
+    let status;
+    let body;
+    const response = { status(value) { status = value; return this; }, json(value) { body = value; return this; } };
+    await requireAuth({ headers: { authorization: `Bearer ${jwt.sign(payload, env.jwtSecret)}` }, method: 'GET', originalUrl: '/api/users/profile' }, response, () => assert.fail('Token must not grant access'));
+    assert.equal(status, 401);
+    assert.match(body.message, /verified sign-in session/);
+  }
 });

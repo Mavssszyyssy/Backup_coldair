@@ -48,6 +48,7 @@ const TextField = forwardRef(function TextField({
       ) : null}
 
       <TextInput
+        accessibilityLabel={label}
         ref={forwardedRef}
         value={value}
         onChangeText={onChangeText}

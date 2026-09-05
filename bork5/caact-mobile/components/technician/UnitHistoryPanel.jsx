@@ -48,6 +48,7 @@ export default function UnitHistoryPanel({ history }) {
         <InfoCard label="Current Owner" value={unit.currentOwner || "Not assigned"} />
         <InfoCard label="Current Branch" value={unit.branch || "Not recorded"} />
         <InfoCard label="Warranty Status" value={unit.warrantyStatus || "Not recorded"} />
+        <InfoCard label="Warranty Coverage" value={unit.warrantyCoverage?.coverageSummary || "Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch."} />
       </Card>
 
       <Card>

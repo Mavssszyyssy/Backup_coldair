@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,7 +13,7 @@ import { COLORS, FONT, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
   ensureCustomerTotpSecret,
-  regenerateRecoveryCodes,
+  ensureRecoveryCodes,
 } from "../../../services/customerSecurityService";
 import {
   canonicalizePhMobile,
@@ -25,14 +25,16 @@ import {
 
 export default function TechnicianOobe() {
   const router = useRouter();
-  const { current, completeTechnicianOnboarding, verifySecuritySetup } = useUserContext();
+  const { current, completeTechnicianOnboarding, verifySecuritySetup, logout } = useUserContext();
   const [alias, setAlias] = useState(current?.alias || "");
   const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(!current?.isFirstLogin);
+  const [loadingSecurity, setLoadingSecurity] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [totpSecret, setTotpSecret] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [securityError, setSecurityError] = useState("");
@@ -40,6 +42,20 @@ export default function TechnicianOobe() {
   const totpUri = totpSecret
     ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.username || current?.alias || "technician")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
     : "";
+
+  useEffect(() => {
+    if (!profileSaved) return undefined;
+    let active = true;
+    setLoadingSecurity(true);
+    setSecurityError("");
+    Promise.all([ensureRecoveryCodes(), ensureCustomerTotpSecret()])
+      .then(([codes, secret]) => { if (active) { setRecoveryCodes(codes); setTotpSecret(secret); } })
+      .catch((error) => { if (active) setSecurityError(error.message || "Unable to load authenticator setup. Try again."); })
+      .finally(() => { if (active) setLoadingSecurity(false); });
+    return () => { active = false; };
+  }, [profileSaved, loadAttempt]);
+
+  const switchAccount = async () => { await logout(); router.replace("/sign-in"); };
 
   const handleSubmit = async () => {
     if (!alias.trim() || !phone.trim() || !password) {
@@ -77,7 +93,6 @@ export default function TechnicianOobe() {
         alias: alias.trim(),
         phone: canonicalizePhMobile(phone),
         newPassword: password,
-        technicianOnboardedAt: new Date().toISOString(),
       });
       if (!result.success) {
         Alert.alert(
@@ -86,12 +101,11 @@ export default function TechnicianOobe() {
         );
         return;
       }
-      const codes = await regenerateRecoveryCodes(current?.id);
-      const secret = await ensureCustomerTotpSecret(current?.id);
-      setRecoveryCodes(codes);
-      setTotpSecret(secret);
+      setPassword("");
+      setConfirmPassword("");
       setProfileSaved(true);
-      Alert.alert("Profile saved", "Save the recovery codes, then verify your authenticator app.");
+    } catch (error) {
+      setSecurityError(error.message || "Unable to save your profile. Try again.");
     } finally {
       setSaving(false);
     }
@@ -109,9 +123,9 @@ export default function TechnicianOobe() {
         setSecurityError(result.error || "Incorrect authenticator code.");
         return;
       }
-      Alert.alert("Setup complete", "Your technician account is secured.", [
-        { text: "Continue", onPress: () => router.replace("/technician/home") },
-      ]);
+      router.replace("/technician/home");
+    } catch (error) {
+      setSecurityError(error.message || "Unable to verify your authenticator. Try again.");
     } finally {
       setVerifying(false);
     }
@@ -124,7 +138,9 @@ export default function TechnicianOobe() {
           title="Technician Setup"
           subtitle="Complete the details your owner-created account still needs"
           color={COLORS.tech}
+          onBack={switchAccount}
         />
+        {securityError ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{securityError}</Text> : null}
         {!profileSaved ? <Card>
           <TextField
             label="Sign-in Alias"
@@ -154,7 +170,7 @@ export default function TechnicianOobe() {
             secureTextEntry
           />
           <TechButton
-            title={saving ? "Saving..." : "Finish Setup"}
+            title={saving ? "Saving..." : "Save Profile and Continue"}
             onPress={handleSubmit}
             loading={saving}
           />
@@ -186,10 +202,10 @@ export default function TechnicianOobe() {
               Authenticator App Setup
             </Text>
             <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>
-              Scan this QR code, then enter the six-digit code before continuing.
+              Your profile is saved. Scan this QR code or enter the setup key in your authenticator app, then verify the six-digit code. Keep your recovery codes somewhere safe.
             </Text>
             <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
-              <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} />
+              {totpSecret ? <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} /> : null}
             </View>
             <Text style={{ color: COLORS.tech, fontWeight: FONT.black, letterSpacing: 1, marginBottom: SPACING.md }}>
               {totpSecret || "Loading..."}
@@ -210,10 +226,12 @@ export default function TechnicianOobe() {
               title={verifying ? "Verifying..." : "Verify and Continue"}
               onPress={handleVerifyAuthenticator}
               loading={verifying}
-              disabled={verifying || !totpSecret}
+              disabled={verifying || loadingSecurity || !totpSecret}
             />
+            {!loadingSecurity && !totpSecret ? <TechButton title="Retry setup" variant="secondary" onPress={() => setLoadAttempt((value) => value + 1)} /> : null}
           </Card>
         ) : null}
+        <TechButton title="I have a different account" variant="ghost" onPress={switchAccount} disabled={saving || verifying} />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

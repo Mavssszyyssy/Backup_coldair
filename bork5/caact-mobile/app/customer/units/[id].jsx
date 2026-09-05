@@ -505,8 +505,8 @@ export default function CustomerUnitDetailsScreen() {
           <DetailRow label="Status" value={warrantyStatusLabel(warrantyStatus)} />
           <DetailRow label="Warranty Type" value={unit?.warranty?.warrantyType || "Standard manufacturer warranty"} />
           <DetailRow label="Coverage Start" value={formatDate(unit?.warranty?.startDate)} />
-          <DetailRow label="Expires" value={formatDate(unit?.warrantyExpirationDate || unit?.warranty?.expirationDate)} />
-          <DetailRow label="Covered Components" value={unit?.warranty?.coveredComponents?.join(", ") || "Coverage details pending"} multiline />
+          <DetailRow label="Coverage" value={unit?.warranty?.coverageSummary || "Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch."} multiline />
+          {(unit?.warranty?.componentCoverage || []).map((item) => <DetailRow key={item.component} label={`${item.component} coverage ends`} value={`${formatDate(item.expirationDate)} — ${item.status.replace(/_/g, " ")}`} multiline />)}
           <DetailRow label="Limitations" value={unit?.warranty?.coverageLimitations?.join(" ") || "See warranty terms"} multiline />
           <DetailRow label="Warranty Claims" value={String(unit?.warranty?.claims?.length || 0)} />
           {(unit?.warranty?.claims || []).map((claim) => (

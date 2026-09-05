@@ -5,7 +5,7 @@ const ServiceRequest = require("../models/ServiceRequest");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
-const { appendWarrantyEvent, effectiveWarrantyStatus, getWarrantyRecommendation } = require("../domain/warrantyService");
+const { appendWarrantyEvent, effectiveWarrantyStatus, getWarrantyRecommendation, getWarrantyCoverage, warrantyApprovalError } = require("../domain/warrantyService");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
 
 const displayName = (user = {}) =>
@@ -48,6 +48,7 @@ const warrantySnapshot = (unit) => {
   const warranty = unit?.warranty?.toObject?.() || unit?.warranty || {};
   return {
     ...warranty,
+    ...getWarrantyCoverage(warranty),
     status: effectiveWarrantyStatus(warranty),
     claims: Array.isArray(warranty.claims) ? warranty.claims : [],
     serviceRecords: Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : [],
@@ -95,6 +96,7 @@ const listWarrantyClaims = async (req, res) => {
         customerName: unit.customerName || "Customer",
         branch,
         warrantyStatus: warranty.status,
+        ...getWarrantyCoverage(warranty),
       }));
     }));
     const claims = claimGroups
@@ -201,6 +203,11 @@ const reviewWarrantyClaim = async (req, res) => {
     const claim = { ...warranty.claims[index] };
     const previousStatus = String(claim.status || "submitted").toLowerCase();
     const nextDecisionNote = String(req.body?.decisionNote || req.body?.notes || claim.decisionNote || "").trim();
+    const coveredComponent = String(req.body?.coveredComponent || claim.coveredComponent || "").toLowerCase();
+    if (status === "approved" && !claim.serviceRequestId) {
+      const coverageError = warranty.status !== "active" ? "This unit does not have active warranty coverage." : warrantyApprovalError(warranty, coveredComponent);
+      if (coverageError) return res.status(409).json({ message: coverageError });
+    }
     if (previousStatus === "service_completed") {
       return res.status(409).json({ message: "A completed warranty service cannot be reopened or changed." });
     }
@@ -221,6 +228,7 @@ const reviewWarrantyClaim = async (req, res) => {
     claim.reviewedAt = new Date();
     claim.reviewerName = displayName(req.authUser);
     claim.decisionNote = nextDecisionNote;
+    if (status === "approved") claim.coveredComponent = coveredComponent;
 
     if (status === "approved" && !claim.serviceRequestId) {
       const address = [unit.installation?.addressLine, unit.installation?.city, unit.installation?.province].filter(Boolean).join(", ") || "Installation address";
@@ -256,6 +264,7 @@ const reviewWarrantyClaim = async (req, res) => {
           payload: {
             warrantyClaimId: claim.claimId,
             warrantyRelated: true,
+            coveredComponent,
             unitSerialNumber: unit.serialNumber,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

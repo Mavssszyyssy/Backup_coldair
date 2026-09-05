@@ -4,7 +4,7 @@
 
 Confirmed defects have been corrected locally. This is **not a blanket certification of zero defects or a live-AI go-ahead**. Authenticated customer and seeded-technician mobile screens have now been exercised in the browser preview. The automated workflow passes; physical-device behavior, some less-common account paths, and business/data confirmations remain open.
 
-Baseline: `af69762b` on `main-martyn`. This audit batch has not been committed, pushed, or deployed.
+Historical audit baseline: `af69762b` on `main-martyn`. The batch described below was subsequently committed and deployed as `561934941ffaa6768ed2cbaca7095183a1025da4`. For the newer presentation-clearance findings, warranty policy confirmation, and current local-only fixes, see [Presentation clearance follow-up](presentation-clearance-2026-09-06.md). The counts and remaining items below describe the original audit, not the newer follow-up.
 
 ## What the supplied screenshots actually show
 

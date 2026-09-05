@@ -319,6 +319,7 @@ export default function TaskInformationScreen() {
               <DetailItem icon="speedometer-sharp" label="Horsepower" value={Number(unit?.capacityHp || 0) > 0 ? `${Number(unit.capacityHp)} HP` : "Not recorded"} />
               <DetailItem icon="resize-sharp" label="Room Size" value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : "Not recorded"} />
               <DetailItem icon="shield-checkmark-sharp" label="Warranty Status" value={formatWarrantyStatus(unit?.warrantyStatus, { installationPending: installationTask && !unit?.installationDate })} accent={COLORS.success} />
+              {unit?.warrantyCoverage?.coverageSummary ? <DetailItem icon="document-text-sharp" label="Warranty Coverage" value={unit.warrantyCoverage.coverageSummary} /> : null}
               {unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
             </Card>
           ) : null}

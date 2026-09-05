@@ -10,7 +10,7 @@ const { notifyOperationalStaff, createDedupedNotification } = require("../servic
 const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
-const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
+const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus, getWarrantyCoverage } = require("../domain/warrantyService");
 const { validateTechnicianTaskCompletion } = require("../domain/technicianTaskCompletion");
 const { completeServiceForUnit } = require("../domain/serviceCompletionService");
 const { assessServiceEvidence, serviceTypeFor } = require("../domain/serviceEvidence");
@@ -891,6 +891,7 @@ const getTaskUnitSummary = async (task) => {
     installationAddress: unit.installation?.addressLine || "",
     warrantyStatus: effectiveWarrantyStatus(warranty),
     warrantyExpirationDate: warranty.expirationDate || null,
+    warrantyCoverage: getWarrantyCoverage(warranty),
     bestServicedBy: unit.amp?.bestServicedBy || null,
     recommendedService: unit.amp?.recommendedService || "",
     serviceBranch: unit.serviceBranch || "",
@@ -1406,6 +1407,7 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
         branch,
         warrantyStatus,
         warrantyExpirationDate: warranty.expirationDate || null,
+        warrantyCoverage: getWarrantyCoverage(warranty),
       },
       maintenanceHistory,
       repairHistory: repairRows,

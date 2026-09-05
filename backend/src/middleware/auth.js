@@ -10,6 +10,7 @@ const { BRANCHES } = require("../domain/branchRouting");
 // are picked up immediately when a user saves them.
 const READ_AUTH_CACHE_TTL_MS = 5000;
 const readAuthCache = new Map();
+const invalidateAuthCache = (userId) => readAuthCache.delete(String(userId || ""));
 const isRecoveryRequestAllowed = (value = "") => {
   const requestPath = String(value || "").split("?")[0];
   return requestPath.startsWith("/api/security/") || requestPath === "/api/auth/me";
@@ -24,7 +25,18 @@ const readCachedUser = async (userId, requestMethod) => {
   if (!canUseCache) readAuthCache.delete(cacheKey);
   const cached = canUseCache ? readAuthCache.get(cacheKey) : null;
   if (cached && cached.expiresAt > Date.now()) {
-    return User.hydrate(cached.user);
+    // Security revocation must remain effective across serverless instances,
+    // even while their short-lived profile caches still contain an old user.
+    const live = await User.findById(userId).select("security.sessionVersion security.totpResetRequired accountStatus isDeleted isFirstLogin technicianOnboardedAt").lean();
+    if (!live) return null;
+    const hydrated = User.hydrate(cached.user);
+    hydrated.security.sessionVersion = live.security?.sessionVersion || 0;
+    hydrated.security.totpResetRequired = Boolean(live.security?.totpResetRequired);
+    hydrated.accountStatus = live.accountStatus;
+    hydrated.isDeleted = live.isDeleted;
+    hydrated.isFirstLogin = live.isFirstLogin;
+    hydrated.technicianOnboardedAt = live.technicianOnboardedAt;
+    return hydrated;
   }
 
   const user = await User.findById(userId);
@@ -54,6 +66,9 @@ const authenticate = async (req, res, next, options = {}) => {
     }
 
     const payload = jwt.verify(token, env.jwtSecret);
+    if (payload.purpose || !payload.sub || !payload.role) {
+      return res.status(401).json({ message: "A verified sign-in session is required." });
+    }
     const user = await readCachedUser(payload.sub, req.method);
     if (!user) {
       return res.status(401).json({ message: "Invalid token user" });
@@ -64,12 +79,20 @@ const authenticate = async (req, res, next, options = {}) => {
 
     req.authUser = user;
     req.user = payload;
-    if (payload.recovery) {
+    if (Number(payload.securityVersion || 0) !== Number(user.security?.sessionVersion || 0)) {
+      return res.status(401).json({ message: "Your session has ended. Please sign in again." });
+    }
+    if (payload.recovery || user.security?.totpResetRequired) {
       if (!isRecoveryRequestAllowed(req.originalUrl || req.url)) {
         return res.status(403).json({
           message: "Complete authenticator recovery before using this account.",
         });
       }
+    }
+    const requestPath = String(req.originalUrl || req.url).split("?")[0];
+    if (user.role === "technician" && (user.isFirstLogin || !user.technicianOnboardedAt)) {
+      const setupPath = isRecoveryRequestAllowed(requestPath) || ["/api/users/profile", "/api/users/profile/update", "/api/users/password"].includes(requestPath);
+      if (!setupPath) return res.status(403).json({ message: "Complete technician account setup before accessing work orders." });
     }
     const headerBranch = typeof req.headers["x-branch"] === "string" ? req.headers["x-branch"].trim() : "";
     const isBranchScopedRole = user.role === "admin" || user.role === "manager" || user.role === "technician";
@@ -114,4 +137,4 @@ const allowRoles = (...allowedRoles) => (req, res, next) => {
   return next();
 };
 
-module.exports = { requireAuth, requireAuthNoBranch, allowRoles, isRecoveryRequestAllowed };
+module.exports = { requireAuth, requireAuthNoBranch, allowRoles, isRecoveryRequestAllowed, invalidateAuthCache };

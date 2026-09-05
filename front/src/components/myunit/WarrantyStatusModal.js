@@ -22,7 +22,9 @@ function WarrantyStatusModal({ unit, onClose }) {
             <span className="info-value">{valid ? "Active" : status.replace(/_/g, " ")}</span>
           </div>
           <div className="info-row"><span className="info-label">Warranty type</span><span className="info-value">{warranty.warrantyType || "Standard manufacturer warranty"}</span></div>
-          <div className="info-row"><span className="info-label">Coverage period</span><span className="info-value">{formatDate(warranty.startDate)} – {formatDate(warranty.expirationDate)}</span></div>
+          <div className="info-row"><span className="info-label">Coverage start</span><span className="info-value">{formatDate(warranty.startDate)}</span></div>
+          <p>{warranty.coverageSummary || "Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch."}</p>
+          {(warranty.componentCoverage || []).map((item) => <div className="info-row" key={item.component}><span className="info-label">{item.component} coverage ends</span><span className="info-value">{formatDate(item.expirationDate)} — {item.status?.replace(/_/g, " ")}</span></div>)}
           {warnings.length > 0 && (
             <div className="warranty-warnings" role="alert">
               {warnings.map((w) => (
@@ -30,10 +32,6 @@ function WarrantyStatusModal({ unit, onClose }) {
               ))}
             </div>
           )}
-          <div className="info-row">
-            <span className="info-label">Coverage</span>
-            <span className="info-value">{warranty.coveredComponents?.join(", ") || unit.warrantyTerms || "Coverage details pending."}</span>
-          </div>
           {!!warranty.coverageLimitations?.length && <div className="info-row"><span className="info-label">Limitations</span><span className="info-value">{warranty.coverageLimitations.join(" ")}</span></div>}
           <div className="info-row"><span className="info-label">Claims</span><span className="info-value">{warranty.claims?.length || 0} recorded</span></div>
           {warranty.claims?.map((claim) => (

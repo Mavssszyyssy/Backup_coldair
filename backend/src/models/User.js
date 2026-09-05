@@ -164,6 +164,7 @@ const userSchema = new mongoose.Schema(
       requestedAt: { type: Date, default: null },
     },
     security: {
+      sessionVersion: { type: Number, default: 0 },
       totpEnabled: { type: Boolean, default: false },
       totpSecretEncrypted: { type: String, default: "", select: false },
       totpPendingSecretEncrypted: { type: String, default: "", select: false },

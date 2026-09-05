@@ -135,7 +135,7 @@ const main = async () => {
     method: "POST",
     body: registrationBody,
   });
-  const customerToken = registration.data.token;
+  let customerToken = registration.data.token;
   const customer = registration.data.user;
   if (!customerToken || customer.assignedBranch !== "Bulacan") {
     throw new Error("Customer registration did not create a Bulacan-routed account.");
@@ -145,7 +145,8 @@ const main = async () => {
   // No authenticator secrets, recovery codes, or access tokens are logged.
   await request("/users/profile", { token: customerToken, method: "PATCH", expected: [409], body: { customer_onboarded_at: new Date().toISOString() } });
   const setup = await request("/security/totp/setup", { token: customerToken, method: "POST", body: {} });
-  await request("/security/totp/verify", { token: customerToken, method: "POST", body: { code: speakeasy.totp({ secret: setup.data.secret, encoding: "base32" }) } });
+  const customerVerified = await request("/security/totp/verify", { token: customerToken, method: "POST", body: { code: speakeasy.totp({ secret: setup.data.secret, encoding: "base32" }) } });
+  customerToken = customerVerified.data.token;
   const authChallenge = await request("/auth/login", { method: "POST", body: { identifier: registrationBody.alias, password: customerPassword } });
   if (authChallenge.data.token || !authChallenge.data.challengeToken) throw new Error("Password-only login bypassed the enabled authenticator.");
   await request("/auth/login/totp", { method: "POST", body: { challengeToken: authChallenge.data.challengeToken, code: speakeasy.totp({ secret: setup.data.secret, encoding: "base32" }) } });
@@ -156,6 +157,13 @@ const main = async () => {
   if (JSON.stringify(reloadedCustomer.data.user.addresses) !== JSON.stringify(customer.addresses)) throw new Error("Completing security setup unexpectedly changed customer addresses.");
   record("Customer onboarding persists after verified setup without changing saved addresses");
   const genericTech = await login(staff.data.loginIdentifier, staff.data.tempPassword);
+  await request("/tasks", { token: genericTech.token, expected: [403] });
+  await request("/users/password", { token: genericTech.token, method: "PATCH", body: { alias: staff.data.loginIdentifier, phone: `0918${runId.slice(-7)}`, newPassword: "QaTechnician9!" } });
+  const techSetup = await request("/security/totp/setup", { token: genericTech.token, method: "POST", body: {} });
+  const techVerified = await request("/security/totp/verify", { token: genericTech.token, method: "POST", body: { code: speakeasy.totp({ secret: techSetup.data.secret, encoding: "base32" }) } });
+  if (!techVerified.data.user?.technicianOnboardedAt) throw new Error("Technician setup was not completed after authenticator verification.");
+  genericTech.token = techVerified.data.token;
+  record("New technician completes password and authenticator setup before accessing work orders");
   const genericBody = { title: "Inspect cooling controller", customerId: customer.id, customerName: "Acceptance Customer", address: address.street, branch: "Bulacan", assignedTechnicianId: technician.id || technician._id, status: "in-progress" };
   await request("/tasks", { token: superadmin.token, method: "POST", expected: [400], body: { ...genericBody, assignedTechnicianId: superadmin.user.id } });
   await request("/tasks", { token: superadmin.token, method: "POST", expected: [409], body: { ...genericBody, branch: "Cavite" } });
@@ -275,7 +283,7 @@ const main = async () => {
   }
   record("Dispatch deducts COD stock once and assigns the QR serial");
 
-  const technicianSession = await login(staff.data.loginIdentifier, staff.data.tempPassword);
+  const technicianSession = genericTech;
   const tasksResult = await request("/tasks", { token: technicianSession.token });
   const task = (tasksResult.data.tasks || []).find((item) =>
     String(item.payload?.orderId || item.orderId || "") === String(orderId) ||
@@ -353,6 +361,7 @@ const main = async () => {
     throw new Error("Installed customer AC unit, horsepower, or warranty activation is missing.");
   }
   const unitId = unit.id;
+  if (!unit.warranty?.componentCoverage?.some((item) => item.component === "Parts" && item.durationMonths === 12) || !unit.warranty?.componentCoverage?.some((item) => item.component === "Compressor" && item.durationMonths === 60)) throw new Error("New warranty does not match advertised parts/compressor coverage.");
   if (unit.installationDate !== formatDateKeyInTimeZone(new Date())) throw new Error("My Units shifted the local installation date to the previous day.");
   if (unit.lastCleaningDate || !unit.serviceHistory?.some((history) => history.serviceType === "installation")) throw new Error("Installation was incorrectly recorded as cleaning or its history is missing.");
   record("Customer My Unit synchronization and automatic warranty activation");
@@ -448,7 +457,7 @@ const main = async () => {
   await request(`/warranties/units/${unitId}/claims/${claimId}`, {
     token: superadmin.token,
     method: "PATCH",
-    body: { status: "approved", decisionNote: "Covered by acceptance warranty" },
+    body: { status: "approved", coveredComponent: "parts", decisionNote: "Covered by acceptance warranty" },
   });
   const warranty = await request(`/warranties/units/${unitId}`, { token: customerToken });
   if (

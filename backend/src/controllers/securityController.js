@@ -1,5 +1,6 @@
 const User = require("../models/User");
-const { signAccessToken } = require("../utils/token");
+const { signUserAccessToken } = require("../utils/token");
+const { invalidateAuthCache } = require("../middleware/auth");
 const {
   buildTotpSetup,
   decryptSecret,
@@ -81,17 +82,24 @@ const verifyTotpSetup = async (req, res) => {
     if (!verifyTotpCode({ secret, code: req.body?.code })) {
       return res.status(400).json({ message: "Incorrect authenticator code." });
     }
-    user.security.totpSecretEncrypted = user.security.totpPendingSecretEncrypted;
-    user.security.totpPendingSecretEncrypted = "";
-    user.security.totpEnabled = true;
-    user.security.totpResetRequired = false;
-    user.security.totpVerifiedAt = new Date();
-    await user.save();
-    const token = signAccessToken({ sub: user.id, role: user.role });
+    const version = Number(user.security.sessionVersion || 0);
+    const verified = await User.findOneAndUpdate({
+      _id: user._id, "security.totpPendingSecretEncrypted": user.security.totpPendingSecretEncrypted,
+      ...(version ? { "security.sessionVersion": version } : { $or: [{ "security.sessionVersion": 0 }, { "security.sessionVersion": { $exists: false } }] }),
+    }, {
+      $set: { "security.totpSecretEncrypted": user.security.totpPendingSecretEncrypted,
+        "security.totpPendingSecretEncrypted": "", "security.totpEnabled": true,
+        "security.totpResetRequired": false, "security.totpVerifiedAt": new Date(),
+        ...(user.role === "technician" && !user.isFirstLogin && !user.technicianOnboardedAt ? { technicianOnboardedAt: new Date() } : {}) },
+      $inc: { "security.sessionVersion": 1 },
+    }, { new: true });
+    if (!verified) return res.status(409).json({ message: "Authenticator setup changed. Reload setup and try again." });
+    invalidateAuthCache(verified.id);
+    const token = signUserAccessToken(verified);
     return res.json({
       message: "Authenticator verification enabled.",
-      security: securityStatus(user),
-      user: user.toJSON(),
+      security: securityStatus(verified),
+      user: verified.toJSON(),
       token,
     });
   } catch (error) {
@@ -149,24 +157,27 @@ const consumeRecoveryCode = async (req, res) => {
     if (matchIndex < 0) {
       return res.status(400).json({ message: "Invalid or already-used recovery code." });
     }
-    hashes.splice(matchIndex, 1);
-    user.security.recoveryCodeHashes = hashes;
-    user.security.recoveryCodesRemaining = hashes.length;
-    user.security.totpEnabled = false;
-    user.security.totpResetRequired = true;
-    user.security.totpSecretEncrypted = "";
-    user.security.totpPendingSecretEncrypted = "";
-    user.security.recoveredAt = new Date();
-    user.lastLogin = new Date();
-    await user.save();
-    const token = signAccessToken(
-      { sub: user.id, role: user.role, recovery: true },
+    // Atomically consume the hash: concurrent requests cannot use one code twice.
+    const recovered = await User.findOneAndUpdate({
+      _id: user._id, "security.recoveryCodeHashes": hashes[matchIndex],
+      isDeleted: { $ne: true }, accountStatus: { $nin: ["disabled", "deleted"] },
+    }, {
+      $pull: { "security.recoveryCodeHashes": hashes[matchIndex] },
+      $inc: { "security.recoveryCodesRemaining": -1, "security.sessionVersion": 1 },
+      $set: { "security.totpEnabled": false, "security.totpResetRequired": true,
+        "security.totpSecretEncrypted": "", "security.totpPendingSecretEncrypted": "",
+        "security.recoveredAt": new Date(), lastLogin: new Date() },
+    }, { new: true });
+    if (!recovered) return res.status(400).json({ message: "Invalid or already-used recovery code." });
+    invalidateAuthCache(recovered.id);
+    const token = signUserAccessToken(
+      recovered, { recovery: true },
       { expiresIn: "15m" },
     );
     return res.json({
       success: true,
       token,
-      user: user.toJSON(),
+      user: recovered.toJSON(),
       requiresTotpReset: true,
       recoveryDestination: user.role === "technician"
         ? "/technician/oobe/reset"

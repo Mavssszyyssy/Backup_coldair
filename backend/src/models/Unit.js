@@ -81,6 +81,9 @@ const unitSchema = new mongoose.Schema(
     },
 
     warranty: {
+      policyVersion: { type: String, default: "" },
+      partsExpirationDate: { type: Date, default: null },
+      compressorExpirationDate: { type: Date, default: null },
       warrantyType: { type: String, default: "Standard manufacturer warranty", trim: true },
       startDate: { type: Date, default: null },
       expirationDate: { type: Date, default: null, index: true },
@@ -102,6 +105,7 @@ const unitSchema = new mongoose.Schema(
           reviewedAt: { type: Date, default: null },
           resolvedAt: { type: Date, default: null },
           reviewerName: { type: String, default: "", trim: true },
+          coveredComponent: { type: String, enum: ["", "parts", "compressor"], default: "" },
           decisionNote: { type: String, default: "", trim: true },
           serviceRequestId: { type: String, default: "" },
           serviceHistoryId: { type: String, default: "" },

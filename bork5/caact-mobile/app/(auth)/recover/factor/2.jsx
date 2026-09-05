@@ -49,18 +49,9 @@ export default function RecoverCodeScreen() {
         return;
       }
 
-      Alert.alert(
-        "Code Accepted",
-        "Your recovery code has been verified. Please reset your authenticator app to regain full access.",
-        [
-          {
-            text: "Continue",
-            onPress: () => router.replace(result.recoveryDestination || "/customer/oobe/reset"),
-          },
-        ],
-      );
+      router.replace(result.recoveryDestination || "/customer/oobe/reset");
     } catch {
-      Alert.alert("Error", "Unable to verify recovery code. Please try again.");
+      setErrors({ code: "Unable to verify recovery code. Please try again." });
     } finally {
       setLoading(false);
     }

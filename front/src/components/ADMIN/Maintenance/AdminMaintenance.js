@@ -83,14 +83,15 @@ const AdminMaintenance = ({ embedded = false }) => {
     setTechnicianFilter('all');
   };
 
-  const reviewWarrantyClaim = async (claim, status) => {
+  const reviewWarrantyClaim = async (claim, status, coveredComponent = '') => {
     const key = `${claim.unitId}:${claim.claimId}`;
-    const decisionNote = window.prompt(`Optional note for this ${status.replace('_', ' ')} decision:`, '') || '';
+    const decisionNote = window.prompt(`Optional note for this ${status.replace('_', ' ')} decision:`, '');
+    if (decisionNote === null) return;
     setBusyClaimId(key);
     try {
       const result = await apiRequest(`/warranties/units/${encodeURIComponent(claim.unitId)}/claims/${encodeURIComponent(claim.claimId)}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status, decisionNote }),
+        body: JSON.stringify({ status, decisionNote, coveredComponent }),
       });
       setWarrantyClaims((items) => items.map((item) => (
         String(item.unitId) === String(claim.unitId) && String(item.claimId) === String(claim.claimId)

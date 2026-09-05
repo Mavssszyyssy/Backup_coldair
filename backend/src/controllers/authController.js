@@ -5,7 +5,7 @@ const zxcvbn = require("zxcvbn");
 const User = require("../models/User");
 const OtpRequest = require("../models/OtpRequest"); // Symmetrical V3 Model
 const AuditLog = require("../models/AuditLog");
-const { signAccessToken } = require("../utils/token");
+const { signUserAccessToken } = require("../utils/token");
 const env = require("../config/env");
 const { BRANCHES } = require("../domain/branchRouting");
 const { canSendEmail, sendEmail } = require("../utils/email");
@@ -626,7 +626,7 @@ const register = async (req, res) => {
     });
     if (req.session) req.session.destroy();
 
-    const token = signAccessToken({ sub: newUser.id, role: newUser.role });
+    const token = signUserAccessToken(newUser);
     return res.json({ success: true, token, user: newUser.toJSON() });
   } catch (err) {
     const conflictMessage = duplicateIdentityMessage(err);
@@ -695,7 +695,7 @@ const login = async (req, res) => {
     user.lockoutUntil = null;
     user.lastLogin = new Date();
     await user.save();
-    const token = signAccessToken({ sub: user.id, role: user.role });
+    const token = signUserAccessToken(user, user.security?.totpResetRequired ? { recovery: true } : {});
     return res.json({ success: true, token, user: user.toJSON() });
   } catch (err) {
     return res.status(500).json({ message: "Login error" });
@@ -741,7 +741,7 @@ const verifyLoginTotp = async (req, res) => {
     user.lockoutUntil = null;
     user.lastLogin = new Date();
     await user.save();
-    const token = signAccessToken({ sub: user.id, role: user.role });
+    const token = signUserAccessToken(user);
     return res.json({ success: true, token, user: user.toJSON() });
   } catch (error) {
     console.error("TOTP login verification failed:", error.message);
