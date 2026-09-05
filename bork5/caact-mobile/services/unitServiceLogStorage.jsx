@@ -14,10 +14,10 @@ function safeParse(value, fallback) {
 
 export const LOG_TYPES = [
   { id: "installation", label: "Installation" },
-  { id: "cleaning", label: "Cleaning" },
+  { id: "regular_cleaning", label: "Regular Cleaning" },
+  { id: "deep_cleaning", label: "Deep Cleaning" },
   { id: "repair", label: "Repair" },
-  { id: "checkup", label: "Check-up" },
-  { id: "other", label: "Other" },
+  { id: "inspection", label: "Inspection" },
 ];
 
 export function normalizeServiceLog(log = {}) {
@@ -35,6 +35,8 @@ export function normalizeServiceLog(log = {}) {
     condition: log.condition || "Good",
     hoursSpent: Number(log.hoursSpent || 0),
     partsUsed: log.partsUsed || "",
+    findings: log.findings || "",
+    resolution: log.resolution || "",
     notes: log.notes || "",
     createdAt,
     updatedAt: log.updatedAt || createdAt,
@@ -93,7 +95,27 @@ export async function upsertServiceLog(log = {}) {
   const next = existing
     ? logs.map((item) => (String(item.id) === String(normalized.id) ? normalized : item))
     : [normalized, ...logs];
-  const result = await api.patchTask(token, log.taskId, { serviceLogs: next });
+  const serviceTypeByLogType = {
+    regular_cleaning: "regular_cleaning",
+    deep_cleaning: "deep_cleaning",
+    cleaning: "regular_cleaning",
+    repair: "repair",
+    inspection: "inspection",
+    checkup: "inspection",
+    installation: "installation",
+    other: "inspection",
+  };
+  const result = await api.patchTask(token, log.taskId, {
+    serviceLogs: next,
+    serviceType: serviceTypeByLogType[normalized.logType] || "inspection",
+    beforeCondition: normalized.condition,
+    conditionRating: String(normalized.condition || "good").toLowerCase(),
+    findings: normalized.findings || normalized.notes,
+    resolution: normalized.resolution,
+    serviceActions: normalized.resolution ? [normalized.resolution] : [],
+    partsUsed: normalized.partsUsed,
+    notes: normalized.notes,
+  });
   if (!result.success) throw new Error(result.error || "Unable to save this service note.");
 
   const saved = Array.isArray(result.task?.serviceLogs)
@@ -109,7 +131,26 @@ export async function deleteServiceLog(taskId, logId) {
 
   const logs = await getServiceLogsByTask(taskId);
   const next = logs.filter((log) => String(log.id) !== String(logId));
-  const result = await api.patchTask(token, taskId, { serviceLogs: next });
+  const latest = next[0] || null;
+  const result = await api.patchTask(token, taskId, {
+    serviceLogs: next,
+    ...(latest ? {
+      beforeCondition: latest.condition,
+      conditionRating: String(latest.condition || "good").toLowerCase(),
+      findings: latest.findings || latest.notes,
+      resolution: latest.resolution,
+      serviceActions: latest.resolution ? [latest.resolution] : [],
+      partsUsed: latest.partsUsed,
+      notes: latest.notes,
+    } : {
+      beforeCondition: "",
+      findings: "",
+      resolution: "",
+      serviceActions: [],
+      partsUsed: "",
+      notes: "",
+    }),
+  });
   if (!result.success) throw new Error(result.error || "Unable to delete this service note.");
   await saveAllServiceLogs(next);
   return true;

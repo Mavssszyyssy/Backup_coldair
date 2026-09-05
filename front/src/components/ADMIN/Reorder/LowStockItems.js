@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
 import './styles.css';
 
 const LowStockItems = ({ items = [], selectedItem, onSelect }) => {
@@ -21,7 +22,7 @@ const LowStockItems = ({ items = [], selectedItem, onSelect }) => {
             const threshold = Number(item.threshold || 0);
             return (
               <button key={item.id} type="button" className={`reorder-item ${selected ? 'is-selected' : ''}`} onClick={() => onSelect(item)}>
-                <span className="reorder-item-main"><strong>{item.name}</strong><small>{item.sku || item.brand || 'Product'}</small></span>
+                <span className="reorder-item-main"><strong>{item.name}</strong><small>{item.sku || item.brand || 'Product'} · {formatCartHorsepower(item)}</small></span>
                 <span className={`reorder-stock ${stock === 0 ? 'is-zero' : ''}`}>{stock} in stock</span>
                 <small>Reorder level: {threshold}</small>
               </button>

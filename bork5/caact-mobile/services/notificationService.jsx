@@ -6,6 +6,9 @@ import {
   markAllNotificationsRead,
   markNotificationRead as markRemoteNotificationRead,
 } from "./api";
+import { resolveNotificationRoute } from "./notificationRouteService";
+
+export { resolveNotificationRoute } from "./notificationRouteService";
 
 const STORAGE_KEY = "local_notifications_v1";
 
@@ -38,36 +41,6 @@ function normalizeNotification(item = {}) {
     unread: Boolean(unread),
     createdAt: item.createdAt || new Date().toISOString(),
   };
-}
-
-export function resolveNotificationRoute(item = {}, role = "") {
-  const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
-  const normalizedRole = String(role || item.role || "").toLowerCase();
-
-  if (item.type === "warranty" || item.targetType === "warranty" || text.includes("warranty")) {
-    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=warranty` : "/customer/units";
-  }
-  if (item.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category)) {
-    return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=amp` : "/customer/units";
-  }
-  if (typeof item.route === "string" && item.route.startsWith("/")) {
-    return item.route;
-  }
-
-  if (normalizedRole === "technician") {
-    if (text.includes("part")) return "/technician/tasks";
-    if (item.type === "order" || text.includes("order") || text.includes("task") || text.includes("work order")) {
-      return "/technician/tasks";
-    }
-    return "/technician/dashboard";
-  }
-
-  if (text.includes("service") || text.includes("appointment") || text.includes("request")) {
-    return "/customer/home";
-  }
-  if (item.type === "order" || text.includes("order")) return "/customer/orders";
-  if (item.type === "account") return "/customer/settings";
-  return "/customer/home";
 }
 
 export async function getAllNotifications() {

@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
@@ -9,14 +9,20 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StatusChip from "../../../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
-import { getServiceRequestsByUser } from "../../../../services/serviceRequestStorage";
 import { checkInTask, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
-import { getUnitByCode } from "../../../../services/unitStorage";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
+import { formatWarrantyStatus, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
 
 function money(value) {
   return `PHP ${Number(value || 0).toFixed(2)}`;
+}
+
+function checkInMapUrl(checkIn = {}) {
+  const latitude = Number(checkIn?.latitude);
+  const longitude = Number(checkIn?.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "";
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
 const DETAIL_PAGES = [
@@ -133,12 +139,8 @@ export default function TaskInformationScreen() {
           if (!loadedTask) {
             throw new Error("This work order is no longer available. Return to My Work Orders and refresh the list.");
           }
-          const loadedUnit = loadedTask.unitId
-            ? await getUnitByCode(loadedTask.unitId)
-            : null;
-          const loadedRequests = loadedTask.customerId
-            ? await getServiceRequestsByUser(loadedTask.customerId)
-            : [];
+          const loadedUnit = loadedTask.unit || null;
+          const loadedRequests = loadedTask.requestId ? [{ id: loadedTask.requestId }] : [];
           const loadedLogs = loadedTask?.id ? await getServiceLogsByTask(loadedTask.id) : [];
           if (active) {
             setTask(loadedTask);
@@ -162,6 +164,7 @@ export default function TaskInformationScreen() {
   const assignedSerials = getTaskSerials(task);
   const proof = task?.proof || {};
   const registrationProgress = task?.registrationProgress;
+  const installationTask = isInstallationWorkOrder(task);
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
   const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
@@ -169,8 +172,10 @@ export default function TaskInformationScreen() {
     ? { title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
     : task?.status === TASK_STATUS.IN_PROGRESS
       ? !hasCheckedIn
-        ? { title: "Check in at installation", subtitle: "Record your GPS arrival before verifying the assigned AC unit.", icon: "location-sharp", action: "check-in" }
-        : registrationComplete
+        ? { title: installationTask ? "Check in at installation" : "Check in at service address", subtitle: installationTask ? "Record your GPS arrival before verifying the assigned AC unit." : "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
+        : !installationTask
+          ? { title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
+          : registrationComplete
         ? { title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
         : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
       : null;
@@ -182,7 +187,7 @@ export default function TaskInformationScreen() {
       const location = await getCurrentLocationSnapshot();
       const updated = await checkInTask(id, location);
       setTask(updated);
-      Alert.alert("Arrival recorded", "Your GPS check-in was recorded. You can now verify the assigned AC unit.");
+      Alert.alert("Arrival recorded", installationTask ? "Your GPS check-in was recorded. You can now verify the assigned AC unit." : "Your GPS check-in was recorded. You can now complete the service report.");
     } catch (error) {
       Alert.alert("Unable to check in", error?.message || "Please check location permissions and try again.");
     } finally {
@@ -286,6 +291,15 @@ export default function TaskInformationScreen() {
               </Card>
             ) : null}
 
+            {hasCheckedIn ? (
+              <Card>
+                <SectionHeading icon="location-sharp" title="GPS Arrival" subtitle="Visible to the customer and branch administrators" />
+                <DetailItem icon="time-sharp" label="Checked In" value={new Date(task.checkIn.checkedInAt).toLocaleString()} accent={COLORS.success} />
+                <DetailItem icon="navigate-sharp" label="Coordinates" value={`${Number(task.checkIn.latitude).toFixed(6)}, ${Number(task.checkIn.longitude).toFixed(6)}`} />
+                {checkInMapUrl(task.checkIn) ? <TechButton title="Open check-in map" variant="secondary" size="sm" onPress={() => Linking.openURL(checkInMapUrl(task.checkIn))} leftIcon={<Ionicons name="map-sharp" size={17} color={COLORS.tech} />} /> : null}
+              </Card>
+            ) : null}
+
             {assignedSerials.length > 0 ? (
               <Card>
                 <SectionHeading icon="analytics-sharp" title="Installation Progress" subtitle="Assigned QR verification" />
@@ -302,7 +316,9 @@ export default function TaskInformationScreen() {
               <DetailItem icon="cube-sharp" label="AC Unit" value={unit?.unitName || task?.unitName || "Unassigned"} />
               <DetailItem icon="pricetag-sharp" label="Brand / Model" value={[unit?.brand, unit?.model].filter(Boolean).join(" / ") || "Not provided"} />
               <DetailItem icon="barcode-sharp" label="Serial" value={unit?.serialNumber || assignedSerials.join(", ") || "Not provided"} />
-              <DetailItem icon="shield-checkmark-sharp" label="Warranty Status" value={unit?.installationDate ? "Check purchase date and warranty terms" : "Unknown"} accent={COLORS.success} />
+              <DetailItem icon="speedometer-sharp" label="Horsepower" value={Number(unit?.capacityHp || 0) > 0 ? `${Number(unit.capacityHp)} HP` : "Not recorded"} />
+              <DetailItem icon="resize-sharp" label="Room Size" value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : "Not recorded"} />
+              <DetailItem icon="shield-checkmark-sharp" label="Warranty Status" value={formatWarrantyStatus(unit?.warrantyStatus, { installationPending: installationTask && !unit?.installationDate })} accent={COLORS.success} />
               {unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
             </Card>
           ) : null}

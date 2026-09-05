@@ -30,4 +30,15 @@ describe("cart product details", () => {
     expect(cartSource).toContain("Horsepower: {formatCartHorsepower(item)}");
     expect(shopSource).toContain("Added to cart");
   });
+
+  it("shows horsepower throughout admin and superadmin reorder management", () => {
+    const sources = [
+      path.resolve(process.cwd(), "src", "components", "ADMIN", "Reorder", "LowStockItems.js"),
+      path.resolve(process.cwd(), "src", "components", "ADMIN", "Reorder", "ReorderForm.js"),
+      path.resolve(process.cwd(), "src", "components", "ADMIN", "Reorder", "AdminReoder.js"),
+      path.resolve(process.cwd(), "src", "components", "SUPERADMIN", "Dashboard", "SuperAdminReorders.js"),
+    ].map((file) => fs.readFileSync(file, "utf8"));
+
+    sources.forEach((source) => expect(source).toContain("formatCartHorsepower"));
+  });
 });

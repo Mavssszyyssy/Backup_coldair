@@ -14,6 +14,7 @@ import {
   getLatestTaskCheckIn,
   isActiveServiceRequest,
 } from "./customerHistoryLogic";
+import { resolveNotificationRoute } from "./notificationRouteService";
 
 describe("mobile customer readiness rules", () => {
   test("account recovery is backend-authoritative and has no device-local fallback", () => {
@@ -194,11 +195,13 @@ describe("mobile customer readiness rules", () => {
       path.join(__dirname, "..", "app", "technician", "task", "[id]", "amp-registration.jsx"),
       "utf8",
     );
-    const notificationSource = fs.readFileSync(path.join(__dirname, "notificationService.jsx"), "utf8");
+    const notificationSource = fs.readFileSync(path.join(__dirname, "notificationRouteService.js"), "utf8");
 
     expect(registrationSource).toContain("Room capacity check");
     expect(registrationSource).toContain("roomSizeSqm");
     expect(registrationSource).toContain("Save room size and verify unit");
+    expect(registrationSource).toContain("BottomSheetSelect");
+    expect(registrationSource).toContain("ROOM_SIZE_OPTIONS");
     expect(registrationSource).toContain("It does not change the history-based servicing interval");
     expect(registrationSource).not.toContain("dustExposure");
     expect(registrationSource).not.toContain("coastalExposure");
@@ -212,6 +215,34 @@ describe("mobile customer readiness rules", () => {
     expect(notificationSource).toContain("/customer/units/${encodeURIComponent(item.targetId)}");
     expect(notificationSource).toContain("?page=amp");
     expect(notificationSource).toContain("?page=warranty");
+  });
+
+  test("mobile notifications translate website routes to valid app screens", () => {
+    expect(resolveNotificationRoute({ route: "/contact" }, "customer")).toBe("/customer/contact");
+    expect(resolveNotificationRoute({ route: "/my-orders" }, "customer")).toBe("/customer/orders");
+    expect(resolveNotificationRoute({ route: "/customer/service-requests" }, "customer")).toBe("/customer/services");
+    expect(resolveNotificationRoute({ route: "/tech/tasks/TSK-1" }, "technician")).toBe("/technician/tasks");
+    expect(resolveNotificationRoute({ route: "/technician/tasks" }, "technician")).toBe("/technician/tasks");
+  });
+
+  test("technician maintenance uses a service report instead of installation progress", () => {
+    const detailsSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "technician", "task", "[id]", "information.jsx"),
+      "utf8",
+    );
+    const completionSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "technician", "task", "[id]", "complete-service.jsx"),
+      "utf8",
+    );
+    const logSource = fs.readFileSync(path.join(__dirname, "unitServiceLogStorage.jsx"), "utf8");
+
+    expect(detailsSource).toContain("isInstallationWorkOrder");
+    expect(detailsSource).toContain("Complete service report");
+    expect(detailsSource).toContain("Open check-in map");
+    expect(detailsSource).toContain("formatWarrantyStatus");
+    expect(completionSource).toContain("Complete service visit");
+    expect(completionSource).toContain("Technician Findings");
+    expect(logSource).toContain("serviceActions");
   });
 
   test("customer screens distinguish loading from a real empty account", () => {

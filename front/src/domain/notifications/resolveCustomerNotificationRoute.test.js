@@ -10,4 +10,11 @@ describe("customer notification routing", () => {
     expect(resolveCustomerNotificationRoute({ type: "order" })).toBe("/my-orders");
     expect(resolveCustomerNotificationRoute({ route: "/contact" })).toBe("/contact");
   });
+
+  it("translates mobile customer routes into valid website destinations", () => {
+    expect(resolveCustomerNotificationRoute({ route: "/customer/orders" })).toBe("/my-orders");
+    expect(resolveCustomerNotificationRoute({ route: "/customer/units/abc?page=warranty" })).toBe("/myunit");
+    expect(resolveCustomerNotificationRoute({ route: "/customer/contact" })).toBe("/contact");
+    expect(resolveCustomerNotificationRoute({ route: "/customer/service-requests" })).toBe("/get-the-app");
+  });
 });

@@ -29,11 +29,14 @@ const SuperAdminNotificationsBell = () => {
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
+  const refreshInFlightRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setBusy(true);
     try {
       const result = await apiRequest('/notifications/me');
@@ -47,13 +50,23 @@ const SuperAdminNotificationsBell = () => {
       setItems([]);
     } finally {
       setBusy(false);
+      refreshInFlightRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     refresh();
-    const pollId = window.setInterval(refresh, 20000);
-    return () => window.clearInterval(pollId);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const pollId = window.setInterval(refreshWhenVisible, 15000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refresh);
+    };
   }, [refresh]);
 
   useEffect(() => {

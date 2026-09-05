@@ -17,6 +17,8 @@ const defaultForm = {
   defectReason: ''
 };
 
+const ROOM_SIZE_OPTIONS = [6, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 50];
+
 const requiredSerials = (task) => task?.registrationProgress?.requiredSerials || [];
 const registrationFor = (task, serial) => task?.ampRegistrations?.[serial] || null;
 
@@ -234,7 +236,13 @@ const FieldServiceRegistration = () => {
             </label>
             <label>
               Room size (m²) <span aria-hidden="true">*</span>
-              <input type="number" min="1" max="10000" step="0.1" required value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)} placeholder="Required for HP suitability" />
+              <select required value={form.roomSizeSqm} onChange={(event) => updateField('roomSizeSqm', event.target.value)}>
+                <option value="">Choose the closest room size</option>
+                {form.roomSizeSqm && !ROOM_SIZE_OPTIONS.includes(Number(form.roomSizeSqm)) ? (
+                  <option value={form.roomSizeSqm}>Previously recorded: {form.roomSizeSqm} m²</option>
+                ) : null}
+                {ROOM_SIZE_OPTIONS.map((size) => <option key={size} value={size}>Approximately {size} m²</option>)}
+              </select>
             </label>
             <label>
               Overall condition

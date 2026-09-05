@@ -27,6 +27,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
   const { id: taskId, logId, logType = "other", label = "Other" } = params;
   const { current } = useUserContext();
   const [task, setTask] = useState(null);
+  const [findings, setFindings] = useState("");
+  const [resolution, setResolution] = useState("");
   const [notes, setNotes] = useState("");
   const [condition, setCondition] = useState("Good");
   const [hoursSpent, setHoursSpent] = useState("");
@@ -46,6 +48,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         const source = existing || draft || {};
         if (active) {
           setTask(loadedTask);
+          setFindings(source.findings || "");
+          setResolution(source.resolution || "");
           setNotes(source.notes || "");
           setCondition(source.condition || "Good");
           setHoursSpent(source.hoursSpent ? String(source.hoursSpent) : "");
@@ -64,17 +68,21 @@ export default function LogInsertScreen({ mode = "insert" }) {
       taskId,
       logType,
       label,
+      findings,
+      resolution,
       notes,
       condition,
       hoursSpent,
       partsUsed,
     };
-  }, [condition, hoursSpent, label, logType, notes, partsUsed, taskId]);
+  }, [condition, findings, hoursSpent, label, logType, notes, partsUsed, resolution, taskId]);
 
   useEffect(() => {
     return () => {
       const draft = draftStateRef.current;
       const hasDraftContent =
+        String(draft.findings || "").trim() ||
+        String(draft.resolution || "").trim() ||
         String(draft.notes || "").trim() ||
         String(draft.hoursSpent || "").trim() ||
         String(draft.partsUsed || "").trim();
@@ -92,6 +100,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         taskId,
         logType,
         label,
+        findings,
+        resolution,
         notes,
         condition,
         hoursSpent,
@@ -106,8 +116,12 @@ export default function LogInsertScreen({ mode = "insert" }) {
       Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
       return;
     }
-    if (!notes.trim()) {
-      Alert.alert("Required", "Enter notes about the service work performed.");
+    if (findings.trim().length < 10) {
+      Alert.alert("Findings required", "Describe the AC condition or issue using at least 10 characters.");
+      return;
+    }
+    if (!resolution.trim()) {
+      Alert.alert("Work performed required", "Describe the cleaning, repair, inspection, or other work performed.");
       return;
     }
 
@@ -123,6 +137,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         technicianName: getDisplayName(current),
         logType,
         label,
+        findings: findings.trim(),
+        resolution: resolution.trim(),
         notes: notes.trim(),
         condition,
         hoursSpent: Number(hoursSpent) || 0,
@@ -224,10 +240,26 @@ export default function LogInsertScreen({ mode = "insert" }) {
 
         <Card style={{ marginBottom: SPACING.md }}>
           <TextField
-            label="Service Notes"
+            label="Technician Findings"
+            value={findings}
+            onChangeText={setFindings}
+            placeholder="Describe the AC condition or issue found"
+            multiline
+            numberOfLines={4}
+          />
+          <TextField
+            label="Work Performed / Resolution"
+            value={resolution}
+            onChangeText={setResolution}
+            placeholder="Describe the cleaning, repair, or inspection completed"
+            multiline
+            numberOfLines={4}
+          />
+          <TextField
+            label="Additional Notes (Optional)"
             value={notes}
             onChangeText={setNotes}
-            placeholder="Describe the service work performed"
+            placeholder="Add customer advice or follow-up details"
             multiline
             numberOfLines={4}
           />

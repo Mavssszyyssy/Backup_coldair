@@ -55,7 +55,7 @@ function formatDateTime(value = "") {
     : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
 const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "AMP Reports"];
 const DETAIL_PAGE_INDEX = { overview: 0, warranty: 1, service: 2, services: 2, amp: 3 };
 

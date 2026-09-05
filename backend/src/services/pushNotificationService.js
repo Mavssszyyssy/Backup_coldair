@@ -3,32 +3,54 @@ const User = require("../models/User");
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
 function resolveRoute(notification, role) {
+  const explicitRoute = String(notification.route || "");
   if (notification.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(notification.category)) {
     return notification.targetId ? `/customer/units/${encodeURIComponent(notification.targetId)}` : "/customer/units";
   }
-  if (notification.route) return notification.route;
+  if (role === "technician") {
+    if (explicitRoute.startsWith("/technician/")) return explicitRoute;
+    if (explicitRoute.startsWith("/tech/")) return "/technician/tasks";
+  }
+  if (role === "customer") {
+    if (explicitRoute === "/customer/service-requests") return "/customer/services";
+    if (explicitRoute === "/contact") return "/customer/contact";
+    if (explicitRoute === "/my-orders") return "/customer/orders";
+    if (explicitRoute === "/myunit" || explicitRoute.startsWith("/myunit/")) return "/customer/units";
+    if (explicitRoute === "/settings") return "/customer/settings";
+  }
+  if (explicitRoute) return explicitRoute;
 
   const text = `${notification.title || ""} ${notification.message || ""}`.toLowerCase();
   if (role === "technician") {
-    if (text.includes("part")) return "/technician/parts";
+    if (text.includes("part")) return "/technician/tasks";
     if (notification.type === "order" || text.includes("task") || text.includes("order")) {
       return "/technician/tasks";
     }
     return "/technician/dashboard";
   }
   if (text.includes("service") || text.includes("appointment") || text.includes("request")) {
-    return "/customer/requests";
+    return "/customer/services";
   }
   if (notification.type === "order" || text.includes("order")) return "/customer/orders";
   if (notification.type === "account") return "/customer/settings";
   return "/customer/home";
 }
 
+function canReceivePush(user, type = "system") {
+  const preferences = user?.notifications?.toObject?.() || user?.notifications || {};
+  if (preferences.push === false) return false;
+  if (["order", "payment", "delivery"].includes(type) && preferences.orderUpdates === false) return false;
+  if (["account", "security"].includes(type) && preferences.accountUpdates === false) return false;
+  if (["technician", "service", "warranty"].includes(type) && preferences.serviceUpdates === false) return false;
+  if (["system", "inventory", "report"].includes(type) && preferences.systemAlerts === false) return false;
+  return true;
+}
+
 async function sendPushForNotification(notification) {
   if (typeof fetch !== "function") return;
 
-  const user = await User.findById(notification.user).select("expoPushTokens notifications.push role");
-  if (!user || user.notifications?.push === false) return;
+  const user = await User.findById(notification.user).select("expoPushTokens notifications role");
+  if (!user || !canReceivePush(user, notification.type)) return;
 
   const tokens = [...new Set(user.expoPushTokens || [])].filter((token) =>
     /^(ExponentPushToken|ExpoPushToken)\[.+\]$/.test(token),
@@ -55,4 +77,4 @@ async function sendPushForNotification(notification) {
   if (!response.ok) throw new Error(`Expo push service returned ${response.status}`);
 }
 
-module.exports = { sendPushForNotification };
+module.exports = { canReceivePush, resolveRoute, sendPushForNotification };

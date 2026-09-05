@@ -524,6 +524,8 @@ const updateServiceRequestStatus = async (req, res) => {
       await linkedTask.save();
     }
 
+    const previousRequestStatus = String(request.status || "");
+    const previousTechnicianId = String(request.assignedTechnicianId || "");
     request.status = nextStatus || request.status;
     request.assignedTechnicianId = String(req.body?.assignedTechnicianId || request.assignedTechnicianId || "");
     request.assignedTechnicianName = String(req.body?.assignedTechnicianName || request.assignedTechnicianName || "");
@@ -534,14 +536,20 @@ const updateServiceRequestStatus = async (req, res) => {
       request.status = "In Progress";
     }
     const timeline = Array.isArray(request.payload?.timeline) ? request.payload.timeline : [];
-    const nextTimeline = [
-      ...timeline,
-      buildTimelineEvent({
-        title: `Status changed to ${request.status}`,
-        description: req.body?.description || `Service request updated to ${request.status}.`,
-        actor: req.authUser.name || req.authUser.email || req.authUser.role || "System",
-      }),
-    ];
+    const statusChanged = previousRequestStatus !== request.status;
+    const technicianChanged = previousTechnicianId !== String(request.assignedTechnicianId || "");
+    const nextTimeline = statusChanged || technicianChanged
+      ? [
+          ...timeline,
+          buildTimelineEvent({
+            title: technicianChanged ? "Technician assignment updated" : `Status changed to ${request.status}`,
+            description: req.body?.description || (technicianChanged
+              ? `${request.assignedTechnicianName || "A technician"} was assigned to this service request.`
+              : `Service request updated to ${request.status}.`),
+            actor: req.authUser.name || req.authUser.email || req.authUser.role || "System",
+          }),
+        ]
+      : timeline;
     request.payload = {
       ...(request.payload || {}),
       ...req.body,
@@ -584,26 +592,36 @@ const updateServiceRequestStatus = async (req, res) => {
     }
 
     await request.save();
-    if (["Assigned", "In Progress", "Completed", "Cancelled"].includes(request.status)) {
+    if ((statusChanged || technicianChanged) && ["Assigned", "In Progress", "Completed", "Cancelled"].includes(request.status)) {
       await notifyUser({
         userId: request.customerId,
-        title: "Service request updated",
-        message: `Your service request is now ${request.status}.`,
+        title: technicianChanged ? "Technician assignment updated" : "Service request updated",
+        message: technicianChanged
+          ? `${request.assignedTechnicianName || "A technician"} is now assigned to your service request.`
+          : `Your service request is now ${request.status}.`,
         targetId: String(request._id || request.id || ""),
-        dedupeKey: `service-status:${request._id || request.id}:${request.status}`,
+        dedupeKey: technicianChanged
+          ? `service-technician:${request._id || request.id}:${request.assignedTechnicianId}`
+          : `service-status:${request._id || request.id}:${request.status}`,
       });
     }
-    await notifyOperationalStaff({
-      branch: request.branch,
-      title: "Service request updated",
-      message: `${request.issueType || "Service request"} for ${request.customer || "a customer"} is now ${request.status}.`,
-      type: "service",
-      category: "service_request",
-      severity: request.status === "Cancelled" ? "warning" : "info",
-      targetId: String(request._id || request.id || ""),
-      targetType: "service",
-      dedupeKey: `service-request:${request._id || request.id}:${request.status}`,
-    });
+    if (statusChanged || technicianChanged) {
+      await notifyOperationalStaff({
+        branch: request.branch,
+        title: technicianChanged ? "Technician assignment updated" : "Service request updated",
+        message: technicianChanged
+          ? `${request.assignedTechnicianName || "A technician"} is now assigned to ${request.issueType || "a service request"} for ${request.customer || "a customer"}.`
+          : `${request.issueType || "Service request"} for ${request.customer || "a customer"} is now ${request.status}.`,
+        type: "service",
+        category: "service_request",
+        severity: request.status === "Cancelled" ? "warning" : "info",
+        targetId: String(request._id || request.id || ""),
+        targetType: "service",
+        dedupeKey: technicianChanged
+          ? `service-request-tech:${request._id || request.id}:${request.assignedTechnicianId}`
+          : `service-request:${request._id || request.id}:${request.status}`,
+      });
+    }
     return res.json({ request: hydrateRequestResponse(request) });
   } catch (error) {
     console.error("Failed to update service request status:", error);

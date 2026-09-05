@@ -10,6 +10,7 @@ import EmptyState from "../../../../../../components/ui/EmptyState";
 import PageHeader from "../../../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
 import { getTaskById, TASK_STATUS } from "../../../../../../services/taskStorage";
+import { isInstallationWorkOrder } from "../../../../../../services/technicianTaskLogic";
 import {
   LOG_TYPES,
   getServiceLogsByTask,
@@ -45,6 +46,13 @@ export default function LogSelectScreen() {
   const isDelivery = String(task?.serviceType || task?.issueType || task?.title || "")
     .toLowerCase()
     .includes("delivery");
+  const visibleLogTypes = React.useMemo(() => {
+    if (isInstallationWorkOrder(task)) return LOG_TYPES.filter((type) => type.id === "installation");
+    const source = `${task?.issueType || ""} ${task?.title || ""} ${task?.description || ""}`.toLowerCase();
+    if (source.includes("warranty") || source.includes("repair")) return LOG_TYPES.filter((type) => type.id === "repair");
+    if (source.includes("inspection") || source.includes("check")) return LOG_TYPES.filter((type) => type.id === "inspection");
+    return LOG_TYPES.filter((type) => ["regular_cleaning", "deep_cleaning"].includes(type.id));
+  }, [task]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -83,7 +91,7 @@ export default function LogSelectScreen() {
                   leftIcon={<Ionicons name="qr-code-sharp" size={16} color={COLORS.surface} />}
                 />
               )}
-              {LOG_TYPES.map((type) => (
+              {visibleLogTypes.map((type) => (
                 <TechButton
                   key={type.id}
                   title={type.label}

@@ -4,10 +4,13 @@ const User = require("../models/User");
 
 const canReceive = (user, type = "system") => {
   const preferences = user?.notifications?.toObject?.() || user?.notifications || {};
-  if (preferences.inApp === false && preferences.push === false) return false;
+  // This service writes to the in-app notification centre. Push delivery is a
+  // separate channel and must not override an explicit in-app opt-out.
+  if (preferences.inApp === false) return false;
   if (["order", "payment", "delivery"].includes(type) && preferences.orderUpdates === false) return false;
   if (["account", "security"].includes(type) && preferences.accountUpdates === false) return false;
-  if (["system", "inventory", "technician", "service", "warranty", "report"].includes(type) && preferences.systemAlerts === false) return false;
+  if (["technician", "service", "warranty"].includes(type) && preferences.serviceUpdates === false) return false;
+  if (["system", "inventory", "report"].includes(type) && preferences.systemAlerts === false) return false;
   return true;
 };
 
@@ -84,4 +87,4 @@ const notifyOperationalStaff = async ({
   );
 };
 
-module.exports = { createDedupedNotification, notifyOperationalStaff };
+module.exports = { canReceive, createDedupedNotification, notifyOperationalStaff };

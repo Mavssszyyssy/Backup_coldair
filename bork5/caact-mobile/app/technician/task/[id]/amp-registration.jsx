@@ -10,11 +10,12 @@ import UnitHistoryPanel from "../../../../components/technician/UnitHistoryPanel
 import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
 import { getTodayDateKey } from "../../../../components/ui/CalendarDatePicker";
-import TextField from "../../../../components/ui/TextField";
+import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
 import { parseLookupTarget } from "../../../../services/qrLookupService";
+import { isInstallationWorkOrder, ROOM_SIZE_OPTIONS } from "../../../../services/technicianTaskLogic";
 
 const taskSerials = (task = {}) => {
   const progressSerials = task?.registrationProgress?.requiredSerials;
@@ -61,6 +62,8 @@ export default function AmpRegistrationScreen() {
   const totalRequired = progress?.totalRequired || serials.length;
   const totalRegistered = progress?.totalRegistered || 0;
   const isComplete = Boolean(progress?.isComplete ?? totalRequired === 0);
+  const installationTask = isInstallationWorkOrder(task);
+  const selectedRoomSize = ROOM_SIZE_OPTIONS.find((option) => String(option.value) === String(roomDetails.roomSizeSqm));
 
   const loadUnitHistory = React.useCallback(async (serialNumber) => {
     if (!serialNumber) return null;
@@ -117,7 +120,7 @@ export default function AmpRegistrationScreen() {
     if (!pendingSerial || saving) return;
     const roomSizeSqm = Number(roomDetails.roomSizeSqm);
     if (!Number.isFinite(roomSizeSqm) || roomSizeSqm <= 0 || roomSizeSqm > 10000) {
-      Alert.alert("Check room size", "Enter a valid room size from 1 to 10,000 m² so the AC horsepower can be checked.");
+      Alert.alert("Choose a room size", "Select the closest room size so the AC horsepower can be checked.");
       return;
     }
     setSaving(true);
@@ -160,27 +163,35 @@ export default function AmpRegistrationScreen() {
         <Card>
           <InfoCard label="Work order" value={task?.taskCode || task?.title || "Loading…"} />
           <InfoCard label="Customer" value={task?.customerName || task?.customer || "Loading…"} />
-          <InfoCard label="QR progress" value={loading ? "Loading…" : `${totalRegistered} of ${totalRequired} assigned units verified`} />
+          {installationTask ? <InfoCard label="QR progress" value={loading ? "Loading…" : `${totalRegistered} of ${totalRequired} assigned units verified`} /> : null}
         </Card>
+
+        {!loading && !installationTask ? (
+          <Card>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>No installation QR required</Text>
+            <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>This is a maintenance or service visit for an already-installed AC unit. Record the service report instead of registering the unit again.</Text>
+            <TechButton title="Open service report" onPress={() => router.replace(`/technician/task/${id}/complete-service`)} style={{ marginTop: SPACING.md }} />
+          </Card>
+        ) : null}
 
         {message ? <Card><Text style={{ color: COLORS.success, fontWeight: FONT.bold }}>{message}</Text></Card> : null}
 
         <UnitHistoryPanel history={unitHistory} />
 
-        {!loading && serials.length === 0 ? (
+        {!loading && installationTask && serials.length === 0 ? (
           <Card>
             <Text style={{ color: COLORS.danger, fontWeight: FONT.bold }}>No inventory serial is assigned to this installation task.</Text>
             <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>Ask an administrator to assign the AC unit before continuing.</Text>
           </Card>
         ) : null}
 
-        {isComplete ? (
+        {installationTask && isComplete ? (
           <Card>
             <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.lg }}>Assigned QR verified</Text>
             <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>The only remaining step is an installed-unit photo.</Text>
             <TechButton title="Capture installation photo" onPress={() => router.replace(`/technician/task/${id}/complete-service`)} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name="camera-sharp" size={18} color={COLORS.surface} />} />
           </Card>
-        ) : serials.length > 0 ? (
+        ) : installationTask && serials.length > 0 ? (
           <Card>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.sm }}>
               <View style={{ width: 42, height: 42, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
@@ -195,11 +206,21 @@ export default function AmpRegistrationScreen() {
           </Card>
         ) : null}
 
-        {pendingSerial ? (
+        {installationTask && pendingSerial ? (
           <Card>
             <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Room capacity check</Text>
             <Text style={{ color: COLORS.textSecondary, marginTop: 4, marginBottom: SPACING.md }}>S/N {pendingSerial}. Room size is compared with the AC horsepower. It does not change the history-based servicing interval.</Text>
-            <TextField label="Room size (m²)" value={roomDetails.roomSizeSqm} onChangeText={(value) => setRoomDetails({ roomSizeSqm: value })} keyboardType="decimal-pad" inputMode="decimal" returnKeyType="done" showKeyboardDone placeholder="Required for horsepower suitability" />
+            <BottomSheetSelect
+              label="Room size"
+              value={selectedRoomSize?.label || ""}
+              placeholder="Choose the closest room size"
+              items={ROOM_SIZE_OPTIONS}
+              itemIcon="resize-sharp"
+              searchPlaceholder="Search room sizes"
+              getKey={(option) => option.id}
+              getLabel={(option) => option.label}
+              onSelect={(option) => setRoomDetails({ roomSizeSqm: String(option.value) })}
+            />
             <TechButton title="Save room size and verify unit" onPress={submitRoomCapacity} loading={saving} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} />
             <TechButton title="Cancel and scan again" variant="secondary" onPress={() => { setPendingSerial(""); setScannerActive(true); }} disabled={saving} style={{ marginTop: SPACING.sm }} />
           </Card>

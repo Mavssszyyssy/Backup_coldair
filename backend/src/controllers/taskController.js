@@ -11,6 +11,7 @@ const ServiceHistory = require("../models/ServiceHistory");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { BRANCH_PRIORITY, resolvePreferredBranch } = require("../domain/branchRouting");
 const { buildActivatedWarranty, appendWarrantyEvent, effectiveWarrantyStatus } = require("../domain/warrantyService");
+const { validateTechnicianTaskCompletion } = require("../domain/technicianTaskCompletion");
 const {
   getTaskMutationBlocker,
   normalizeTaskStatus: normalizeStatus,
@@ -344,7 +345,42 @@ const upsertInstalledCustomerUnit = async ({ task, product, serialUnit, registra
     },
     { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
-  await calculateMaintenanceRecommendation(installedUnit._id);
+  const technicianId = String(task.assignedTechnicianId || registration.technicianId || "").trim();
+  let installationHistory = null;
+  if (mongoose.Types.ObjectId.isValid(technicianId)) {
+    installationHistory = await ServiceHistory.findOne({
+      unit: installedUnit._id,
+      visitType: "installation",
+    });
+    if (!installationHistory) {
+      installationHistory = await ServiceHistory.create({
+        unit: installedUnit._id,
+        technician: technicianId,
+        serviceDate: installedAt,
+        visitType: "installation",
+        serviceType: "installation",
+        conditionRating: "good",
+        findings: "Installation completed and assigned AC unit registration verified.",
+        actionTaken: "Installed AC unit and verified its assigned QR serial.",
+        serviceActions: ["Installed AC unit", "Verified assigned QR serial"],
+        technicianInputs: {
+          notes: String(registration.ampParameters?.notes || "Installation completed and unit registration verified."),
+        },
+      });
+    }
+  }
+  const recommendation = await calculateMaintenanceRecommendation(installedUnit._id);
+  if (installationHistory) {
+    installationHistory.ampSnapshot = {
+      bestServicedBy: recommendation.bestServicedBy,
+      recommendedService: recommendation.recommendedService,
+      recommendationBasis: recommendation.recommendationBasis,
+      nextIdealServiceDate: recommendation.bestServicedBy,
+      nextIdealServicePeriod: `Suggested servicing date: ${new Date(recommendation.bestServicedBy).toLocaleDateString("en-US")}`,
+      calculatedAt: new Date(),
+    };
+    await installationHistory.save();
+  }
   return installedUnit;
 };
 
@@ -429,15 +465,20 @@ const syncOrderWorkflowForTask = async (task, status) => {
   if (normalizedStatus !== "completed") {
     await order.save();
     if (!["pending", "accepted"].includes(normalizedStatus)) {
+      const checkInAt = String(task.payload?.checkIn?.checkedInAt || "");
+      const checkedIn = normalizedStatus === "in-progress" && Boolean(checkInAt);
       await notifyOperationalStaff({
         branch: task.branch || order.stockSourceBranch || order.customerBranch || "",
-        title: "Technician status update",
-        message: `${task.assignedTechnicianName || "A technician"} marked ${order.orderCode || "an order"} as ${normalizedStatus.replace(/-/g, " ")}.`,
+        title: checkedIn ? "Technician checked in" : "Technician status update",
+        message: checkedIn
+          ? `${task.assignedTechnicianName || "A technician"} checked in for ${order.orderCode || "an order"}.`
+          : `${task.assignedTechnicianName || "A technician"} marked ${order.orderCode || "an order"} as ${normalizedStatus.replace(/-/g, " ")}.`,
         type: "technician",
         category: "task",
         targetId: String(task._id || task.id || ""),
         targetType: "task",
-        dedupeKey: `task-status:${task._id || task.taskCode}:${normalizedStatus}`,
+        route: "/admin/services/technicians",
+        dedupeKey: `task-status:${task._id || task.taskCode}:${normalizedStatus}:${checkedIn ? checkInAt : "status"}`,
       });
     }
     return;
@@ -468,6 +509,7 @@ const syncOrderWorkflowForTask = async (task, status) => {
     category: "installation",
     targetId: String(order._id || order.id || ""),
     targetType: "order",
+    route: "/admin/services/technicians",
     dedupeKey: `installation-complete:${order._id || order.orderCode}`,
   });
   const customerId = String(order.customer || task.customerId || task.payload?.customerId || "").trim();
@@ -493,6 +535,49 @@ const withoutEmbeddedProofMedia = (value = {}) => {
   delete sanitized.beforePhotoUri;
   delete sanitized.afterPhotoUri;
   return sanitized;
+};
+
+const technicianReportPayload = (payload = {}) => Object.fromEntries(Object.entries({
+  serviceLogs: payload.serviceLogs,
+  serviceType: payload.serviceType,
+  beforeCondition: payload.beforeCondition,
+  conditionRating: payload.conditionRating,
+  findings: payload.findings,
+  resolution: payload.resolution,
+  serviceActions: payload.serviceActions,
+  partsUsed: payload.partsUsed,
+  notes: payload.notes,
+  customerAdvice: payload.customerAdvice,
+  proofSubmittedAt: payload.proofSubmittedAt,
+  proof: payload.proof,
+  completionNotes: payload.completionNotes,
+  failureReason: payload.failureReason,
+  rescheduleReason: payload.rescheduleReason,
+  holdReason: payload.holdReason,
+  defectReason: payload.defectReason,
+}).filter(([, value]) => value !== undefined));
+
+const hasVerifiedTaskCheckIn = (task) => {
+  const checkIn = task?.payload?.checkIn;
+  return Boolean(
+    checkIn?.checkedInAt &&
+    Number.isFinite(Number(checkIn.latitude)) &&
+    Number.isFinite(Number(checkIn.longitude)),
+  );
+};
+
+const validateCompletionReport = (task, payload = {}) => {
+  const validation = validateTechnicianTaskCompletion({
+    task,
+    payload,
+    serialNumbers: getTaskSerialNumbers(task),
+  });
+  if (validation.ok) return null;
+  return {
+    status: 400,
+    message: "Complete the required technician service report before closing this work order.",
+    errors: validation.errors,
+  };
 };
 
 const summarizeTaskProof = (proof = {}) => {
@@ -646,15 +731,38 @@ const syncServiceRequestForTask = async (task, status) => {
   const request = await ServiceRequest.findById(requestId);
   if (!request) return;
 
+  const previousStatus = String(request.status || "").trim().toLowerCase();
+  const statusChanged = previousStatus !== nextStatus.toLowerCase();
   request.status = nextStatus;
   request.assignedTechnicianId = task.assignedTechnicianId || request.assignedTechnicianId || "";
   request.assignedTechnicianName = task.assignedTechnicianName || request.assignedTechnicianName || "";
   const timeline = Array.isArray(request.payload?.timeline) ? request.payload.timeline : [];
-  const alreadyLogged = timeline.some(
+  const checkInAt = String(task.payload?.checkIn?.checkedInAt || "");
+  const checkedIn = normalizedStatus === "in-progress" && Boolean(checkInAt);
+  const checkInAlreadyLogged = checkedIn && timeline.some(
     (event) =>
-      String(event.title || "") === `Task changed to ${nextStatus}` &&
-      Math.abs(new Date(event.timestamp || 0).getTime() - Date.now()) < 5000,
+      String(event.title || "").trim().toLowerCase() === "technician checked in" &&
+      String(event.timestamp || "") === checkInAt,
   );
+  const timelineEvents = [];
+  if (statusChanged) {
+    timelineEvents.push({
+      id: `service_timeline_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+      title: `Task changed to ${nextStatus}`,
+      description: `Technician task updated to ${nextStatus}.`,
+      actor: task.assignedTechnicianName || "Technician",
+      timestamp: new Date().toISOString(),
+    });
+  }
+  if (checkedIn && !checkInAlreadyLogged) {
+    timelineEvents.push({
+      id: `service_checkin_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+      title: "Technician checked in",
+      description: "The technician recorded a verified GPS arrival at the service address.",
+      actor: task.assignedTechnicianName || "Technician",
+      timestamp: checkInAt,
+    });
+  }
   request.payload = {
     ...(request.payload || {}),
     linkedTaskId: String(task._id || task.id || ""),
@@ -666,22 +774,27 @@ const syncServiceRequestForTask = async (task, status) => {
       nextStatus === "Completed"
         ? request.payload?.completedAt || new Date().toISOString()
         : request.payload?.completedAt || null,
-    timeline: alreadyLogged
-      ? timeline
-      : [
-          ...timeline,
-          {
-            id: `service_timeline_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
-            title: `Task changed to ${nextStatus}`,
-            description: `Technician task updated to ${nextStatus}.`,
-            actor: task.assignedTechnicianName || "Technician",
-            timestamp: new Date().toISOString(),
-          },
-        ],
+    timeline: [...timeline, ...timelineEvents],
     updatedAt: new Date().toISOString(),
   };
 
   await request.save();
+  if (!["pending", "accepted"].includes(normalizedStatus) && (statusChanged || (checkedIn && !checkInAlreadyLogged))) {
+    await notifyOperationalStaff({
+      branch: task.branch || request.branch || "",
+      title: checkedIn ? "Technician checked in" : "Technician service update",
+      message: checkedIn
+        ? `${task.assignedTechnicianName || "A technician"} checked in for ${request.issue || task.title || "a service request"}.`
+        : `${task.assignedTechnicianName || "A technician"} marked ${request.issue || task.title || "a service request"} as ${nextStatus}.`,
+      type: "technician",
+      category: "service",
+      targetId: String(task._id || task.id || ""),
+      targetType: "task",
+      route: "/admin/services/technicians",
+      dedupeKey: `service-task-status:${task._id || task.taskCode}:${normalizedStatus}:${checkedIn ? checkInAt : "status"}`,
+      roles: ["admin", "superadmin", "manager", "owner"],
+    });
+  }
   if (nextStatus === "Completed") {
     await recordCompletedServiceHistory(task, request);
     await completeWarrantyClaimForServiceTask(task, request);
@@ -806,6 +919,34 @@ const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
   };
 };
 
+const getTaskUnitSummary = async (task) => {
+  const unitId = String(task?.unitId || task?.payload?.unitId || "").trim();
+  if (!unitId) return null;
+  const unit = mongoose.Types.ObjectId.isValid(unitId)
+    ? await Unit.findById(unitId).lean()
+    : await Unit.findOne({ $or: [{ serialNumber: unitId }, { qrUnitId: unitId }, { qrCode: unitId }] }).lean();
+  if (!unit) return null;
+  const warranty = unit.warranty || {};
+  return {
+    id: String(unit._id),
+    unitName: [unit.brand, unit.modelName].filter(Boolean).join(" ") || task.unitName || "AC unit",
+    brand: unit.brand || "",
+    model: unit.modelName || "",
+    modelName: unit.modelName || "",
+    serialNumber: unit.serialNumber || "",
+    capacityHp: Number(unit.capacityHp || 0),
+    roomSizeSqm: unit.roomSizeSqm ?? null,
+    installationDate: unit.installation?.installedAt || null,
+    installationAddress: unit.installation?.addressLine || "",
+    warrantyStatus: effectiveWarrantyStatus(warranty),
+    warrantyExpirationDate: warranty.expirationDate || null,
+    bestServicedBy: unit.amp?.bestServicedBy || null,
+    recommendedService: unit.amp?.recommendedService || "",
+    serviceBranch: unit.serviceBranch || "",
+    status: unit.status || "",
+  };
+};
+
 const listTasks = async (req, res) => {
   try {
     const role = req.authUser.role;
@@ -894,6 +1035,12 @@ const updateTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    const payload = req.body || {};
+    const requestedStatus = parseTaskStatus(payload.status);
+    if (normalizeStatus(task.status) === "completed" && requestedStatus === "completed") {
+      return res.json({ task: hydrateTaskResponse(task), replayed: true });
+    }
+
     const mutationBlocker = getTaskMutationBlocker(task.status);
     if (mutationBlocker) {
       return res.status(409).json({ message: mutationBlocker });
@@ -909,10 +1056,16 @@ const updateTask = async (req, res) => {
       }
     }
 
-    const payload = req.body || {};
     const nextStatus = normalizeStatus(payload.status || task.status);
     const proof = buildTaskProof({ task, payload, req, nextStatus });
     const currentStatus = normalizeStatus(task.status);
+    if (
+      req.authUser.role === "technician" &&
+      nextStatus !== currentStatus &&
+      !["completed", "on-hold", "failed", "rescheduled"].includes(nextStatus)
+    ) {
+      return res.status(409).json({ message: "Admin controls work-order activation. Technicians can complete, hold, fail, or request rescheduling only after activation." });
+    }
     const lifecycleOrder = ["pending", "accepted", "on-the-way", "arrived", "installing", "completed"];
     const currentIndex = lifecycleOrder.indexOf(currentStatus);
     const nextIndex = lifecycleOrder.indexOf(nextStatus);
@@ -922,9 +1075,15 @@ const updateTask = async (req, res) => {
     if (req.authUser.role === "technician" && ["installing", "completed"].includes(nextStatus) && !["arrived", "installing", "in-progress"].includes(currentStatus)) {
       return res.status(409).json({ message: "Check in at the customer location before starting installation." });
     }
+    if (req.authUser.role === "technician" && nextStatus === "completed" && !hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before completing this work order." });
+    }
+    const technicianPayload = req.authUser.role === "technician"
+      ? technicianReportPayload(payload)
+      : payload;
     const updatedPayload = {
       ...withoutEmbeddedProofMedia(task.payload),
-      ...withoutEmbeddedProofMedia(payload),
+      ...withoutEmbeddedProofMedia(technicianPayload),
       status: payload.status || task.status,
       updatedAt: new Date().toISOString(),
     };
@@ -935,24 +1094,30 @@ const updateTask = async (req, res) => {
       updatedPayload.installationStartedAt = new Date().toISOString();
     }
 
-    task.title = String(payload.title || task.title || "Service Task").trim();
-    task.customer = String(payload.customerName || payload.customer || task.customer || "Customer").trim();
-    task.address = String(payload.address || task.address || "TBD").trim();
-    task.customerId = String(payload.customerId || payload.userId || task.customerId || "");
-    task.customerEmail = String(payload.customerEmail || task.customerEmail || "");
-    task.customerPhone = String(payload.customerPhone || task.customerPhone || "");
-    task.unitId = String(payload.unitId || task.unitId || "");
-    task.unitName = String(payload.unitName || task.unitName || "");
-    task.unitType = String(payload.unitType || task.unitType || "");
-    task.issueType = String(payload.issueType || task.issueType || "");
-    task.description = String(payload.description || payload.concern || task.description || "");
-    task.assignedTechnicianId = String(payload.assignedTechnicianId || task.assignedTechnicianId || "");
-    task.assignedTechnicianName = String(payload.assignedTechnicianName || task.assignedTechnicianName || "");
+    if (req.authUser.role !== "technician") {
+      task.title = String(payload.title || task.title || "Service Task").trim();
+      task.customer = String(payload.customerName || payload.customer || task.customer || "Customer").trim();
+      task.address = String(payload.address || task.address || "TBD").trim();
+      task.customerId = String(payload.customerId || payload.userId || task.customerId || "");
+      task.customerEmail = String(payload.customerEmail || task.customerEmail || "");
+      task.customerPhone = String(payload.customerPhone || task.customerPhone || "");
+      task.unitId = String(payload.unitId || task.unitId || "");
+      task.unitName = String(payload.unitName || task.unitName || "");
+      task.unitType = String(payload.unitType || task.unitType || "");
+      task.issueType = String(payload.issueType || task.issueType || "");
+      task.description = String(payload.description || payload.concern || task.description || "");
+      task.assignedTechnicianId = String(payload.assignedTechnicianId || task.assignedTechnicianId || "");
+      task.assignedTechnicianName = String(payload.assignedTechnicianName || task.assignedTechnicianName || "");
+      task.priority = String(payload.priority || task.priority || "medium").toLowerCase();
+      task.scheduledDate = String(payload.scheduledDate || payload.preferredDate || task.scheduledDate || "TBD");
+      task.timeSlot = String(payload.timeSlot || payload.preferredSchedule || task.timeSlot || "TBD");
+    }
     task.status = nextStatus;
-    task.priority = String(payload.priority || task.priority || "medium").toLowerCase();
-    task.scheduledDate = String(payload.scheduledDate || payload.preferredDate || task.scheduledDate || "TBD");
-    task.timeSlot = String(payload.timeSlot || payload.preferredSchedule || task.timeSlot || "TBD");
     if (nextStatus === "completed") {
+      const reportError = validateCompletionReport(task, payload);
+      if (reportError) {
+        return res.status(reportError.status).json({ message: reportError.message, errors: reportError.errors });
+      }
       const completionError = assertCanCompleteTask(task);
       if (completionError) {
         return res.status(completionError.status).json({
@@ -989,7 +1154,8 @@ const getTaskById = async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
-    return res.json({ task: hydrateTaskResponse(task) });
+    const unit = await getTaskUnitSummary(task);
+    return res.json({ task: { ...hydrateTaskResponse(task), unit } });
   } catch (error) {
     console.error("Failed to fetch task:", error);
     return res.status(500).json({ message: "Unable to fetch task right now." });
@@ -1024,6 +1190,9 @@ const checkInTask = async (req, res) => {
     }
     if (normalizeStatus(task.status) !== "in-progress") {
       return res.status(409).json({ message: "This work order must be activated by an administrator before checking in." });
+    }
+    if (hasVerifiedTaskCheckIn(task)) {
+      return res.json({ task: hydrateTaskResponse(task), checkIn: task.payload.checkIn });
     }
 
     const coordinates = req.body?.coordinates || req.body?.location?.coordinates || {};
@@ -1180,7 +1349,7 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
       .map((service) => ({
       id: String(service._id),
       date: service.serviceDate,
-      serviceType: service.visitType,
+      serviceType: service.serviceType || service.visitType,
       technician: technicianName(service.technician),
       findings: service.technicianInputs?.notes || service.conditionRating || "No findings recorded",
       actionTaken: Array.isArray(service.serviceActions) && service.serviceActions.length
@@ -1282,6 +1451,9 @@ const registerAmpUnit = async (req, res) => {
     }
 
     const requiredSerials = getTaskSerialNumbers(task);
+    if (requiredSerials.length === 0) {
+      return res.status(409).json({ message: "No inventory serial is assigned to this installation. Maintenance work orders do not require QR registration." });
+    }
     const assignedSerial = requiredSerials.find(
       (serial) => serial.toLowerCase() === serialNumber.toLowerCase(),
     );
@@ -1290,6 +1462,9 @@ const registerAmpUnit = async (req, res) => {
     }
     if (normalizeStatus(task.status) !== "in-progress") {
       return res.status(409).json({ message: "This work order must be activated by an administrator before the AC unit can be registered." });
+    }
+    if (!hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before scanning the assigned AC unit." });
     }
 
     const isDefectiveHold = Boolean(payload.defectiveHold);
@@ -1377,6 +1552,10 @@ const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    if (normalizeStatus(task.status) === "completed" && status === "completed") {
+      return res.json({ task: hydrateTaskResponse(task), replayed: true });
+    }
+
     const mutationBlocker = getTaskMutationBlocker(task.status);
     if (mutationBlocker) {
       return res.status(409).json({ message: mutationBlocker });
@@ -1395,6 +1574,13 @@ const updateTaskStatus = async (req, res) => {
     const payload = req.body || {};
     const proof = buildTaskProof({ task, payload, req, nextStatus: status });
     const currentStatus = normalizeStatus(task.status);
+    if (
+      req.authUser.role === "technician" &&
+      status !== currentStatus &&
+      !["completed", "on-hold", "failed", "rescheduled"].includes(status)
+    ) {
+      return res.status(409).json({ message: "Admin controls work-order activation. Technicians can complete, hold, fail, or request rescheduling only after activation." });
+    }
     const lifecycleOrder = ["pending", "accepted", "on-the-way", "arrived", "installing", "completed"];
     const currentIndex = lifecycleOrder.indexOf(currentStatus);
     const nextIndex = lifecycleOrder.indexOf(status);
@@ -1404,8 +1590,15 @@ const updateTaskStatus = async (req, res) => {
     if (req.authUser.role === "technician" && ["installing", "completed"].includes(status) && !["arrived", "installing", "in-progress"].includes(currentStatus)) {
       return res.status(409).json({ message: "Check in at the customer location before starting installation." });
     }
+    if (req.authUser.role === "technician" && status === "completed" && !hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before completing this work order." });
+    }
     task.status = status;
     if (status === "completed") {
+      const reportError = validateCompletionReport(task, payload);
+      if (reportError) {
+        return res.status(reportError.status).json({ message: reportError.message, errors: reportError.errors });
+      }
       const completionError = assertCanCompleteTask(task);
       if (completionError) {
         return res.status(completionError.status).json({
@@ -1424,9 +1617,12 @@ const updateTaskStatus = async (req, res) => {
     }
     task.completedAt = status === "completed" ? new Date() : null;
     task.proof = proof;
+    const persistedPayload = req.authUser.role === "technician"
+      ? technicianReportPayload(payload)
+      : payload;
     task.payload = {
       ...withoutEmbeddedProofMedia(task.payload),
-      ...withoutEmbeddedProofMedia(payload),
+      ...withoutEmbeddedProofMedia(persistedPayload),
       status,
       updatedAt: new Date().toISOString(),
     };

@@ -1677,6 +1677,7 @@ const createStaffOrderNotification = async ({ order, title, message }) => {
       category: "order",
       targetId: String(order._id || order.id || ""),
       targetType: "order",
+      route: "/admin/services/orders",
       dedupeKey: `staff-order:${order._id || order.orderCode}:${title}`,
       roles: ["admin", "superadmin", "manager", "owner"],
     });
@@ -1689,9 +1690,10 @@ const canReceiveNotification = (user, type = "system") => {
   const notifications =
     user?.notifications?.toObject?.() || user?.notifications || {};
   if (notifications.inApp === false) return false;
-  if (type === "order" && notifications.orderUpdates === false) return false;
-  if (type === "system" && notifications.systemAlerts === false) return false;
-  if (type === "account" && notifications.accountUpdates === false) return false;
+  if (["order", "payment", "delivery"].includes(type) && notifications.orderUpdates === false) return false;
+  if (["technician", "service", "warranty"].includes(type) && notifications.serviceUpdates === false) return false;
+  if (["system", "inventory", "report"].includes(type) && notifications.systemAlerts === false) return false;
+  if (["account", "security"].includes(type) && notifications.accountUpdates === false) return false;
   return true;
 };
 
@@ -1706,6 +1708,7 @@ const notifyBranchAdminsForOrder = async (order) => {
       category: "order",
       targetId: String(order._id || order.id || ""),
       targetType: "order",
+      route: "/admin/services/orders",
       dedupeKey: `new-order:${order._id || order.orderCode}`,
       roles: ["admin", "superadmin", "manager", "owner"],
     });
@@ -1728,12 +1731,14 @@ const notifyBranchTechnicians = async (branch, orderCode) => {
     }).select("_id notifications");
 
     const validNotifications = technicians
-      .filter((tech) => canReceiveNotification(tech, "system"))
+      .filter((tech) => canReceiveNotification(tech, "technician"))
       .map((tech) => ({
         user: tech._id,
-        type: "system",
-        title: "New technician task available",
-        message: `A new task for order ${orderCode} is available in your task board.`,
+        type: "technician",
+        category: "task_assignment",
+        title: "Work order awaiting assignment",
+        message: `A new work order for ${orderCode} is waiting for an Admin to assign and activate it.`,
+        dedupeKey: `unassigned-order-task:${orderCode}:${tech._id}`,
         unread: true,
         status: "unread",
       }));
@@ -1750,15 +1755,18 @@ const notifyAssignedTechnician = async (technicianId, orderCode, taskCode) => {
   if (!technicianId) return;
   try {
     const technician = await User.findById(technicianId).select("notifications");
-    if (!technician || !canReceiveNotification(technician, "system")) return;
-    await Notification.create({
+    if (!technician || !canReceiveNotification(technician, "technician")) return;
+    await createDedupedNotification({
       user: technician._id,
-      type: "system",
+      type: "technician",
+      category: "task_assignment",
       title: "Work order assigned to you",
       message: `Order ${orderCode} is assigned to you${taskCode ? ` (${taskCode})` : ""}. Open My Work to review it.`,
-      unread: true,
-      status: "unread",
-    });
+      targetId: String(taskCode || orderCode),
+      targetType: "task",
+      route: "/technician/tasks",
+      dedupeKey: `task-assignment:${taskCode || orderCode}:${technician._id}`,
+    }, { dedupeMinutes: 0 });
   } catch (error) {
     console.error("Failed to notify assigned technician:", error);
   }

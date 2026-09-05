@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import TechLayout from '../Common/TechLayout';
 import UpdateTaskStatus from './UpdateTaskStatus';
 import { apiRequest } from '../../../config/api';
-import { useUser } from '../../../context/UserContext';
 import '../techShared.css';
 import './styles.css';
 
@@ -50,10 +49,8 @@ const TaskProofPanel = ({ proof = {}, task = {} }) => {
 const TaskDetails = () => {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const { user } = useUser();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [accepting, setAccepting] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [selectedSerial, setSelectedSerial] = useState('');
 
@@ -67,36 +64,6 @@ const TaskDetails = () => {
       .catch(() => setTask(null))
       .finally(() => setLoading(false));
   }, [taskId]);
-
-  const handleAccept = async () => {
-    if (!task?.id) return;
-    setAccepting(true);
-    try {
-      const response = await apiRequest(`/tasks/${task.id}/accept`, { method: 'PATCH' });
-      setTask(response.task);
-      alert('Task accepted. You can now begin work on it.');
-    } catch (error) {
-      alert(error.message || 'Unable to accept task.');
-    } finally {
-      setAccepting(false);
-    }
-  };
-
-  const updateLifecycle = async (status) => {
-    if (!task?.id || actionBusy) return;
-    setActionBusy(true);
-    try {
-      const response = await apiRequest(`/tasks/${task.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-      setTask(response.task);
-    } catch (error) {
-      alert(error.message || 'Unable to update task status.');
-    } finally {
-      setActionBusy(false);
-    }
-  };
 
   const checkInWithGps = () => {
     if (!navigator.geolocation) {
@@ -129,6 +96,7 @@ const TaskDetails = () => {
   const serials = task?.registrationProgress?.requiredSerials || task?.serialNumbers || [];
   const registrations = task?.ampRegistrations || {};
   const isInstallation = serials.length > 0;
+  const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
 
   return (
     <TechLayout title="Task Details" subtitle={`Task #${taskId}`}>
@@ -165,25 +133,21 @@ const TaskDetails = () => {
               <button type="button" onClick={() => navigate(`/tech/field-registration?serial=${encodeURIComponent(selectedSerial)}`)} disabled={!selectedSerial}>Register selected unit</button>
             </div>
           ) : null}
-          {user?.role === 'technician' && task.status === 'pending' && !task.assignedTechnicianId ? (
-            <button type="button" onClick={handleAccept} disabled={accepting}>
-              {accepting ? 'Accepting...' : 'Accept Task'}
-            </button>
+          {task.status === 'pending' ? (
+            <p className="task-proof-empty">Awaiting Admin activation. This work order cannot begin until the branch dispatches it.</p>
           ) : null}
-          {user?.role === 'technician' && task.status === 'accepted' ? (
-            <button type="button" onClick={() => updateLifecycle('on-the-way')} disabled={actionBusy}>Mark on the way</button>
-          ) : null}
-          {user?.role === 'technician' && task.status === 'on-the-way' ? (
+          {task.status === 'in-progress' && !hasCheckedIn ? (
             <button type="button" onClick={checkInWithGps} disabled={actionBusy}>{actionBusy ? 'Checking in...' : 'Check in with GPS'}</button>
           ) : null}
-          {user?.role === 'technician' && task.status === 'arrived' ? (
-            <button type="button" onClick={() => updateLifecycle('installing')} disabled={actionBusy}>Start installation</button>
+          {hasCheckedIn ? (
+            <p><strong>GPS check-in:</strong> {formatDateTime(task.checkIn.checkedInAt)}</p>
           ) : null}
-          {isInstallation ? <button type="button" onClick={() => navigate(`/tech/field-registration${selectedSerial ? `?serial=${encodeURIComponent(selectedSerial)}` : ''}`)}>Open AMP Registration</button> : null}
+          {isInstallation && hasCheckedIn ? <button type="button" onClick={() => navigate(`/tech/field-registration${selectedSerial ? `?serial=${encodeURIComponent(selectedSerial)}` : ''}`)}>Open AMP Registration</button> : null}
+          {!isInstallation ? <p className="task-proof-empty">Maintenance and warranty service reports are completed in the Cold Air mobile app, where field evidence and the service type are captured.</p> : null}
           <button type="button" onClick={() => navigate('/tech/tasks')}>Back to Tasks</button>
         </div>
         <TaskProofPanel proof={task.proof || {}} task={task} />
-        <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} />
+        {isInstallation && hasCheckedIn && !['completed', 'cancelled'].includes(task.status) ? <UpdateTaskStatus task={task} onTaskChange={(nextTask) => setTask(nextTask)} /> : null}
       </div>
       )}
     </TechLayout>

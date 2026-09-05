@@ -27,7 +27,7 @@ const roleMessages = (role = "customer", isFirstLogin = false) => {
       welcome:
         "Your technician workspace is ready. New work order alerts will appear here.",
       status:
-        "Open My Work Orders to review assignments, accept tasks, and scan assigned unit QR codes.",
+        "Open My Work Orders to review Admin-activated assignments, check in with GPS, and scan assigned unit QR codes.",
     };
   }
 
@@ -87,7 +87,10 @@ const listMyNotifications = async (req, res) => {
     return res.json({ notifications: [] });
   }
 
-  let notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(30);
+  // Fetch beyond the drawer's display size before collapsing duplicates and
+  // applying preferences. Otherwise, suppressed alerts in the newest 30 can
+  // hide older unread alerts that the user is still meant to see.
+  let notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(100);
 
   if (!notifications.length) {
     // Check if this is the user's first login
@@ -113,15 +116,16 @@ const listMyNotifications = async (req, res) => {
         message: statusMessage,
       },
     ]);
-    notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(30);
+    notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(100);
   }
 
   notifications = collapseDuplicateNotifications(notifications).filter((item) => {
     if (item.type === "account" && userNotifications.accountUpdates === false) return false;
-    if (item.type === "order" && userNotifications.orderUpdates === false) return false;
-    if (item.type === "system" && userNotifications.systemAlerts === false) return false;
+    if (["order", "payment", "delivery"].includes(item.type) && userNotifications.orderUpdates === false) return false;
+    if (["technician", "service", "warranty"].includes(item.type) && userNotifications.serviceUpdates === false) return false;
+    if (["system", "inventory", "report"].includes(item.type) && userNotifications.systemAlerts === false) return false;
     return true;
-  });
+  }).slice(0, 30);
 
   return res.json({
     notifications: sanitizeLegacyNotifications(notifications, user?.role),

@@ -116,11 +116,14 @@ const createWarrantyClaim = async (req, res) => {
     if (!issue) return res.status(400).json({ message: "Describe the warranty issue before submitting a claim." });
 
     const warranty = warrantySnapshot(unit);
-    if (warranty.status === "expired" || warranty.status === "void") {
-      return res.status(409).json({ message: `This warranty is ${warranty.status} and cannot accept a new claim.` });
+    if (warranty.status !== "active") {
+      const message = warranty.status === "pending_activation"
+        ? "Warranty support becomes available after the technician completes and verifies the installation."
+        : `This warranty is ${warranty.status} and cannot accept a new claim.`;
+      return res.status(409).json({ message });
     }
     const activeClaim = warranty.claims.find((claim) =>
-      ["submitted", "under_review"].includes(String(claim?.status || "")),
+      ["submitted", "under_review", "approved"].includes(String(claim?.status || "")),
     );
     if (activeClaim) {
       return res.status(200).json({
@@ -196,10 +199,28 @@ const reviewWarrantyClaim = async (req, res) => {
     }
 
     const claim = { ...warranty.claims[index] };
+    const previousStatus = String(claim.status || "submitted").toLowerCase();
+    const nextDecisionNote = String(req.body?.decisionNote || req.body?.notes || claim.decisionNote || "").trim();
+    if (previousStatus === "service_completed") {
+      return res.status(409).json({ message: "A completed warranty service cannot be reopened or changed." });
+    }
+    if (claim.serviceRequestId && previousStatus === "approved" && status !== "approved") {
+      return res.status(409).json({
+        message: "This approved claim already has a service job. Complete or cancel that job through the service workflow instead of reversing the claim.",
+      });
+    }
+    if (previousStatus === status && nextDecisionNote === String(claim.decisionNote || "").trim()) {
+      return res.json({
+        claim,
+        warranty,
+        recommendation: getWarrantyRecommendation(warranty),
+        replayed: true,
+      });
+    }
     claim.status = status;
     claim.reviewedAt = new Date();
     claim.reviewerName = displayName(req.authUser);
-    claim.decisionNote = String(req.body?.decisionNote || req.body?.notes || claim.decisionNote || "").trim();
+    claim.decisionNote = nextDecisionNote;
 
     if (status === "approved" && !claim.serviceRequestId) {
       const address = [unit.installation?.addressLine, unit.installation?.city, unit.installation?.province].filter(Boolean).join(", ") || "Installation address";

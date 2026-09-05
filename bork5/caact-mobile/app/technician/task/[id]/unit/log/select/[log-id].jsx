@@ -51,7 +51,9 @@ export default function LogDetailScreen() {
           <InfoCard label="Hours Worked" value={String(log?.hoursSpent ?? 0)} />
           <InfoCard label="Parts Used" value={log?.partsUsed || "None"} />
           <InfoCard label="Technician" value={log?.technicianName || "Unknown"} />
-          <InfoCard label="Notes" value={log?.notes || "No notes"} />
+          <InfoCard label="Findings" value={log?.findings || "No findings recorded"} />
+          <InfoCard label="Work Performed / Resolution" value={log?.resolution || "No resolution recorded"} />
+          <InfoCard label="Additional Notes" value={log?.notes || "None"} />
         </Card>
         {canEdit && (
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>

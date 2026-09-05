@@ -35,7 +35,7 @@ const getServiceAddress = (user = {}) => {
 };
 
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
-const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review"]);
+const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
 
 const readableStatus = (value = "") => String(value || "").replace(/_/g, " ");
 

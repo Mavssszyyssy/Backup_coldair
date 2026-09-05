@@ -3,6 +3,7 @@ import AdminLayout from '../Common/AdminLayout';
 import LowStockItems from './LowStockItems';
 import ReorderForm from './ReorderForm';
 import { apiRequest } from '../../../config/api';
+import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
 import '../adminShared.css';
 import './styles.css';
 
@@ -56,7 +57,7 @@ const AdminReoder = ({ embedded = false }) => {
       </div>
       <section className="reorder-history">
         <div className="reorder-panel-heading"><div><h2>Request history</h2><p>Every request remains visible until it is approved or rejected.</p></div><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter reorder history"><option value="all">All statuses</option><option value="submitted">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
-        {loading ? <div className="reorder-empty">Loading reorder requests…</div> : visibleReorders.length === 0 ? <div className="reorder-empty">No reorder requests match this filter.</div> : <div className="reorder-history-list">{visibleReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || 'Removed product'}</strong><span>{reorder.quantity} unit(s) · {reorder.branch || 'Branch not set'}</span><small>{reorder.notes || 'No additional note'} · Submitted {formatDate(reorder.createdAt)}</small>{reorder.reviewNotes ? <small>Review note: {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{statusLabel(reorder.status)}</span></article>)}</div>}
+        {loading ? <div className="reorder-empty">Loading reorder requests…</div> : visibleReorders.length === 0 ? <div className="reorder-empty">No reorder requests match this filter.</div> : <div className="reorder-history-list">{visibleReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || 'Removed product'}</strong><span>{formatCartHorsepower(reorder.product)} · {reorder.quantity} unit(s) · {reorder.branch || 'Branch not set'}</span><small>{reorder.notes || 'No additional note'} · Submitted {formatDate(reorder.createdAt)}</small>{reorder.reviewNotes ? <small>Review note: {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{statusLabel(reorder.status)}</span></article>)}</div>}
       </section>
     </AdminLayout>
   );

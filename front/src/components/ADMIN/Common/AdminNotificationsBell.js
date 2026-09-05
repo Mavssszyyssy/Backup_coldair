@@ -124,11 +124,14 @@ function AdminNotificationsBell() {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") refresh();
     };
-    const pollId = window.setInterval(refreshWhenVisible, 45000);
+    const refreshWhenFocused = () => refresh();
+    const pollId = window.setInterval(refreshWhenVisible, 15000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenFocused);
     return () => {
       window.clearInterval(pollId);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenFocused);
     };
   }, [refresh]);
 

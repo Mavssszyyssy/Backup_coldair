@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
 import './styles.css';
 
 const ReorderForm = ({ item, onSubmitted }) => {
@@ -47,7 +48,7 @@ const ReorderForm = ({ item, onSubmitted }) => {
       <h2>Create reorder request</h2>
       {item ? (
         <>
-          <div className="reorder-product-summary"><strong>{item.name}</strong><span>{item.sku || 'No SKU'} · {Number(item.stock || 0)} currently in stock</span></div>
+          <div className="reorder-product-summary"><strong>{item.name}</strong><span>{item.sku || 'No SKU'} · {formatCartHorsepower(item)} · {Number(item.stock || 0)} currently in stock</span></div>
           <label>Quantity to request<input type="number" min="1" step="1" inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
           <label>Note for SuperAdmin <span>(optional)</span><textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Supplier, urgency, or branch notes" /></label>
           <button className="reorder-primary-action" type="submit" disabled={saving}>{saving ? 'Sending request…' : 'Send Reorder Request'}</button>
