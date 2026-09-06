@@ -29,10 +29,7 @@ test("AMP sends the configured GPT-5.6 Terra reasoning profile", async () => {
       headers: { get: () => "req_test_terra" },
       text: async () => JSON.stringify({
         output_text: JSON.stringify({
-          best_serviced_by: "2027-05-11",
-          recommended_service: "regular_cleaning",
-          recommendation_summary: "Service is recommended based on recorded history.",
-          capacity_assessment: "suitable",
+          explanation_fact_ids: ["schedule", "method"],
         }),
       }),
     };
@@ -68,6 +65,7 @@ test("validated AI output cannot replace authoritative calculations", () => {
   assert.equal(result.best_serviced_by, "2027-05-11");
   assert.equal(result.recommended_service, "regular_cleaning");
   assert.equal(result.capacity_assessment, "suitable");
+  assert.equal(result.recommendation_summary, deterministic.recommendationBasis);
   assert.deepEqual(Object.keys(result).sort(), [
     "best_serviced_by",
     "capacity_assessment",

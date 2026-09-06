@@ -124,6 +124,7 @@ const generateAmpReport = async (req, res) => {
       recommendation,
       recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(formatHistory),
       aggregateReliability: aggregate,
+      reportType: type,
     });
     const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
     const generatedAt = new Date().toISOString(); const date = formatDateKeyInTimeZone(generatedAt);
@@ -134,6 +135,7 @@ const generateAmpReport = async (req, res) => {
       provider: ai.provider,
       report: {
         reportType: type, reportLabel: definition.label,
+        explanationWarning: ai.error || "",
         reportId: `AMP-${slugSegment(definition.filenameLabel, "REPORT").toUpperCase()}-${fileIdentifier}-${date.replaceAll("-", "")}`,
         title: definition.label, fileNameBase, fileName: `${fileNameBase}.pdf`, generatedAt,
         branch, preparedBy: "AEROPULSE system-generated report", systemName: "AEROPULSE", watermark: "AEROPULSE",

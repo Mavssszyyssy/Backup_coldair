@@ -5,9 +5,9 @@ import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 import { serviceLabel, serviceDateLabel as dateLabel } from "../../domain/myunit/serviceHistoryDisplay";
 
 const REPORT_TYPES = [
-  { value: "predictive_maintenance", label: "Next Maintenance Recommendation" },
-  { value: "maintenance_summary", label: "Maintenance Summary" },
-  { value: "inventory_reliability_analysis", label: "Aggregate Recorded Service Analysis", internalOnly: true },
+  { value: "predictive_maintenance", label: "Next service plan", help: "See when service is suggested and why. This does not book a visit." },
+  { value: "maintenance_summary", label: "Service history", help: "Review the installation, cleaning and repair work recorded for this AC." },
+  { value: "inventory_reliability_analysis", label: "Model and parts history", help: "Review recorded services and parts used for the selected brand at its branch. These are historical counts, not failure predictions.", internalOnly: true },
 ];
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 const capacityAssessmentLabel = (value) => {
@@ -26,8 +26,8 @@ const capacityAssessmentLabel = (value) => {
 
 function AmpReportCenter({
   units = [],
-  title = "AMP Report Center",
-  subtitle = "Maintenance planning from completed records for the same model or brand, with a separate room-size and horsepower check.",
+  title = "AC care reports",
+  subtitle = "Choose an AC and the information you need. Start with its next service or review past work.",
 }) {
   const { user } = useUser();
   const reportUnits = useMemo(() => units.filter((unit) => unit?.unitId || unit?.id), [units]);
@@ -92,6 +92,8 @@ function AmpReportCenter({
   };
 
   const maintenance = report?.maintenance || {};
+  const historyFirst = ["maintenance_summary", "summary_report"].includes(report?.reportType || reportType);
+  const reportLabel = REPORT_TYPES.find(item => item.value === (report?.reportType || reportType))?.label;
   return (
     <section className="amp-card amp-report-center">
       <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
@@ -100,19 +102,29 @@ function AmpReportCenter({
         <label>Installed AC unit<select disabled={loading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{unit.modelName || unit.model || "AC Unit"} · {unit.serialNumber || value}</option>; })}</select></label>
         <button type="button" onClick={generate} disabled={loading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
       </div>
+      <p className="amp-muted">{types.find(item => item.value === reportType)?.help}</p>
       {!reportUnits.length ? <p className="amp-empty">No eligible installed units are currently in this AMP view.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
       {report ? <div className="amp-report-result">
-        <div className="amp-report-meta"><span>{report.reportId}</span><span>Branch: {report.branch}</span><span>{provider === "openai" ? "OpenAI-assisted interpretation" : "System recommendation"}</span></div>
-        <h3>{report.title}</h3>
-        <div className="amp-metrics"><article><span>Suggested servicing date</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room size vs HP</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div>
+        <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>
+        <h3>{reportLabel || report.title}</h3>
+        {!historyFirst ? <div className="amp-metrics"><article><span>Suggested servicing date</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended cleaning</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
         {maintenance.dataQuality?.message ? <p role="status" className="amp-error">Record review needed: {maintenance.dataQuality.message}</p> : null}
         <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last verified cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
-        <p className="amp-muted">{maintenance.capacityAssessment?.summary}</p>
-        <h4>Recorded service history</h4>
-        <div className="amp-table-wrap"><table className="amp-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{(report.serviceHistory || []).map((item, index) => <tr key={`${item.date}-${index}`}><td>{dateLabel(item.date)}</td><td>{item.serviceLabel || serviceLabel(item.type)}</td><td>{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}</td></tr>)}</tbody></table></div>
+        <details className="amp-details" key={`history-${report.reportId}-${reportType}`} open={historyFirst}>
+        <summary>Recorded service history</summary>
+        <div className="amp-table-wrap"><table className="amp-table amp-history-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{(report.serviceHistory || []).map((item, index) => <tr key={`${item.date}-${index}`}><td data-label="Date">{dateLabel(item.date)}</td><td data-label="Service performed">{item.serviceLabel || serviceLabel(item.type)}</td><td data-label="Findings and actions">{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}</td></tr>)}</tbody></table></div>
         {!report.serviceHistory?.length ? <p className="amp-empty">No service history has been recorded.</p> : null}
+        </details>
+        {report.aggregateReliability ? <details className="amp-details" open><summary>Model and parts history</summary><p>{report.aggregateReliability.scope} · {report.aggregateReliability.unitCount} units · {report.aggregateReliability.recordedServiceCount} recorded services</p><p>{report.aggregateReliability.note}</p><ul>{(report.aggregateReliability.modelsByRecordedService || []).map(item => <li key={item.model}>{item.model}: {item.count} recorded services</li>)}</ul><ul>{(report.aggregateReliability.partsByRecordedUse || []).map(item => <li key={item.component}>{item.component}: {item.count} recorded uses</li>)}</ul></details> : null}
+        <details className="amp-details"><summary>How was this worked out?</summary>
+          <p>{maintenance.recommendationBasis}</p>
+          {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
+          <p>{maintenance.capacityAssessment?.summary}</p>
+          <p>Dates and cleaning methods are calculated by the system. AI, when available, explains them; it does not book a visit or approve warranty coverage.</p>
+          <p className="amp-muted">Report reference: {report.reportId}</p>
+        </details>
         <p className="amp-muted">{report.note}</p>
       </div> : null}
     </section>

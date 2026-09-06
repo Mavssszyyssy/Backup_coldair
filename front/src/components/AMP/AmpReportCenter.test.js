@@ -31,10 +31,11 @@ it("retains evidence warnings in the report/PDF and clears the previous unit's e
     serviceHistory: [{ date: "2026-09-05", type: "inspection", findings: "AMP recommended regular cleaning.", evidence: { eligible: false, reason: "Actual technician findings are missing." } }],
   } });
   render(<AmpReportCenter units={[{ id: "unit-1", model: "CA-1" }, { id: "unit-2", model: "CA-2" }]} />);
-  expect(screen.queryByRole("option", { name: "Aggregate Recorded Service Analysis" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "Model and parts history" })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await screen.findByRole("button", { name: "Export PDF" });
+  fireEvent.click(screen.getByText("Recorded service history"));
   expect(screen.getByText("Inspection")).toBeVisible();
   expect(screen.getByRole("status")).toHaveTextContent("incomplete service record");
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
@@ -44,5 +45,23 @@ it("retains evidence warnings in the report/PDF and clears the previous unit's e
   expect(exported.metadata.representative).toBe("");
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-2" } });
   expect(screen.queryByRole("button", { name: "Export PDF" })).not.toBeInTheDocument();
-  expect(screen.queryByText("REPORT-1")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Report reference: REPORT-1/)).not.toBeInTheDocument();
+});
+
+it("shows AI explanation, keeps the system basis available, and opens history first for a history report", async () => {
+  apiRequest.mockResolvedValue({ provider: "openai", report: {
+    reportId: "AI-REPORT", reportType: "maintenance_summary", branch: "Bulacan",
+    maintenance: { interpretation: "Your recorded visits help explain this plan.", recommendationBasis: "Provisional 270-day schedule." },
+    serviceHistory: [{ date: "2026-01-01", type: "repair", findings: "Board inspected", actionTaken: "Connection repaired" }],
+  } });
+  render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
+  fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
+  fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(await screen.findByText("AI-assisted explanation")).toBeVisible();
+  expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
+  expect(screen.getByText("Repair")).toBeVisible();
+  expect(screen.getByText("Provisional 270-day schedule.")).not.toBeVisible();
+  fireEvent.click(screen.getByText("How was this worked out?"));
+  expect(screen.getByText("Provisional 270-day schedule.")).toBeVisible();
 });

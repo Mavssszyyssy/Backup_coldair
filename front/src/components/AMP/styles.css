@@ -246,6 +246,14 @@
   padding: 10px 12px;
 }
 
+.amp-details { margin-top: 14px; }
+.amp-details > summary { cursor: pointer; font-weight: 650; padding: 12px 0; color: #334155; }
+.amp-details > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.amp-details p { line-height: 1.6; overflow-wrap: anywhere; }
+.amp-guide h2 { margin-top: 0; font-size: 19px; }
+.amp-guide p { line-height: 1.6; margin-bottom: 8px; }
+.amp-metrics article small { display: block; margin-top: 6px; color: #64748b; }
+
 .amp-branch-overview .amp-card-header {
   align-items: end;
 }
@@ -540,4 +548,16 @@
   .amp-branch-overview .amp-card-header { align-items: stretch; flex-direction: column; }
   .amp-overview-filters { align-items: stretch; flex-direction: column; }
   .amp-branch-filter { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 600px) {
+  .amp-report-center .amp-card-header { align-items: stretch; flex-direction: column; }
+  .amp-report-controls { flex-direction: column; align-items: stretch; }
+  .amp-report-controls label, .amp-report-controls select { width: 100%; min-width: 0; }
+  .amp-history-table { min-width: 0; }
+  .amp-history-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .amp-history-table tbody, .amp-history-table tr, .amp-history-table td { display: block; width: 100%; }
+  .amp-history-table tr { margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
+  .amp-history-table td { border: 0; overflow-wrap: anywhere; }
+  .amp-history-table td::before { content: attr(data-label); display: block; color: #64748b; font-size: 12px; margin-bottom: 4px; }
 }

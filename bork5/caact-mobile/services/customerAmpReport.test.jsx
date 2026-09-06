@@ -1,0 +1,35 @@
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react-native";
+import CustomerAmpReport from "../components/customer/CustomerAmpReport";
+
+const report = {
+  reportId: "QA-REPORT", reportType: "predictive_maintenance",
+  maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Provisional 270-day schedule.", interpretation: "Your completed visits explain this suggestion.", dataQuality: { message: "One incomplete record is excluded." } },
+  serviceHistory: [{ date: "2026-01-01", serviceLabel: "Repair", findings: "Board inspected", actionTaken: "Connection repaired" }],
+};
+test("AI text is visible on mobile without hiding evidence warnings or claiming a booking", async () => {
+  await render(<CustomerAmpReport report={report} provider="openai" />);
+  expect(screen.getByText("AI-assisted explanation")).toBeTruthy();
+  expect(screen.getByText(report.maintenance.interpretation)).toBeTruthy();
+  expect(screen.getByText("One incomplete record is excluded.")).toBeTruthy();
+  expect(screen.queryByText(/Board inspected/)).toBeNull();
+  expect(screen.getByText(/No visit has been booked/)).toBeTruthy();
+  await fireEvent.press(screen.getByText("How was this worked out?"));
+  expect(screen.getByText("Provisional 270-day schedule.")).toBeTruthy();
+  await fireEvent.press(screen.getByText("Show service history"));
+  expect(screen.getByText(/Board inspected/)).toBeTruthy();
+});
+test("system fallback is not labeled AI and a history report opens past work first", async () => {
+  await render(<CustomerAmpReport report={{ ...report, reportType: "maintenance_summary", maintenance: { ...report.maintenance, interpretation: "" } }} provider="system-fallback" />);
+  expect(screen.getByText("Your service history")).toBeTruthy();
+  expect(screen.getByText("Based on system records")).toBeTruthy();
+  expect(screen.queryByText("AI-assisted explanation")).toBeNull();
+  expect(screen.getByText("Provisional 270-day schedule.")).toBeTruthy();
+  expect(screen.getByText(/Board inspected/)).toBeTruthy();
+});
+
+test("AI outage explains that the usable report is a system fallback", async () => {
+  await render(<CustomerAmpReport report={{ ...report, explanationWarning: "AI explanation timed out. Showing the system recommendation." }} provider="system-fallback" />);
+  expect(screen.getByText("AI explanation timed out. Showing the system recommendation.")).toBeTruthy();
+  expect(screen.queryByText("AI-assisted explanation")).toBeNull();
+});

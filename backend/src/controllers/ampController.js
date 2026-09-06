@@ -4,7 +4,6 @@ const Product = require("../models/Product");
 const ServiceHistory = require("../models/ServiceHistory");
 const Task = require("../models/Task");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
-const { callStructuredAmpAnalysis, validateAmpInsight } = require("../services/openAiAmpService");
 const { getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH } = require("../domain/ampDashboardService");
 const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
 const { effectiveWarrantyStatus, getWarrantyRecommendation, getWarrantyCoverage } = require("../domain/warrantyService");
@@ -128,18 +127,13 @@ const calculateNextServiceDate = async (req, res) => {
       asOfDate: persist ? new Date() : requestedAsOfDate || new Date(),
       persist,
     });
-    const history = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean();
-    const ai = await callStructuredAmpAnalysis({
-      safetyIdentifier: String(req.authUser._id),
-      recommendation,
-      recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(serviceHistoryItem),
-    });
-    const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
+    // Page loads and reminders use calculated records only. AI is opt-in via reports.
+    const insight = {
       best_serviced_by: recommendation.bestServicedBy?.slice(0, 10) || "", recommended_service: recommendation.recommendedService,
       recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
     };
     if (persist && !["on_hold", "retired"].includes(unit.status)) await notifyDueMaintenance(unit, recommendation);
-    return res.json({ provider: ai.provider, recommendation, insight, warning: ai.error || "" });
+    return res.json({ provider: "system", recommendation, insight, warning: "" });
   } catch (error) {
     console.error("Failed to calculate AMP maintenance recommendation:", error.message);
     return res.status(error.status || 500).json({ message: error.message || "Unable to calculate the maintenance recommendation." });

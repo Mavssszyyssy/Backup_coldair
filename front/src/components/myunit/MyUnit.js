@@ -195,8 +195,8 @@ function MyUnit() {
                   unitId: unit.backendUnitId || unit.id,
                   modelName: unit.model,
                 }))}
-                title="Your AMP Maintenance Reports"
-                subtitle="Generate a maintenance summary for any of your registered AC units."
+                title="Your AC care guide"
+                subtitle="Check your next suggested service or review the work done on your AC."
               />
             </div>
           </>

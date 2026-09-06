@@ -129,7 +129,9 @@ const performApiRequest = async (path, options = {}) => {
   let requestUrl = url;
   let lastNetworkError;
   try {
-    for (const baseUrl of apiBaseUrls) {
+    // An uncertain AI POST may already incur usage; do not resend to another host.
+    const requestBases = path.startsWith("/ai/") ? apiBaseUrls.slice(0, 1) : apiBaseUrls;
+    for (const baseUrl of requestBases) {
       requestUrl = `${baseUrl}${path}`;
       // A Vercel function can briefly be unavailable while waking or being
       // replaced. Retry a read-only request once before declaring the app

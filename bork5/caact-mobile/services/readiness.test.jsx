@@ -94,8 +94,8 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("Current Visit Check-in");
     expect(detailsSource).toContain("Latest Recorded Check-in");
     expect(detailsSource).toContain("Open Check-in Map");
-    expect(detailsSource).toContain("Next maintenance plan");
-    expect(detailsSource).toContain("Service history summary");
+    expect(detailsSource).toContain("When is my next service?");
+    expect(detailsSource).toContain("What work has been done?");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
     expect(detailsSource).toContain('value={String(activeRequests.length)}');
     expect(detailsSource).toContain("Request Timeline");

@@ -7,6 +7,7 @@ import {
   CustomerRecommendationPanel,
 } from "../../../components/customer/CustomerMaintenancePanels";
 import CustomerScreen from "../../../components/customer/CustomerScreen";
+import CustomerAmpReport from "../../../components/customer/CustomerAmpReport";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
 import CustomerUnitImage from "../../../components/customer/CustomerUnitImage";
 import Button from "../../../components/ui/Button";
@@ -166,6 +167,7 @@ export default function CustomerUnitDetailsScreen() {
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [ampReport, setAmpReport] = useState(null);
   const [ampReportLoading, setAmpReportLoading] = useState("");
+  const [ampReportError, setAmpReportError] = useState("");
   const [roomSize, setRoomSize] = useState("");
   const [roomSaving, setRoomSaving] = useState(false);
   const [cancellingRequestId, setCancellingRequestId] = useState("");
@@ -214,19 +216,17 @@ export default function CustomerUnitDetailsScreen() {
   };
 
   const handleAmpReport = async (reportType) => {
-    const token = await getStoredToken();
-    if (!token || !unit?.id) {
-      Alert.alert("Sign in required", "Please sign in again before generating an AMP report.");
-      return;
-    }
+    setAmpReport(null);
+    setAmpReportError("");
     setAmpReportLoading(reportType);
     try {
+      const token = await getStoredToken();
+      if (!token || !unit?.id) throw new Error("Please sign in again before generating a report.");
       const result = await generateAmpReport(token, { unitId: unit.id, reportType });
       if (!result.success || !result.report) throw new Error(result.error);
-      setAmpReport(result.report);
-      Alert.alert("AMP report ready", `${result.report.reportLabel} was generated for ${result.report.branch}.`);
+      setAmpReport({ ...result.report, provider: result.provider });
     } catch (error) {
-      Alert.alert("Report unavailable", error?.message || "Please try again.");
+      setAmpReportError(error?.message || "Report unavailable. Please try again.");
     } finally {
       setAmpReportLoading("");
     }
@@ -693,31 +693,17 @@ export default function CustomerUnitDetailsScreen() {
 
       {detailPage === 3 ? (
         <Card>
-          <CustomerSectionHeader title="AEROPULSE AMP Reports" />
+          <CustomerSectionHeader title="Your AC care guide" />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
-            The next maintenance plan estimates when service is due. The service history summary organizes your recorded installation and completed visits.
+            Choose what you want to know. A report does not book a service visit.
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
-            {[["predictive_maintenance", "Next maintenance plan"], ["maintenance_summary", "Service history summary"]].map(([type, label]) => (
+            {[["predictive_maintenance", "When is my next service?"], ["maintenance_summary", "What work has been done?"]].map(([type, label]) => (
               <Button key={type} title={label} size="sm" variant="secondary" onPress={() => handleAmpReport(type)} loading={ampReportLoading === type} disabled={Boolean(ampReportLoading)} style={{ marginTop: 0, flexGrow: 1 }} />
             ))}
           </View>
-          {ampReport ? (
-            <View style={{ marginTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: SPACING.md }}>
-              <Text style={{ color: COLORS.text, fontWeight: FONT.black, fontSize: FONT.md }}>{ampReport.reportLabel}</Text>
-              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>{ampReport.reportId}</Text>
-              <DetailRow label="Prepared by" value={ampReport.preparedBy || ampReport.branch} />
-              <DetailRow label="Suggested Servicing Date" value={formatDate(ampReport.maintenance?.bestServicedBy)} />
-              <DetailRow label="Recommended Service" value={serviceName(ampReport.maintenance?.recommendedService)} />
-              <DetailRow label="Historical basis" value={ampReport.maintenance?.recommendationBasis || "Limited history"} multiline />
-              {ampReport.maintenance?.dataQuality?.message ? <DetailRow label="Record review needed" value={ampReport.maintenance.dataQuality.message} multiline /> : null}
-              <DetailRow label="Last verified cleaning" value={formatDate(ampReport.maintenance?.lastCleaningDate)} />
-              {(ampReport.serviceHistory || []).map((service, index) => <View key={`${service.date}-${index}`}><DetailRow label={`${service.serviceLabel || serviceName(service.type)} · ${formatDate(service.date)}`} value={[service.findings, service.actionTaken].filter(Boolean).join("\n") || "Detailed service report not recorded"} multiline />{service.evidence?.eligible === false ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm }}>{service.evidence.reason}</Text> : null}</View>)}
-              {!ampReport.serviceHistory?.length ? <Text style={{ color: COLORS.textSecondary }}>No service history has been recorded.</Text> : null}
-              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{ampReport.note}</Text>
-              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>For a PDF copy, generate this report in My AC Units on the Cold Air website, then choose Export PDF.</Text>
-            </View>
-          ) : null}
+          {ampReportError ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginTop: SPACING.sm }}>{ampReportError}</Text> : null}
+          {ampReport ? <CustomerAmpReport key={`${ampReport.reportId}-${ampReport.reportType}-${ampReport.generatedAt}`} report={ampReport} provider={ampReport.provider} /> : null}
         </Card>
       ) : null}
 

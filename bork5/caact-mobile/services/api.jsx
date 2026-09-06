@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const REQUEST_TIMEOUT_MS = 10000;
 const PROOF_UPLOAD_TIMEOUT_MS = 45000;
+const AMP_REPORT_TIMEOUT_MS = 30000;
 
 async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const headers = { "Content-Type": "application/json" };
@@ -36,7 +37,10 @@ async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_
       ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (error) {
-    if (error?.name === "AbortError" && timeoutMs > REQUEST_TIMEOUT_MS) {
+    if (error?.name === "AbortError" && path === "/ai/amp-report") {
+      throw new Error("Your AC report took too long to load. Please try again. No service visit was booked.");
+    }
+    if (error?.name === "AbortError" && timeoutMs === PROOF_UPLOAD_TIMEOUT_MS) {
       throw new Error(
         "The installation photo upload timed out. Check your connection, then tap Complete installation again.",
       );
@@ -813,11 +817,9 @@ export async function fetchCustomerAmpUnits(token) {
 }
 
 export async function generateAmpReport(token, { unitId, reportType = "predictive_maintenance" } = {}) {
-  const { ok, data } = await post(
-    "/ai/amp-report",
-    { unitId, reportType },
-    token,
-  );
+  const { ok, data } = await request("POST", "/ai/amp-report", {
+    body: { unitId, reportType }, token, timeoutMs: AMP_REPORT_TIMEOUT_MS,
+  });
   if (ok) return { success: true, report: data.report || null, provider: data.provider || "" };
   return {
     success: false,

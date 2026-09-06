@@ -26,7 +26,7 @@ function PipelineTable({ units }) {
             <th>Suggested Servicing Date</th>
             <th>Recommended Service</th>
             <th>Warranty / Branch</th>
-            <th>Historical Basis / Room Match</th>
+            <th>Why service is suggested</th>
           </tr>
         </thead>
         <tbody>
@@ -54,8 +54,7 @@ function PipelineTable({ units }) {
                 <span>{unit.serviceBranch || "Branch pending"}</span>
               </td>
               <td>
-                <strong>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</strong>
-                <span>{unit.recommendationBasis}</span>
+                <details className="amp-details"><summary>View recommendation details</summary><p>{unit.recommendationBasis}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p></details>
               </td>
             </tr>
           ))}
@@ -147,30 +146,35 @@ function ManagerAmpDashboard() {
   }, [isCompanyWide, reportUnits, selectedBranch]);
 
   const unassignedCount = branchSummary.find((item) => item.branch === UNASSIGNED_BRANCH)?.total || 0;
-  const pageTitle = isCompanyWide ? "All-Branch Service Overview" : "Service Pipeline";
+  const pageTitle = isCompanyWide ? "Service follow-up across all branches" : "Customers due for AC service";
   const pageSubtitle = isCompanyWide
-    ? "Company-wide oversight of units due or approaching their suggested servicing date. Branch admins remain responsible for service processing."
-    : "Units due or approaching their suggested servicing date based on completed records for the same model or brand.";
+    ? "See which branches need attention. Branch admins remain responsible for service processing."
+    : "Review upcoming and overdue AC maintenance for your branch. These are suggestions, not confirmed bookings.";
 
   return (
     <AmpDashboardShell title={pageTitle} subtitle={pageSubtitle}>
+      <section className="amp-card amp-guide">
+        <h2>{isCompanyWide ? "Use this page to oversee follow-up" : "Your next step"}</h2>
+        <p>{isCompanyWide ? "Compare branch workloads and check unassigned units. Open the 12-month workload plan for longer-term preparation." : "Start with overdue units, contact the customer, then process their request in Services. Technician assignment stays in the service workflow."}</p>
+        <details className="amp-details"><summary>What does AMP do here?</summary><p>The system uses completed records from the same model or brand to suggest service dates. These counts do not need AI. AI explanations are available in generated reports when enabled; they do not assign technicians or approve work.</p></details>
+      </section>
       <div className="amp-metrics">
         <article>
-          <span>Units in service window</span>
-          <strong>{currentSummary.total}</strong>
+          <span>Upcoming + overdue units</span>
+          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.total}</strong>
         </article>
         <article>
           <span>Due within {serviceWindow} days</span>
-          <strong>{currentSummary.upcoming}</strong>
+          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.upcoming}</strong>
         </article>
         <article>
           <span>Overdue</span>
-          <strong>{currentSummary.overdue}</strong>
+          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.overdue}</strong>
         </article>
         {isCompanyWide ? (
           <article>
             <span>Unassigned units</span>
-            <strong>{unassignedCount}</strong>
+            <strong>{loading ? "…" : error ? "Unavailable" : unassignedCount}</strong>
           </article>
         ) : null}
       </div>
@@ -222,7 +226,7 @@ function ManagerAmpDashboard() {
       <section className="amp-card">
         <div className="amp-card-header">
           <div>
-            <h2>{isCompanyWide ? "Units Requiring Branch Attention" : "Upcoming Service Pipeline"}</h2>
+            <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
             {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
           </div>
           {loading ? <span>Loading...</span> : null}
@@ -230,7 +234,7 @@ function ManagerAmpDashboard() {
 
         {error ? <p className="amp-error">{error}</p> : null}
 
-        {!loading && pipeline.length === 0 ? (
+        {!loading && !error && pipeline.length === 0 ? (
           <p className="amp-empty">No units are entering the selected {serviceWindow}-day service window.</p>
         ) : null}
 
@@ -251,20 +255,22 @@ function ManagerAmpDashboard() {
         {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} /> : null}
       </section>
 
+      <details className="amp-card amp-details"><summary>Past cleaning and parts use</summary>
       <div className="amp-report-grid">
         <section className="amp-card">
-          <h2>Model Maintenance Frequency</h2>
+          <h2>Recorded cleaning by model</h2>
           <p className="amp-muted">Ranked only from completed service records {isCompanyWide && selectedBranch === "all" ? "across all branches" : "in the selected branch"}.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Model</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{aggregate.modelTrends.map((item) => <tr key={item.label}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
-          {!aggregate.modelTrends.length && !loading ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
+          {!aggregate.modelTrends.length && !loading && !error ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
         </section>
         <section className="amp-card">
-          <h2>Major-Component Inventory History</h2>
+          <h2>Parts used in past services</h2>
           <p className="amp-muted">Aggregate recorded use of the two service-trip components: compressor/motor and control board. This is inventory planning, not a unit diagnosis.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Component</th><th>Recorded uses</th></tr></thead><tbody>{aggregate.componentReplacements.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody></table></div>
-          {!aggregate.componentReplacements.length && !loading ? <p className="amp-empty">No recorded component use is available yet.</p> : null}
+          {!aggregate.componentReplacements.length && !loading && !error ? <p className="amp-empty">No recorded component use is available yet.</p> : null}
         </section>
       </div>
+      </details>
       <AmpReportCenter units={visibleReportUnits} />
     </AmpDashboardShell>
   );

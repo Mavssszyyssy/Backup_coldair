@@ -48,10 +48,10 @@ describe("cross-surface readiness gaps", () => {
   test("AMP labels distinguish recorded recommendations from predictions and booked revenue", () => {
     const reports = source("src/components/AMP/AmpReportCenter.js");
     const owner = source("src/components/AMP/OwnerAmpDashboard.js");
-    expect(reports).toContain("Next Maintenance Recommendation");
-    expect(reports).toContain("Aggregate Recorded Service Analysis");
+    expect(reports).toContain("Next service plan");
+    expect(reports).toContain("Model and parts history");
     expect(reports).not.toContain('label: "Predictive Maintenance"');
-    expect(owner).toContain("these are not confirmed bookings");
+    expect(owner).toContain("These are not confirmed bookings");
     expect(owner).toContain("Assumed service value");
     expect(owner).toContain("It is not a failure rate, reliability score, or unit diagnosis");
     expect(reports).toContain("Suggested servicing date");
@@ -63,7 +63,7 @@ describe("cross-surface readiness gaps", () => {
   test("Superadmin AMP is a filtered all-branch oversight view instead of a duplicate branch workspace", () => {
     const manager = source("src/components/AMP/ManagerAmpDashboard.js");
     const shell = source("src/components/AMP/AmpDashboardShell.js");
-    expect(manager).toContain('"All-Branch Service Overview"');
+    expect(manager).toContain('"Service follow-up across all branches"');
     expect(manager).toContain('<option value="all">All branches</option>');
     expect(manager).toContain("branch=${encodeURIComponent(selectedBranch)}");
     expect(manager).toContain("const SERVICE_WINDOWS = [30, 90, 180, 365]");
@@ -72,7 +72,7 @@ describe("cross-surface readiness gaps", () => {
     expect(manager).toContain("days=${serviceWindow}");
     expect(manager).toContain("Branch admins remain responsible for service processing");
     expect(manager).toContain('<PipelineTable units={group.units} />');
-    expect(shell).toContain('isOwner ? "All-Branch Service Overview" : "Service Pipeline"');
+    expect(shell).toContain('isOwner ? "All branches: service follow-up" : "My branch: service follow-up"');
     expect(source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js")).toContain('{ to: "/manager/amp", label: "AMP Planning"');
   });
 

@@ -92,7 +92,9 @@ export const API_HEALTH_URL = `${API_BASE}/health`;
 export async function apiFetch(path, options) {
   beginBackendConnection(path);
   let networkError;
-  for (const baseUrl of [API_BASE, ...API_BASE_FALLBACKS]) {
+  // AI requests must not be replayed after an uncertain network result.
+  const requestBases = path.startsWith("/ai/") ? [API_BASE] : [API_BASE, ...API_BASE_FALLBACKS];
+  for (const baseUrl of requestBases) {
     try {
       const response = await fetch(`${baseUrl}${path}`, options);
       finishBackendConnection(path);

@@ -58,7 +58,7 @@ describe("Admin and SuperAdmin theme isolation", () => {
     const myUnits = source("myunit", "MyUnit.js");
 
     expect(myUnits).toContain("AmpReportCenter");
-    expect(myUnits).toContain('title="Your AMP Maintenance Reports"');
+    expect(myUnits).toContain('title="Your AC care guide"');
     expect(myUnits).toContain("unitId: unit.backendUnitId || unit.id");
   });
 
