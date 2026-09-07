@@ -14,6 +14,7 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import OrderCard from "./OrderCard";
 import TrackOrderModal from "./TrackOrderModal";
+import CancelOrderDialog from "./CancelOrderDialog";
 
 const VALID_ORDER_STATUSES = [
   "all",
@@ -57,6 +58,7 @@ function MyOrders() {
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [cancellingOrderId, setCancellingOrderId] = useState("");
+  const [cancelOrder, setCancelOrder] = useState(null);
 
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
@@ -129,15 +131,7 @@ function MyOrders() {
     navigate(`/receipt/${encodeURIComponent(order.id)}`);
   };
 
-  const handleCancelRequest = async (order) => {
-    const reason = window.prompt(
-      "Please enter a short cancellation reason.",
-      order.paymentProvider === "paymongo" && order.paymentStatus === "paid"
-        ? "Requesting cancellation and refund review."
-        : "Customer requested cancellation.",
-    );
-    if (reason === null) return;
-
+  const handleCancelRequest = async (order, reason) => {
     try {
       setCancellingOrderId(String(order.id));
       const response = await apiRequest(`/orders/me/${encodeURIComponent(order.id)}/cancel-request`, {
@@ -151,8 +145,6 @@ function MyOrders() {
         );
       }
       alert(response.message || "Cancellation request submitted.");
-    } catch (error) {
-      alert(error?.message || "Unable to request cancellation.");
     } finally {
       setCancellingOrderId("");
     }
@@ -297,7 +289,7 @@ function MyOrders() {
                 onTrack={handleTrack}
                 onReorder={handleReorder}
                 onReceipt={handleReceipt}
-                onCancelRequest={handleCancelRequest}
+                onCancelRequest={setCancelOrder}
                 cancelling={cancellingOrderId === String(order.id)}
               />
             ))
@@ -314,6 +306,7 @@ function MyOrders() {
           }}
         />
       )}
+      {cancelOrder && <CancelOrderDialog order={cancelOrder} onClose={() => setCancelOrder(null)} onConfirm={handleCancelRequest} />}
       <BoutiqueFooter />
 
       <style
