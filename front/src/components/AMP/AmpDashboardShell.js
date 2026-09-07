@@ -16,7 +16,7 @@ function AmpDashboardShell({ title, subtitle, children }) {
   return (
     <div className="amp-shell">
       <aside className="amp-sidebar">
-        <div className="amp-brand">AeroPulse AMP</div>
+        <div className="amp-brand">AeroPulse AMP<small>Predictive maintenance</small></div>
         <nav>
           {returnDestination ? (
             <NavLink to={returnDestination.to} className="amp-return-link">
@@ -24,7 +24,7 @@ function AmpDashboardShell({ title, subtitle, children }) {
             </NavLink>
           ) : null}
           <NavLink to="/manager/amp" className={({ isActive }) => (isActive ? "active" : "")}>
-            {isOwner ? "All branches: service follow-up" : "My branch: service follow-up"}
+            {isOwner ? "Branch maintenance" : "My branch maintenance"}
           </NavLink>
           {isOwner ? (
             <NavLink to="/owner/amp" className={({ isActive }) => (isActive ? "active" : "")}>

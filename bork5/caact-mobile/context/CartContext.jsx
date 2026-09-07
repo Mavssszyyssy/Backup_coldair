@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useUserContext } from "./UserContext";
 
 const CartContext = createContext(null);
@@ -10,17 +10,18 @@ const normalizeQuantity = (quantity, max = Number.POSITIVE_INFINITY) =>
 export function CartProvider({ children }) {
   const { current, initialized } = useUserContext();
   const [cart, setCart] = useState([]);
-  const [hydrated, setHydrated] = useState(false);
-  const cartStorageKey = current?.id ? `coldair_cart_v2:${current.id}` : "";
+  const [loadedKey, setLoadedKey] = useState(null);
+  const cartStorageKey = current?.role === "customer" && current?.id ? `coldair_cart_v2:${current.id}` : "";
+  const hydrated = initialized && loadedKey === cartStorageKey;
 
   useEffect(() => {
     let active = true;
     if (!initialized) return undefined;
 
-    setHydrated(false);
+    setLoadedKey(null);
+    setCart((previous) => previous.length ? [] : previous);
     if (!cartStorageKey) {
-      setCart([]);
-      setHydrated(true);
+      setLoadedKey("");
       return undefined;
     }
 
@@ -33,7 +34,7 @@ export function CartProvider({ children }) {
       })
       .catch(() => AsyncStorage.removeItem(cartStorageKey))
       .finally(() => {
-        if (active) setHydrated(true);
+        if (active) setLoadedKey(cartStorageKey);
       });
 
     return () => {
@@ -46,7 +47,7 @@ export function CartProvider({ children }) {
     AsyncStorage.setItem(cartStorageKey, JSON.stringify(cart)).catch(() => {});
   }, [cart, hydrated, cartStorageKey]);
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = useCallback((product, quantity = 1) => {
     if (!product?.id) return;
     setCart((currentCart) => {
       const existing = currentCart.find((item) => String(item.id) === String(product.id));
@@ -60,9 +61,9 @@ export function CartProvider({ children }) {
       }
       return [...currentCart, { ...product, quantity: normalizeQuantity(quantity, max) }];
     });
-  };
+  }, []);
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((productId, quantity) => {
     setCart((currentCart) =>
       currentCart.map((item) =>
         String(item.id) === String(productId)
@@ -70,17 +71,18 @@ export function CartProvider({ children }) {
           : item,
       ),
     );
-  };
+  }, []);
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = useCallback((productId) => {
     setCart((currentCart) => currentCart.filter((item) => String(item.id) !== String(productId)));
-  };
+  }, []);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart((previous) => previous.length ? [] : previous), []);
 
-  const replaceCart = (nextCart = []) => {
-    setCart(Array.isArray(nextCart) ? nextCart : []);
-  };
+  const replaceCart = useCallback((nextCart = []) => {
+    const next = Array.isArray(nextCart) ? nextCart : [];
+    setCart((previous) => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+  }, []);
 
   const value = useMemo(() => {
     const cartCount = cart.reduce((total, item) => total + Number(item.quantity || 0), 0);
@@ -89,7 +91,7 @@ export function CartProvider({ children }) {
       0,
     );
     return { cart, cartCount, cartTotal, hydrated, addToCart, updateQuantity, removeFromCart, clearCart, replaceCart };
-  }, [cart, hydrated]);
+  }, [cart, hydrated, addToCart, updateQuantity, removeFromCart, clearCart, replaceCart]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

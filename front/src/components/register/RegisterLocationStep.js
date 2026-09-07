@@ -8,7 +8,8 @@ import {
   Trash,
   WarningDiamond,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { captureSignupPosition } from "../../domain/location/signupGps";
 import {
   getBarangaysByCity,
   getCitiesByProvince,
@@ -56,6 +57,9 @@ export default function RegisterLocationStep({
   const [currentLoc, setCurrentLoc] = useState({ ...INITIAL_LOCATION });
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState("");
+  const [gpsMessage, setGpsMessage] = useState("");
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const regions = getRegions();
   const provinces = getProvincesByRegion(currentLoc.address.region);
@@ -87,73 +91,21 @@ export default function RegisterLocationStep({
     setCurrentLoc(updated);
   };
 
-  const captureGps = () => {
+  const captureGps = async () => {
+    if (isCapturing) return;
     setIsCapturing(true);
     setError("");
-
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported.");
-      setIsCapturing(false);
-      return;
+    setGpsMessage("");
+    try {
+      const captured = await captureSignupPosition();
+      if (!mounted.current) return;
+      setCurrentLoc((previous) => ({ ...previous, coordinates: captured.coordinates, source: captured.source, address: captured.address || previous.address }));
+      setGpsMessage(captured.message);
+    } catch (failure) {
+      if (mounted.current) setError(failure.message);
+    } finally {
+      if (mounted.current) setIsCapturing(false);
     }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        try {
-          const apiKey = import.meta.env.VITE_LOCATIONIQ_KEY || "";
-          if (!apiKey) throw new Error("Location lookup is not configured.");
-          const res = await fetch(
-            `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${latitude}&lon=${longitude}&format=json`,
-          );
-
-          if (res.ok) {
-            const data = await res.json();
-            const addr = data.address || {};
-            setCurrentLoc({
-              coordinates: {
-                latitude,
-                longitude,
-                accuracy,
-                timestamp: new Date().toISOString(),
-              },
-              address: {
-                region: addr.region || addr.state || "",
-                province: addr.province || addr.county || "",
-                city:
-                  addr.city ||
-                  addr.municipality ||
-                  addr.town ||
-                  addr.village ||
-                  "",
-                barangay: addr.suburb || addr.neighbourhood || "",
-                street: [addr.road, addr.house_number]
-                  .filter(Boolean)
-                  .join(" "),
-              },
-              source: "gps",
-            });
-          }
-        } catch (err) {
-          setCurrentLoc((prev) => ({
-            ...prev,
-            coordinates: {
-              latitude,
-              longitude,
-              accuracy,
-              timestamp: new Date().toISOString(),
-            },
-            source: "gps",
-          }));
-        }
-        setIsCapturing(false);
-      },
-      () => {
-        setError("Permission denied.");
-        setIsCapturing(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
   };
 
   const addLocation = () => {
@@ -323,6 +275,7 @@ export default function RegisterLocationStep({
                 {isCapturing ? "Acquiring..." : "Sync Position"}
               </BoutiqueButton>
             </BoutiqueBox>
+            {gpsMessage && <p role="status">{gpsMessage}</p>}
             {error && (
               <BoutiqueBox
                 direction="row"

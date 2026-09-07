@@ -42,7 +42,7 @@ describe("cross-surface readiness gaps", () => {
     expect(reports).toContain('insufficient: "May be too small for the room"');
     expect(reports).toContain("capacityAssessmentLabel(maintenance.capacityAssessment?.status)");
     expect(source("src/components/AMP/OwnerAmpDashboard.js")).toContain("serviceLabel(item.serviceType)");
-    expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain('humanLabel(unit.recommendedService, "regular_cleaning")');
+    expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain('humanLabel(unit.recommendedService, "not yet assessed")');
   });
 
   test("AMP labels distinguish recorded recommendations from predictions and booked revenue", () => {
@@ -52,7 +52,7 @@ describe("cross-surface readiness gaps", () => {
     expect(reports).toContain("Model and parts history");
     expect(reports).not.toContain('label: "Predictive Maintenance"');
     expect(owner).toContain("These are not confirmed bookings");
-    expect(owner).toContain("Assumed service value");
+    expect(owner).toContain("Assumed value per service");
     expect(owner).toContain("It is not a failure rate, reliability score, or unit diagnosis");
     expect(reports).toContain("Suggested servicing date");
     expect(reports).not.toContain("Operating environment");
@@ -63,7 +63,7 @@ describe("cross-surface readiness gaps", () => {
   test("Superadmin AMP is a filtered all-branch oversight view instead of a duplicate branch workspace", () => {
     const manager = source("src/components/AMP/ManagerAmpDashboard.js");
     const shell = source("src/components/AMP/AmpDashboardShell.js");
-    expect(manager).toContain('"Service follow-up across all branches"');
+    expect(manager).toContain('"AMP · Maintenance across branches"');
     expect(manager).toContain('<option value="all">All branches</option>');
     expect(manager).toContain("branch=${encodeURIComponent(selectedBranch)}");
     expect(manager).toContain("const SERVICE_WINDOWS = [30, 90, 180, 365]");
@@ -71,8 +71,8 @@ describe("cross-surface readiness gaps", () => {
     expect(manager).toContain("unit{unassignedCount === 1 ? \" has\" : \"s have\"} no responsible branch");
     expect(manager).toContain("days=${serviceWindow}");
     expect(manager).toContain("Branch admins remain responsible for service processing");
-    expect(manager).toContain('<PipelineTable units={group.units} />');
-    expect(shell).toContain('isOwner ? "All branches: service follow-up" : "My branch: service follow-up"');
+    expect(manager).toContain('<PipelineTable units={group.units} onSelectPlan={selectPlan} />');
+    expect(shell).toContain('isOwner ? "Branch maintenance" : "My branch maintenance"');
     expect(source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js")).toContain('{ to: "/manager/amp", label: "AMP Planning"');
   });
 

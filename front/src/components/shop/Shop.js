@@ -496,7 +496,7 @@ const Shop = () => {
     let active = true;
     const loadNotifications = async () => {
       try {
-        const response = await apiRequest("/notifications/me");
+        const response = await apiRequest("/notifications/me", { silentConnection: true });
         const normalized = (response.notifications || []).map((item) => ({
           ...item,
           unread: Boolean(item.unread),
@@ -529,7 +529,7 @@ const Shop = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await apiRequest("/products/public");
+      const response = await apiRequest("/products/public", { silentConnection: true });
       const mapped = (response.products || []).map((product) => {
           // Strip redundant "AC" from name and description
           const cleanName = (product.name || "")

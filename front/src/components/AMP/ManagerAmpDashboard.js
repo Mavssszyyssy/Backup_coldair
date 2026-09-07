@@ -4,6 +4,8 @@ import { useUser } from "../../context/UserContext";
 import { BRANCHES } from "../../domain/branches/branches";
 import AmpDashboardShell from "./AmpDashboardShell";
 import AmpReportCenter from "./AmpReportCenter";
+import AmpPurposeGuide from "./AmpPurposeGuide";
+import { serviceDateLabel } from "../../domain/myunit/serviceHistoryDisplay";
 import "./styles.css";
 
 const SERVICE_WINDOWS = [30, 90, 180, 365];
@@ -15,7 +17,7 @@ const humanLabel = (value, fallback) => String(value || fallback || "")
   .replaceAll("_", " ")
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-function PipelineTable({ units }) {
+function PipelineTable({ units, onSelectPlan }) {
   return (
     <div className="amp-table-wrap">
       <table className="amp-table">
@@ -25,8 +27,7 @@ function PipelineTable({ units }) {
             <th>Customer</th>
             <th>Suggested Servicing Date</th>
             <th>Recommended Service</th>
-            <th>Warranty / Branch</th>
-            <th>Why service is suggested</th>
+            <th>Reason & next step</th>
           </tr>
         </thead>
         <tbody>
@@ -42,19 +43,16 @@ function PipelineTable({ units }) {
                 <span>{unit.addressLine || "Address pending"}</span>
               </td>
               <td>
-                <strong>{new Date(unit.bestServicedBy).toLocaleDateString()}</strong>
-                <span>{unit.overdue ? `${Math.abs(unit.daysUntilDue)} days overdue` : `${unit.daysUntilDue} days remaining`}</span>
+                <strong>{serviceDateLabel(unit.bestServicedBy)}</strong>
+                <span className={unit.overdue ? "amp-due-overdue" : ""}>{unit.daysUntilDue == null ? "Date needs review" : unit.overdue ? `${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? "Due today" : `Due in ${unit.daysUntilDue} days`}</span>
               </td>
               <td>
-                <strong>{humanLabel(unit.recommendedService, "regular_cleaning")}</strong>
-                <span>{unit.lastServiceDate ? `Last service ${new Date(unit.lastServiceDate).toLocaleDateString()}` : "First scheduled service"}</span>
+                <strong>{humanLabel(unit.recommendedService, "not yet assessed")}</strong>
+                <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
               <td>
-                <strong>{humanLabel(unit.warrantyStatus, "pending_activation")}</strong>
-                <span>{unit.serviceBranch || "Branch pending"}</span>
-              </td>
-              <td>
-                <details className="amp-details"><summary>View recommendation details</summary><p>{unit.recommendationBasis}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p></details>
+                <details className="amp-details"><summary>Why this date?</summary><p>{unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
+                <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
               </td>
             </tr>
           ))}
@@ -75,6 +73,8 @@ function ManagerAmpDashboard() {
   const [aggregate, setAggregate] = useState({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [planSelection, setPlanSelection] = useState({ unitId: "", revision: 0 });
+  const selectPlan = (unitId) => setPlanSelection((previous) => ({ unitId, revision: previous.revision + 1 }));
 
   useEffect(() => {
     let cancelled = false;
@@ -146,21 +146,17 @@ function ManagerAmpDashboard() {
   }, [isCompanyWide, reportUnits, selectedBranch]);
 
   const unassignedCount = branchSummary.find((item) => item.branch === UNASSIGNED_BRANCH)?.total || 0;
-  const pageTitle = isCompanyWide ? "Service follow-up across all branches" : "Customers due for AC service";
+  const pageTitle = isCompanyWide ? "AMP · Maintenance across branches" : "AMP · My branch maintenance";
   const pageSubtitle = isCompanyWide
     ? "See which branches need attention. Branch admins remain responsible for service processing."
     : "Review upcoming and overdue AC maintenance for your branch. These are suggestions, not confirmed bookings.";
 
   return (
     <AmpDashboardShell title={pageTitle} subtitle={pageSubtitle}>
-      <section className="amp-card amp-guide">
-        <h2>{isCompanyWide ? "Use this page to oversee follow-up" : "Your next step"}</h2>
-        <p>{isCompanyWide ? "Compare branch workloads and check unassigned units. Open the 12-month workload plan for longer-term preparation." : "Start with overdue units, contact the customer, then process their request in Services. Technician assignment stays in the service workflow."}</p>
-        <details className="amp-details"><summary>What does AMP do here?</summary><p>The system uses completed records from the same model or brand to suggest service dates. These counts do not need AI. AI explanations are available in generated reports when enabled; they do not assign technicians or approve work.</p></details>
-      </section>
+      <AmpPurposeGuide planning={isCompanyWide} />
       <div className="amp-metrics">
         <article>
-          <span>Upcoming + overdue units</span>
+          <span>Units to follow up</span>
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.total}</strong>
         </article>
         <article>
@@ -168,7 +164,7 @@ function ManagerAmpDashboard() {
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.upcoming}</strong>
         </article>
         <article>
-          <span>Overdue</span>
+          <span>Overdue · follow up first</span>
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.overdue}</strong>
         </article>
         {isCompanyWide ? (
@@ -229,6 +225,7 @@ function ManagerAmpDashboard() {
             <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
             {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
           </div>
+          {!isCompanyWide ? <label className="amp-branch-filter">Service window<select value={serviceWindow} onChange={(event) => setServiceWindow(Number(event.target.value))}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}</select></label> : null}
           {loading ? <span>Loading...</span> : null}
         </div>
 
@@ -246,14 +243,16 @@ function ManagerAmpDashboard() {
                   <div><h3>{group.branch === UNASSIGNED_BRANCH ? "Unassigned Units" : `${group.branch} Branch`}</h3><span>{group.units.length} unit{group.units.length === 1 ? "" : "s"}</span></div>
                   <strong>{group.units.filter((unit) => unit.overdue).length} overdue</strong>
                 </header>
-                <PipelineTable units={group.units} />
+                <PipelineTable units={group.units} onSelectPlan={selectPlan} />
               </section>
             ))}
           </div>
         ) : null}
 
-        {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} /> : null}
+        {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} onSelectPlan={selectPlan} /> : null}
       </section>
+
+      <div id="amp-service-plan"><AmpReportCenter key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. The report identifies whether an AI explanation or a system-record explanation was used." /></div>
 
       <details className="amp-card amp-details"><summary>Past cleaning and parts use</summary>
       <div className="amp-report-grid">
@@ -271,7 +270,6 @@ function ManagerAmpDashboard() {
         </section>
       </div>
       </details>
-      <AmpReportCenter units={visibleReportUnits} />
     </AmpDashboardShell>
   );
 }

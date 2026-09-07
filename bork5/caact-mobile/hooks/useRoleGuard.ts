@@ -6,7 +6,7 @@ import { useUserContext } from "../context/UserContext";
 
 export function useRoleGuard(allowedRoles = []) {
   const { current, initialized, resolveHomeRoute } = useUserContext();
-  const pathname = usePathname().replace(/\/$/, "");
+  const pathname = usePathname().replace(/\/index\/?$/, "").replace(/\/$/, "");
   const setupRoute = requiredSetupRoute(current);
   const normalizedRoles = useMemo(
     () =>

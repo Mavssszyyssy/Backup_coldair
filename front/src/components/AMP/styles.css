@@ -39,6 +39,20 @@
   cursor: pointer;
 }
 
+.amp-brand small { display: block; margin-top: 6px; color: #cbd5e1; font-size: 12px; font-weight: 400; }
+.amp-card.amp-purpose { border-top: 4px solid #2563eb; }
+.amp-purpose p { max-width: 85ch; line-height: 1.6; }
+.amp-purpose-label { display: block; color: #1d4ed8; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+.amp-purpose-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; padding: 0; gap: 16px; margin: 20px 0; }
+.amp-purpose-steps li { background: #f8fafc; border-radius: 10px; padding: 14px; }
+.amp-purpose-steps strong, .amp-purpose-steps span { display: block; line-height: 1.5; }
+.amp-purpose-steps span { color: #475569; font-size: 14px; margin-top: 6px; }
+.amp-plan-link { display: inline-block; color: #1d4ed8; font-weight: 700; padding: 10px 0; text-underline-offset: 3px; }
+.amp-plan-link:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.amp-table td .amp-due-overdue { color: #b91c1c; font-weight: 700; }
+#amp-service-plan { scroll-margin-top: 24px; }
+@media (max-width: 1000px) { .amp-purpose-steps { grid-template-columns: 1fr; } }
+
 .amp-sidebar .amp-return-link {
   display: flex;
   align-items: center;
@@ -245,6 +259,9 @@
   border-radius: 10px;
   padding: 10px 12px;
 }
+
+.amp-review-status { color: #1d4ed8 !important; font-weight: 700; }
+.amp-prediction-review td { min-width: 220px; }
 
 .amp-details { margin-top: 14px; }
 .amp-details > summary { cursor: pointer; font-weight: 650; padding: 12px 0; color: #334155; }

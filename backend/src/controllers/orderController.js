@@ -67,13 +67,14 @@ const appendFulfillmentEvent = (order, stage, detail = "", timestamp = new Date(
 };
 
 const buildTrackingTimeline = (order = {}, task = null) => {
+  const checkedIn = require("../domain/taskWorkflow").hasVerifiedTaskCheckIn(task);
   const stored = Array.isArray(order.fulfillmentTimeline)
     ? order.fulfillmentTimeline.map((event) => ({
         stage: String(event?.stage || ""),
         label: String(event?.label || fulfillmentStages[event?.stage] || "Update"),
         detail: String(event?.detail || ""),
         timestamp: event?.timestamp || null,
-      })).filter((event) => event.stage)
+      })).filter((event) => event.stage && (!task || checkedIn || !["arrived", "installation"].includes(event.stage)))
     : [];
   const byStage = new Map(stored.map((event) => [event.stage, event]));
   const ensure = (stage, timestamp, detail = "") => {
@@ -90,16 +91,16 @@ const buildTrackingTimeline = (order = {}, task = null) => {
     ensure("dispatched", order.dispatchedAt || order.updatedAt, "Order dispatched");
   }
   const taskStatus = String(task?.status || "").toLowerCase();
-  const arrivedAt = task?.payload?.checkIn?.checkedInAt || task?.updatedAt;
+  const arrivedAt = checkedIn ? task.payload.checkIn.checkedInAt : null;
   const onTheWayAt = task?.payload?.onTheWayAt || arrivedAt || task?.updatedAt;
   const installationStartedAt = task?.payload?.installationStartedAt || arrivedAt || task?.updatedAt;
-  if (["on-the-way", "arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
+  if (task?.payload?.onTheWayAt || taskStatus === "on-the-way" || checkedIn) {
     ensure("out_for_delivery", onTheWayAt, "Technician is on the way");
   }
-  if (["arrived", "installing", "in-progress", "completed"].includes(taskStatus)) {
+  if (checkedIn) {
     ensure("arrived", arrivedAt, "Technician arrived at the address");
   }
-  if (["installing", "in-progress", "completed"].includes(taskStatus)) {
+  if (checkedIn && (task?.payload?.installationStartedAt || ["installing", "completed"].includes(taskStatus))) {
     ensure("installation", installationStartedAt, "Installation in progress");
   }
   if (order.workflowStatus === "complete") {
@@ -3278,16 +3279,19 @@ const handlePaymongoReturn = async (req, res) => {
   }
 
   const appUrl = mobileDeepLinkForOrder(orderId, paymentState);
+  const nonce = crypto.randomBytes(18).toString("base64");
   return res
     .status(200)
     .set("Content-Type", "text/html; charset=utf-8")
+    .set("Cache-Control", "no-store")
+    .set("Content-Security-Policy", `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`)
     .send(`<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Returning to Coldair</title>
-  <style>
+  <style nonce="${nonce}">
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; }
     main { width: min(420px, calc(100% - 32px)); background: #fff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px; box-shadow: 0 18px 45px rgba(15,23,42,.12); text-align: center; }
     a { display: inline-block; margin-top: 18px; padding: 12px 18px; border-radius: 12px; background: #2563eb; color: #fff; text-decoration: none; font-weight: 800; }
@@ -3298,13 +3302,13 @@ const handlePaymongoReturn = async (req, res) => {
   <main>
     <h1>Returning to Coldair</h1>
     <p>Your payment page is sending you back to the app. If it does not open automatically, tap the button below.</p>
-    <a href="${escapeHtml(appUrl)}">Open Coldair App</a>
+    <a href="${escapeHtml(appUrl)}">Open Cold Air App</a>
+    <p>This opens your installed Cold Air app. Payment status will be verified securely in the app.</p>
+    <p>If the app is not installed, you can <a href="${escapeHtml(webUrl)}">View order on website</a>.</p>
   </main>
-  <script>
+  <script nonce="${nonce}">
     var appUrl = ${JSON.stringify(appUrl)};
-    var webUrl = ${JSON.stringify(webUrl)};
     setTimeout(function () { window.location.href = appUrl; }, 250);
-    setTimeout(function () { window.location.href = webUrl; }, 2400);
   </script>
 </body>
 </html>`);

@@ -6,6 +6,7 @@ import CustomerScreen from "../../../components/customer/CustomerScreen";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import QrCodeMatrix from "../../../components/ui/QrCodeMatrix";
+import AuthenticatorSetupKey from "../../../components/security/AuthenticatorSetupKey";
 import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
@@ -239,15 +240,7 @@ export default function CustomerOobeScreen() {
             <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} />
           </View>
         </View> : null}
-        {!totpEnabled ? <Text
-          style={{
-            color: COLORS.primary,
-            fontWeight: FONT.black,
-            letterSpacing: 1,
-          }}
-        >
-          {totpSecret || "Loading..."}
-        </Text> : null}
+        {!totpEnabled ? <AuthenticatorSetupKey secret={totpSecret} /> : null}
         {!totpEnabled ? (
           <>
             <TextField

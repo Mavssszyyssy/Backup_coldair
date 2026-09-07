@@ -83,7 +83,7 @@ export default function RegisterLegalConsentsStep({
           margin="7px 0 0"
           style={{ opacity: 0.8 }}
         >
-          Review and accept the four required documents. Each opens in a new tab.
+          Review and accept the four required documents.
         </BoutiqueText>
       </BoutiqueBox>
 

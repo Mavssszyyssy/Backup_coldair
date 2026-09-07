@@ -65,3 +65,22 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   fireEvent.click(screen.getByText("How was this worked out?"));
   expect(screen.getByText("Provisional 270-day schedule.")).toBeVisible();
 });
+
+it("shows saved plans with technician outcomes as review evidence, never as an AI accuracy score", async () => {
+  apiRequest.mockResolvedValue({ provider: "rules", report: {
+    reportId: "REVIEW-1", reportType: "predictive_maintenance", branch: "Bulacan",
+    maintenance: { bestServicedBy: "2026-06-30", recommendedService: "regular_cleaning", recommendationBasis: "Based on completed records." },
+    serviceHistory: [], predictionReview: {
+      note: "Review technician findings before judging usefulness.",
+      entries: [{ id: "plan-1", suggestedDate: "2026-06-30", recommendedService: "regular_cleaning", basisLevel: "same_model", sampleSize: 4, comparableUnitCount: 3, excludedRecordCount: 1, status: "ready_for_review", outcome: { serviceDate: "2026-07-03", serviceLabel: "Regular cleaning", daysFromSuggestedDate: 3, findings: "Dust buildup found on the coil.", actionTaken: "Cleaned coil and flushed drain." } }],
+    },
+  } });
+  render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
+  fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(await screen.findByText("Saved plan and service outcome review")).toBeVisible();
+  expect(screen.getByText("Service outcome ready to review")).toBeVisible();
+  expect(screen.getByText(/3 days after the suggested date/)).toBeVisible();
+  expect(screen.getByText(/Dust buildup found on the coil/)).toBeVisible();
+  expect(screen.queryByText(/accuracy/i)).not.toBeInTheDocument();
+});

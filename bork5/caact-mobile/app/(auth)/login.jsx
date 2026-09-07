@@ -20,7 +20,7 @@ import {
 
 export function LoginScreen() {
   const router = useRouter();
-  const { login, verifyTotpLogin, resolveHomeRoute } = useUserContext();
+  const { login, verifyTotpLogin } = useUserContext();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -57,7 +57,8 @@ export function LoginScreen() {
       }
 
       if (result.success) {
-        router.replace(resolveHomeRoute(result.user));
+        // AuthLayout owns the session redirect. A second replace here races
+        // that guard while the native stack and cart provider are updating.
         return;
       }
 

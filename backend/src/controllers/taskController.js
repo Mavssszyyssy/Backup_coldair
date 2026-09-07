@@ -17,6 +17,7 @@ const { assessServiceEvidence, serviceTypeFor } = require("../domain/serviceEvid
 const { formatDateKeyInTimeZone, parseInstallationDateTime } = require("../utils/dateTime");
 const {
   getTaskMutationBlocker,
+  hasVerifiedTaskCheckIn,
   normalizeTaskStatus: normalizeStatus,
   parseTaskStatus,
 } = require("../domain/taskWorkflow");
@@ -457,10 +458,15 @@ const syncOrderWorkflowForTask = async (task, status) => {
   const normalizedStatus = normalizeStatus(status || task.status);
   const order = await findLinkedOrderForTask(task);
   if (!order) return;
-  const timestamp = normalizedStatus === "arrived"
+  const trackingStatus = normalizedStatus === "in-progress"
+    ? (hasVerifiedTaskCheckIn(task) ? "arrived" : null)
+    : normalizedStatus;
+  const timestamp = trackingStatus === "arrived"
     ? task.payload?.checkIn?.checkedInAt || new Date()
     : normalizedStatus === "completed" ? task.completedAt || new Date() : new Date();
-  appendOrderTrackingEvent(order, normalizedStatus, timestamp);
+  if (!["arrived", "installing", "completed"].includes(trackingStatus) || hasVerifiedTaskCheckIn(task)) {
+    appendOrderTrackingEvent(order, trackingStatus, timestamp);
+  }
   if (task.assignedTechnicianName && !order.assignedTechnician) {
     order.assignedTechnician = task.assignedTechnicianName;
   }
@@ -558,15 +564,6 @@ const technicianReportPayload = (payload = {}) => Object.fromEntries(Object.entr
   holdReason: payload.holdReason,
   defectReason: payload.defectReason,
 }).filter(([, value]) => value !== undefined));
-
-const hasVerifiedTaskCheckIn = (task) => {
-  const checkIn = task?.payload?.checkIn;
-  return Boolean(
-    checkIn?.checkedInAt &&
-    Number.isFinite(Number(checkIn.latitude)) &&
-    Number.isFinite(Number(checkIn.longitude)),
-  );
-};
 
 const validateCompletionReport = (task, payload = {}) => {
   const validation = validateTechnicianTaskCompletion({
@@ -1040,6 +1037,9 @@ const updateTask = async (req, res) => {
     }
 
     const nextStatus = normalizeStatus(payload.status || task.status);
+    if (["arrived", "installing"].includes(nextStatus) && !hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "The assigned technician must check in with GPS before arrival or installation can be confirmed." });
+    }
     const proof = buildTaskProof({ task, payload, req, nextStatus });
     const currentStatus = normalizeStatus(task.status);
     if (
@@ -1073,7 +1073,7 @@ const updateTask = async (req, res) => {
     if (nextStatus === "on-the-way" && !updatedPayload.onTheWayAt) {
       updatedPayload.onTheWayAt = new Date().toISOString();
     }
-    if (["installing", "in-progress"].includes(nextStatus) && !updatedPayload.installationStartedAt) {
+    if (nextStatus === "installing" && hasVerifiedTaskCheckIn(task) && !updatedPayload.installationStartedAt) {
       updatedPayload.installationStartedAt = new Date().toISOString();
     }
 
@@ -1568,6 +1568,9 @@ const updateTaskStatus = async (req, res) => {
 
     const payload = req.body || {};
     const proof = buildTaskProof({ task, payload, req, nextStatus: status });
+    if (["arrived", "installing"].includes(status) && !hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "The assigned technician must check in with GPS before arrival or installation can be confirmed." });
+    }
     const currentStatus = normalizeStatus(task.status);
     if (
       req.authUser.role === "technician" &&
@@ -1624,7 +1627,7 @@ const updateTaskStatus = async (req, res) => {
     if (status === "on-the-way" && !task.payload.onTheWayAt) {
       task.payload.onTheWayAt = new Date().toISOString();
     }
-    if (["installing", "in-progress"].includes(status) && !task.payload.installationStartedAt) {
+    if (status === "installing" && hasVerifiedTaskCheckIn(task) && !task.payload.installationStartedAt) {
       task.payload.installationStartedAt = new Date().toISOString();
     }
     await task.save();

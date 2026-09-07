@@ -10,6 +10,7 @@ const { summarizeMajorComponentUse } = require("../domain/ampComponentCategories
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
 const { effectiveWarrantyStatus } = require("../domain/warrantyService");
+const { savePredictionSnapshot, loadPredictionReview } = require("../domain/maintenancePredictionReview");
 
 const REPORT_TYPES = {
   predictive_maintenance: { label: "Next Maintenance Recommendation", filenameLabel: "Maintenance_Recommendation" },
@@ -112,6 +113,11 @@ const generateAmpReport = async (req, res) => {
       return res.status(403).json({ message: "Aggregate recorded-service reports are available to authorized operations staff only." });
     }
     const { unit, recommendation } = await loadUnitAndRecommendation(req, String(req.body?.unitId || ""));
+    let predictionReviewWarning = "";
+    if (type === "predictive_maintenance") {
+      try { await savePredictionSnapshot(unit, recommendation); }
+      catch { predictionReviewWarning = "The service plan could not be saved for later comparison. Generate it again before the visit."; }
+    }
     const branch = await resolveResponsibleBranch(req, unit, req.body?.branch);
     const [history, requests, tasks] = await Promise.all([
       ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean(),
@@ -119,6 +125,11 @@ const generateAmpReport = async (req, res) => {
       Task.find({ $or: [{ unitId: String(unit._id) }, { "payload.unitId": String(unit._id) }, { "payload.serialNumbers": unit.serialNumber }, { "payload.serialNumber": unit.serialNumber }, { "payload.items.serialNumbers": unit.serialNumber }, { "payload.items.serialUnits.serialNumber": unit.serialNumber }] }).sort({ updatedAt: -1 }).limit(20).lean(),
     ]);
     const aggregate = type === "inventory_reliability_analysis" ? await aggregateReliability(unit, branch) : null;
+    let predictionReview = null;
+    if (AGGREGATE_ROLES.has(req.authUser.role)) {
+      try { predictionReview = await loadPredictionReview(unit, history); }
+      catch { predictionReviewWarning = [predictionReviewWarning, "Saved-plan comparisons are temporarily unavailable."].filter(Boolean).join(" "); }
+    }
     const ai = await callStructuredAmpAnalysis({
       safetyIdentifier: String(req.authUser._id),
       recommendation,
@@ -151,6 +162,7 @@ const generateAmpReport = async (req, res) => {
         serviceHistory: history.map((item) => ({ ...formatHistory(item), evidence: assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }) })), serviceRequests: requests.map((item) => ({ date: item.createdAt, type: item.serviceType || item.issueType || "service", status: item.status || "" })),
         technicianTasks: tasks.map((item) => ({ date: item.completedAt || item.updatedAt, title: cleanText(item.title), status: item.status || "" })),
         aggregateReliability: aggregate,
+        predictionReview, predictionReviewWarning,
         note: "This is a suggested maintenance schedule, not a confirmed booking or technician diagnosis. Book a service visit in the Cold Air mobile app." + (ai.error ? ` ${ai.error}` : ""),
       },
     });

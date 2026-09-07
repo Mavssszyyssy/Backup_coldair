@@ -7,6 +7,7 @@ import TechButton from "../../../components/technician/TechButton";
 import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
 import QrCodeMatrix from "../../../components/ui/QrCodeMatrix";
+import AuthenticatorSetupKey from "../../../components/security/AuthenticatorSetupKey";
 import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import TextField from "../../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../../constants/theme";
@@ -207,9 +208,7 @@ export default function TechnicianOobe() {
             <View style={{ alignItems: "center", marginBottom: SPACING.md }}>
               {totpSecret ? <QrCodeMatrix value={totpUri} size={184} darkColor={COLORS.textPrimary} /> : null}
             </View>
-            <Text style={{ color: COLORS.tech, fontWeight: FONT.black, letterSpacing: 1, marginBottom: SPACING.md }}>
-              {totpSecret || "Loading..."}
-            </Text>
+            <AuthenticatorSetupKey secret={totpSecret} disabled={loadingSecurity} />
             <TextField
               label="Six-digit authenticator code"
               value={totpCode}

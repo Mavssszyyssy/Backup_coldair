@@ -33,7 +33,15 @@ const getTaskMutationBlocker = (status = "") => {
   return "";
 };
 
+const hasVerifiedTaskCheckIn = (task) => {
+  const point = task?.payload?.checkIn;
+  if (!point || !point.checkedInAt || !Number.isFinite(new Date(point.checkedInAt).getTime())) return false;
+  const valid = (value, limit) => value !== null && value !== undefined && String(value).trim() !== "" && Number.isFinite(Number(value)) && Math.abs(Number(value)) <= limit;
+  return valid(point.latitude, 90) && valid(point.longitude, 180);
+};
+
 module.exports = {
+  hasVerifiedTaskCheckIn,
   TASK_STATUSES,
   getTaskMutationBlocker,
   normalizeTaskStatus,

@@ -236,6 +236,12 @@ const main = async () => {
     throw new Error("COD order did not preserve the exact model and horsepower for customer review.");
   }
   record("COD checkout preserves stock until dispatch");
+  const branchAdminSession = await login("admin.bulacan", "admin123");
+  const orderAlerts = await request("/notifications/me", { token: branchAdminSession.token });
+  if (!orderAlerts.data.notifications.some((notice) => notice.type === "order" && String(notice.targetId) === String(orderId))) {
+    throw new Error("The branch admin did not receive the newly placed order alert.");
+  }
+  record("New order reaches the branch Admin notification inbox");
 
   const replay = await request("/orders", {
     token: customerToken,
@@ -274,6 +280,7 @@ const main = async () => {
     },
   });
   order = dispatch.data.order;
+  if (order.tracking?.currentStage !== "dispatched") throw new Error(`Dispatch incorrectly advanced tracking to ${order.tracking?.currentStage}.`);
   const serialNumber = order.items?.[0]?.serialNumbers?.[0];
   if (order.workflowStatus !== "to_install" || !serialNumber) {
     throw new Error("Dispatch did not assign an inventory serial and installation stage.");
@@ -299,6 +306,8 @@ const main = async () => {
     body: { coordinates: { latitude: 14.6573, longitude: 121.0293, accuracy: 8 } },
   });
   if (!checkIn.data.checkIn?.checkedInAt) throw new Error("GPS check-in was not persisted.");
+  const afterArrival = await request(`/orders/me/${orderId}`, { token: customerToken });
+  if (afterArrival.data.order?.tracking?.currentStage !== "arrived") throw new Error("Customer tracking did not advance to Arrived after GPS check-in.");
   const customerTasks = await request("/tasks", { token: customerToken });
   const visibleCustomerTask = (customerTasks.data.tasks || []).find((item) => String(item.id || item._id) === String(taskId));
   const adminTask = await request(`/tasks/${taskId}`, { token: superadmin.token });
@@ -381,6 +390,11 @@ const main = async () => {
     throw new Error("AMP deterministic recommendation did not return a service date.");
   }
   record("Room-size update and AMP recommendation fallback");
+  const savedMaintenancePlan = await request("/ai/amp-report", { token: customerToken, method: "POST", body: { unitId, reportType: "predictive_maintenance" } });
+  if (savedMaintenancePlan.data.provider !== "system-fallback" || savedMaintenancePlan.data.report?.predictionReview !== null) {
+    throw new Error("Customer AMP plan did not use the offline-safe explanation or exposed staff-only plan review.");
+  }
+  record("AMP saves a pre-service plan without exposing staff-only outcome review to the customer");
 
   const catalog = await request("/service-requests/catalog", { token: customerToken });
   const service = catalog.data.offerings?.[0];
@@ -446,6 +460,12 @@ const main = async () => {
   if (!maintenanceReport.data.report.serviceHistory.some((history) => history.serviceLabel === "Deep cleaning" && history.findings === performed.findings) || !maintenanceReport.data.report.serviceHistory.some((history) => history.serviceLabel === "Installation")) throw new Error("AMP report mislabels service records.");
   if (maintenanceReport.data.provider !== "system-fallback") throw new Error("QA unexpectedly enabled a live AI provider.");
   record("AMP summary preserves installation and actual cleaning details with AI disabled");
+  const reviewReport = await request("/ai/amp-report", { token: superadmin.token, method: "POST", body: { unitId, reportType: "predictive_maintenance" } });
+  const reviewedPlan = reviewReport.data.report?.predictionReview?.entries?.find((entry) => entry.status === "ready_for_review");
+  if (!reviewedPlan || reviewedPlan.outcome?.findings !== performed.findings || reviewedPlan.outcome?.serviceLabel !== "Deep cleaning") {
+    throw new Error("AMP did not preserve the pre-service plan or match it to the technician's documented cleaning outcome.");
+  }
+  record("AMP saved-plan review links pre-service evidence to technician findings without an accuracy claim");
 
   const claimResult = await request(`/warranties/units/${unitId}/claims`, {
     token: customerToken,

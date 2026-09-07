@@ -7,6 +7,7 @@ import Card from "../ui/Card";
 import PageHeader from "../ui/PageHeader";
 import TextField from "../ui/TextField";
 import QrCodeMatrix from "../ui/QrCodeMatrix";
+import AuthenticatorSetupKey from "./AuthenticatorSetupKey";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
@@ -55,7 +56,8 @@ export default function AuthenticatorRecoveryScreen() {
         <Text>Scan the QR code or enter this setup key in your authenticator app. Then enter the new six-digit code below.</Text>
         <Text>Keep this setup key private. Your account stays restricted until verification is complete.</Text>
         {loading ? <Text>Loading authenticator setup...</Text> : null}
-        {secret ? <View style={{ alignItems: "center", marginVertical: SPACING.md }}><QrCodeMatrix value={uri} size={184} /><Text selectable accessibilityLabel="Authenticator setup key">{secret}</Text></View> : null}
+        {secret ? <View style={{ alignItems: "center", marginVertical: SPACING.md }}><QrCodeMatrix value={uri} size={184} /></View> : null}
+        <AuthenticatorSetupKey secret={secret} disabled={loading} />
         {error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{error}</Text> : null}
         {!secret && !loading ? <Button title="Retry setup" variant="secondary" onPress={() => setAttempt((value) => value + 1)} /> : null}
         <TextField label="Authenticator Code" value={code} onChangeText={(value) => { setCode(value.replace(/\D/g, "").slice(0, 6)); setError(""); }} placeholder="Enter 6-digit code" keyboardType="number-pad" maxLength={6} showKeyboardDone />

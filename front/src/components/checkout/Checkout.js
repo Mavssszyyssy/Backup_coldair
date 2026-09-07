@@ -172,15 +172,10 @@ function Checkout() {
       const normalized = (nextAddresses || []).map(normalizeAddress);
       setAddresses(normalized);
       synchronizeAddresses(normalized);
-      setSelectedAddress(
-        findBestSelectedAddress(
-          normalized,
-          currentId || selectedAddress?.id || "",
-        ),
-      );
+      setSelectedAddress((previous) => findBestSelectedAddress(normalized, currentId || previous?.id || ""));
       return normalized;
     },
-    [selectedAddress?.id, synchronizeAddresses],
+    [synchronizeAddresses],
   );
 
   const loadAddresses = useCallback(async () => {
@@ -260,9 +255,9 @@ function Checkout() {
       setStockCheckedAt(new Date().toISOString());
       return { ok: true, issues: computeStockIssues(response) };
     } catch (_error) {
-      return { ok: false, issues: stockIssues };
+      return { ok: false, issues: [] };
     }
-  }, [assignedBranch, computeStockIssues, stockIssues]);
+  }, [assignedBranch, computeStockIssues]);
 
   useEffect(() => {
     let mounted = true;

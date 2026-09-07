@@ -23,9 +23,19 @@ const capacityAssessmentLabel = (value) => {
     ? normalized.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "Not assessed");
 };
+const basisLabel = (value) => ({
+  same_model: "Same model history", same_brand_type: "Similar model type and brand history",
+  same_brand: "Same brand history", system_default: "Provisional system schedule",
+})[String(value || "").toLowerCase()] || "Recorded-service basis";
+const reviewStatusLabel = (value) => ({
+  ready_for_review: "Service outcome ready to review",
+  awaiting_visit: "Awaiting a completed cleaning visit",
+  no_matched_visit: "Replaced by a newer plan before a matching visit",
+})[value] || "Saved plan";
 
 function AmpReportCenter({
   units = [],
+  initialUnitId = "",
   title = "AC care reports",
   subtitle = "Choose an AC and the information you need. Start with its next service or review past work.",
 }) {
@@ -33,7 +43,7 @@ function AmpReportCenter({
   const reportUnits = useMemo(() => units.filter((unit) => unit?.unitId || unit?.id), [units]);
   const types = useMemo(() => REPORT_TYPES.filter((item) => !item.internalOnly || ["admin", "superadmin", "owner", "manager"].includes(user?.role)), [user?.role]);
   const [reportType, setReportType] = useState("predictive_maintenance");
-  const [unitId, setUnitId] = useState("");
+  const [unitId, setUnitId] = useState(initialUnitId);
   const [report, setReport] = useState(null);
   const [provider, setProvider] = useState("");
   const [loading, setLoading] = useState(false);
@@ -118,6 +128,12 @@ function AmpReportCenter({
         {!report.serviceHistory?.length ? <p className="amp-empty">No service history has been recorded.</p> : null}
         </details>
         {report.aggregateReliability ? <details className="amp-details" open><summary>Model and parts history</summary><p>{report.aggregateReliability.scope} · {report.aggregateReliability.unitCount} units · {report.aggregateReliability.recordedServiceCount} recorded services</p><p>{report.aggregateReliability.note}</p><ul>{(report.aggregateReliability.modelsByRecordedService || []).map(item => <li key={item.model}>{item.model}: {item.count} recorded services</li>)}</ul><ul>{(report.aggregateReliability.partsByRecordedUse || []).map(item => <li key={item.component}>{item.component}: {item.count} recorded uses</li>)}</ul></details> : null}
+        {report.predictionReview ? <details className="amp-details amp-prediction-review" open={report.predictionReview.entries?.some((entry) => entry.status === "ready_for_review")}>
+          <summary>Saved plan and service outcome review</summary>
+          <p>{report.predictionReview.note}</p>
+          {report.predictionReview.entries?.length ? <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Saved plan</th><th>Evidence at the time</th><th>Completed service outcome</th></tr></thead><tbody>{report.predictionReview.entries.map((entry) => <tr key={entry.id}><td><strong>{dateLabel(entry.suggestedDate)}</strong><span>{serviceLabel(entry.recommendedService)}</span><span className="amp-review-status">{reviewStatusLabel(entry.status)}</span></td><td><strong>{basisLabel(entry.basisLevel)}</strong><span>{entry.sampleSize} recorded interval{entry.sampleSize === 1 ? "" : "s"} · {entry.comparableUnitCount} comparable unit{entry.comparableUnitCount === 1 ? "" : "s"}</span>{entry.excludedRecordCount ? <span>{entry.excludedRecordCount} incomplete record{entry.excludedRecordCount === 1 ? "" : "s"} excluded</span> : null}</td><td>{entry.outcome ? <><strong>{dateLabel(entry.outcome.serviceDate)} · {entry.outcome.serviceLabel}</strong><span>{entry.outcome.daysFromSuggestedDate === 0 ? "Completed on the suggested date" : `${Math.abs(entry.outcome.daysFromSuggestedDate)} day${Math.abs(entry.outcome.daysFromSuggestedDate) === 1 ? "" : "s"} ${entry.outcome.daysFromSuggestedDate > 0 ? "after" : "before"} the suggested date`}</span><span>Findings: {entry.outcome.findings || "Not recorded"}</span><span>Work: {entry.outcome.actionTaken || "Not recorded"}</span></> : <span>No eligible completed cleaning has been matched to this saved plan.</span>}</td></tr>)}</tbody></table></div> : <p className="amp-empty">No saved plan is available for this unit yet. Generate a Next service plan before the visit to create one.</p>}
+        </details> : null}
+        {report.predictionReviewWarning ? <p role="status" className="amp-error">{report.predictionReviewWarning}</p> : null}
         <details className="amp-details"><summary>How was this worked out?</summary>
           <p>{maintenance.recommendationBasis}</p>
           {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
