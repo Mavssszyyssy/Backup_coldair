@@ -121,6 +121,7 @@ export function normalizeTask(item = {}) {
     taskCode: value("taskCode"),
     orderId: value("orderId"),
     orderCode: value("orderCode"),
+    codPayment: value("codPayment", null),
     items: orderItems,
     serialNumbers,
     registrationProgress: value("registrationProgress", null),
@@ -465,6 +466,14 @@ export async function checkInTask(taskId, coordinates) {
   const tasks = await getAllTasks();
   await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? checkedIn : item)));
   return checkedIn;
+}
+
+export async function confirmCodCollection(taskId) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again.");
+  const result = await api.confirmCodCollection(token, taskId);
+  if (!result.success) throw new Error(result.error);
+  return getTaskById(taskId);
 }
 
 export async function registerTaskAmpUnit(taskId, payload = {}) {

@@ -67,12 +67,13 @@ const notifyOperationalStaff = async ({
     if (!canReceive(user, type)) return false;
     if (String(user.role || "") === "superadmin" || !normalizedBranch) return true;
     const assigned = String(user.activeBranch || user.assignedBranch || "").trim();
-    return !assigned || assigned === normalizedBranch;
+    return assigned === normalizedBranch;
   });
   return Promise.all(
     recipients.map((user) =>
       createDedupedNotification({
         user: user._id,
+        branch: normalizedBranch,
         type,
         category,
         severity,

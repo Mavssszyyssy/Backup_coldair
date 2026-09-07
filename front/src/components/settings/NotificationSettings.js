@@ -19,6 +19,7 @@ function NotificationSettings({
     sms: false,
     accountUpdates: true,
     orderUpdates: true,
+    serviceUpdates: true,
     systemAlerts: true,
   });
   const [saving, setSaving] = useState(false);
@@ -29,15 +30,16 @@ function NotificationSettings({
       email: source.email !== false,
       inApp: source.inApp !== false,
       push: source.push !== false,
-      sms: source.sms || false,
+      sms: false,
       accountUpdates: source.accountUpdates !== false,
       orderUpdates: source.orderUpdates !== false,
+      serviceUpdates: source.serviceUpdates !== false,
       systemAlerts: source.systemAlerts !== false,
     });
   }, [user]);
 
   const role = String(user?.role || "customer").toLowerCase();
-  const showOrderNotifications = role === "customer";
+  const showOrderNotifications = ["customer", "admin", "superadmin"].includes(role);
   const showSystemAlerts =
     role === "admin" || role === "technician" || role === "superadmin";
 
@@ -59,11 +61,6 @@ function NotificationSettings({
         description: "Receive device alerts even when the app is not open.",
       },
       {
-        key: "sms",
-        label: "SMS Notifications",
-        description: "Receive critical updates via SMS.",
-      },
-      {
         key: "accountUpdates",
         label: "Account Updates",
         description: "Security and account-related updates.",
@@ -73,6 +70,11 @@ function NotificationSettings({
         label: "Order / Transaction Updates",
         description: "Order stage changes and transaction updates.",
         visible: showOrderNotifications,
+      },
+      {
+        key: "serviceUpdates",
+        label: "Service & Maintenance Updates",
+        description: "Service requests, warranty claims, and technician maintenance updates.",
       },
       {
         key: "systemAlerts",

@@ -126,6 +126,7 @@ export function normalizeOrder(order = {}) {
     installationDate: order.installationDate || "",
     assignedTechnician: order.assignedTechnician || "",
     receipt: order.receipt || null,
+    codCollection: order.codCollection || null,
     invoice: order.invoice || null,
     receiptAvailable: Boolean(order.receiptAvailable),
     tracking: order.tracking || { timeline: [], currentLabel: order.workflowLabel || "Order Placed" },

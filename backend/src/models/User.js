@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
     name_last: { type: String, required: true, trim: true },
     email: {
       type: String,
-      // Customers may use SMS as their only sign-up verification method.
+      // Staff and legacy accounts may not have an email; public signup requires email verification.
       required: false,
       unique: true,
       sparse: true,

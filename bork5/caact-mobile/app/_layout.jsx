@@ -1,10 +1,11 @@
 // app/_layout.jsx
 // Root layout: mounts providers that every screen needs.
-import { Stack, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { Stack, useRouter, useRootNavigationState } from "expo-router";
+import { useEffect, useRef } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { requiredSetupRoute } from "../services/accountSetupRoute";
 import { CartProvider } from "../context/CartContext";
 import BackendConnectionStatus from "../components/BackendConnectionStatus";
 import { UserProvider } from "../context/UserContext";
@@ -18,14 +19,21 @@ import {
 function PushNotificationSetup() {
   const router = useRouter();
   const { token, current } = useUserContext();
+  const navigation = useRootNavigationState();
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const setupRoute = requiredSetupRoute(current);
 
   useEffect(() => {
-    if (!token || !current?.role) return undefined;
+    if (!navigation?.key || !token || !current?.role || setupRoute) return undefined;
+    let active = true;
+    const safeRouter = { push: (route) => { if (active) routerRef.current.push(route); } };
 
     enablePushNotifications(token).catch(() => {});
-    openInitialNotification(router, current.role).catch(() => {});
-    return listenForNotificationNavigation(router, current.role);
-  }, [token, current?.role, router]);
+    openInitialNotification(safeRouter, current.role).catch(() => {});
+    const unsubscribe = listenForNotificationNavigation(safeRouter, current.role);
+    return () => { active = false; unsubscribe(); };
+  }, [token, current?.role, navigation?.key, setupRoute]);
 
   return null;
 }

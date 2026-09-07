@@ -35,6 +35,12 @@ const orderSchema = new mongoose.Schema(
       postalCode: { type: String, default: "" },
     },
     paymentMethod: { type: String, default: "cod" },
+    codCollection: {
+      collectedAt: { type: Date, default: null },
+      technicianId: { type: String, default: "" },
+      taskId: { type: String, default: "" },
+      amount: { type: Number, default: 0 },
+    },
     paymentProvider: { type: String, default: "" },
     idempotencyKey: { type: String, trim: true, index: true, sparse: true },
     stockReservationStatus: {

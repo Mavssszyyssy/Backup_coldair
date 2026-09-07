@@ -8,11 +8,7 @@ import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
 
-const statusActionMap = {
-  to_pay: { label: 'Approve Payment', action: 'approve' },
-  to_deliver: { label: 'Mark Dispatched', action: 'dispatch' },
-  to_install: { label: 'Mark Complete', action: 'complete' }
-};
+import { getOrderAction } from '../../../domain/orderActions';
 
 const ORDER_PAGE_SIZE = 10;
 const TIME_SLOT_OPTIONS = [
@@ -152,7 +148,7 @@ const getPaymentStatus = (order = {}) => {
   const status = String(order.paymentStatus || '').toLowerCase();
   const isCod = method === 'cod' || method.includes('cash on delivery');
   if (isCod) {
-    return order.workflowStatus === 'complete' ? 'Paid on delivery' : 'Payment due on delivery';
+    return order.codCollection?.collectedAt ? 'Paid on delivery' : 'Payment due on delivery';
   }
   if (status === 'paid' || status === 'verified') return 'Paid online';
   if (status === 'failed') return 'Payment failed';
@@ -343,7 +339,7 @@ const AdminOrders = ({ embedded = false }) => {
   const handleProcess = async (order, actionOverride = '') => {
     const config = actionOverride
       ? { action: actionOverride }
-      : statusActionMap[order.workflowStatus];
+      : getOrderAction(order);
     if (!config) return;
     const processingKey = `${order.id}:${config.action}`;
     const form = getFulfillmentForm(order);
@@ -514,7 +510,7 @@ const AdminOrders = ({ embedded = false }) => {
         {!loading && pendingOrders.length === 0 ? <p>No customer orders.</p> : null}
         <div className="admin-orders-list">
           {paginatedOrders.map((order) => {
-            const actionConfig = statusActionMap[order.workflowStatus];
+            const actionConfig = getOrderAction(order);
             const canCancel = ['to_pay', 'to_deliver'].includes(order.workflowStatus);
             const isPaymongoPending =
               String(order.paymentProvider || '').toLowerCase() === 'paymongo' &&
@@ -869,7 +865,7 @@ const AdminOrders = ({ embedded = false }) => {
                       <button
                         type="button"
                         className="admin-receipt-btn"
-                        onClick={() => navigate(`/receipt/${order.id}`)}
+                        onClick={() => navigate(`/receipt/${encodeURIComponent(order.id)}`)}
                       >
                         View Receipt
                       </button>

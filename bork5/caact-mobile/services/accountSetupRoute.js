@@ -1,8 +1,9 @@
 export function requiredSetupRoute(user) {
   if (!user) return null;
-  const technician = user.role === "technician";
-  if (user.security?.totpResetRequired) return technician ? "/technician/oobe/reset" : "/customer/oobe/reset";
-  if (technician && (user.isFirstLogin || !(user.technicianOnboardedAt || user.technician_onboarded_at))) return "/technician/oobe";
+  // Technician setup ends after replacing the initial password. Legacy
+  // authenticator flags must not send technicians back into customer security.
+  if (user.role === "technician") return user.isFirstLogin ? "/technician/oobe" : null;
+  if (user.security?.totpResetRequired) return "/customer/oobe/reset";
   if (user.role === "customer" && !(user.customerOnboardedAt || user.customer_onboarded_at)) return "/customer/oobe";
   return null;
 }

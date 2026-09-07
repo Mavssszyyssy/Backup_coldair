@@ -21,7 +21,7 @@ export default function BoutiqueVerifyInput({
   verified,
   onVerifiedChange,
   action, // 'register_phone' or 'register_messenger'
-  channel, // 'sms' or 'messenger'
+  channel, // Email verification
   validator, // Custom heuristic validator
   ...props
 }) {

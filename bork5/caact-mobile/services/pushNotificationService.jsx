@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 import { registerPushToken } from "./api";
-import { resolveNotificationRoute } from "./notificationService";
+import { resolveNotificationRoute } from "./notificationRouteService";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -16,7 +16,8 @@ Notifications.setNotificationHandler({
 });
 
 function getResponseRoute(response, role) {
-  const data = response?.notification?.request?.content?.data || {};
+  if (!response?.notification?.request) return null;
+  const data = response.notification.request.content?.data || {};
   return resolveNotificationRoute(
     {
       route: data.route,
@@ -65,5 +66,8 @@ export function listenForNotificationNavigation(router, role) {
 export async function openInitialNotification(router, role) {
   const response = await Notifications.getLastNotificationResponseAsync();
   const route = getResponseRoute(response, role);
-  if (route) router.push(route);
+  if (route) {
+    await Notifications.clearLastNotificationResponseAsync();
+    router.push(route);
+  }
 }

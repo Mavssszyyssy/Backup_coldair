@@ -5,6 +5,20 @@ import {
 } from "./registrationResume";
 
 describe("registration draft recovery", () => {
+  it("returns phone-only server drafts to email verification without losing addresses", () => {
+    const locations = [{ address: { city: 'Pasay City' } }];
+    const result = resolveRegistrationResumeState({
+      saved: { formData: { registrationVerificationToken: 'sms-proof', verificationChannel: 'sms', locations } },
+      serverProgress: { stepIndex: 3, formData: { email: 'customer@example.com', phoneVerified: true } },
+      sessionLoaded: true,
+    });
+    expect(result.stepIndex).toBe(1);
+    expect(result.formData.verificationChannel).toBe('email');
+    expect(result.formData.phoneVerified).toBe(false);
+    expect(result.formData.registrationVerificationToken).toBe('');
+    expect(result.formData.locations).toEqual(locations);
+  });
+
   it("clears a locally verified draft when its server session is gone", () => {
     const result = resolveRegistrationResumeState({
       saved: {

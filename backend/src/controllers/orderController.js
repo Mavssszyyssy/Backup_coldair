@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { isCodOrder, hasCodCollection } = require("../utils/codPayment");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Task = require("../models/Task");
@@ -1576,6 +1577,10 @@ const hydrateOrdersWithInventoryQrCodes = async (orders = [], options = {}) => {
       billingAddress.region,
       billingAddress.postalCode,
     ].filter(Boolean).join(", ");
+    if (isCodOrder(order)) {
+      order.paymentStatus = hasCodCollection(order) ? "paid" : "pending";
+      order.receipt = { ...(order.receipt || {}), paymentStatus: order.paymentStatus, amountPaid: hasCodCollection(order) ? Number(order.codCollection.amount || 0) : 0 };
+    }
     const paymentStatus = String(order.paymentStatus || order.receipt?.paymentStatus || "pending");
     const tracking = buildTrackingTimeline(order, task);
     order.tracking = {
@@ -2368,7 +2373,7 @@ const createOrder = async (req, res) => {
       address: normalizedAddress,
       paymentMethod,
       paymentProvider: usesOnlinePayment ? "paymongo" : "",
-      paymentStatus: usesOnlinePayment ? "pending" : "not_required",
+      paymentStatus: "pending",
       trackingNumber,
       estimatedDelivery: eta.toISOString().split("T")[0],
       estimatedArrival: eta.toISOString(),
@@ -2382,11 +2387,11 @@ const createOrder = async (req, res) => {
         paymentMethod,
         paymentProvider: usesOnlinePayment ? "paymongo" : "",
         paymentReference: "",
-        paymentStatus: usesOnlinePayment ? "pending" : "not_required",
+        paymentStatus: "pending",
         // Online orders are only paid after PayMongo verification/webhook.
         // Storing the total here made pending card/GCash orders look paid in
         // receipts even though no money had been confirmed.
-        amountPaid: usesOnlinePayment ? 0 : normalizedTotal,
+        amountPaid: 0,
         subtotalAmount: normalizedSubtotal,
         vatAmount: normalizedVat,
         shippingFee: normalizedShipping,
@@ -2398,7 +2403,7 @@ const createOrder = async (req, res) => {
       shippingFee: normalizedShipping,
       discountAmount: normalizedDiscount,
       totalAmount: normalizedTotal,
-      workflowStatus: "to_pay",
+      workflowStatus: deferStockUntilDispatch ? "to_deliver" : "to_pay",
       status: "pending",
       stockReservationStatus: deferStockUntilDispatch ? "pending" : "reserved",
       fulfillmentTimeline: [
@@ -2469,7 +2474,7 @@ const createOrder = async (req, res) => {
           title: "Order received",
           message: usesOnlinePayment
             ? `Your order ${order.orderCode} has been received. Complete your PayMongo payment to continue processing.`
-            : `Your order ${order.orderCode} has been received and is now pending approval. You can track its status in My Orders.`,
+            : `Your order ${order.orderCode} has been received and is awaiting dispatch. Payment will be collected on delivery. You can track its status in My Orders.`,
         });
         await notifyBranchAdminsForOrder(order);
 
@@ -2575,7 +2580,9 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
       `Order ${order.orderCode} is already ${workflowLabel(order.workflowStatus)} and cannot be changed.`,
     );
   }
-  if (!config.from.includes(order.workflowStatus)) {
+  const isCod = isCodOrder(order);
+  if (isCod && action === "approve") throw new HttpError(409, "COD orders do not require payment approval. Use Mark Dispatched; the technician confirms cash collection after GPS check-in.");
+  if (!config.from.includes(order.workflowStatus) && !(isCod && action === "dispatch" && order.workflowStatus === "to_pay")) {
     throw new HttpError(
       409,
       `Cannot ${action} order ${order.orderCode} while it is ${workflowLabel(order.workflowStatus)}.`,
@@ -2592,6 +2599,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
     );
   }
   if (action === "complete") {
+    if (isCod && !hasCodCollection(order)) throw new HttpError(409, "The assigned technician must confirm cash collection before completing this COD order.");
     const linkedTask = await findLinkedTaskForOrder(order);
     const proof = linkedTask?.proof || linkedTask?.payload?.proof || {};
     const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) =>
@@ -2629,7 +2637,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   }
 
   order.workflowStatus = config.to;
-  order.status = config.status;
+  order.status = isCod && action !== "cancel" ? (hasCodCollection(order) ? "paid" : "pending") : config.status;
   order.deliveryStatus = config.deliveryStatus || order.deliveryStatus;
   if (action === "approve") {
     appendFulfillmentEvent(order, "confirmed", "Order approved");
@@ -3018,7 +3026,7 @@ const recoverOrder = async (req, res) => {
     const installedUnits = await syncInstalledUnitsFromTask(linkedTask);
     await updateSerialUnitsForOrder(order, "complete");
     order.workflowStatus = "complete";
-    order.status = "paid";
+    order.status = isCodOrder(order) && !hasCodCollection(order) ? "pending" : "paid";
     order.stockReservationStatus = "consumed";
     order.stockReleasedAt = null;
     await order.save();

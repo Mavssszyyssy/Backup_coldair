@@ -168,10 +168,14 @@ const findLinkedOrderForTask = async (task) => {
   return Order.findOne({ $or: conditions });
 };
 
+const { isCodOrder, hasCodCollection, codCollectionBlocker } = require("../utils/codPayment");
 const getOrderCompletionBlocker = async (task) => {
   const order = await findLinkedOrderForTask(task);
   if (!order || order.workflowStatus === "complete") return null;
-  if (order.workflowStatus === "to_install") return null;
+  if (order.workflowStatus === "to_install") {
+    if (isCodOrder(order) && !hasCodCollection(order)) return "Confirm cash collection after GPS check-in before completing this COD order.";
+    return null;
+  }
   return `Order ${order.orderCode} must be marked dispatched by an admin before the installation can be completed.`;
 };
 
@@ -503,7 +507,7 @@ const syncOrderWorkflowForTask = async (task, status) => {
   await ensureInstalledCustomerUnitsForTask(task);
   await updateSerialUnitsForOrderWorkflow(order, "complete");
   order.workflowStatus = "complete";
-  order.status = "paid";
+  order.status = isCodOrder(order) && !hasCodCollection(order) ? "pending" : "paid";
   order.deliveryStatus = "completed";
   order.stockReservationStatus = "consumed";
   if (!order.assignedTechnician && task.assignedTechnicianName) {
@@ -1142,7 +1146,9 @@ const getTaskById = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
     const unit = await getTaskUnitSummary(task);
-    return res.json({ task: { ...hydrateTaskResponse(task), unit } });
+    const order = await findLinkedOrderForTask(task);
+    const codPayment = order && isCodOrder(order) ? { amount: order.totalAmount, collectedAt: order.codCollection?.collectedAt || null } : null;
+    return res.json({ task: { ...hydrateTaskResponse(task), unit, codPayment } });
   } catch (error) {
     console.error("Failed to fetch task:", error);
     return res.status(500).json({ message: "Unable to fetch task right now." });
@@ -1159,6 +1165,43 @@ const acceptTask = async (req, res) => {
   } catch (error) {
     console.error("Failed to accept task:", error);
     return res.status(500).json({ message: "Unable to accept task right now." });
+  }
+};
+
+const confirmCodCollection = async (req, res) => {
+  try {
+    if (req.authUser.role !== "technician") return res.status(403).json({ message: "Forbidden" });
+    if (req.body?.confirmed !== true) return res.status(400).json({ message: "Confirm that you received the full cash payment." });
+    const task = await findTaskForRequest(req.params.taskId, req);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    const order = await findLinkedOrderForTask(task);
+    const technicianId = String(req.authUser._id);
+    const blocker = codCollectionBlocker(order, task, technicianId);
+    if (blocker) return res.status(409).json({ message: blocker });
+    if (!hasVerifiedTaskCheckIn(task)) return res.status(409).json({ message: "A verified GPS check-in is required." });
+    const collectedAt = order.codCollection?.collectedAt || new Date();
+    // Conditional write makes retries safe and preserves the original collector.
+    await Order.updateOne({
+      _id: order._id, assignedTechnicianId: technicianId, workflowStatus: "to_install",
+      "codCollection.collectedAt": null,
+    }, { $set: {
+      codCollection: { collectedAt, technicianId, taskId: String(task._id), amount: order.totalAmount },
+      paymentStatus: "paid", status: "paid",
+      "receipt.paymentStatus": "paid", "receipt.amountPaid": order.totalAmount,
+      "receipt.paymentReference": "COD-" + order.orderCode,
+    } });
+    const saved = await findLinkedOrderForTask(task);
+    if (!hasCodCollection(saved)) return res.status(409).json({ message: "Order changed. Refresh this work order before confirming payment." });
+    await notifyOperationalStaff({
+      branch: order.stockSourceBranch || order.customerBranch || "",
+      title: "COD payment collected", message: "The assigned technician confirmed cash collection for " + order.orderCode + ".",
+      type: "payment", category: "orderUpdates", targetType: "order", targetId: String(order._id),
+      dedupeKey: "cod-collected:" + order._id,
+    });
+    return res.json({ task: { ...hydrateTaskResponse(task), codPayment: { amount: saved.totalAmount, collectedAt: saved.codCollection.collectedAt } } });
+  } catch (error) {
+    console.error("Failed to confirm COD collection:", error);
+    return res.status(500).json({ message: "Unable to confirm cash collection. Refresh and try again." });
   }
 };
 
@@ -1657,6 +1700,7 @@ module.exports = {
   getTaskById,
   acceptTask,
   checkInTask,
+  confirmCodCollection,
   getRegistrationContextBySerial,
   getTechnicianUnitHistoryBySerial,
   registerAmpUnit,

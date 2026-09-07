@@ -292,7 +292,7 @@ function AppContent() {
         <Route
           path="/receipt/:orderId"
           element={
-            <RoleRoute allowedRoles={["customer"]}>
+            <RoleRoute allowedRoles={["customer", "admin", "superadmin"]}>
               <ReceiptView />
             </RoleRoute>
           }

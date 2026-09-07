@@ -24,6 +24,10 @@ router.post(
 );
 
 router.use(requireAuthNoBranch);
+router.use((req, res, next) => {
+  if (req.authUser.role === "technician") return res.status(403).json({ message: "Technicians sign in with their username and password. Authenticator setup is not available." });
+  return next();
+});
 router.get("/status", getSecurityStatus);
 router.get("/recovery-codes", listRecoveryCodes);
 router.post("/recovery-codes/regenerate", regenerateRecoveryCodes);

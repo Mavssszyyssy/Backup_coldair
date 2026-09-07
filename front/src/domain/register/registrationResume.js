@@ -41,10 +41,12 @@ export const resolveRegistrationResumeState = ({
         ...(localForm || {}),
         ...serverForm,
         emailVerified: Boolean(serverForm.emailVerified),
-        phoneVerified: Boolean(serverForm.phoneVerified),
+        phoneVerified: false,
+        verificationChannel: "email",
+        registrationVerificationToken: serverForm.emailVerified ? (serverForm.registrationVerificationToken || (localForm?.verificationChannel !== "sms" ? localForm?.registrationVerificationToken : "") || "") : "",
         locations: serverForm.locations || localForm?.locations || [],
       },
-      stepIndex: clampStep(serverProgress.stepIndex),
+      stepIndex: serverForm.emailVerified ? clampStep(serverProgress.stepIndex) : Math.min(1, clampStep(serverProgress.stepIndex)),
       discardLocalDraft: false,
     };
   }
@@ -64,9 +66,11 @@ export const resolveRegistrationResumeState = ({
 
   return {
     formData: localForm
-      ? { ...initial, ...localForm, locations: localForm.locations || [] }
+      ? { ...initial, ...localForm, verificationChannel: "email", phoneVerified: false,
+          registrationVerificationToken: localForm.verificationChannel === "sms" ? "" : (localForm.registrationVerificationToken || ""),
+          locations: localForm.locations || [] }
       : initial,
-    stepIndex: localForm ? clampStep(saved.stepIndex) : 0,
+    stepIndex: localForm ? (localForm.emailVerified ? clampStep(saved.stepIndex) : Math.min(1, clampStep(saved.stepIndex))) : 0,
     discardLocalDraft: false,
   };
 };

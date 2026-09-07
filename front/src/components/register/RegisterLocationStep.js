@@ -2,14 +2,10 @@ import {
   ArrowLeft,
   ArrowRight,
   MapPin,
-  NavigationArrow,
   Plus,
-  Spinner,
   Trash,
-  WarningDiamond,
 } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
-import { captureSignupPosition } from "../../domain/location/signupGps";
+import { useState } from "react";
 import {
   getBarangaysByCity,
   getCitiesByProvince,
@@ -55,11 +51,7 @@ export default function RegisterLocationStep({
 
   const [showAddForm, setShowAddForm] = useState(locations.length === 0);
   const [currentLoc, setCurrentLoc] = useState({ ...INITIAL_LOCATION });
-  const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState("");
-  const [gpsMessage, setGpsMessage] = useState("");
-  const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const regions = getRegions();
   const provinces = getProvincesByRegion(currentLoc.address.region);
@@ -89,23 +81,6 @@ export default function RegisterLocationStep({
       updated.address.barangay = "";
     }
     setCurrentLoc(updated);
-  };
-
-  const captureGps = async () => {
-    if (isCapturing) return;
-    setIsCapturing(true);
-    setError("");
-    setGpsMessage("");
-    try {
-      const captured = await captureSignupPosition();
-      if (!mounted.current) return;
-      setCurrentLoc((previous) => ({ ...previous, coordinates: captured.coordinates, source: captured.source, address: captured.address || previous.address }));
-      setGpsMessage(captured.message);
-    } catch (failure) {
-      if (mounted.current) setError(failure.message);
-    } finally {
-      if (mounted.current) setIsCapturing(false);
-    }
   };
 
   const addLocation = () => {
@@ -138,7 +113,7 @@ export default function RegisterLocationStep({
           className="bq-flow-title"
           style={{ letterSpacing: "-0.02em" }}
         >
-          Facility Hub
+          Save Location
         </BoutiqueText>
         <BoutiqueText
           variant="body"
@@ -148,7 +123,7 @@ export default function RegisterLocationStep({
           weight={500}
           style={{ opacity: 0.8 }}
         >
-          Register one or more locations for optimized service logistics.
+          Add a delivery address now, or skip this step and add it later.
         </BoutiqueText>
       </BoutiqueBox>
 
@@ -210,7 +185,7 @@ export default function RegisterLocationStep({
               className="bq-add-another-btn"
               onClick={() => setShowAddForm(true)}
             >
-              <Plus size={16} weight="bold" /> Add Another Facility
+              <Plus size={16} weight="bold" /> Add Another Location
             </button>
           )}
         </BoutiqueStack>
@@ -228,70 +203,7 @@ export default function RegisterLocationStep({
             border: `1.5px solid ${BQ_COLORS.border}`,
           }}
         >
-          <BoutiqueBox
-            padding={20}
-            background="white"
-            className="bq-gps-hub"
-            style={{
-              border: `1px solid ${BQ_COLORS.border}`,
-              borderRadius: "16px",
-              boxShadow: BQ_SHADOWS.soft,
-            }}
-          >
-            <BoutiqueBox
-              direction="row"
-              align="center"
-              justify="space-between"
-              className="bq-hub-content"
-            >
-              <BoutiqueBox className="bq-hub-text">
-                <BoutiqueText
-                  variant="label"
-                  color={BQ_COLORS.accent}
-                  className="bq-hub-label"
-                >
-                  Technical Assist
-                </BoutiqueText>
-                <BoutiqueText
-                  variant="h3"
-                  className="bq-hub-value"
-                  margin="4px 0 0"
-                >
-                  GPS Auto-Capture
-                </BoutiqueText>
-              </BoutiqueBox>
-              <BoutiqueButton
-                type="button"
-                variant={currentLoc.source === "gps" ? "outline" : "primary"}
-                size="sm"
-                onClick={captureGps}
-                disabled={isCapturing}
-              >
-                {isCapturing ? (
-                  <Spinner className="bq-spin" size={16} />
-                ) : (
-                  <NavigationArrow size={16} weight="bold" />
-                )}
-                {isCapturing ? "Acquiring..." : "Sync Position"}
-              </BoutiqueButton>
-            </BoutiqueBox>
-            {gpsMessage && <p role="status">{gpsMessage}</p>}
-            {error && (
-              <BoutiqueBox
-                direction="row"
-                align="center"
-                gap={6}
-                margin="12px 0 0"
-                className="bq-hub-error"
-              >
-                <WarningDiamond size={14} weight="bold" />
-                <BoutiqueText size="12px" weight={700} color={BQ_COLORS.danger}>
-                  {error}
-                </BoutiqueText>
-              </BoutiqueBox>
-            )}
-          </BoutiqueBox>
-
+          {error && <p role="alert" style={{ color: BQ_COLORS.danger }}>{error}</p>}
           <BoutiqueGrid columns="1fr 1fr" gap={20} className="bq-address-grid">
             <BoutiqueInput
               label="Region"
@@ -355,7 +267,7 @@ export default function RegisterLocationStep({
               Cancel
             </BoutiqueButton>
             <BoutiqueButton type="button" size="sm" onClick={addLocation}>
-              Save Facility
+              Save Location
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>

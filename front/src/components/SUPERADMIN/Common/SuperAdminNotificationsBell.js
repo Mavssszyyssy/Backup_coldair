@@ -1,3 +1,4 @@
+import { operationalAlertRoute } from '../../../domain/operationalAlerts';
 import { Bell } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import { apiRequest } from '../../../config/api';
 
 const routeForNotification = (item = {}) => {
   if (String(item.route || '').startsWith('/superadmin/')) return item.route;
+  if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "superadmin");
   const targetType = String(item.targetType || item.category || '').toLowerCase();
   if (['amp_pipeline', 'maintenance_pipeline'].includes(targetType)) return '/manager/amp';
   if (['contact', 'contact_message'].includes(targetType)) return '/superadmin/services?tab=customer-messages';

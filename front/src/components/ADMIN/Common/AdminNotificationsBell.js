@@ -1,3 +1,4 @@
+import { operationalAlertRoute } from "../../../domain/operationalAlerts";
 import { Bell } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +40,7 @@ const resolveNotificationRoute = (item = {}) => {
   if (String(item.route || "").startsWith("/admin/")) {
     return adminRouteAliases[item.route] || item.route;
   }
+  if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "admin");
   const targetType = String(item.targetType || item.category || "").toLowerCase();
   if (["amp_pipeline", "maintenance_pipeline"].includes(targetType)) return "/manager/amp";
   if (["contact", "contact_message"].includes(targetType)) return "/admin/services?tab=customer-messages";

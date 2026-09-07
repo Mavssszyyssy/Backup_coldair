@@ -422,6 +422,17 @@ export function UserProvider({ children }) {
     }
   };
 
+  const changeMyPassword = async (payload) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.changeAccountPassword(token, payload);
+      if (result.success && result.user) setCurrent(normalizeUser(result.user));
+      return result;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to change your password." };
+    }
+  };
+
   const completeTechnicianOnboarding = async (payload) => {
     if (!token) return { success: false, error: "Please sign in again." };
     try {
@@ -500,7 +511,7 @@ export function UserProvider({ children }) {
     const normalized = normalizeUser(user);
     const setupRoute = requiredSetupRoute(normalized);
     if (setupRoute) return setupRoute;
-    if (normalized.security?.totpResetRequired) {
+    if (normalized.role !== "technician" && normalized.security?.totpResetRequired) {
       return normalized.role === "technician"
         ? "/technician/oobe/reset"
         : "/customer/oobe/reset";
@@ -511,7 +522,6 @@ export function UserProvider({ children }) {
     if (!MOBILE_ACCOUNT_ROLES.includes(normalized.role)) return "/manager";
     switch (normalized.role) {
       case "technician":
-        if (!normalized.technicianOnboardedAt) return "/technician/oobe";
         return "/technician";
       default:
         if (!normalized.customerOnboardedAt) return "/customer/oobe";
@@ -544,6 +554,7 @@ export function UserProvider({ children }) {
       refreshCurrentUser,
       updateMyAccount,
       completeTechnicianOnboarding,
+      changeMyPassword,
       saveDeliveryAddress,
       deleteDeliveryAddress,
       makeDefaultDeliveryAddress,

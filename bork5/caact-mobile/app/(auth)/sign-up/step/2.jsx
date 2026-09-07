@@ -3,9 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,7 +13,7 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
-import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
+import { COLORS, FONT, SPACING } from "../../../../constants/theme";
 import { useUserContext } from "../../../../context/UserContext";
 import {
   requestVerificationOtp,
@@ -42,8 +40,7 @@ export default function SignUpStep2() {
   const params = useLocalSearchParams();
   const { register } = useUserContext();
 
-  const [contactMethod, setContactMethod] = useState("email");
-  const [mobileNumber, setMobileNumber] = useState("");
+  const contactMethod = "email";
   const [codeSent, setCodeSent] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeExpiresAt, setCodeExpiresAt] = useState(0);
@@ -65,9 +62,9 @@ export default function SignUpStep2() {
   const codeExpiryCountdown =
     codeExpiresAt > now ? formatSeconds(codeExpiresAt - now) : 0;
   const blockCountdown = blockUntil > now ? formatSeconds(blockUntil - now) : 0;
-  const phoneForApi = contactMethod === "sms" ? `+63${mobileNumber}` : "";
-  const otpAction = contactMethod === "sms" ? "register_phone" : "register_email";
-  const otpChannel = contactMethod === "sms" ? "sms" : "email";
+  const phoneForApi = "";
+  const otpAction = "register_email";
+  const otpChannel = "email";
   const addressStreet = [
     readParam(params.apartmentUnit).trim(),
     readParam(params.propertyBlockLot).trim(),
@@ -95,7 +92,7 @@ export default function SignUpStep2() {
         street: addressStreet,
         postalCode: "",
       },
-      source: readParam(params.plusCode).trim() ? "gps" : "manual",
+      source: "manual",
     }),
     [addressStreet, params],
   );
@@ -126,20 +123,11 @@ export default function SignUpStep2() {
     }),
     [
       contactMethod,
-      mobileNumber,
       params,
       phoneForApi,
       primaryLocation,
     ],
   );
-
-  const resetVerificationSession = () => {
-    setCodeSent(false);
-    setCodeInput("");
-    setCodeExpiresAt(0);
-    setResendAvailableAt(0);
-    setErrors((prev) => ({ ...prev, code: "" }));
-  };
 
   const clearContactErrors = () => {
     setErrors((prev) => ({ ...prev, mobile: "", code: "" }));
@@ -148,12 +136,8 @@ export default function SignUpStep2() {
   const validateContactMethod = () => {
     const nextErrors = {};
 
-    if (contactMethod === "sms") {
-      if (!mobileNumber.trim()) {
-        nextErrors.mobile = "Mobile number is required.";
-      } else if (!/^9\d{9}$/.test(mobileNumber.trim())) {
-        nextErrors.mobile = "Enter a valid PH mobile number beginning with 9 after +63.";
-      }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrationPayload.email)) {
+      nextErrors.code = "Go back and enter a valid email address.";
     }
 
     setErrors((prev) => ({ ...prev, ...nextErrors }));
@@ -337,7 +321,7 @@ export default function SignUpStep2() {
       >
         <PageHeader
           title="Create Account"
-          subtitle="Step 3 of 3: Contact Verification"
+          subtitle="Step 3 of 3: Email Verification"
           color={COLORS.primary}
           onBack={() => router.back()}
         />
@@ -351,186 +335,11 @@ export default function SignUpStep2() {
               marginBottom: SPACING.sm,
             }}
           >
-            Choose Verification Method
+            Verify your email
           </Text>
-
-          <TouchableOpacity
-            onPress={() => {
-              setContactMethod("email");
-              resetVerificationSession();
-              clearContactErrors();
-            }}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: SPACING.sm,
-              paddingHorizontal: SPACING.md,
-              backgroundColor:
-                contactMethod === "email"
-                  ? COLORS.primaryLight
-                  : "transparent",
-              borderRadius: 8,
-              marginBottom: SPACING.xs,
-            }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor:
-                  contactMethod === "email" ? COLORS.primary : COLORS.border,
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: SPACING.sm,
-              }}
-            >
-              {contactMethod === "email" ? (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: COLORS.primary,
-                  }}
-                />
-              ) : null}
-            </View>
-            <Text style={{ color: COLORS.textPrimary }}>
-              Email ({readParam(params.email).trim() || "your registered email"})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              setContactMethod("sms");
-              resetVerificationSession();
-              clearContactErrors();
-            }}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: SPACING.sm,
-              paddingHorizontal: SPACING.md,
-              backgroundColor:
-                contactMethod === "sms"
-                  ? COLORS.primaryLight
-                  : "transparent",
-              borderRadius: 8,
-            }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor:
-                  contactMethod === "sms"
-                    ? COLORS.primary
-                    : COLORS.border,
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: SPACING.sm,
-              }}
-            >
-              {contactMethod === "sms" ? (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: COLORS.primary,
-                  }}
-                />
-              ) : null}
-            </View>
-            <Text style={{ color: COLORS.textPrimary }}>
-              SMS to mobile number
-            </Text>
-          </TouchableOpacity>
-        </Card>
-
-        <Card>
-          {contactMethod === "sms" ? (
-            <View style={{ marginBottom: SPACING.sm + 6 }}>
-              <Text
-                style={{
-                  fontSize: FONT.base,
-                  color: COLORS.textPrimary,
-                  fontWeight: "600",
-                  marginBottom: SPACING.xs + 2,
-                }}
-              >
-                Mobile Number
-              </Text>
-              <View
-                style={{
-                  backgroundColor: COLORS.surface,
-                  borderRadius: RADIUS.md,
-                  borderWidth: 1,
-                  borderColor: errors.mobile
-                    ? COLORS.danger
-                    : COLORS.borderInput,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingHorizontal: SPACING.md - 2,
-                  paddingVertical: SPACING.md - 2,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: FONT.base,
-                    color: COLORS.textPrimary,
-                    fontWeight: "600",
-                    marginRight: SPACING.xs,
-                  }}
-                >
-                  +63
-                </Text>
-                <TextInput
-                  value={mobileNumber}
-                  onChangeText={(value) => {
-                    setMobileNumber(value.replace(/\D/g, "").slice(0, 10));
-                    resetVerificationSession();
-                    setErrors((prev) => ({ ...prev, mobile: "" }));
-                  }}
-                  placeholder="9123456789"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="number-pad"
-                  style={{
-                    flex: 1,
-                    fontSize: FONT.base,
-                    color: COLORS.textPrimary,
-                  }}
-                  maxLength={10}
-                />
-              </View>
-              {errors.mobile ? (
-                <Text
-                  style={{
-                    color: COLORS.danger,
-                    marginTop: SPACING.xs,
-                    fontSize: FONT.sm,
-                  }}
-                >
-                  {errors.mobile}
-                </Text>
-              ) : null}
-            </View>
-          ) : (
-            <Text
-              style={{
-                color: COLORS.textSecondary,
-                marginBottom: SPACING.sm,
-              }}
-            >
-              A verification code will be sent to {readParam(params.email).trim() || "your registered email"}.
-            </Text>
-          )}
+          <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>
+            A verification code will be sent to {registrationPayload.email || "your email address"}.
+          </Text>
 
           <Button
             title={
@@ -547,7 +356,7 @@ export default function SignUpStep2() {
           />
         </Card>
 
-        {codeSent ? <Card><Text style={{ color: COLORS.textSecondary }}>Code sent by {contactMethod === "sms" ? `SMS to +63${mobileNumber}` : `email to ${readParam(params.email).trim()}`}. It expires in {codeExpiryCountdown}s.</Text></Card> : null}
+        {codeSent ? <Card><Text style={{ color: COLORS.textSecondary }}>Code sent by {`email to ${registrationPayload.email}`}. It expires in {codeExpiryCountdown}s.</Text></Card> : null}
 
         {isBlocked ? (
           <Card

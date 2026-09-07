@@ -116,6 +116,7 @@ function deliveryStatusLabel(order = {}) {
 function paymentStatusLabel(order = {}) {
   const status = String(order.paymentStatus || "").toLowerCase();
   const method = String(order.paymentMethod || "").toLowerCase();
+  if (method === "cod") return order.codCollection?.collectedAt ? "Paid on delivery" : "Payment due on delivery";
   if (status === "not_required") {
     if (method === "cod") return "Cash on delivery";
     if (["pay_on_installation", "pay-on-installation", "poi"].includes(method)) return "Pay on installation";

@@ -420,6 +420,12 @@ export async function verifyLoginTotp(challengeToken, code) {
   };
 }
 
+export async function changeAccountPassword(token, payload) {
+  const { ok, data } = await patch("/users/password", payload, token);
+  return ok ? { success: true, user: data.user, message: data.message }
+    : { success: false, error: getErrorMessage(data, "Unable to change your password.") };
+}
+
 export async function completeTechnicianOnboarding(token, payload) {
   const { ok, data } = await patch("/users/password", payload, token);
   if (ok) {
@@ -669,6 +675,11 @@ export async function checkInTask(token, taskId, coordinates) {
   );
   if (ok) return { success: true, task: data.task, checkIn: data.checkIn };
   return { success: false, error: getErrorMessage(data, "Unable to check in to this work order.") };
+}
+
+export async function confirmCodCollection(token, taskId) {
+  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/cod-collection`, { confirmed: true }, token);
+  return ok ? { success: true, task: data.task } : { success: false, error: getErrorMessage(data, "Unable to confirm cash collection.") };
 }
 
 export async function createMyServiceRequest(token, payload) {

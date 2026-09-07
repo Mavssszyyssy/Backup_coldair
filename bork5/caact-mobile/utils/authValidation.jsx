@@ -110,6 +110,15 @@ export function validateConfirmPassword(password, confirmPassword) {
   return "";
 }
 
+// Account password changes use the backend's stronger policy, unlike sign-in
+// and legacy initial credentials which must continue to be accepted as-is.
+export function validateAccountPassword(password) {
+  return validatePassword(password) ||
+    (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,25}$/.test(password)
+      ? "Use 8–25 characters with uppercase, lowercase, a number, and a special character: @ $ ! % * ? &."
+      : "");
+}
+
 export function validateLoginForm({ email, password }) {
   const errors = {};
 

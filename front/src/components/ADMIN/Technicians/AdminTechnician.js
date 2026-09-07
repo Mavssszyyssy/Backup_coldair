@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
+import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
 import "../adminShared.css";
 import "./styles.css";
 
 const PAGE_SIZE = 8;
-const TIME_SLOTS = ["8:00 AM – 10:00 AM", "10:00 AM – 12:00 PM", "1:00 PM – 3:00 PM", "3:00 PM – 5:00 PM"];
 const today = () => formatBusinessDateKey();
 const displayName = (person = {}) =>
   person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.username || person.alias || person.email || "Technician";

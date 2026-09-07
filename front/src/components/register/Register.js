@@ -121,12 +121,11 @@ export default function Register() {
   // HARD SESSION CLEAR
   const clearRegistrationSession = async () => {
     const hasVerifiedData =
-      formData.emailVerified ||
-      formData.phoneVerified;
+      formData.emailVerified;
 
     if (hasVerifiedData) {
       const confirmed = window.confirm(
-        "You have successfully verified one or more contact methods. Are you sure you want to cancel? All progress will be lost.",
+        "You have successfully verified your email. Are you sure you want to cancel? All progress will be lost.",
       );
       if (!confirmed) return;
     }
@@ -169,7 +168,7 @@ export default function Register() {
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        contact_method: formData.verificationChannel,
+        contact_method: "email",
         locations: formData.locations,
         registrationVerificationToken: formData.registrationVerificationToken,
       };

@@ -39,9 +39,7 @@ const receiptDetails = (order = {}) => {
   const rawMethod = order.paymentMethod || order.receipt?.paymentProvider || order.paymentProvider || "";
   const normalizedMethod = String(rawMethod).toLowerCase();
   const isCod = normalizedMethod === "cod" || normalizedMethod.includes("cash on delivery");
-  const orderComplete = ["complete", "completed", "released"].includes(
-    String(order.workflowStatus || order.status || "").toLowerCase(),
-  );
+  const orderComplete = Boolean(order.codCollection?.collectedAt);
 
   return {
     receiptNumber: order.invoice?.invoiceNumber || order.receipt?.receiptNumber || order.orderCode || order.id,

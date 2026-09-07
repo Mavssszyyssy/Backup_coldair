@@ -34,8 +34,7 @@ const OTP_MAX_REQUESTS_PER_WINDOW = Math.max(2, Math.min(10, Number(env.otpMaxRe
 const OTP_MAX_ATTEMPTS = Math.max(3, Math.min(10, Number(env.otpMaxAttempts || 5)));
 const OTP_ACTION_CHANNELS = {
   register_email: ["email"],
-  register_phone: ["sms"],
-  password_reset: ["email", "sms"],
+  password_reset: ["email"],
 };
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
@@ -62,83 +61,12 @@ const signRegistrationVerificationToken = ({ email = "", phone = "" }) =>
     { expiresIn: `${OTP_TTL_MINUTES}m` },
   );
 
-const toInternationalFormat = (phone = "") => {
-  const digits = String(phone).replace(/\D/g, "");
-  if (digits.startsWith("09") && digits.length === 11) {
-    return `639${digits.slice(2)}`;
-  }
-  return digits;
-};
-
-const infobipBaseUrl = () =>
-  String(env.infobipBaseUrl || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/+$/, "");
-
-const sendSmsViaInfobip = async ({ recipient, message }) => {
-  const baseUrl = infobipBaseUrl();
-  const sender = String(env.infobipSender || "").trim();
-  const destination = toInternationalFormat(recipient);
-
-  if (!env.infobipApiKey || !baseUrl || !sender) {
-    throw new Error("SMS verification is temporarily unavailable.");
-  }
-  if (!/^\d{8,15}$/.test(destination)) {
-    throw new Error("Enter a valid mobile number, including the country code.");
-  }
-
-  let response;
-  try {
-    response = await fetch(`https://${baseUrl}/sms/3/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `App ${env.infobipApiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            sender,
-            destinations: [{ to: destination }],
-            content: { text: message },
-          },
-        ],
-      }),
-    });
-  } catch (error) {
-    throw new Error(`SMS provider could not be reached: ${error.message}`);
-  }
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = data?.requestError?.serviceException?.text || data?.message || "Infobip rejected the SMS request.";
-    console.error("[INFOBIP] SMS dispatch failed", {
-      status: response.status,
-      detail,
-      destination,
-    });
-    throw new Error(`SMS could not be sent: ${detail}`);
-  }
-
-  const accepted = data?.messages?.[0] || {};
-  console.log("[INFOBIP] SMS accepted", {
-    messageId: accepted.messageId || "",
-    to: destination,
-    status: accepted.status?.name || "PENDING",
-  });
-  return accepted;
-};
-
 const hashValue = (value = "") =>
   crypto.createHash("sha256").update(String(value)).digest("hex");
 const isOtpExpired = (otp) =>
   !otp || !otp.expiresAt || otp.expiresAt.getTime() < Date.now();
 
 const sendOtpMessage = async ({ recipient, channel, action, code }) => {
-  const message = `Your AeroPulse ${action.replace("_", " ")} code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`;
-
   if (channel === "email") {
     if (!canSendEmail()) {
       throw new Error("Email verification is temporarily unavailable.");
@@ -152,12 +80,7 @@ const sendOtpMessage = async ({ recipient, channel, action, code }) => {
     return;
   }
 
-  if (channel === "sms") {
-    await sendSmsViaInfobip({ recipient, message });
-    return;
-  }
-
-  throw new Error("Only SMS or email OTP delivery is supported.");
+  throw new Error("Only email OTP delivery is supported.");
 };
 
 /**
@@ -171,12 +94,13 @@ const createOtpRequest = async ({
   channel,
   metadata = {},
 }) => {
+  if (!OTP_ACTION_CHANNELS[action]?.includes(channel) || !isValidEmail(email)) {
+    const error = new Error("A supported email verification request is required.");
+    error.status = 400;
+    throw error;
+  }
   const normalizedEmail = normalizeEmail(email);
-  const normalizedPhone = canonicalizePhMobile(phone);
-  const normalizedMessenger = String(messenger_handle || "").trim();
-  const targetQuery = { action, channel };
-  if (channel === "email") targetQuery.email = normalizedEmail;
-  if (channel === "sms") targetQuery.phone = normalizedPhone;
+  const targetQuery = { action, channel, email: normalizedEmail };
   const now = new Date();
   const latest = await OtpRequest.findOne(targetQuery).sort({ requestedAt: -1 });
   if (latest?.requestedAt) {
@@ -203,8 +127,8 @@ const createOtpRequest = async ({
   const expiresAt = new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000);
 
   const otpRequest = await OtpRequest.create({
-    email: channel === "email" ? normalizedEmail : "",
-    phone: channel === "sms" ? normalizedPhone : "",
+    email: normalizedEmail,
+    phone: "",
     messenger_handle: "",
     action,
     channel,
@@ -216,7 +140,7 @@ const createOtpRequest = async ({
 
   try {
     await sendOtpMessage({
-      recipient: channel === "email" ? normalizedEmail : normalizedPhone,
+      recipient: normalizedEmail,
       channel,
       action,
       code,
@@ -236,9 +160,8 @@ const findOtpRequest = async ({
   action,
   channel,
 }) => {
-  const query = { action, channel, verifiedAt: null };
-  if (channel === "email") query.email = normalizeEmail(email);
-  if (channel === "sms") query.phone = canonicalizePhMobile(phone);
+  if (!OTP_ACTION_CHANNELS[action]?.includes(channel) || !isValidEmail(email)) return null;
+  const query = { action, channel, verifiedAt: null, email: normalizeEmail(email) };
   return OtpRequest.findOne(query).sort({ createdAt: -1 });
 };
 
@@ -285,8 +208,8 @@ const requestOtp = async (req, res) => {
       .status(400)
       .json({ message: "Action and channel are required." });
   }
-  if (!["email", "sms"].includes(channel)) {
-    return res.status(400).json({ message: "Choose SMS or email verification." });
+  if (channel !== "email") {
+    return res.status(400).json({ message: "Use email verification." });
   }
   if (!OTP_ACTION_CHANNELS[action]?.includes(channel)) {
     return res.status(400).json({ message: "This verification request is not supported." });
@@ -294,33 +217,17 @@ const requestOtp = async (req, res) => {
   if (channel === "email" && !isValidEmail(email)) {
     return res.status(400).json({ message: "A valid email address is required for email verification." });
   }
-  if (channel === "sms" && !/^09\d{9}$/.test(canonicalizePhMobile(phone))) {
-    return res.status(400).json({ message: "Enter a valid 11-digit Philippine mobile number for SMS verification." });
-  }
 
   // 1. Validation for specific actions
   if (action === "register_email" && !email) {
     return res.status(400).json({ message: "Email required." });
   }
-  if (action === "register_phone" && !phone) {
-    return res.status(400).json({ message: "Phone required." });
-  }
-  if (action === "register_messenger" && !messenger_handle) {
-    return res.status(400).json({ message: "Messenger handle required." });
-  }
-
   // 2. Uniqueness checks
   if (
     action === "register_email" &&
     (await User.findOne({ email: normalizeEmail(email) }))
   ) {
     return res.status(409).json({ message: "Email already exists." });
-  }
-  if (
-    action === "register_phone" &&
-    (await User.findOne({ phone: canonicalizePhMobile(phone) }))
-  ) {
-    return res.status(409).json({ message: "Phone already exists." });
   }
 
   try {
@@ -343,7 +250,7 @@ const requestOtp = async (req, res) => {
     return res.status(isRateLimit ? 429 : 503).json({
       message: isRateLimit
         ? err.message
-        : `${channel === "email" ? "Email" : "SMS"} verification could not be sent right now. Please try again later${channel === "email" ? " or choose SMS" : " or choose email"}.`,
+        : "Email verification could not be sent right now. Please try again later.",
       retryAfterSeconds: err.retryAfterSeconds || undefined,
     });
   }
@@ -351,6 +258,10 @@ const requestOtp = async (req, res) => {
 
 const verifyOtp = async (req, res) => {
   const { action, channel, email, phone, messenger_handle, code } = req.body;
+
+  if (!OTP_ACTION_CHANNELS[action]?.includes(channel) || !isValidEmail(email)) {
+    return res.status(400).json({ message: "A supported email verification request is required." });
+  }
 
   if (!action || !code) {
     return res.status(400).json({ message: "Action and code required." });
@@ -381,13 +292,9 @@ const verifyOtp = async (req, res) => {
       if (action === "register_email") {
         data.email = normalizeEmail(email);
         data.emailVerified = true;
-      } else if (action === "register_phone") {
-        data.phone = canonicalizePhMobile(phone);
-        data.phoneVerified = true;
-      } else if (action === "register_messenger") {
-        data.messengerHandle = messenger_handle;
-        data.messengerVerified = true;
       }
+      data.verificationChannel = "email";
+      data.phoneVerified = false;
       req.session.registrationProgress = {
         ...existing,
         email: normalizeEmail(email || existing.email || data.email),
@@ -399,7 +306,7 @@ const verifyOtp = async (req, res) => {
     const registrationVerificationToken = action.startsWith("register_")
       ? signRegistrationVerificationToken({
         email: action === "register_email" ? email : "",
-        phone: action === "register_phone" ? phone : "",
+        phone: "",
       })
       : "";
 
@@ -523,15 +430,14 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
     }
     const normalizedEmail = normalizeEmail(email);
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ message: "A valid email address is required." });
+    }
     const normalizedPhone = canonicalizePhMobile(phone);
     const registrationProgress = req.session?.registrationProgress?.formData || {};
     const emailVerified = Boolean(
       registrationProgress.emailVerified
       && normalizeEmail(registrationProgress.email) === normalizedEmail,
-    );
-    const phoneVerified = Boolean(
-      registrationProgress.phoneVerified
-      && canonicalizePhMobile(registrationProgress.phone) === normalizedPhone,
     );
 
     let tokenVerified = false;
@@ -539,16 +445,15 @@ const register = async (req, res) => {
       try {
         const decoded = jwt.verify(registrationVerificationToken, env.jwtSecret);
         tokenVerified = decoded?.purpose === "registration_verification"
-          && ((decoded.email && normalizeEmail(decoded.email) === normalizedEmail)
-            || (decoded.phone && canonicalizePhMobile(decoded.phone) === normalizedPhone));
+          && Boolean(decoded.email && normalizeEmail(decoded.email) === normalizedEmail);
       } catch (_error) {
         tokenVerified = false;
       }
     }
 
-    if (!emailVerified && !phoneVerified && !tokenVerified) {
+    if (!emailVerified && !tokenVerified) {
       return res.status(403).json({
-        message: "Verify your email or mobile number before creating an account.",
+        message: "Verify your email before creating an account.",
       });
     }
 
@@ -559,7 +464,6 @@ const register = async (req, res) => {
     const finalAlias = (
       alias
       || normalizedEmail.split("@")[0]
-      || (normalizedPhone ? `sms-${normalizedPhone}` : "")
     )
       .toLowerCase()
       .trim();
@@ -603,13 +507,13 @@ const register = async (req, res) => {
       apartment_unit: apartment_unit || "",
       landmark: landmark || "",
       plus_code: plus_code || "",
-      contact_method: contact_method || "",
+      contact_method: "email",
       billingAddress: primaryLoc ? primaryLoc.address : {},
       location: primaryLoc || { address: {}, coordinates: {} },
       delivery_instructions: delivery_instructions || "",
       addresses: locations.map((loc, idx) => ({
         ...loc.address,
-        label: `Facility ${idx + 1}`,
+        label: `Location ${idx + 1}`,
         type: "home",
         name: `${name_first} ${name_last}`.trim(),
         phone: normalizedPhone,
@@ -679,7 +583,7 @@ const login = async (req, res) => {
       }
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    if (user.security?.totpEnabled) {
+    if (user.role !== "technician" && user.security?.totpEnabled) {
       const challengeToken = jwt.sign(
         { purpose: "login_totp", sub: user.id },
         env.jwtSecret,
@@ -696,7 +600,7 @@ const login = async (req, res) => {
     user.lockoutUntil = null;
     user.lastLogin = new Date();
     await user.save();
-    const token = signUserAccessToken(user, user.security?.totpResetRequired ? { recovery: true } : {});
+    const token = signUserAccessToken(user, user.role !== "technician" && user.security?.totpResetRequired ? { recovery: true } : {});
     return res.json({ success: true, token, user: user.toJSON() });
   } catch (err) {
     return res.status(500).json({ message: "Login error" });
@@ -814,17 +718,18 @@ const me = async (req, res) => {
 };
 
 const requestPasswordReset = async (req, res) => {
-  const channel = req.body.channel === "sms" ? "sms" : "email";
-  const identifier = String(req.body.identifier || req.body.email || req.body.phone || "").trim();
-  const email = channel === "email" ? normalizeEmail(identifier) : "";
-  const phone = channel === "sms" ? canonicalizePhMobile(identifier) : "";
-  const user = await User.findOne(channel === "email" ? { email } : { phone });
+  if (req.body.channel && req.body.channel !== "email") {
+    return res.status(400).json({ message: "Use email verification." });
+  }
+  const channel = "email";
+  const email = normalizeEmail(req.body.identifier || req.body.email || "");
+  if (!isValidEmail(email)) return res.status(400).json({ message: "A valid email address is required." });
+  const user = await User.findOne({ email });
   if (!user) return res.json({ message: "If the account exists, a verification code has been sent." });
 
   try {
     const { otpRequest } = await createOtpRequest({
       email,
-      phone,
       action: "password_reset",
       channel,
     });
@@ -878,27 +783,25 @@ const resetPassword = async (req, res) => {
 };
 
 const resetPasswordWithCode = async (req, res) => {
-  const { email: requestedEmail, phone: requestedPhone, identifier, code, newPassword } = req.body;
-  const channel = req.body.channel === "sms" ? "sms" : "email";
+  const { email: requestedEmail, identifier, code, newPassword } = req.body;
+  if (req.body.channel && req.body.channel !== "email") {
+    return res.status(400).json({ message: "Use email verification." });
+  }
+  const channel = "email";
   if (typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 25) {
     return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
   }
-  const normalizedEmail = channel === "email"
-    ? normalizeEmail(identifier || requestedEmail)
-    : "";
-  const normalizedPhone = channel === "sms"
-    ? canonicalizePhMobile(identifier || requestedPhone)
-    : "";
+  const normalizedEmail = normalizeEmail(identifier || requestedEmail);
+  if (!isValidEmail(normalizedEmail)) return res.status(400).json({ message: "A valid email address is required." });
   const verification = await verifyOtpRequest({
     email: normalizedEmail,
-    phone: normalizedPhone,
     action: "password_reset",
     channel,
     code,
   });
   if (!verification.ok)
     return res.status(400).json({ message: "Invalid code." });
-  const user = await User.findOne(channel === "email" ? { email: normalizedEmail } : { phone: normalizedPhone });
+  const user = await User.findOne({ email: normalizedEmail });
   if (!user) return res.status(404).json({ message: "User not found." });
   const salt = await bcrypt.genSalt(10);
   user.passwordHash = await bcrypt.hash(newPassword, salt);

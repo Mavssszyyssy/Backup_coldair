@@ -7,8 +7,7 @@ import { apiRequest } from "../config/api";
  */
 export function useVerification({
   recipient,
-  channel = "email", // "email" or "sms" or "messenger"
-  action = "registration",
+  action = "register_email",
   otpTtl = 300, // 5 minutes default
 }) {
   const [loading, setLoading] = useState(false);
@@ -17,14 +16,8 @@ export function useVerification({
   const [timeLeft, setTimeLeft] = useState(0);
 
   const getBasePayload = useCallback(() => {
-    const payload = { action, channel };
-    if (channel === "email") payload.email = recipient;
-    else if (channel === "sms" || action.includes("phone"))
-      payload.phone = recipient;
-    else if (channel === "messenger" || action.includes("messenger"))
-      payload.messenger_handle = recipient;
-    return payload;
-  }, [recipient, channel, action]);
+    return { action, channel: "email", email: recipient };
+  }, [recipient, action]);
 
   const requestOtp = useCallback(async () => {
     if (!recipient) return;

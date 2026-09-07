@@ -143,9 +143,6 @@ const env = {
     process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 20,
   ),
   accountDeleteMode: process.env.ACCOUNT_DELETE_MODE || "soft",
-  infobipApiKey: process.env.INFOBIP_API_KEY || "",
-  infobipBaseUrl: process.env.INFOBIP_BASE_URL || "",
-  infobipSender: process.env.INFOBIP_SENDER || "",
   serviceCatalogJson: process.env.SERVICE_CATALOG_JSON || "",
   cronSecret: process.env.CRON_SECRET || "",
 };

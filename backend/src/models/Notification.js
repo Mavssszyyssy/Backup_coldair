@@ -9,6 +9,7 @@ const notificationSchema = new mongoose.Schema(
       default: "system",
       index: true,
     },
+    branch: { type: String, default: "", index: true },
     category: { type: String, default: "", index: true },
     severity: { type: String, enum: ["info", "warning", "critical"], default: "info", index: true },
     title: { type: String, required: true },

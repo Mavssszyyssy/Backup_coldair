@@ -146,7 +146,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             value={formData.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="09XXXXXXXXX"
-            hint="Used for SMS notifications and recovery."
+            hint="Used to contact you about deliveries and service visits."
           />
 
           <BoutiqueInput

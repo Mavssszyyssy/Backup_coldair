@@ -82,7 +82,7 @@ const authenticate = async (req, res, next, options = {}) => {
     if (Number(payload.securityVersion || 0) !== Number(user.security?.sessionVersion || 0)) {
       return res.status(401).json({ message: "Your session has ended. Please sign in again." });
     }
-    if (payload.recovery || user.security?.totpResetRequired) {
+    if (payload.recovery || (user.role !== "technician" && user.security?.totpResetRequired)) {
       if (!isRecoveryRequestAllowed(req.originalUrl || req.url)) {
         return res.status(403).json({
           message: "Complete authenticator recovery before using this account.",
@@ -90,7 +90,7 @@ const authenticate = async (req, res, next, options = {}) => {
       }
     }
     const requestPath = String(req.originalUrl || req.url).split("?")[0];
-    if (user.role === "technician" && (user.isFirstLogin || !user.technicianOnboardedAt)) {
+    if (user.role === "technician" && user.isFirstLogin) {
       const setupPath = isRecoveryRequestAllowed(requestPath) || ["/api/users/profile", "/api/users/profile/update", "/api/users/password"].includes(requestPath);
       if (!setupPath) return res.status(403).json({ message: "Complete technician account setup before accessing work orders." });
     }

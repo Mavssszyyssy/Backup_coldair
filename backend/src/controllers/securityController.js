@@ -150,6 +150,7 @@ const consumeRecoveryCode = async (req, res) => {
     if (!user || user.isDeleted || ["disabled", "deleted"].includes(String(user.accountStatus || ""))) {
       return res.status(400).json({ message: "Invalid or already-used recovery code." });
     }
+    if (user.role === "technician") return res.status(400).json({ message: "Sign in with your technician username and password. Contact your administrator if you need a password reset." });
     const hashes = Array.isArray(user.security?.recoveryCodeHashes)
       ? user.security.recoveryCodeHashes
       : [];

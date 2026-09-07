@@ -9,7 +9,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StatusChip from "../../../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
-import { checkInTask, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
+import { checkInTask, confirmCodCollection, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
 import { formatWarrantyStatus, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
@@ -173,6 +173,8 @@ export default function TaskInformationScreen() {
     : task?.status === TASK_STATUS.IN_PROGRESS
       ? !hasCheckedIn
         ? { title: installationTask ? "Check in at installation" : "Check in at service address", subtitle: installationTask ? "Record your GPS arrival before verifying the assigned AC unit." : "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
+        : task?.codPayment && !task.codPayment.collectedAt
+          ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
         : !installationTask
           ? { title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
           : registrationComplete
@@ -181,11 +183,13 @@ export default function TaskInformationScreen() {
       : null;
 
   const runWorkOrderAction = async () => {
+    if (!actionBusy && nextAction?.action === "cash") { confirmCash(); return; }
     if (actionBusy || !task || nextAction?.action !== "check-in") return;
     setActionBusy(true);
     try {
       const location = await getCurrentLocationSnapshot();
-      const updated = await checkInTask(id, location);
+      await checkInTask(id, location);
+      const updated = await getTaskById(id);
       setTask(updated);
       Alert.alert("Arrival recorded", installationTask ? "Your GPS check-in was recorded. You can now verify the assigned AC unit." : "Your GPS check-in was recorded. You can now complete the service report.");
     } catch (error) {
@@ -200,6 +204,21 @@ export default function TaskInformationScreen() {
     setDetailPage(safePage);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   };
+
+  const confirmCash = () => Alert.alert(
+    "Confirm cash received",
+    `Have you received the full ${money(task?.codPayment?.amount)} from the customer? Only confirm after collecting the cash.`,
+    [{ text: "Not yet", style: "cancel" }, { text: "Cash received", onPress: async () => {
+      if (actionBusy) return;
+      setActionBusy(true);
+      try {
+        setTask(await confirmCodCollection(id));
+        Alert.alert("Payment recorded", "Cash collection is now visible on the order and receipt.");
+      } catch (error) {
+        Alert.alert("Unable to confirm payment", error?.message || "Please try again.");
+      } finally { setActionBusy(false); }
+    } }],
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -287,9 +306,15 @@ export default function TaskInformationScreen() {
                 <SectionHeading icon={nextAction.icon} title="Next Action" subtitle="Continue this work order" />
                 <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.md }}>{nextAction.title}</Text>
                 <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4 }}>{nextAction.subtitle}</Text>
-                {!nextAction.disabled ? <TechButton title={actionBusy ? "Recording arrival..." : nextAction.title} loading={actionBusy} onPress={() => nextAction.href ? router.push(nextAction.href) : runWorkOrderAction()} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} /> : null}
+                {!nextAction.disabled ? <TechButton title={actionBusy ? "Saving..." : nextAction.title} loading={actionBusy} onPress={() => nextAction.href ? router.push(nextAction.href) : runWorkOrderAction()} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} /> : null}
               </Card>
             ) : null}
+
+            {task?.codPayment ? <Card>
+              <SectionHeading icon="cash-sharp" title="Cash on Delivery" subtitle="Payment is confirmed by the collecting technician" />
+              <DetailItem icon="cash-sharp" label="Order total" value={money(task.codPayment.amount)} />
+              <Text>{task.codPayment.collectedAt ? "Cash collection confirmed" : hasCheckedIn ? "Confirm only after receiving the full cash payment." : "Check in at the customer location before confirming cash collection."}</Text>
+            </Card> : null}
 
             {hasCheckedIn ? (
               <Card>

@@ -7,6 +7,7 @@ const {
 	getTaskById,
 	acceptTask,
 	checkInTask,
+  confirmCodCollection,
 	getRegistrationContextBySerial,
 	getTechnicianUnitHistoryBySerial,
 	registerAmpUnit,
@@ -23,6 +24,7 @@ router.get("/unit-history/:serialNumber", allowRoles("technician", "admin", "sup
 router.get("/:taskId", allowRoles("technician", "admin", "superadmin"), getTaskById);
 router.patch("/:taskId/accept", allowRoles("technician"), acceptTask);
 router.patch("/:taskId/check-in", allowRoles("technician"), checkInTask);
+router.patch("/:taskId/cod-collection", allowRoles("technician"), confirmCodCollection);
 router.patch("/:taskId/amp-registration", allowRoles("technician"), registerAmpUnit);
 router.patch("/:taskId", allowRoles("technician", "admin", "superadmin"), updateTask);
 router.patch("/:taskId/status", allowRoles("technician", "admin", "superadmin"), updateTaskStatus);

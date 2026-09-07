@@ -1,6 +1,7 @@
 import { ArrowLeft, DownloadSimple, Receipt } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useUser } from "../../context/UserContext";
 import { apiRequest } from "../../config/api";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
@@ -75,6 +76,7 @@ const normalizeOrder = (order = {}) => ({
   paymentProvider: String(order.paymentProvider || order.receipt?.paymentProvider || ""),
   paymentReference: String(order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || ""),
   receiptAvailable: Boolean(order.receiptAvailable),
+  codCollection: order.codCollection || {},
   receipt: order.receipt || {},
   invoice: order.invoice || {},
   tracking: order.tracking || {},
@@ -89,6 +91,8 @@ const normalizeOrder = (order = {}) => ({
 
 function ReceiptView() {
   const { orderId } = useParams();
+  const { user } = useUser();
+  const isStaff = ["admin", "superadmin"].includes(user?.role);
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,13 +100,9 @@ function ReceiptView() {
 
   useEffect(() => {
     let mounted = true;
-    apiRequest(`/orders/me/${orderId}`)
-      .catch((err) => {
-        if (err?.status === 403 || err?.status === 404) {
-          return apiRequest(`/orders/${orderId}`);
-        }
-        throw err;
-      })
+    setLoading(true);
+    setError("");
+    apiRequest(`/orders/${isStaff ? "" : "me/"}${encodeURIComponent(orderId)}`)
       .then((response) => {
         if (mounted) setOrder(normalizeOrder(response.order));
       })
@@ -115,7 +115,7 @@ function ReceiptView() {
     return () => {
       mounted = false;
     };
-  }, [orderId]);
+  }, [orderId, isStaff]);
 
   const downloadReceipt = () => {
     // The browser print dialog preserves the same receipt markup and styles
@@ -125,8 +125,7 @@ function ReceiptView() {
 
   const deliveryAddress = resolveDeliveryAddress(order || {});
   const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
-  const isCompleted = [order?.status, order?.workflowStatus, order?.invoice?.orderStatus]
-    .some((value) => ["paid", "complete", "completed"].includes(String(value || "").toLowerCase()));
+  const isCompleted = Boolean(order?.codCollection?.collectedAt);
   const paymentMethodLabel = isCashOnDelivery
     ? "Cash on Delivery"
     : order?.paymentProvider === "paymongo"
@@ -252,7 +251,7 @@ function ReceiptView() {
                 <p><span>VAT</span><strong>{money(order.vatAmount)}</strong></p>
                 <p><span>Delivery</span><strong>{money(order.shippingFee)}</strong></p>
                 <p><span>Discount</span><strong>-{money(order.discountAmount)}</strong></p>
-                <p className="receipt-grand-total"><span>Total Paid</span><strong>{money(order.totalAmount)}</strong></p>
+                <p className="receipt-grand-total"><span>{isCashOnDelivery && !isCompleted ? "Amount Due" : "Total Paid"}</span><strong>{money(order.totalAmount)}</strong></p>
               </div>
             </div>
           </article>

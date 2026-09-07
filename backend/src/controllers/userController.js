@@ -290,12 +290,11 @@ const normalizePrivacy = (current, payload = {}) => {
 };
 
 const normalizeNotifications = (current, payload = {}) => {
-  const next = { ...current };
+  const next = { ...current, sms: false };
   const booleanKeys = [
     "email",
     "inApp",
     "push",
-    "sms",
     "accountUpdates",
     "orderUpdates",
     "systemAlerts",
@@ -476,8 +475,8 @@ const applyProfileUpdate = async (
   const technicianOnboardedAt =
     payload.technician_onboarded_at ?? payload.technicianOnboardedAt;
   if (technicianOnboardedAt !== undefined && user.role === "technician") {
-    if (user.isFirstLogin || !user.security?.totpEnabled || user.security?.totpResetRequired) {
-      return { ok: false, status: 409, message: "Set your password and verify your authenticator before completing technician setup." };
+    if (user.isFirstLogin) {
+      return { ok: false, status: 409, message: "Set your password before completing technician setup." };
     }
     const completedAt = technicianOnboardedAt
       ? new Date(technicianOnboardedAt)
@@ -778,7 +777,7 @@ const changePassword = async (req, res) => {
     }
     req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
     req.authUser.isFirstLogin = false;
-    if (req.authUser.role === "technician" && req.authUser.security?.totpEnabled && !req.authUser.security?.totpResetRequired && !req.authUser.technicianOnboardedAt) {
+    if (req.authUser.role === "technician" && !req.authUser.technicianOnboardedAt) {
       req.authUser.technicianOnboardedAt = new Date();
     }
     await req.authUser.save();
@@ -824,7 +823,7 @@ const changePassword = async (req, res) => {
   }
   req.authUser.passwordHash = await bcrypt.hash(String(newPassword), 10);
   await req.authUser.save();
-  return res.json({ message: "Password changed successfully" });
+  return res.json({ message: "Password changed successfully", user: req.authUser.toJSON() });
 };
 
 const requestPasswordChangeEmail = async (req, res) => {
