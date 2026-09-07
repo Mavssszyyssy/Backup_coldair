@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { reconcileCancelledWarranty } = require('../domain/warrantyCancellation');
 const Unit = require("../models/Unit");
 const Task = require("../models/Task");
 const ServiceRequest = require("../models/ServiceRequest");
@@ -41,7 +42,7 @@ const getUnitForRequest = async (req) => {
     });
     if (!task) return null;
   }
-  return unit;
+  return reconcileCancelledWarranty(unit);
 };
 
 const warrantySnapshot = (unit) => {
@@ -202,6 +203,7 @@ const reviewWarrantyClaim = async (req, res) => {
 
     const claim = { ...warranty.claims[index] };
     const previousStatus = String(claim.status || "submitted").toLowerCase();
+    if (previousStatus === 'cancelled') return res.status(409).json({ message: 'This warranty service was cancelled. Submit a new claim for further support.' });
     const nextDecisionNote = String(req.body?.decisionNote || req.body?.notes || claim.decisionNote || "").trim();
     const coveredComponent = String(req.body?.coveredComponent || claim.coveredComponent || "").toLowerCase();
     if (status === "approved" && !claim.serviceRequestId) {

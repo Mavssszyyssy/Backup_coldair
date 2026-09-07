@@ -17,6 +17,7 @@ const {
 const env = require("../config/env");
 const { getScheduledDateError } = require("../utils/scheduling");
 const { formatServiceAddress } = require("../domain/serviceAddress");
+const { cancelWarrantyForRequest, reconcileCancelledWarranty } = require("../domain/warrantyCancellation");
 
 const normalizeStatus = (value = "", fallback = "Pending") =>
   normalizeServiceRequestStatus(value, fallback);
@@ -216,6 +217,8 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
   task.issueType = request.issueType || request.payload?.serviceType || task.issueType;
   task.description = request.issue;
   task.branch = request.branch || task.branch;
+  task.scheduledDate = String(payload.scheduledDate || request.payload?.scheduledDate || task.scheduledDate);
+  task.timeSlot = String(payload.timeSlot || request.payload?.timeSlot || task.timeSlot);
   if (shouldActivateTask) task.status = "in-progress";
   task.payload = {
     ...(task.payload || {}),
@@ -357,7 +360,8 @@ const createMyServiceRequest = async (req, res) => {
       }
     }
 
-    const unit = unitId ? await findOwnedUnit(unitId, req.authUser._id) : null;
+    let unit = unitId ? await findOwnedUnit(unitId, req.authUser._id) : null;
+    if (unit) unit = await reconcileCancelledWarranty(unit);
     if (unitId && !unit) {
       return res.status(404).json({ message: "Selected installed AC unit was not found for this customer." });
     }
@@ -525,13 +529,22 @@ const updateServiceRequestStatus = async (req, res) => {
       });
     }
 
+    const scheduleChanged = ['scheduledDate', 'timeSlot'].some(key => Object.hasOwn(req.body || {}, key) && String(req.body[key]) !== String(request.payload?.[key] || ''));
+    if (scheduleChanged && ['Completed', 'Cancelled'].includes(request.status)) return res.status(409).json({ message: 'Closed service requests cannot be rescheduled.' });
+    if (['Assigned', 'In Progress'].includes(nextStatus)) {
+      const scheduledDate = String(req.body?.scheduledDate || request.payload?.scheduledDate || request.payload?.preferredDate || '');
+      const timeSlot = String(req.body?.timeSlot || request.payload?.timeSlot || request.payload?.preferredSchedule || '').trim();
+      const scheduleError = getScheduledDateError(scheduledDate, 'Appointment date');
+      if (!scheduledDate || scheduleError || !timeSlot || timeSlot === 'TBD' || timeSlot.length > 80) return res.status(400).json({ message: scheduleError || 'Choose an appointment date and time slot before assigning the technician.' });
+      req.body = { ...req.body, scheduledDate, timeSlot };
+    }
     const linkedTaskId = String(request.payload?.linkedTaskId || "").trim();
     let linkedTask = null;
     if (linkedTaskId) {
       const conditions = [{ taskCode: linkedTaskId }];
       if (mongoose.Types.ObjectId.isValid(linkedTaskId)) conditions.unshift({ _id: linkedTaskId });
       linkedTask = await Task.findOne({ $or: conditions });
-      if (linkedTask && String(linkedTask.requestId || "") !== String(request._id)) return res.status(409).json({ message: "The linked work order does not match this service request. Ask the branch team to review it." });
+      if (linkedTask && String(linkedTask.requestId || linkedTask.payload?.requestId || "") !== String(request._id)) return res.status(409).json({ message: "The linked work order does not match this service request. Ask the branch team to review it." });
     }
     if (nextStatus === "Completed" && (!linkedTask || String(linkedTask.status || "").toLowerCase() !== "completed")) {
       return res.status(409).json({ message: "The assigned technician must submit proof and complete the work order before this request can be completed." });
@@ -563,12 +576,12 @@ const updateServiceRequestStatus = async (req, res) => {
     const timeline = Array.isArray(request.payload?.timeline) ? request.payload.timeline : [];
     const statusChanged = previousRequestStatus !== request.status;
     const technicianChanged = previousTechnicianId !== String(request.assignedTechnicianId || "");
-    const nextTimeline = statusChanged || technicianChanged
+    const nextTimeline = statusChanged || technicianChanged || scheduleChanged
       ? [
           ...timeline,
           buildTimelineEvent({
-            title: technicianChanged ? "Technician assignment updated" : `Status changed to ${request.status}`,
-            description: req.body?.description || (technicianChanged
+            title: scheduleChanged ? 'Service appointment updated' : technicianChanged ? "Technician assignment updated" : `Status changed to ${request.status}`,
+            description: req.body?.description || (scheduleChanged ? `${req.body.scheduledDate} · ${req.body.timeSlot}` : technicianChanged
               ? `${request.assignedTechnicianName || "A technician"} was assigned to this service request.`
               : `Service request updated to ${request.status}.`),
             actor: req.authUser.name || req.authUser.email || req.authUser.role || "System",
@@ -600,14 +613,14 @@ const updateServiceRequestStatus = async (req, res) => {
         assignedTechnicianName: task.assignedTechnicianName,
       };
 
-      await notifyUser({
+      if (statusChanged || technicianChanged || scheduleChanged) await notifyUser({
         userId: task.assignedTechnicianId,
-        title: "New service task assigned",
-        message: `${request.customer}'s ${request.unitName || "AC unit"} service request is assigned to you.`,
+        title: scheduleChanged && !technicianChanged ? "Service appointment updated" : "New service task assigned",
+        message: `${request.customer}'s ${request.unitName || "AC unit"} service appointment: ${task.scheduledDate} · ${task.timeSlot}.`,
         targetId: String(task._id || task.id || ""),
         targetType: "task",
         route: "/technician/tasks",
-        dedupeKey: `service-task-assigned:${task._id || task.id}:${task.assignedTechnicianId}`,
+        dedupeKey: scheduleChanged ? `service-task-schedule:${task._id}:${task.assignedTechnicianId}:${task.scheduledDate}:${task.timeSlot}:${nextTimeline.length}` : `service-task-assigned:${task._id || task.id}:${task.assignedTechnicianId}`,
       });
     }
 
@@ -619,15 +632,16 @@ const updateServiceRequestStatus = async (req, res) => {
     }
 
     await request.save();
-    if ((statusChanged || technicianChanged) && ["Assigned", "In Progress", "Completed", "Cancelled"].includes(request.status)) {
+    await cancelWarrantyForRequest(request, String(req.body?.description || 'The associated service visit was cancelled.'));
+    if ((statusChanged || technicianChanged || scheduleChanged) && ["Assigned", "In Progress", "Completed", "Cancelled"].includes(request.status)) {
       await notifyUser({
         userId: request.customerId,
-        title: technicianChanged ? "Technician assignment updated" : "Service request updated",
-        message: technicianChanged
+        title: scheduleChanged ? 'Service appointment updated' : technicianChanged ? "Technician assignment updated" : "Service request updated",
+        message: scheduleChanged ? `Your service appointment is ${req.body.scheduledDate} · ${req.body.timeSlot}.` : technicianChanged
           ? `${request.assignedTechnicianName || "A technician"} is now assigned to your service request.`
           : `Your service request is now ${request.status}.`,
         targetId: String(request._id || request.id || ""),
-        dedupeKey: technicianChanged
+        dedupeKey: scheduleChanged ? `service-schedule:${request._id}:${req.body.scheduledDate}:${req.body.timeSlot}:${nextTimeline.length}` : technicianChanged
           ? `service-technician:${request._id || request.id}:${request.assignedTechnicianId}`
           : `service-status:${request._id || request.id}:${request.status}`,
       });

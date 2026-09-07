@@ -1,5 +1,4 @@
 const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
 const User = require("../models/User");
 const Order = require("../models/Order");
 const Notification = require("../models/Notification");
@@ -13,6 +12,7 @@ const env = require("../config/env");
 const { validatePostalCodeForAddress } = require("../utils/postalCodeValidation");
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { isProtectedDemoStaff } = require("../domain/demoStaffPolicy");
+const { generatePasswordResetToken } = require("../domain/passwordResetLink");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
 const NOTIFICATION_TYPES = ["account", "order", "system"];
@@ -20,19 +20,6 @@ const PASSWORD_RESET_MINUTES = Math.max(
   15,
   Math.min(30, Number(env.passwordResetTokenTtlMinutes || 20)),
 );
-
-const generatePasswordResetToken = () => {
-  const nonce = crypto.randomBytes(24).toString("hex");
-  const createdAt = Date.now().toString();
-  const payload = `${nonce}.${createdAt}`;
-  const signature = crypto
-    .createHmac("sha256", env.passwordResetTokenSecret)
-    .update(payload)
-    .digest("hex");
-  const token = `${payload}.${signature}`;
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  return { token, tokenHash };
-};
 
 const normalizePhone = (phone = "") => String(phone).replace(/\D/g, "");
 const canonicalizePhMobile = (phone = "") => {

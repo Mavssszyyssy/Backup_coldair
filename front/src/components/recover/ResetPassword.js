@@ -49,7 +49,7 @@ function ResetPassword() {
     event.preventDefault();
 
     if (!token) {
-      setError("Reset link is invalid.");
+      setError("This reset link is incomplete. Request a new link and try again.");
       setMessage("");
       return;
     }
@@ -83,7 +83,7 @@ function ResetPassword() {
         navigate("/login", { replace: true });
       }, 2000);
     } catch (requestError) {
-      setError(requestError.message || "Unable to reset password.");
+      setError(requestError.message || "Unable to reset password. Request a new link if the previous one has expired.");
     } finally {
       setLoading(false);
     }
@@ -264,6 +264,7 @@ function ResetPassword() {
             </button>
           </BoutiqueText>
         </BoutiqueBox>
+        {error && /reset link|expired|used/i.test(error) ? <BoutiqueBox align="center"><button type="button" className="bq-signup-link" onClick={() => navigate("/forgot-password", { replace: true })}>Request a new reset code</button></BoutiqueBox> : null}
       </BoutiqueStack>
 
       <style

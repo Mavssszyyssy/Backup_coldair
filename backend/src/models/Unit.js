@@ -100,7 +100,8 @@ const unitSchema = new mongoose.Schema(
         {
           claimId: { type: String, required: true },
           issue: { type: String, default: "", trim: true },
-          status: { type: String, enum: ["submitted", "under_review", "approved", "rejected", "service_completed"], default: "submitted" },
+          status: { type: String, enum: ["submitted", "under_review", "approved", "rejected", "service_completed", "cancelled"], default: "submitted" },
+          cancellationReason: { type: String, default: "", trim: true },
           requestedAt: { type: Date, default: Date.now },
           reviewedAt: { type: Date, default: null },
           resolvedAt: { type: Date, default: null },

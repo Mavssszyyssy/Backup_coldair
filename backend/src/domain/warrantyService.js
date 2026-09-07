@@ -97,6 +97,7 @@ const getWarrantyRecommendation = (warranty = {}) => {
     new Date(left?.reviewedAt || left?.requestedAt || 0),
   )[0];
   const claimStatus = String(latestClaim?.status || "").toLowerCase();
+  if (claimStatus === 'cancelled') return 'This warranty service visit was cancelled. You can submit a new request if support is still needed. Your coverage dates have not changed.';
   if (["submitted", "under_review"].includes(claimStatus)) {
     return "Your warranty coverage remains active while this claim is reviewed. We will notify you when the decision changes.";
   }

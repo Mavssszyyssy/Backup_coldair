@@ -22,6 +22,7 @@ const {
 const {
   mergeClientRegistrationProgress,
 } = require("../domain/registrationProgress");
+const { hashPasswordResetToken, isAuthenticPasswordResetToken } = require("../domain/passwordResetLink");
 
 const OTP_TTL_MINUTES = Math.max(
   3,
@@ -847,15 +848,32 @@ const resetPassword = async (req, res) => {
     if (typeof password !== "string" || password.length < 8 || password.length > 25) {
       return res.status(400).json({ message: "Password must be between 8 and 25 characters." });
     }
-    const decoded = jwt.verify(token, env.jwtSecret);
-    const user = await User.findById(decoded.sub);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    let user = null;
+    try {
+      const decoded = jwt.verify(token, env.jwtSecret);
+      if (decoded.purpose !== "password_reset") throw new Error("Not a password-reset token");
+      user = await User.findById(decoded.sub);
+    } catch {
+      // Account Settings sends a one-time, database-backed link rather than a
+      // login JWT. Validate its signature, hash, expiry and single-use state.
+      if (!isAuthenticPasswordResetToken(token)) {
+        return res.status(400).json({ message: "This reset link is invalid, expired, or has already been used. Request a new link and try again." });
+      }
+      user = await User.findOne({
+        "passwordReset.tokenHash": hashPasswordResetToken(token),
+        "passwordReset.expiresAt": { $gt: new Date() },
+        "passwordReset.usedAt": null,
+      });
+    }
+    if (!user) return res.status(400).json({ message: "This reset link is invalid, expired, or has already been used. Request a new link and try again." });
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(password, salt);
+    user.passwordReset = { tokenHash: "", expiresAt: null, usedAt: new Date(), requestedAt: user.passwordReset?.requestedAt || new Date() };
+    user.security = { ...(user.security?.toObject?.() || user.security || {}), sessionVersion: Number(user.security?.sessionVersion || 0) + 1 };
     await user.save();
     res.json({ message: "Success" });
   } catch (err) {
-    res.status(400).json({ message: "Invalid token." });
+    res.status(400).json({ message: "This reset link is invalid, expired, or has already been used. Request a new link and try again." });
   }
 };
 
@@ -884,6 +902,7 @@ const resetPasswordWithCode = async (req, res) => {
   if (!user) return res.status(404).json({ message: "User not found." });
   const salt = await bcrypt.genSalt(10);
   user.passwordHash = await bcrypt.hash(newPassword, salt);
+  user.security = { ...(user.security?.toObject?.() || user.security || {}), sessionVersion: Number(user.security?.sessionVersion || 0) + 1 };
   await user.save();
   res.json({ message: "Success" });
 };

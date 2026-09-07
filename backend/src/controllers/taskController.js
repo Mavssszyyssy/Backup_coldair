@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { cancelWarrantyForRequest } = require('../domain/warrantyCancellation');
 const Task = require("../models/Task");
 const User = require("../models/User");
 const Product = require("../models/Product");
@@ -719,6 +720,7 @@ const syncServiceRequestForTask = async (task, status) => {
   };
 
   await request.save();
+  await cancelWarrantyForRequest(request, task.payload?.cancellationReason);
   if (!["pending", "accepted"].includes(normalizedStatus) && (statusChanged || (checkedIn && !checkInAlreadyLogged))) {
     await notifyOperationalStaff({
       branch: task.branch || request.branch || "",

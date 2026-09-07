@@ -69,6 +69,8 @@ function normalizeServiceRequest(item = {}) {
     longitude: normalizeNumberOrNull(item.longitude),
     preferredDate,
     preferredSchedule: preferredDate,
+    scheduledDate: item.scheduledDate || payload.scheduledDate || '',
+    timeSlot: item.timeSlot || payload.timeSlot || '',
     assignedTechnicianId: item.assignedTechnicianId || "",
     assignedTechnicianName: item.assignedTechnicianName || "",
     linkedTaskId: item.linkedTaskId || item.taskId || payload.linkedTaskId || "",

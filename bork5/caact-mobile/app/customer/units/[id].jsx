@@ -10,6 +10,7 @@ import CustomerScreen from "../../../components/customer/CustomerScreen";
 import CustomerAmpReport from "../../../components/customer/CustomerAmpReport";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
 import CustomerUnitImage from "../../../components/customer/CustomerUnitImage";
+import WarrantyClaimDetails from "../../../components/customer/WarrantyClaimDetails";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
@@ -510,7 +511,7 @@ export default function CustomerUnitDetailsScreen() {
           <DetailRow label="Limitations" value={unit?.warranty?.coverageLimitations?.join(" ") || "See warranty terms"} multiline />
           <DetailRow label="Warranty Claims" value={String(unit?.warranty?.claims?.length || 0)} />
           {(unit?.warranty?.claims || []).map((claim) => (
-            <DetailRow key={claim.claimId} label={`${claim.claimId} · ${String(claim.status || "submitted").replace(/_/g, " ")}`} value={claim.issue || "Warranty claim"} multiline />
+            <WarrantyClaimDetails key={claim.claimId} claim={claim} formatDate={formatDate} />
           ))}
           {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
             <DetailRow key={`${record.serviceDate}-${index}`} label={`${record.claimId ? "Warranty support" : serviceName(record.visitType)} · ${formatDate(record.serviceDate)}`} value={record.summary || "Service record"} multiline />
@@ -609,7 +610,8 @@ export default function CustomerUnitDetailsScreen() {
                     </View>
                   </View>
                   <DetailRow label="Concern" value={request.issueDescription || request.concern || "Service requested"} multiline />
-                  <DetailRow label="Preferred visit" value={formatDate(request.preferredDate)} />
+                  <DetailRow label={request.scheduledDate ? "Confirmed appointment" : "Preferred visit"} value={formatDate(request.scheduledDate || request.preferredDate)} />
+                  {request.timeSlot ? <DetailRow label="Time slot" value={request.timeSlot} /> : null}
                   <DetailRow label="Submitted" value={formatDateTime(request.createdAt)} />
                   <DetailRow label="Responsible branch" value={request.branch || "Being assigned"} />
                   <DetailRow
