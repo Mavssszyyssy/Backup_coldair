@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, TouchableOpacity, View } from "react-native";
 
 import TechButton from "../../../../../../components/technician/TechButton";
+import { serviceReportError } from "../../../../../../services/serviceReportValidation";
 import Card from "../../../../../../components/ui/Card";
 import PageHeader from "../../../../../../components/ui/PageHeader";
 import TextField from "../../../../../../components/ui/TextField";
@@ -116,12 +117,9 @@ export default function LogInsertScreen({ mode = "insert" }) {
       Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
       return;
     }
-    if (findings.trim().length < 10) {
-      Alert.alert("Findings required", "Describe the AC condition or issue using at least 10 characters.");
-      return;
-    }
-    if (!resolution.trim()) {
-      Alert.alert("Work performed required", "Describe the cleaning, repair, inspection, or other work performed.");
+    const reportError = serviceReportError(findings, resolution);
+    if (reportError) {
+      Alert.alert("Service report incomplete", reportError);
       return;
     }
 

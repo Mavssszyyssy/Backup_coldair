@@ -159,11 +159,12 @@ const main = async () => {
   const genericTech = await login(staff.data.loginIdentifier, staff.data.tempPassword);
   await request("/tasks", { token: genericTech.token, expected: [403] });
   await request("/users/password", { token: genericTech.token, method: "PATCH", body: { alias: staff.data.loginIdentifier, phone: `0918${runId.slice(-7)}`, newPassword: "QaTechnician9!" } });
-  const techSetup = await request("/security/totp/setup", { token: genericTech.token, method: "POST", body: {} });
-  const techVerified = await request("/security/totp/verify", { token: genericTech.token, method: "POST", body: { code: speakeasy.totp({ secret: techSetup.data.secret, encoding: "base32" }) } });
-  if (!techVerified.data.user?.technicianOnboardedAt) throw new Error("Technician setup was not completed after authenticator verification.");
-  genericTech.token = techVerified.data.token;
-  record("New technician completes password and authenticator setup before accessing work orders");
+  const techSignedIn = await login(staff.data.loginIdentifier, "QaTechnician9!");
+  if (!techSignedIn.user?.technicianOnboardedAt || techSignedIn.user?.isFirstLogin) throw new Error("Technician password setup did not persist.");
+  genericTech.token = techSignedIn.token;
+  await request("/security/totp/setup", { token: genericTech.token, method: "POST", expected: [403], body: {} });
+  await request("/tasks", { token: genericTech.token });
+  record("New technician completes password setup, signs in without an authenticator, and accesses work orders");
   const genericBody = { title: "Inspect cooling controller", customerId: customer.id, customerName: "Acceptance Customer", address: address.street, branch: "Bulacan", assignedTechnicianId: technician.id || technician._id, status: "in-progress" };
   await request("/tasks", { token: superadmin.token, method: "POST", expected: [400], body: { ...genericBody, assignedTechnicianId: superadmin.user.id } });
   await request("/tasks", { token: superadmin.token, method: "POST", expected: [409], body: { ...genericBody, branch: "Cavite" } });
@@ -254,9 +255,10 @@ const main = async () => {
   }
   record("Checkout idempotency prevents duplicate orders");
 
-  const approve = await request(`/orders/${orderId}/approve`, {
+  await request(`/orders/${orderId}/approve`, {
     token: superadmin.token,
     method: "PATCH",
+    expected: [409],
     body: {
       assignedTechnicianId: technician.id || technician._id,
       assignedTechnicianName: technician.name,
@@ -264,11 +266,10 @@ const main = async () => {
       timeSlot: "9:00 AM - 12:00 PM",
     },
   });
-  order = approve.data.order;
-  if (order.workflowStatus !== "to_deliver" || Number((await findProduct(superadmin.token, productId)).stock) !== initialStock) {
-    throw new Error("Approval did not preserve COD stock or set the correct workflow stage.");
+  if (Number((await findProduct(superadmin.token, productId)).stock) !== initialStock) {
+    throw new Error("Rejected COD payment approval changed stock.");
   }
-  record("Admin approval and technician assignment");
+  record("COD refuses payment approval and retains stock before dispatch");
 
   const dispatch = await request(`/orders/${orderId}/process`, {
     token: superadmin.token,
@@ -277,6 +278,8 @@ const main = async () => {
       action: "dispatch",
       assignedTechnicianId: technician.id || technician._id,
       assignedTechnicianName: technician.name,
+      installationDate: new Date(Date.now() + 2 * 86400000).toISOString(),
+      timeSlot: "9:00 AM - 12:00 PM",
     },
   });
   order = dispatch.data.order;
@@ -299,6 +302,7 @@ const main = async () => {
   if (!task) throw new Error("Dispatched order did not appear in the assigned technician's work list.");
   const taskId = task.id || task._id;
   record("Technician work-list synchronization");
+  await request(`/tasks/${taskId}/cod-collection`, { token: technicianSession.token, method: "PATCH", body: { confirmed: true }, expected: [409] });
 
   const checkIn = await request(`/tasks/${taskId}/check-in`, {
     token: technicianSession.token,
@@ -315,6 +319,10 @@ const main = async () => {
     throw new Error("Technician GPS check-in was not visible to both customer and administration.");
   }
   record("Technician GPS check-in visibility for customer and administration");
+  await request(`/tasks/${taskId}/cod-collection`, { token: technicianSession.token, method: "PATCH", body: { confirmed: true } });
+  const collected = await request(`/orders/me/${orderId}`, { token: customerToken });
+  if (collected.data.order.paymentStatus !== "paid") throw new Error("Technician cash confirmation did not update customer payment status.");
+  record("COD cash collection requires GPS arrival and updates the customer's payment status");
 
   await request(`/tasks/${taskId}/amp-registration`, {
     token: technicianSession.token,
@@ -378,6 +386,10 @@ const main = async () => {
   if (unit.installationDate !== formatDateKeyInTimeZone(new Date())) throw new Error("My Units shifted the local installation date to the previous day.");
   if (unit.lastCleaningDate || !unit.serviceHistory?.some((history) => history.serviceType === "installation")) throw new Error("Installation was incorrectly recorded as cleaning or its history is missing.");
   record("Customer My Unit synchronization and automatic warranty activation");
+  const protectedProduct = await request(`/products/${productId}`, { token: superadmin.token, method: "DELETE", expected: [409] });
+  if (protectedProduct.data.code !== "PRODUCT_HAS_HISTORY") throw new Error("Linked inventory did not return the history-protection safeguard.");
+  await findProduct(superadmin.token, productId);
+  record("Product deletion cannot break completed order, installed-unit, or warranty references");
 
   await request(`/tasks/${taskId}/status`, { token: technicianSession.token, method: "PATCH", body: { status: "completed" } });
   const replayedUnits = await request("/amp/customer/units", { token: customerToken });

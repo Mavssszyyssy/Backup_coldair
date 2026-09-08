@@ -1,6 +1,9 @@
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Unit = require("../models/Unit");
+const ReorderRequest = require("../models/ReorderRequest");
+const RestockOrder = require("../models/RestockOrder");
+const InventoryChangeRequest = require("../models/InventoryChangeRequest");
 const crypto = require("crypto");
 const { BRANCHES } = require("../domain/branchRouting");
 const { isNonRetailCatalogProduct } = require("../domain/catalogVisibility");
@@ -943,10 +946,15 @@ const listPublicProducts = async (req, res) => {
 };
 
 const listLowStockProducts = async (req, res) => {
+  res.set("Cache-Control", "no-store");
   const products = await Product.find({
+    isActive: { $ne: false },
     threshold: { $gt: 0 },
   }).sort({ stock: 1, createdAt: -1 });
-  const roleAware = products.map((p) => toRoleAwareProduct(p, req));
+  // Keep reorder alerts consistent with catalog and serial/QR visibility.
+  const roleAware = products
+    .filter((p) => p.isActive !== false && !isNonRetailCatalogProduct(p))
+    .map((p) => toRoleAwareProduct(p, req));
   const lowStock = roleAware.filter(
     (p) => Number(p.stock || 0) < Number(p.threshold || 0),
   );
@@ -1377,13 +1385,36 @@ const deleteProduct = async (req, res) => {
   if (!requireInventoryOwner(req, res)) return null;
 
   const { productId } = req.params;
+  if (!/^[a-f\d]{24}$/i.test(String(productId || ""))) {
+    return res.status(400).json({ message: "Select a valid product." });
+  }
   const product = await Product.findById(productId);
   if (!product) {
     return res.status(404).json({ message: "Product not found" });
   }
 
-  await product.deleteOne();
-  return res.json({ message: "Product deleted successfully" });
+  const references = await Promise.all([
+    Order.exists({ "items.productId": String(product._id) }),
+    Unit.exists({ productId: String(product._id) }),
+    ReorderRequest.exists({ product: product._id }),
+    RestockOrder.exists({ "products.product": product._id }),
+    InventoryChangeRequest.exists({ product: product._id }),
+  ]);
+  if (references.some(Boolean) || (product.serialUnits || []).length) {
+    return res.status(409).json({
+      message: "This product has order, AC unit, serial, or inventory history and cannot be deleted. Its records must be retained for tracking and warranty support.",
+      code: "PRODUCT_HAS_HISTORY",
+    });
+  }
+  if (Number(product.stock) !== 0 || Object.values(toBranchStockObject(product)).some((stock) => Number(stock) !== 0)) {
+    return res.status(409).json({ message: "Resolve this product's remaining stock before removing it.", code: "PRODUCT_HAS_STOCK" });
+  }
+  // Even an unused product is retained, so a concurrent reference cannot become
+  // an orphan between the reference checks and this write.
+  product.isActive = false;
+  product.threshold = 0;
+  await product.save();
+  return res.json({ message: "Product removed from the catalog and archived safely.", archived: true });
 };
 
 const getProductImage = async (req, res) => {
