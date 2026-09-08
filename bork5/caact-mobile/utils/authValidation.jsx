@@ -27,6 +27,17 @@ export function sanitizePhMobileInput(value = "") {
   return String(value ?? "");
 }
 
+// Technician fields use local format. Normalize a complete international paste
+// before limiting input; never truncate an oversized paste into another number.
+export function sanitizeLocalPhMobileInput(value = "", previousValue = "") {
+  const text = String(value ?? "");
+  const canonical = canonicalizePhMobile(text);
+  if (/^09\d{9}$/.test(canonical)) return canonical;
+  if (!/^[\d\s()-]*$/.test(text)) return previousValue;
+  const digits = normalizePhone(text);
+  return digits.length <= 11 ? digits : previousValue;
+}
+
 export function validateRequired(value, fieldLabel = "This field") {
   if (!String(value || "").trim()) {
     return `${fieldLabel} is required.`;

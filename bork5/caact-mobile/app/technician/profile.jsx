@@ -14,7 +14,7 @@ import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
-import { canonicalizePhMobile, sanitizePhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
+import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
 import PasswordField from "../../components/ui/PasswordField";
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
@@ -271,10 +271,9 @@ export default function TechProfile() {
           <TextField
             label="Contact Number"
             value={phone}
-            onChangeText={(value) => setPhone(sanitizePhMobileInput(value))}
+            onChangeText={(value) => setPhone((previous) => sanitizeLocalPhMobileInput(value, previous))}
             keyboardType="phone-pad"
             placeholder="09XXXXXXXXX"
-            helperText="Use 09123456789 or +639123456789. Spaces and dashes are accepted."
             showKeyboardDone
             editable={!saving}
           />

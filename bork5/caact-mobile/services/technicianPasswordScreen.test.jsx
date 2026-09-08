@@ -9,19 +9,24 @@ const mockUpdate = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ replace: jest.fn() }), usePathname: () => '/technician/profile' }));
 jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate }) }));
 
-test('technician contact editing preserves formatted numbers, rejects excess digits, and allows retry', async () => {
+test('technician contact editing normalizes formatted numbers, rejects excess digits, and allows retry', async () => {
   mockUpdate.mockReset().mockRejectedValueOnce(new Error('Connection interrupted'));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
   await fireEvent.press(screen.getByLabelText('Edit technician profile'));
+  expect(screen.queryByText(/Spaces and dashes are accepted/)).toBeNull();
   expect(screen.getByLabelText('Contact Number').props.maxLength).toBeUndefined();
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '091234567890');
+  expect(screen.getByLabelText('Contact Number').props.value).toBe('09123456789');
+  await fireEvent.changeText(screen.getByLabelText('Contact Number'), '');
+  await fireEvent.changeText(screen.getByLabelText('Contact Number'), '091234567890');
+  expect(screen.getByLabelText('Contact Number').props.value).toBe('');
   await fireEvent.press(screen.getByText('Save Changes'));
   expect(mockUpdate).not.toHaveBeenCalled();
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '+63 912 345 6789');
   await fireEvent.press(screen.getByText('Save Changes'));
   expect(alert).toHaveBeenCalledWith('Not Saved', 'Connection interrupted');
-  expect(screen.getByLabelText('Contact Number').props.value).toBe('+63 912 345 6789');
+  expect(screen.getByLabelText('Contact Number').props.value).toBe('09123456789');
   mockUpdate.mockResolvedValue({ success: true });
   await fireEvent.press(screen.getByText('Save Changes'));
   expect(mockUpdate).toHaveBeenLastCalledWith({ alias: 'tech.cavite.test', phone: '09123456789' });
