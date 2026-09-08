@@ -36,6 +36,7 @@ const reviewStatusLabel = (value) => ({
 function AmpReportCenter({
   units = [],
   initialUnitId = "",
+  onPlanGenerated,
   title = "AC care reports",
   subtitle = "Choose an AC and the information you need. Start with its next service or review past work.",
 }) {
@@ -59,6 +60,7 @@ function AmpReportCenter({
     try {
       const result = await apiRequest("/ai/amp-report", { method: "POST", body: JSON.stringify({ reportType, unitId }) });
       setReport(result.report || null); setProvider(result.provider || "");
+      if (reportType === "predictive_maintenance" && result.report) onPlanGenerated?.(result.report);
     } catch (requestError) { setReport(null); setError(requestError.message || "Unable to generate AMP report."); }
     finally { setLoading(false); }
   };
@@ -116,7 +118,8 @@ function AmpReportCenter({
       {!reportUnits.length ? <p className="amp-empty">No eligible installed units are currently in this AMP view.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
       {report ? <div className="amp-report-result">
-        <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>
+        <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>
+        {report.explanationWarning ? <p role="status" className="amp-muted">{report.explanationWarning}</p> : null}
         <h3>{reportLabel || report.title}</h3>
         {!historyFirst ? <div className="amp-metrics"><article><span>Suggested servicing date</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended cleaning</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
@@ -138,7 +141,7 @@ function AmpReportCenter({
           <p>{maintenance.recommendationBasis}</p>
           {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
           <p>{maintenance.capacityAssessment?.summary}</p>
-          <p>Dates and cleaning methods are calculated by the system. AI, when available, explains them; it does not book a visit or approve warranty coverage.</p>
+          <p>When enough verified model or brand history is available, generating a next service plan asks AI to estimate the cleaning interval. The accepted date is saved for My Units, dashboards and reminders. Otherwise the system schedule remains. Cleaning methods and warranty rules stay system-controlled; AI does not book visits or approve claims.</p>
           <p className="amp-muted">Report reference: {report.reportId}</p>
         </details>
         <p className="amp-muted">{report.note}</p>

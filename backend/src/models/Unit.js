@@ -44,6 +44,9 @@ const unitSchema = new mongoose.Schema(
     },
 
     amp: {
+      // Server-only validated estimate; invalidated by a change in its evidence fingerprint.
+      aiPrediction: { type: mongoose.Schema.Types.Mixed, default: null },
+      predictionSource: { type: String, enum: ["system", "openai"], default: "system" },
       bestServicedBy: { type: Date, default: null, index: true },
       recommendedService: {
         type: String,

@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuthNoBranch, allowRoles } = require("../middleware/auth");
+const { requireAuth, allowRoles } = require("../middleware/auth");
 const {
   listMyUnits,
   calculateNextServiceDate,
@@ -12,7 +12,7 @@ const {
 
 const router = express.Router();
 
-router.use(requireAuthNoBranch);
+router.use(requireAuth);
 
 router.get(
   "/customer/units",

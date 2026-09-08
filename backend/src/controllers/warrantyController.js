@@ -8,6 +8,7 @@ const User = require("../models/User");
 const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { appendWarrantyEvent, effectiveWarrantyStatus, getWarrantyRecommendation, getWarrantyCoverage, warrantyApprovalError } = require("../domain/warrantyService");
 const { resolvePreferredBranch } = require("../domain/branchRouting");
+const { assertAmpBranch } = require("../domain/ampAccess");
 
 const displayName = (user = {}) =>
   user.name || `${user.name_first || ""} ${user.name_last || ""}`.trim() || user.email || user.role || "System";
@@ -20,6 +21,7 @@ const resolveUnitBranch = async (unit) =>
   });
 
 const getUnitForRequest = async (req) => {
+  assertAmpBranch(req);
   const unit = await Unit.findById(req.params.unitId);
   if (!unit) return null;
   const role = req.authUser.role;
@@ -80,6 +82,7 @@ const listWarranty = async (req, res) => {
 
 const listWarrantyClaims = async (req, res) => {
   try {
+    assertAmpBranch(req);
     if (!["admin", "superadmin"].includes(req.authUser.role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -102,12 +105,12 @@ const listWarrantyClaims = async (req, res) => {
     }));
     const claims = claimGroups
       .flat()
-      .filter((claim) => req.authUser.role === "superadmin" || !req.activeBranch || claim.branch === req.activeBranch)
+      .filter((claim) => req.authUser.role === "superadmin" || claim.branch === req.activeBranch)
       .sort((left, right) => new Date(right.requestedAt || 0) - new Date(left.requestedAt || 0));
     return res.json({ claims });
   } catch (error) {
     console.error("Failed to list warranty claims:", error);
-    return res.status(500).json({ message: "Unable to load warranty claims." });
+    return res.status(error.status || 500).json({ message: error.status === 403 ? error.message : "Unable to load warranty claims." });
   }
 };
 

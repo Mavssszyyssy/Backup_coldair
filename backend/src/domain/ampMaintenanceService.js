@@ -4,6 +4,7 @@ const ServiceHistory = require("../models/ServiceHistory");
 const Unit = require("../models/Unit");
 const { serviceTypeFor, assessServiceEvidence } = require("./serviceEvidence");
 const { businessDay } = require("../utils/dateTime");
+const { predictionEvidence, predictionBasis, savedPredictionIsCurrent } = require("./ampPrediction");
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_SERVICE_INTERVAL_DAYS = 270;
@@ -72,6 +73,7 @@ const selectHistoricalCohort = (levels = []) => {
       sampleSize: selected.samples.length,
       comparableUnitCount: selected.units.length,
       unitIds: selected.units.map((candidate) => candidate._id),
+      samples: selected.samples,
     };
   }
   return {
@@ -80,6 +82,7 @@ const selectHistoricalCohort = (levels = []) => {
     sampleSize: 0,
     comparableUnitCount: 0,
     unitIds: [],
+    samples: [],
   };
 };
 
@@ -178,14 +181,21 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
   const recordedInstallation = asDate(unit.installation?.installedAt);
   const installedAt = recordedInstallation && startOfUtcDay(recordedInstallation) <= asOfDate ? recordedInstallation : null;
   const anchor = lastCleaningDate || installedAt;
-  const bestServicedBy = anchor ? addDays(startOfUtcDay(anchor), cohort.intervalDays) : null;
+  const evidence = predictionEvidence({ unit, cohort,
+    ownHistory: ownHistory.map(h => ({ ...h, normalizedType: normalizeServiceType(h) })),
+    lastCleaningDate, installedAt, asOfDate });
+  const savedAi = unit.amp?.aiPrediction;
+  const aiCurrent = savedPredictionIsCurrent(savedAi, evidence, calculationDate);
+  const intervalDays = aiCurrent ? savedAi.prediction.interval_days : cohort.intervalDays;
+  const bestServicedBy = anchor ? addDays(startOfUtcDay(anchor), intervalDays) : null;
   const recommendedService = cleaningMethodForDates({
     lastCleaningDate,
     installationDate: installedAt,
     asOfDate,
   });
   const capacityAssessment = capacityAssessmentFor(unit);
-  const basis = anchor ? basisText(cohort) : "A completed cleaning or installation date is needed before a servicing date can be suggested.";
+  const basis = aiCurrent ? predictionBasis(savedAi.prediction, evidence) : anchor ? basisText(cohort) : "A completed cleaning or installation date is needed before a servicing date can be suggested.";
+  const predictionSource = aiCurrent ? "openai" : "system";
   const excludedRecordCount = allHistory.length - ownHistory.length;
   const dataQuality = { excludedRecordCount, message: excludedRecordCount ? `${excludedRecordCount} service record(s) have missing details or invalid dates and are excluded from maintenance timing. Ask the service team to review them.` : "", anchorType: lastCleaningDate ? "last_cleaning" : installedAt ? "installation" : "missing" };
 
@@ -196,7 +206,8 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
       recommendedService,
       recommendationBasis: basis,
       basisLevel: cohort.level,
-      intervalDays: cohort.intervalDays,
+      intervalDays,
+      predictionSource,
       baseIntervalDays: cohort.intervalDays,
       comparableSampleSize: cohort.sampleSize,
       lastServiceDate,
@@ -226,9 +237,12 @@ const calculateMaintenanceRecommendation = async (unitId, options = {}) => {
     lastServiceDate: lastServiceDate?.toISOString() || null,
     lastCleaningDate: lastCleaningDate?.toISOString() || null,
     recommendationBasis: basis,
+    predictionSource,
+    predictionEvidence: evidence,
+    aiPrediction: aiCurrent ? { model: savedAi.model, generatedAt: savedAi.generatedAt, engineVersion: savedAi.engineVersion } : null,
     historicalBasis: {
       level: cohort.level,
-      intervalDays: cohort.intervalDays,
+      intervalDays,
       baseIntervalDays: cohort.intervalDays,
       sampleSize: cohort.sampleSize,
       comparableUnitCount: cohort.comparableUnitCount,

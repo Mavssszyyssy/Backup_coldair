@@ -63,7 +63,7 @@ it("gives branch admins a service-window control without cross-branch access", a
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90"));
   expect(screen.getByText(/Limited history uses a provisional schedule/)).toBeVisible();
-  expect(screen.getByText(/When enabled and available, AI explains/)).toBeVisible();
+  expect(screen.getByText(/Generate a service plan to ask AI for a servicing interval/)).toBeVisible();
 });
 
 it("opens the selected unit's plan without automatically calling AI", async () => {
@@ -76,4 +76,28 @@ it("opens the selected unit's plan without automatically calling AI", async () =
   fireEvent.click(screen.getByRole("link", { name: "Review service plan" }));
   expect(screen.getByLabelText("Installed AC unit")).toHaveValue("unit-1");
   expect(apiRequest.mock.calls.some(([path]) => path === "/ai/amp-report")).toBe(false);
+});
+
+it("refreshes branch workload after a generated plan without making another paid request", async () => {
+  let pipelineReads = 0;
+  let generations = 0;
+  apiRequest.mockImplementation(async path => {
+    if (path === "/ai/amp-report") {
+      generations++;
+      return { provider: "openai", report: { reportType: "predictive_maintenance", reportId: "AI-PLAN", unit: { unitId: "unit-1" }, maintenance: { predictionSource: "openai", bestServicedBy: "2026-10-01", recommendationBasis: "AI-estimated servicing interval: 150 days." } } };
+    }
+    if (path.includes("pipeline")) {
+      pipelineReads++;
+      return { units: [] };
+    }
+    return { units: [{ unitId: "unit-1", modelName: "AC" }] };
+  });
+  show(<ManagerAmpDashboard />);
+  await screen.findByRole("option", { name: "AC · unit-1" });
+  fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(await screen.findByText("AI-estimated servicing date")).toBeVisible();
+  await waitFor(() => expect(pipelineReads).toBe(2));
+  expect(generations).toBe(1);
+  expect(screen.getByRole("button", { name: "Export PDF" })).toBeVisible();
 });

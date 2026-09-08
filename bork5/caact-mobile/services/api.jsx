@@ -427,18 +427,30 @@ export async function changeAccountPassword(token, payload) {
 }
 
 export async function completeTechnicianOnboarding(token, payload) {
-  const { ok, data } = await patch("/users/password", payload, token);
-  if (ok) {
-    return {
-      success: true,
-      user: data.user,
-      message: data.message || "Technician onboarding completed.",
-    };
+  const isCompleted = (user) => Boolean(user && (user.id || user._id) &&
+    user.role === "technician" && user.isFirstLogin === false);
+  let failure = "Unable to confirm technician setup. Please try again.";
+  try {
+    const { ok, data } = await patch("/users/password", payload, token);
+    if (ok && isCompleted(data.user)) {
+      return { success: true, user: data.user, message: data.message || "Technician onboarding completed." };
+    }
+    if (!ok) failure = getErrorMessage(data, failure);
+  } catch (error) {
+    failure = error?.message || failure;
   }
-  return {
-    success: false,
-    error: getErrorMessage(data, "Unable to complete technician onboarding."),
-  };
+
+  // A timed-out write may have committed. Read the authenticated account once
+  // before offering a retry; never repeat the password write automatically.
+  try {
+    const session = await me(token);
+    if (session.success && isCompleted(session.user)) {
+      return { success: true, user: session.user, message: "Technician setup is complete." };
+    }
+  } catch {
+    // Keep the original failure if the read also cannot reach the server.
+  }
+  return { success: false, error: failure };
 }
 
 // ---------------------------------------------------------------------------

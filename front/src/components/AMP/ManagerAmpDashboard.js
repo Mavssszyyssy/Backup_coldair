@@ -74,6 +74,7 @@ function ManagerAmpDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [planSelection, setPlanSelection] = useState({ unitId: "", revision: 0 });
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const selectPlan = (unitId) => setPlanSelection((previous) => ({ unitId, revision: previous.revision + 1 }));
 
   useEffect(() => {
@@ -108,7 +109,7 @@ function ManagerAmpDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [isCompanyWide, selectedBranch, serviceWindow]);
+  }, [isCompanyWide, selectedBranch, serviceWindow, refreshRevision]);
 
   const currentSummary = useMemo(() => {
     if (!branchSummary.length) {
@@ -252,7 +253,7 @@ function ManagerAmpDashboard() {
         {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} onSelectPlan={selectPlan} /> : null}
       </section>
 
-      <div id="amp-service-plan"><AmpReportCenter key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. The report identifies whether an AI explanation or a system-record explanation was used." /></div>
+      <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. Accepted AI servicing dates are saved; the report identifies AI estimates and system fallbacks." /></div>
 
       <details className="amp-card amp-details"><summary>Past cleaning and parts use</summary>
       <div className="amp-report-grid">

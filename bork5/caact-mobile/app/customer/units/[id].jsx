@@ -226,6 +226,14 @@ export default function CustomerUnitDetailsScreen() {
       const result = await generateAmpReport(token, { unitId: unit.id, reportType });
       if (!result.success || !result.report) throw new Error(result.error);
       setAmpReport({ ...result.report, provider: result.provider });
+      if (reportType === "predictive_maintenance" && result.report.maintenance) {
+        const nextUnit = { ...unit, ...result.report.maintenance, amp: { ...unit.amp, ...result.report.maintenance } };
+        setUnit(nextUnit);
+        const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit });
+        setRecommendation(nextRecommendation);
+        setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
+        await cacheUnitUpdate(unit.id, nextUnit).catch(() => null);
+      }
     } catch (error) {
       setAmpReportError(error?.message || "Report unavailable. Please try again.");
     } finally {

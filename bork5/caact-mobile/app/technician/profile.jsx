@@ -15,6 +15,7 @@ import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
 import { canonicalizePhMobile, sanitizePhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
+import PasswordField from "../../components/ui/PasswordField";
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
   return (
@@ -138,6 +139,10 @@ export default function TechProfile() {
       Alert.alert("Check your password", !currentPassword ? "Enter your current password." : error || "New passwords do not match.");
       return;
     }
+    if (password === currentPassword) {
+      Alert.alert("Check your password", "New password must be different from current password.");
+      return;
+    }
     setSaving(true);
     try {
       const result = await changeMyPassword({ currentPassword, newPassword: password });
@@ -145,6 +150,8 @@ export default function TechProfile() {
       setCurrentPassword(""); setPassword(""); setConfirmPassword("");
       setIsChangingPassword(false);
       Alert.alert("Password changed", "Use your new password the next time you sign in.");
+    } catch (error) {
+      Alert.alert("Password not changed", error.message || "Please try again.");
     } finally { setSaving(false); }
   };
 
@@ -179,7 +186,8 @@ export default function TechProfile() {
             />
             <TechButton
               title="Cancel"
-              onPress={() => { setIsEditing(false); setIsChangingPassword(false); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
+              disabled={saving}
+              onPress={() => { if (saving) return; setIsEditing(false); setIsChangingPassword(false); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
               variant="secondary"
             />
           </StickyActionBar>
@@ -194,9 +202,9 @@ export default function TechProfile() {
       />
 
       {isChangingPassword ? <Card>
-        <TextField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry maxLength={25} />
-        <TextField helperText="8–25 characters: uppercase, lowercase, number, and @ $ ! % * ? &." label="New Password" value={password} onChangeText={setPassword} secureTextEntry maxLength={25} />
-        <TextField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry maxLength={25} />
+        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <PasswordField label="New Password" value={password} onChangeText={setPassword} showRequirements editable={!saving} />
+        <PasswordField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
       </Card> : !isEditing ? (
         <>
           <Card>

@@ -10,6 +10,7 @@ const { effectiveWarrantyStatus, getWarrantyRecommendation, getWarrantyCoverage 
 const { notifyMaintenanceForUnit } = require("../services/ampDailyMonitorService");
 const { BRANCHES } = require("../domain/branchRouting");
 const { formatDateKeyInTimeZone } = require("../utils/dateTime");
+const { assertAmpBranch } = require("../domain/ampAccess");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
 const displayService = serviceLabel;
@@ -72,6 +73,7 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
     lastCleaningDate: recommendation ? recommendation.lastCleaningDate : json.amp?.lastCleaningDate || null,
     recommendationBasis: recommendation?.recommendationBasis || json.amp?.recommendationBasis || "",
     historicalBasis: recommendation?.historicalBasis || null,
+    predictionSource: recommendation?.predictionSource || "system",
     capacityAssessment: recommendation?.capacityAssessment || json.amp?.capacityAssessment || null,
     dataQuality: recommendation?.dataQuality || json.amp?.dataQuality || null,
     overdue: Boolean(recommendation?.overdue), amp: { ...json.amp, ...(recommendation || {}), nextIdealServiceDate: bestServicedBy },
@@ -83,14 +85,13 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
 };
 
 const loadAccessibleUnit = async (req) => {
+  assertAmpBranch(req);
   const unit = await Unit.findById(req.params.unitId);
   if (!unit) { const error = new Error("Unit not found"); error.status = 404; throw error; }
   if (!INTERNAL_AMP_ROLES.has(req.authUser.role) && String(unit.customer || "") !== String(req.authUser._id || "")) {
     const error = new Error("Forbidden"); error.status = 403; throw error;
   }
-  if (req.authUser.role !== "superadmin" && req.activeBranch && unit.serviceBranch && unit.serviceBranch !== req.activeBranch && req.authUser.role !== "customer") {
-    const error = new Error("This unit belongs to another branch."); error.status = 403; throw error;
-  }
+  assertAmpBranch(req, unit);
   if (req.authUser.role === "technician") {
     const technicianTask = await Task.exists({
       assignedTechnicianId: String(req.authUser._id || ""),
@@ -210,6 +211,7 @@ const getManagerPipeline = async (req, res) => {
 };
 const getReportUnits = async (req, res) => {
   try {
+    assertAmpBranch(req);
     const branch = req.authUser.role === "superadmin" || req.authUser.role === "owner" ? "" : req.activeBranch;
     const query = { status: { $ne: "retired" } };
     if (branch) query.serviceBranch = branch;
@@ -228,7 +230,7 @@ const getReportUnits = async (req, res) => {
       })),
     });
   } catch (error) {
-    return res.status(500).json({ message: "Unable to load AMP report units." });
+    return res.status(error.status || 500).json({ message: error.status === 403 ? error.message : "Unable to load AMP report units." });
   }
 };
 const getOwnerForecast = async (req, res) => {

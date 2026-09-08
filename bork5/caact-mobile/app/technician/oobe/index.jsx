@@ -7,6 +7,7 @@ import Card from "../../../components/ui/Card";
 import PageHeader from "../../../components/ui/PageHeader";
 import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import TextField from "../../../components/ui/TextField";
+import PasswordField from "../../../components/ui/PasswordField";
 import { COLORS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { canonicalizePhMobile, sanitizePhMobileInput, validateAccountPassword, validatePhone } from "../../../utils/authValidation";
@@ -18,12 +19,14 @@ export default function TechnicianOobe() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   if (current && !current.isFirstLogin) return <Redirect href="/technician/home" />;
 
-  const switchAccount = async () => { await logout(); router.replace("/sign-in"); };
+  const switchAccount = async () => { if (saving) return; await logout(); router.replace("/sign-in"); };
   const handleSubmit = async () => {
     if (saving) return;
+    setSubmitted(true);
     const error = validatePhone(phone) || validateAccountPassword(password);
     if (error) { Alert.alert("Check your details", error); return; }
     if (password !== confirmPassword) { Alert.alert("Password mismatch", "Please confirm the same password."); return; }
@@ -45,9 +48,11 @@ export default function TechnicianOobe() {
       <PageHeader title="Technician Setup" subtitle="Confirm your contact number and replace your initial password" onBack={switchAccount} />
       <Card>
         <TextField label="Username" value={current?.username || current?.alias || ""} editable={false} />
-        <TextField label="Contact Number" value={phone} onChangeText={(value) => setPhone(sanitizePhMobileInput(value))} keyboardType="phone-pad" maxLength={12} />
-        <TextField helperText="8–25 characters: uppercase, lowercase, number, and @ $ ! % * ? &." label="New Password" value={password} onChangeText={setPassword} maxLength={25} secureTextEntry />
-        <TextField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} maxLength={25} secureTextEntry />
+        <TextField label="Contact Number" value={phone} onChangeText={(value) => setPhone(sanitizePhMobileInput(value))} keyboardType="phone-pad" maxLength={12} editable={!saving} />
+        <PasswordField label="New Password" value={password} onChangeText={setPassword} showRequirements editable={!saving}
+          error={submitted ? validateAccountPassword(password) : ""} />
+        <PasswordField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving}
+          error={submitted && password !== confirmPassword ? "Passwords do not match." : ""} />
         <TechButton title="Save and Continue" onPress={handleSubmit} loading={saving} disabled={saving} />
       </Card>
       <TechButton title="I have a different account" variant="ghost" onPress={switchAccount} disabled={saving} />

@@ -15,8 +15,8 @@ it('uses email for both recovery-code request and password reset', async () => {
   expect(JSON.parse(apiRequest.mock.calls[0][1].body)).toEqual({ channel: 'email', identifier: 'customer@example.com' });
   fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '123456' } });
   const passwords = document.querySelectorAll('input[type="password"]');
-  passwords.forEach((input) => fireEvent.change(input, { target: { value: 'StrongPass1!' } }));
+  passwords.forEach((input) => fireEvent.change(input, { target: { value: 'StrongPass1.' } }));
   fireEvent.click(screen.getByRole('button', { name: 'Reset password securely' }));
   await waitFor(() => expect(screen.getByText('Recovery complete')).toBeInTheDocument());
-  expect(JSON.parse(apiRequest.mock.calls[1][1].body)).toEqual({ channel: 'email', identifier: 'customer@example.com', code: '123456', newPassword: 'StrongPass1!' });
+  expect(JSON.parse(apiRequest.mock.calls[1][1].body)).toEqual({ channel: 'email', identifier: 'customer@example.com', code: '123456', newPassword: 'StrongPass1.' });
 });

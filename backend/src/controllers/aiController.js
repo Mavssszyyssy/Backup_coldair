@@ -11,6 +11,8 @@ const { formatDateKeyInTimeZone } = require("../utils/dateTime");
 const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
 const { effectiveWarrantyStatus } = require("../domain/warrantyService");
 const { savePredictionSnapshot, loadPredictionReview } = require("../domain/maintenancePredictionReview");
+const { assertAmpBranch } = require("../domain/ampAccess");
+const { ENGINE_VERSION, validPrediction } = require("../domain/ampPrediction");
 
 const REPORT_TYPES = {
   predictive_maintenance: { label: "Next Maintenance Recommendation", filenameLabel: "Maintenance_Recommendation" },
@@ -61,11 +63,12 @@ const aggregateReliability = async (unit, branch) => {
 };
 
 const loadUnitAndRecommendation = async (req, unitId) => {
+  assertAmpBranch(req);
   if (!mongoose.isValidObjectId(unitId)) { const error = new Error("Select a valid installed AC unit."); error.status = 400; throw error; }
   const unit = await Unit.findById(unitId);
   if (!unit) { const error = new Error("Installed AC unit not found."); error.status = 404; throw error; }
   if (req.authUser.role === "customer" && String(unit.customer || "") !== String(req.authUser._id || "")) { const error = new Error("You are not allowed to access this AC unit."); error.status = 403; throw error; }
-  if (req.authUser.role !== "superadmin" && req.authUser.role !== "customer" && req.activeBranch && unit.serviceBranch && unit.serviceBranch !== req.activeBranch) { const error = new Error("This AC unit belongs to another branch."); error.status = 403; throw error; }
+  assertAmpBranch(req, unit);
   if (req.authUser.role === "technician") {
     const assignedTask = await Task.exists({
       assignedTechnicianId: String(req.authUser._id || ""),
@@ -82,20 +85,33 @@ const loadUnitAndRecommendation = async (req, unitId) => {
   return { unit, recommendation: await calculateMaintenanceRecommendation(unit._id) };
 };
 
+// A fresh calculation rechecks the evidence after the provider round trip.
+// Never apply a response based on a cleaning history that changed while waiting.
+async function predictAndSave(req, unit, recommendation) {
+  const ai = await callStructuredAmpAnalysis({ safetyIdentifier: String(req.authUser._id), recommendation, predictionMode: true });
+  if (ai.provider !== "openai" || !validPrediction(ai.insight, recommendation.predictionEvidence)) return { ai, recommendation };
+  const fresh = await calculateMaintenanceRecommendation(unit._id, { persist: false });
+  if (fresh.predictionEvidence.fingerprint !== recommendation.predictionEvidence.fingerprint) {
+    return { ai: { provider: "system-fallback", error: "Service history changed during prediction. Generate a new plan using the updated records." }, recommendation: await calculateMaintenanceRecommendation(unit._id) };
+  }
+  await Unit.updateOne({ _id: unit._id }, { $set: { "amp.aiPrediction": {
+    engineVersion: ENGINE_VERSION, fingerprint: fresh.predictionEvidence.fingerprint,
+    prediction: ai.insight, model: ai.model, requestId: ai.requestId, generatedAt: new Date().toISOString(),
+  } } });
+  const updated = await calculateMaintenanceRecommendation(unit._id);
+  if (updated.predictionSource !== "openai") return { ai: { provider: "system-fallback", error: "The records changed before the estimate could be applied. Showing the current system schedule." }, recommendation: updated };
+  return { ai, recommendation: updated };
+}
+
 const getMaintenanceRecommendation = async (req, res) => {
   try {
     const unitId = String(req.body?.unitId || req.body?.unit?.id || "");
-    const { unit, recommendation } = await loadUnitAndRecommendation(req, unitId);
-    const history = await ServiceHistory.find({ unit: unit._id }).sort({ serviceDate: -1 }).limit(50).lean();
-    const ai = await callStructuredAmpAnalysis({
-      safetyIdentifier: String(req.authUser._id),
-      recommendation,
-    recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(formatHistory),
-    });
+    const loaded = await loadUnitAndRecommendation(req, unitId);
+    const { ai, recommendation } = await predictAndSave(req, loaded.unit, loaded.recommendation);
     return res.json({
       provider: ai.provider,
       recommendation,
-      insight: ai.insight ? validateAmpInsight(ai.insight, recommendation) : {
+      insight: {
         best_serviced_by: recommendation.bestServicedBy?.slice(0, 10) || "", recommended_service: recommendation.recommendedService,
         recommendation_summary: recommendation.recommendationBasis, capacity_assessment: recommendation.capacityAssessment.status,
       },
@@ -112,7 +128,15 @@ const generateAmpReport = async (req, res) => {
     if (type === "inventory_reliability_analysis" && !AGGREGATE_ROLES.has(req.authUser.role)) {
       return res.status(403).json({ message: "Aggregate recorded-service reports are available to authorized operations staff only." });
     }
-    const { unit, recommendation } = await loadUnitAndRecommendation(req, String(req.body?.unitId || ""));
+    const loaded = await loadUnitAndRecommendation(req, String(req.body?.unitId || ""));
+    const unit = loaded.unit;
+    let recommendation = loaded.recommendation;
+    let predictionResult = null;
+    if (type === "predictive_maintenance") {
+      const predicted = await predictAndSave(req, unit, recommendation);
+      recommendation = predicted.recommendation;
+      predictionResult = predicted.ai;
+    }
     let predictionReviewWarning = "";
     if (type === "predictive_maintenance") {
       try { await savePredictionSnapshot(unit, recommendation); }
@@ -130,14 +154,14 @@ const generateAmpReport = async (req, res) => {
       try { predictionReview = await loadPredictionReview(unit, history); }
       catch { predictionReviewWarning = [predictionReviewWarning, "Saved-plan comparisons are temporarily unavailable."].filter(Boolean).join(" "); }
     }
-    const ai = await callStructuredAmpAnalysis({
+    const ai = predictionResult || await callStructuredAmpAnalysis({
       safetyIdentifier: String(req.authUser._id),
       recommendation,
       recordedHistory: history.filter((item) => assessServiceEvidence(item, { installedAt: unit.installation?.installedAt }).eligible).map(formatHistory),
       aggregateReliability: aggregate,
       reportType: type,
     });
-    const insight = ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
+    const insight = !predictionResult && ai.insight ? validateAmpInsight(ai.insight, recommendation) : null;
     const generatedAt = new Date().toISOString(); const date = formatDateKeyInTimeZone(generatedAt);
     const identifier = slugSegment(unit.serialNumber || unit.qrUnitId, "AC-UNIT");
     const fileIdentifier = aggregate ? `Branch-${slugSegment(branch, "AEROPULSE")}` : identifier;
@@ -152,6 +176,7 @@ const generateAmpReport = async (req, res) => {
         branch, preparedBy: "AEROPULSE system-generated report", systemName: "AEROPULSE", watermark: "AEROPULSE",
         unit: { unitId: String(unit._id), qrUnitId: unit.qrUnitId || "", serialNumber: unit.serialNumber, brand: unit.brand, model: unit.modelName, category: unit.category || "", capacityHp: unit.capacityHp || 0, roomSizeSqm: unit.roomSizeSqm || null, installedAt: unit.installation?.installedAt || null, serviceBranch: branch, warrantyStatus: effectiveWarrantyStatus(unit.warranty || {}) },
         maintenance: {
+          predictionSource: recommendation.predictionSource, aiPrediction: recommendation.aiPrediction,
           bestServicedBy: recommendation.bestServicedBy, recommendedService: recommendation.recommendedService,
           lastServiceDate: recommendation.lastServiceDate, lastCleaningDate: recommendation.lastCleaningDate,
           recommendedServiceLabel: displayService(recommendation.recommendedService), recommendationBasis: recommendation.recommendationBasis,

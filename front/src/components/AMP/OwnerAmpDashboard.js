@@ -54,6 +54,7 @@ function OwnerAmpDashboard() {
   const [brandTrends, setBrandTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshRevision, setRefreshRevision] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -88,7 +89,7 @@ function OwnerAmpDashboard() {
         setBrandTrends([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshRevision]);
 
   const peakMonth = useMemo(() => {
     if (!forecast.some(item => item.serviceVolume > 0)) return null;
@@ -131,7 +132,7 @@ function OwnerAmpDashboard() {
         <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Branch</th><th>Upcoming services</th></tr></thead><tbody>{branchDemand.map((item) => <tr key={item.branch}><td>{item.branch}</td><td>{item.upcomingServices}</td></tr>)}</tbody></table></div>
         {!branchDemand.length && !loading && !error ? <p className="amp-empty">No upcoming branch workload is recorded.</p> : null}
       </section>
-      <div id="amp-service-plan"><AmpReportCenter units={reportUnits} title="Understand a unit’s next service" subtitle="Review the suggested date and its evidence. AI explanations are identified only when they are actually used." /></div>
+      <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} units={reportUnits} title="Understand a unit’s next service" subtitle="Generate a plan to estimate the next servicing date from verified history. AI estimates and system fallbacks are clearly identified." /></div>
 
       <details className="amp-card amp-details"><summary>Cleaning recommendations and parts history</summary>
       <div className="amp-report-grid">

@@ -11,6 +11,21 @@ vi.mock("../../utils/exporters", () => ({ exportHtmlToPdfViaPrint: vi.fn() }));
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
+it("labels a persisted AI date even when the latest provider attempt fell back, and exports its basis", async () => {
+  apiRequest.mockResolvedValue({ provider: "system-fallback", report: {
+    reportId: "AI-SAVED", reportType: "predictive_maintenance", branch: "Cavite",
+    explanationWarning: "AI is unavailable. Showing the current saved or system recommendation.",
+    maintenance: { predictionSource: "openai", bestServicedBy: "2026-05-01", recommendationBasis: "AI-estimated servicing interval: 120 days." },
+  } });
+  render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
+  fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(await screen.findByText("AI-estimated servicing date")).toBeVisible();
+  expect(screen.getByRole("status")).toHaveTextContent("AI is unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  expect(exportHtmlToPdfViaPrint.mock.calls[0][0].html).toContain("AI-estimated servicing interval: 120 days.");
+});
+
 it("shows actual history without crashing or inventing a fee when no price exists", () => {
   render(<ServiceHistory unit={{ brand: "Cold Air", model: "CA-1", serviceHistory: [
     { id: "1", date: "2026-09-05T16:30:00Z", serviceType: "repair", findings: "Control board failed inspection.", actionTaken: "Replaced control board." },

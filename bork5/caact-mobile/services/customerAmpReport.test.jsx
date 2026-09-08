@@ -33,3 +33,10 @@ test("AI outage explains that the usable report is a system fallback", async () 
   expect(screen.getByText("AI explanation timed out. Showing the system recommendation.")).toBeTruthy();
   expect(screen.queryByText("AI-assisted explanation")).toBeNull();
 });
+
+test("an accepted AI date is distinguished from an AI explanation and system fallback", async () => {
+  await render(<CustomerAmpReport report={{ ...report, maintenance: { ...report.maintenance, predictionSource: "openai", recommendationBasis: "AI-estimated servicing interval: 150 days.", interpretation: "AI-estimated servicing interval: 150 days." } }} provider="openai" />);
+  expect(screen.getByText("AI-estimated servicing date")).toBeTruthy();
+  expect(screen.queryByText("AI-assisted explanation")).toBeNull();
+  expect(screen.getByText("AI-estimated servicing interval: 150 days.")).toBeTruthy();
+});

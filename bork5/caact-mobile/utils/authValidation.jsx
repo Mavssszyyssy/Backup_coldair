@@ -113,10 +113,23 @@ export function validateConfirmPassword(password, confirmPassword) {
 // Account password changes use the backend's stronger policy, unlike sign-in
 // and legacy initial credentials which must continue to be accepted as-is.
 export function validateAccountPassword(password) {
-  return validatePassword(password) ||
-    (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,25}$/.test(password)
-      ? "Use 8–25 characters with uppercase, lowercase, a number, and a special character: @ $ ! % * ? &."
-      : "");
+  const lengthError = validatePassword(password);
+  if (lengthError) return lengthError;
+  const missing = getAccountPasswordRequirements(password).filter((rule) => !rule.met);
+  return missing.length ? `Password needs: ${missing.map((rule) => rule.label).join('; ')}.` : "";
+}
+
+export function getAccountPasswordRequirements(password = "") {
+  const value = String(password);
+  return [
+    { label: "8–25 characters", met: value.length >= 8 && value.length <= 25 },
+    { label: "an uppercase letter (A–Z)", met: /[A-Z]/.test(value) },
+    { label: "a lowercase letter (a–z)", met: /[a-z]/.test(value) },
+    { label: "a number (0–9)", met: /\d/.test(value) },
+    // Any printable ASCII punctuation counts, not just seven selected symbols.
+    { label: "a symbol (for example ! @ # . _ -)", met: /[!-/:-@\[-`{-~]/.test(value) },
+    { label: "no spaces or control characters", met: !/[\s\u0000-\u001f\u007f]/.test(value) },
+  ];
 }
 
 export function validateLoginForm({ email, password }) {

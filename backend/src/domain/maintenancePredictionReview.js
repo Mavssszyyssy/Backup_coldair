@@ -12,7 +12,9 @@ function buildPredictionSnapshot(unit, recommendation, capturedAt = new Date()) 
   if (!suggestedDate || !anchorDate || !["regular_cleaning", "deep_cleaning"].includes(recommendation.recommendedService)) return null;
   const basis = recommendation.historicalBasis || {};
   const evidence = {
-    unit: String(unit._id), engineVersion: ENGINE_VERSION,
+    unit: String(unit._id), engineVersion: recommendation.aiPrediction?.engineVersion || ENGINE_VERSION,
+    model: recommendation.aiPrediction?.model || "",
+    evidenceFingerprint: recommendation.aiPrediction ? recommendation.predictionEvidence?.fingerprint || "" : "",
     suggestedDate: suggestedDate.toISOString(), anchorDate: anchorDate.toISOString(),
     recommendedService: recommendation.recommendedService,
     recommendationBasis: String(recommendation.recommendationBasis || ""),

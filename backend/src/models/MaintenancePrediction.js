@@ -6,6 +6,8 @@ const schema = new mongoose.Schema({
   unit: { type: mongoose.Schema.Types.ObjectId, ref: "Unit", required: true, index: true, immutable: true },
   capturedAt: { type: Date, required: true, immutable: true },
   engineVersion: { type: String, required: true, immutable: true },
+  model: { type: String, default: "", immutable: true },
+  evidenceFingerprint: { type: String, default: "", immutable: true },
   suggestedDate: { type: Date, required: true, immutable: true },
   recommendedService: { type: String, enum: ["regular_cleaning", "deep_cleaning"], required: true, immutable: true },
   recommendationBasis: { type: String, required: true, immutable: true },

@@ -315,13 +315,15 @@ const normalizeNotifications = (current, payload = {}) => {
 };
 
 const isStrongPassword = (value = "") => {
-  const password = String(value);
+  if (typeof value !== "string") return false;
+  const password = value;
   if (password.length > 25) return false;
   if (password.length < 8) return false;
   if (!/(?=.*[a-z])/.test(password)) return false;
   if (!/(?=.*[A-Z])/.test(password)) return false;
   if (!/(?=.*\d)/.test(password)) return false;
-  if (!/(?=.*[@$!%*?&])/.test(password)) return false;
+  if (!/[!-/:-@\[-`{-~]/.test(password)) return false;
+  if (/[\s\u0000-\u001f\u007f]/.test(password)) return false;
   return true;
 };
 
@@ -761,8 +763,11 @@ const changePassword = async (req, res) => {
     if (!isStrongPassword(newPassword)) {
       return res.status(400).json({
         message:
-          "New password must be 8-25 characters and include uppercase, lowercase, number, and special character.",
+          "New password must be 8-25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). Spaces and control characters are not allowed.",
       });
+    }
+    if (req.authUser.passwordHash && await bcrypt.compare(newPassword, req.authUser.passwordHash)) {
+      return res.status(400).json({ message: "New password must be different from your initial password." });
     }
     if (req.authUser.role === "technician") {
       const profileResult = await applyProfileUpdate(req.authUser, {
@@ -811,7 +816,7 @@ const changePassword = async (req, res) => {
   if (!isStrongPassword(newPassword)) {
     return res.status(400).json({
       message:
-        "New password must be 8-25 characters and include uppercase, lowercase, number, and special character.",
+        "New password must be 8-25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). Spaces and control characters are not allowed.",
     });
   }
   if (String(currentPassword) === String(newPassword)) {

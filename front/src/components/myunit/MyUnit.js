@@ -190,6 +190,12 @@ function MyUnit() {
 
             <div className="customer-amp-report-center">
               <AmpReportCenter
+                onPlanGenerated={(report) => {
+                  const applyPlan = (unit) => String(unit?.backendUnitId || unit?.id) === String(report.unit?.unitId)
+                    ? { ...unit, ...report.maintenance, bestServicedByLabel: formatCustomerDate(report.maintenance?.bestServicedBy) } : unit;
+                  setUnits(previous => previous.map(applyPlan));
+                  setSelectedUnit(previous => previous ? applyPlan(previous) : previous);
+                }}
                 units={units.map((unit) => ({
                   ...unit,
                   unitId: unit.backendUnitId || unit.id,

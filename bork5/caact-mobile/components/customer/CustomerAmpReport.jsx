@@ -21,7 +21,7 @@ export default function CustomerAmpReport({ report, provider }) {
   const aiAssisted = provider === "openai" && Boolean(explanation);
   return <View style={{ marginTop: SPACING.md }}>
     <Text accessibilityRole="header" style={{ color: COLORS.text, fontSize: FONT.lg, fontWeight: FONT.bold }}>{summary ? "Your service history" : "Your next service"}</Text>
-    <Text style={body}>{aiAssisted ? "AI-assisted explanation" : "Based on system records"}</Text>
+    <Text style={body}>{maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : aiAssisted ? "AI-assisted explanation" : "Based on system records"}</Text>
     {report.explanationWarning ? <Text accessibilityRole="alert" style={body}>{report.explanationWarning}</Text> : null}
     {!summary ? <>
       <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} />
@@ -42,7 +42,7 @@ export default function CustomerAmpReport({ report, provider }) {
       {summary ? <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} /> : null}
       <DetailRow label="Calculation basis" value={maintenance.recommendationBasis || "Not recorded"} multiline />
       <DetailRow label="Room size and horsepower" value={maintenance.capacityAssessment?.summary || "Add room size and AC horsepower to see this comparison."} multiline />
-      <Text style={body}>Dates and cleaning methods are calculated by the system. AI, when available, explains them; it does not book a visit or approve warranty coverage.</Text>
+      <Text style={body}>When enough verified model or brand history is available, a next service plan asks AI to estimate the cleaning interval. Accepted dates are saved for your unit and reminders. Otherwise the system schedule remains. Cleaning methods and warranty rules stay system-controlled; AI does not book visits or approve claims.</Text>
       <DetailRow label="Report reference" value={report.reportId || "Not recorded"} multiline />
     </View> : null}
     <Text style={body}>No visit has been booked by this report. To request one, open Service Visits in this app.</Text>
