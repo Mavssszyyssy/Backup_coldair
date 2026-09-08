@@ -44,6 +44,7 @@ const createDedupedNotification = async (payload = {}, { dedupeMinutes = 60 } = 
 
 const notifyOperationalStaff = async ({
   branch = "",
+  branches = [],
   title,
   message,
   type = "system",
@@ -57,7 +58,9 @@ const notifyOperationalStaff = async ({
   roles = ["admin", "superadmin"],
 } = {}) => {
   if (!title || !message) return [];
-  const normalizedBranch = String(branch || "").trim();
+  const normalizedBranches = [...new Set([branch, ...(Array.isArray(branches) ? branches : [])]
+    .map(value => String(value || "").trim()).filter(Boolean))];
+  const normalizedBranch = normalizedBranches[0] || "";
   const users = await User.find({
     role: { $in: roles },
     isDeleted: { $ne: true },
@@ -67,13 +70,15 @@ const notifyOperationalStaff = async ({
     if (!canReceive(user, type)) return false;
     if (String(user.role || "") === "superadmin" || !normalizedBranch) return true;
     const assigned = String(user.activeBranch || user.assignedBranch || "").trim();
-    return assigned === normalizedBranch;
+    return normalizedBranches.includes(assigned);
   });
   return Promise.all(
     recipients.map((user) =>
       createDedupedNotification({
         user: user._id,
-        branch: normalizedBranch,
+        branch: normalizedBranches.includes(String(user.activeBranch || user.assignedBranch || "").trim())
+          ? String(user.activeBranch || user.assignedBranch).trim()
+          : normalizedBranch,
         type,
         category,
         severity,

@@ -14,7 +14,7 @@ import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
-import { parseLookupTarget } from "../../../../services/qrLookupService";
+import { resolveInventoryQrSerial } from "../../../../services/qrLookupService";
 import { isInstallationWorkOrder, ROOM_SIZE_OPTIONS } from "../../../../services/technicianTaskLogic";
 
 const taskSerials = (task = {}) => {
@@ -51,6 +51,8 @@ export default function AmpRegistrationScreen() {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resolvingQr, setResolvingQr] = useState(false);
+  const scanInFlight = React.useRef(false);
   const [scannerActive, setScannerActive] = useState(true);
   const [message, setMessage] = useState("");
   const [unitHistory, setUnitHistory] = useState(null);
@@ -94,26 +96,33 @@ export default function AmpRegistrationScreen() {
   useFocusEffect(React.useCallback(() => { load(); }, [load]));
 
   const handleScanned = async (rawValue) => {
-    if (saving || !task) return;
-    const parsed = parseLookupTarget(rawValue);
-    const scannedSerial = String(parsed.serialNumber || parsed.lookupValue || "").trim();
-    if (!scannedSerial) {
-      Alert.alert("QR not recognized", "This QR code does not contain an AC unit serial number.");
-      return;
+    if (saving || scanInFlight.current || !task) return;
+    scanInFlight.current = true;
+    setResolvingQr(true);
+    try {
+      // Refresh authorization/assignment first; cached work cannot verify a scan.
+      const latestTask = await getTaskById(id, { requireOnline: true });
+      if (!latestTask) throw new Error("This work order is no longer available. Return to Work Orders and refresh the list.");
+      setTask(latestTask);
+      const scannedSerial = await resolveInventoryQrSerial(rawValue);
+      const assignedSerial = taskSerials(latestTask).find((serial) => serial.toLowerCase() === scannedSerial.toLowerCase());
+      if (!assignedSerial) {
+        Alert.alert("Wrong AC unit", "This QR label is not assigned to the selected work order. Scan the AC unit assigned by Admin.");
+        return;
+      }
+      if (latestTask?.ampRegistrations?.[assignedSerial]?.status === "registered") {
+        Alert.alert("Already registered", "This assigned AC unit was already verified for this work order.");
+        return;
+      }
+      setScannerActive(false);
+      setPendingSerial(assignedSerial);
+      setRoomDetails(defaultRoomDetails);
+    } catch (error) {
+      Alert.alert("Unable to verify QR", error?.message || "Check your connection and scan again.");
+    } finally {
+      scanInFlight.current = false;
+      setResolvingQr(false);
     }
-    const assignedSerial = serials.find((serial) => serial.toLowerCase() === scannedSerial.toLowerCase());
-    if (!assignedSerial) {
-      Alert.alert("Wrong AC unit", "This QR label is not assigned to the selected work order. Scan the AC unit assigned by Admin.");
-      return;
-    }
-    if (task?.ampRegistrations?.[assignedSerial]?.status === "registered") {
-      Alert.alert("Already registered", "This assigned AC unit was already verified for this work order.");
-      return;
-    }
-
-    setScannerActive(false);
-    setPendingSerial(assignedSerial);
-    setRoomDetails(defaultRoomDetails);
   };
 
   const submitRoomCapacity = async () => {
@@ -177,6 +186,7 @@ export default function AmpRegistrationScreen() {
         {message ? <Card><Text style={{ color: COLORS.success, fontWeight: FONT.bold }}>{message}</Text></Card> : null}
 
         <UnitHistoryPanel history={unitHistory} />
+        {resolvingQr ? <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>Checking QR against the current work order…</Text> : null}
 
         {!loading && installationTask && serials.length === 0 ? (
           <Card>

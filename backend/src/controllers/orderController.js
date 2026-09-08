@@ -1677,6 +1677,7 @@ const createStaffOrderNotification = async ({ order, title, message }) => {
   try {
     await notifyOperationalStaff({
       branch: String(order.stockSourceBranch || order.customerBranch || "").trim(),
+      branches: [order.customerBranch, order.stockSourceBranch],
       title,
       message,
       type: "order",
@@ -1708,6 +1709,7 @@ const notifyBranchAdminsForOrder = async (order) => {
   try {
     await notifyOperationalStaff({
       branch: order.stockSourceBranch || order.customerBranch || "",
+      branches: [order.customerBranch, order.stockSourceBranch],
       title: "New customer order",
       message: `Order ${order.orderCode} from ${order.customerName || "a customer"} is waiting in Admin Orders.`,
       type: "order",
@@ -2366,7 +2368,10 @@ const createOrder = async (req, res) => {
     const normalizedTotal = serverTotals.total;
     const orderPayload = {
       orderCode,
-      ...(idempotencyKey ? { idempotencyKey } : {}),
+      // The compound unique index includes every customer even when a request
+      // omits its key. Give keyless purchases distinct identities instead of
+      // colliding on null; client-supplied retry keys still replay above.
+      idempotencyKey: idempotencyKey || `server:${crypto.randomUUID()}`,
       customer: user._id,
       customerName: user.name || `${user.name_first} ${user.name_last}`.trim(),
       items: resolvedItems,
@@ -2685,6 +2690,8 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
     await order.save();
     await Task.updateMany(
       {
+        // Cancellation is terminal. Never reopen completed/cancelled history.
+        status: { $nin: ["completed", "cancelled"] },
         $or: [
           { "payload.orderId": String(order._id || order.id || "") },
           { "payload.orderCode": order.orderCode },
@@ -2692,8 +2699,8 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
       },
       {
         $set: {
-          status: "on-hold",
-          "payload.status": "on-hold",
+          status: "cancelled",
+          "payload.status": "cancelled",
           "payload.cancelledByOrder": true,
           "payload.updatedAt": new Date().toISOString(),
         },
@@ -2954,7 +2961,15 @@ const recoverOrder = async (req, res) => {
   const action = String(req.body?.action || "").trim().toLowerCase();
   const form = req.body || {};
 
+  // Recovery must not revive cancelled orders or touch their released stock.
+  if (order.workflowStatus === "cancelled") {
+    return res.status(409).json({ message: "Cancelled orders are locked. Create a new order if fulfillment is still needed." });
+  }
+
   if (action === "recreate_task") {
+    if (order.workflowStatus === "complete") {
+      return res.status(409).json({ message: "Completed orders cannot recreate technician work. Existing history is preserved." });
+    }
     const technician = await resolveTechnicianAssignment({
       branch: order.stockSourceBranch || order.customerBranch || "",
       assignedTechnicianId: form.assignedTechnicianId || "",

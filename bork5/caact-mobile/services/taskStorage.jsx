@@ -252,7 +252,7 @@ export async function saveAllTasks(items = []) {
   return normalized;
 }
 
-export async function getTaskById(taskId) {
+export async function getTaskById(taskId, { requireOnline = false } = {}) {
   const normalizedTaskId = Array.isArray(taskId) ? taskId[0] : taskId;
   let connectionFailed = false;
   try {
@@ -266,12 +266,14 @@ export async function getTaskById(taskId) {
       throw new Error(result.error || "Unable to load this work order.");
     }
   } catch (error) {
+    if (requireOnline) throw error;
     connectionFailed = true;
     if (error?.message && !/network request failed|failed to fetch|timed out/i.test(error.message)) {
       throw error;
     }
   }
 
+  if (requireOnline) throw new Error("Please sign in again to verify the current work order assignment.");
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const cachedTasks = safeParse(raw, []);
   const cachedTask = Array.isArray(cachedTasks)

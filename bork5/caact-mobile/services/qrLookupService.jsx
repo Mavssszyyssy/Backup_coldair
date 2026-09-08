@@ -175,9 +175,11 @@ async function lookupSerialInProductCatalog(rawValue, token) {
   return null;
 }
 
-async function lookupBackendSerialUnit(rawValue) {
+async function lookupBackendSerialUnit(rawValue, { allowCatalogFallback = true } = {}) {
   const { serialNumber, qrUnitId, lookupValue } = parseLookupTarget(rawValue);
-  const lookupKey = serialNumber || qrUnitId || lookupValue;
+  // The permanent QR identity survives replacement of temporary serial numbers.
+  // Never let a serial tag override a different QR unit in the same payload.
+  const lookupKey = qrUnitId || serialNumber || lookupValue;
   if (!lookupKey) return { unit: null, error: "No AC unit identifier was found in the QR code." };
 
   const token = await getStoredToken();
@@ -207,7 +209,7 @@ async function lookupBackendSerialUnit(rawValue) {
     }
 
     if (!response.ok) {
-      if (response.status === 404) {
+      if (response.status === 404 && allowCatalogFallback) {
         const catalogResult = await lookupSerialInProductCatalog(rawValue, token);
         if (catalogResult?.unit) return catalogResult;
       }
@@ -230,6 +232,13 @@ async function lookupBackendSerialUnit(rawValue) {
       error: error?.message || "Backend serial lookup failed.",
     };
   }
+}
+
+export async function resolveInventoryQrSerial(rawValue) {
+  const result = await lookupBackendSerialUnit(rawValue, { allowCatalogFallback: false });
+  const serial = String(result?.unit?.serialNumber || "").trim();
+  if (!serial) throw new Error(result?.error || "The server could not identify this inventory QR label. Please scan again.");
+  return serial;
 }
 
 async function lookupBackendRegistrationContext(rawValue) {
