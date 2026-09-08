@@ -42,7 +42,19 @@ const duplicateIdentityMessage = (error = {}) => {
   return messages[field] || messages.unknown;
 };
 
+// Restrict friendly conflict handling to user-account write handlers.
+const withIdentityConflict = (handler) => async (req, res, next) => {
+  try {
+    return await handler(req, res, next);
+  } catch (error) {
+    const message = duplicateIdentityMessage(error);
+    if (message) return res.status(409).json({ message });
+    throw error;
+  }
+};
+
 module.exports = {
+  withIdentityConflict,
   duplicateIdentityField,
   duplicateIdentityMessage,
   normalizeOptionalIdentity,

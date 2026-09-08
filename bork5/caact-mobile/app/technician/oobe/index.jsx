@@ -48,7 +48,9 @@ export default function TechnicianOobe() {
       <PageHeader title="Technician Setup" subtitle="Confirm your contact number and replace your initial password" onBack={switchAccount} />
       <Card>
         <TextField label="Username" value={current?.username || current?.alias || ""} editable={false} />
-        <TextField label="Contact Number" value={phone} onChangeText={(value) => setPhone(sanitizePhMobileInput(value))} keyboardType="phone-pad" maxLength={12} editable={!saving} />
+        <TextField label="Contact Number" value={phone} onChangeText={(value) => setPhone(sanitizePhMobileInput(value))} keyboardType="phone-pad" editable={!saving} showKeyboardDone
+          helperText="Use 09123456789 or +639123456789. Spaces and dashes are accepted."
+          error={submitted ? validatePhone(phone) : ""} />
         <PasswordField label="New Password" value={password} onChangeText={setPassword} showRequirements editable={!saving}
           error={submitted ? validateAccountPassword(password) : ""} />
         <PasswordField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving}

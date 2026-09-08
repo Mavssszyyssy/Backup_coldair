@@ -21,16 +21,8 @@ const PASSWORD_RESET_MINUTES = Math.max(
   Math.min(30, Number(env.passwordResetTokenTtlMinutes || 20)),
 );
 
-const normalizePhone = (phone = "") => String(phone).replace(/\D/g, "");
-const canonicalizePhMobile = (phone = "") => {
-  const digits = normalizePhone(phone);
-  if (/^639\d{9}$/.test(digits)) {
-    return `09${digits.slice(3)}`;
-  }
-  return digits;
-};
-const isValidPhMobile = (phone = "") =>
-  /^09\d{9}$/.test(canonicalizePhMobile(phone));
+const { canonicalizePhMobile, isValidPhMobile } = require("../utils/phMobile");
+const { withIdentityConflict } = require("../utils/optionalIdentity");
 const sanitizeText = (value = "", maxLength = 120) =>
   String(value || "")
     .trim()
@@ -401,7 +393,7 @@ const applyProfileUpdate = async (
       return {
         ok: false,
         status: 400,
-        message: "Invalid phone number format. Use 09XXXXXXXXX.",
+        message: "Enter a Philippine mobile number such as 09123456789 or +639123456789. Spaces and dashes are allowed.",
       };
     }
     const normalizedPhone = canonicalizePhMobile(payload.phone);
@@ -770,9 +762,13 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: "New password must be different from your initial password." });
     }
     if (req.authUser.role === "technician") {
+      const contactPhone = phone === undefined ? req.authUser.phone : phone;
+      if (!isValidPhMobile(contactPhone)) {
+        return res.status(400).json({ message: "Enter a Philippine mobile number such as 09123456789 or +639123456789 to complete technician setup." });
+      }
       const profileResult = await applyProfileUpdate(req.authUser, {
         alias,
-        phone,
+        phone: contactPhone,
       });
       if (!profileResult.ok) {
         return res
@@ -1306,8 +1302,8 @@ module.exports = {
   listUsers,
   getProfile,
   getProfileById,
-  updateProfile,
-  updateProfileById,
+  updateProfile: withIdentityConflict(updateProfile),
+  updateProfileById: withIdentityConflict(updateProfileById),
   updateLocation,
   listAddresses,
   addAddress,
@@ -1318,7 +1314,7 @@ module.exports = {
   updatePreferences,
   updatePrivacy,
   updateNotifications,
-  changePassword,
+  changePassword: withIdentityConflict(changePassword),
   requestPasswordChangeEmail,
   deleteAccount,
   deleteUserById,

@@ -30,13 +30,8 @@ const getInventoryQrPayload = (serialNumber, storedQrCode = '') => {
 };
 
 const getInventoryQrValue = (serialNumber, storedQrCode = '') => {
-  const payload = getInventoryQrPayload(serialNumber, storedQrCode);
-  if (!payload) return '';
-  if (typeof window === 'undefined') return payload;
-  const params = new URLSearchParams();
-  if (serialNumber) params.set('serial', serialNumber);
-  params.set('qr', payload);
-  return `${window.location.origin}/tech/field-registration?${params.toString()}`;
+  // The mobile scanner accepts inventory tags directly; do not open a retired website.
+  return getInventoryQrPayload(serialNumber, storedQrCode);
 };
 
 const buildOrderUnitQrPayload = (order = {}, item = {}, unitNumber = 1) =>
@@ -699,6 +694,7 @@ const AdminOrders = ({ embedded = false }) => {
                                   </div>
                                   <div className="admin-order-unit-details">
                                     <span>Inventory QR - Unit {serialIdx + 1}</span>
+                                    <small>Scan in the Cold Air mobile app</small>
                                     <code>{unit.serialNumber || `Order unit ${serialIdx + 1}`}</code>
                                     {unit.productSku ? <small>SKU: {unit.productSku}</small> : null}
                                     {unit.branch ? <small>Branch: {unit.branch}</small> : null}

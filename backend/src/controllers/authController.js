@@ -42,12 +42,7 @@ const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
 const isValidEmail = (email = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 const normalizeIdentifier = (value = "") => String(value).trim().toLowerCase();
-const normalizePhone = (phone = "") => String(phone).replace(/\D/g, "");
-const canonicalizePhMobile = (phone = "") => {
-  const digits = normalizePhone(phone);
-  if (/^639\d{9}$/.test(digits)) return `09${digits.slice(3)}`;
-  return digits;
-};
+const { canonicalizePhMobile, isValidPhMobile } = require("../utils/phMobile");
 const isValidSixDigitCode = (value = "") =>
   /^\d{6}$/.test(String(value).trim());
 const signRegistrationVerificationToken = ({ email = "", phone = "" }) =>
@@ -434,6 +429,9 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "A valid email address is required." });
     }
     const normalizedPhone = canonicalizePhMobile(phone);
+    if (normalizedPhone && !isValidPhMobile(normalizedPhone)) {
+      return res.status(400).json({ message: "Enter a Philippine mobile number such as 09123456789 or +639123456789, or leave the optional phone field empty." });
+    }
     const registrationProgress = req.session?.registrationProgress?.formData || {};
     const emailVerified = Boolean(
       registrationProgress.emailVerified
@@ -549,13 +547,13 @@ const login = async (req, res) => {
   const { identifier, password } = req.body;
   try {
     const normalizedIdentifier = normalizeIdentifier(identifier);
-    const normalizedPhone = normalizePhone(identifier);
+    const normalizedPhone = canonicalizePhMobile(identifier);
     const lookupConditions = [
       { email: normalizedIdentifier },
       { alias: normalizedIdentifier },
       { username: normalizedIdentifier },
     ];
-    if (normalizedPhone) {
+    if (isValidPhMobile(normalizedPhone)) {
       lookupConditions.push({ phone: normalizedPhone });
     }
     // STRICT ALIAS LOGIN: Email is excluded to prioritize technical identity

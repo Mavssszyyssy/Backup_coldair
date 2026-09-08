@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { BRANCHES } = require("../domain/branchRouting");
+const { withIdentityConflict } = require("../utils/optionalIdentity");
 
 const credentialPart = (value = "") => String(value)
   .normalize("NFD")
@@ -144,4 +145,4 @@ const createStaff = async (req, res) => {
   });
 };
 
-module.exports = { buildTechnicianCredentials, createStaff };
+module.exports = { buildTechnicianCredentials, createStaff: withIdentityConflict(createStaff) };

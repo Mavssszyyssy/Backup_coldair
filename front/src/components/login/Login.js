@@ -10,15 +10,7 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
-
-const getRoleHomePath = (role) => {
-  if (role === "technician") return "/tech/dashboard";
-  if (role === "manager") return "/manager/amp";
-  if (role === "owner") return "/owner/amp";
-  if (role === "admin") return "/admin/dashboard";
-  if (role === "superadmin") return "/superadmin/dashboard";
-  return "/shop";
-};
+import { getRoleHomePath } from "../../domain/webRoleHome";
 
 const getCustomerLoginDestination = (location) => {
   const from = location.state?.from;

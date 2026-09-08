@@ -17,12 +17,8 @@ const ManagerAmpDashboard = lazy(() => import("./components/AMP/ManagerAmpDashbo
 const OwnerAmpDashboard = lazy(() => import("./components/AMP/OwnerAmpDashboard"));
 const LegalPolicyPage = lazy(() => import("./components/legal/LegalPolicyPage"));
 const AuthenticatorSetup = lazy(() => import("./components/security/AuthenticatorSetup"));
-const TechMainScreen = lazy(() => import("./components/TECH/Dashboard/TechMainScreen"));
-const ProfileTechnicianScreen = lazy(() => import("./components/TECH/Profile/ProfileTechnicianScreen"));
-const TechEditProfile = lazy(() => import("./components/TECH/Profile/TechEditProfile"));
-const FieldServiceRegistration = lazy(() => import("./components/TECH/Tasks/FieldServiceRegistration"));
-const TaskDetails = lazy(() => import("./components/TECH/Tasks/TaskDetails"));
-const TaskScreens = lazy(() => import("./components/TECH/Tasks/TaskScreens"));
+import TechnicianMobileNotice from "./components/common/TechnicianMobileNotice";
+import { getRoleHomePath, TECHNICIAN_MOBILE_NOTICE_PATH } from "./domain/webRoleHome";
 const SuperAdminAlerts = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"));
 const SuperAdminBranches = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"));
 const SuperAdminDashboard = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminDashboard"));
@@ -54,23 +50,6 @@ import Shop from "./components/shop/Shop";
 import { AdminSettingsProvider } from "./context/AdminSettingsContext";
 import { CartProvider } from "./context/CartContext";
 import { UserProvider, useUser } from "./context/UserContext";
-
-const getRoleHomePath = (role) => {
-  switch (role) {
-    case "technician":
-      return "/tech/dashboard";
-    case "manager":
-      return "/manager/amp";
-    case "owner":
-      return "/owner/amp";
-    case "admin":
-      return "/admin/dashboard";
-    case "superadmin":
-      return "/superadmin/dashboard";
-    default:
-      return "/shop";
-  }
-};
 
 const RoleRoute = ({ allowedRoles, children }) => {
   const { isAuthenticated, loading, user, userRole } = useUser();
@@ -135,7 +114,7 @@ const HomeRoute = ({ children }) => {
 };
 
 // Main App content with routes
-function AppContent() {
+export function AppContent() {
   const {
     isAuthenticated,
     loading,
@@ -426,54 +405,9 @@ function AppContent() {
             </RoleRoute>
           }
         />
-        <Route
-          path="/tech/dashboard"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <TechMainScreen />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/tech/tasks"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <TaskScreens />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/tech/tasks/:taskId"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <TaskDetails />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/tech/field-registration"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <FieldServiceRegistration />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/tech/profile"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <ProfileTechnicianScreen />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/tech/profile/edit"
-          element={
-            <RoleRoute allowedRoles={["technician"]}>
-              <TechEditProfile />
-            </RoleRoute>
-          }
-        />
+        {/* Retired bookmarks show guidance, never an operational web workspace. */}
+        <Route path="/tech/*" element={<Navigate to={TECHNICIAN_MOBILE_NOTICE_PATH} replace />} />
+        <Route path={TECHNICIAN_MOBILE_NOTICE_PATH} element={<TechnicianMobileNotice />} />
         <Route
           path="/manager/amp"
           element={

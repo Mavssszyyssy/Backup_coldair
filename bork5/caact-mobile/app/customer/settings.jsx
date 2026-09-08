@@ -395,7 +395,7 @@ export default function CustomerSettingsScreen() {
         <Section title="Address details">
           <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />
           <TextField label="Recipient name" value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
-          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={addressErrors.phone} showKeyboardDone />
+          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} showKeyboardDone />
           <BottomSheetSelect label="Region" value={addressForm.region} placeholder="Select region" items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage="No regions found. Check your connection and try again." onSelect={selectRegion} />
           <BottomSheetSelect label="Province" value={addressForm.province} placeholder="Select province" items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={addressForm.regionCode ? "No provinces found." : "Select a region first."} onSelect={selectProvince} />
           <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first."} onSelect={selectLocality} />
@@ -442,7 +442,7 @@ export default function CustomerSettingsScreen() {
         <TextField label="Suffix (optional)" value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
         <TextField label="Sign-in alias" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField label="Email" value={profileForm.email} editable={false} />
-        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" maxLength={12} error={profileErrors.phone} showKeyboardDone />
+        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
       </Section>}
     </CustomerScreen>
   );

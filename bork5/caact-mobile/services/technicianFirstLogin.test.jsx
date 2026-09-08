@@ -27,7 +27,9 @@ test('technician signs in, replaces initial password, and reaches work without a
   await fireEvent.press(screen.getByText('Sign In'));
   await screen.findByText('Technician Setup');
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  await fireEvent.changeText(screen.getByLabelText('Contact Number'), '09123456789');
+  expect(screen.getByLabelText('Contact Number').props.maxLength).toBeUndefined();
+  await fireEvent.changeText(screen.getByLabelText('Contact Number'), '+63 912 345 6789');
+  expect(screen.getByLabelText('Contact Number').props.value).toBe('+63 912 345 6789');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'lowercase123.');
   await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'lowercase123.');
   await fireEvent.press(screen.getByText('Save and Continue'));

@@ -75,15 +75,11 @@ test("notification filtering and warranty decisions preserve workflow integrity"
   assert.match(warrantyController, /replayed: true/);
 });
 
-test("web technician controls follow the Admin-activated workflow and keep service reports mobile-only", () => {
-  const details = fs.readFileSync(path.resolve(__dirname, "../../front/src/components/TECH/Tasks/TaskDetails.js"), "utf8");
-  const statusForm = fs.readFileSync(path.resolve(__dirname, "../../front/src/components/TECH/Tasks/UpdateTaskStatus.js"), "utf8");
-  assert.match(details, /task\.status === 'in-progress' && !hasCheckedIn/);
-  assert.match(details, /Maintenance and warranty service reports are completed in the Cold Air mobile app/);
-  assert.doesNotMatch(details, /Accept Task|Mark on the way|Start installation/);
-  assert.doesNotMatch(statusForm, /value="pending"|value="accepted"|value="on-the-way"|value="arrived"|value="installing"/);
-  const registration = fs.readFileSync(path.resolve(__dirname, "../../front/src/components/TECH/Tasks/FieldServiceRegistration.js"), "utf8");
-  assert.match(registration, /ROOM_SIZE_OPTIONS/);
-  assert.match(registration, /Choose the closest room size/);
-  assert.doesNotMatch(registration, /type="number"[^>]*roomSizeSqm/);
+test("retired technician web screens are not bundled and staff management remains available", () => {
+  const app = fs.readFileSync(path.resolve(__dirname, "../../front/src/App.js"), "utf8");
+  assert.doesNotMatch(app, /components\/TECH\//);
+  assert.match(app, /TechnicianMobileNotice/);
+  assert.match(app, /\/admin\/services\/technicians/);
+  assert.match(app, /\/superadmin\/technicians/);
+  assert.equal(fs.existsSync(path.resolve(__dirname, "../../front/src/components/TECH/Tasks/TaskDetails.js")), false);
 });

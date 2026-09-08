@@ -47,6 +47,8 @@ test('invalid or conflicting contact numbers cannot partly change a technician p
 test('technician first password change completes setup and the new password works without TOTP', async (t) => {
   const user = new User({ name_first: 'Test', name_last: 'Technician', role: 'technician', username: 'tech.cavite.test', isFirstLogin: true, security: { totpEnabled: true, totpResetRequired: true } });
   user.passwordHash = await bcrypt.hash('cavite.test', 4);
+  user.phone = '09123456789';
+  t.mock.method(User, 'findOne', () => ({ select: async () => null }));
   t.mock.method(user, 'save', async () => user);
   const res = response();
   await changePassword({ authUser: user, body: { newPassword: 'NewPass123#' } }, res);
@@ -67,6 +69,8 @@ test('technician first password change completes setup and the new password work
 test('account password rules accept punctuation and boundaries, reject missing criteria without changing the account', async (t) => {
   const user = new User({ name_first: 'Test', name_last: 'Technician', role: 'technician', isFirstLogin: true });
   const save = t.mock.method(user, 'save', async () => user);
+  user.phone = '09123456789';
+  t.mock.method(User, 'findOne', () => ({ select: async () => null }));
   for (const password of ['LongPassword123', 'onlylowercase!', 'A1!shor', 'UPPERCASE123!', 'NoNumbers!', 'Valid123! ', 'Valid123!\n', 'Valid123!\u0000', 'A'.repeat(23) + 'a1.', { value: 'Valid123!' }]) {
     const res = response();
     await changePassword({ authUser: user, body: { newPassword: password } }, res);

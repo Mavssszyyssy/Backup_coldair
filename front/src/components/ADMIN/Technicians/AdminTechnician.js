@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
@@ -102,6 +102,7 @@ const AdminTechnician = ({ embedded = false }) => {
   const [staffDraft, setStaffDraft] = useState(() => initialStaffDraft(homeBranch));
   const [savingTask, setSavingTask] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
+  const staffSavePending = useRef(false);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [createdLoginIdentifier, setCreatedLoginIdentifier] = useState("");
@@ -209,6 +210,7 @@ const AdminTechnician = ({ embedded = false }) => {
 
   const createTechnician = async (event) => {
     event.preventDefault();
+    if (staffSavePending.current) return;
     const firstName = staffDraft.firstName.trim();
     const lastName = staffDraft.lastName.trim();
     const loginName = credentialPart(staffDraft.loginName);
@@ -220,6 +222,11 @@ const AdminTechnician = ({ embedded = false }) => {
       setError("Use a shorter login name so the Login ID and default password fit their limits.");
       return;
     }
+    if (loginName.length < 2) {
+      setError("Enter a technician login name with at least 2 letters or numbers.");
+      return;
+    }
+    staffSavePending.current = true;
     setSavingStaff(true);
     setError("");
     setNotice("");
@@ -245,6 +252,7 @@ const AdminTechnician = ({ embedded = false }) => {
     } catch (requestError) {
       setError(requestError.message || "Unable to add the technician.");
     } finally {
+      staffSavePending.current = false;
       setSavingStaff(false);
     }
   };
@@ -353,17 +361,17 @@ const AdminTechnician = ({ embedded = false }) => {
         {isSuperAdmin ? <section className="tech-add-staff-card admin-card" aria-label="Add technician staff">
           <div className="tech-filter-heading">
             <div><h2>Add technician staff</h2><p>Create a branch-based technician login without using an email address.</p></div>
-            <button type="button" className="tech-primary-button" onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{showAddStaff ? "Close" : "Add technician"}</button>
+            <button type="button" className="tech-primary-button" disabled={savingStaff} onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{showAddStaff ? "Close" : "Add technician"}</button>
           </div>
           {showAddStaff ? <form className="tech-add-staff-form" onSubmit={createTechnician}>
             <div className="tech-form-row">
               <label><span>First name</span><input value={staffDraft.firstName} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
               <label><span>Last name</span><input value={staffDraft.lastName} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
             </div>
-            <label><span>Login name</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", credentialPart(event.target.value))} placeholder="name" autoComplete="off" required /><small>Use a short, unique name such as juan or j.delacruz.</small></label>
+            <label><span>Login name</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder="name" autoComplete="off" required /><small>Use a short, unique name such as juan or j.delacruz. Check the generated Login ID below.</small></label>
             <label><span>Assigned branch</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
             <div className="tech-credential-preview"><span>Login ID</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>Default password</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
-            <p className="tech-staff-note">The account is created as an active Technician. Email is not used. The technician must change the default password after their first sign-in.</p>
+            <p className="tech-staff-note">Email is not used. At first sign-in in the mobile app, the technician must confirm a contact number and replace the default password before accessing work.</p>
             <button type="submit" className="tech-primary-button" disabled={savingStaff}>{savingStaff ? "Adding technician…" : "Create technician account"}</button>
           </form> : null}
         </section> : null}

@@ -12,17 +12,19 @@ export function normalizePhone(value = "") {
 }
 
 export function canonicalizePhMobile(value = "") {
-  const digits = normalizePhone(value);
+  const text = String(value ?? "").trim();
+  if (!/^\+?[\d\s()-]+$/.test(text)) return text;
+  const digits = normalizePhone(text);
+  if (text.startsWith("+") && !/^639\d{9}$/.test(digits)) return text;
   if (/^639\d{9}$/.test(digits)) return `09${digits.slice(3)}`;
   if (/^9\d{9}$/.test(digits)) return `0${digits}`;
   return digits;
 }
 
 export function sanitizePhMobileInput(value = "") {
-  const digits = normalizePhone(value);
-  if (digits.startsWith("63")) return digits.slice(0, 12);
-  if (digits.startsWith("0")) return digits.slice(0, 11);
-  return digits.slice(0, 10);
+  // Preserve pasted formatting and every digit. Validate before canonicalizing
+  // on submission, so an overlong number cannot silently become another number.
+  return String(value ?? "");
 }
 
 export function validateRequired(value, fieldLabel = "This field") {
@@ -76,7 +78,7 @@ export function validatePhone(phone) {
   }
 
   if (!/^09\d{9}$/.test(digits)) {
-    return "Use a valid Philippine mobile number (09XXXXXXXXX).";
+    return "Enter a Philippine mobile number such as 09123456789 or +639123456789. Spaces and dashes are allowed.";
   }
 
   return "";

@@ -110,6 +110,7 @@ export default function TechProfile() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (saving) return;
     const phoneError = validatePhone(phone);
     if (phoneError) {
       Alert.alert("Invalid contact number", phoneError);
@@ -127,6 +128,8 @@ export default function TechProfile() {
         setPassword("");
         setIsEditing(false);
       }
+    } catch (error) {
+      Alert.alert("Not Saved", error.message || "Profile update failed. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -271,7 +274,9 @@ export default function TechProfile() {
             onChangeText={(value) => setPhone(sanitizePhMobileInput(value))}
             keyboardType="phone-pad"
             placeholder="09XXXXXXXXX"
-            maxLength={12}
+            helperText="Use 09123456789 or +639123456789. Spaces and dashes are accepted."
+            showKeyboardDone
+            editable={!saving}
           />
 
         </Card>
