@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react-native";
+import { render, screen, fireEvent } from "@testing-library/react-native";
 import LogSelectScreen from "../app/technician/task/[id]/unit/log/select";
 
 const mockHistory = jest.fn();
@@ -15,6 +15,10 @@ jest.mock("./api", () => ({ getStoredToken: jest.fn().mockResolvedValue("qa-sess
 test("prior unit visits remain visible when the current work order has no notes", async () => {
   mockHistory.mockResolvedValue({ success: true, unit: { serialNumber: "CAA-001" }, maintenanceHistory: [{ id: "previous", date: "2026-09-05", serviceType: "deep_cleaning", findings: "Coil contained heavy dust.", actionTaken: "Removed and cleaned the coil." }] });
   await render(<LogSelectScreen />);
+  await screen.findByText("Verified AC Unit");
+  expect(screen.queryByText("Coil contained heavy dust.")).toBeNull();
+  await fireEvent.press(screen.getByLabelText("AC unit sections: Next page"));
+  await fireEvent.press(screen.getByLabelText("AC unit sections: Next page"));
   await screen.findByText("Coil contained heavy dust.");
   expect(screen.getByText("Removed and cleaned the coil.")).toBeTruthy();
   expect(screen.getByText("No notes for this work order yet")).toBeTruthy();

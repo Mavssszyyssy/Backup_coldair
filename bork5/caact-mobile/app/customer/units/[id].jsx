@@ -1,3 +1,4 @@
+import PagedItems from "../../../components/ui/PagedItems";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -578,7 +579,7 @@ export default function CustomerUnitDetailsScreen() {
             <DetailRow label="Open Requests" value={String(activeRequests.length)} />
             <DetailRow label="Linked Work Orders" value={String(history.linkedTasks.length)} />
             <DetailRow label="Completed Services" value={String(history.completedServices.length)} />
-            {history.requests.length ? history.requests.map((request, requestIndex) => {
+            {history.requests.length ? <PagedItems key={unit.id} label="Service visits" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
               const statusColors = requestStatusColors(request.status);
               const requestTimeline = Array.isArray(request.timeline)
                 ? [...request.timeline].sort(
@@ -635,7 +636,7 @@ export default function CustomerUnitDetailsScreen() {
                   <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.md }}>
                     Request Timeline
                   </Text>
-                  {requestTimeline.length ? requestTimeline.map((event, eventIndex) => (
+                  {requestTimeline.length ? <PagedItems key={request.id} label="Request timeline" items={requestTimeline} renderItem={(event, eventIndex) => (
                     <View
                       key={event.id || `${event.title}-${event.timestamp}-${eventIndex}`}
                       style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}
@@ -658,7 +659,7 @@ export default function CustomerUnitDetailsScreen() {
                         </Text>
                       </View>
                     </View>
-                  )) : (
+                  )} /> : (
                     <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
                       The request was submitted. Further updates will appear here.
                     </Text>
@@ -677,7 +678,7 @@ export default function CustomerUnitDetailsScreen() {
                   ) : null}
                 </View>
               );
-            }) : (
+            }} /> : (
               <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
                 No service request has been submitted for this AC yet.
               </Text>
@@ -692,12 +693,12 @@ export default function CustomerUnitDetailsScreen() {
           {unit?.serviceHistory?.length ? (
             <Card>
               <CustomerSectionHeader title="Service & Repair History" />
-              {unit.serviceHistory.slice(0, 5).map((service) => (
+              <PagedItems key={unit.id} label="Service and repair records" items={unit.serviceHistory} renderItem={(service) => (
                 <View key={service.id || `${service.date}-${service.serviceType}`}>
                   <DetailRow label={`${serviceName(service.serviceType)} · ${formatDate(service.date)}`} value={[service.findings || service.details, service.actionTaken].filter(Boolean).join("\n") || "Findings and actions not recorded"} multiline />
                   {service.evidence?.eligible === false ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm }}>{service.evidence.reason}</Text> : null}
                 </View>
-              ))}
+              )} />
             </Card>
           ) : null}
         </>

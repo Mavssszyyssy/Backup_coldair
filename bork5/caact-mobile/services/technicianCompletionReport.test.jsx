@@ -69,7 +69,7 @@ test("changing cleaning method asks first, clears report selections, and keeps p
   expect(alert.mock.calls.at(-1)[0]).toBe("Change service method?");
   expect(screen.getByLabelText("Technician Findings: Dust buildup on the air filter.").props.accessibilityState.checked).toBe(true);
   await act(async () => alert.mock.calls.at(-1)[2].find(button => button.text === "Change method").onPress());
-  expect(screen.getAllByText("Select one or more")).toHaveLength(2);
+  expect(screen.getAllByText("Select one or more")).toHaveLength(3);
   expect(screen.getByText("Retake photo")).toBeTruthy();
   expect(screen.getByLabelText("Additional Notes (Optional)").props.value).toBe("Keep this advice.");
   await fireEvent.press(screen.getByLabelText("Select Work Performed"));

@@ -48,8 +48,10 @@ export default function LogDetailScreen() {
         <Card>
           <InfoCard label="AC Unit" value={log?.unitName || task?.unitName || "Unknown"} />
           <InfoCard label="Condition" value={log?.condition || "Unknown"} />
-          <InfoCard label="Hours Worked" value={String(log?.hoursSpent ?? 0)} />
-          <InfoCard label="Parts Used" value={log?.partsUsed || "None"} />
+          <InfoCard label="Hours Worked" value={log?.hoursSpent == null ? "Not recorded" : String(log.hoursSpent)} />
+          <InfoCard label="Parts Used" value={log?.partsUsed || "Not recorded"} />
+          <InfoCard label="Labor cost" value={log?.laborCost == null ? "Not recorded" : `PHP ${Number(log.laborCost).toFixed(2)}`} />
+          <InfoCard label="Parts cost" value={log?.partsCost == null ? "Not recorded" : `PHP ${Number(log.partsCost).toFixed(2)}`} />
           <InfoCard label="Technician" value={log?.technicianName || "Unknown"} />
           <InfoCard label="Findings" value={log?.findings || "No findings recorded"} />
           <InfoCard label="Work Performed / Resolution" value={log?.resolution || "No resolution recorded"} />

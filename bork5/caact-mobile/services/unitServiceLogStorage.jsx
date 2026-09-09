@@ -3,6 +3,13 @@ import * as api from "./api";
 
 const STORAGE_KEY = "unit_service_logs_storage_v1";
 const DRAFT_KEY = "unit_service_log_draft_v1";
+const recordedAmount = value => value == null || value === "" ? null : Number(value);
+export function serviceLogCosts(logs) {
+  return Object.fromEntries(["laborCost", "partsCost"].map(key => {
+    const values = logs.map(log => recordedAmount(log[key])).filter(value => value !== null && Number.isFinite(value) && value >= 0);
+    return [key, values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100 : null];
+  }));
+}
 
 function safeParse(value, fallback) {
   try {
@@ -33,7 +40,9 @@ export function normalizeServiceLog(log = {}) {
     logType: log.logType || "other",
     label: log.label || LOG_TYPES.find((type) => type.id === log.logType)?.label || "Other",
     condition: log.condition || "Good",
-    hoursSpent: Number(log.hoursSpent || 0),
+    hoursSpent: recordedAmount(log.hoursSpent),
+    laborCost: recordedAmount(log.laborCost),
+    partsCost: recordedAmount(log.partsCost),
     partsUsed: log.partsUsed || "",
     findings: log.findings || "",
     resolution: log.resolution || "",
@@ -107,6 +116,7 @@ export async function upsertServiceLog(log = {}) {
   };
   const result = await api.patchTask(token, log.taskId, {
     serviceLogs: next,
+    ...serviceLogCosts(next),
     serviceType: serviceTypeByLogType[normalized.logType] || "inspection",
     beforeCondition: normalized.condition,
     conditionRating: String(normalized.condition || "good").toLowerCase(),
@@ -134,6 +144,7 @@ export async function deleteServiceLog(taskId, logId) {
   const latest = next[0] || null;
   const result = await api.patchTask(token, taskId, {
     serviceLogs: next,
+    ...serviceLogCosts(next),
     ...(latest ? {
       beforeCondition: latest.condition,
       conditionRating: String(latest.condition || "good").toLowerCase(),

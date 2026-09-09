@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -78,6 +79,7 @@ export default function CustomerHomeScreen() {
       right={
         <Pressable onPress={() => router.push("/customer/notifications")} hitSlop={12} accessibilityRole="button" accessibilityLabel="Notifications">
           <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />
+          <NotificationBadge />
         </Pressable>
       }
     >

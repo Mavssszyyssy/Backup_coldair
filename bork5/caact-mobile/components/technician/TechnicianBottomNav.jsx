@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import NotificationBadge from "../NotificationBadge";
 import { usePathname, useRouter } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,6 +47,7 @@ function NavItem({ item }) {
           size={22}
           color={color}
         />
+        {item.label === "Alerts" ? <NotificationBadge /> : null}
       </View>
       <Text
         style={{

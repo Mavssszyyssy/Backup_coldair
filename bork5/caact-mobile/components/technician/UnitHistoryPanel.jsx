@@ -1,6 +1,7 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import PagedItems, { PageControls } from "../ui/PagedItems";
 import Card from "../ui/Card";
 import InfoCard from "../ui/InfoCard";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
@@ -12,23 +13,26 @@ const formatDate = (value) => {
 };
 
 function HistoryTable({ columns, rows, emptyMessage }) {
+  const [index, setIndex] = React.useState(0);
+  const total = Math.max(1, Math.ceil((rows?.length || 0) / 3));
+  const page = Math.min(index, total - 1);
   if (!rows?.length) {
     return <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{emptyMessage}</Text>;
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
+    <View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
       <View style={{ minWidth: Math.max(620, columns.length * 112) }}>
         <View style={{ flexDirection: "row", borderBottomWidth: 1, borderColor: COLORS.border, paddingBottom: 7 }}>
           {columns.map((column) => <Text key={column.key} style={{ width: column.width || 120, color: COLORS.textPrimary, fontSize: FONT.xs, fontWeight: FONT.black }}>{column.label}</Text>)}
         </View>
-        {rows.map((row, rowIndex) => (
+        {rows.slice(page * 3, page * 3 + 3).map((row, rowIndex) => (
           <View key={row.id || `${row.date || "history"}-${rowIndex}`} style={{ flexDirection: "row", borderBottomWidth: rowIndex === rows.length - 1 ? 0 : 1, borderColor: COLORS.border, paddingVertical: 9 }}>
             {columns.map((column) => <Text key={column.key} style={{ width: column.width || 120, color: COLORS.textSecondary, fontSize: FONT.xs, lineHeight: 17 }}>{column.format ? column.format(row[column.key], row) : (row[column.key] || "—")}</Text>)}
           </View>
         ))}
       </View>
-    </ScrollView>
+    </ScrollView>{total > 1 ? <PageControls label="History records" page={page} total={total} onChange={setIndex} /> : null}</View>
   );
 }
 
@@ -37,21 +41,24 @@ export default function UnitHistoryPanel({ history }) {
   const { unit, maintenanceHistory = [], repairHistory = [], ampHistory = [], recommendation = null } = history;
 
   return (
-    <>
-      <Card>
+    <PagedItems key={unit.id || unit.serialNumber} label="AC unit sections" pageSize={1} items={[
+      <Card key="identity">
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>Verified AC Unit</Text>
         <InfoCard label="AC Unit" value={unit.unitName || "Installed AC Unit"} />
         <InfoCard label="Brand / Model" value={[unit.brand, unit.model].filter(Boolean).join(" / ") || "Not recorded"} />
         <InfoCard label="Serial Number" value={unit.serialNumber || "Not recorded"} />
         <InfoCard label="QR / Unit ID" value={unit.qrUnitId || unit.qrCode || "Not recorded"} />
+      </Card>,
+      <Card key="registration">
+        <Text style={{ fontWeight: FONT.black, fontSize: FONT.lg }}>Verified AC Unit — Registration</Text>
         <InfoCard label="Installation Date" value={formatDate(unit.installationDate)} />
         <InfoCard label="Current Owner" value={unit.currentOwner || "Not assigned"} />
         <InfoCard label="Current Branch" value={unit.branch || "Not recorded"} />
         <InfoCard label="Warranty Status" value={unit.warrantyStatus || "Not recorded"} />
         <InfoCard label="Warranty Coverage" value={unit.warrantyCoverage?.coverageSummary || "Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch."} />
-      </Card>
+      </Card>,
 
-      <Card>
+      <Card key="history-0">
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance History</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Completed visits relevant to this AC unit.</Text>
         <HistoryTable
@@ -66,9 +73,9 @@ export default function UnitHistoryPanel({ history }) {
           rows={maintenanceHistory}
           emptyMessage="No maintenance visits have been recorded yet."
         />
-      </Card>
+      </Card>,
 
-      <Card>
+      <Card key="history-1">
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Repair History</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Prior repair concerns and recorded outcomes.</Text>
         <HistoryTable
@@ -84,9 +91,9 @@ export default function UnitHistoryPanel({ history }) {
           rows={repairHistory}
           emptyMessage="No repair history has been recorded."
         />
-      </Card>
+      </Card>,
 
-      <Card>
+      <Card key="history-2">
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance Recommendations</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Use recorded history and the current due date to prepare for this visit.</Text>
         <HistoryTable
@@ -99,9 +106,9 @@ export default function UnitHistoryPanel({ history }) {
           rows={ampHistory}
           emptyMessage="No AMP assessment is available yet."
         />
-      </Card>
+      </Card>,
 
-      <Card>
+      <Card key="history-3">
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: 4 }}>Maintenance Recommendation</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginBottom: SPACING.sm }}>
           The servicing date uses comparable completed records when available, or the provisional fallback explained below. This is scheduling guidance, not a unit diagnosis.
@@ -112,6 +119,6 @@ export default function UnitHistoryPanel({ history }) {
         <InfoCard label="Room Size and Horsepower" value={recommendation?.capacityAssessment?.summary || "Room size is still needed for the horsepower suitability check."} />
         <InfoCard label="Major-Component Policy" value="If major-part work is necessary, coordinate both the compressor/motor and control board for the service trip. Confirm the actual fault by inspection." />
       </Card>
-    </>
+    ]} renderItem={section => section} />
   );
 }

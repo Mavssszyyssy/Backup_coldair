@@ -1,0 +1,26 @@
+import React from 'react';
+import { render, screen, act, cleanup, waitFor } from '@testing-library/react-native';
+import NotificationBadge from './NotificationBadge';
+import { getNotificationsForUser } from '../services/notificationService';
+import { notifyNotificationsChanged } from '../services/notificationEvents';
+let mockUser = { id: 'customer1', role: 'customer' };
+jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: mockUser }) }));
+jest.mock('expo-router', () => ({ useFocusEffect: cb => require('react').useEffect(cb, [cb]) }));
+jest.mock('../services/notificationService', () => ({ getNotificationsForUser: jest.fn() }));
+afterEach(cleanup);
+test('shows unread count, preserves it on network failure, clears on confirmed read, and isolates accounts', async () => {
+  getNotificationsForUser.mockResolvedValue([{ unread: true }, { unread: true }, { unread: false, read: true }]);
+  await render(<NotificationBadge />);
+  await screen.findByLabelText('2 unread notifications');
+  getNotificationsForUser.mockRejectedValue(new Error('Offline'));
+  await act(async () => notifyNotificationsChanged());
+  expect(screen.getByLabelText('2 unread notifications')).toBeTruthy();
+  getNotificationsForUser.mockResolvedValue([{ unread: false, read: true }]);
+  await act(async () => notifyNotificationsChanged());
+  await waitFor(() => expect(screen.queryByLabelText('2 unread notifications')).toBeNull());
+  mockUser = { id: 'tech1', role: 'technician' };
+  getNotificationsForUser.mockResolvedValue([{ unread: true }]);
+  await screen.rerender(<NotificationBadge />);
+  await screen.findByLabelText('1 unread notifications');
+  expect(getNotificationsForUser).toHaveBeenLastCalledWith(mockUser, { strict: true });
+});

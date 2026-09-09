@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import PagedItems from "../../../../../../components/ui/PagedItems";
 import TechButton from "../../../../../../components/technician/TechButton";
 import Card from "../../../../../../components/ui/Card";
 import UnitHistoryPanel from "../../../../../../components/technician/UnitHistoryPanel";
@@ -140,7 +141,7 @@ export default function LogSelectScreen() {
             message="Notes you add here belong to this visit. Earlier completed visits are listed separately below."
           />
         ) : (
-          logs.map((log) => (
+          <PagedItems key={taskId} items={logs} label="Saved service notes" renderItem={(log) => (
             <TouchableOpacity
               key={log.id}
               onPress={() =>
@@ -167,7 +168,7 @@ export default function LogSelectScreen() {
                   {log.label}
                 </Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
-                  Condition: {log.condition} • Hours worked: {log.hoursSpent}
+                  Condition: {log.condition} • Hours worked: {log.hoursSpent ?? "Not recorded"}
                 </Text>
                   </View>
                   <Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} />
@@ -183,7 +184,7 @@ export default function LogSelectScreen() {
                 </Text>
               </Card>
             </TouchableOpacity>
-          ))
+          )} />
         )}
         {!loading && unitHistory ? <UnitHistoryPanel history={unitHistory} /> : null}
       </ScrollView>

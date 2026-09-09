@@ -357,7 +357,11 @@ export default function TaskInformationScreen() {
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />
               <DetailItem icon="search-sharp" label="Findings" value={task?.findings || "No findings yet"} accent={COLORS.warning} />
               <DetailItem icon="checkmark-circle-sharp" label="Resolution" value={task?.resolution || "No resolution yet"} accent={COLORS.success} />
-              <DetailItem icon="cash-sharp" label="Recorded labor / parts costs" value={money(task?.totalServiceCost)} accent={COLORS.success} />
+              <DetailItem icon="cash-sharp" label="Recorded labor / parts costs" value={task?.totalServiceCost == null ? "Not recorded" : money(task.totalServiceCost)} accent={COLORS.success} />
+              <DetailItem icon="cash-sharp" label="Labor cost" value={task?.laborCost == null ? "Not recorded" : money(task.laborCost)} accent={COLORS.success} />
+              <DetailItem icon="cash-sharp" label="Parts cost" value={task?.partsCost == null ? "Not recorded" : money(task.partsCost)} accent={COLORS.success} />
+              {task?.additionalCost != null ? <DetailItem icon="cash-sharp" label="Additional recorded cost" value={money(task.additionalCost)} accent={COLORS.success} /> : null}
+              {task?.totalServiceCost != null && (task?.laborCost == null || task?.partsCost == null) ? <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>Subtotal of recorded amounts only; missing costs are not treated as zero.</Text> : null}
               <Text style={{ color: COLORS.textSecondary }}>These cost entries are not a customer invoice.</Text>
             </Card>
             <Card>

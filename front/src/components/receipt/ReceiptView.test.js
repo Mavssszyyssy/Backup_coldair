@@ -22,6 +22,8 @@ it('shows paid COD only with recorded collection', async () => {
   apiRequest.mockResolvedValue({ order: { id: 'order1', receiptAvailable: true, paymentMethod: 'cod', totalAmount: 100, codCollection: { collectedAt: '2026-09-08' }, receipt: { receiptNumber: 'RCP-1' } } });
   mount();
   await screen.findByText('Total Paid');
+  expect(screen.getAllByText('RCP-1')).toHaveLength(1);
+  expect(screen.getByText('Receipt Number')).toBeInTheDocument();
   expect(screen.getByText('Paid on delivery')).toBeInTheDocument();
 });
 

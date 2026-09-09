@@ -241,13 +241,12 @@ export default function ReceiptScreen() {
               </View>
               <View style={{ alignItems: "flex-start", gap: BQ_SPACING.xs }}>
                 <BoutiqueChip label={String(receipt.paymentStatus).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
-                <BoutiqueText variant="h3">{receipt.receiptNumber}</BoutiqueText>
               </View>
             </View>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: "#0f172a" }}>
               <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">INVOICE / ORDER</BoutiqueText>
+                <BoutiqueText variant="label" color="#94a3b8">RECEIPT / ORDER</BoutiqueText>
                 <BoutiqueText variant="h3" color="#fff">{receipt.receiptNumber} · {order.orderCode || order.id}</BoutiqueText>
               </View>
               <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>

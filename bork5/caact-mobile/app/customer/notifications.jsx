@@ -1,7 +1,8 @@
+import { COLORS } from "../../constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { Alert, ActivityIndicator, Pressable, View } from "react-native";
 
 import {
   BoutiqueCard,
@@ -72,9 +73,11 @@ export default function CustomerNotificationsScreen() {
   useFocusEffect(useCallback(() => { loadNotifications(); }, [loadNotifications]));
 
   const openNotification = async (item) => {
+    try {
     await markNotificationRead(item.id);
     setNotifications((items) => items.map((entry) => entry.id === item.id ? { ...entry, read: true, unread: false } : entry));
     if (item.route) router.push(item.route);
+    } catch (error) { Alert.alert("Notification not updated", error?.message || "Please try again."); }
   };
 
   return (

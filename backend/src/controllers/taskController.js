@@ -7,6 +7,7 @@ const Order = require("../models/Order");
 const Unit = require("../models/Unit");
 const ServiceRequest = require("../models/ServiceRequest");
 const { servicePaymentSummary, servicePaymentBlocker } = require("../domain/servicePayment");
+const { serviceCosts, validateServiceCosts } = require("../domain/serviceCosts");
 const Notification = require("../models/Notification");
 const { notifyOperationalStaff, createDedupedNotification } = require("../services/operationalNotificationService");
 const ServiceHistory = require("../models/ServiceHistory");
@@ -562,6 +563,9 @@ const technicianReportPayload = (payload = {}) => Object.fromEntries(Object.entr
   resolution: payload.resolution,
   serviceActions: payload.serviceActions,
   partsUsed: payload.partsUsed,
+  laborCost: payload.laborCost,
+  partsCost: payload.partsCost,
+  additionalCost: payload.additionalCost,
   notes: payload.notes,
   customerAdvice: payload.customerAdvice,
   proofSubmittedAt: payload.proofSubmittedAt,
@@ -844,6 +848,7 @@ const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
   if (!payload) {
     return {
       ...base,
+      ...serviceCosts(base),
       proof,
       registrationProgress: progress,
     };
@@ -856,6 +861,7 @@ const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
     // technician Work Details screen without the information it needs.
     ...base,
     ...payload,
+    ...serviceCosts({ ...base, ...payload }),
     id: base.id,
     taskCode: task.taskCode,
     title: task.title,
@@ -1021,6 +1027,8 @@ const updateTask = async (req, res) => {
 
     const payload = req.body || {};
     const requestedStatus = parseTaskStatus(payload.status);
+    const costError = validateServiceCosts(payload);
+    if (costError) return res.status(400).json({ message: costError });
     if (normalizeStatus(task.status) === "completed" && requestedStatus === "completed") {
       await reconcileCompletedTask(task);
       return res.json({ task: hydrateTaskResponse(task), replayed: true });
@@ -1038,7 +1046,7 @@ const updateTask = async (req, res) => {
       // The incoming technician must record their own arrival and service proof.
       task.proof = {};
       task.payload = { ...(task.payload || {}) };
-      for (const field of ["checkIn", "proof", "serviceLogs", "findings", "resolution", "serviceActions", "serviceHistoryId"]) { delete task.payload[field]; delete payload[field]; }
+      for (const field of ["checkIn", "proof", "serviceLogs", "findings", "resolution", "serviceActions", "serviceHistoryId", "laborCost", "partsCost", "additionalCost"]) { delete task.payload[field]; delete payload[field]; }
     }
 
     if (req.authUser.role === "technician") {
@@ -1624,6 +1632,8 @@ const updateTaskStatus = async (req, res) => {
     }
 
     const payload = req.body || {};
+    const costError = validateServiceCosts(payload);
+    if (costError) return res.status(400).json({ message: costError });
     const proof = buildTaskProof({ task, payload, req, nextStatus: status });
     if (["arrived", "installing"].includes(status) && !hasVerifiedTaskCheckIn(task)) {
       return res.status(409).json({ message: "The assigned technician must check in with GPS before arrival or installation can be confirmed." });

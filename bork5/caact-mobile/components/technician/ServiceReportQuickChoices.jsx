@@ -9,7 +9,7 @@ const CLEANING = ["Cleaned the air filter.", "Cleaned the evaporator coil.", "Fl
 const REPAIR_FINDINGS = ["The control board did not respond during testing.", "The compressor did not start during testing.", "Water was leaking from the drain line."];
 const REPAIR_WORK = ["Replaced the control board.", "Replaced the compressor.", "Repaired the drain line.", "Tested cooling after the repair."];
 
-function ReportDropdown({ label, options, value, onChange, open, onToggle, onMissingOther }) {
+export function ReportDropdown({ label, options, value, onChange, open, onToggle, onMissingOther }) {
   const [otherEnabled, setOtherEnabled] = useState(false);
   // Existing/custom prose is preserved as Other; opening a dropdown never writes a finding.
   const lines = String(value || "").split("\n");

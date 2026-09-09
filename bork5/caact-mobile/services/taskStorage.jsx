@@ -91,13 +91,12 @@ export function normalizeTask(item = {}) {
         .filter(Boolean),
     ),
   );
-  const laborCost = Number(item.laborCost || 0);
-  const partsCost = Number(item.partsCost || 0);
-  const additionalCost = Number(item.additionalCost || 0);
-  const totalServiceCost =
-    item.totalServiceCost === undefined || item.totalServiceCost === null
-      ? laborCost + partsCost + additionalCost
-      : Number(item.totalServiceCost || 0);
+  const cost = key => { const raw = value(key, null); const n = raw === null || raw === "" ? null : Number(raw); return Number.isFinite(n) && n >= 0 ? n : null; };
+  const laborCost = cost("laborCost");
+  const partsCost = cost("partsCost");
+  const additionalCost = cost("additionalCost");
+  const recordedCosts = [laborCost, partsCost, additionalCost].filter(n => n !== null);
+  const totalServiceCost = recordedCosts.length ? Math.round(recordedCosts.reduce((a, b) => a + b, 0) * 100) / 100 : null;
   const proof = item.proof && typeof item.proof === "object"
     ? item.proof
     : {

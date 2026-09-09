@@ -1,7 +1,9 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
+import ServiceResourcesFields from "../../../../../../components/technician/ServiceResourcesFields";
+import { PageControls } from "../../../../../../components/ui/PagedItems";
 import TechButton from "../../../../../../components/technician/TechButton";
 import ServiceReportQuickChoices from "../../../../../../components/technician/ServiceReportQuickChoices";
 import { serviceReportError } from "../../../../../../services/serviceReportValidation";
@@ -37,10 +39,15 @@ export default function LogInsertScreen({ mode = "insert" }) {
   const [condition, setCondition] = useState("Good");
   const [hoursSpent, setHoursSpent] = useState("");
   const [partsUsed, setPartsUsed] = useState("");
+  const [laborCost, setLaborCost] = useState("");
+  const [partsCost, setPartsCost] = useState("");
+  const [resourcesError, setResourcesError] = useState("");
+  const [page, setPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [choiceError, setChoiceError] = useState("");
   const [reportType, setReportType] = useState(logType);
   const isUpdate = mode === "update" || !!logId;
+  const scrollRef = useRef(null);
   const draftStateRef = useRef({});
   const skipDraftSaveRef = useRef(false);
 
@@ -62,6 +69,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
           setCondition(source.condition || "Good");
           setHoursSpent(source.hoursSpent ? String(source.hoursSpent) : "");
           setPartsUsed(source.partsUsed || "");
+          setLaborCost(source.laborCost == null ? "" : String(source.laborCost));
+          setPartsCost(source.partsCost == null ? "" : String(source.partsCost));
         }
       }
       load();
@@ -82,8 +91,10 @@ export default function LogInsertScreen({ mode = "insert" }) {
       condition,
       hoursSpent,
       partsUsed,
+      laborCost,
+      partsCost,
     };
-  }, [condition, findings, hoursSpent, label, reportType, notes, partsUsed, resolution, taskId]);
+  }, [condition, findings, hoursSpent, label, reportType, notes, partsUsed, resolution, taskId, laborCost, partsCost]);
 
   useEffect(() => {
     return () => {
@@ -93,7 +104,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         String(draft.resolution || "").trim() ||
         String(draft.notes || "").trim() ||
         String(draft.hoursSpent || "").trim() ||
-        String(draft.partsUsed || "").trim();
+        String(draft.partsUsed || "").trim() ||
+        String(draft.laborCost ?? "").trim() || String(draft.partsCost ?? "").trim();
 
       if (!isUpdate && !skipDraftSaveRef.current && draft.taskId && hasDraftContent) {
         saveLogDraft(draft.taskId, draft);
@@ -114,6 +126,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         condition,
         hoursSpent,
         partsUsed,
+        laborCost,
+        partsCost,
       });
     }
     router.back();
@@ -124,7 +138,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
       return;
     }
-    const reportError = choiceError || serviceReportError(findings, resolution);
+    const reportError = resourcesError || choiceError || serviceReportError(findings, resolution);
     if (reportError) {
       Alert.alert("Service report incomplete", reportError);
       return;
@@ -146,7 +160,9 @@ export default function LogInsertScreen({ mode = "insert" }) {
         resolution: resolution.trim(),
         notes: notes.trim(),
         condition,
-        hoursSpent: Number(hoursSpent) || 0,
+        hoursSpent: hoursSpent === "" ? null : Number(hoursSpent),
+        laborCost: laborCost === "" ? null : Number(laborCost),
+        partsCost: partsCost === "" ? null : Number(partsCost),
         partsUsed: partsUsed.trim(),
       });
       skipDraftSaveRef.current = true;
@@ -165,8 +181,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
   };
 
   return (
-    <Pressable
-      onPress={persistDraftAndBack}
+    <View
       style={{
         flex: 1,
         backgroundColor: "rgba(15, 23, 42, 0.42)",
@@ -174,7 +189,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       }}
     >
       <KeyboardAwareScrollView
-        onStartShouldSetResponder={() => true}
+        ref={scrollRef}
         minBottomPadding={148}
         contentContainerStyle={{
           padding: SPACING.md,
@@ -191,6 +206,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
           onBack={persistDraftAndBack}
         />
 
+        <Text style={{ fontWeight: "700", marginBottom: SPACING.md }}>{["1. Condition and resources", "2. Findings and work performed", "3. Review service note"][page]}</Text>
+        <View style={{ display: page === 0 ? "flex" : "none" }}>
         <Card style={{ marginBottom: SPACING.md }}>
           <Text
             style={{
@@ -230,21 +247,10 @@ export default function LogInsertScreen({ mode = "insert" }) {
         </Card>
 
         <Card style={{ marginBottom: SPACING.md }}>
-          <TextField
-            label="Hours Worked"
-            value={hoursSpent}
-            onChangeText={setHoursSpent}
-            placeholder="e.g. 2.5"
-            keyboardType="decimal-pad"
-          />
-          <TextField
-            label="Parts Used"
-            value={partsUsed}
-            onChangeText={setPartsUsed}
-            placeholder="e.g. Filter, Refrigerant"
-          />
+          <ServiceResourcesFields hoursSpent={hoursSpent} onHoursChange={setHoursSpent} partsUsed={partsUsed} onPartsChange={setPartsUsed} laborCost={laborCost} onLaborChange={setLaborCost} partsCost={partsCost} onPartsCostChange={setPartsCost} onValidationChange={setResourcesError} />
         </Card>
-
+        </View>
+        <View style={{ display: page === 1 ? "flex" : "none" }}>
         <Card style={{ marginBottom: SPACING.md }}>
           <ServiceReportQuickChoices serviceType={reportType} findings={findings} resolution={resolution} onFindingsChange={setFindings} onResolutionChange={setResolution} onValidationChange={setChoiceError} />
           <TextField
@@ -257,14 +263,28 @@ export default function LogInsertScreen({ mode = "insert" }) {
           />
         </Card>
 
+        </View>
+        {page === 2 ? <>
+        <Card>
+          <Text>{`Condition: ${condition}\nHours worked: ${hoursSpent || "Not recorded"}\nParts used: ${partsUsed || "Not recorded"}\nLabor cost: ${laborCost === "" ? "Not recorded" : "PHP " + Number(laborCost).toFixed(2)}\nParts cost: ${partsCost === "" ? "Not recorded" : "PHP " + Number(partsCost).toFixed(2)}`}</Text>
+          <Text style={{ marginTop: SPACING.md }}>{`Findings: ${findings}\nWork performed: ${resolution}\nAdditional notes: ${notes || "None"}`}</Text>
+        </Card>
         <TechButton
           title={saving ? "Saving..." : "Save Service Note"}
           onPress={handleSubmit}
           loading={saving}
           style={{ marginBottom: SPACING.md }}
         />
+        </> : null}
+        <PageControls page={page} total={3} label="Service note" onChange={next => {
+          const error = next > page ? (page === 0 ? resourcesError : choiceError || serviceReportError(findings, resolution)) : "";
+          if (error) { Alert.alert("Check service note", error); return; }
+          Keyboard.dismiss();
+          setPage(next);
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }} />
         <TechButton title="Save Draft" onPress={persistDraftAndBack} variant="secondary" />
       </KeyboardAwareScrollView>
-    </Pressable>
+    </View>
   );
 }

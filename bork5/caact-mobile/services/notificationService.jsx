@@ -1,5 +1,6 @@
 // services/notificationService.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { notifyNotificationsChanged } from "./notificationEvents";
 import {
   fetchNotifications,
   getStoredToken,
@@ -52,6 +53,7 @@ export async function getAllNotifications() {
 export async function saveAllNotifications(items = []) {
   const normalized = items.map(normalizeNotification);
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  notifyNotificationsChanged();
   return normalized;
 }
 
@@ -63,7 +65,7 @@ export async function createNotification(payload = {}) {
   return created;
 }
 
-export async function getNotificationsForUser(user = {}) {
+export async function getNotificationsForUser(user = {}, { strict = false } = {}) {
   const token = await getStoredToken();
   if (token) {
     try {
@@ -77,9 +79,10 @@ export async function getNotificationsForUser(user = {}) {
           };
         });
       }
-    } catch {
-      // Fall back to local notifications when offline.
+    } catch (error) {
+      if (strict) throw error;
     }
+    if (strict) throw new Error("Unable to refresh notifications.");
   }
 
   const items = await getAllNotifications();
@@ -96,9 +99,10 @@ export async function markNotificationRead(notificationId) {
   const token = await getStoredToken();
   if (token && notificationId) {
     try {
-      await markRemoteNotificationRead(token, notificationId);
-    } catch {
-      // Local read-state will still be updated for offline friendliness.
+      const result = await markRemoteNotificationRead(token, notificationId);
+      if (!result.success) throw new Error(result.error || "Unable to mark notification read.");
+    } catch (error) {
+      throw new Error(error.message || "Unable to mark notification read. Please retry.");
     }
   }
 
@@ -116,9 +120,10 @@ export async function markNotificationsReadForUser(user = {}) {
   const token = await getStoredToken();
   if (token) {
     try {
-      await markAllNotificationsRead(token);
-    } catch {
-      // Continue with local read-state.
+      const result = await markAllNotificationsRead(token);
+      if (!result.success) throw new Error(result.error || "Unable to mark notifications read.");
+    } catch (error) {
+      throw new Error(error.message || "Unable to mark notifications read. Please retry.");
     }
   }
 

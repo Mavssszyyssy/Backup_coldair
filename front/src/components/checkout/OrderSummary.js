@@ -1,7 +1,28 @@
 import PurchaseCostBreakdown from "./PurchaseCostBreakdown";
+import { Snowflake } from "@phosphor-icons/react";
+import { useState } from "react";
 
-// import icons from '../common/icons';
-const icons = {}; // BOUTIQUE MIGRATION STUB
+function CheckoutProductImage({ item }) {
+  const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
+  const [failedSource, setFailedSource] = useState("");
+  return (
+    <div className="summary-item-image">
+      {imageUrl && imageUrl !== failedSource ? (
+        <img
+          src={imageUrl}
+          alt={item.name || "Air conditioner"}
+          className="summary-product-image"
+          decoding="async"
+          onError={() => setFailedSource(imageUrl)}
+        />
+      ) : (
+        <span role="img" aria-label={`${item.name || "Air conditioner"}: product image unavailable`}>
+          <Snowflake size={30} weight="regular" aria-hidden="true" />
+        </span>
+      )}
+    </div>
+  );
+}
 
 const formatHorsepower = (item = {}) => {
   const parsed = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
@@ -25,13 +46,7 @@ function OrderSummary({
       <div className="summary-items">
         {cart.map((item) => (
           <div key={item.id} className="summary-item">
-            <div className="summary-item-image">
-              <img
-                src={icons.temperatureFrigid}
-                alt=""
-                className="inline-icon"
-              />
-            </div>
+            <CheckoutProductImage item={item} />
             <div className="summary-item-details">
               <div className="summary-item-name">{item.name}</div>
               <div className="summary-item-horsepower">

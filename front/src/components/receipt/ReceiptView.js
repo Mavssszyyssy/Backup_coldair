@@ -164,13 +164,12 @@ function ReceiptView() {
               </div>
               <div className="receipt-status">
                 <span>{paymentStatusLabel.toUpperCase()}</span>
-                <strong>{order.receipt?.receiptNumber || "Pending"}</strong>
               </div>
             </div>
 
             <div className="receipt-band">
               <div>
-                <span>Invoice Number</span>
+                <span>Receipt Number</span>
                 <strong>{order.invoice?.invoiceNumber || order.receipt?.receiptNumber || "Pending"}</strong>
               </div>
               <div>

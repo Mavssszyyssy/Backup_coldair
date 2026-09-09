@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import NotificationBadge from "./NotificationBadge";
 import { DrawerActions } from "@react-navigation/native";
 import { usePathname, useRouter } from "expo-router";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -138,6 +139,7 @@ export default function CustomerSideMenu({ navigation }) {
                   size={21}
                   color={active ? COLORS.surface : COLORS.primary}
                 />
+                {item.label === "Notifications" ? <NotificationBadge /> : null}
               </View>
               <Text
                 style={{
