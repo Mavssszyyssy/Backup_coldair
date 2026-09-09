@@ -631,6 +631,11 @@ const verifyLoginTotp = async (req, res) => {
     } catch (_error) {
       return res.status(500).json({ message: "Authenticator verification is temporarily unavailable." });
     }
+    if (!secret) {
+      // A missing stored key is an account configuration problem, not a wrong
+      // code. Keep access blocked without counting this against the user.
+      return res.status(409).json({ message: "Your account's authenticator setup needs recovery. Contact support to restore access; requesting another password reset will not repair it." });
+    }
     if (!verifyTotpCode({ secret, code })) {
       user.failedLoginAttempts = Number(user.failedLoginAttempts || 0) + 1;
       if (user.failedLoginAttempts >= LOGIN_MAX_ATTEMPTS) {
@@ -772,7 +777,9 @@ const resetPassword = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(password, salt);
     user.passwordReset = { tokenHash: "", expiresAt: null, usedAt: new Date(), requestedAt: user.passwordReset?.requestedAt || new Date() };
-    user.security = { ...(user.security?.toObject?.() || user.security || {}), sessionVersion: Number(user.security?.sessionVersion || 0) + 1 };
+    // Hidden authenticator/recovery fields are not selected by this query.
+    // Replacing the parent security object would erase them in the database.
+    user.security.sessionVersion = Number(user.security?.sessionVersion || 0) + 1;
     await user.save();
     res.json({ message: "Success" });
   } catch (err) {
@@ -803,7 +810,8 @@ const resetPasswordWithCode = async (req, res) => {
   if (!user) return res.status(404).json({ message: "User not found." });
   const salt = await bcrypt.genSalt(10);
   user.passwordHash = await bcrypt.hash(newPassword, salt);
-  user.security = { ...(user.security?.toObject?.() || user.security || {}), sessionVersion: Number(user.security?.sessionVersion || 0) + 1 };
+  // Preserve the unselected authenticator secret and recovery-code hashes.
+  user.security.sessionVersion = Number(user.security?.sessionVersion || 0) + 1;
   await user.save();
   res.json({ message: "Success" });
 };
