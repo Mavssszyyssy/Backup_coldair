@@ -15,6 +15,7 @@ const {
   canCustomerCancelServiceRequest,
 } = require("../domain/serviceRequestWorkflow");
 const env = require("../config/env");
+const { servicePaymentSummary } = require("../domain/servicePayment");
 const { getScheduledDateError } = require("../utils/scheduling");
 const { formatServiceAddress } = require("../domain/serviceAddress");
 const { cancelWarrantyForRequest, reconcileCancelledWarranty } = require("../domain/warrantyCancellation");
@@ -27,7 +28,7 @@ const ACTIVE_REQUEST_STATUSES = ["Submitted", "Reviewed", "Assigned", "In Progre
 const hydrateRequestResponse = (request) => {
   const json = request.toJSON ? request.toJSON() : request;
   const payload = request.payload && Object.keys(request.payload).length ? request.payload : null;
-  if (!payload) return json;
+  if (!payload) return { ...json, servicePayment: servicePaymentSummary(request) };
   return {
     ...payload,
     ...json,
@@ -38,6 +39,7 @@ const hydrateRequestResponse = (request) => {
     serviceType: payload.serviceType || json.issueType,
     serviceId: payload.serviceId || "",
     pricing: payload.pricing || null,
+    servicePayment: servicePaymentSummary(request),
     issueType: payload.issueType || json.issueType,
     linkedTaskId: payload.linkedTaskId || "",
     unitSerialNumber: payload.unitSerialNumber || payload.serialNumber || "",
@@ -486,6 +488,9 @@ const createMyServiceRequest = async (req, res) => {
 
 const updateServiceRequestStatus = async (req, res) => {
   try {
+    // Pricing and collection have dedicated validated endpoints. Status changes
+    // must never forge a paid state or warranty exemption through Mixed payload.
+    for (const key of ["pricing", "servicePayment", "warrantyClaimId"]) delete req.body?.[key];
     const { id } = req.params;
     const rawNextStatus = String(req.body?.status || "").trim();
     const nextStatus = rawNextStatus ? normalizeStatus(rawNextStatus, null) : "";

@@ -24,3 +24,12 @@ it('shows paid COD only with recorded collection', async () => {
   await screen.findByText('Total Paid');
   expect(screen.getByText('Paid on delivery')).toBeInTheDocument();
 });
+
+it.each([['gcash', 'GCash'], ['credit', 'Credit / debit card']])('shows the actual %s method and Cold Air logo, not the processor', async (method, label) => {
+  session.user = { role: 'customer' };
+  apiRequest.mockResolvedValue({ order: { id: 'order1', receiptAvailable: true, paymentMethod: method, paymentProvider: 'paymongo', paymentStatus: 'paid', totalAmount: 100, receipt: { receiptNumber: 'RCP-1' } } });
+  mount();
+  expect(await screen.findByText(label)).toBeInTheDocument();
+  expect(screen.getByAltText('Cold Air logo')).toHaveAttribute('src', '/Cold%20Air%20Logo.jpg');
+  expect(screen.queryByText(/via PayMongo/i)).not.toBeInTheDocument();
+});

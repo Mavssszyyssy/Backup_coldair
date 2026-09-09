@@ -618,6 +618,8 @@ export default function CustomerUnitDetailsScreen() {
                     </View>
                   </View>
                   <DetailRow label="Concern" value={request.issueDescription || request.concern || "Service requested"} multiline />
+                  <DetailRow label="Service amount" value={request.servicePayment?.amount == null ? ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "Not recorded" : "Awaiting Admin quote" : `PHP ${Number(request.servicePayment.amount).toFixed(2)}`} />
+                  <DetailRow label="Service payment" value={request.servicePayment?.status === "warranty_covered" ? "Covered by warranty — no cash due" : request.servicePayment?.status === "paid" ? "Cash collected" : request.servicePayment?.status === "no_charge" ? "No charge" : ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "No collection recorded" : request.servicePayment?.amount == null ? "Quote required before payment" : "Cash due after check-in"} />
                   <DetailRow label={request.scheduledDate ? "Confirmed appointment" : "Preferred visit"} value={formatDate(request.scheduledDate || request.preferredDate)} />
                   {request.timeSlot ? <DetailRow label="Time slot" value={request.timeSlot} /> : null}
                   <DetailRow label="Submitted" value={formatDateTime(request.createdAt)} />

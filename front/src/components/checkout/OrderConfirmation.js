@@ -111,10 +111,10 @@ function OrderConfirmation() {
         response.order?.paymentUrl ||
         response.order?.paymongo?.checkoutUrl ||
         "";
-      if (!paymentUrl) throw new Error("PayMongo checkout URL was not returned.");
+      if (!paymentUrl) throw new Error("A secure payment link was not returned.");
       window.location.assign(paymentUrl);
     } catch (err) {
-      alert(err?.message || "Unable to open PayMongo checkout.");
+      alert(err?.message || "Unable to open secure payment.");
       setPaying(false);
     }
   };
@@ -223,7 +223,7 @@ function OrderConfirmation() {
                 }}
               >
                 <BoutiqueText weight={800} color={order.paymentStatus === "paid" ? "#047857" : "#9a3412"}>
-                  PayMongo Payment: {(order.paymentStatus || "pending").toUpperCase()}
+                  Payment: {(order.paymentStatus || "pending").toUpperCase()}
                 </BoutiqueText>
                 {canRetryPayment ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">

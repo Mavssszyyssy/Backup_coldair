@@ -1,6 +1,6 @@
 const ReorderRequest = require("../models/ReorderRequest");
 const Product = require("../models/Product");
-const Notification = require("../models/Notification");
+const { notifyOperationalStaff } = require("../services/operationalNotificationService");
 const { BRANCHES } = require("../domain/branchRouting");
 const { ensureProductSerialUnits } = require("./productController");
 
@@ -29,6 +29,20 @@ const serializeReorder = (request) => {
       ? request.reviewedBy.toJSON()
       : request.reviewedBy || null,
   };
+};
+
+const notifyReorder = async (reorder, status) => {
+  try {
+    await notifyOperationalStaff({
+      branch: reorder.branch, type: "inventory", category: "reorder",
+      title: `Reorder ${status}`,
+      message: `${reorder.product?.name || "Inventory item"}: ${reorder.quantity} unit(s) for ${reorder.branch} ${status}.`,
+      targetType: "reorder", targetId: String(reorder._id),
+      dedupeKey: `reorder:${reorder._id}:${status}`, dedupeMinutes: 0,
+    });
+  } catch (error) {
+    console.error("Reorder notification failed", { reorderId: String(reorder._id), status, message: error.message });
+  }
 };
 
 const createReorderRequest = async (req, res) => {
@@ -70,6 +84,7 @@ const createReorderRequest = async (req, res) => {
     notes: String(notes || "").trim(),
   });
   await reorder.populate(["product", { path: "requestedBy", select: "name name_first name_last email" }]);
+  await notifyReorder(reorder, "submitted");
   return res.status(201).json({ reorder: serializeReorder(reorder) });
 };
 
@@ -172,16 +187,7 @@ const updateReorderStatus = async (req, res) => {
     }
   }
 
-  try {
-    await Notification.create({
-      user: reorder.requestedBy,
-      type: "system",
-      title: `Reorder ${status}`,
-      message: `${reorder.product?.name || "Inventory item"}: ${reorder.quantity} unit(s) for ${reorder.branch} ${status}.`,
-    });
-  } catch (_error) {
-    // A notification failure must not undo a completed inventory decision.
-  }
+  await notifyReorder(reorder, status);
 
   await reorder.populate([
     "product",

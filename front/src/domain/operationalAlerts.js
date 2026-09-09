@@ -2,7 +2,7 @@ export function alertCategory(item = {}) {
   const target = item.targetType || item.category;
   if (['maintenance_pipeline', 'amp_pipeline', 'amp_due_soon', 'amp_overdue', 'maintenance_due'].includes(target) || item.type === 'technician') return 'maintenance';
   if (['order', 'payment', 'delivery'].includes(item.type) || target === 'order') return 'transactions';
-  if (['service', 'warranty'].includes(item.type) || ['contact', 'contact_message', 'parts_request'].includes(target)) return 'requests';
+  if (['service', 'warranty'].includes(item.type) || ['contact', 'contact_message', 'parts_request', 'reorder'].includes(target)) return 'requests';
   return 'other';
 }
 
@@ -15,7 +15,8 @@ export function operationalAlertRoute(item = {}, role = 'admin') {
   if (['task', 'technician'].includes(target) || item.type === 'technician') return serviceRoute('technicians');
   if (['warranty', 'claim', 'service', 'service_request', 'parts_request'].includes(target) || ['service', 'warranty'].includes(item.type)) return serviceRoute('service-requests');
   if (['order', 'payment', 'delivery'].includes(item.type) || target === 'order') return serviceRoute('orders');
-  if (['stock', 'inventory', 'reorder'].includes(target) || item.type === 'inventory') return superadmin ? '/superadmin/inventory' : '/admin/inventory';
+  if (target === 'reorder') return superadmin ? '/superadmin/inventory?tab=reorders' : '/admin/inventory?tab=reorder';
+  if (['stock', 'inventory'].includes(target) || item.type === 'inventory') return superadmin ? '/superadmin/inventory' : '/admin/inventory';
   const prefix = superadmin ? '/superadmin/' : '/admin/';
   return String(item.route || '').startsWith(prefix) ? item.route : `${prefix}dashboard`;
 }

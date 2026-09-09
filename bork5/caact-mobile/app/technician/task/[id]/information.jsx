@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -310,6 +311,7 @@ export default function TaskInformationScreen() {
               </Card>
             ) : null}
 
+            <ServicePaymentCard task={task} onUpdated={setTask} />
             {task?.codPayment ? <Card>
               <SectionHeading icon="cash-sharp" title="Cash on Delivery" subtitle="Payment is confirmed by the collecting technician" />
               <DetailItem icon="cash-sharp" label="Order total" value={money(task.codPayment.amount)} />
@@ -373,8 +375,8 @@ export default function TaskInformationScreen() {
               <SectionHeading icon="camera-sharp" title="Service Proof" subtitle="Submitted work confirmation" />
               <DetailItem icon="person-sharp" label="Order Customer" value={proof.customer?.name || task?.customerName || task?.customer || "Not provided"} />
               <DetailItem icon="construct-sharp" label="Submitted By" value={proof.technicianName || task?.assignedTechnicianName || "Technician"} />
-              <DetailItem icon="time-sharp" label="Submitted At" value={proof.submittedAt || task?.proofSubmittedAt || "Not submitted"} />
-              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.sm, marginBottom: SPACING.xs }}>Before Photo</Text>
+              <DetailItem icon="time-sharp" label="Submitted At" value={proof.submittedAt || task?.proofSubmittedAt ? new Date(proof.submittedAt || task.proofSubmittedAt).toLocaleString() : "Not submitted"} />
+              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.sm, marginBottom: SPACING.xs }}>Before Photo (optional)</Text>
               <ProofPhotoList photos={proof.beforePhotos || []} />
               <View style={{ height: SPACING.md }} />
               <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>After Photo</Text>

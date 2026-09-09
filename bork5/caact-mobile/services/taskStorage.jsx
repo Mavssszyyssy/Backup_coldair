@@ -122,6 +122,7 @@ export function normalizeTask(item = {}) {
     orderId: value("orderId"),
     orderCode: value("orderCode"),
     codPayment: value("codPayment", null),
+    servicePayment: value("servicePayment", null),
     items: orderItems,
     serialNumbers,
     registrationProgress: value("registrationProgress", null),
@@ -476,6 +477,14 @@ export async function confirmCodCollection(taskId) {
   const result = await api.confirmCodCollection(token, taskId);
   if (!result.success) throw new Error(result.error);
   return getTaskById(taskId);
+}
+
+export async function collectServicePayment(taskId, payment) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again.");
+  const result = await api.collectServicePayment(token, taskId, payment);
+  if (!result.success) throw new Error(result.error);
+  return getTaskById(taskId, { requireOnline: true });
 }
 
 export async function registerTaskAmpUnit(taskId, payload = {}) {

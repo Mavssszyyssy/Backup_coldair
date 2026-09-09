@@ -694,6 +694,11 @@ export async function confirmCodCollection(token, taskId) {
   return ok ? { success: true, task: data.task } : { success: false, error: getErrorMessage(data, "Unable to confirm cash collection.") };
 }
 
+export async function collectServicePayment(token, taskId, payment) {
+  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/service-payment`, { confirmed: true, amount: payment.amount, quoteId: payment.quoteId }, token);
+  return ok ? { success: true } : { success: false, error: getErrorMessage(data, "Unable to confirm service payment.") };
+}
+
 export async function createMyServiceRequest(token, payload) {
   const { ok, data } = await post("/service-requests/me", payload, token);
   if (ok) return { success: true, request: data.request };

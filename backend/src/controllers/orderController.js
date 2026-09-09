@@ -1619,7 +1619,7 @@ const hydrateOrdersWithInventoryQrCodes = async (orders = [], options = {}) => {
       deliveryAddress: { ...deliveryAddress, formatted: addressText },
       branch: String(order.stockSourceBranch || order.customerBranch || ""),
       payment: {
-        method: String(order.paymentProvider || order.paymentMethod || ""),
+        method: String(order.paymentMethod || ""),
         status: paymentStatus,
         reference: String(order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || ""),
       },
@@ -2142,6 +2142,9 @@ const createOrder = async (req, res) => {
         idempotentReplay: true,
       });
     }
+  }
+  if (String(paymentMethod).toLowerCase() !== "cod" && !isOnlinePaymentMethod(paymentMethod)) {
+    return res.status(400).json({ message: "Choose a supported cash-on-delivery or online payment method. Payment upon installation is no longer available for new orders." });
   }
   const usesOnlinePayment = isOnlinePaymentMethod(paymentMethod);
   const deferStockUntilDispatch = String(paymentMethod || "").toLowerCase() === "cod";

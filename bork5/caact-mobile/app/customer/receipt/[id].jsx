@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { View } from "react-native";
+import { Image, View } from "react-native";
+import { paymentMethodLabel } from "../../../services/paymentMethodLabel";
 
 import {
   BoutiqueButton,
@@ -47,9 +48,7 @@ const receiptDetails = (order = {}) => {
     paymentStatus: isCod
       ? (orderComplete ? "Paid on Delivery" : "Payment Due on Delivery")
       : readablePaymentValue(order.paymentStatus || order.receipt?.paymentStatus || "Pending"),
-    paymentMethod: isCod
-      ? "Cash on Delivery"
-      : (String(order.paymentProvider || "").toLowerCase() === "paymongo" ? "Online Payment" : readablePaymentValue(rawMethod || "Pending")),
+    paymentMethod: paymentMethodLabel(order.paymentMethod || order.receipt?.paymentMethod),
     paymentReference: isCod
       ? (orderComplete ? "Cash collected upon delivery" : "No reference needed")
       : order.receipt?.paymentReference || order.paymongo?.paymentId || order.paymongo?.checkoutSessionId || "Pending",
@@ -234,7 +233,7 @@ export default function ReceiptScreen() {
                   backgroundColor: "#eff6ff",
                 }}
               >
-                <Ionicons name="receipt" size={30} color={BQ_COLORS.accent} />
+                <Image source={require("../../../images/cold logo.png")} accessibilityLabel="Cold Air logo" style={{ width: 54, height: 54 }} resizeMode="contain" />
               </View>
               <View style={{ flex: 1, minWidth: 170, gap: 2 }}>
                 <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>OFFICIAL E-RECEIPT</BoutiqueText>

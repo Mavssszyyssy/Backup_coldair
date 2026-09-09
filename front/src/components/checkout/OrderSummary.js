@@ -57,11 +57,10 @@ function OrderSummary({
       </div>
 
       <p className="checkout-flow-note">
-        Orders are sent to <strong>Super Admin</strong> for stock confirmation
-        and edits before fulfillment.
+        Your fulfillment branch will review and dispatch your order.
         {selectedPayment === "gcash" || selectedPayment === "credit"
-          ? " You will be redirected to PayMongo after placing the order."
-          : " Payment stays in processing for COD or pay-on-installation until the milestone is reached."}
+          ? " Continue to secure payment after placing the order."
+          : " Pay the assigned technician on delivery after arrival is confirmed."}
       </p>
 
       {hasStockIssues ? (

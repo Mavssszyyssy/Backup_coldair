@@ -111,7 +111,7 @@ function AmpReportCenter({
       <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
       <div className="amp-report-controls">
         <label>Report type<select disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label>Installed AC unit<select disabled={loading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{unit.modelName || unit.model || "AC Unit"} · {unit.serialNumber || value}</option>; })}</select></label>
+        <label>Installed AC unit<select disabled={loading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{user?.role !== "customer" ? `${unit.customerName || "Customer name not recorded"} · ` : ""}{unit.modelName || unit.model || "AC Unit"}{unit.capacityHp ? ` · ${unit.capacityHp} HP` : ""} · {unit.serialNumber || value}</option>; })}</select></label>
         <button type="button" onClick={generate} disabled={loading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
       </div>
       <p className="amp-muted">{types.find(item => item.value === reportType)?.help}</p>

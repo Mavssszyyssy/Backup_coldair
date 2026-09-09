@@ -450,18 +450,46 @@ const main = async () => {
   const assignedVisit = await request(`/service-requests/${serviceRequestId}/status`, { token: superadmin.token, method: "PATCH", body: { status: "Assigned", assignedTechnicianId: technician.id || technician._id, scheduledDate: maintenanceBody.preferredDate, timeSlot: '9:00 AM – 12:00 PM' } });
   const serviceTaskId = assignedVisit.data.request.linkedTaskId;
   if (!serviceTaskId) throw new Error("Assigned maintenance request has no work order.");
+  await request(`/service-requests/${serviceRequestId}/quote`, { token: customerToken, method: "PATCH", body: { amount: 1 }, expected: [403] });
+  const quoteAdmin = await login("admin.bulacan", "admin123");
+  const otherAdmin = await login("admin.cavite", "admin123");
+  await request(`/service-requests/${serviceRequestId}/quote`, { token: otherAdmin.token, method: "PATCH", body: { amount: 800 }, expected: [404] });
+  for (const amount of [-1, true, [], {}, "", null, 0.001]) {
+    await request(`/service-requests/${serviceRequestId}/quote`, { token: quoteAdmin.token, method: "PATCH", body: { amount }, expected: [400] });
+  }
+  const quoted = (await request(`/service-requests/${serviceRequestId}/quote`, { token: quoteAdmin.token, method: "PATCH", body: { amount: 800 } })).data.servicePayment;
+  const collection = { confirmed: true, amount: 800, quoteId: quoted.quoteId };
+  await request(`/tasks/${serviceTaskId}/service-payment`, { token: technicianSession.token, method: "PATCH", body: collection, expected: [409] });
   const visitDetails = await request(`/tasks/${serviceTaskId}`, { token: technicianSession.token });
   for (const part of [address.street, address.barangay, address.city, address.province, address.postalCode]) {
     if (!visitDetails.data.task.address.includes(part)) throw new Error("A service-address component was lost in the technician work order.");
   }
   record("Full service address and ZIP reach the assigned technician work order");
+  if (visitDetails.data.task.servicePayment?.amount !== 800) throw new Error("Service quote missing from technician work order.");
   const performed = { status: "completed", serviceType: "deep_cleaning", conditionRating: "fair", findings: "The evaporator coil has heavy dust buildup and restricted airflow.", serviceActions: ["Removed and cleaned the indoor unit", "Flushed the drain and tested cooling"], partsUsed: [] };
   await request(`/tasks/${serviceTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: performed, expected: [409] });
   await request(`/amp/units/${unitId}/complete-service`, { token: technicianSession.token, method: "POST", body: performed, expected: [409] });
   await request(`/tasks/${serviceTaskId}/check-in`, { token: technicianSession.token, method: "PATCH", expected: [400], body: { coordinates: { latitude: null, longitude: null } } });
   await request(`/tasks/${serviceTaskId}/check-in`, { token: technicianSession.token, method: "PATCH", body: { coordinates: { latitude: 14.65, longitude: 121.02, accuracy: 8 } } });
+  await request(`/tasks/${serviceTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: performed, expected: [409] });
+  await request(`/tasks/${serviceTaskId}/service-payment`, { token: technicianSession.token, method: "PATCH", body: { ...collection, amount: 1 }, expected: [409] });
+  const serviceCollected = (await request(`/tasks/${serviceTaskId}/service-payment`, { token: technicianSession.token, method: "PATCH", body: collection })).data.servicePayment;
+  const collectedAgain = (await request(`/tasks/${serviceTaskId}/service-payment`, { token: technicianSession.token, method: "PATCH", body: collection })).data.servicePayment;
+  if (serviceCollected.status !== "paid" || serviceCollected.collectedAt !== collectedAgain.collectedAt) throw new Error("Service payment retry changed collection.");
+  await request(`/service-requests/${serviceRequestId}/quote`, { token: quoteAdmin.token, method: "PATCH", body: { amount: 900 }, expected: [409] });
+  for (const token of [customerToken, quoteAdmin.token, superadmin.token]) {
+    const list = await request(token === customerToken ? "/service-requests/me" : "/service-requests", { token });
+    if (list.data.requests.find(r => r.id === serviceRequestId)?.servicePayment?.status !== "paid") throw new Error("Payment was not synchronized to customer/admin.");
+  }
+  record("Service quote, GPS-gated cash collection, paid-state synchronization and retry protection");
   await request(`/tasks/${serviceTaskId}/status`, { token: technicianSession.token, method: "PATCH", expected: [400], body: { status: "completed", serviceType: "regular_cleaning", conditionRating: "good", findings: "AMP recommended regular cleaning for this AC unit.", serviceActions: ["Service completed"] } });
+  await request(`/tasks/${serviceTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: performed, expected: [409] });
+  performed.proof = { afterPhotos: [{ uri: "data:image/jpeg;base64,cWEtcHJvb2Y=", label: "After service" }] };
+  performed.afterCondition = "Good";
   await request(`/tasks/${serviceTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: performed });
+  const proofCheck = (await request(`/tasks/${serviceTaskId}`, { token: quoteAdmin.token })).data.task;
+  if (!proofCheck.proof?.afterPhotos?.length || proofCheck.afterCondition !== "Good") throw new Error("Admin cannot see service photo/after condition.");
+  record("Maintenance completion requires after-photo and makes proof visible to Admin");
   const serviceUnits = await request("/amp/customer/units", { token: customerToken });
   const servicedUnit = serviceUnits.data.units.find((item) => item.id === unitId);
   const recordedVisit = servicedUnit.serviceHistory.find((history) => history.serviceType === "deep_cleaning");
@@ -527,7 +555,13 @@ const main = async () => {
     const arrival = checkedTask?.checkIn || checkedTask?.payload?.checkIn;
     if (arrival?.latitude !== 14.65 || !arrival?.checkedInAt) throw new Error('Warranty service arrival is not visible to customer or administration.');
   }
-  await request(`/tasks/${warrantyTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: { status: "completed", serviceType: "repair", conditionRating: "good", findings: "Control board was not responding during the cooling test.", resolution: "Replaced the control board and verified normal operation.", partsUsed: ["Control board"] } });
+  const warrantyReport = { status: "completed", serviceType: "repair", conditionRating: "good", findings: "Control board was not responding during the cooling test.", resolution: "Replaced the control board and verified normal operation.", partsUsed: ["Control board"] };
+  await request(`/tasks/${warrantyTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: warrantyReport, expected: [409] });
+  const warrantyPayment = (await request(`/tasks/${warrantyTaskId}`, { token: technicianSession.token })).data.task.servicePayment;
+  if (warrantyPayment?.status !== "warranty_covered" || warrantyPayment.amount !== 0) throw new Error("Approved warranty repair incorrectly requires cash.");
+  warrantyReport.proof = { afterPhotos: [{ uri: "data:image/jpeg;base64,cWEtcHJvb2Y=", label: "After warranty repair" }] };
+  await request(`/tasks/${warrantyTaskId}/status`, { token: technicianSession.token, method: "PATCH", body: warrantyReport });
+  record("Warranty completion requires after-photo and written report without charging covered work");
   const repairedUnits = await request("/amp/customer/units", { token: customerToken });
   const repairedUnit = repairedUnits.data.units.find((item) => item.id === unitId);
   if (repairedUnit.lastCleaningDate !== servicedUnit.lastCleaningDate || !repairedUnit.serviceHistory.some((item) => item.serviceType === "repair")) throw new Error("Warranty repair incorrectly reset the cleaning date.");
@@ -628,7 +662,10 @@ const main = async () => {
   if (!(reportUnits.data.units || []).some((item) => item.serialNumber === serialNumber)) {
     throw new Error("Installed acceptance unit is missing from AMP reporting.");
   }
-  record("AMP reporting receives completed installation data");
+  if (!reportUnits.data.units.find(item => item.serialNumber === serialNumber)?.customerName) throw new Error("AMP report selector is missing customer identity.");
+  const adminUnits = (await request("/amp/report-units", { token: quoteAdmin.token })).data.units;
+  if (!adminUnits.find(item => item.serialNumber === serialNumber)?.customerName) throw new Error("Admin AMP report selector is missing customer identity.");
+  record("AMP reporting includes customer name for both Admin and Superadmin");
   await request("/amp/manager/pipeline", { token: customerToken, expected: [403] });
   await request("/amp/owner/forecast", { token: (await login("admin.bulacan", "admin123")).token, expected: [403] });
   await request("/amp/manager/pipeline", { token: superadmin.token });
@@ -636,6 +673,25 @@ const main = async () => {
   if (!forecast.data.revenueDisclaimer && !forecast.data.forecast?.revenueDisclaimer) throw new Error("AMP forecast is missing its scenario-revenue disclaimer.");
   record("AMP pipeline and owner forecast enforce role access and disclose estimates");
 
+  const beforeReorder = Number((await findProduct(superadmin.token, productId)).stock);
+  for (const status of ["approved", "rejected"]) {
+    const reorder = (await request("/reorders", { token: quoteAdmin.token, method: "POST", expected: [201], body: { productId, quantity: 1 } })).data.reorder;
+    for (const token of [quoteAdmin.token, superadmin.token]) {
+      const notices = (await request("/notifications/me", { token })).data.notifications;
+      if (!notices.some(n => n.targetId === reorder.id && n.title === "Reorder submitted")) throw new Error("Missing reorder submission alert.");
+    }
+    await request(`/reorders/${reorder.id}`, { token: quoteAdmin.token, method: "PATCH", body: { status }, expected: [403] });
+    await request(`/reorders/${reorder.id}`, { token: superadmin.token, method: "PATCH", body: { status } });
+    await request(`/reorders/${reorder.id}`, { token: superadmin.token, method: "PATCH", body: { status }, expected: [409] });
+    for (const token of [quoteAdmin.token, superadmin.token]) {
+      const notices = (await request("/notifications/me", { token })).data.notifications;
+      if (notices.filter(n => n.targetId === reorder.id && n.title === `Reorder ${status}`).length !== 1) throw new Error("Missing or duplicate reorder decision alert.");
+    }
+  }
+  if (Number((await findProduct(superadmin.token, productId)).stock) !== beforeReorder + 1) throw new Error("Reorder decision incorrectly changed stock.");
+  record("Reorder submission/approval/rejection notify both roles and cannot duplicate stock");
+  await request("/orders", { token: customerToken, method: "POST", body: { items: [{ productId, quantity: 1 }], address, paymentMethod: "pay_on_install" }, expected: [400] });
+  record("New checkout rejects removed payment-upon-installation method");
   console.log(`\nAcceptance journey complete: ${stepResults.length} verified checkpoints.`);
   console.log(`Isolated QA walkthrough customer: ${registrationBody.alias}`);
   console.log(`Isolated QA walkthrough technician: ${technician.alias}`);

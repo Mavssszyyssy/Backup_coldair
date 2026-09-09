@@ -93,7 +93,7 @@ it("refreshes branch workload after a generated plan without making another paid
     return { units: [{ unitId: "unit-1", modelName: "AC" }] };
   });
   show(<ManagerAmpDashboard />);
-  await screen.findByRole("option", { name: "AC · unit-1" });
+  await screen.findByRole("option", { name: "Customer name not recorded · AC · unit-1" });
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   expect(await screen.findByText("AI-estimated servicing date")).toBeVisible();

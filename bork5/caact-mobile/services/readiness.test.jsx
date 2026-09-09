@@ -242,7 +242,8 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("Open check-in map");
     expect(detailsSource).toContain("formatWarrantyStatus");
     expect(completionSource).toContain("Complete service visit");
-    expect(completionSource).toContain("Technician Findings");
+    expect(completionSource).toContain("<ServiceReportQuickChoices");
+    expect(completionSource).toContain("onFindingsChange={setFindings}");
     expect(logSource).toContain("serviceActions");
   });
 
@@ -259,7 +260,8 @@ describe("mobile customer readiness rules", () => {
     const receiptSource = fs.readFileSync(path.join(__dirname, "..", "app", "customer", "receipt", "[id].jsx"), "utf8");
     const orderStorageSource = fs.readFileSync(path.join(__dirname, "orderStorage.jsx"), "utf8");
     expect(receiptSource).toContain("Paid on Delivery");
-    expect(receiptSource).toContain("Cash on Delivery");
+    expect(receiptSource).toContain("paymentMethodLabel(");
+    expect(require("./paymentMethodLabel").paymentMethodLabel("cod")).toBe("Cash on Delivery");
     expect(receiptSource).toContain("Cash collected upon delivery");
     expect(orderStorageSource).toContain("paymongo: order.paymongo || null");
   });

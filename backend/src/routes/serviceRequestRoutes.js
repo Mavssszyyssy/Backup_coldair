@@ -10,6 +10,7 @@ const {
 } = require("../controllers/serviceRequestController");
 
 const router = express.Router();
+const { setServiceQuote } = require("../controllers/servicePaymentController");
 
 router.use(requireAuth);
 
@@ -19,6 +20,7 @@ router.get("/catalog", listServiceCatalog);
 router.get("/me", allowRoles("customer"), listMyServiceRequests);
 router.post("/me", allowRoles("customer"), createMyServiceRequest);
 router.patch("/:id/status", allowRoles("customer", "admin", "superadmin"), updateServiceRequestStatus);
+router.patch("/:id/quote", allowRoles("admin", "superadmin"), setServiceQuote);
 
 module.exports = router;
 

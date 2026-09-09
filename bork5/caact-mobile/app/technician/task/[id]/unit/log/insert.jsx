@@ -3,7 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, TouchableOpacity, View } from "react-native";
 
 import TechButton from "../../../../../../components/technician/TechButton";
+import ServiceReportQuickChoices from "../../../../../../components/technician/ServiceReportQuickChoices";
 import { serviceReportError } from "../../../../../../services/serviceReportValidation";
+import { suggestedServiceType } from "../../../../../../services/technicianTaskLogic";
 import Card from "../../../../../../components/ui/Card";
 import PageHeader from "../../../../../../components/ui/PageHeader";
 import TextField from "../../../../../../components/ui/TextField";
@@ -14,6 +16,7 @@ import { getDisplayName } from "../../../../../../services/profileService";
 import { TASK_STATUS, getTaskById } from "../../../../../../services/taskStorage";
 import {
   clearLogDraft,
+  LOG_TYPES,
   getLogDraft,
   getServiceLogById,
   saveLogDraft,
@@ -35,6 +38,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
   const [hoursSpent, setHoursSpent] = useState("");
   const [partsUsed, setPartsUsed] = useState("");
   const [saving, setSaving] = useState(false);
+  const [choiceError, setChoiceError] = useState("");
+  const [reportType, setReportType] = useState(logType);
   const isUpdate = mode === "update" || !!logId;
   const draftStateRef = useRef({});
   const skipDraftSaveRef = useRef(false);
@@ -49,6 +54,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         const source = existing || draft || {};
         if (active) {
           setTask(loadedTask);
+          const selectedType = source.logType || logType;
+          setReportType(selectedType === "other" ? (LOG_TYPES.some(type => type.id === loadedTask?.serviceType) ? loadedTask.serviceType : suggestedServiceType(loadedTask)) : selectedType);
           setFindings(source.findings || "");
           setResolution(source.resolution || "");
           setNotes(source.notes || "");
@@ -61,14 +68,14 @@ export default function LogInsertScreen({ mode = "insert" }) {
       return () => {
         active = false;
       };
-    }, [taskId, logId, isUpdate]),
+    }, [taskId, logId, isUpdate, logType]),
   );
 
   useEffect(() => {
     draftStateRef.current = {
       taskId,
-      logType,
-      label,
+      logType: reportType,
+      label: LOG_TYPES.find(type => type.id === reportType)?.label || label,
       findings,
       resolution,
       notes,
@@ -76,7 +83,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       hoursSpent,
       partsUsed,
     };
-  }, [condition, findings, hoursSpent, label, logType, notes, partsUsed, resolution, taskId]);
+  }, [condition, findings, hoursSpent, label, reportType, notes, partsUsed, resolution, taskId]);
 
   useEffect(() => {
     return () => {
@@ -99,8 +106,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
       skipDraftSaveRef.current = true;
       await saveLogDraft(taskId, {
         taskId,
-        logType,
-        label,
+        logType: reportType,
+        label: LOG_TYPES.find(type => type.id === reportType)?.label || label,
         findings,
         resolution,
         notes,
@@ -117,7 +124,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
       return;
     }
-    const reportError = serviceReportError(findings, resolution);
+    const reportError = choiceError || serviceReportError(findings, resolution);
     if (reportError) {
       Alert.alert("Service report incomplete", reportError);
       return;
@@ -133,8 +140,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
         unitName: task?.unitName,
         technicianId: current?.id,
         technicianName: getDisplayName(current),
-        logType,
-        label,
+        logType: reportType,
+        label: LOG_TYPES.find(type => type.id === reportType)?.label || label,
         findings: findings.trim(),
         resolution: resolution.trim(),
         notes: notes.trim(),
@@ -150,6 +157,8 @@ export default function LogInsertScreen({ mode = "insert" }) {
           onPress: () => router.replace(`/technician/task/${taskId}/unit/log/select`),
         },
       ]);
+    } catch (error) {
+      Alert.alert("Service note not saved", error?.message || "Please try again. Your entries are still here.");
     } finally {
       setSaving(false);
     }
@@ -237,22 +246,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         </Card>
 
         <Card style={{ marginBottom: SPACING.md }}>
-          <TextField
-            label="Technician Findings"
-            value={findings}
-            onChangeText={setFindings}
-            placeholder="Describe the AC condition or issue found"
-            multiline
-            numberOfLines={4}
-          />
-          <TextField
-            label="Work Performed / Resolution"
-            value={resolution}
-            onChangeText={setResolution}
-            placeholder="Describe the cleaning, repair, or inspection completed"
-            multiline
-            numberOfLines={4}
-          />
+          <ServiceReportQuickChoices serviceType={reportType} findings={findings} resolution={resolution} onFindingsChange={setFindings} onResolutionChange={setResolution} onValidationChange={setChoiceError} />
           <TextField
             label="Additional Notes (Optional)"
             value={notes}

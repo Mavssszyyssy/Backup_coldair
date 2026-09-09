@@ -1,4 +1,5 @@
-import { ArrowLeft, DownloadSimple, Receipt } from "@phosphor-icons/react";
+import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react";
+import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
@@ -126,11 +127,7 @@ function ReceiptView() {
   const deliveryAddress = resolveDeliveryAddress(order || {});
   const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
   const isCompleted = Boolean(order?.codCollection?.collectedAt);
-  const paymentMethodLabel = isCashOnDelivery
-    ? "Cash on Delivery"
-    : order?.paymentProvider === "paymongo"
-      ? "Online payment via PayMongo"
-      : order?.paymentProvider || order?.paymentMethod || "Pending";
+  const paymentMethodLabel = methodLabel(order?.paymentMethod || order?.receipt?.paymentMethod);
   const paymentStatusLabel = isCashOnDelivery
     ? isCompleted ? "Paid on delivery" : "Payment due on delivery"
     : String(order?.invoice?.payment?.status || order?.paymentStatus || "pending").replaceAll("_", " ");
@@ -160,7 +157,7 @@ function ReceiptView() {
 
           <article className="receipt-paper">
             <div className="receipt-brand">
-              <div className="receipt-icon"><Receipt size={30} weight="fill" /></div>
+              <img className="receipt-icon" src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" style={{ objectFit: "contain", background: "white" }} />
               <div>
                 <p className="receipt-eyebrow">Official E-Receipt</p>
                 <h1>Coldair ACT</h1>

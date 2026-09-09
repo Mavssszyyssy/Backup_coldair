@@ -54,9 +54,9 @@ export default function OrderConfirmationScreen() {
   const body = paymentCancelled
     ? "You can reopen the order and try payment again."
     : paymentFailed
-      ? "PayMongo could not confirm this payment. Please try again from My Orders."
+      ? "Your payment could not be confirmed. Please try again from My Orders."
       : paymentPending
-        ? "Your order is saved. Coldair will move it forward only after PayMongo confirms the payment."
+        ? "Your order is saved. Coldair will move it forward after your payment is confirmed."
         : "Your payment was confirmed and your order is now being processed.";
   return <><BoutiqueHeader title={title} onBack={() => router.replace("/customer/orders")} /><BoutiqueScreen><BoutiqueCard style={{ gap: BQ_SPACING.md, alignItems: "center" }}><BoutiqueText variant="h1" align="center">{checking ? "Checking payment…" : paymentCancelled ? "Payment not completed" : paymentFailed ? "Payment failed" : paymentPending ? "Payment pending" : "Thank you"}</BoutiqueText><BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{body}</BoutiqueText><BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Order: {id}</BoutiqueText><BoutiqueButton title="View my orders" onPress={() => router.replace("/customer/orders")} /></BoutiqueCard></BoutiqueScreen></>;
 }

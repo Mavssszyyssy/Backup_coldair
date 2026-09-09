@@ -216,13 +216,16 @@ const getReportUnits = async (req, res) => {
     const query = { status: { $ne: "retired" } };
     if (branch) query.serviceBranch = branch;
     const units = await Unit.find(query)
-      .select("brand modelName serialNumber serviceBranch status")
+      .select("brand modelName serialNumber serviceBranch status customer customerName capacityHp")
+      .populate("customer", "name name_first name_last")
       .sort({ serviceBranch: 1, modelName: 1, serialNumber: 1 })
       .limit(500)
       .lean();
     return res.json({
       units: units.map((unit) => ({
         unitId: String(unit._id),
+        customerName: unit.customer?.name || [unit.customer?.name_first, unit.customer?.name_last].filter(Boolean).join(" ") || unit.customerName || "Customer name not recorded",
+        capacityHp: unit.capacityHp || null,
         modelName: [unit.brand, unit.modelName].filter(Boolean).join(" ") || "Installed AC Unit",
         serialNumber: unit.serialNumber || "",
         branch: unit.serviceBranch || "Unassigned",

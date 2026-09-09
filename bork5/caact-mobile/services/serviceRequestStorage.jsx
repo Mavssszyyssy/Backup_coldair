@@ -55,6 +55,7 @@ function normalizeServiceRequest(item = {}) {
     serviceType: item.serviceType || item.issueType || payload.serviceType || "",
     serviceId: item.serviceId || payload.serviceId || "",
     pricing: item.pricing || payload.pricing || null,
+    servicePayment: item.servicePayment || null,
     issueType: item.issueType || "",
     issueDescription,
     concern: issueDescription,

@@ -6,6 +6,7 @@ const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Unit = require("../models/Unit");
 const ServiceRequest = require("../models/ServiceRequest");
+const { servicePaymentSummary, servicePaymentBlocker } = require("../domain/servicePayment");
 const Notification = require("../models/Notification");
 const { notifyOperationalStaff, createDedupedNotification } = require("../services/operationalNotificationService");
 const ServiceHistory = require("../models/ServiceHistory");
@@ -141,7 +142,8 @@ const assertInstallationProof = (task, proof, payload = {}) => {
   // An installation is complete once its assigned QR unit is registered and
   // the technician has supplied an installed-unit photo. Customer details are
   // authoritative order data, so technicians must never retype or sign them.
-  if (getTaskSerialNumbers(task).length === 0) return null;
+  const isService = Boolean(task.payload?.requestId || task.unitId);
+  if (getTaskSerialNumbers(task).length === 0 && !isService) return null;
 
   const hasInstallationPhoto = (proof?.afterPhotos || []).some((photo) =>
     Boolean(String(photo?.uri || "").trim()),
@@ -150,7 +152,7 @@ const assertInstallationProof = (task, proof, payload = {}) => {
 
   return {
     status: 409,
-    message: "Installation proof is incomplete. Add an installed-unit photo before closing this work order.",
+    message: isService ? "Service proof is incomplete. Add an after-service photo before closing this work order." : "Installation proof is incomplete. Add an installed-unit photo before closing this work order.",
   };
 };
 
@@ -554,6 +556,7 @@ const technicianReportPayload = (payload = {}) => Object.fromEntries(Object.entr
   serviceLogs: payload.serviceLogs,
   serviceType: payload.serviceType,
   beforeCondition: payload.beforeCondition,
+  afterCondition: payload.afterCondition,
   conditionRating: payload.conditionRating,
   findings: payload.findings,
   resolution: payload.resolution,
@@ -569,6 +572,12 @@ const technicianReportPayload = (payload = {}) => Object.fromEntries(Object.entr
   holdReason: payload.holdReason,
   defectReason: payload.defectReason,
 }).filter(([, value]) => value !== undefined));
+
+const getServiceCompletionPaymentBlocker = async (task) => {
+  const requestId = task.payload?.requestId;
+  if (!requestId) return "";
+  return servicePaymentBlocker(await ServiceRequest.findById(requestId));
+};
 
 const validateCompletionReport = (task, payload = {}) => {
   const validation = validateTechnicianTaskCompletion({
@@ -1103,6 +1112,8 @@ const updateTask = async (req, res) => {
     }
     task.status = nextStatus;
     if (nextStatus === "completed") {
+      const servicePaymentError = await getServiceCompletionPaymentBlocker(task);
+      if (servicePaymentError) return res.status(409).json({ message: servicePaymentError });
       const reportError = validateCompletionReport(task, payload);
       if (reportError) {
         return res.status(reportError.status).json({ message: reportError.message, errors: reportError.errors });
@@ -1148,7 +1159,8 @@ const getTaskById = async (req, res) => {
     const unit = await getTaskUnitSummary(task);
     const order = await findLinkedOrderForTask(task);
     const codPayment = order && isCodOrder(order) ? { amount: order.totalAmount, collectedAt: order.codCollection?.collectedAt || null } : null;
-    return res.json({ task: { ...hydrateTaskResponse(task), unit, codPayment } });
+    const serviceRequest = task.payload?.requestId ? await ServiceRequest.findById(task.payload.requestId) : null;
+    return res.json({ task: { ...hydrateTaskResponse(task), unit, codPayment, servicePayment: servicePaymentSummary(serviceRequest) } });
   } catch (error) {
     console.error("Failed to fetch task:", error);
     return res.status(500).json({ message: "Unable to fetch task right now." });
@@ -1638,6 +1650,8 @@ const updateTaskStatus = async (req, res) => {
     }
     task.status = status;
     if (status === "completed") {
+      const servicePaymentError = await getServiceCompletionPaymentBlocker(task);
+      if (servicePaymentError) return res.status(409).json({ message: servicePaymentError });
       const reportError = validateCompletionReport(task, payload);
       if (reportError) {
         return res.status(reportError.status).json({ message: reportError.message, errors: reportError.errors });

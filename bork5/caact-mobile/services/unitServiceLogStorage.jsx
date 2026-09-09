@@ -112,7 +112,7 @@ export async function upsertServiceLog(log = {}) {
     conditionRating: String(normalized.condition || "good").toLowerCase(),
     findings: normalized.findings || normalized.notes,
     resolution: normalized.resolution,
-    serviceActions: normalized.resolution ? [normalized.resolution] : [],
+    serviceActions: normalized.resolution.split(/\n+/).map(action => action.trim()).filter(Boolean),
     partsUsed: normalized.partsUsed,
     notes: normalized.notes,
   });
@@ -139,7 +139,7 @@ export async function deleteServiceLog(taskId, logId) {
       conditionRating: String(latest.condition || "good").toLowerCase(),
       findings: latest.findings || latest.notes,
       resolution: latest.resolution,
-      serviceActions: latest.resolution ? [latest.resolution] : [],
+      serviceActions: latest.resolution.split(/\n+/).map(action => action.trim()).filter(Boolean),
       partsUsed: latest.partsUsed,
       notes: latest.notes,
     } : {

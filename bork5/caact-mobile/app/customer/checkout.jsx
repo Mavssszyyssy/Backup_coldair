@@ -309,12 +309,12 @@ export default function CheckoutScreen() {
 
       if (paymentMethod !== "cod") {
         if (!checkoutUrl) {
-          throw new Error("PayMongo did not provide a payment link. Your cart is still available—please try again shortly.");
+          throw new Error("A secure payment link was not provided. Your cart is still available—please try again shortly.");
         }
         setCheckoutMessage("Connecting to secure payment…");
         const canOpenCheckout = await Linking.canOpenURL(checkoutUrl);
         if (!canOpenCheckout) {
-          throw new Error("This device could not open the PayMongo payment link. Your cart is still available—please try again or use another payment method.");
+          throw new Error("This device could not open the secure payment link. Your cart is still available—please try again or use another payment method.");
         }
         await Linking.openURL(checkoutUrl);
       }

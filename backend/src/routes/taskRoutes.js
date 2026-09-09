@@ -15,6 +15,7 @@ const {
 } = require("../controllers/taskController");
 
 const router = express.Router();
+const { collectServicePayment } = require("../controllers/servicePaymentController");
 
 router.use(requireAuth);
 router.get("/", allowRoles("customer", "technician", "admin", "superadmin"), listTasks);
@@ -25,6 +26,7 @@ router.get("/:taskId", allowRoles("technician", "admin", "superadmin"), getTaskB
 router.patch("/:taskId/accept", allowRoles("technician"), acceptTask);
 router.patch("/:taskId/check-in", allowRoles("technician"), checkInTask);
 router.patch("/:taskId/cod-collection", allowRoles("technician"), confirmCodCollection);
+router.patch("/:taskId/service-payment", allowRoles("technician"), collectServicePayment);
 router.patch("/:taskId/amp-registration", allowRoles("technician"), registerAmpUnit);
 router.patch("/:taskId", allowRoles("technician", "admin", "superadmin"), updateTask);
 router.patch("/:taskId/status", allowRoles("technician", "admin", "superadmin"), updateTaskStatus);
