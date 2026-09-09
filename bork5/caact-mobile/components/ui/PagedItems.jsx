@@ -10,12 +10,13 @@ export function PageControls({ page, total, onChange, label = "Records" }) {
   </View>;
 }
 
-export default function PagedItems({ items = [], pageSize = 3, renderItem, label = "Records" }) {
+export default function PagedItems({ items = [], pageSize = 3, renderItem, label = "Records", controlsPosition = "bottom" }) {
   const [index, setIndex] = useState(0);
   const total = Math.max(1, Math.ceil(items.length / pageSize));
   const page = Math.min(index, total - 1);
   return <View>
+    {total > 1 && controlsPosition === "top" ? <PageControls page={page} total={total} onChange={setIndex} label={label} /> : null}
     {items.slice(page * pageSize, (page + 1) * pageSize).map((item, offset) => renderItem(item, page * pageSize + offset))}
-    {total > 1 ? <PageControls page={page} total={total} onChange={setIndex} label={label} /> : null}
+    {total > 1 && controlsPosition !== "top" ? <PageControls page={page} total={total} onChange={setIndex} label={label} /> : null}
   </View>;
 }

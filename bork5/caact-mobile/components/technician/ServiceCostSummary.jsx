@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { COLORS, SPACING } from "../../constants/theme";
-import { formatPeso } from "../../services/ecommerceService";
+import { formatPeso } from "../../utils/currency";
 
 export default function ServiceCostSummary({ task }) {
   const costs = [["Labor", task?.laborCost], ["Parts", task?.partsCost], ["Additional", task?.additionalCost]];

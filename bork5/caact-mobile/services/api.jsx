@@ -157,6 +157,7 @@ export async function register({
   role,
   branch,
   registrationVerificationToken,
+  legalConsent,
 }) {
   const { ok, status, data } = await post("/auth/register", {
     name_first,
@@ -183,6 +184,7 @@ export async function register({
     role,
     branch,
     registrationVerificationToken,
+    legalConsent,
   });
   if (ok) return { success: true, token: data.token, user: data.user };
   return {

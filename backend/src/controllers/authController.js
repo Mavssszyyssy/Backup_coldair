@@ -396,6 +396,7 @@ const verifyRegistrationCode = async (req, res) => {
   });
 };
 
+const { validateRegistrationConsent, registrationConsentRecord } = require("../domain/registrationConsent");
 const register = async (req, res) => {
   const {
     name_first,
@@ -455,6 +456,9 @@ const register = async (req, res) => {
       });
     }
 
+    const consentError = validateRegistrationConsent(req.body.legalConsent);
+    if (consentError) return res.status(400).json({ message: consentError });
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
@@ -482,6 +486,7 @@ const register = async (req, res) => {
       : "";
 
     const newUser = await User.create({
+      legalConsent: registrationConsentRecord(req.body.legalConsent),
       name: `${name_first} ${name_last}`,
       name_first,
       name_last,

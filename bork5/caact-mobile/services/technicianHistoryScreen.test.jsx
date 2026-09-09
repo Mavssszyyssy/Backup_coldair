@@ -19,6 +19,7 @@ test("prior unit visits remain visible when the current work order has no notes"
   await fireEvent.press(screen.getByLabelText("AC unit history"));
   await screen.findByText("Verified AC Unit");
   expect(screen.queryByText("Coil contained heavy dust.")).toBeNull();
+  await fireEvent.press(screen.getByLabelText("Choose history section"));
   await fireEvent.press(screen.getByLabelText("AC history: Maintenance"));
   await screen.findByText("Coil contained heavy dust.");
   expect(screen.getByText("Removed and cleaned the coil.")).toBeTruthy();

@@ -97,8 +97,12 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("When is my next service?");
     expect(detailsSource).toContain("What work has been done?");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
-    expect(detailsSource).toContain('value={String(activeRequests.length)}');
-    expect(detailsSource).toContain("Request Timeline");
+    expect(detailsSource).toContain('["Open", activeRequests.length]');
+    expect(detailsSource).toContain('["Work orders", history.linkedTasks.length]');
+    expect(detailsSource).toContain('["Completed", history.completedServices.length]');
+    expect(detailsSource).toContain('<CustomerRequestTimeline');
+    expect(detailsSource).toContain('label="Service visits" controlsPosition="top"');
+    expect(detailsSource).not.toContain('label="Request timeline"');
     expect(detailsSource).toContain("Cancel Request");
     expect(detailsSource).toContain("cancelServiceRequest");
     expect(fs.readFileSync(

@@ -171,6 +171,13 @@ export default function Register() {
         contact_method: "email",
         locations: formData.locations,
         registrationVerificationToken: formData.registrationVerificationToken,
+        legalConsent: {
+          version: "2026-09-04",
+          app: formData.agreeTermsApp === true,
+          service: formData.agreeTermsService === true,
+          warranty: formData.agreeTermsWarranty === true,
+          privacy: formData.agreePrivacyRa10173 === true,
+        },
       };
 
       await register(payload);

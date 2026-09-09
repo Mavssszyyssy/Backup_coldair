@@ -41,6 +41,17 @@ const billingAddressSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
+    legalConsent: {
+      type: new mongoose.Schema({
+        version: { type: String, required: true },
+        acceptedAt: { type: Date, required: true },
+        app: { type: Boolean, required: true },
+        service: { type: Boolean, required: true },
+        warranty: { type: Boolean, required: true },
+        privacy: { type: Boolean, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
     name: { type: String, trim: true },
     name_first: { type: String, required: true, trim: true },
     name_last: { type: String, required: true, trim: true },

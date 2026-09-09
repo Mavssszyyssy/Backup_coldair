@@ -322,7 +322,7 @@ export default function CheckoutScreen() {
       clearCart();
       orderRequestKeyRef.current = "";
       await clearCheckoutIdempotencyKey();
-      router.replace(`/customer/order-confirmation/${orderId}`);
+      router.replace(`/customer/order-confirmation/${orderId}${paymentMethod !== "cod" ? "?payment=returned" : ""}`);
     } catch (error) {
       Alert.alert(
         error?.code === "PAYMENT_CONNECTION_TIMEOUT"

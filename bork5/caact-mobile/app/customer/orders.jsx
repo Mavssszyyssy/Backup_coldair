@@ -304,6 +304,7 @@ export default function CustomerOrdersScreen() {
         throw new Error("PayMongo did not return a usable checkout link.");
       }
       await Linking.openURL(checkoutUrl);
+      router.push(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (error) {
       Alert.alert("Unable to open payment", error?.message || "Please try again.");
     } finally {

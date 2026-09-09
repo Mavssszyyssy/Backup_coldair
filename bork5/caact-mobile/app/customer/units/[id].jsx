@@ -12,6 +12,8 @@ import CustomerAmpReport from "../../../components/customer/CustomerAmpReport";
 import CustomerSectionHeader from "../../../components/customer/CustomerSectionHeader";
 import CustomerUnitImage from "../../../components/customer/CustomerUnitImage";
 import WarrantyClaimDetails from "../../../components/customer/WarrantyClaimDetails";
+import CustomerRequestTimeline from "../../../components/customer/CustomerRequestTimeline";
+import CompletedServiceReports from "../../../components/customer/CompletedServiceReports";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
@@ -576,10 +578,10 @@ export default function CustomerUnitDetailsScreen() {
           </Card>
           <Card>
             <CustomerSectionHeader title="Service Requests" />
-            <DetailRow label="Open Requests" value={String(activeRequests.length)} />
-            <DetailRow label="Linked Work Orders" value={String(history.linkedTasks.length)} />
-            <DetailRow label="Completed Services" value={String(history.completedServices.length)} />
-            {history.requests.length ? <PagedItems key={unit.id} label="Service visits" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+              {[["Open", activeRequests.length], ["Work orders", history.linkedTasks.length], ["Completed", history.completedServices.length]].map(([label, count]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.primaryLight, padding: 10, borderRadius: 10 }}><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 20 }}>{count}</Text><Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 3 }}>{label}</Text></View>)}
+            </View>
+            {history.requests.length ? <PagedItems key={unit.id} label="Service visits" controlsPosition="top" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
               const statusColors = requestStatusColors(request.status);
               const requestTimeline = Array.isArray(request.timeline)
                 ? [...request.timeline].sort(
@@ -633,37 +635,7 @@ export default function CustomerUnitDetailsScreen() {
                     <DetailRow label="Work order" value={request.taskCode || linkedTask.taskCode} />
                   ) : null}
 
-                  <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.md }}>
-                    Request Timeline
-                  </Text>
-                  {requestTimeline.length ? <PagedItems key={request.id} label="Request timeline" items={requestTimeline} renderItem={(event, eventIndex) => (
-                    <View
-                      key={event.id || `${event.title}-${event.timestamp}-${eventIndex}`}
-                      style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}
-                    >
-                      <View style={{ alignItems: "center", width: 18 }}>
-                        <View style={{ width: 10, height: 10, borderRadius: RADIUS.full, backgroundColor: statusColors.text, marginTop: 4 }} />
-                        {eventIndex < requestTimeline.length - 1 ? (
-                          <View style={{ width: 2, flex: 1, minHeight: 34, backgroundColor: COLORS.border, marginTop: 3 }} />
-                        ) : null}
-                      </View>
-                      <View style={{ flex: 1, paddingBottom: SPACING.xs }}>
-                        <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>
-                          {event.title || "Request updated"}
-                        </Text>
-                        {event.description ? (
-                          <Text style={{ color: COLORS.textSecondary, lineHeight: 19, marginTop: 2 }}>{event.description}</Text>
-                        ) : null}
-                        <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, marginTop: 3 }}>
-                          {[event.actor, formatDateTime(event.timestamp)].filter(Boolean).join(" · ")}
-                        </Text>
-                      </View>
-                    </View>
-                  )} /> : (
-                    <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
-                      The request was submitted. Further updates will appear here.
-                    </Text>
-                  )}
+                  <CustomerRequestTimeline key={request.id || requestIndex} events={requestTimeline} formatDateTime={formatDateTime} color={statusColors.text} />
 
                   {canCustomerCancelServiceRequest(request) ? (
                     <Button
@@ -690,17 +662,7 @@ export default function CustomerUnitDetailsScreen() {
               leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />}
             />
           </Card>
-          {unit?.serviceHistory?.length ? (
-            <Card>
-              <CustomerSectionHeader title="Service & Repair History" />
-              <PagedItems key={unit.id} label="Service and repair records" items={unit.serviceHistory} renderItem={(service) => (
-                <View key={service.id || `${service.date}-${service.serviceType}`}>
-                  <DetailRow label={`${serviceName(service.serviceType)} · ${formatDate(service.date)}`} value={[service.findings || service.details, service.actionTaken].filter(Boolean).join("\n") || "Findings and actions not recorded"} multiline />
-                  {service.evidence?.eligible === false ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm }}>{service.evidence.reason}</Text> : null}
-                </View>
-              )} />
-            </Card>
-          ) : null}
+          <CompletedServiceReports key={unit.id} records={unit?.serviceHistory || []} serviceName={serviceName} formatDate={formatDate} />
         </>
       ) : null}
 

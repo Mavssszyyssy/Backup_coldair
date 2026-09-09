@@ -4,8 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../../../../components/technician/TechButton";
-import Card from "../../../../../../../components/ui/Card";
-import InfoCard from "../../../../../../../components/ui/InfoCard";
+import ServiceNoteDetails from "../../../../../../../components/technician/ServiceNoteDetails";
 import PageHeader from "../../../../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../../../../constants/theme";
 import { getTaskById, TASK_STATUS } from "../../../../../../../services/taskStorage";
@@ -16,25 +15,31 @@ export default function LogDetailScreen() {
   const { id: taskId, "log-id": logId } = useLocalSearchParams();
   const [task, setTask] = useState(null);
   const [log, setLog] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
-      Promise.all([getTaskById(taskId), getServiceLogById(taskId, logId)]).then(
+      setLoading(true);
+      setError("");
+      setLog(null);
+      Promise.all([getTaskById(taskId, { requireOnline: true }), getServiceLogById(taskId, logId)]).then(
         ([loadedTask, loadedLog]) => {
           if (active) {
             setTask(loadedTask);
             setLog(loadedLog);
           }
         },
-      );
+      ).catch(e => { if (active) setError(e.message || "Unable to load this service note. Please try again."); })
+        .finally(() => { if (active) setLoading(false); });
       return () => {
         active = false;
       };
     }, [taskId, logId]),
   );
 
-  const canEdit = task?.status === TASK_STATUS.IN_PROGRESS;
+  const canEdit = !loading && !error && log && task?.status === TASK_STATUS.IN_PROGRESS;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -45,18 +50,7 @@ export default function LogDetailScreen() {
           color={COLORS.tech}
           onBack={() => router.back()}
         />
-        <Card>
-          <InfoCard label="AC Unit" value={log?.unitName || task?.unitName || "Unknown"} />
-          <InfoCard label="Condition" value={log?.condition || "Unknown"} />
-          <InfoCard label="Hours Worked" value={log?.hoursSpent == null ? "Not recorded" : String(log.hoursSpent)} />
-          <InfoCard label="Parts Used" value={log?.partsUsed || "Not recorded"} />
-          <InfoCard label="Labor cost" value={log?.laborCost == null ? "Not recorded" : `PHP ${Number(log.laborCost).toFixed(2)}`} />
-          <InfoCard label="Parts cost" value={log?.partsCost == null ? "Not recorded" : `PHP ${Number(log.partsCost).toFixed(2)}`} />
-          <InfoCard label="Technician" value={log?.technicianName || "Unknown"} />
-          <InfoCard label="Findings" value={log?.findings || "No findings recorded"} />
-          <InfoCard label="Work Performed / Resolution" value={log?.resolution || "No resolution recorded"} />
-          <InfoCard label="Additional Notes" value={log?.notes || "None"} />
-        </Card>
+        {loading ? <Text>Loading service note...</Text> : error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{error}</Text> : log ? <ServiceNoteDetails log={log} unitName={task?.unitName} /> : null}
         {canEdit && (
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             <TechButton
@@ -86,7 +80,7 @@ export default function LogDetailScreen() {
             />
           </View>
         )}
-        {!log && (
+        {!loading && !error && !log && (
           <Text
             style={{
               color: COLORS.textSecondary,

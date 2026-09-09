@@ -2,6 +2,7 @@ import { Buildings, CheckCircle, Spinner } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
+import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
@@ -474,7 +475,7 @@ function Checkout() {
       clearCheckoutIdempotencyKey();
       clearCart();
       if (paymentUrl) {
-        window.location.assign(paymentUrl);
+        openOnlineCheckout(paymentUrl, created._id || created.id);
         return;
       }
       setIsProcessingPayment(false);

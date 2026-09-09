@@ -14,6 +14,8 @@ import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
+import MobileLegalConsent from "../../../../components/legal/MobileLegalConsent";
+import { hasAllLegalConsents, LEGAL_VERSION } from "../../../../services/legalConsent";
 import { useUserContext } from "../../../../context/UserContext";
 import {
   requestVerificationOtp,
@@ -50,6 +52,12 @@ export default function SignUpStep2() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [legalConsent, setLegalConsent] = useState({});
+  const [showLegalErrors, setShowLegalErrors] = useState(false);
+  const validateConsent = () => {
+    setShowLegalErrors(true);
+    return hasAllLegalConsents(legalConsent);
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -145,6 +153,7 @@ export default function SignUpStep2() {
   };
 
   const handleSendCode = async () => {
+    if (!validateConsent()) return;
     if (isBlocked) {
       Alert.alert(
         "Verification Blocked",
@@ -206,6 +215,7 @@ export default function SignUpStep2() {
   };
 
   const handleCompleteRegistration = async () => {
+    if (!validateConsent()) return;
     if (submitting) {
       return;
     }
@@ -283,6 +293,7 @@ export default function SignUpStep2() {
 
       const result = await register({
         ...registrationPayload,
+        legalConsent: { ...legalConsent, version: LEGAL_VERSION },
         registrationVerificationToken: verification.registrationVerificationToken,
       });
 
@@ -321,11 +332,12 @@ export default function SignUpStep2() {
       >
         <PageHeader
           title="Create Account"
-          subtitle="Step 3 of 3: Email Verification"
+          subtitle="Step 3 of 3: Terms & Email Verification"
           color={COLORS.primary}
           onBack={() => router.back()}
         />
 
+        <MobileLegalConsent value={legalConsent} onChange={setLegalConsent} showErrors={showLegalErrors} disabled={submitting} />
         <Card>
           <Text
             style={{
@@ -404,6 +416,7 @@ export default function SignUpStep2() {
         </TouchableOpacity>
       </KeyboardAwareScrollView>
       <StickyActionBar>
+        {showLegalErrors && !hasAllLegalConsents(legalConsent) ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, fontSize: 12, marginBottom: 6 }}>Complete the Terms & Privacy acknowledgments above to continue.</Text> : null}
         <Button
           title={submitting ? "Creating Account..." : "Complete Registration"}
           onPress={handleCompleteRegistration}

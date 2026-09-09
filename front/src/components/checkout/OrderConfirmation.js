@@ -9,6 +9,8 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../../config/api";
+import { paymentOutcome } from "../../domain/checkout/paymentOutcome";
+import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -21,7 +23,7 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
 const normalizeOrder = (order = {}) => ({
-  id: String(order.id || order.orderCode || ""),
+  id: String(order.id || order._id || order.orderCode || ""),
   orderCode: String(order.orderCode || order.id || ""),
   createdAt: String(order.createdAt || order.date || ""),
   total: Number(order.totalAmount || order.total || 0),
@@ -53,47 +55,55 @@ function OrderConfirmation() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
+  const paymentReturnState = searchParams.get("payment");
 
   useEffect(() => {
+    let active = true;
+    let request = 0;
     const fetchOrder = async () => {
+      const currentRequest = ++request;
+      setLoading(true);
+      setError("");
+      setPaying(false);
       try {
         const response = await apiRequest(`/orders/me/${orderId}`);
         if (response.order) {
           let nextOrder = normalizeOrder(response.order);
           if (
-            searchParams.get("payment") === "success" &&
             nextOrder.paymentProvider === "paymongo" &&
             nextOrder.paymentStatus !== "paid"
           ) {
             const verifyResponse = await apiRequest(`/orders/${nextOrder.id}/paymongo/verify`, {
               method: "POST",
             });
-            if (verifyResponse.order) nextOrder = normalizeOrder(verifyResponse.order);
+            if (!verifyResponse.order) throw new Error("Missing verification result");
+            nextOrder = normalizeOrder(verifyResponse.order);
           }
-          setOrder(nextOrder);
+          if (active && request === currentRequest) setOrder(nextOrder);
         } else {
-          setError("Order not found.");
+          throw new Error("Order not found");
         }
       } catch (err) {
-        setError("Unable to load order details.");
+        if (active && request === currentRequest) setError("Unable to confirm payment. Check the status again before attempting another payment.");
       } finally {
-        setLoading(false);
+        if (active && request === currentRequest) setLoading(false);
       }
     };
 
     fetchOrder();
-  }, [orderId, searchParams]);
+    // Recheck when the provider's Back navigation restores a cached page.
+    window.addEventListener("pageshow", fetchOrder);
+    window.addEventListener("focus", fetchOrder);
+    return () => {
+      active = false;
+      window.removeEventListener("pageshow", fetchOrder);
+      window.removeEventListener("focus", fetchOrder);
+    };
+  }, [orderId, paymentReturnState, refresh]);
 
-  const paymentReturnState = searchParams.get("payment");
+  const outcome = paymentOutcome(order, paymentReturnState);
   const normalizedPaymentStatus = String(order?.paymentStatus || "").toLowerCase();
-  const paymentFailed = ["failed", "expired"].includes(normalizedPaymentStatus);
-  const paymentCancelled =
-    paymentReturnState === "cancelled" || normalizedPaymentStatus === "cancelled";
-  const paymentPending =
-    order?.paymentProvider === "paymongo" &&
-    !paymentFailed &&
-    !paymentCancelled &&
-    normalizedPaymentStatus !== "paid";
   const paymentNeedsAction =
     order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
   const canRetryPayment =
@@ -112,7 +122,7 @@ function OrderConfirmation() {
         response.order?.paymongo?.checkoutUrl ||
         "";
       if (!paymentUrl) throw new Error("A secure payment link was not returned.");
-      window.location.assign(paymentUrl);
+      openOnlineCheckout(paymentUrl, order.id);
     } catch (err) {
       alert(err?.message || "Unable to open secure payment.");
       setPaying(false);
@@ -146,6 +156,11 @@ function OrderConfirmation() {
               {error || "Something went wrong"}
             </BoutiqueText>
             <BoutiqueButton
+              onClick={() => setRefresh((value) => value + 1)}
+            >
+              Check payment status
+            </BoutiqueButton>
+            <BoutiqueButton
               onClick={() => navigate("/shop")}
               style={{ width: "auto" }}
             >
@@ -160,7 +175,7 @@ function OrderConfirmation() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Order Success"
+        title={outcome.title}
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
       />
@@ -177,23 +192,20 @@ function OrderConfirmation() {
             <BoutiqueBox
               width={80}
               height={80}
-              background="#ecfdf5"
-              color="#10b981"
+              background={outcome.kind === "failed" ? "#fef2f2" : outcome.kind === "paid" ? "#ecfdf5" : "#eff6ff"}
+              color={outcome.kind === "failed" ? "#dc2626" : outcome.kind === "paid" ? "#10b981" : BQ_COLORS.brand}
               align="center"
               justify="center"
               margin="0 0 24px"
               style={{ borderRadius: "50%", boxShadow: BQ_SHADOWS.soft }}
             >
-              <CheckCircle size={48} weight="fill" />
+              {outcome.kind === "failed" ? <WarningDiamond size={48} weight="fill" /> : outcome.kind === "pending" ? <Clock size={48} weight="bold" /> : <CheckCircle size={48} weight="fill" />}
             </BoutiqueBox>
             <BoutiqueText variant="h1" align="center">
-              {paymentCancelled
-                ? "Payment cancelled"
-                : paymentFailed
-                  ? "Payment failed"
-                  : paymentPending
-                ? "Order received, payment pending"
-                : "Thank you for your order!"}
+              {outcome.title}
+            </BoutiqueText>
+            <BoutiqueText align="center" color={BQ_COLORS.inkMuted} margin="12px 0 0">
+              {outcome.body}
             </BoutiqueText>
             <BoutiqueBox
               margin="12px 0 0"
@@ -422,6 +434,11 @@ function OrderConfirmation() {
           </BoutiqueGrid>
 
           <BoutiqueBox direction="row" gap={16} margin="16px 0 0">
+            {paymentNeedsAction ? (
+              <BoutiqueButton variant="outline" onClick={() => setRefresh((value) => value + 1)}>
+                Check payment status
+              </BoutiqueButton>
+            ) : null}
             {canRetryPayment ? (
               <BoutiqueButton
                 variant="primary"
