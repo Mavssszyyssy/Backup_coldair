@@ -27,6 +27,7 @@ export default function LogSelectScreen() {
   const [unitHistory, setUnitHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [view, setView] = useState("notes");
 
   useFocusEffect(
     React.useCallback(() => {
@@ -36,7 +37,7 @@ export default function LogSelectScreen() {
         setLoadError("");
         setUnitHistory(null);
         try {
-        const loadedTask = await getTaskById(taskId);
+        const loadedTask = await getTaskById(taskId, { requireOnline: true });
         if (!loadedTask) throw new Error("This work order is no longer available.");
         const loadedLogs = loadedTask?.id
           ? await getServiceLogsByTask(loadedTask.id)
@@ -92,7 +93,11 @@ export default function LogSelectScreen() {
           onBack={() => router.back()}
         />
 
-        {canEdit && (
+        <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 8, marginBottom: SPACING.md }}>
+          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
+        </View>
+
+        {view === "notes" && canEdit && (
           <Card>
             <Text
               style={{
@@ -135,10 +140,10 @@ export default function LogSelectScreen() {
 
         {loading ? <Text style={{ color: COLORS.textSecondary }}>Loading work-order notes and AC history...</Text> : null}
         {loadError ? <Text style={{ color: COLORS.danger }}>{loadError}</Text> : null}
-        {!loading && !loadError && logs.length === 0 ? (
+        {!loading && !loadError && view === "notes" ? logs.length === 0 ? (
           <EmptyState
             title="No notes for this work order yet"
-            message="Notes you add here belong to this visit. Earlier completed visits are listed separately below."
+            message="Notes you add here belong to this visit. Open AC unit history for earlier visits."
           />
         ) : (
           <PagedItems key={taskId} items={logs} label="Saved service notes" renderItem={(log) => (
@@ -185,8 +190,8 @@ export default function LogSelectScreen() {
               </Card>
             </TouchableOpacity>
           )} />
-        )}
-        {!loading && unitHistory ? <UnitHistoryPanel history={unitHistory} /> : null}
+        ) : null}
+        {!loading && !loadError && view === "history" ? unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
       </ScrollView>
     </SafeAreaView>
   );

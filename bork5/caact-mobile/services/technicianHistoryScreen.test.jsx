@@ -15,13 +15,14 @@ jest.mock("./api", () => ({ getStoredToken: jest.fn().mockResolvedValue("qa-sess
 test("prior unit visits remain visible when the current work order has no notes", async () => {
   mockHistory.mockResolvedValue({ success: true, unit: { serialNumber: "CAA-001" }, maintenanceHistory: [{ id: "previous", date: "2026-09-05", serviceType: "deep_cleaning", findings: "Coil contained heavy dust.", actionTaken: "Removed and cleaned the coil." }] });
   await render(<LogSelectScreen />);
+  await screen.findByText("No notes for this work order yet");
+  await fireEvent.press(screen.getByLabelText("AC unit history"));
   await screen.findByText("Verified AC Unit");
   expect(screen.queryByText("Coil contained heavy dust.")).toBeNull();
-  await fireEvent.press(screen.getByLabelText("AC unit sections: Next page"));
-  await fireEvent.press(screen.getByLabelText("AC unit sections: Next page"));
+  await fireEvent.press(screen.getByLabelText("AC history: Maintenance"));
   await screen.findByText("Coil contained heavy dust.");
   expect(screen.getByText("Removed and cleaned the coil.")).toBeTruthy();
-  expect(screen.getByText("No notes for this work order yet")).toBeTruthy();
+  expect(screen.queryByText("No notes for this work order yet")).toBeNull();
   expect(mockHistory).toHaveBeenCalledWith("qa-session-placeholder", "CAA-001", "task-current");
 });
 

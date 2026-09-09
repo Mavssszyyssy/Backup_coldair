@@ -5,7 +5,7 @@ import { COLORS, SPACING } from "../../constants/theme";
 export function PageControls({ page, total, onChange, label = "Records" }) {
   return <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: SPACING.sm }}>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${label}: Previous page`} disabled={page === 0} onPress={() => onChange(page - 1)} style={{ padding: 12, opacity: page === 0 ? 0.4 : 1 }}><Text style={{ color: COLORS.tech }}>Previous</Text></TouchableOpacity>
-    <Text accessibilityLiveRegion="polite" style={{ color: COLORS.textPrimary }}>{page + 1} / {Math.max(1, total)}</Text>
+    <View style={{ flex: 1, alignItems: "center" }}><Text style={{ color: COLORS.textSecondary, fontSize: 11, textAlign: "center" }}>{label}</Text><Text accessibilityLiveRegion="polite" style={{ color: COLORS.textPrimary }}>Page {page + 1} of {Math.max(1, total)}</Text></View>
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${label}: Next page`} disabled={page >= total - 1} onPress={() => onChange(page + 1)} style={{ padding: 12, opacity: page >= total - 1 ? 0.4 : 1 }}><Text style={{ color: COLORS.tech }}>Next</Text></TouchableOpacity>
   </View>;
 }

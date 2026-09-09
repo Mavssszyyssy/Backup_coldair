@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
+import ServiceCostSummary from "../../../../components/technician/ServiceCostSummary";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -136,7 +137,7 @@ export default function TaskInformationScreen() {
         setLoading(true);
         setLoadError("");
         try {
-          const loadedTask = await getTaskById(id);
+          const loadedTask = await getTaskById(id, { requireOnline: true });
           if (!loadedTask) {
             throw new Error("This work order is no longer available. Return to My Work Orders and refresh the list.");
           }
@@ -357,12 +358,7 @@ export default function TaskInformationScreen() {
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />
               <DetailItem icon="search-sharp" label="Findings" value={task?.findings || "No findings yet"} accent={COLORS.warning} />
               <DetailItem icon="checkmark-circle-sharp" label="Resolution" value={task?.resolution || "No resolution yet"} accent={COLORS.success} />
-              <DetailItem icon="cash-sharp" label="Recorded labor / parts costs" value={task?.totalServiceCost == null ? "Not recorded" : money(task.totalServiceCost)} accent={COLORS.success} />
-              <DetailItem icon="cash-sharp" label="Labor cost" value={task?.laborCost == null ? "Not recorded" : money(task.laborCost)} accent={COLORS.success} />
-              <DetailItem icon="cash-sharp" label="Parts cost" value={task?.partsCost == null ? "Not recorded" : money(task.partsCost)} accent={COLORS.success} />
-              {task?.additionalCost != null ? <DetailItem icon="cash-sharp" label="Additional recorded cost" value={money(task.additionalCost)} accent={COLORS.success} /> : null}
-              {task?.totalServiceCost != null && (task?.laborCost == null || task?.partsCost == null) ? <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>Subtotal of recorded amounts only; missing costs are not treated as zero.</Text> : null}
-              <Text style={{ color: COLORS.textSecondary }}>These cost entries are not a customer invoice.</Text>
+              <ServiceCostSummary task={task} />
             </Card>
             <Card>
               <SectionHeading icon="time-sharp" title="Service History" subtitle={`${logs.length} note(s) for this work order · ${requests.length} related request(s)`} />

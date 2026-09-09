@@ -1449,12 +1449,8 @@ const getTechnicianUnitHistoryBySerial = async (req, res) => {
         recommendedService: service.ampSnapshot?.recommendedService || service.serviceType || "regular_cleaning",
         recommendationBasis: service.ampSnapshot?.recommendationBasis || "Based on recorded service history.",
       }));
-    if (ampHistory.length === 0) ampHistory.push({
-      date: recommendation.generatedAt,
-      bestServicedBy: recommendation.bestServicedBy,
-      recommendedService: recommendation.recommendedService,
-      recommendationBasis: recommendation.recommendationBasis,
-    });
+    // Historical assessments must not contain the current calculation.
+    // The current plan is returned separately in recommendation.
 
     return res.json({
       unit: {
