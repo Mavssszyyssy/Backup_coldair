@@ -34,6 +34,8 @@ function OrderSummary({
   selectedPayment,
   totals,
   onPlaceOrder,
+  onUpdateQuantity,
+  onRemoveItem,
   stockIssues = [],
   stockCheckedAt = "",
   isProcessing = false,
@@ -57,6 +59,32 @@ function OrderSummary({
                 ₱{item.price.toLocaleString()} each
               </div>
               <div className="summary-item-quantity">×{item.quantity}</div>
+              <div className="summary-item-controls" aria-label={`Update ${item.name}`}>
+                <button
+                  type="button"
+                  onClick={() => onUpdateQuantity?.(item.id, Number(item.quantity || 1) - 1)}
+                  aria-label={`Decrease quantity of ${item.name}`}
+                >
+                  −
+                </button>
+                <span aria-label={`${item.quantity} ${item.name}`}>{item.quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => onUpdateQuantity?.(item.id, Number(item.quantity || 1) + 1)}
+                  disabled={Number.isFinite(Number(item.stock)) && Number(item.quantity || 0) >= Number(item.stock)}
+                  aria-label={`Increase quantity of ${item.name}`}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  className="summary-item-remove"
+                  onClick={() => onRemoveItem?.(item.id)}
+                  aria-label={`Remove ${item.name}`}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
             <div style={{ fontWeight: "bold", color: "#1E88E5" }}>
               ₱{(item.price * item.quantity).toLocaleString()}

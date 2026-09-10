@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -7,6 +7,7 @@ import {
   BoutiqueButton,
   BoutiqueCard,
   BoutiqueHeader,
+  BoutiqueQuantityStepper,
   BoutiqueScreen,
   BoutiqueSegmented,
   BoutiqueText,
@@ -134,12 +135,14 @@ const calculateCheckoutTotals = (items = [], branch = "") => {
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { cart, clearCart, replaceCart } = useCart();
+  const { cart, clearCart, replaceCart, updateQuantity, removeFromCart } = useCart();
   const { current, token } = useUserContext();
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [inventoryBranch, setInventoryBranch] = useState("");
+  const [branchStockById, setBranchStockById] = useState({});
+  const [stockIssues, setStockIssues] = useState([]);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
@@ -160,10 +163,54 @@ export default function CheckoutScreen() {
     return () => { active = false; };
   }, [address]);
 
+  const refreshCheckoutStock = useCallback(async () => {
+    if (!inventoryBranch || cart.length === 0) {
+      setBranchStockById({});
+      setStockIssues([]);
+      return [];
+    }
+    try {
+      const catalogue = await fetchShopProducts(inventoryBranch);
+      const stockById = Object.fromEntries(catalogue.map((product) => [String(product.id), Number(product.stock || 0)]));
+      const stockBySku = Object.fromEntries(catalogue
+        .filter((product) => product.sku)
+        .map((product) => [`sku:${String(product.sku)}`, Number(product.stock || 0)]));
+      const nextIssues = cart.flatMap((item) => {
+        const stock = stockById[String(item.id)] ?? stockBySku[`sku:${String(item.sku || "")}`];
+        if (!Number.isFinite(stock)) return [{ id: String(item.id), name: item.name || "This item", available: 0, code: "out_of_stock" }];
+        if (stock <= 0) return [{ id: String(item.id), name: item.name || "This item", available: 0, code: "out_of_stock" }];
+        if (Number(item.quantity || 0) > stock) return [{ id: String(item.id), name: item.name || "This item", available: stock, code: "insufficient_stock" }];
+        return [];
+      });
+      setBranchStockById(stockById);
+      setStockIssues(nextIssues);
+      return nextIssues;
+    } catch (_error) {
+      // The order submission performs the same authoritative check. Do not
+      // incorrectly label stock unavailable when the catalogue is offline.
+      return [];
+    }
+  }, [cart, inventoryBranch]);
+
+  useEffect(() => {
+    void refreshCheckoutStock();
+  }, [refreshCheckoutStock]);
+
   const submitOrder = async () => {
     if (submitting) return;
     if (!cart.length) return Alert.alert("Cart is empty", "Add an item before checking out.");
     if (!token) return Alert.alert("Sign in required", "Please sign in again before checking out.");
+
+    const currentStockIssues = await refreshCheckoutStock();
+    if (currentStockIssues.length) {
+      const hasOutOfStockItem = currentStockIssues.some((issue) => issue.code === "out_of_stock");
+      return Alert.alert(
+        "Review your order",
+        hasOutOfStockItem
+          ? "This branch currently has no stock of this item"
+          : "This branch does not have enough stock for the requested quantity.",
+      );
+    }
 
     setSubmitting(true);
     setCheckoutMessage("Checking the latest stock and prices…");
@@ -381,18 +428,41 @@ export default function CheckoutScreen() {
                 </View>
                 <BoutiqueText variant="label" color={BQ_COLORS.brand}>{showOrderDetails ? "Hide details" : "View details"}</BoutiqueText>
               </TouchableOpacity>
-              {showOrderDetails ? cart.map((item) => (
-                <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
+              {showOrderDetails ? cart.map((item) => {
+                const branchStock = branchStockById[String(item.id)];
+                const maximumQuantity = Number.isFinite(branchStock)
+                  ? Math.max(1, branchStock)
+                  : Math.max(1, Number(item.stock || 99));
+                return (
+                <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm, paddingBottom: BQ_SPACING.sm, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }}>
                   <View style={{ flex: 1 }}>
                     <BoutiqueText variant="label">{item.name}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Model: {formatCartModel(item)}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: BQ_SPACING.sm, gap: BQ_SPACING.sm }}>
+                      <BoutiqueQuantityStepper value={item.quantity} max={maximumQuantity} onChange={(quantity) => updateQuantity(item.id, quantity)} />
+                      <TouchableOpacity onPress={() => removeFromCart(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.name} from order`}>
+                        <BoutiqueText variant="caption" color={BQ_COLORS.danger} style={{ fontWeight: "800" }}>Remove</BoutiqueText>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <BoutiqueText variant="label">{formatPeso(item.quantity * item.price)}</BoutiqueText>
                 </View>
-              )) : null}
+              );
+              }) : null}
             </BoutiqueCard>
+
+            {stockIssues.length ? (
+              <BoutiqueCard style={{ gap: BQ_SPACING.xs, borderWidth: 1, borderColor: BQ_COLORS.danger, backgroundColor: "#fff7f7" }}>
+                <BoutiqueText variant="h3" color={BQ_COLORS.danger}>
+                  {stockIssues.some((issue) => issue.code === "out_of_stock")
+                    ? "This branch currently has no stock of this item"
+                    : "This branch does not have enough stock for the requested quantity"}
+                </BoutiqueText>
+                <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Remove the unavailable item or reduce its quantity to continue.</BoutiqueText>
+              </BoutiqueCard>
+            ) : null}
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
               <BoutiqueText variant="h3">Payment method</BoutiqueText>
@@ -418,7 +488,7 @@ export default function CheckoutScreen() {
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
               {checkoutMessage ? <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{checkoutMessage}</BoutiqueText> : null}
-              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting || Boolean(addressIssue) || !inventoryBranch} fullWidth onPress={() => void submitOrder()} />
+              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting || Boolean(addressIssue) || !inventoryBranch || stockIssues.length > 0} fullWidth onPress={() => void submitOrder()} />
             </BoutiqueCard>
           </>
         )}

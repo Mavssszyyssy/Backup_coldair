@@ -116,7 +116,7 @@ const findBestSelectedAddress = (items, currentId = "") => {
 
 function Checkout() {
   const navigate = useNavigate();
-  const { cart, clearCart, getCartTotal } = useCart();
+  const { cart, clearCart, getCartTotal, updateQuantity, removeFromCart } = useCart();
   const { synchronizeAddresses } = useUser();
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -218,7 +218,19 @@ function Checkout() {
           : bySku.has(skuKey)
             ? bySku.get(skuKey)
             : null;
-        if (available === null) continue;
+        if (available === null) {
+          // A cart line that is absent from the assigned branch catalogue is
+          // unavailable for this delivery address. Never use another branch's
+          // inventory as a fallback.
+          issues.push({
+            id: idKey,
+            name: item.name,
+            desired: Number(item.quantity || 0),
+            available: 0,
+            code: "out_of_stock",
+          });
+          continue;
+        }
         const desired = Number(item.quantity || 0);
         const normalizedAvailable = Number.isFinite(available)
           ? Math.max(0, Math.floor(available))
@@ -246,11 +258,14 @@ function Checkout() {
     [cart],
   );
 
-  const refreshStock = useCallback(async () => {
+  const refreshStock = useCallback(async (branch = assignedBranch) => {
+    if (!branch) {
+      setStockIssues([]);
+      setStockCheckedAt("");
+      return { ok: false, issues: [] };
+    }
     try {
-      const query = assignedBranch
-        ? `?branch=${encodeURIComponent(assignedBranch)}`
-        : "";
+      const query = `?branch=${encodeURIComponent(branch)}`;
       const response = await apiRequest(`/products/public${query}`);
       setStockIssues(computeStockIssues(response));
       setStockCheckedAt(new Date().toISOString());
@@ -393,24 +408,6 @@ function Checkout() {
 
   const handlePlaceOrder = useCallback(async () => {
     if (isProcessingPayment) return;
-    const latestStock = await refreshStock();
-    if (latestStock.ok && latestStock.issues.length > 0) {
-      if (latestStock.issues.some((issue) => issue.code === "out_of_stock")) {
-        alert("This branch currently has no stock of this item");
-        return;
-      }
-      const message = latestStock.issues
-        .map(
-          (issue) =>
-            `${issue.name}: requested ${issue.desired}, available ${issue.available}`,
-        )
-        .join("\n");
-      alert(
-        `Some items are no longer available.\n\n${message}\n\nPlease update your cart and try again.`,
-      );
-      return;
-    }
-
     // Do not read the selectedAddress state after refreshing the address list:
     // React state is asynchronous and can still hold the old, empty address.
     const checkoutAddress = await ensureHasAddressBeforeCheckout();
@@ -422,6 +419,19 @@ function Checkout() {
         return;
       }
       setAssignedBranch(confirmedBranch);
+      const latestStock = await refreshStock(confirmedBranch);
+      if (latestStock.ok && latestStock.issues.length > 0) {
+        if (latestStock.issues.some((issue) => issue.code === "out_of_stock")) {
+          alert("This branch currently has no stock of this item");
+          return;
+        }
+        const message = latestStock.issues
+          .map(
+            (issue) => `${issue.name}: requested ${issue.desired}, available ${issue.available}`)
+          .join("\n");
+        alert(`Some items are no longer available.\n\n${message}\n\nPlease update your cart and try again.`);
+        return;
+      }
     } catch (error) {
       alert(error.message || "Unable to determine the service branch. Please try again.");
       return;
@@ -676,6 +686,8 @@ function Checkout() {
             selectedPayment={selectedPayment}
             totals={totals}
             onPlaceOrder={handlePlaceOrder}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromCart}
             stockIssues={stockIssues}
             stockCheckedAt={stockCheckedAt}
             isProcessing={isProcessingPayment}

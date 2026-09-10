@@ -86,7 +86,7 @@ export function LoginScreen() {
         minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
-          title="Welcome Back"
+          title="Sign in"
           subtitle={challengeToken ? "Verify your authenticator code" : "Sign in to your account"}
           color={COLORS.primary}
         />

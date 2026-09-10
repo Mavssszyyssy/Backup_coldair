@@ -32,3 +32,15 @@ it('handles failed images without a retry loop and loads a changed image source'
   rerender(view({ ...item, imageUrl: '/catalog/ac/tcl-uje-window.jpg' }));
   expect(screen.getByRole('img', { name: item.name })).toHaveAttribute('src', '/catalog/ac/tcl-uje-window.jpg');
 });
+
+it('lets a customer adjust or remove an item without leaving checkout', () => {
+  const updateQuantity = vi.fn();
+  const removeItem = vi.fn();
+  render(<OrderSummary cart={[{ ...item, quantity: 2, stock: 3 }]} totals={{ subtotal: 10, vatAmount: 0, deliveryFee: 0, discountAmount: 0, total: 10 }} selectedPayment="cod" onPlaceOrder={vi.fn()} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} />);
+  fireEvent.click(screen.getByRole('button', { name: `Increase quantity of ${item.name}` }));
+  fireEvent.click(screen.getByRole('button', { name: `Decrease quantity of ${item.name}` }));
+  fireEvent.click(screen.getByRole('button', { name: `Remove ${item.name}` }));
+  expect(updateQuantity).toHaveBeenNthCalledWith(1, item.id, 3);
+  expect(updateQuantity).toHaveBeenNthCalledWith(2, item.id, 1);
+  expect(removeItem).toHaveBeenCalledWith(item.id);
+});

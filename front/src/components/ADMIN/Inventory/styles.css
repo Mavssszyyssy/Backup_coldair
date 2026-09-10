@@ -206,6 +206,39 @@
   transform: none;
 }
 
+/* SuperAdmin shop-catalog creation flow */
+.super-catalog { display: grid; gap: 18px; }
+.super-catalog-intro, .super-catalog-section, .super-catalog-success { border: 1px solid #dbe5f0; border-radius: 16px; background: #fff; padding: 22px; }
+.super-catalog-intro { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; background: linear-gradient(135deg, #f0f9ff, #fff); }
+.super-catalog-eyebrow { display: block; margin-bottom: 6px; color: #0369a1; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.super-catalog-intro h2, .super-catalog-intro p, .super-catalog-section h3, .super-catalog-section p, .super-catalog-success h3, .super-catalog-success p { margin: 0; }
+.super-catalog-intro p, .super-catalog-section-heading p, .super-catalog-note, .super-catalog-success p { margin-top: 6px; color: #64748b; line-height: 1.5; }
+.super-catalog-rule { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; color: #075985; background: #e0f2fe; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.super-catalog-form { display: grid; gap: 18px; }
+.super-catalog-section-heading { display: flex; gap: 10px; margin-bottom: 18px; }
+.super-catalog-section-heading svg { flex: none; margin-top: 2px; color: var(--role-primary, #1e88e5); }
+.super-catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.super-catalog-grid label { display: grid; gap: 6px; color: #334155; font-size: 13px; font-weight: 800; }
+.super-catalog-grid label span { color: #94a3b8; font-weight: 600; }
+.super-catalog-grid input, .super-catalog-grid select, .super-catalog-grid textarea { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px 12px; color: #0f172a; background: #fff; font: inherit; font-weight: 500; }
+.super-catalog-grid textarea { resize: vertical; min-height: 78px; }
+.super-catalog-grid input:focus, .super-catalog-grid select:focus, .super-catalog-grid textarea:focus { outline: 3px solid color-mix(in srgb, var(--role-primary, #1e88e5) 20%, transparent); border-color: var(--role-primary, #1e88e5); }
+.super-catalog-wide { grid-column: 1 / -1; }
+.super-catalog-stock-grid { max-width: 620px; }
+.super-catalog-note { font-size: 13px; }
+.super-catalog-submit { display: inline-flex; align-items: center; justify-content: center; justify-self: start; gap: 8px; min-height: 45px; padding: 11px 16px; border: 0; border-radius: 10px; color: #fff; background: var(--role-primary, #1e88e5); font: inherit; font-weight: 900; cursor: pointer; }
+.super-catalog-submit:disabled { cursor: not-allowed; opacity: .6; }
+.super-catalog-error { margin: 0; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 10px; color: #b91c1c; background: #fef2f2; font-weight: 750; }
+.super-catalog-success { border-color: #86efac; background: #f0fdf4; }
+.super-catalog-success-heading { display: flex; align-items: flex-start; gap: 10px; }
+.super-catalog-success-heading > svg { flex: none; color: #059669; }
+.super-catalog-serial-list { display: grid; gap: 8px; margin-top: 18px; }
+.super-catalog-serial-list article { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #bbf7d0; border-radius: 10px; background: #fff; }
+.super-catalog-serial-list span, .super-catalog-serial-list small { display: block; color: #64748b; font-size: 12px; }
+.super-catalog-serial-list strong { display: block; margin: 3px 0; color: #0f172a; overflow-wrap: anywhere; }
+.super-catalog-serial-list button { display: inline-flex; flex: none; align-items: center; gap: 5px; border: 1px solid #86efac; border-radius: 8px; padding: 7px 9px; color: #047857; background: #fff; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+@media (max-width: 680px) { .super-catalog-intro { display: grid; } .super-catalog-rule { white-space: normal; } .super-catalog-grid { grid-template-columns: 1fr; } .super-catalog-wide { grid-column: auto; } .super-catalog-serial-list article { align-items: flex-start; flex-direction: column; } }
+
 .admin-card .inventory-page-controls button:disabled {
   cursor: not-allowed;
   opacity: 0.45;

@@ -99,6 +99,12 @@ function ReceiptView() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const backDestination = user?.role === "superadmin"
+    ? "/superadmin/services"
+    : user?.role === "admin"
+      ? "/admin/services"
+      : "/my-orders";
+  const returnToWorkspace = () => navigate(backDestination, { replace: true });
 
   useEffect(() => {
     let mounted = true;
@@ -137,7 +143,7 @@ function ReceiptView() {
   if (loading || error || !order || !order.receiptAvailable) {
     return (
       <BoutiqueScreen withHeader={false}>
-        <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={() => navigate(-1)} />
+        <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={returnToWorkspace} />
         <div className="receipt-page">{loading ? "Loading receipt..." : error || (!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</div>
       </BoutiqueScreen>
     );
@@ -145,11 +151,11 @@ function ReceiptView() {
 
   return (
     <BoutiqueScreen withHeader={false}>
-      <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={() => navigate(-1)} />
+      <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={returnToWorkspace} />
       <main className="receipt-page">
         <section className="receipt-shell">
           <div className="receipt-actions">
-            <button type="button" className="receipt-link" onClick={() => navigate(-1)}><ArrowLeft size={18} /> Back</button>
+            <button type="button" className="receipt-link" onClick={returnToWorkspace}><ArrowLeft size={18} /> Back</button>
             <div className="receipt-action-buttons">
               <BoutiqueButton onClick={downloadReceipt} style={{ width: "auto" }}>
                 <DownloadSimple size={18} /> Save as PDF

@@ -16,6 +16,7 @@ import {
 
 const UserContext = createContext();
 const ACTIVE_ACCOUNT_SESSION_KEY = "activeAccountSession";
+const LOGIN_GREETING_KEY = "aeropulse:welcome-after-login";
 
 export const useUser = () => {
   const context = useContext(UserContext);
@@ -154,6 +155,7 @@ export const UserProvider = ({ children }) => {
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
     setIsAuthenticated(true);
+    try { sessionStorage.setItem(LOGIN_GREETING_KEY, "1"); } catch (_error) {}
 
     return result.user;
   };
@@ -169,6 +171,7 @@ export const UserProvider = ({ children }) => {
     setUserRole(result.user?.role || null);
     setCurrentSession(result.user);
     setIsAuthenticated(true);
+    try { sessionStorage.setItem(LOGIN_GREETING_KEY, "1"); } catch (_error) {}
     return result.user;
   };
 
@@ -199,6 +202,7 @@ export const UserProvider = ({ children }) => {
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
     setIsAuthenticated(true);
+    try { sessionStorage.removeItem(LOGIN_GREETING_KEY); } catch (_error) {}
     return result.user;
   };
 

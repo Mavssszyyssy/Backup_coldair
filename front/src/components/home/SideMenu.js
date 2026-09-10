@@ -10,6 +10,13 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState(activePage);
+  const [showLoginGreeting] = useState(() => {
+    try {
+      return sessionStorage.getItem('aeropulse:welcome-after-login') === '1';
+    } catch (_error) {
+      return false;
+    }
+  });
 
   const menuItems = useMemo(() => ([
     { id: 'shop', label: 'Shop Catalog', iconSrc: icons.cartShoppingFast, path: '/shop', description: 'Browse AC products' },
@@ -127,7 +134,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   )}
                 </div>
                 <div className="user-info">
-                  <h3>Welcome Back,</h3>
+                  <h3>{showLoginGreeting ? 'Welcome Back,' : 'Your account'}</h3>
                   <p className="user-name">{getUserDisplayName()}</p>
                   <span className="user-role">{getUserRole()}</span>
                 </div>

@@ -101,7 +101,7 @@ function Login() {
       </button>
 
       <BoutiqueAuthHeader
-        title="Welcome Back"
+        title="Sign in"
         subtitle="Sign in to your Cold Air account"
       />
 

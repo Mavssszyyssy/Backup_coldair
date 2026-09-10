@@ -5,6 +5,7 @@ import { BRANCHES } from '../../../domain/branches/branches';
 import InventoryList from '../../ADMIN/Inventory/InventoryList';
 import AdminSerialQr from '../../ADMIN/SerialQr/AdminSerialQr';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
+import SuperAdminCatalog from './SuperAdminCatalog';
 import SuperAdminReorders from './SuperAdminReorders';
 import '../../ADMIN/Inventory/styles.css';
 import '../superAdminShared.css';
@@ -12,6 +13,7 @@ import '../superAdminShared.css';
 const getBranchStock = (product, branch) => Number(product?.branchStock?.[branch] ?? 0);
 
 const TABS = [
+  { id: 'catalog', label: 'Shop Catalog' },
   { id: 'checker', label: 'Inventory Checker' },
   { id: 'serial-qr', label: 'Serial / QR Registry' },
   { id: 'reorders', label: 'Reorder Approvals' },
@@ -20,7 +22,7 @@ const TABS = [
 const SuperAdminInventory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const activeTab = TABS.some((tab) => tab.id === requestedTab) ? requestedTab : 'checker';
+  const activeTab = TABS.some((tab) => tab.id === requestedTab) ? requestedTab : 'catalog';
   const [products, setProducts] = useState([]);
   const [branch, setBranch] = useState(BRANCHES[0] || '');
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ const SuperAdminInventory = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'checker') load();
+    if (activeTab === 'checker' || activeTab === 'catalog') load();
   }, [activeTab, load]);
 
   const outOfStock = useMemo(
@@ -50,13 +52,14 @@ const SuperAdminInventory = () => {
     [branch, products],
   );
 
-  const selectTab = (tab) => setSearchParams(tab === 'checker' ? {} : { tab }, { replace: true });
+  const selectTab = (tab) => setSearchParams(tab === 'catalog' ? {} : { tab }, { replace: true });
 
   return (
     <SuperAdminLayout title="Inventory Management" subtitle="Review branch stock, serial / QR records, and replenishment approvals in one executive workspace.">
       <div className="module-tabs" role="tablist" aria-label="Super Admin inventory management sections">
         {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>{tab.label}</button>)}
       </div>
+      {activeTab === 'catalog' ? <SuperAdminCatalog onCreated={load} /> : null}
       {activeTab === 'checker' ? (
         <>
           <div className="super-card" style={{ marginBottom: 18, borderColor: outOfStock.length ? '#fecaca' : undefined }}>
