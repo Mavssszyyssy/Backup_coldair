@@ -86,9 +86,18 @@ export default function RecoverPasswordScreen() {
         "email",
       );
       if (!resetResult.success) {
+        const message = resetResult.error || "Unable to reset password.";
+        const field = /password|uppercase|lowercase|special|character|spaces?/i.test(message)
+          ? "newPassword"
+          : /match/i.test(message)
+            ? "confirmPassword"
+            : /code|otp|verification|expired/i.test(message)
+              ? "otp"
+              : "";
+        if (field) setErrors({ [field]: message });
         Alert.alert(
           "Reset Failed",
-          resetResult.error || "Unable to reset password.",
+          message,
         );
         return;
       }

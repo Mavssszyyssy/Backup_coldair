@@ -25,39 +25,49 @@ function ForgotPassword() {
   const [step, setStep] = useState('request');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [errorField, setErrorField] = useState('');
   const [loading, setLoading] = useState(false);
 
   const requestCode = async (event) => {
-    event.preventDefault(); setError(''); setMessage('');
+    event.preventDefault(); setError(''); setErrorField(''); setMessage('');
     const value = String(identifier || '').trim();
-    if (!value) { setError('Enter your registered email address.'); return; }
+    if (!value) { setError('Enter your registered email address.'); setErrorField('identifier'); return; }
     setLoading(true);
     try {
       const result = await apiRequest('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ channel, identifier: value }) });
       setMessage(result.message || 'If the account details match, a verification code has been sent.');
       setStep('verify');
-    } catch (requestError) { setError(requestError.message || 'Unable to send a verification code.'); } finally { setLoading(false); }
+    } catch (requestError) { setError(requestError.message || 'Unable to send a verification code.'); setErrorField('identifier'); } finally { setLoading(false); }
   };
   const resetPassword = async (event) => {
-    event.preventDefault(); setError(''); setMessage('');
-    if (!/^\d{6}$/.test(code.trim())) { setError('Enter the six-digit verification code.'); return; }
-    if (password.length > 25) { setError('Password must not exceed 25 characters.'); return; }
-    if (!isStrongPassword(password)) { setError('Use 8–25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). No spaces.'); return; }
-    if (password !== confirmPassword) { setError('New password and confirmation do not match.'); return; }
+    event.preventDefault(); setError(''); setErrorField(''); setMessage('');
+    if (!/^\d{6}$/.test(code.trim())) { setError('Enter the six-digit verification code.'); setErrorField('code'); return; }
+    if (password.length > 25) { setError('Password must not exceed 25 characters.'); setErrorField('password'); return; }
+    if (!isStrongPassword(password)) { setError('Use 8–25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). No spaces.'); setErrorField('password'); return; }
+    if (password !== confirmPassword) { setError('New password and confirmation do not match.'); setErrorField('confirmPassword'); return; }
     setLoading(true);
     try {
       const result = await apiRequest('/auth/reset-password', { method: 'POST', body: JSON.stringify({ channel, identifier: String(identifier).trim(), code: code.trim(), newPassword: password }) });
       setMessage(result.message || 'Password reset successfully. You can now sign in.');
       setStep('complete');
-    } catch (requestError) { setError(requestError.message || 'Unable to reset password.'); } finally { setLoading(false); }
+    } catch (requestError) {
+      const nextError = requestError.message || 'Unable to reset password.';
+      setError(nextError);
+      // The API can reject either the email code or a password rule. Keep
+      // the visual error on the field that needs correction; never colour an
+      // otherwise valid verification-code field red for a password problem.
+      if (/password|uppercase|lowercase|special|character|spaces?/i.test(nextError)) setErrorField('password');
+      else if (/match/i.test(nextError)) setErrorField('confirmPassword');
+      else if (/code|otp|verification|expired/i.test(nextError)) setErrorField('code');
+    } finally { setLoading(false); }
   };
   const identifierLabel = 'Registered Email Address';
 
   return <BoutiqueAuthLayout>
     <button className="bq-login-back-btn" onClick={() => navigate('/login')} title="Back to Login"><ArrowLeft size={20} weight="bold" /></button>
     <BoutiqueAuthHeader title={step === 'request' ? 'Recover Access' : step === 'verify' ? 'Verify & Reset Password' : 'Password Reset Complete'} subtitle={step === 'request' ? 'Use email verification to safely recover your account.' : step === 'verify' ? 'Enter the code sent by email and choose a new password.' : 'Your account is ready to use again.'} />
-    {step === 'request' ? <BoutiqueStack tag="form" gap={22} onSubmit={requestCode} className="bq-fade-in"><BoutiqueInput label={identifierLabel} icon={EnvelopeSimple} type="email" autoComplete="email" inputMode="email" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="you@example.com" hint="Use the email address registered to your account." status={error ? 'error' : null} errorMessage={error} disabled={loading} />{message ? <RecoveryMessage message={message} /> : null}<BoutiqueButton type="submit" loading={loading} fullWidth>Send verification code</BoutiqueButton><RecoveryFooter navigate={navigate} /></BoutiqueStack> : null}
-    {step === 'verify' ? <BoutiqueStack tag="form" gap={20} onSubmit={resetPassword} className="bq-fade-in"><BoutiqueBox padding="14px 16px" background={BQ_COLORS.bgAlt} style={{ borderRadius: '12px', border: `1px solid ${BQ_COLORS.border}` }}><BoutiqueText size="13px" weight={700} color={BQ_COLORS.inkMuted}>Code destination: {identifier}</BoutiqueText><button type="button" className="recovery-text-button" onClick={() => setStep('request')}>Change email address</button></BoutiqueBox><BoutiqueInput label="Six-digit verification code" icon={Key} inputMode="numeric" maxLength="6" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" status={error ? 'error' : null} errorMessage={error} disabled={loading} /><BoutiqueInput label="New password" icon={LockKey} type="password" autoComplete="new-password" value={password} maxLength={25} onChange={(event) => setPassword(event.target.value)} hint="Use 8–25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). No spaces." disabled={loading} /><BoutiqueInput label="Confirm new password" icon={LockKey} type="password" autoComplete="new-password" value={confirmPassword} maxLength={25} onChange={(event) => setConfirmPassword(event.target.value)} status={confirmPassword && password === confirmPassword ? 'success' : null} disabled={loading} />{message ? <RecoveryMessage message={message} /> : null}<BoutiqueButton type="submit" loading={loading} fullWidth>Reset password securely</BoutiqueButton><button type="button" className="recovery-resend" disabled={loading} onClick={() => requestCode({ preventDefault: () => {} })}>Resend code</button></BoutiqueStack> : null}
+    {step === 'request' ? <BoutiqueStack tag="form" gap={22} onSubmit={requestCode} className="bq-fade-in"><BoutiqueInput label={identifierLabel} icon={EnvelopeSimple} type="email" autoComplete="email" inputMode="email" value={identifier} onChange={(event) => { setIdentifier(event.target.value); setError(''); setErrorField(''); }} placeholder="you@example.com" hint="Use the email address registered to your account." status={errorField === 'identifier' ? 'error' : null} errorMessage={errorField === 'identifier' ? error : ''} disabled={loading} />{message ? <RecoveryMessage message={message} /> : null}<BoutiqueButton type="submit" loading={loading} fullWidth>Send verification code</BoutiqueButton><RecoveryFooter navigate={navigate} /></BoutiqueStack> : null}
+    {step === 'verify' ? <BoutiqueStack tag="form" gap={20} onSubmit={resetPassword} className="bq-fade-in"><BoutiqueBox padding="14px 16px" background={BQ_COLORS.bgAlt} style={{ borderRadius: '12px', border: `1px solid ${BQ_COLORS.border}` }}><BoutiqueText size="13px" weight={700} color={BQ_COLORS.inkMuted}>Code destination: {identifier}</BoutiqueText><button type="button" className="recovery-text-button" onClick={() => setStep('request')}>Change email address</button></BoutiqueBox><BoutiqueInput label="Six-digit verification code" icon={Key} inputMode="numeric" maxLength="6" value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); if (errorField === 'code') { setError(''); setErrorField(''); } }} placeholder="123456" status={errorField === 'code' ? 'error' : null} errorMessage={errorField === 'code' ? error : ''} disabled={loading} /><BoutiqueInput label="New password" icon={LockKey} type="password" autoComplete="new-password" value={password} maxLength={25} onChange={(event) => { setPassword(event.target.value); if (errorField === 'password') { setError(''); setErrorField(''); } }} hint="Use 8–25 characters with uppercase, lowercase, a number, and a symbol (such as ! @ # . _ -). No spaces." status={errorField === 'password' ? 'error' : null} errorMessage={errorField === 'password' ? error : ''} disabled={loading} /><BoutiqueInput label="Confirm new password" icon={LockKey} type="password" autoComplete="new-password" value={confirmPassword} maxLength={25} onChange={(event) => { setConfirmPassword(event.target.value); if (errorField === 'confirmPassword') { setError(''); setErrorField(''); } }} status={errorField === 'confirmPassword' ? 'error' : confirmPassword && password === confirmPassword ? 'success' : null} errorMessage={errorField === 'confirmPassword' ? error : ''} disabled={loading} />{error && !errorField ? <BoutiqueText size="13px" color={BQ_COLORS.danger} weight={700}>{error}</BoutiqueText> : null}{message ? <RecoveryMessage message={message} /> : null}<BoutiqueButton type="submit" loading={loading} fullWidth>Reset password securely</BoutiqueButton><button type="button" className="recovery-resend" disabled={loading} onClick={() => requestCode({ preventDefault: () => {} })}>Resend code</button></BoutiqueStack> : null}
     {step === 'complete' ? <BoutiqueStack gap={22} className="bq-fade-in"><BoutiqueBox padding="24px" background="#ecfdf5" align="center" style={{ borderRadius: '16px', border: '1px solid #10b98133', textAlign: 'center' }}><ShieldCheck size={34} weight="fill" style={{ color: '#059669' }} /><BoutiqueText variant="h2" color="#065f46" margin="12px 0 6px">Recovery complete</BoutiqueText><BoutiqueText color="#047857" weight={600}>{message}</BoutiqueText></BoutiqueBox><BoutiqueButton type="button" fullWidth onClick={() => navigate('/login', { replace: true })}>Go to sign in</BoutiqueButton><BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>You can sign in using the same email address used for recovery.</BoutiqueText></BoutiqueStack> : null}
     <style dangerouslySetInnerHTML={{ __html: `.bq-login-back-btn{position:absolute;top:40px;left:40px;background:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:${BQ_COLORS.ink};box-shadow:${BQ_SHADOWS.soft};z-index:100}.recovery-text-button,.recovery-resend{border:0;background:transparent;color:${BQ_COLORS.brand};font:inherit;font-size:12px;font-weight:800;cursor:pointer;padding:6px 0}.recovery-resend{align-self:center;text-decoration:underline}.bq-signup-link{background:none;border:0;color:${BQ_COLORS.brand};font-weight:800;cursor:pointer;text-decoration:underline;padding:0 4px;font-size:15px}@media(max-width:1024px){.bq-login-back-btn{top:20px;left:20px;width:40px;height:40px}}` }} />
   </BoutiqueAuthLayout>;

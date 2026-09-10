@@ -37,6 +37,7 @@ const normalizeOrder = (order = {}) => ({
   paymentStatus: String(order.paymentStatus || ""),
   paymentProvider: String(order.paymentProvider || ""),
   paymongo: order.paymongo || {},
+  paymentRetryCount: Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0),
   receipt: order.receipt || {},
   receiptAvailable: Boolean(order.receiptAvailable),
   address: order.address || {},
@@ -107,7 +108,11 @@ function OrderConfirmation() {
   const paymentNeedsAction =
     order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
   const canRetryPayment =
-    order && paymentNeedsAction && order.workflowStatus === "to_pay";
+    order && paymentNeedsAction && order.workflowStatus === "to_pay" &&
+    ["failed", "cancelled", "expired"].includes(normalizedPaymentStatus);
+  const paymentRetryLimitReached =
+    String(order?.paymentMethod || "").toLowerCase() === "gcash" &&
+    Number(order?.paymentRetryCount || 0) >= 3;
 
   const handlePayNow = async () => {
     if (!order?.id) return;
@@ -237,7 +242,11 @@ function OrderConfirmation() {
                 <BoutiqueText weight={800} color={order.paymentStatus === "paid" ? "#047857" : "#9a3412"}>
                   Payment: {(order.paymentStatus || "pending").toUpperCase()}
                 </BoutiqueText>
-                {canRetryPayment ? (
+                {paymentRetryLimitReached ? (
+                  <BoutiqueText size="13px" color={BQ_COLORS.danger} margin="6px 0 0">
+                    Maximum payment attempts has been reached. Please contact your branch for assistance.
+                  </BoutiqueText>
+                ) : canRetryPayment ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">
                     Complete payment so our team can prepare your order.
                   </BoutiqueText>
@@ -439,14 +448,14 @@ function OrderConfirmation() {
                 Check payment status
               </BoutiqueButton>
             ) : null}
-            {canRetryPayment ? (
+            {canRetryPayment && !paymentRetryLimitReached ? (
               <BoutiqueButton
                 variant="primary"
                 flex={1}
                 onClick={handlePayNow}
                 disabled={paying}
               >
-                {paying ? "Connecting..." : "Pay Now"}
+                {paying ? "Connecting..." : "Pay Again"}
               </BoutiqueButton>
             ) : null}
             {order.receiptAvailable ? (

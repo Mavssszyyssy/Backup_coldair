@@ -39,6 +39,7 @@ function OrderSummary({
   isProcessing = false,
 }) {
   const hasStockIssues = Array.isArray(stockIssues) && stockIssues.length > 0;
+  const hasZeroBranchStock = stockIssues.some((issue) => issue?.code === "out_of_stock");
 
   return (
     <div className="checkout-section order-summary">
@@ -90,7 +91,9 @@ function OrderSummary({
           }}
         >
           <div style={{ fontWeight: 800, marginBottom: "6px" }}>
-            Out of stock items detected
+            {hasZeroBranchStock
+              ? "This branch currently has no stock of this item"
+              : "This branch does not have enough stock for the requested quantity"}
           </div>
           <div style={{ fontSize: "13px", lineHeight: 1.35 }}>
             {stockIssues.slice(0, 4).map((issue) => (

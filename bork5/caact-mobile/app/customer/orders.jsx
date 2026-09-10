@@ -452,15 +452,24 @@ export default function CustomerOrdersScreen() {
 
                 {order.paymentProvider === "paymongo" &&
                 order.paymentStatus !== "paid" &&
-                order.workflowStatus === "to_pay" ? (
-                  <BoutiqueButton
-                    title={payingId === String(order.id) ? "Connecting…" : "Complete payment"}
-                    variant="primary"
-                    disabled={payingId === String(order.id)}
-                    loading={payingId === String(order.id)}
-                    onPress={() => handlePayNow(order)}
-                  />
-                ) : null}
+                order.workflowStatus === "to_pay" ? (() => {
+                  const isGcash = String(order.paymentMethod || "").toLowerCase() === "gcash";
+                  const attempts = Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0);
+                  const limitReached = isGcash && attempts >= 3;
+                  return limitReached ? (
+                    <BoutiqueText color={BQ_COLORS.danger} weight={700} align="center">
+                      Maximum payment attempts has been reached. Please contact your branch for assistance.
+                    </BoutiqueText>
+                  ) : (
+                    <BoutiqueButton
+                      title={payingId === String(order.id) ? "Connecting…" : isGcash ? "Pay Again" : "Complete payment"}
+                      variant="primary"
+                      disabled={payingId === String(order.id) || !["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())}
+                      loading={payingId === String(order.id)}
+                      onPress={() => handlePayNow(order)}
+                    />
+                  );
+                })() : null}
 
                 <View style={{ gap: BQ_SPACING.sm }}>
                   {order.items.map((item) => (

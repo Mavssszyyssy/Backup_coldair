@@ -2,6 +2,7 @@ import { ShoppingBag, WarningDiamond } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
+import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -59,6 +60,7 @@ function MyOrders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [cancellingOrderId, setCancellingOrderId] = useState("");
   const [cancelOrder, setCancelOrder] = useState(null);
+  const [payingOrderId, setPayingOrderId] = useState("");
 
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
@@ -129,6 +131,22 @@ function MyOrders() {
 
   const handleReceipt = (order) => {
     navigate(`/receipt/${encodeURIComponent(order.id)}`);
+  };
+
+  const handlePayAgain = async (order) => {
+    setPayingOrderId(String(order.id));
+    try {
+      const response = await apiRequest(`/orders/${encodeURIComponent(order.id)}/paymongo/checkout`, {
+        method: "POST",
+      });
+      const paymentUrl = response.payment?.checkoutUrl || response.order?.paymentUrl || response.order?.paymongo?.checkoutUrl || "";
+      if (!paymentUrl) throw new Error("A secure payment link was not returned.");
+      openOnlineCheckout(paymentUrl, order.id);
+    } catch (error) {
+      alert(error?.message || "Unable to open secure payment.");
+    } finally {
+      setPayingOrderId("");
+    }
   };
 
   const handleCancelRequest = async (order, reason) => {
@@ -286,6 +304,8 @@ function MyOrders() {
                 onReceipt={handleReceipt}
                 onCancelRequest={setCancelOrder}
                 cancelling={cancellingOrderId === String(order.id)}
+                paying={payingOrderId === String(order.id)}
+                onPayAgain={handlePayAgain}
               />
             ))
           )}

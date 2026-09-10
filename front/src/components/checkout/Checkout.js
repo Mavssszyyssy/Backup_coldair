@@ -395,6 +395,10 @@ function Checkout() {
     if (isProcessingPayment) return;
     const latestStock = await refreshStock();
     if (latestStock.ok && latestStock.issues.length > 0) {
+      if (latestStock.issues.some((issue) => issue.code === "out_of_stock")) {
+        alert("This branch currently has no stock of this item");
+        return;
+      }
       const message = latestStock.issues
         .map(
           (issue) =>
@@ -515,6 +519,7 @@ function Checkout() {
           title="Checkout"
           leftAction="back"
           onLeftAction={() => navigate("/shop")}
+          hideCart
         />
         <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={20} align="center">
@@ -581,6 +586,7 @@ function Checkout() {
         title="Checkout"
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
+        hideCart
       />
 
       <BoutiqueBox

@@ -57,6 +57,9 @@ const orderSchema = new mongoose.Schema(
       index: true,
     },
     paymongo: {
+      // Counts customer-initiated retry checkouts after the original online
+      // payment. This is separate from the initial checkout session.
+      retryAttempts: { type: Number, default: 0, min: 0 },
       checkoutSessionId: { type: String, default: "", index: true },
       checkoutUrl: { type: String, default: "" },
       paymentIntentId: { type: String, default: "", index: true },

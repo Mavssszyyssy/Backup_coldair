@@ -19,6 +19,7 @@ export default function BoutiqueHeader({
   onCartClick,
   notificationCount = 0,
   cartCount = 0,
+  hideCart = false,
   isAuthenticated = false,
   scrolled = false,
 }) {
@@ -125,12 +126,14 @@ export default function BoutiqueHeader({
             </button>
           )}
 
-          <button className="bq-cart-trigger" onClick={onCartClick}>
-            <ShoppingCartSimple size={22} weight="bold" />
-            {cartCount > 0 && (
-              <span className="bq-badge bq-badge--cart">{cartCount}</span>
-            )}
-          </button>
+          {!hideCart ? (
+            <button className="bq-cart-trigger" onClick={onCartClick}>
+              <ShoppingCartSimple size={22} weight="bold" />
+              {cartCount > 0 && (
+                <span className="bq-badge bq-badge--cart">{cartCount}</span>
+              )}
+            </button>
+          ) : null}
         </BoutiqueBox>
       </BoutiqueBox>
 

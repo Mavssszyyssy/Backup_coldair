@@ -520,9 +520,18 @@ const decrementProductStockForOrder = async (
     session,
   );
   if (!updateResult.modifiedCount) {
+    const latestProduct = await withOptionalSession(
+      Product.findById(productId).select("branchStock stock"),
+      session,
+    );
+    const latestBranchStock = hasBranchSnapshot
+      ? Number(latestProduct?.branchStock?.get(branch) || 0)
+      : Number(latestProduct?.stock || 0);
     throw new HttpError(
       409,
-      `Stock changed while reserving ${product.name}. Please try again.`,
+      latestBranchStock <= 0
+        ? "This branch currently has no stock of this item"
+        : `Stock changed while reserving ${product.name}. Please try again.`,
     );
   }
 
@@ -680,9 +689,11 @@ const reReserveReleasedOrderInventory = async (order) => {
 
       const product = await Product.findById(productId);
       if (!product) throw new HttpError(409, `Product ${item.name || productId} is no longer available.`);
-      const hasBranchSnapshot = Array.from(product.branchStock?.values?.() || []).some(
-        (value) => Number(value || 0) > 0,
-      );
+      const hasBranchSnapshot = Boolean(product.branchStock?.has?.(branch));
+      const branchStock = Number(product.branchStock?.get?.(branch) || 0);
+      if (!hasBranchSnapshot || branchStock <= 0) {
+        throw new HttpError(409, "This branch currently has no stock of this item");
+      }
       const reservedUnits = await reserveSerialUnitsForOrder(
         product,
         branch,
@@ -2248,7 +2259,6 @@ const createOrder = async (req, res) => {
       "This delivery address is outside the configured service areas. Please select a covered address.",
     );
   }
-  const branchSearchOrder = await getBranchSearchOrder(preferredBranch);
   const assignedTechnician = preferredBranch
     ? `${preferredBranch} Technician Team`
     : "";
@@ -2272,24 +2282,19 @@ const createOrder = async (req, res) => {
           );
         }
 
-        const selectedBranch = branchSearchOrder.find((branch) =>
-          Number(product.branchStock?.get(branch) || 0) >= quantityNeeded,
-        );
-        const hasBranchSnapshot = branchSearchOrder.some(
-          (branch) => Number(product.branchStock?.get(branch) || 0) > 0,
-        );
-        const fallbackBranch =
-          !hasBranchSnapshot && Number(product.stock || 0) >= quantityNeeded
-            ? preferredBranch
-            : null;
-        const finalBranch = selectedBranch || fallbackBranch;
-
-        if (!finalBranch) {
-          throw new HttpError(
-            409,
-            `Insufficient branch stock for ${product.name}. Tried preferred and nearby branches.`,
-          );
+        // The delivery branch is part of the customer's order. Never fulfil
+        // it from a nearby branch merely because that branch has stock: doing
+        // so made a branch-specific zero quantity appear available.
+        const hasAssignedBranchInventory = Boolean(product.branchStock?.has?.(preferredBranch));
+        const assignedBranchStock = Number(product.branchStock?.get?.(preferredBranch) || 0);
+        if (!hasAssignedBranchInventory || assignedBranchStock <= 0) {
+          throw new HttpError(409, "This branch currently has no stock of this item");
         }
+        if (assignedBranchStock < quantityNeeded) {
+          throw new HttpError(409, `This branch does not have enough stock of ${product.name}.`);
+        }
+        const finalBranch = preferredBranch;
+        const hasBranchSnapshot = true;
 
         lastSourceBranch = finalBranch;
         let serialUnits = [];
@@ -3346,8 +3351,10 @@ const handlePaymongoReturn = async (req, res) => {
 };
 
 const retryPaymongoCheckout = async (req, res) => {
+  let retryClaim = null;
+  let checkoutStarted = false;
   try {
-    const order = await Order.findOne({
+    let order = await Order.findOne({
       $or: [{ _id: req.params.orderId }, { orderCode: req.params.orderId }],
       customer: req.authUser._id,
     });
@@ -3360,6 +3367,52 @@ const retryPaymongoCheckout = async (req, res) => {
     if (order.paymentStatus === "paid" || order.status === "paid") {
       return res.status(409).json({ message: "This order is already paid." });
     }
+    if (!["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())) {
+      return res.status(409).json({ message: "Payment is still pending. Wait for the payment result before trying again." });
+    }
+
+    const isGcash = String(order.paymentMethod || "").toLowerCase() === "gcash";
+    const MAX_GCASH_RETRY_ATTEMPTS = 3;
+    if (isGcash && Number(order.paymongo?.retryAttempts || 0) >= MAX_GCASH_RETRY_ATTEMPTS) {
+      return res.status(409).json({
+        message: "Maximum payment attempts has been reached. Please contact your branch for assistance.",
+        code: "PAYMENT_RETRY_LIMIT_REACHED",
+      });
+    }
+
+    // Claim the retry atomically before touching stock or the payment
+    // provider. Two nearly simultaneous taps must not create two GCash
+    // sessions or bypass the three-attempt ceiling.
+    if (isGcash) {
+      const previousPaymentStatus = order.paymentStatus;
+      order = await Order.findOneAndUpdate(
+        {
+          _id: order._id,
+          customer: req.authUser._id,
+          paymentStatus: { $in: ["failed", "cancelled", "expired"] },
+          $or: [
+            { "paymongo.retryAttempts": { $lt: MAX_GCASH_RETRY_ATTEMPTS } },
+            { "paymongo.retryAttempts": { $exists: false } },
+          ],
+        },
+        {
+          $inc: { "paymongo.retryAttempts": 1 },
+          $set: { paymentStatus: "pending" },
+        },
+        { new: true },
+      );
+      if (!order) {
+        return res.status(409).json({
+          message: "Payment status changed. Refresh your order before trying again.",
+          code: "PAYMENT_RETRY_CHANGED",
+        });
+      }
+      retryClaim = {
+        orderId: order._id,
+        previousPaymentStatus,
+        retryAttempts: Number(order.paymongo?.retryAttempts || 0),
+      };
+    }
 
     await reReserveReleasedOrderInventory(order);
 
@@ -3367,6 +3420,7 @@ const retryPaymongoCheckout = async (req, res) => {
       req,
       returnTarget: req.body?.paymentReturnTarget || req.body?.returnTarget || req.body?.clientType || req.body?.platform,
     });
+    checkoutStarted = true;
     const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([order]);
     return res.json({
       order: {
@@ -3379,9 +3433,32 @@ const retryPaymongoCheckout = async (req, res) => {
         checkoutUrl: checkout.checkoutUrl,
         status: checkout.status,
       },
+      paymentRetryCount: Number(order.paymongo?.retryAttempts || 0),
+      paymentRetriesRemaining: isGcash
+        ? Math.max(0, MAX_GCASH_RETRY_ATTEMPTS - Number(order.paymongo?.retryAttempts || 0))
+        : null,
     });
   } catch (error) {
     console.error("Failed to retry PayMongo checkout:", error);
+    // A provider failure before a session exists is not a completed payment
+    // retry. Restore the prior unpaid state and branch inventory so the
+    // customer is not charged an attempt or left with blocked stock.
+    if (retryClaim && !checkoutStarted) {
+      try {
+        const claimedOrder = await Order.findById(retryClaim.orderId);
+        if (claimedOrder) {
+          await releaseOrderInventoryOnce(claimedOrder, "PayMongo retry could not be started.");
+          claimedOrder.paymentStatus = retryClaim.previousPaymentStatus;
+          claimedOrder.paymongo = {
+            ...(claimedOrder.paymongo?.toObject?.() || claimedOrder.paymongo || {}),
+            retryAttempts: Math.max(0, Number(retryClaim.retryAttempts || 1) - 1),
+          };
+          await claimedOrder.save();
+        }
+      } catch (restoreError) {
+        console.error("Unable to restore failed PayMongo retry state:", restoreError);
+      }
+    }
     if (error instanceof HttpError || error instanceof PaymongoError) {
       return res.status(error.status || 500).json({ message: error.message });
     }

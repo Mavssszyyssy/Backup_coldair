@@ -28,7 +28,7 @@ const cancellationStatusLabel = (order = {}) => {
   return "";
 };
 
-function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, cancelling = false }) {
+function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPayAgain, cancelling = false, paying = false }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case "to_pay":
@@ -84,6 +84,13 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, canc
     ["to_pay", "to_deliver"].includes(String(order.status || "").toLowerCase()) &&
     !order.cancellationRequest?.requested;
   const cancellationLabel = cancellationStatusLabel(order);
+  const isUnpaidGcash =
+    String(order.paymentProvider || "").toLowerCase() === "paymongo" &&
+    String(order.paymentMethod || "").toLowerCase() === "gcash" &&
+    String(order.paymentStatus || "").toLowerCase() !== "paid" &&
+    String(order.status || "").toLowerCase() === "to_pay";
+  const paymentRetryCount = Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0);
+  const paymentRetryLimitReached = isUnpaidGcash && paymentRetryCount >= 3;
 
   return (
     <BoutiqueCard padding={0} style={{ overflow: "hidden" }}>
@@ -302,6 +309,24 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, canc
                 >
                   {cancelling ? "Submitting..." : "Request Cancel"}
                 </BoutiqueButton>
+              ) : null}
+              {isUnpaidGcash ? (
+                paymentRetryLimitReached ? (
+                  <BoutiqueText size="12px" weight={800} color={BQ_COLORS.danger} style={{ maxWidth: "240px" }}>
+                    Maximum payment attempts has been reached. Please contact your branch for assistance.
+                  </BoutiqueText>
+                ) : (
+                  <BoutiqueButton
+                    variant="primary"
+                    size="sm"
+                    type="button"
+                    disabled={paying || !["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())}
+                    onClick={() => onPayAgain?.(order)}
+                    style={{ width: "auto" }}
+                  >
+                    {paying ? "Connecting..." : "Pay Again"}
+                  </BoutiqueButton>
+                )
               ) : null}
               <BoutiqueButton
                 variant="ghost"

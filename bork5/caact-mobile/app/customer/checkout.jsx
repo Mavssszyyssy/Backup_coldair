@@ -182,6 +182,7 @@ export default function CheckoutScreen() {
       const catalogue = await fetchShopProducts(
         liveBranch,
       );
+      let branchOutOfStock = false;
       const activeItems = cart
         .map((cartItem) => {
           const product = catalogue.find(
@@ -189,7 +190,13 @@ export default function CheckoutScreen() {
               String(candidate.id) === String(cartItem.id) ||
               (cartItem.sku && String(candidate.sku) === String(cartItem.sku)),
           );
-          if (!product || !product.inStock) return null;
+          if (!product) {
+            return null;
+          }
+          if (!product.inStock) {
+            branchOutOfStock = true;
+            return null;
+          }
           return {
             ...product,
             quantity: Math.min(
@@ -203,7 +210,9 @@ export default function CheckoutScreen() {
       if (activeItems.length !== cart.length) {
         replaceCart(activeItems);
         throw new Error(
-          "One or more older cart items are no longer available. Your cart was updated to the active catalogue; please review it and place the order again.",
+          branchOutOfStock
+            ? "This branch currently has no stock of this item"
+            : "One or more older cart items are no longer available. Your cart was updated to the active catalogue; please review it and place the order again.",
         );
       }
       checkoutCart = activeItems;
