@@ -18,8 +18,8 @@ const INITIAL_FORM = {
   quantity: "",
 };
 
-const productSerials = (product = {}) =>
-  (Array.isArray(product.serialUnits) ? product.serialUnits : [])
+const productSerials = (product) =>
+  (Array.isArray(product?.serialUnits) ? product.serialUnits : [])
     .filter((unit) => unit?.serialNumber)
     .map((unit) => ({
       serialNumber: String(unit.serialNumber),
