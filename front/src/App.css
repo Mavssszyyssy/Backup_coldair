@@ -109,6 +109,82 @@ body {
   background: #f9fafb;
 }
 
+.application-error-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: #f4f7fb;
+  color: #101828;
+  font-family: "Outfit", sans-serif;
+}
+
+.application-error-card {
+  width: min(100%, 520px);
+  padding: 40px;
+  border: 1px solid #dbe5f0;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 44, 75, 0.12);
+  text-align: center;
+}
+
+.application-error-mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  background: #e8f5ff;
+  color: #057ac0;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.application-error-eyebrow {
+  margin: 0 0 6px;
+  color: #057ac0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.application-error-card h1 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 38px);
+}
+
+.application-error-card > p:not(.application-error-eyebrow) {
+  margin: 14px auto 24px;
+  color: #526174;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.application-error-card button {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: #087fbd;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.application-error-card button:hover {
+  background: #05689c;
+}
+
+@media (max-width: 560px) {
+  .application-error-card {
+    padding: 30px 22px;
+    border-radius: 20px;
+  }
+}
+
 .loading-logo {
   display: inline-grid;
   place-items: center;

@@ -5,32 +5,34 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import "./App.css";
-const AdminDashboard = lazy(() => import("./components/ADMIN/Dashboard/AdminDashboard"));
-const AdminInventory = lazy(() => import("./components/ADMIN/Inventory/AdminInventory"));
-const AdminProfile = lazy(() => import("./components/ADMIN/Profile/AdminProfile"));
-const AdminReports = lazy(() => import("./components/ADMIN/Reports/AdminReports"));
-const AdminServices = lazy(() => import("./components/ADMIN/Services/AdminServices"));
-const AdminSettings = lazy(() => import("./components/ADMIN/Settings/AdminSettings"));
-const ManagerAmpDashboard = lazy(() => import("./components/AMP/ManagerAmpDashboard"));
-const OwnerAmpDashboard = lazy(() => import("./components/AMP/OwnerAmpDashboard"));
-const LegalPolicyPage = lazy(() => import("./components/legal/LegalPolicyPage"));
-const AuthenticatorSetup = lazy(() => import("./components/security/AuthenticatorSetup"));
+import { lazyWithReload } from "./utils/lazyWithReload";
+const AdminDashboard = lazyWithReload(() => import("./components/ADMIN/Dashboard/AdminDashboard"), "AdminDashboard");
+const AdminInventory = lazyWithReload(() => import("./components/ADMIN/Inventory/AdminInventory"), "AdminInventory");
+const AdminProfile = lazyWithReload(() => import("./components/ADMIN/Profile/AdminProfile"), "AdminProfile");
+const AdminReports = lazyWithReload(() => import("./components/ADMIN/Reports/AdminReports"), "AdminReports");
+const AdminServices = lazyWithReload(() => import("./components/ADMIN/Services/AdminServices"), "AdminServices");
+const AdminSettings = lazyWithReload(() => import("./components/ADMIN/Settings/AdminSettings"), "AdminSettings");
+const ManagerAmpDashboard = lazyWithReload(() => import("./components/AMP/ManagerAmpDashboard"), "ManagerAmpDashboard");
+const OwnerAmpDashboard = lazyWithReload(() => import("./components/AMP/OwnerAmpDashboard"), "OwnerAmpDashboard");
+const LegalPolicyPage = lazyWithReload(() => import("./components/legal/LegalPolicyPage"), "LegalPolicyPage");
+const AuthenticatorSetup = lazyWithReload(() => import("./components/security/AuthenticatorSetup"), "AuthenticatorSetup");
 import TechnicianMobileNotice from "./components/common/TechnicianMobileNotice";
 import { getRoleHomePath, TECHNICIAN_MOBILE_NOTICE_PATH } from "./domain/webRoleHome";
-const SuperAdminAlerts = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"));
-const SuperAdminBranches = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"));
-const SuperAdminDashboard = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminDashboard"));
-const SuperAdminInventory = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminInventory"));
-const SuperAdminSales = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSales"));
-const SuperAdminServices = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminServices"));
-const SuperAdminSettings = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSettings"));
-const SuperAdminProfile = lazy(() => import("./components/SUPERADMIN/Dashboard/SuperAdminProfile"));
+const SuperAdminAlerts = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"), "SuperAdminAlerts");
+const SuperAdminBranches = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"), "SuperAdminBranches");
+const SuperAdminDashboard = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminDashboard"), "SuperAdminDashboard");
+const SuperAdminInventory = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminInventory"), "SuperAdminInventory");
+const SuperAdminSales = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSales"), "SuperAdminSales");
+const SuperAdminServices = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminServices"), "SuperAdminServices");
+const SuperAdminSettings = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSettings"), "SuperAdminSettings");
+const SuperAdminProfile = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminProfile"), "SuperAdminProfile");
 import CustomerChatbot from "./components/chatbot/CustomerChatbot";
 import Checkout from "./components/checkout/Checkout";
 import OrderConfirmation from "./components/checkout/OrderConfirmation";
 import GlobalDialog from "./components/common/GlobalDialog";
+import ApplicationErrorBoundary from "./components/common/ApplicationErrorBoundary";
 import BackendConnectionBanner from "./components/common/BackendConnectionBanner";
 import LoadingLogo from "./components/common/LoadingLogo";
 import LoginPromptModal from "./components/common/LoginPromptModal";
@@ -561,19 +563,21 @@ export function AppContent() {
 // Main App component with providers
 function App() {
   return (
-    <UserProvider>
-      <AdminSettingsProvider>
-        <CartProvider>
-          <Router>
-            <div className="App">
-              <BackendConnectionBanner />
-              <AppContent />
-              <GlobalDialog />
-            </div>
-          </Router>
-        </CartProvider>
-      </AdminSettingsProvider>
-    </UserProvider>
+    <ApplicationErrorBoundary>
+      <UserProvider>
+        <AdminSettingsProvider>
+          <CartProvider>
+            <Router>
+              <div className="App">
+                <BackendConnectionBanner />
+                <AppContent />
+                <GlobalDialog />
+              </div>
+            </Router>
+          </CartProvider>
+        </AdminSettingsProvider>
+      </UserProvider>
+    </ApplicationErrorBoundary>
   );
 }
 
