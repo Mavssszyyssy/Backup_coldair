@@ -691,6 +691,18 @@ export async function checkInTask(token, taskId, coordinates) {
   return { success: false, error: getErrorMessage(data, "Unable to check in to this work order.") };
 }
 
+export async function getVisitAttempt(token, taskId) {
+  const { ok, data } = await get(`/tasks/${encodeURIComponent(taskId)}/visit-attempt`, token);
+  if (!ok) throw new Error(getErrorMessage(data, 'Unable to load visit proof.'));
+  return data.attempt;
+}
+
+export async function submitVisitAttempt(token, taskId, input) {
+  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/visit-attempt`, input, token);
+  if (!ok) throw new Error(getErrorMessage(data, 'Unable to save this visit.'));
+  return data.attempt;
+}
+
 export async function confirmCodCollection(token, taskId) {
   const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/cod-collection`, { confirmed: true }, token);
   return ok ? { success: true, task: data.task } : { success: false, error: getErrorMessage(data, "Unable to confirm cash collection.") };

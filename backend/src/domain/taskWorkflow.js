@@ -34,6 +34,7 @@ const getTaskMutationBlocker = (status = "") => {
 };
 
 const hasVerifiedTaskCheckIn = (task) => {
+  if (task?.payload?.visitAttempt?.awaitingAdmin) return false;
   const point = task?.payload?.checkIn;
   if (!point || !point.checkedInAt || !Number.isFinite(new Date(point.checkedInAt).getTime())) return false;
   const valid = (value, limit) => value !== null && value !== undefined && String(value).trim() !== "" && Number.isFinite(Number(value)) && Math.abs(Number(value)) <= limit;

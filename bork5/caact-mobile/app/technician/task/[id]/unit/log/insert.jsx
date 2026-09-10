@@ -1,6 +1,8 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ServiceNoteDetails from "../../../../../../components/technician/ServiceNoteDetails";
 
 import ServiceResourcesFields from "../../../../../../components/technician/ServiceResourcesFields";
 import { PageControls } from "../../../../../../components/ui/PagedItems";
@@ -73,7 +75,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
           setPartsCost(source.partsCost == null ? "" : String(source.partsCost));
         }
       }
-      load();
+      load().catch(error => { if (active) Alert.alert('Unable to load service note', error?.message || 'Please reopen this work order and try again.'); });
       return () => {
         active = false;
       };
@@ -108,14 +110,16 @@ export default function LogInsertScreen({ mode = "insert" }) {
         String(draft.laborCost ?? "").trim() || String(draft.partsCost ?? "").trim();
 
       if (!isUpdate && !skipDraftSaveRef.current && draft.taskId && hasDraftContent) {
-        saveLogDraft(draft.taskId, draft);
+        saveLogDraft(draft.taskId, draft).catch(() => {});
       }
     };
   }, [isUpdate]);
 
   const persistDraftAndBack = async () => {
-    if (!isUpdate) {
-      skipDraftSaveRef.current = true;
+    if (saving) return;
+    if (isUpdate) { router.back(); return; }
+    setSaving(true);
+    try {
       await saveLogDraft(taskId, {
         taskId,
         logType: reportType,
@@ -129,11 +133,17 @@ export default function LogInsertScreen({ mode = "insert" }) {
         laborCost,
         partsCost,
       });
+      skipDraftSaveRef.current = true;
+      router.back();
+    } catch (error) {
+      Alert.alert('Draft not saved', error?.message || 'Your entries are still here. Please try again.');
+    } finally {
+      setSaving(false);
     }
-    router.back();
   };
 
   const handleSubmit = async () => {
+    if (saving) return;
     if (task?.status !== TASK_STATUS.IN_PROGRESS) {
       Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
       return;
@@ -181,22 +191,16 @@ export default function LogInsertScreen({ mode = "insert" }) {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "rgba(15, 23, 42, 0.42)",
-        justifyContent: "flex-end",
-      }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }} edges={["top", "bottom"]}>
       <KeyboardAwareScrollView
         ref={scrollRef}
-        minBottomPadding={148}
+        minBottomPadding={32}
+        style={{ flex: 1 }}
         contentContainerStyle={{
+          flexGrow: 1,
           padding: SPACING.md,
           paddingBottom: SPACING.lg,
           backgroundColor: COLORS.bg,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
         }}
       >
         <PageHeader
@@ -265,26 +269,25 @@ export default function LogInsertScreen({ mode = "insert" }) {
 
         </View>
         {page === 2 ? <>
-        <Card>
-          <Text>{`Condition: ${condition}\nHours worked: ${hoursSpent || "Not recorded"}\nParts used: ${partsUsed || "Not recorded"}\nLabor cost: ${laborCost === "" ? "Not recorded" : "PHP " + Number(laborCost).toFixed(2)}\nParts cost: ${partsCost === "" ? "Not recorded" : "PHP " + Number(partsCost).toFixed(2)}`}</Text>
-          <Text style={{ marginTop: SPACING.md }}>{`Findings: ${findings}\nWork performed: ${resolution}\nAdditional notes: ${notes || "None"}`}</Text>
-        </Card>
+        <ServiceNoteDetails unitName={task?.unitName} log={{ condition, hoursSpent: hoursSpent === "" ? null : Number(hoursSpent), partsUsed, laborCost: laborCost === "" ? null : Number(laborCost), partsCost: partsCost === "" ? null : Number(partsCost), findings, resolution, notes, technicianName: getDisplayName(current) }} />
         <TechButton
           title={saving ? "Saving..." : "Save Service Note"}
           onPress={handleSubmit}
           loading={saving}
           style={{ marginBottom: SPACING.md }}
         />
+        {saving ? <Text accessibilityRole="text" style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: SPACING.sm }}>Saving service note… Please wait.</Text> : null}
         </> : null}
         <PageControls page={page} total={3} label="Service note" onChange={next => {
+          if (saving) return;
           const error = next > page ? (page === 0 ? resourcesError : choiceError || serviceReportError(findings, resolution)) : "";
           if (error) { Alert.alert("Check service note", error); return; }
           Keyboard.dismiss();
           setPage(next);
           scrollRef.current?.scrollTo({ y: 0, animated: true });
         }} />
-        <TechButton title="Save Draft" onPress={persistDraftAndBack} variant="secondary" />
+        {!isUpdate ? <TechButton title="Save Draft" onPress={persistDraftAndBack} disabled={saving} variant="secondary" /> : null}
       </KeyboardAwareScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

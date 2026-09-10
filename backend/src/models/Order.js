@@ -80,6 +80,7 @@ const orderSchema = new mongoose.Schema(
     estimatedDelivery: { type: String, default: "" },
     estimatedArrival: { type: String, default: "" },
     installationDate: { type: String, default: "" },
+    visitAttempt: { type: mongoose.Schema.Types.Mixed, default: null },
     assignedTechnician: { type: String, default: "" },
     assignedTechnicianId: { type: String, default: "", index: true },
     deliveryStatus: {

@@ -189,6 +189,7 @@ export function normalizeTask(item = {}) {
           ],
     createdAt,
     updatedAt: item.updatedAt || createdAt,
+    visitAttempt: value('visitAttempt') || null,
   };
 }
 
@@ -476,6 +477,18 @@ export async function confirmCodCollection(taskId) {
   const result = await api.confirmCodCollection(token, taskId);
   if (!result.success) throw new Error(result.error);
   return getTaskById(taskId);
+}
+
+export async function getVisitAttempt(taskId) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error('Please sign in again.');
+  return api.getVisitAttempt(token, taskId);
+}
+
+export async function submitVisitAttempt(taskId, input) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error('Please sign in again.');
+  return api.submitVisitAttempt(token, taskId, input);
 }
 
 export async function collectServicePayment(taskId, payment) {

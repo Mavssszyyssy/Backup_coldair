@@ -16,6 +16,7 @@ const {
 
 const router = express.Router();
 const { collectServicePayment } = require("../controllers/servicePaymentController");
+const { getVisitAttempt, submitVisitAttempt, scheduleNextVisit } = require('../controllers/visitAttemptController');
 
 router.use(requireAuth);
 router.get("/", allowRoles("customer", "technician", "admin", "superadmin"), listTasks);
@@ -25,6 +26,9 @@ router.get("/unit-history/:serialNumber", allowRoles("technician", "admin", "sup
 router.get("/:taskId", allowRoles("technician", "admin", "superadmin"), getTaskById);
 router.patch("/:taskId/accept", allowRoles("technician"), acceptTask);
 router.patch("/:taskId/check-in", allowRoles("technician"), checkInTask);
+router.get('/:taskId/visit-attempt', allowRoles('technician', 'admin', 'superadmin'), getVisitAttempt);
+router.patch('/:taskId/visit-attempt', allowRoles('technician'), submitVisitAttempt);
+router.patch('/:taskId/next-visit', allowRoles('admin', 'superadmin'), scheduleNextVisit);
 router.patch("/:taskId/cod-collection", allowRoles("technician"), confirmCodCollection);
 router.patch("/:taskId/service-payment", allowRoles("technician"), collectServicePayment);
 router.patch("/:taskId/amp-registration", allowRoles("technician"), registerAmpUnit);

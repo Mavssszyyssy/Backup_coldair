@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { awaitingVisitFollowUp, FOLLOW_UP_REQUIRED } = require('../domain/visitAttempt');
 const { cancelWarrantyForRequest } = require('../domain/warrantyCancellation');
 const Task = require("../models/Task");
 const User = require("../models/User");
@@ -1034,7 +1035,7 @@ const updateTask = async (req, res) => {
       return res.json({ task: hydrateTaskResponse(task), replayed: true });
     }
 
-    const mutationBlocker = getTaskMutationBlocker(task.status);
+    const mutationBlocker = awaitingVisitFollowUp(task) ? FOLLOW_UP_REQUIRED : getTaskMutationBlocker(task.status);
     if (mutationBlocker) {
       return res.status(409).json({ message: mutationBlocker });
     }
@@ -1612,7 +1613,7 @@ const updateTaskStatus = async (req, res) => {
       return res.json({ task: hydrateTaskResponse(task), replayed: true });
     }
 
-    const mutationBlocker = getTaskMutationBlocker(task.status);
+    const mutationBlocker = awaitingVisitFollowUp(task) ? FOLLOW_UP_REQUIRED : getTaskMutationBlocker(task.status);
     if (mutationBlocker) {
       return res.status(409).json({ message: mutationBlocker });
     }

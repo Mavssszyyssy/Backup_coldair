@@ -12,7 +12,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StatusChip from "../../../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
-import { checkInTask, confirmCodCollection, getTaskById, TASK_STATUS } from "../../../../services/taskStorage";
+import { checkInTask, confirmCodCollection, getTaskById, getVisitAttempt, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
 import { formatWarrantyStatus, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
@@ -130,6 +130,7 @@ export default function TaskInformationScreen() {
   const [loadError, setLoadError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [detailPage, setDetailPage] = useState(0);
+  const [visitProof, setVisitProof] = useState(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -172,7 +173,15 @@ export default function TaskInformationScreen() {
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
   const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
-  const nextAction = task?.status === TASK_STATUS.PENDING
+  React.useEffect(() => {
+    let active = true;
+    setVisitProof(null);
+    if (task?.visitAttempt?.id) getVisitAttempt(id).then(attempt => { if (active) setVisitProof(attempt); }).catch(() => {});
+    return () => { active = false; };
+  }, [id, task?.visitAttempt?.id, task?.visitAttempt?.awaitingAdmin]);
+  const nextAction = task?.visitAttempt?.awaitingAdmin
+    ? { title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
+    : task?.status === TASK_STATUS.PENDING
     ? { title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
     : task?.status === TASK_STATUS.IN_PROGRESS
       ? !hasCheckedIn
@@ -296,6 +305,14 @@ export default function TaskInformationScreen() {
             </View>
           </Card>
 
+          {(detailPage === 0 || detailPage === 3) && task?.visitAttempt?.id ? <Card>
+            <SectionHeading icon="time-sharp" title="Unattended visit" subtitle={task.visitAttempt.awaitingAdmin ? 'Awaiting Admin follow-up' : 'Previous attempt — next visit confirmed'} />
+            <Text style={{ color: COLORS.textPrimary, lineHeight: 21 }}>{task.visitAttempt.note}</Text>
+            <Text style={{ color: COLORS.textSecondary, marginVertical: SPACING.sm }}>{new Date(task.visitAttempt.submittedAt).toLocaleString()}</Text>
+            {visitProof?.photo?.uri ? <ProofPhotoList photos={[{ uri: visitProof.photo.uri, label: 'Visit attempt proof' }]} /> : <TechButton title="Load visit proof" variant="secondary" onPress={async () => {
+              try { setVisitProof(await getVisitAttempt(id)); } catch (error) { Alert.alert('Unable to load proof', error.message); }
+            }} />}
+          </Card> : null}
           {detailPage === 0 ? <>
             <Card>
               <SectionHeading icon="person-sharp" title="Customer & Schedule" subtitle="Essential visit details" />
@@ -315,6 +332,10 @@ export default function TaskInformationScreen() {
             ) : null}
 
             <ServicePaymentCard task={task} onUpdated={setTask} />
+            {hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
+              <SectionHeading icon="person-remove-sharp" title="No one available?" subtitle="Record an unattended visit after arrival" />
+              <TechButton title="Close visit / request reschedule" variant="secondary" onPress={() => router.push(`/technician/task/${id}/visit-attempt`)} />
+            </Card> : null}
             {task?.codPayment ? <Card>
               <SectionHeading icon="cash-sharp" title="Cash on Delivery" subtitle="Payment is confirmed by the collecting technician" />
               <DetailItem icon="cash-sharp" label="Order total" value={money(task.codPayment.amount)} />
@@ -374,15 +395,19 @@ export default function TaskInformationScreen() {
 
           {detailPage === 3 ? (
             <Card>
-              <SectionHeading icon="camera-sharp" title="Service Proof" subtitle="Submitted work confirmation" />
-              <DetailItem icon="person-sharp" label="Order Customer" value={proof.customer?.name || task?.customerName || task?.customer || "Not provided"} />
-              <DetailItem icon="construct-sharp" label="Submitted By" value={proof.technicianName || task?.assignedTechnicianName || "Technician"} />
-              <DetailItem icon="time-sharp" label="Submitted At" value={proof.submittedAt || task?.proofSubmittedAt ? new Date(proof.submittedAt || task.proofSubmittedAt).toLocaleString() : "Not submitted"} />
-              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: SPACING.sm, marginBottom: SPACING.xs }}>Before Photo (optional)</Text>
-              <ProofPhotoList photos={proof.beforePhotos || []} />
-              <View style={{ height: SPACING.md }} />
-              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>After Photo</Text>
-              <ProofPhotoList photos={proof.afterPhotos || []} />
+              <SectionHeading icon="camera-sharp" title={installationTask ? "Installation proof" : "Service proof"} subtitle={proof.submittedAt ? "Saved work confirmation" : "Proof will appear after the visit is completed"} />
+              <View style={{ flexDirection: 'row', gap: SPACING.md, borderBottomWidth: 1, borderColor: COLORS.border, paddingBottom: SPACING.md }}>
+                <View style={{ flex: 1 }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>Customer</Text><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginTop: 4 }}>{proof.customer?.name || task?.customerName || task?.customer || 'Not provided'}</Text></View>
+                <View style={{ flex: 1 }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{proof.submittedAt ? 'Submitted by' : 'Assigned technician'}</Text><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginTop: 4 }}>{proof.technicianName || task?.assignedTechnicianName || 'Technician'}</Text></View>
+              </View>
+              {proof.submittedAt || task?.proofSubmittedAt ? <Text style={{ color: COLORS.textSecondary, marginVertical: SPACING.sm }}>Submitted {new Date(proof.submittedAt || task.proofSubmittedAt).toLocaleString()}</Text> : null}
+              {(proof.afterPhotos || []).some(photo => photo?.uri) ? <>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginTop: SPACING.sm, marginBottom: SPACING.sm }}>{installationTask ? 'Installed AC photo' : 'After-service photo'}</Text>
+                <ProofPhotoList photos={proof.afterPhotos || []} />
+              </> : <View style={{ padding: SPACING.md, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, marginTop: SPACING.md }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>No completed-work photo yet</Text>
+                <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 5 }}>{task?.visitAttempt?.awaitingAdmin ? 'The unattended-visit photo above is proof of the attempt, not proof of completed service.' : installationTask ? 'Submit the installed-unit photo when completing the installation.' : 'Submit one after-service photo with the completed service report.'}</Text>
+              </View>}
             </Card>
           ) : null}
 

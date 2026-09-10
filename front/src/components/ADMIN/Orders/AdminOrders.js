@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
+import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
 import { formatBusinessDateKey } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
@@ -760,6 +761,7 @@ const AdminOrders = ({ embedded = false }) => {
                     ) : null}
                   </div>
                 ) : null}
+                <VisitFollowUpPanel task={linkedTask ? { ...detailedTask, ...linkedTask } : detailedTask} onUpdated={() => { setTaskDetailsById({}); return loadOrders(); }} />
                 {isWaitingTechnician ? (
                   <p className="admin-order-recovery-note">
                     Waiting for the technician to complete installation registration and submit all required proof.

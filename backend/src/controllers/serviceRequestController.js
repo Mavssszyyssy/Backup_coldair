@@ -551,6 +551,9 @@ const updateServiceRequestStatus = async (req, res) => {
       linkedTask = await Task.findOne({ $or: conditions });
       if (linkedTask && String(linkedTask.requestId || linkedTask.payload?.requestId || "") !== String(request._id)) return res.status(409).json({ message: "The linked work order does not match this service request. Ask the branch team to review it." });
     }
+    if (linkedTask?.payload?.visitAttempt?.awaitingAdmin && nextStatus !== 'Cancelled') {
+      return res.status(409).json({ message: 'Use Visit follow-up to confirm the next visit before changing this assignment or schedule.' });
+    }
     if (nextStatus === "Completed" && (!linkedTask || String(linkedTask.status || "").toLowerCase() !== "completed")) {
       return res.status(409).json({ message: "The assigned technician must submit proof and complete the work order before this request can be completed." });
     }

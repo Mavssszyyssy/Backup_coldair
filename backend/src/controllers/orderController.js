@@ -1859,6 +1859,7 @@ const createTaskForOrder = async (order, options = {}) => {
   if (!order) return null;
   const activateTask = Boolean(options.activate);
   const existingTask = await findLinkedTaskForOrder(order);
+  if (existingTask?.payload?.visitAttempt?.awaitingAdmin) throw new HttpError(409, 'Use Visit follow-up to confirm the next visit before changing this work order.');
   const assignment = await resolveTechnicianAssignment({ ...options, branch: order.stockSourceBranch || order.customerBranch || "" });
   const taskItems = buildOrderTaskItems(order);
   const taskSerialNumbers = Array.from(
@@ -2963,6 +2964,10 @@ const recoverOrder = async (req, res) => {
 
   const action = String(req.body?.action || "").trim().toLowerCase();
   const form = req.body || {};
+  if (['recreate_task', 'assign_technician'].includes(action) && !['complete', 'cancelled'].includes(order.workflowStatus)) {
+    const pendingTask = await findLinkedTaskForOrder(order);
+    if (pendingTask?.payload?.visitAttempt?.awaitingAdmin) return res.status(409).json({ message: 'Use Visit follow-up to confirm the next visit before changing this assignment.' });
+  }
 
   // Recovery must not revive cancelled orders or touch their released stock.
   if (order.workflowStatus === "cancelled") {

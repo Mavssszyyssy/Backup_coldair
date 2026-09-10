@@ -60,6 +60,7 @@ export default function TechnicianLayout() {
           name="task/[id]/complete-service"
           options={{ title: "Work Order Proof" }}
         />
+        <Stack.Screen name="task/[id]/visit-attempt" options={{ title: 'No one available', presentation: 'card', contentStyle: { backgroundColor: COLORS.bg } }} />
         <Stack.Screen
           name="task/[id]/amp-registration"
           options={{ title: "AMP Unit Registration" }}
@@ -76,9 +77,9 @@ export default function TechnicianLayout() {
           name="task/[id]/unit/log/insert"
           options={{
             title: "Add Service Note",
-            presentation: "transparentModal",
-            animation: "slide_from_bottom",
-            contentStyle: { backgroundColor: "transparent" },
+            presentation: "card",
+            animation: "slide_from_right",
+            contentStyle: { backgroundColor: COLORS.bg },
           }}
         />
         <Stack.Screen
