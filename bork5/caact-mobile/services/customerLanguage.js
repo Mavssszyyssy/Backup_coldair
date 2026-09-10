@@ -20,18 +20,32 @@ export function customerSystemMessage(value) {
     const days = text.match(/configured (\d+)-day/)?.[1];
     if (days) return `For now, we suggest service ${days} days after the last recorded cleaning or installation. There is not enough complete cleaning history for a personalized AI estimate yet. Please confirm the timing with our service team.`;
   }
+  if (text.startsWith("Insufficient service history. Default recommended cleaning interval: 6 months")) {
+    return "There are not enough completed cleaning visits to personalize this date yet. For now, we suggest your next cleaning 6 months (180 days) after the latest recorded cleaning or installation.";
+  }
+  if (text.startsWith("Based on this AC unit's ")) {
+    const count = text.match(/unit's (\d+) verified cleaning interval/)?.[1];
+    const days = text.match(/average is (\d+) days/)?.[1];
+    if (count && days) return `This suggestion uses ${count} completed gaps between cleanings for this AC. The average gap is ${days} days.`;
+  }
+  if (text.startsWith("This AC does not yet have two verified cleaning intervals")) {
+    const count = text.match(/uses (\d+) interval/)?.[1];
+    const days = text.match(/average is (\d+) days/)?.[1];
+    if (count && days) return `This AC does not have enough of its own cleaning gaps yet, so ${count} verified gap(s) from similar ACs were used. Their average is ${days} days.`;
+  }
   if (text.startsWith("AI-estimated servicing interval:")) {
     const days = text.match(/interval: (\d+) days/)?.[1];
-    const samples = text.match(/using (\d+) recorded cleaning interval/)?.[1];
+    const samples = text.match(/(?:using|from) (\d+) (?:recorded|verified) cleaning interval/)?.[1];
     if (days && samples) {
-      const group = text.includes("same model history") ? "the same model" : text.includes("same brand type history") ? "similar ACs of the same brand and type" : "the same brand";
-      return `AI suggests service ${days} days after the last recorded cleaning or installation, using ${samples} recorded gaps between cleaning visits for ${group}. The estimate stays within the recorded range and the app's 90–365 day limits. It is not a guaranteed breakdown date, booking, or warranty decision.`;
+      const group = text.includes("this AC unit") ? "this AC" : text.includes("same model") ? "the same model" : text.includes("same brand type") ? "similar ACs of the same brand and type" : "the same brand";
+      return `AI suggests cleaning ${days} days after the latest recorded cleaning or installation, using ${samples} verified cleaning gap(s) for ${group}. It can only use the calculated average or a shorter gap already found in the records. It is not a guaranteed breakdown date, booking, or warranty decision.`;
     }
   }
   const records = text.match(/^(\d+) service record\(s\) have missing details or invalid dates and are excluded from maintenance timing/);
   if (records) return `${records[1]} service record(s) have missing details or incorrect dates and were not used to suggest this date. Please ask our service team to review them.`;
   const messages = {
     "Not enough verified model or brand cleaning history for an AI estimate. Showing the system schedule.": "There is not enough complete cleaning history for this model or brand yet. A system suggestion is shown instead of a new AI estimate.",
+    "Insufficient verified cleaning intervals for an AI estimate. Showing the 6-month system baseline.": "There are not enough verified gaps between cleanings for AI yet. The 6-month starting schedule is shown instead.",
     "AI is unavailable. Showing the current saved or system recommendation.": "We could not get a new AI estimate right now. Your saved plan or a system suggestion is shown instead.",
     "AI timed out. Showing the current saved or system recommendation.": "The AI estimate took too long. Your saved plan or a system suggestion is shown instead. You can try again later.",
     "AI is busy. Showing the system recommendation.": "AI is busy right now. A system suggestion is shown instead.",

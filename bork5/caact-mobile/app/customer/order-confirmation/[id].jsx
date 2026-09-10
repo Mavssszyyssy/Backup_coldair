@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, View } from "react-native";
+import { Alert, AppState, Linking, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BoutiqueButton, BoutiqueCard, BoutiqueHeader, BoutiqueScreen, BoutiqueText, BQ_COLORS, BQ_SPACING } from "../../../components/boutique";
-import { getOrderById, verifyOrderPayment } from "../../../services/orderStorage";
+import { getOrderById, retryOrderPayment, verifyOrderPayment } from "../../../services/orderStorage";
 import { paymentOutcome } from "../../../services/paymentOutcome";
 
 export default function OrderConfirmationScreen() {
@@ -15,6 +15,7 @@ export default function OrderConfirmationScreen() {
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +54,36 @@ export default function OrderConfirmationScreen() {
   const failed = outcome.kind === "failed";
   const paid = outcome.kind === "paid";
   const color = failed ? "#dc2626" : paid ? "#047857" : BQ_COLORS.brand;
+  const attemptCount = Number(order?.paymentRetryCount ?? order?.paymongo?.retryAttempts ?? 0);
+  const retryLimitReached =
+    !paid &&
+    String(order?.paymentProvider || "").toLowerCase() === "paymongo" &&
+    String(order?.paymentMethod || "").toLowerCase() === "gcash" && attemptCount >= 3;
+  const canRetry =
+    !paid &&
+    String(order?.paymentProvider || "").toLowerCase() === "paymongo" &&
+    String(order?.paymentMethod || "").toLowerCase() === "gcash" &&
+    String(order?.workflowStatus || "").toLowerCase() === "to_pay" &&
+    ["pending", "failed", "cancelled", "expired"].includes(
+      String(order?.paymentStatus || "").toLowerCase(),
+    );
+
+  const handlePayAgain = async () => {
+    if (!order?.id || retryLimitReached || paying) return;
+    setPaying(true);
+    try {
+      const checkoutUrl = await retryOrderPayment(order.id);
+      if (!checkoutUrl || !(await Linking.canOpenURL(checkoutUrl))) {
+        throw new Error("A secure GCash payment link was not returned.");
+      }
+      await Linking.openURL(checkoutUrl);
+      router.replace(`/customer/order-confirmation/${order.id}?payment=returned`);
+    } catch (paymentError) {
+      Alert.alert("Unable to open payment", paymentError?.message || "Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  };
   return (
     <>
       <BoutiqueHeader title="Order payment" onBack={() => router.replace("/customer/orders")} />
@@ -66,6 +97,18 @@ export default function OrderConfirmationScreen() {
           <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Order: {order?.orderCode || id}</BoutiqueText>
           {!paid && outcome.kind !== "received" ? (
             <BoutiqueButton title={checking ? "Checking…" : "Check payment status"} disabled={checking} onPress={() => setRefresh((value) => value + 1)} />
+          ) : null}
+          {retryLimitReached ? (
+            <BoutiqueText align="center" color="#dc2626" weight={700}>
+              Maximum payment attempts reached. You can no longer retry payment for this order.
+            </BoutiqueText>
+          ) : canRetry ? (
+            <BoutiqueButton
+              title={paying ? "Connecting…" : "Pay Again"}
+              loading={paying}
+              disabled={paying || checking}
+              onPress={handlePayAgain}
+            />
           ) : null}
           <BoutiqueButton title="View my orders" variant="outline" onPress={() => router.replace("/customer/orders")} />
         </BoutiqueCard>

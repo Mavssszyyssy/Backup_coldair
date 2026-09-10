@@ -126,8 +126,12 @@ export default function BoutiqueHeader({
             </button>
           )}
 
-          {!hideCart ? (
-            <button className="bq-cart-trigger" onClick={onCartClick}>
+          {!hideCart && typeof onCartClick === "function" ? (
+            <button
+              className="bq-cart-trigger"
+              onClick={onCartClick}
+              aria-label="Open cart"
+            >
               <ShoppingCartSimple size={22} weight="bold" />
               {cartCount > 0 && (
                 <span className="bq-badge bq-badge--cart">{cartCount}</span>

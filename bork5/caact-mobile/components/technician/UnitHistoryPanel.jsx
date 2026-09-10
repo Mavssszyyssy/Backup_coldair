@@ -71,6 +71,9 @@ export default function UnitHistoryPanel({ history }) {
         <Field label="Suggested servicing date" value={formatDate(recommendation.bestServicedBy)} />
         <Field label="Recommended service" value={words(recommendation.recommendedService)} />
         <Field label="Basis" value={recommendation.recommendationBasis || "Comparable service history is still limited."} />
+        <Field label="Pattern source" value={recommendation.patternAnalysis?.source === "same_unit" ? "This AC unit" : recommendation.patternAnalysis?.source === "system_default" ? "6-month baseline" : "Verified similar AC units"} />
+        <Field label="Verified cleaning intervals" value={recommendation.patternAnalysis?.intervalsDays?.length ? `${recommendation.patternAnalysis.intervalsDays.join(", ")} days` : "Not enough history yet"} />
+        <Field label="Arithmetic average" value={recommendation.patternAnalysis?.averageIntervalDays ? `${recommendation.patternAnalysis.averageIntervalDays} days` : "6 months (180 days)"} />
         <Field label="Room size and horsepower" value={recommendation.capacityAssessment?.summary || "Room size is still needed for the horsepower suitability check."} />
         <Field label="Major-Component Policy" value="If major-part work is necessary, coordinate both the compressor/motor and control board. Confirm the actual fault by inspection." />
         <Text style={{ color: COLORS.textSecondary, marginTop: 12 }}>Scheduling guidance based on recorded evidence, not a unit diagnosis.</Text>

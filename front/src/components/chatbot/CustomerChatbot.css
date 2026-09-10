@@ -99,6 +99,10 @@
     align-self: flex-end;
 }
 
+.customer-chatbot-thinking {
+    opacity: 0.75;
+}
+
 .customer-chatbot-route-btn {
     margin-top: 8px;
     border: 1px solid #bfdbfe;
@@ -128,6 +132,12 @@
     padding: 6px 10px;
     cursor: pointer;
     font-size: 12px;
+}
+
+.customer-chatbot-quick-questions button:disabled,
+.customer-chatbot-input-row button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .customer-chatbot-input-row {

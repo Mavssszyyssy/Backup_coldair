@@ -51,7 +51,7 @@ function PipelineTable({ units, onSelectPlan }) {
                 <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
               <td>
-                <details className="amp-details"><summary>Why this date?</summary><p>{unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
+                <details className="amp-details"><summary>Why this date?</summary><p>{unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>Pattern: {unit.patternAnalysis?.source === "same_unit" ? "this AC unit" : unit.patternAnalysis?.source === "system_default" ? "6-month baseline" : "verified similar units"} · {unit.patternAnalysis?.intervalCount || 0} verified interval(s){unit.patternAnalysis?.averageIntervalDays ? ` · ${unit.patternAnalysis.averageIntervalDays}-day arithmetic average` : ""}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
               </td>
             </tr>

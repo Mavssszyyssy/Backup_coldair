@@ -109,7 +109,8 @@ function OrderConfirmation() {
     order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
   const canRetryPayment =
     order && paymentNeedsAction && order.workflowStatus === "to_pay" &&
-    ["failed", "cancelled", "expired"].includes(normalizedPaymentStatus);
+    String(order.paymentMethod || "").toLowerCase() === "gcash" &&
+    ["pending", "failed", "cancelled", "expired"].includes(normalizedPaymentStatus);
   const paymentRetryLimitReached =
     String(order?.paymentMethod || "").toLowerCase() === "gcash" &&
     Number(order?.paymentRetryCount || 0) >= 3;
@@ -244,7 +245,7 @@ function OrderConfirmation() {
                 </BoutiqueText>
                 {paymentRetryLimitReached ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.danger} margin="6px 0 0">
-                    Maximum payment attempts has been reached. Please contact your branch for assistance.
+                    Maximum payment attempts reached. You can no longer retry payment for this order.
                   </BoutiqueText>
                 ) : canRetryPayment ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">

@@ -65,6 +65,7 @@ export default function CustomerLayout() {
         <Stack.Screen name="receipt/[id]" />
         <Stack.Screen name="services" />
         <Stack.Screen name="faq" />
+        <Stack.Screen name="chat" />
         <Stack.Screen name="contact" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="oobe/index" />

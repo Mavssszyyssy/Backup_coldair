@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CalendarBlank, DeviceMobile, Info, Wrench } from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
 import { customerSystemMessage } from "../../domain/customerLanguage";
 
@@ -26,6 +27,12 @@ const capacityMessage = (assessment = {}) => {
   return messages[assessment.status] || assessment.summary || "";
 };
 
+const planLabel = (recommendation = {}) => {
+  if (recommendation.predictionSource === "openai") return "AI-assisted plan";
+  if (recommendation.patternAnalysis?.source === "system_default") return "6-month starting plan";
+  return "Service-history plan";
+};
+
 function DynamicServiceSticker({ unit }) {
   const unitId = unit?.ampUnitId || unit?.backendUnitId || unit?.unitId || unit?.id;
   const [result, setResult] = useState(null);
@@ -47,13 +54,46 @@ function DynamicServiceSticker({ unit }) {
   const recommendation = result?.recommendation;
   if (!recommendation) return null;
   const roomGuidance = capacityMessage(recommendation.capacityAssessment);
+  const recommendationReason = customerSystemMessage(recommendation.recommendationBasis);
   return <section className="service-sticker" aria-label="Recommended service schedule">
-    <div className="service-sticker-header"><div><span className="service-sticker-label">Suggested Servicing Date</span><strong>{dateLabel(recommendation.bestServicedBy)}</strong></div></div>
-    <div className="service-sticker-insight"><strong>{serviceLabel(recommendation.recommendedService)}</strong><p>{serviceExplanation(recommendation.recommendedService)}</p></div>
-    <p>{customerSystemMessage(recommendation.recommendationBasis)}</p>
-    {recommendation.dataQuality?.message ? <p role="status">{customerSystemMessage(recommendation.dataQuality.message)}</p> : null}
-    {roomGuidance ? <p>{roomGuidance}</p> : null}
-    <p className="service-sticker-app-note">Book this service in the Cold Air mobile app using your Cold Air account.</p>
+    <header className="service-sticker-header">
+      <span className="service-sticker-icon" aria-hidden="true"><CalendarBlank size={22} weight="fill" /></span>
+      <div className="service-sticker-heading">
+        <span className="service-sticker-label">Next recommended cleaning</span>
+        <strong className="service-sticker-date">{dateLabel(recommendation.bestServicedBy)}</strong>
+      </div>
+      <span className="service-sticker-source">{planLabel(recommendation)}</span>
+    </header>
+
+    <div className="service-sticker-service">
+      <span className="service-sticker-service-icon" aria-hidden="true"><Wrench size={19} weight="bold" /></span>
+      <div>
+        <span>Recommended service</span>
+        <strong>{serviceLabel(recommendation.recommendedService)}</strong>
+      </div>
+    </div>
+
+    <p className="service-sticker-explanation">{serviceExplanation(recommendation.recommendedService)}</p>
+
+    {recommendationReason ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
+      <summary>Why this date?</summary>
+      <p>{recommendationReason}</p>
+    </details> : null}
+
+    {recommendation.dataQuality?.message ? <div className="service-sticker-notice service-sticker-quality" role="status">
+      <Info size={18} weight="fill" aria-hidden="true" />
+      <div><strong>Record check</strong><p>{customerSystemMessage(recommendation.dataQuality.message)}</p></div>
+    </div> : null}
+
+    {roomGuidance ? <div className="service-sticker-notice">
+      <Info size={18} weight="fill" aria-hidden="true" />
+      <div><strong>Room size guidance</strong><p>{roomGuidance}</p></div>
+    </div> : null}
+
+    <footer className="service-sticker-app-note">
+      <DeviceMobile size={18} weight="bold" aria-hidden="true" />
+      <span>Book this service using your Cold Air mobile account.</span>
+    </footer>
   </section>;
 }
 

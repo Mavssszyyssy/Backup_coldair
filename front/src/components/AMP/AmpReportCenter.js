@@ -25,9 +25,20 @@ const capacityAssessmentLabel = (value) => {
     : "Not assessed");
 };
 const basisLabel = (value) => ({
+  same_unit: "This AC unit's history",
   same_model: "Same model history", same_brand_type: "Similar model type and brand history",
   same_brand: "Same brand history", system_default: "Provisional system schedule",
 })[String(value || "").toLowerCase()] || "Recorded-service basis";
+const maintenanceContextItems = (signals = {}) => [
+  signals.serviceRequestCount ? `${signals.serviceRequestCount} non-cancelled service request(s) reviewed as context.` : "",
+  signals.serviceRequestFrequency?.averageGapDays ? `Average gap between dated service requests: ${signals.serviceRequestFrequency.averageGapDays} days.` : "",
+  signals.filterDirtRecordCount ? `${signals.filterDirtRecordCount} filter dirt-related record(s).` : "",
+  signals.coilDirtRecordCount ? `${signals.coilDirtRecordCount} coil dirt-related record(s).` : "",
+  signals.deepCleaningRecordCount ? `${signals.deepCleaningRecordCount} verified deep-cleaning record(s).` : "",
+  signals.coilMaintenanceRecordCount ? `${signals.coilMaintenanceRecordCount} evaporator-coil cleaning record(s), kept as deeper maintenance context.` : "",
+  ...(signals.recurringProblems || []).map(item => `Recurring ${item.label}: ${item.count} record(s).`),
+  signals.refrigerantIssueRecordCount ? `${signals.refrigerantIssueRecordCount} refrigerant-related record(s), reviewed as context but excluded from cleaning intervals.` : "",
+].filter(Boolean);
 const reviewStatusLabel = (value) => ({
   ready_for_review: "Service outcome ready to review",
   awaiting_visit: "Awaiting a completed cleaning visit",
@@ -83,6 +94,8 @@ function AmpReportCenter({
   const exportPdf = () => {
     if (!report) return;
     const m = report.maintenance || {};
+    const pattern = m.patternAnalysis || {};
+    const contextItems = maintenanceContextItems(m.maintenanceSignals);
     const historyRows = (report.serviceHistory || []).map((item) => `<tr><td>${escapeHtml(dateLabel(item.date))}</td><td>${escapeHtml(item.serviceLabel || serviceLabel(item.type))}</td><td>${escapeHtml(item.findings || "Not recorded")}${item.evidence?.eligible === false ? `<p>${escapeHtml(item.evidence.reason)}</p>` : ""}</td><td>${escapeHtml(item.actionTaken || "Not recorded")}</td><td>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</td></tr>`).join("") || '<tr><td colspan="5">No service history has been recorded.</td></tr>';
     const modelRows = (report.aggregateReliability?.modelsByRecordedService || []).map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.count)}</td></tr>`).join("");
     const html = `
@@ -92,6 +105,9 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
       </div>
       <h2>Maintenance recommendation</h2><p>${escapeHtml(m.interpretation || m.recommendationBasis || "")}</p>
+      <h2>Pattern analysis</h2><p><strong>Source:</strong> ${escapeHtml(basisLabel(pattern.source || m.historicalBasis?.level))} · <strong>Verified intervals:</strong> ${escapeHtml(pattern.intervalCount ?? m.historicalBasis?.sampleSize ?? 0)} · <strong>Arithmetic average:</strong> ${escapeHtml(pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month baseline")}</p>
+      ${pattern.intervalsDays?.length ? `<p><strong>Cleaning gaps:</strong> ${escapeHtml(pattern.intervalsDays.join(", "))} days</p>` : ""}
+      ${contextItems.length ? `<ul>${contextItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
       ${m.dataQuality?.message ? `<p><strong>Record review needed:</strong> ${escapeHtml(m.dataQuality.message)}</p>` : ""}
       <table><tbody>
         <tr><th>AC Unit ID</th><td>${escapeHtml(report.unit?.unitId || "Not recorded")}</td><th>Serial Number</th><td>${escapeHtml(report.unit?.serialNumber || "Not recorded")}</td></tr>
@@ -119,6 +135,9 @@ function AmpReportCenter({
   };
 
   const maintenance = report?.maintenance || {};
+  const pattern = maintenance.patternAnalysis || {};
+  const signals = maintenance.maintenanceSignals || {};
+  const contextItems = maintenanceContextItems(signals);
   const historyFirst = ["maintenance_summary", "summary_report"].includes(report?.reportType || reportType);
   const reportLabel = REPORT_TYPES.find(item => item.value === (report?.reportType || reportType))?.label;
   return (
@@ -155,8 +174,15 @@ function AmpReportCenter({
         <details className="amp-details"><summary>How was this worked out?</summary>
           <p>{maintenance.recommendationBasis}</p>
           {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
+          <div className="amp-metrics">
+            <article><span>Pattern source</span><strong>{basisLabel(pattern.source || maintenance.historicalBasis?.level)}</strong></article>
+            <article><span>Verified intervals used</span><strong>{pattern.intervalCount ?? maintenance.historicalBasis?.sampleSize ?? 0}</strong></article>
+            <article><span>Arithmetic average</span><strong>{pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month baseline"}</strong></article>
+          </div>
+          {pattern.intervalsDays?.length ? <p>Verified cleaning gaps: {pattern.intervalsDays.join(", ")} days. Repairs are not included in this average.</p> : null}
+          {contextItems.length ? <ul>{contextItems.map(item => <li key={item}>{item}</li>)}</ul> : <p>No recurring cleaning-related issue has been recorded for this AC.</p>}
           <p>{maintenance.capacityAssessment?.summary}</p>
-          <p>When enough complete cleaning records are available for the same model or brand, AI uses them to suggest when your AC may need cleaning. Otherwise, a system suggestion is shown. Your saved date appears in My AC Units and reminders. This is a guide, not a booking or a guaranteed breakdown date. It does not change your warranty coverage.</p>
+          <p>Three verified cleanings create two cleaning intervals and allow a unit-specific pattern. Until then, AEROPULSE can use enough verified similar-unit intervals; otherwise it adds exactly 6 months to the latest cleaning or installation. Your saved date appears in My AC Units and reminders. This is a guide, not a booking or a guaranteed breakdown date. It does not change warranty coverage.</p>
           <p className="amp-muted">Report reference: {report.reportId}</p>
         </details>
         <p className="amp-muted">{report.note}</p>

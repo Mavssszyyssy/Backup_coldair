@@ -14,6 +14,8 @@ export function buildMaintenanceRecommendation({ unit } = {}) {
     lastServiceDate: unit?.lastServiceDate || unit?.amp?.lastServiceDate || null,
     lastCleaningDate: unit?.lastCleaningDate || unit?.amp?.lastCleaningDate || null,
     dataQuality: unit?.dataQuality || unit?.amp?.dataQuality || null,
+    patternAnalysis: unit?.patternAnalysis || unit?.amp?.patternAnalysis || null,
+    maintenanceSignals: unit?.maintenanceSignals || unit?.amp?.maintenanceSignals || null,
     overdue: bestServicedBy ? businessDayNumber(bestServicedBy) < businessDayNumber(new Date()) : false,
   };
 }

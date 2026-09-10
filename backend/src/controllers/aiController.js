@@ -181,6 +181,7 @@ const generateAmpReport = async (req, res) => {
           lastServiceDate: recommendation.lastServiceDate, lastCleaningDate: recommendation.lastCleaningDate,
           recommendedServiceLabel: displayService(recommendation.recommendedService), recommendationBasis: recommendation.recommendationBasis,
           historicalBasis: recommendation.historicalBasis, capacityAssessment: recommendation.capacityAssessment,
+          patternAnalysis: recommendation.patternAnalysis, maintenanceSignals: recommendation.maintenanceSignals,
           dataQuality: recommendation.dataQuality, overdue: recommendation.overdue,
           interpretation: insight?.recommendation_summary || recommendation.recommendationBasis,
         },

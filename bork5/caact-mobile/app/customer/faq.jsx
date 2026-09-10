@@ -78,7 +78,7 @@ const FAQ_ITEMS = [
     category: "AC Care",
     question: "What is the suggested servicing date?",
     answer:
-      "It is the suggested date for your next AC cleaning, based on completed cleaning records for the same model or brand. Regular cleaning applies within one year of the last cleaning; deep cleaning applies after more than one year.",
+      "It is the suggested date for your next AC cleaning. AEROPULSE first averages this AC's verified cleaning-to-cleaning gaps. Until it has two gaps, verified similar-AC history may be used; without enough history, the starting interval is 6 months. Repairs and refrigerant work are not counted as cleanings.",
   },
   {
     id: "qr-scanning",
@@ -213,7 +213,7 @@ export default function CustomerFaqScreen() {
             <Ionicons name="mail-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Email</Text>
           </Pressable>
-          <Pressable onPress={() => openLink(`https://${COMPANY_CONTACT.messengerHandle}`)} accessibilityRole="button" accessibilityLabel="Open Cold Air ACT Messenger" style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel="Open AEROPULSE assistant" style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="chatbubbles-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Chat</Text>
           </Pressable>

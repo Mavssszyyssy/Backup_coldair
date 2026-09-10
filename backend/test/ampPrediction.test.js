@@ -15,16 +15,22 @@ const chain = rows => ({ select() { return this; }, sort() { return this; }, lim
 const unitId = "64fa00000000000000000001";
 const evidence = () => predictionEvidence({ unit: { brand: "LG", modelName: "AC", capacityHp: 2 },
   cohort: { level: "same_model", sampleSize: 3, comparableUnitCount: 2, intervalDays: 180, samples: [120, 180, 240] },
-  ownHistory: [], lastCleaningDate: null, installedAt: "2026-01-01", asOfDate: "2026-09-08" });
+  ownHistory: [], lastCleaningDate: null, installedAt: "2026-01-01", asOfDate: "2026-09-08",
+  maintenanceSignals: { filterDirtRecordCount: 1 } });
 
 test("prediction validates interval and reason without allowing policy/diagnosis overrides", () => {
-  assert.equal(validPrediction({ interval_days: 150, reason_code: "earlier_interval" }, evidence()), true);
+  assert.equal(validPrediction({ interval_days: 120, reason_code: "earlier_interval" }, evidence()), true);
   for (const raw of [
-    { interval_days: 800, reason_code: "later_interval" }, { interval_days: 150, reason_code: "later_interval" },
+    { interval_days: 800, reason_code: "later_interval" }, { interval_days: 150, reason_code: "earlier_interval" },
     { interval_days: 180.5, reason_code: "later_interval" }, { interval_days: "180", reason_code: "typical_interval" },
     { interval_days: 180, reason_code: "typical_interval", warranty: "approved" },
   ]) assert.equal(validPrediction(raw, evidence()), false);
   assert.equal(validPrediction({ interval_days: 180, reason_code: "typical_interval" }, { ...evidence(), eligible: false }), false);
+  const noDirtEvidence = predictionEvidence({ unit: { brand: "LG", modelName: "AC", capacityHp: 2 },
+    cohort: { level: "same_model", sampleSize: 3, comparableUnitCount: 2, intervalDays: 180, samples: [120, 180, 240] },
+    ownHistory: [], lastCleaningDate: null, installedAt: "2026-01-01", asOfDate: "2026-09-08" });
+  assert.deepEqual(noDirtEvidence.candidateIntervals, [180]);
+  assert.equal(validPrediction({ interval_days: 120, reason_code: "earlier_interval" }, noDirtEvidence), false);
 });
 
 test("real request builder sends timing evidence only and accepts an AI interval different from baseline", async t => {
@@ -38,12 +44,13 @@ test("real request builder sends timing evidence only and accepts an AI interval
     assert.deepEqual(sent.evidence.cohort.intervalHistogram, { 120: 1, 180: 1, 240: 1 });
     assert.equal(JSON.stringify(body).includes("private-person"), false);
     assert.equal(body.store, false);
-    return { ok: true, headers: { get: () => "req_prediction" }, text: async () => JSON.stringify({ status: "completed", output_text: JSON.stringify({ interval_days: 150, reason_code: "earlier_interval" }) }) };
+    assert.deepEqual(body.text.format.schema.properties.interval_days.enum, [120, 180]);
+    return { ok: true, headers: { get: () => "req_prediction" }, text: async () => JSON.stringify({ status: "completed", output_text: JSON.stringify({ interval_days: 120, reason_code: "earlier_interval" }) }) };
   });
   const recommendation = { bestServicedBy: "2026-06-30", recommendedService: "regular_cleaning", predictionEvidence: evidence() };
   const input = { safetyIdentifier: "prediction-test", predictionMode: true, recommendation, recordedHistory: [{ findings: "private-person" }] };
   const result = await callStructuredAmpAnalysis(input);
-  assert.equal(result.provider, "openai"); assert.equal(result.insight.interval_days, 150);
+  assert.equal(result.provider, "openai"); assert.equal(result.insight.interval_days, 120);
   assert.equal((await callStructuredAmpAnalysis(input)).cached, true); assert.equal(calls, 1);
   const afterSave = { ...input, recommendation: { ...recommendation, bestServicedBy: "2026-05-31", aiPrediction: { generatedAt: new Date().toISOString() }, recommendationBasis: "AI-estimated interval" } };
   assert.equal((await callStructuredAmpAnalysis(afterSave)).cached, true); assert.equal(calls, 1);
@@ -67,17 +74,17 @@ test("branchless admins cannot list warranty claims or report units or request p
 test("saved AI date survives normal reads, drives reminders, and invalidates after a new cleaning", async t => {
   const fixture = { _id: unitId, customer: "customer", serviceBranch: "Cavite", brand: "LG", modelName: "AC", category: "split", capacityHp: 2,
     status: "active", amp: {}, installation: { installedAt: "2026-01-01" }, save: async () => {} };
-  let ownHistory = [];
+  let ownHistory = [{ serviceDate: "2026-04-01", serviceType: "repair", findings: "Dust buildup on the air filter.", actionTaken: "Cleaned the air filter." }];
   const cohort = { level: "same_model", sampleSize: 3, comparableUnitCount: 2, intervalDays: 180, samples: [120, 180, 240] };
-  const options = { asOfDate: "2026-09-08", cohortCache: new Map([["lg:ac:2:split", cohort]]) };
+  const options = { asOfDate: "2026-09-08", serviceRequests: [{ issue: "Dust buildup on the air filter.", status: "Completed" }], cohortCache: new Map([["lg:ac:2:split", cohort]]) };
   t.mock.method(Unit, "findById", async () => fixture);
   t.mock.method(History, "find", () => chain(ownHistory));
   const baseline = await calculateMaintenanceRecommendation(unitId, options);
   fixture.amp.aiPrediction = { engineVersion: ENGINE_VERSION, fingerprint: baseline.predictionEvidence.fingerprint,
-    generatedAt: "2026-09-07", model: "gpt-5.6-terra", prediction: { interval_days: 150, reason_code: "earlier_interval" } };
+    generatedAt: "2026-09-07", model: "gpt-5.6-terra", prediction: { interval_days: 120, reason_code: "earlier_interval" } };
   const predicted = await calculateMaintenanceRecommendation(unitId, options);
   assert.equal(predicted.predictionSource, "openai");
-  assert.equal(predicted.bestServicedBy, "2026-05-31T00:00:00.000Z");
+  assert.equal(predicted.bestServicedBy, "2026-05-01T00:00:00.000Z");
   assert.equal(fixture.amp.nextIdealServiceDate.toISOString(), predicted.bestServicedBy);
   assert.equal(predicted.overdue, true);
   const { maintenanceAlertForRecommendation } = require("../src/services/ampDailyMonitorService");
@@ -93,23 +100,24 @@ test("report generation persists the AI interval, returns the same date and capt
   const fixture = { _id: unitId, customer: "customer", serviceBranch: "Cavite", brand: "LG", modelName: "AC", category: "split", capacityHp: 2,
     status: "active", amp: {}, installation: { installedAt: "2026-01-01" }, warranty: { status: "pending_activation" }, save: async () => {} };
   const peer = { _id: "peer", brand: "LG", modelName: "AC", category: "split", capacityHp: 2, installation: { installedAt: "2025-01-01" } };
-  const histories = ["2025-05-01", "2025-10-28"].map(serviceDate => ({ unit: "peer", serviceDate, serviceType: "regular_cleaning", findings: "Dust buildup on coil.", actionTaken: "Cleaned coil and drain." }));
+  const histories = ["2025-05-01", "2025-09-28", "2026-02-25"].map(serviceDate => ({ unit: "peer", serviceDate, serviceType: "regular_cleaning", findings: "Dust buildup on coil.", actionTaken: "Cleaned coil and drain." }));
   t.mock.method(Unit, "findById", async () => fixture);
   t.mock.method(Unit, "find", () => chain([fixture, peer]));
-  t.mock.method(History, "find", query => chain(query.unit === unitId ? [] : histories));
+  const targetHistory = [{ unit: unitId, serviceDate: "2026-04-01", serviceType: "repair", findings: "Dust buildup on the air filter.", actionTaken: "Cleaned the air filter." }];
+  t.mock.method(History, "find", query => chain(query.unit === unitId ? targetHistory : histories));
   t.mock.method(Unit, "updateOne", async (_query, update) => { fixture.amp.aiPrediction = update.$set["amp.aiPrediction"]; return { matchedCount: 1 }; });
   t.mock.method(require("../src/models/ServiceRequest"), "find", () => chain([]));
   t.mock.method(require("../src/models/Task"), "find", () => chain([]));
   let snapshot;
   t.mock.method(require("../src/models/MaintenancePrediction"), "updateOne", async (_query, update) => { snapshot = update.$setOnInsert; });
   const key = env.openAiApiKey; env.openAiApiKey = "test-report-only"; t.after(() => { env.openAiApiKey = key; });
-  t.mock.method(global, "fetch", async () => ({ ok: true, headers: { get: () => "req_controller" }, text: async () => JSON.stringify({ status: "completed", output_text: JSON.stringify({ interval_days: 120, reason_code: "earlier_interval" }) }) }));
+  t.mock.method(global, "fetch", async () => ({ ok: true, headers: { get: () => "req_controller" }, text: async () => JSON.stringify({ status: "completed", output_text: JSON.stringify({ interval_days: 150, reason_code: "typical_interval" }) }) }));
   const res = response();
   await generateAmpReport({ authUser: { _id: "customer", role: "customer" }, activeBranch: "", body: { unitId, reportType: "predictive_maintenance" } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.provider, "openai");
   assert.equal(res.body.report.maintenance.predictionSource, "openai");
-  assert.equal(res.body.report.maintenance.bestServicedBy, "2026-05-01T00:00:00.000Z");
+  assert.equal(res.body.report.maintenance.bestServicedBy, "2026-06-01T00:00:00.000Z");
   assert.equal(fixture.amp.bestServicedBy.toISOString(), res.body.report.maintenance.bestServicedBy);
   assert.equal(snapshot.engineVersion, ENGINE_VERSION);
   assert.equal(snapshot.suggestedDate, res.body.report.maintenance.bestServicedBy);
@@ -140,16 +148,17 @@ test("history changed during the provider request is rejected before any predict
     status: "active", amp: {}, installation: { installedAt: "2026-01-01" }, save: async () => {} };
   const peer = { _id: "peer", brand: "LG", modelName: "AC", category: "split", capacityHp: 2, installation: { installedAt: "2025-01-01" } };
   const record = { unit: "peer", serviceType: "regular_cleaning", findings: "Dust buildup on coil.", actionTaken: "Cleaned coil and drain." };
-  let ownHistory = [];
-  const histories = ["2025-05-01", "2025-10-28"].map(serviceDate => ({ ...record, serviceDate }));
+  let ownHistory = [{ ...record, unit: unitId, serviceType: "repair", serviceDate: "2026-04-01" }];
+  const histories = ["2025-05-01", "2025-09-28", "2026-02-25"].map(serviceDate => ({ ...record, serviceDate }));
   t.mock.method(Unit, "findById", async () => fixture);
   t.mock.method(Unit, "find", () => chain([fixture, peer]));
   t.mock.method(History, "find", query => chain(query.unit === unitId ? ownHistory : histories));
+  t.mock.method(require("../src/models/ServiceRequest"), "find", () => chain([]));
   t.mock.method(Unit, "updateOne", () => { throw new Error("Stale estimate must not be written"); });
   const key = env.openAiApiKey; env.openAiApiKey = "test-race-only"; t.after(() => { env.openAiApiKey = key; });
   t.mock.method(global, "fetch", async () => {
     ownHistory = [{ ...record, unit: unitId, serviceDate: "2026-08-01" }];
-    return { ok: true, headers: { get: () => "req_race" }, text: async () => JSON.stringify({ output_text: JSON.stringify({ interval_days: 120, reason_code: "earlier_interval" }) }) };
+    return { ok: true, headers: { get: () => "req_race" }, text: async () => JSON.stringify({ output_text: JSON.stringify({ interval_days: 150, reason_code: "typical_interval" }) }) };
   });
   const res = response();
   await getMaintenanceRecommendation({ authUser: { _id: "race-customer", role: "customer" }, body: { unitId } }, res);

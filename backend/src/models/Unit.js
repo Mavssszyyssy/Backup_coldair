@@ -56,12 +56,14 @@ const unitSchema = new mongoose.Schema(
       recommendationBasis: { type: String, default: "", trim: true },
       basisLevel: {
         type: String,
-        enum: ["same_model", "same_brand_type", "same_brand", "similar_category", "system_default"],
+        enum: ["same_unit", "same_model", "same_brand_type", "same_brand", "similar_category", "system_default"],
         default: "system_default",
       },
-      intervalDays: { type: Number, default: 270, min: 30, max: 730 },
-      baseIntervalDays: { type: Number, default: 270, min: 30, max: 730 },
+      intervalDays: { type: Number, default: 180, min: 30, max: 730 },
+      baseIntervalDays: { type: Number, default: 180, min: 30, max: 730 },
       comparableSampleSize: { type: Number, default: 0, min: 0 },
+      patternAnalysis: { type: mongoose.Schema.Types.Mixed, default: null },
+      maintenanceSignals: { type: mongoose.Schema.Types.Mixed, default: null },
       lastServiceDate: { type: Date, default: null },
       lastCleaningDate: { type: Date, default: null },
       dataQuality: {

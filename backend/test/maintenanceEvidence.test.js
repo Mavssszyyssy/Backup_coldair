@@ -8,6 +8,7 @@ const { validateStrictServicePayload } = require("../src/domain/serviceCompletio
 const { effectiveWarrantyStatus, buildActivatedWarranty } = require("../src/domain/warrantyService");
 const { parseInstallationDateTime, businessDay } = require("../src/utils/dateTime");
 const { maintenanceAlertForRecommendation } = require("../src/services/ampDailyMonitorService");
+const { maintenanceSignalsFor } = require("../src/domain/ampMaintenanceSignals");
 
 const finding = { serviceType: "regular_cleaning", findings: "Visible dust buildup on the evaporator coil.", actionTaken: "Cleaned the coil and flushed the drain.", conditionRating: "good" };
 test("legacy installation and repair visits cannot be relabeled as cleaning", () => {
@@ -39,7 +40,44 @@ test("cohort intervals use actual cleaning evidence and ignore duplicate days an
     { ...finding, unit: "a", serviceDate: "2025-06-30" },
     { ...finding, unit: "a", serviceDate: "2026-12-31" },
   ];
-  assert.deepEqual(intervalSamplesForUnits(units, histories, "2026-09-05"), [90, 90]);
+  assert.deepEqual(intervalSamplesForUnits(units, histories, "2026-09-05"), [90]);
+});
+test("unit-specific cleaning patterns use calendar-month gaps and the arithmetic average", async (t) => {
+  const fixture = { _id: "fixture", brand: "LG", modelName: "Test", category: "split", status: "active", amp: {}, installation: { installedAt: "2024-12-01" }, save: async () => {} };
+  const rows = ["2025-01-10", "2025-05-10", "2025-09-15", "2026-01-20"].map((serviceDate) => ({ ...finding, unit: "fixture", serviceDate }));
+  const chain = (items) => ({ sort() { return this; }, lean: async () => items });
+  t.mock.method(Unit, "findById", async () => fixture);
+  t.mock.method(Unit, "find", () => { throw new Error("Comparable units must not replace sufficient unit history"); });
+  t.mock.method(History, "find", () => chain(rows));
+  const result = await calculateMaintenanceRecommendation("fixture", { asOfDate: "2026-02-01", serviceRequests: [], persist: false });
+  assert.equal(result.historicalBasis.level, "same_unit");
+  assert.deepEqual(result.historicalBasis.intervalsDays, [120, 120, 120]);
+  assert.equal(result.historicalBasis.intervalDays, 120);
+  assert.equal(result.bestServicedBy, "2026-05-20T00:00:00.000Z");
+});
+test("inconsistent five, four and six month cleaning gaps average to five months", () => {
+  const unit = { _id: "fixture", installation: { installedAt: "2024-12-01" } };
+  const rows = ["2025-01-10", "2025-06-10", "2025-10-10", "2026-04-10"].map((serviceDate) => ({ ...finding, unit: "fixture", serviceDate }));
+  assert.deepEqual(intervalSamplesForUnits([unit], rows, "2026-05-01"), [150, 120, 180]);
+});
+test("maintenance context distinguishes dirt, deep cleaning and refrigerant work", () => {
+  const signals = maintenanceSignalsFor([
+    { serviceType: "repair", findings: "Dirty air filter restricted airflow.", actionTaken: "Replaced filter." },
+    { serviceType: "repair", findings: "Dust buildup on the air filter.", actionTaken: "Cleaned the air filter." },
+    { serviceType: "deep_cleaning", findings: "Dust buildup on the evaporator coil.", actionTaken: "Deep cleaned the evaporator coil." },
+    { serviceType: "repair", findings: "Low refrigerant level.", actionTaken: "Recharged refrigerant." },
+  ], [
+    { issue: "Dust buildup on the evaporator coil.", status: "Submitted", createdAt: "2026-01-01" },
+    { issue: "Control board inspection.", status: "Completed", createdAt: "2026-02-01" },
+  ]);
+  assert.equal(signals.filterDirtRecordCount, 2);
+  assert.equal(signals.coilDirtRecordCount, 1);
+  assert.equal(signals.deepCleaningRecordCount, 1);
+  assert.equal(signals.coilMaintenanceRecordCount, 1);
+  assert.equal(signals.refrigerantIssueRecordCount, 1);
+  assert.equal(signals.serviceRequestFrequency.averageGapDays, 31);
+  assert.deepEqual(signals.recurringProblems.map(item => item.code), ["filter_dirt"]);
+  assert.equal(signals.refrigerantExcludedFromCleaningIntervals, true);
 });
 test("Philippine form dates and maintenance days do not depend on server timezone", () => {
   assert.equal(parseInstallationDateTime("2026-09-05", "16:14").toISOString(), "2026-09-05T08:14:00.000Z");
@@ -56,6 +94,23 @@ test("missing history does not invent a cleaning method or active warranty", () 
   assert.equal(buildActivatedWarranty({ status: "pending_activation" }, "2026-01-01").status, "active");
   assert.equal(buildActivatedWarranty({ status: "void" }, "2026-01-01").status, "void");
 });
+test("the no-history baseline adds exactly six calendar months and is not replaced by similar-unit data", async (t) => {
+  const fixture = { _id: "fixture", brand: "LG", modelName: "New AC", category: "split", status: "active", amp: {}, installation: { installedAt: "2026-01-10" }, save: async () => {} };
+  const chain = (items) => ({ sort() { return this; }, lean: async () => items });
+  t.mock.method(Unit, "findById", async () => fixture);
+  t.mock.method(History, "find", () => chain([]));
+  const similarUnitCohort = { level: "same_model", sampleSize: 3, comparableUnitCount: 2, intervalDays: 120, samples: [120, 120, 120] };
+  const result = await calculateMaintenanceRecommendation("fixture", {
+    asOfDate: "2026-01-10",
+    serviceRequests: [],
+    persist: false,
+    cohortCache: new Map([["lg:new ac:undefined:split", similarUnitCohort]]),
+  });
+  assert.equal(result.bestServicedBy, "2026-07-10T00:00:00.000Z");
+  assert.equal(result.patternAnalysis.source, "system_default");
+  assert.equal(result.historicalBasis.intervalDays, 180);
+  assert.match(result.recommendationBasis, /6 months \(180 days\)/);
+});
 test("recalculation preserves hold/retired status and does not invent missing dates", async (t) => {
   const chain = (rows) => ({ select() { return this; }, sort() { return this; }, lean: async () => rows });
   let fixture;
@@ -64,7 +119,7 @@ test("recalculation preserves hold/retired status and does not invent missing da
   t.mock.method(History, "find", () => chain([]));
   for (const status of ["on_hold", "retired", "active"]) {
     fixture = { _id: "fixture", brand: "LG", modelName: "Test", category: "split", status, amp: {}, installation: {}, save: async () => {} };
-    const result = await calculateMaintenanceRecommendation("fixture", { asOfDate: "2026-09-05" });
+    const result = await calculateMaintenanceRecommendation("fixture", { asOfDate: "2026-09-05", serviceRequests: [] });
     assert.equal(result.bestServicedBy, null);
     assert.equal(result.recommendedService, "");
     assert.equal(fixture.status, status);
@@ -82,25 +137,26 @@ test("a repair does not move the cleaning anchor and an incomplete record stays 
   t.mock.method(Unit, "findById", async () => fixture);
   t.mock.method(Unit, "find", () => chain([]));
   t.mock.method(History, "find", () => chain(rows));
-  const result = await calculateMaintenanceRecommendation("fixture", { asOfDate: "2026-09-05" });
+  const result = await calculateMaintenanceRecommendation("fixture", { asOfDate: "2026-09-05", serviceRequests: [] });
   assert.equal(result.lastCleaningDate, "2026-01-01T00:00:00.000Z");
   assert.equal(result.lastServiceDate, "2026-09-01T00:00:00.000Z");
-  assert.equal(result.bestServicedBy, "2026-09-28T00:00:00.000Z");
+  assert.equal(result.bestServicedBy, "2026-07-01T00:00:00.000Z");
   assert.equal(result.dataQuality.excludedRecordCount, 1);
   assert.equal(fixture.status, "on_hold");
-  assert.match(result.recommendationBasis, /configured 270-day/);
+  assert.match(result.recommendationBasis, /6 months \(180 days\)/);
 });
 test("equal horsepower in a different category is brand evidence, not same-type evidence", async (t) => {
   const unit = { _id: "target", brand: "LG", modelName: "Split A", category: "split", capacityHp: 1, installation: { installedAt: "2026-06-01" } };
   const other = { _id: "other", brand: "LG", modelName: "Window B", category: "window", capacityHp: 1, installation: { installedAt: "2025-01-01" } };
-  const rows = ["2025-04-01", "2025-07-01"].map((serviceDate) => ({ ...finding, unit: "other", serviceDate }));
+  const rows = ["2025-04-01", "2025-07-01", "2025-09-30"].map((serviceDate) => ({ ...finding, unit: "other", serviceDate }));
+  const targetHistory = [{ ...finding, unit: "target", serviceType: "repair", serviceDate: "2026-07-01" }];
   const chain = (items) => ({ select() { return this; }, sort() { return this; }, lean: async () => items });
   t.mock.method(Unit, "findById", async () => unit);
   t.mock.method(Unit, "find", () => chain([unit, other]));
-  t.mock.method(History, "find", (query) => chain(query.unit === "target" ? [] : rows));
-  const brandOnly = await calculateMaintenanceRecommendation("target", { asOfDate: "2026-09-05", persist: false });
+  t.mock.method(History, "find", (query) => chain(query.unit === "target" ? targetHistory : rows));
+  const brandOnly = await calculateMaintenanceRecommendation("target", { asOfDate: "2026-09-05", persist: false, serviceRequests: [] });
   assert.equal(brandOnly.historicalBasis.level, "same_brand");
   other.category = "split";
-  const sameType = await calculateMaintenanceRecommendation("target", { asOfDate: "2026-09-05", persist: false });
+  const sameType = await calculateMaintenanceRecommendation("target", { asOfDate: "2026-09-05", persist: false, serviceRequests: [] });
   assert.equal(sameType.historicalBasis.level, "same_brand_type");
 });

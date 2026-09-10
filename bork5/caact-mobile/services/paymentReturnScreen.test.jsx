@@ -1,13 +1,15 @@
 import React from "react";
-import { AppState } from "react-native";
+import { AppState, Linking } from "react-native";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import OrderConfirmation from "../app/customer/order-confirmation/[id]";
 jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
 const mockParams = { id: "order123", payment: "returned" };
 const mockGet = jest.fn();
 const mockVerify = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ replace: jest.fn() }), useLocalSearchParams: () => mockParams, usePathname: () => "/customer/order-confirmation/order123" }));
-jest.mock("./orderStorage", () => ({ getOrderById: (...args) => mockGet(...args), verifyOrderPayment: (...args) => mockVerify(...args) }));
+const mockRetry = jest.fn();
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace }), useLocalSearchParams: () => mockParams, usePathname: () => "/customer/order-confirmation/order123" }));
+jest.mock("./orderStorage", () => ({ getOrderById: (...args) => mockGet(...args), verifyOrderPayment: (...args) => mockVerify(...args), retryOrderPayment: (...args) => mockRetry(...args) }));
 const pending = { id: "order123", paymentProvider: "paymongo", paymentStatus: "pending" };
 let resume;
 let remove;
@@ -57,4 +59,27 @@ test("COD is received, not falsely marked paid", async () => {
   await render(<OrderConfirmation />);
   await waitFor(() => expect(screen.getByText("Order received")).toBeTruthy());
   expect(mockVerify).not.toHaveBeenCalled();
+});
+
+test("a backed-out first GCash attempt still offers the same payment flow", async () => {
+  const order = { ...pending, paymentMethod: "gcash", workflowStatus: "to_pay", paymentRetryCount: 1 };
+  mockGet.mockResolvedValue(order);
+  mockVerify.mockResolvedValue(order);
+  mockRetry.mockResolvedValue("https://pay.example/gcash-retry");
+  jest.spyOn(Linking, "canOpenURL").mockResolvedValue(true);
+  jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+  await render(<OrderConfirmation />);
+  await waitFor(() => expect(screen.getByText("Pay Again")).toBeTruthy());
+  await fireEvent.press(screen.getByText("Pay Again"));
+  await waitFor(() => expect(mockRetry).toHaveBeenCalledWith("order123"));
+  expect(Linking.openURL).toHaveBeenCalledWith("https://pay.example/gcash-retry");
+});
+
+test("the third unsuccessful GCash attempt blocks another payment session", async () => {
+  const order = { ...pending, paymentMethod: "gcash", workflowStatus: "to_pay", paymentRetryCount: 3 };
+  mockGet.mockResolvedValue(order);
+  mockVerify.mockResolvedValue(order);
+  await render(<OrderConfirmation />);
+  await waitFor(() => expect(screen.getByText("Maximum payment attempts reached. You can no longer retry payment for this order.")).toBeTruthy());
+  expect(screen.queryByText("Pay Again")).toBeNull();
 });

@@ -44,3 +44,16 @@ test("returning to an existing page rechecks delayed payment", async () => {
   await act(async () => window.dispatchEvent(new Event("pageshow")));
   await screen.findByRole("heading", { name: "Payment successful", level: 1 });
 });
+
+test("a pending first GCash attempt still offers Pay Again", async () => {
+  apiRequest.mockResolvedValue({ order: { ...pending, paymentMethod: "gcash", paymentRetryCount: 1 } });
+  show("cancelled");
+  expect(await screen.findByRole("button", { name: "Pay Again" })).toBeEnabled();
+});
+
+test("the third unsuccessful GCash attempt blocks another retry", async () => {
+  apiRequest.mockResolvedValue({ order: { ...pending, paymentMethod: "gcash", paymentRetryCount: 3 } });
+  show("cancelled");
+  expect(await screen.findByText("Maximum payment attempts reached. You can no longer retry payment for this order.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Pay Again" })).not.toBeInTheDocument();
+});

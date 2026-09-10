@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { chatbotKnowledge, findBestFaqMatch } from './chatbotKnowledge';
+import { apiRequest } from '../../config/api';
+import { chatbotKnowledge, fallbackChatReply } from './chatbotKnowledge';
 import './CustomerChatbot.css';
 
 const defaultBotMessage = {
@@ -15,58 +16,60 @@ const CustomerChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([defaultBotMessage]);
+  const [isSending, setIsSending] = useState(false);
 
   const quickQuestions = useMemo(() => chatbotKnowledge.quickQuestions, []);
-
-  const buildBotReply = (messageText) => {
-    const normalized = messageText.toLowerCase();
-    if (['hi', 'hello', 'hey'].some((word) => normalized.includes(word))) {
-      return {
-        text: 'Hello! You can ask things like "How do I book a service?" or "Where can I track my orders?".'
-      };
-    }
-
-    const match = findBestFaqMatch(messageText);
-    if (match) {
-      return {
-        text: match.answer,
-        route: match.route
-      };
-    }
-
-    return {
-      text:
-        "I couldn't find an exact answer for that yet. Try asking about shop products, service booking, adding units, order tracking, settings, or support."
-    };
-  };
 
   const pushMessage = (message) => {
     setMessages((prev) => [...prev, message]);
   };
 
-  const sendUserMessage = (rawText) => {
+  const sendUserMessage = async (rawText) => {
     const text = rawText.trim();
-    if (!text) return;
+    if (!text || isSending) return;
+
+    const history = messages
+      .filter((message) => message.id !== 'welcome')
+      .slice(-10)
+      .map((message) => ({
+        role: message.from === 'bot' ? 'assistant' : 'user',
+        content: message.text
+      }));
 
     pushMessage({
       id: `user-${Date.now()}`,
       from: 'user',
       text
     });
-
-    const response = buildBotReply(text);
-
-    pushMessage({
-      id: `bot-${Date.now() + 1}`,
-      from: 'bot',
-      text: response.text,
-      route: response.route
-    });
+    setIsSending(true);
+    try {
+      const result = await apiRequest('/ai/customer-chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: text, history, currentPage: location.pathname })
+      });
+      const response = result?.reply || fallbackChatReply(text);
+      pushMessage({
+        id: `bot-${Date.now() + 1}`,
+        from: 'bot',
+        text: response.text,
+        route: response.route
+      });
+    } catch (_error) {
+      const response = fallbackChatReply(text);
+      pushMessage({
+        id: `bot-${Date.now() + 1}`,
+        from: 'bot',
+        text: response.text,
+        route: response.route
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    sendUserMessage(input);
+    void sendUserMessage(input);
     setInput('');
   };
 
@@ -107,6 +110,11 @@ const CustomerChatbot = () => {
                 )}
               </div>
             ))}
+            {isSending ? (
+              <div className="customer-chatbot-message bot customer-chatbot-thinking" role="status">
+                <p>AEROPULSE is thinking…</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="customer-chatbot-quick-questions">
@@ -114,7 +122,8 @@ const CustomerChatbot = () => {
               <button
                 key={question}
                 type="button"
-                onClick={() => sendUserMessage(question)}
+                onClick={() => void sendUserMessage(question)}
+                disabled={isSending}
               >
                 {question}
               </button>
@@ -127,8 +136,10 @@ const CustomerChatbot = () => {
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask about customer features..."
               aria-label="Chatbot input"
+              maxLength={1000}
+              disabled={isSending}
             />
-            <button type="submit">Send</button>
+            <button type="submit" disabled={isSending || !input.trim()}>Send</button>
           </form>
         </section>
       )}

@@ -142,7 +142,7 @@ app.use(
     scope: "ai",
     windowMs: 10 * 60 * 1000,
     max: 30,
-    message: "AMP analysis limit reached. Please wait before requesting another analysis.",
+    message: "AI request limit reached. Please wait before trying again.",
   }),
   aiRoutes,
 );

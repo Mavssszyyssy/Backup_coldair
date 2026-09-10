@@ -4,7 +4,7 @@ import CustomerAmpReport from "../components/customer/CustomerAmpReport";
 
 const report = {
   reportId: "QA-REPORT", reportType: "predictive_maintenance",
-  maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Provisional 270-day schedule.", interpretation: "Your completed visits explain this suggestion.", dataQuality: { message: "One incomplete record is excluded." } },
+  maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.", interpretation: "Your completed visits explain this suggestion.", dataQuality: { message: "One incomplete record is excluded." } },
   serviceHistory: [{ date: "2026-01-01", serviceLabel: "Repair", findings: "Board inspected", actionTaken: "Connection repaired" }],
 };
 test("AI text is visible on mobile without hiding evidence warnings or claiming a booking", async () => {
@@ -15,7 +15,7 @@ test("AI text is visible on mobile without hiding evidence warnings or claiming 
   expect(screen.queryByText(/Board inspected/)).toBeNull();
   expect(screen.getByText(/No visit has been booked/)).toBeTruthy();
   await fireEvent.press(screen.getByText("How was this worked out?"));
-  expect(screen.getByText("Provisional 270-day schedule.")).toBeTruthy();
+  expect(screen.getAllByText(/6 months \(180 days\)/).length).toBeGreaterThan(0);
   await fireEvent.press(screen.getByText("Show service history"));
   expect(screen.getByText(/Board inspected/)).toBeTruthy();
 });
@@ -24,7 +24,7 @@ test("system fallback is not labeled AI and a history report opens past work fir
   expect(screen.getByText("Your service history")).toBeTruthy();
   expect(screen.getByText("Based on system records")).toBeTruthy();
   expect(screen.queryByText("AI-assisted explanation")).toBeNull();
-  expect(screen.getByText("Provisional 270-day schedule.")).toBeTruthy();
+  expect(screen.getByText(/6 months \(180 days\)/)).toBeTruthy();
   expect(screen.getByText(/Board inspected/)).toBeTruthy();
 });
 

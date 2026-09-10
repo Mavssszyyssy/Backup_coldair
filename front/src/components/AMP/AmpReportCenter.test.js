@@ -66,7 +66,7 @@ it("retains evidence warnings in the report/PDF and clears the previous unit's e
 it("shows AI explanation, keeps the system basis available, and opens history first for a history report", async () => {
   apiRequest.mockResolvedValue({ provider: "openai", report: {
     reportId: "AI-REPORT", reportType: "maintenance_summary", branch: "Bulacan",
-    maintenance: { interpretation: "Your recorded visits help explain this plan.", recommendationBasis: "Provisional 270-day schedule." },
+    maintenance: { interpretation: "Your recorded visits help explain this plan.", recommendationBasis: "6-month starting schedule." },
     serviceHistory: [{ date: "2026-01-01", type: "repair", findings: "Board inspected", actionTaken: "Connection repaired" }],
   } });
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
@@ -76,9 +76,9 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   expect(await screen.findByText("AI-assisted explanation")).toBeVisible();
   expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
   expect(screen.getByText("Repair")).toBeVisible();
-  expect(screen.getByText("Provisional 270-day schedule.")).not.toBeVisible();
+  expect(screen.getByText("6-month starting schedule.")).not.toBeVisible();
   fireEvent.click(screen.getByText("How was this worked out?"));
-  expect(screen.getByText("Provisional 270-day schedule.")).toBeVisible();
+  expect(screen.getByText("6-month starting schedule.")).toBeVisible();
 });
 
 it("shows saved plans with technician outcomes as review evidence, never as an AI accuracy score", async () => {

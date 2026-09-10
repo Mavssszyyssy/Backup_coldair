@@ -1,4 +1,5 @@
 const Unit = require("../models/Unit");
+const ServiceRequest = require("../models/ServiceRequest");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { createDedupedNotification, notifyOperationalStaff } = require("./operationalNotificationService");
 const { formatDateKeyInTimeZone, businessDay } = require("../utils/dateTime");
@@ -54,10 +55,15 @@ const runAmpDailyMonitor = async ({ now = new Date(), limit = 500 } = {}) => {
   const stats = { scanned: units.length, alertsCreated: 0, dueSoon: 0, overdue: 0, errors: 0 };
   const branchSummary = new Map();
   const cohortCache = new Map();
+  const unitIds = units.map(unit => String(unit._id));
+  const requests = unitIds.length ? await ServiceRequest.find({ unitId: { $in: unitIds }, status: { $ne: "Cancelled" } })
+    .select("unitId issue issueType payload status createdAt").sort({ createdAt: -1 }).lean() : [];
+  const requestsByUnit = new Map();
+  requests.forEach(request => requestsByUnit.set(String(request.unitId), [...(requestsByUnit.get(String(request.unitId)) || []), request]));
 
   for (const unit of units) {
     try {
-      const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: now, cohortCache });
+      const recommendation = await calculateMaintenanceRecommendation(unit._id, { asOfDate: now, cohortCache, serviceRequests: requestsByUnit.get(String(unit._id)) || [] });
       const alert = maintenanceAlertForRecommendation(recommendation, now);
       if (!alert) continue;
       const notification = await notifyMaintenanceForUnit(unit, recommendation, now);

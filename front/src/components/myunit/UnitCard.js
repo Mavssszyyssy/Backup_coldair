@@ -73,12 +73,6 @@ function UnitCard({
             <span className="info-label">Warranty</span>
             <span className="info-value">{warrantyLabel}</span>
           </div>
-          {unit.bestServicedByLabel && (
-            <div className="info-row">
-              <span className="info-label">Suggested Servicing Date</span>
-              <span className="info-value">{unit.bestServicedByLabel}</span>
-            </div>
-          )}
         </div>
         <DynamicServiceSticker unit={unit} />
       </div>

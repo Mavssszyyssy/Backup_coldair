@@ -25,6 +25,15 @@ const {
   isConfigured: isPaymongoConfigured,
   getConfigurationError: getPaymongoConfigurationError,
 } = require("../services/paymongoClient");
+const {
+  MAX_GCASH_PAYMENT_ATTEMPTS,
+  GCASH_PAYMENT_LIMIT_MESSAGE,
+  storedGcashPaymentAttemptCount,
+  gcashPaymentAttemptCount,
+  gcashPaymentAttemptsRemaining,
+  gcashRetryLimitReached,
+  gcashRetryableStatus,
+} = require("../domain/gcashPaymentAttempts");
 
 const workflowLabel = (status) => {
   switch (status) {
@@ -933,7 +942,7 @@ const attachPaymongoCheckout = async (order, options = {}) => {
 
   order.paymentProvider = "paymongo";
   order.paymentStatus = "pending";
-  order.paymongo = {
+  const paymongo = {
     ...(order.paymongo?.toObject?.() || order.paymongo || {}),
     checkoutSessionId: checkout.id,
     checkoutUrl: checkout.checkoutUrl,
@@ -943,7 +952,19 @@ const attachPaymongoCheckout = async (order, options = {}) => {
     cancelUrl,
     status: checkout.status,
     raw: checkout.raw,
+    retryInProgress: false,
+    retryStartedAt: null,
   };
+  if (
+    String(order.paymentMethod || "").toLowerCase() === "gcash" &&
+    !options.paymentAttemptAlreadyCounted
+  ) {
+    paymongo.retryAttempts = Math.max(
+      1,
+      gcashPaymentAttemptCount(order) + 1,
+    );
+  }
+  order.paymongo = paymongo;
   await order.save();
 
   return checkout;
@@ -1602,6 +1623,10 @@ const hydrateOrdersWithInventoryQrCodes = async (orders = [], options = {}) => {
       currentLabel: tracking.currentLabel,
       timeline: tracking.timeline,
     };
+    if (String(order.paymentMethod || "").toLowerCase() === "gcash") {
+      order.paymentRetryCount = gcashPaymentAttemptCount(order);
+      order.paymentRetriesRemaining = gcashPaymentAttemptsRemaining(order);
+    }
     order.receiptAvailable = hasPrimaryReceipt(order);
     if (!order.receiptAvailable) {
       // Do not leak a historic placeholder receipt to the customer. Payment
@@ -3367,17 +3392,39 @@ const retryPaymongoCheckout = async (req, res) => {
     if (order.paymentStatus === "paid" || order.status === "paid") {
       return res.status(409).json({ message: "This order is already paid." });
     }
-    if (!["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())) {
+
+    const isGcash = String(order.paymentMethod || "").toLowerCase() === "gcash";
+    const retryableStatus = isGcash
+      ? gcashRetryableStatus(order.paymentStatus)
+      : ["failed", "cancelled", "expired"].includes(
+        String(order.paymentStatus || "").toLowerCase(),
+      );
+    if (!retryableStatus) {
       return res.status(409).json({ message: "Payment is still pending. Wait for the payment result before trying again." });
     }
 
-    const isGcash = String(order.paymentMethod || "").toLowerCase() === "gcash";
-    const MAX_GCASH_RETRY_ATTEMPTS = 3;
-    if (isGcash && Number(order.paymongo?.retryAttempts || 0) >= MAX_GCASH_RETRY_ATTEMPTS) {
+    if (isGcash && gcashRetryLimitReached(order)) {
       return res.status(409).json({
-        message: "Maximum payment attempts has been reached. Please contact your branch for assistance.",
+        message: GCASH_PAYMENT_LIMIT_MESSAGE,
         code: "PAYMENT_RETRY_LIMIT_REACHED",
       });
+    }
+
+    // Normalize legacy GCash orders whose original checkout session existed
+    // while the stored counter still read zero. The next session is attempt 2.
+    if (isGcash) {
+      const storedAttempts = storedGcashPaymentAttemptCount(order);
+      const effectiveAttempts = gcashPaymentAttemptCount(order);
+      if (storedAttempts !== effectiveAttempts) {
+        await Order.updateOne(
+          { _id: order._id, customer: req.authUser._id },
+          { $set: { "paymongo.retryAttempts": effectiveAttempts } },
+        );
+        order.paymongo = {
+          ...(order.paymongo?.toObject?.() || order.paymongo || {}),
+          retryAttempts: effectiveAttempts,
+        };
+      }
     }
 
     // Claim the retry atomically before touching stock or the payment
@@ -3385,19 +3432,36 @@ const retryPaymongoCheckout = async (req, res) => {
     // sessions or bypass the three-attempt ceiling.
     if (isGcash) {
       const previousPaymentStatus = order.paymentStatus;
+      const inventoryWasReleased = order.stockReservationStatus === "released";
+      const retryStartedAt = new Date();
+      const staleRetryStartedBefore = new Date(retryStartedAt.getTime() - 2 * 60 * 1000);
       order = await Order.findOneAndUpdate(
         {
           _id: order._id,
           customer: req.authUser._id,
-          paymentStatus: { $in: ["failed", "cancelled", "expired"] },
-          $or: [
-            { "paymongo.retryAttempts": { $lt: MAX_GCASH_RETRY_ATTEMPTS } },
-            { "paymongo.retryAttempts": { $exists: false } },
+          paymentStatus: { $in: ["pending", "failed", "cancelled", "expired"] },
+          $and: [
+            {
+              $or: [
+                { "paymongo.retryAttempts": { $lt: MAX_GCASH_PAYMENT_ATTEMPTS } },
+                { "paymongo.retryAttempts": { $exists: false } },
+              ],
+            },
+            {
+              $or: [
+                { "paymongo.retryInProgress": { $ne: true } },
+                { "paymongo.retryStartedAt": { $lt: staleRetryStartedBefore } },
+              ],
+            },
           ],
         },
         {
           $inc: { "paymongo.retryAttempts": 1 },
-          $set: { paymentStatus: "pending" },
+          $set: {
+            paymentStatus: "pending",
+            "paymongo.retryInProgress": true,
+            "paymongo.retryStartedAt": retryStartedAt,
+          },
         },
         { new: true },
       );
@@ -3411,6 +3475,7 @@ const retryPaymongoCheckout = async (req, res) => {
         orderId: order._id,
         previousPaymentStatus,
         retryAttempts: Number(order.paymongo?.retryAttempts || 0),
+        inventoryWasReleased,
       };
     }
 
@@ -3419,6 +3484,7 @@ const retryPaymongoCheckout = async (req, res) => {
     const checkout = await attachPaymongoCheckout(order, {
       req,
       returnTarget: req.body?.paymentReturnTarget || req.body?.returnTarget || req.body?.clientType || req.body?.platform,
+      paymentAttemptAlreadyCounted: isGcash,
     });
     checkoutStarted = true;
     const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([order]);
@@ -3433,9 +3499,9 @@ const retryPaymongoCheckout = async (req, res) => {
         checkoutUrl: checkout.checkoutUrl,
         status: checkout.status,
       },
-      paymentRetryCount: Number(order.paymongo?.retryAttempts || 0),
+      paymentRetryCount: isGcash ? gcashPaymentAttemptCount(order) : 0,
       paymentRetriesRemaining: isGcash
-        ? Math.max(0, MAX_GCASH_RETRY_ATTEMPTS - Number(order.paymongo?.retryAttempts || 0))
+        ? gcashPaymentAttemptsRemaining(order)
         : null,
     });
   } catch (error) {
@@ -3447,11 +3513,15 @@ const retryPaymongoCheckout = async (req, res) => {
       try {
         const claimedOrder = await Order.findById(retryClaim.orderId);
         if (claimedOrder) {
-          await releaseOrderInventoryOnce(claimedOrder, "PayMongo retry could not be started.");
+          if (retryClaim.inventoryWasReleased) {
+            await releaseOrderInventoryOnce(claimedOrder, "PayMongo retry could not be started.");
+          }
           claimedOrder.paymentStatus = retryClaim.previousPaymentStatus;
           claimedOrder.paymongo = {
             ...(claimedOrder.paymongo?.toObject?.() || claimedOrder.paymongo || {}),
             retryAttempts: Math.max(0, Number(retryClaim.retryAttempts || 1) - 1),
+            retryInProgress: false,
+            retryStartedAt: null,
           };
           await claimedOrder.save();
         }

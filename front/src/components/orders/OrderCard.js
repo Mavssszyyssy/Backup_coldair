@@ -313,14 +313,14 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
               {isUnpaidGcash ? (
                 paymentRetryLimitReached ? (
                   <BoutiqueText size="12px" weight={800} color={BQ_COLORS.danger} style={{ maxWidth: "240px" }}>
-                    Maximum payment attempts has been reached. Please contact your branch for assistance.
+                    Maximum payment attempts reached. You can no longer retry payment for this order.
                   </BoutiqueText>
                 ) : (
                   <BoutiqueButton
                     variant="primary"
                     size="sm"
                     type="button"
-                    disabled={paying || !["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())}
+                    disabled={paying}
                     onClick={() => onPayAgain?.(order)}
                     style={{ width: "auto" }}
                   >

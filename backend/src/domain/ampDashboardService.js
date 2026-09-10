@@ -145,6 +145,8 @@ const getManagerServicePipeline = async ({ days = 30, branch = "", includeAllBra
         overdue: dueDate < now, lastServiceDate: unit.amp.lastServiceDate || null,
         warrantyStatus: effectiveWarrantyStatus(unit.warranty || {}),
         capacityAssessment: unit.amp.capacityAssessment || null,
+        patternAnalysis: unit.amp.patternAnalysis || null,
+        maintenanceSignals: unit.amp.maintenanceSignals || null,
       };
     }),
   };

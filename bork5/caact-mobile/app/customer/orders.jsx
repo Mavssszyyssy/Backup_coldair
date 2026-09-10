@@ -458,13 +458,13 @@ export default function CustomerOrdersScreen() {
                   const limitReached = isGcash && attempts >= 3;
                   return limitReached ? (
                     <BoutiqueText color={BQ_COLORS.danger} weight={700} align="center">
-                      Maximum payment attempts has been reached. Please contact your branch for assistance.
+                      Maximum payment attempts reached. You can no longer retry payment for this order.
                     </BoutiqueText>
                   ) : (
                     <BoutiqueButton
                       title={payingId === String(order.id) ? "Connecting…" : isGcash ? "Pay Again" : "Complete payment"}
                       variant="primary"
-                      disabled={payingId === String(order.id) || !["failed", "cancelled", "expired"].includes(String(order.paymentStatus || "").toLowerCase())}
+                      disabled={payingId === String(order.id)}
                       loading={payingId === String(order.id)}
                       onPress={() => handlePayNow(order)}
                     />

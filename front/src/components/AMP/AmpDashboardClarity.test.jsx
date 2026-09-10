@@ -62,8 +62,8 @@ it("gives branch admins a service-window control without cross-branch access", a
   await screen.findByText(/No units are entering/);
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90"));
-  expect(screen.getByText(/Limited history uses a provisional schedule/)).toBeVisible();
-  expect(screen.getByText(/Generate a service plan to ask AI for a servicing interval/)).toBeVisible();
+  expect(screen.getByText(/Only completed cleaning-to-cleaning gaps form the interval pattern/)).toBeVisible();
+  expect(screen.getByText(/With insufficient history, the system uses the 6-month baseline/)).toBeVisible();
 });
 
 it("opens the selected unit's plan without automatically calling AI", async () => {

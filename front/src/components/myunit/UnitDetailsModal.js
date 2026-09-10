@@ -57,12 +57,6 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
               {unit.status}
             </span>
           </div>
-          {unit.bestServicedByLabel && (
-            <div className="info-row">
-              <span className="info-label">Suggested Servicing Date</span>
-              <span className="info-value">{unit.bestServicedByLabel}</span>
-            </div>
-          )}
           <DynamicServiceSticker unit={unit} />
           {unit.technicianReportSummary && (
             <div className="info-row">

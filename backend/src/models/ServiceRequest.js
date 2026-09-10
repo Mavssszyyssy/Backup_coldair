@@ -35,6 +35,7 @@ serviceRequestSchema.index(
     partialFilterExpression: { idempotencyKey: { $type: "string", $gt: "" } },
   },
 );
+serviceRequestSchema.index({ unitId: 1, createdAt: -1 });
 
 serviceRequestSchema.set("toJSON", {
   transform: (_doc, ret) => {

@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const REQUEST_TIMEOUT_MS = 10000;
 const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const AMP_REPORT_TIMEOUT_MS = 30000;
+const CUSTOMER_CHAT_TIMEOUT_MS = 15000;
 
 async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const headers = { "Content-Type": "application/json" };
@@ -867,6 +868,25 @@ export async function generateAmpReport(token, { unitId, reportType = "predictiv
     success: false,
     error: getErrorMessage(data, "Unable to generate AMP report."),
     report: null,
+  };
+}
+
+export async function sendCustomerChatMessage(token, { message, history = [], currentPage = "" } = {}) {
+  const { ok, data } = await request("POST", "/ai/customer-chat", {
+    body: { message, history, currentPage },
+    token,
+    timeoutMs: CUSTOMER_CHAT_TIMEOUT_MS,
+  });
+  if (ok && data?.reply?.text) {
+    return {
+      success: true,
+      reply: data.reply,
+      provider: data.provider || "",
+    };
+  }
+  return {
+    success: false,
+    error: getErrorMessage(data, "The AEROPULSE assistant is unavailable right now."),
   };
 }
 

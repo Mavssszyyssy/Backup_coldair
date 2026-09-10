@@ -18,6 +18,8 @@ export default function CustomerAmpReport({ report, provider }) {
   const [showDetails, setShowDetails] = useState(false);
   if (!report) return null;
   const maintenance = report.maintenance || {};
+  const pattern = maintenance.patternAnalysis || {};
+  const signals = maintenance.maintenanceSignals || {};
   const explanation = customerSystemMessage(String(maintenance.interpretation || "").trim());
   const aiAssisted = provider === "openai" && Boolean(explanation);
   return <View style={{ marginTop: SPACING.md }}>
@@ -42,8 +44,17 @@ export default function CustomerAmpReport({ report, provider }) {
     {showDetails ? <View>
       {summary ? <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} /> : null}
       <DetailRow label="Why this date?" value={customerSystemMessage(maintenance.recommendationBasis) || "Not recorded"} multiline />
+      <DetailRow label="Pattern used" value={pattern.source === "same_unit" ? "This AC unit's cleaning history" : pattern.source === "system_default" ? "6-month starting schedule" : "Verified similar AC cleaning history"} multiline />
+      <DetailRow label="Verified cleaning gaps" value={pattern.intervalsDays?.length ? `${pattern.intervalsDays.join(", ")} days` : "Not enough history yet"} multiline />
+      <DetailRow label="Typical gap" value={pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days (arithmetic average)` : "6 months (180 days)"} multiline />
+      {signals.serviceRequestCount ? <DetailRow label="Service requests reviewed" value={String(signals.serviceRequestCount)} /> : null}
+      {signals.serviceRequestFrequency?.averageGapDays ? <DetailRow label="Typical gap between requests" value={`${signals.serviceRequestFrequency.averageGapDays} days`} /> : null}
+      {signals.filterDirtRecordCount || signals.coilDirtRecordCount ? <DetailRow label="Cleaning-related issues" value={`${signals.filterDirtRecordCount || 0} filter and ${signals.coilDirtRecordCount || 0} coil dirt-related record(s)`} multiline /> : null}
+      {signals.deepCleaningRecordCount ? <DetailRow label="Deep cleanings recorded" value={String(signals.deepCleaningRecordCount)} /> : null}
+      {signals.coilMaintenanceRecordCount ? <DetailRow label="Coil cleanings recorded" value={String(signals.coilMaintenanceRecordCount)} /> : null}
+      {signals.refrigerantIssueRecordCount ? <DetailRow label="Not counted as cleaning" value={`${signals.refrigerantIssueRecordCount} refrigerant-related record(s)`} multiline /> : null}
       <DetailRow label="Room size and horsepower" value={maintenance.capacityAssessment?.summary || "Add room size and AC horsepower to see this comparison."} multiline />
-      <Text style={body}>AI can suggest when to clean your AC using complete cleaning records for the same model or brand. If there is not enough history, we show a system suggestion instead. The saved date helps you plan ahead; it does not book a visit, guarantee when a fault will occur, or approve warranty coverage.</Text>
+      <Text style={body}>AEROPULSE first uses this AC unit’s completed cleaning gaps. Three verified cleanings create two gaps. Until then, it can use verified similar-AC history; without enough history it uses the 6-month starting schedule. Repairs and refrigerant work do not become cleaning dates. This does not book a visit, guarantee a fault date, or approve warranty coverage.</Text>
       <DetailRow label="Report reference" value={report.reportId || "Not recorded"} multiline />
     </View> : null}
     <Text style={body}>No visit has been booked by this report. To request one, open Service Visits in this app.</Text>

@@ -115,6 +115,23 @@ export const findBestFaqMatch = (message) => {
   return bestScore > 0 ? bestMatch : null;
 };
 
+export const fallbackChatReply = (messageText) => {
+  const normalized = normalizeText(messageText);
+  if (/^(hi|hello|hey|good (morning|afternoon|evening))[!. ]*$/i.test(normalized)) {
+    return {
+      text: 'Hello! How can I help with your order, payment, AC unit, or service request?'
+    };
+  }
+
+  const match = findBestFaqMatch(messageText);
+  if (match) return { text: match.answer, route: match.route };
+
+  return {
+    text: "I could not confirm that from the customer help information. Please open Contact so our support team can check it for you.",
+    route: '/contact'
+  };
+};
+
 export const chatbotKnowledge = {
   entries: customerFaqEntries,
   quickQuestions

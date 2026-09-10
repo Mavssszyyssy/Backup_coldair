@@ -663,18 +663,38 @@
 
 .service-sticker {
   margin-top: 16px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid #dbeafe;
-  background: #f8fbff;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #cfe2ff;
+  background: #fff;
   color: #0f172a;
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.07);
 }
 
 .service-sticker-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+  border-bottom: 1px solid #dbeafe;
+}
+
+.service-sticker-icon,
+.service-sticker-service-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.service-sticker-heading {
+  min-width: 0;
 }
 
 .service-sticker-label {
@@ -687,9 +707,23 @@
   margin-bottom: 4px;
 }
 
-.service-sticker strong {
+.service-sticker-date {
+  display: block;
   color: #0f172a;
-  font-size: 17px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.service-sticker-source {
+  max-width: 112px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .service-sticker-dial {
@@ -725,25 +759,113 @@
   background: linear-gradient(90deg, #22c55e, #2563eb);
 }
 
-.service-sticker-insight {
-  margin-top: 12px;
-  padding: 11px 12px;
+.service-sticker-service {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 14px 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  border: 1px solid #fde68a;
-  background: #fffbeb;
+  background: #f8fafc;
 }
 
-.service-sticker-insight strong {
+.service-sticker-service-icon {
+  width: 36px;
+  height: 36px;
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.service-sticker-service span {
   display: block;
-  color: #92400e;
-  font-size: 13px;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.service-sticker-insight p {
-  margin: 4px 0 0;
-  color: #78350f;
+.service-sticker-service strong {
+  display: block;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.service-sticker-explanation {
+  margin: 10px 16px 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.service-sticker-reason {
+  margin: 12px 14px 0;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.service-sticker-reason summary {
+  padding: 11px 2px;
+  color: #1d4ed8;
   font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.service-sticker-reason p {
+  margin: 0 2px 12px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.service-sticker-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 12px 14px 0;
+  padding: 10px 11px;
+  border-radius: 11px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.service-sticker-notice > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.service-sticker-notice strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+.service-sticker-notice p {
+  margin: 0;
+  font-size: 11px;
   line-height: 1.45;
+}
+
+.service-sticker-quality {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.service-sticker-app-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .service-sticker-book {
@@ -774,6 +896,46 @@
 .service-sticker-static {
   background: #f8fafc;
   border-color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .service-sticker {
+  border-color: #334155;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+:root[data-theme='dark'] .service-sticker-header,
+:root[data-theme='dark'] .service-sticker-service,
+:root[data-theme='dark'] .service-sticker-app-note {
+  border-color: #334155;
+  background: #172033;
+}
+
+:root[data-theme='dark'] .service-sticker-date,
+:root[data-theme='dark'] .service-sticker-service strong {
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .service-sticker-explanation,
+:root[data-theme='dark'] .service-sticker-reason p,
+:root[data-theme='dark'] .service-sticker-app-note {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .service-sticker-reason {
+  border-color: #334155;
+}
+
+@media (max-width: 430px) {
+  .service-sticker-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .service-sticker-source {
+    grid-column: 2;
+    justify-self: start;
+    max-width: none;
+  }
 }
 
 @media (max-width: 768px) {
