@@ -367,7 +367,7 @@ const createMyServiceRequest = async (req, res) => {
     if (unitId && !unit) {
       return res.status(404).json({ message: "Selected installed AC unit was not found for this customer." });
     }
-    if (["maintenance", "cleaning", "repair"].includes(service.id) && !unit) return res.status(400).json({ message: "Select your registered AC unit for this service." });
+    if (["maintenance", "cleaning", "regular_cleaning", "deep_cleaning", "repair"].includes(service.id) && !unit) return res.status(400).json({ message: "Select your registered AC unit for this service." });
     if (unit && ["on_hold", "retired"].includes(unit.status)) return res.status(409).json({ message: "This AC unit is unavailable for service booking. Contact the branch team for assistance." });
 
     if (unitId) {

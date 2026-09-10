@@ -52,7 +52,7 @@ function Contact() {
               style={{ maxWidth: "600px", lineHeight: 1.6 }}
             >
               Have questions about our services or need technical assistance
-              with your AC? Our boutique support team is dedicated to your
+              with your AC? Our support team is here to help with your
               comfort.
             </BoutiqueText>
           </BoutiqueBox>

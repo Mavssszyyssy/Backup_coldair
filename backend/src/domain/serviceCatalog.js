@@ -1,20 +1,22 @@
 const FALLBACK_SERVICE_CATALOG = [
-  { id: "delivery", title: "Delivery", summary: "Track AC unit delivery and coordinate the required hand-off.", defaultIssueType: "Delivery" },
-  { id: "installation", title: "Installation", summary: "Schedule installation for a registered AC unit.", defaultIssueType: "Installation" },
-  { id: "maintenance", title: "Maintenance", summary: "Schedule preventive maintenance to keep the AC unit efficient.", defaultIssueType: "Maintenance" },
-  { id: "cleaning", title: "Cleaning", summary: "Book deep cleaning to restore cooling performance and airflow.", defaultIssueType: "Cleaning" },
+  { id: "maintenance", title: "Regular Cleaning", summary: "Routine AC maintenance when the last cleaning was less than one year ago.", defaultIssueType: "Regular Cleaning" },
+  { id: "cleaning", title: "Deep Cleaning", summary: "Thorough cleaning when the last cleaning was more than one year ago. The unit is taken down for cleaning.", defaultIssueType: "Deep Cleaning" },
   { id: "repair", title: "Repair", summary: "Report faults, weak cooling, leaks, or other issues for diagnosis.", defaultIssueType: "Repair" },
   { id: "consultation", title: "Consultation", summary: "Request a site visit or service recommendation.", defaultIssueType: "Consultation" },
 ];
 
 const normalizeOffering = (value = {}) => {
+  const id = String(value.id || "").trim().toLowerCase();
+  // Keep established IDs and configured prices for existing clients and records.
+  const cleaningId = ({ regular_cleaning: "maintenance", deep_cleaning: "cleaning" })[id] || id;
+  const cleaning = FALLBACK_SERVICE_CATALOG.find(item => item.id === cleaningId && ["maintenance", "cleaning"].includes(cleaningId));
   const basePrice = Number(value.basePrice);
   const hasConfiguredPrice = Number.isFinite(basePrice) && basePrice >= 0;
   return {
-    id: String(value.id || "").trim().toLowerCase(),
-    title: String(value.title || "").trim(),
-    summary: String(value.summary || "").trim(),
-    defaultIssueType: String(value.defaultIssueType || value.title || "Service").trim(),
+    id,
+    title: cleaning?.title || String(value.title || "").trim(),
+    summary: cleaning?.summary || String(value.summary || "").trim(),
+    defaultIssueType: cleaning?.defaultIssueType || String(value.defaultIssueType || value.title || "Service").trim(),
     pricing: {
       currency: String(value.currency || "PHP").trim().toUpperCase(),
       basePrice: hasConfiguredPrice ? basePrice : null,
@@ -30,7 +32,7 @@ const getServiceCatalog = (rawConfig = "") => {
     const parsed = rawConfig ? JSON.parse(rawConfig) : null;
     if (Array.isArray(parsed) && parsed.length) {
       const configured = parsed.map(normalizeOffering).filter((item) => item.id && item.title);
-      if (configured.length) return configured;
+      if (configured.length) return configured.filter(item => !["delivery", "installation"].includes(item.id) && !/^(delivery|installation)$/i.test(item.title));
     }
   } catch (_error) {
     // A malformed deployment setting must not make service booking unavailable.
@@ -39,8 +41,10 @@ const getServiceCatalog = (rawConfig = "") => {
 };
 
 const findServiceOffering = (catalog = [], lookup = "") => {
-  const target = String(lookup || "").trim().toLowerCase();
-  return catalog.find((item) => item.id === target || item.title.toLowerCase() === target || item.defaultIssueType.toLowerCase() === target) || null;
+  const raw = String(lookup || "").trim().toLowerCase();
+  const target = ({ regular_cleaning: "maintenance", deep_cleaning: "cleaning" })[raw] || raw;
+  const exact = catalog.find((item) => [item.id, item.title, item.defaultIssueType].some(value => String(value || "").toLowerCase() === raw));
+  return exact || catalog.find((item) => item.id === target) || null;
 };
 
 module.exports = { getServiceCatalog, findServiceOffering };

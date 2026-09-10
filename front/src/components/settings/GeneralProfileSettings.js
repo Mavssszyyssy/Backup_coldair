@@ -73,7 +73,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
     setErrors({});
     try {
       if (aliasStatus === "taken") {
-        setErrors({ alias: "This alias is already taken." });
+        setErrors({ alias: "This username is already taken." });
         setSaving(false);
         return;
       }
@@ -129,15 +129,15 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
           </BoutiqueBox>
 
           <BoutiqueInput
-            label="Sign-In Alias"
+            label="Username"
             icon={UserCircle}
             value={formData.alias}
             onChange={(e) => handleChange("alias", e.target.value)}
             onBlur={handleAliasBlur}
             placeholder="juan.dc"
             status={aliasStatus === "taken" || errors.alias ? "error" : aliasStatus === "available" ? "success" : null}
-            errorMessage={errors.alias || (aliasStatus === "taken" ? "Alias is unavailable" : null)}
-            hint="Your unique public identifier."
+            errorMessage={errors.alias || (aliasStatus === "taken" ? "This username is unavailable" : null)}
+            hint="Use this name to sign in to your account."
           />
 
           <BoutiqueInput

@@ -21,7 +21,7 @@ it("labels a persisted AI date even when the latest provider attempt fell back, 
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   expect(await screen.findByText("AI-estimated servicing date")).toBeVisible();
-  expect(screen.getByRole("status")).toHaveTextContent("AI is unavailable");
+  expect(screen.getByRole("status")).toHaveTextContent("We could not get a new AI estimate right now");
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   expect(exportHtmlToPdfViaPrint.mock.calls[0][0].html).toContain("AI-estimated servicing interval: 120 days.");
 });

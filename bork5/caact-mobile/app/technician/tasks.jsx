@@ -1,6 +1,7 @@
 // app/(technician)/tasks.jsx
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TechnicianScreen, {
@@ -216,9 +217,9 @@ export default function TasksScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [page, setPage] = useState(1);
 
-  const refresh = () => {
+  const refresh = ({ isCurrent = () => true } = {}) => {
     if (!current?.id) return;
-    getTasksByTechnician(current.id)
+    return getTasksByTechnician(current.id)
       .then((all) => {
         const sorted = [...all].sort((a, b) => {
           const order = {
@@ -235,13 +236,13 @@ export default function TasksScreen() {
           };
           return (order[a.status] ?? 3) - (order[b.status] ?? 3);
         });
-        setTasks(sorted);
+        if (isCurrent()) setTasks(sorted);
       })
       .catch(() => {});
   };
   useFocusEffect(
     React.useCallback(() => {
-      refresh();
+      return startLiveRefresh(refresh);
     }, [current]),
   );
 

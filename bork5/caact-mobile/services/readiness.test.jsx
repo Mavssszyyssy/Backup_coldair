@@ -98,7 +98,7 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain("What work has been done?");
     expect(historySource).toContain('String(task.customerId || "") === String(userId)');
     expect(detailsSource).toContain('["Open", activeRequests.length]');
-    expect(detailsSource).toContain('["Work orders", history.linkedTasks.length]');
+    expect(detailsSource).toContain('["Assigned visits", history.linkedTasks.length]');
     expect(detailsSource).toContain('["Completed", history.completedServices.length]');
     expect(detailsSource).toContain('<CustomerRequestTimeline');
     expect(detailsSource).toContain('label="Service visits" controlsPosition="top"');
@@ -162,7 +162,7 @@ describe("mobile customer readiness rules", () => {
       "utf8",
     );
     expect(detailsSource).toContain("Waiting for installation verification");
-    expect(detailsSource).toContain("No acceptance is required from you");
+    expect(detailsSource).toContain("You do not need to activate this yourself");
     expect(detailsSource).toContain("What happens next");
   });
 

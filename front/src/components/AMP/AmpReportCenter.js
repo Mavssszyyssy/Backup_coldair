@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
+import { customerSystemMessage } from "../../domain/customerLanguage";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 import { serviceLabel, serviceDateLabel as dateLabel } from "../../domain/myunit/serviceHistoryDisplay";
 
@@ -41,6 +42,7 @@ function AmpReportCenter({
   subtitle = "Choose an AC and the information you need. Start with its next service or review past work.",
 }) {
   const { user } = useUser();
+  const customerCopy = (value) => user?.role === "customer" ? customerSystemMessage(value) : value;
   const reportUnits = useMemo(() => units.filter((unit) => unit?.unitId || unit?.id), [units]);
   const types = useMemo(() => REPORT_TYPES.filter((item) => !item.internalOnly || ["admin", "superadmin", "owner", "manager"].includes(user?.role)), [user?.role]);
   const [reportType, setReportType] = useState("predictive_maintenance");
@@ -59,9 +61,22 @@ function AmpReportCenter({
     setLoading(true); setError(""); setReport(null);
     try {
       const result = await apiRequest("/ai/amp-report", { method: "POST", body: JSON.stringify({ reportType, unitId }) });
-      setReport(result.report || null); setProvider(result.provider || "");
+      const next = result.report;
+      // Keep staff analysis and saved evidence intact; simplify the customer view and its PDF only.
+      setReport(next && user?.role === "customer" ? {
+        ...next,
+        explanationWarning: customerCopy(next.explanationWarning),
+        maintenance: { ...next.maintenance,
+          recommendationBasis: customerCopy(next.maintenance?.recommendationBasis),
+          interpretation: customerCopy(next.maintenance?.interpretation),
+          dataQuality: { ...next.maintenance?.dataQuality, message: customerCopy(next.maintenance?.dataQuality?.message) },
+        },
+        serviceHistory: (next.serviceHistory || []).map(item => ({ ...item,
+          evidence: item.evidence ? { ...item.evidence, reason: customerCopy(item.evidence.reason) } : item.evidence,
+        })),
+      } : next || null); setProvider(result.provider || "");
       if (reportType === "predictive_maintenance" && result.report) onPlanGenerated?.(result.report);
-    } catch (requestError) { setReport(null); setError(requestError.message || "Unable to generate AMP report."); }
+    } catch (requestError) { setReport(null); setError(requestError.message || "We could not prepare your report. Please try again."); }
     finally { setLoading(false); }
   };
 
@@ -115,7 +130,7 @@ function AmpReportCenter({
         <button type="button" onClick={generate} disabled={loading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
       </div>
       <p className="amp-muted">{types.find(item => item.value === reportType)?.help}</p>
-      {!reportUnits.length ? <p className="amp-empty">No eligible installed units are currently in this AMP view.</p> : null}
+      {!reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
       {report ? <div className="amp-report-result">
         <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>
@@ -124,7 +139,7 @@ function AmpReportCenter({
         {!historyFirst ? <div className="amp-metrics"><article><span>Suggested servicing date</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended cleaning</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
         <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
         {maintenance.dataQuality?.message ? <p role="status" className="amp-error">Record review needed: {maintenance.dataQuality.message}</p> : null}
-        <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last verified cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
+        <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last recorded cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
         <details className="amp-details" key={`history-${report.reportId}-${reportType}`} open={historyFirst}>
         <summary>Recorded service history</summary>
         <div className="amp-table-wrap"><table className="amp-table amp-history-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{(report.serviceHistory || []).map((item, index) => <tr key={`${item.date}-${index}`}><td data-label="Date">{dateLabel(item.date)}</td><td data-label="Service performed">{item.serviceLabel || serviceLabel(item.type)}</td><td data-label="Findings and actions">{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}</td></tr>)}</tbody></table></div>
@@ -141,7 +156,7 @@ function AmpReportCenter({
           <p>{maintenance.recommendationBasis}</p>
           {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
           <p>{maintenance.capacityAssessment?.summary}</p>
-          <p>When enough verified model or brand history is available, generating a next service plan asks AI to estimate the cleaning interval. The accepted date is saved for My Units, dashboards and reminders. Otherwise the system schedule remains. Cleaning methods and warranty rules stay system-controlled; AI does not book visits or approve claims.</p>
+          <p>When enough complete cleaning records are available for the same model or brand, AI uses them to suggest when your AC may need cleaning. Otherwise, a system suggestion is shown. Your saved date appears in My AC Units and reminders. This is a guide, not a booking or a guaranteed breakdown date. It does not change your warranty coverage.</p>
           <p className="amp-muted">Report reference: {report.reportId}</p>
         </details>
         <p className="amp-muted">{report.note}</p>

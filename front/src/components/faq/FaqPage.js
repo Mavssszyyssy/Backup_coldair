@@ -14,22 +14,22 @@ const FAQ_ITEMS = [
   {
     question: "How long does AC delivery take after ordering?",
     answer:
-      "Most in-stock units are scheduled within 24 to 48 hours after payment verification and branch allocation. We strive to provide the fastest boutique delivery service in the region.",
+      "Your branch will confirm the delivery schedule after reviewing your order. Check My Orders for updates.",
   },
   {
     question: "Can I reschedule my installation appointment?",
     answer:
-      "Yes. Open the AeroPulse Mobile App and use the service request for your registered AC. Service scheduling and appointment changes are mobile-only.",
+      "Yes. Open the Cold Air mobile app and use the service request for your registered AC. Service scheduling and appointment changes are mobile-only.",
   },
   {
     question: "Do you provide warranty service for all brands?",
     answer:
-      "AeroPulse provides comprehensive warranty support for all brands we carry. Coverage details vary by model and are clearly displayed in your registered units list.",
+      "You can ask our team for warranty support for your registered AC. Check My AC Units for the coverage and dates that apply to your unit.",
   },
   {
     question: "What payment methods are supported?",
     answer:
-      "We accept Cash-on-Delivery (COD), GCash, major Credit/Debit Cards, and Pay-on-Installation for certain service types. Available methods will be shown during checkout.",
+      "Choose from the payment methods shown at checkout, such as Cash on Delivery, GCash, or credit/debit card.",
   },
   {
     question: "How do I register my unit for warranty?",
@@ -39,7 +39,7 @@ const FAQ_ITEMS = [
   {
     question: "Where do I book maintenance, cleaning, or repair?",
     answer:
-      "All AC service types—including maintenance, cleaning, repair, installation support, and warranty requests—are available only in the AeroPulse Mobile App.",
+      "All AC service types—including maintenance, cleaning, repair, installation support, and warranty requests—are available only in the Cold Air mobile app.",
   },
 ];
 
@@ -49,7 +49,7 @@ function FaqPage() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Knowledge Center"
+        title="Help & FAQs"
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />

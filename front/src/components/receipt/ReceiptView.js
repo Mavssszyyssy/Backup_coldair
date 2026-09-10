@@ -1,5 +1,6 @@
 import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
+import { receiptReferences, customerStatus } from "../../domain/customerLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
@@ -125,6 +126,7 @@ function ReceiptView() {
   };
 
   const deliveryAddress = resolveDeliveryAddress(order || {});
+  const references = receiptReferences(order?.invoice?.invoiceNumber || order?.receipt?.receiptNumber, order?.orderCode);
   const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
   const isCompleted = Boolean(order?.codCollection?.collectedAt);
   const paymentMethodLabel = methodLabel(order?.paymentMethod || order?.receipt?.paymentMethod);
@@ -170,11 +172,12 @@ function ReceiptView() {
             <div className="receipt-band">
               <div>
                 <span>Receipt Number</span>
-                <strong>{order.invoice?.invoiceNumber || order.receipt?.receiptNumber || "Pending"}</strong>
+                <strong>{references.receiptNumber}</strong>
               </div>
               <div>
-                <span>Order Number / Transaction date</span>
-                <strong>{order.orderCode} · {formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt)}</strong>
+                <span>Date issued</span>
+                <strong>{formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt)}</strong>
+                {references.orderNumber ? <><span>Order number</span><strong>{references.orderNumber}</strong></> : null}
               </div>
             </div>
 
@@ -203,8 +206,8 @@ function ReceiptView() {
                 <strong>{formatAddress(order.invoice?.billingAddress || order.address)}</strong>
               </div>
               <div>
-                <span>Order / Delivery Status</span>
-                <strong>{order.invoice?.orderStatus || "Pending"} · {order.tracking?.currentLabel || "Order Placed"}</strong>
+                <span>Delivery progress</span>
+                <strong>{order.tracking?.currentLabel || customerStatus(order.invoice?.orderStatus || "Pending")}</strong>
               </div>
               <div>
                 <span>Warranty / Installation</span>
@@ -234,7 +237,7 @@ function ReceiptView() {
 
             <div className="receipt-bottom">
               <div>
-                <p>This invoice is tied to one order and one receipt record in the Coldair ACT system.</p>
+                <p>Keep this receipt for payment questions and warranty support.</p>
                 {order.tracking?.timeline?.length > 0 && (
                   <div className="receipt-tracking">
                     <strong>Delivery tracking</strong>

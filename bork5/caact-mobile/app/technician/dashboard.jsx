@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -57,12 +58,13 @@ export default function TechDashboard() {
   useFocusEffect(
     React.useCallback(() => {
       if (!current?.id) return;
-      getTasksByTechnician(current.id)
+      return startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
         .then((tasks) => {
+          if (!isCurrent()) return;
           setStats(getTaskStats(tasks));
           setWorkOrders(tasks.slice(0, 3));
         })
-        .catch(() => {});
+        .catch(() => {}));
     }, [current]),
   );
 

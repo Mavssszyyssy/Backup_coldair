@@ -5,6 +5,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import Card from "../ui/Card";
 import DetailRow from "../ui/DetailRow";
 import StatusChip from "../ui/StatusChip";
+import { customerSystemMessage } from "../../services/customerLanguage";
 
 const dateLabel = (value) => value
   ? new Date(value).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })
@@ -33,8 +34,8 @@ export function CustomerRecommendationPanel({ recommendation, maintenance }) {
       <StatusChip label={serviceLabel(recommendation.recommendedService)} color={recommendation.overdue ? COLORS.danger : COLORS.success} />
     </View>
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{serviceExplanation(recommendation.recommendedService)}</Text>
-    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginTop: SPACING.sm }}>{recommendation.recommendationBasis}</Text>
-    {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{recommendation.dataQuality.message}</Text> : null}
+    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.recommendationBasis)}</Text>
+    {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.dataQuality.message)}</Text> : null}
     {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={maintenance.urgency} color={maintenance.color} /></View> : null}
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>This is a suggestion. A visit is only booked after you submit a service request.</Text>
     {roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment) ? <DetailRow label="Room and AC Size Match" value={roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment)} multiline /> : null}

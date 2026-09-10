@@ -17,6 +17,7 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(), getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'denied' }), requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'denied' }),
   getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null), clearLastNotificationResponseAsync: jest.fn(),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 jest.mock('./api', () => ({ me: jest.fn(), verifyTotpSetup: jest.fn(), updateProfile: jest.fn(), getStoredToken: jest.fn().mockResolvedValue('fixture-token'), fetchSecurityStatus: jest.fn(), fetchRecoveryCodes: jest.fn(), fetchTotpSecret: jest.fn() }));
 

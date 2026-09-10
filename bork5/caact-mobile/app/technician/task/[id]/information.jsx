@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
 import ServiceCostSummary from "../../../../components/technician/ServiceCostSummary";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../../services/liveRefresh";
 import React, { useState } from "react";
 import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -133,8 +134,8 @@ export default function TaskInformationScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
-      async function load() {
-        setLoading(true);
+      async function load({ background }) {
+        if (!background) setLoading(true);
         setLoadError("");
         try {
           const loadedTask = await getTaskById(id, { requireOnline: true });
@@ -156,9 +157,10 @@ export default function TaskInformationScreen() {
           if (active) setLoading(false);
         }
       }
-      load();
+      const stop = startLiveRefresh(load);
       return () => {
         active = false;
+        stop();
       };
     }, [id]),
   );

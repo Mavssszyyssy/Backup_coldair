@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
 
@@ -311,9 +312,9 @@ export default function CustomerShopScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      const loadCatalogue = () => {
-        setLoading(true);
-        fetchShopProducts()
+      const loadCatalogue = ({ background }) => {
+        if (!background) setLoading(true);
+        return fetchShopProducts()
           .then((products) => {
             if (active) setBackendProducts(products);
           })
@@ -325,11 +326,10 @@ export default function CustomerShopScreen() {
             if (active) setLoading(false);
           });
       };
-      loadCatalogue();
-      const pollId = setInterval(loadCatalogue, 20000);
+      const stop = startLiveRefresh(loadCatalogue);
       return () => {
         active = false;
-        clearInterval(pollId);
+        stop();
       };
     }, []),
   );

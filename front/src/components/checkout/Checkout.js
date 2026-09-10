@@ -632,14 +632,14 @@ function Checkout() {
                   margin="0 0 16px"
                 >
                   <Buildings size={20} weight="fill" color={BQ_COLORS.accent} />
-                  <BoutiqueText variant="label">Order Fulfillment</BoutiqueText>
+                  <BoutiqueText variant="label">Your delivery branch</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueStack gap={4}>
                   <BoutiqueText variant="h3">
                     {assignedBranch} Branch
                   </BoutiqueText>
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-                    Routed based on your location in{" "}
+                    Chosen for your delivery address in{" "}
                     <strong>{selectedAddress?.city}</strong>.
                   </BoutiqueText>
                 </BoutiqueStack>

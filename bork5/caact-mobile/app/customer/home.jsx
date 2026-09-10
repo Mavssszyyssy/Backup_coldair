@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -41,7 +42,7 @@ export default function CustomerHomeScreen() {
       let active = true;
       setLoading(true);
       const load = () => {
-        Promise.allSettled([
+        return Promise.allSettled([
           getUnitsByUser(current?.id),
           getOrdersByUser(current),
           getCustomerServiceHistory(current?.id),
@@ -62,12 +63,11 @@ export default function CustomerHomeScreen() {
           if (active) setLoading(false);
         });
       };
-      load();
-      const pollId = setInterval(load, 20000);
+      const stop = startLiveRefresh(load);
 
       return () => {
         active = false;
-        clearInterval(pollId);
+        stop();
       };
     }, [current]),
   );

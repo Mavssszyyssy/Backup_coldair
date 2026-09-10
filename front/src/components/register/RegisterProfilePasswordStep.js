@@ -131,7 +131,7 @@ export default function RegisterProfilePasswordStep({
     if (aliasStatus === "taken") {
       setLocalErrors((prev) => ({
         ...prev,
-        alias: "This alias is already taken. Please choose another.",
+        alias: "This username is already taken. Please choose another.",
       }));
       return;
     }
@@ -188,7 +188,7 @@ export default function RegisterProfilePasswordStep({
 
         <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
-            label="Sign-In Alias"
+            label="Username"
             icon={UserCircle}
             placeholder={aliasPlaceholder}
             value={formData.alias}

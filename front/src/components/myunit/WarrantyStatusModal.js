@@ -47,7 +47,7 @@ function WarrantyStatusModal({ unit, onClose }) {
             </div>
           ))}
           <p className="warranty-footnote">
-            Warranty claims are reviewed by the service team. Approved claims create a linked service record and remain visible to AMP.
+            To submit a claim, open Services in the mobile app and choose Warranty Claim. Our service team reviews your coverage before arranging a repair visit. You can follow the claim and repair updates in the app.
           </p>
         </div>
         <div className="modal-footer">

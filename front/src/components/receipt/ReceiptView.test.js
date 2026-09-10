@@ -35,3 +35,13 @@ it.each([['gcash', 'GCash'], ['credit', 'Credit / debit card']])('shows the actu
   expect(screen.getByAltText('Cold Air logo')).toHaveAttribute('src', '/Cold%20Air%20Logo.jpg');
   expect(screen.queryByText(/via PayMongo/i)).not.toBeInTheDocument();
 });
+
+it('does not repeat the order number already included in the receipt reference', async () => {
+  session.user = { role: 'customer' };
+  const orderCode = 'ORD-1788981329646-44S5N1';
+  apiRequest.mockResolvedValue({ order: { id:'order1', orderCode, receiptAvailable:true, paymentMethod:'gcash', paymentStatus:'paid', receipt:{ receiptNumber:`RCP-${orderCode}` } } });
+  mount();
+  expect(await screen.findByText(`RCP-${orderCode}`)).toBeInTheDocument();
+  expect(screen.getAllByText(`RCP-${orderCode}`)).toHaveLength(1);
+  expect(screen.queryByText(orderCode, {exact:true})).not.toBeInTheDocument();
+});

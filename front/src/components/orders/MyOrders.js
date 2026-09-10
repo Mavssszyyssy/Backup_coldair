@@ -179,7 +179,7 @@ function MyOrders() {
           <BoutiqueStack gap={4}>
             <BoutiqueText variant="h2">Order History</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
-              Review and track your boutique orders.
+              Check your orders, payments, and delivery updates.
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>
@@ -220,11 +220,7 @@ function MyOrders() {
                       : "none",
                 }}
               >
-                {status === "all"
-                  ? "All Orders"
-                  : status
-                      .replace("_", " ")
-                      .replace(/\b\w/g, (ch) => ch.toUpperCase())}
+                {({ all: "All Orders", to_pay: "Awaiting payment", to_deliver: "Delivery", to_install: "Installation", complete: "Completed", cancelled: "Cancelled" })[status]}
               </button>
             ),
           )}
@@ -254,8 +250,7 @@ function MyOrders() {
                   align="center"
                   style={{ maxWidth: "320px" }}
                 >
-                  Start your boutique experience by exploring our premium AC
-                  collections.
+                  Browse our AC products to place your first order.
                 </BoutiqueText>
                 <BoutiqueButton
                   variant="primary"

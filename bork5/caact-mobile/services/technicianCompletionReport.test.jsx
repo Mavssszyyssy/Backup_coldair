@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react-native";
 import CompleteServiceScreen from "../app/technician/task/[id]/complete-service";
+import { notifyNotificationsChanged } from './notificationEvents';
 const mockUpdate = jest.fn();
 afterEach(() => { cleanup(); jest.restoreAllMocks(); mockUpdate.mockClear(); });
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: "visit1" }), useFocusEffect: (callback) => require("react").useEffect(callback, [callback]) }));
@@ -65,6 +66,10 @@ test("changing cleaning method asks first, clears report selections, and keeps p
   await fireEvent.press(screen.getByLabelText("Select Technician Findings"));
   await fireEvent.press(screen.getByLabelText("Technician Findings: Dust buildup on the air filter."));
   await fireEvent.changeText(screen.getByLabelText("Additional Notes (Optional)"), "Keep this advice.");
+  await act(async () => notifyNotificationsChanged());
+  expect(screen.getByText("Retake photo")).toBeTruthy();
+  expect(screen.getByLabelText("Additional Notes (Optional)").props.value).toBe("Keep this advice.");
+  expect(screen.getByLabelText("Technician Findings: Dust buildup on the air filter.").props.accessibilityState.checked).toBe(true);
   await fireEvent.press(screen.getByText("Deep Cleaning"));
   expect(alert.mock.calls.at(-1)[0]).toBe("Change service method?");
   expect(screen.getByLabelText("Technician Findings: Dust buildup on the air filter.").props.accessibilityState.checked).toBe(true);

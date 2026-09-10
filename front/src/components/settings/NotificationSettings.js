@@ -57,7 +57,7 @@ function NotificationSettings({
       },
       {
         key: "push",
-        label: "Push Notifications",
+        label: "Device Notifications",
         description: "Receive device alerts even when the app is not open.",
       },
       {
@@ -67,8 +67,8 @@ function NotificationSettings({
       },
       {
         key: "orderUpdates",
-        label: "Order / Transaction Updates",
-        description: "Order stage changes and transaction updates.",
+        label: "Order & Payment Updates",
+        description: "Updates about your orders, payments, and deliveries.",
         visible: showOrderNotifications,
       },
       {

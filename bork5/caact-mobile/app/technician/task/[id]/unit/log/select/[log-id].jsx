@@ -1,4 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../../../../../services/liveRefresh";
 import React, { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,10 +22,11 @@ export default function LogDetailScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
-      setLoading(true);
+      const stop = startLiveRefresh(({ background }) => {
+      if (!background) setLoading(true);
       setError("");
-      setLog(null);
-      Promise.all([getTaskById(taskId, { requireOnline: true }), getServiceLogById(taskId, logId)]).then(
+      if (!background) setLog(null);
+      return Promise.all([getTaskById(taskId, { requireOnline: true }), getServiceLogById(taskId, logId)]).then(
         ([loadedTask, loadedLog]) => {
           if (active) {
             setTask(loadedTask);
@@ -33,8 +35,10 @@ export default function LogDetailScreen() {
         },
       ).catch(e => { if (active) setError(e.message || "Unable to load this service note. Please try again."); })
         .finally(() => { if (active) setLoading(false); });
+      });
       return () => {
         active = false;
+        stop();
       };
     }, [taskId, logId]),
   );

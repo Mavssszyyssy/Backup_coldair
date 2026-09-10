@@ -3,6 +3,7 @@ import ServiceResourcesFields from "../../../../components/technician/ServiceRes
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../../services/liveRefresh";
 import React, { useMemo, useRef, useState } from "react";
 import { Alert, Image, Modal, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -114,12 +115,15 @@ export default function CompleteServiceScreen() {
     return SERVICE_TYPES.filter((option) => ["regular_cleaning", "deep_cleaning"].includes(option.id));
   }, [task]);
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const load = React.useCallback(async ({ background = false, isCurrent = () => true } = {}) => {
+    if (!background) setLoading(true);
     try {
       const nextTask = await getTaskById(id);
       if (!nextTask) throw new Error("This work order is no longer available. Return to Work Orders and refresh the list.");
+      if (!isCurrent()) return;
       setTask(nextTask);
+      // Refresh quote/payment/progress, never the technician's unsaved report or photo.
+      if (background) return;
       setAfterPhotos((nextTask?.proof?.afterPhotos || []).filter((photo) => photo?.uri).slice(0, 1));
       const suggested = suggestedServiceType(nextTask);
       const allowed = ["repair", "inspection"].includes(suggested) ? [suggested] : ["regular_cleaning", "deep_cleaning"];
@@ -130,11 +134,11 @@ export default function CompleteServiceScreen() {
       setAdditionalNotes(nextTask.notes && nextTask.notes !== nextTask.findings ? nextTask.notes : "");
       setPartsUsed(Array.isArray(nextTask.partsUsed) ? nextTask.partsUsed.join(", ") : nextTask.partsUsed || "");
     } catch (error) {
-      Alert.alert("Unable to load work order", error?.message || "Please try again.");
-    } finally { setLoading(false); }
+      if (!background && isCurrent()) Alert.alert("Unable to load work order", error?.message || "Please try again.");
+    } finally { if (isCurrent()) setLoading(false); }
   }, [id]);
 
-  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+  useFocusEffect(React.useCallback(() => startLiveRefresh(load), [load]));
   const formError = installationTask
     ? !canComplete
       ? "Scan and verify every assigned AC unit before completing this installation."

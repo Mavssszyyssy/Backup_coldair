@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import Button from "../ui/Button";
 import DetailRow from "../ui/DetailRow";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { customerSystemMessage } from "../../services/customerLanguage";
 
 const dateLabel = (value) => {
   const date = value ? new Date(value) : null;
@@ -17,32 +18,32 @@ export default function CustomerAmpReport({ report, provider }) {
   const [showDetails, setShowDetails] = useState(false);
   if (!report) return null;
   const maintenance = report.maintenance || {};
-  const explanation = String(maintenance.interpretation || "").trim();
+  const explanation = customerSystemMessage(String(maintenance.interpretation || "").trim());
   const aiAssisted = provider === "openai" && Boolean(explanation);
   return <View style={{ marginTop: SPACING.md }}>
     <Text accessibilityRole="header" style={{ color: COLORS.text, fontSize: FONT.lg, fontWeight: FONT.bold }}>{summary ? "Your service history" : "Your next service"}</Text>
     <Text style={body}>{maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : aiAssisted ? "AI-assisted explanation" : "Based on system records"}</Text>
-    {report.explanationWarning ? <Text accessibilityRole="alert" style={body}>{report.explanationWarning}</Text> : null}
+    {report.explanationWarning ? <Text accessibilityRole="alert" style={body}>{customerSystemMessage(report.explanationWarning)}</Text> : null}
     {!summary ? <>
       <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} />
       <DetailRow label="Recommended cleaning" value={methodLabel(maintenance.recommendedService)} />
-    </> : <DetailRow label="Last verified cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
-    <Text style={body}>{explanation || maintenance.recommendationBasis || "More completed service details are needed to explain this recommendation."}</Text>
-    {maintenance.dataQuality?.message ? <Text accessibilityRole="alert" style={[body, { color: COLORS.danger }]}>{maintenance.dataQuality.message}</Text> : null}
+    </> : <DetailRow label="Last recorded cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
+    <Text style={body}>{explanation || customerSystemMessage(maintenance.recommendationBasis) || "We need more details from completed visits to explain this suggestion."}</Text>
+    {maintenance.dataQuality?.message ? <Text accessibilityRole="alert" style={[body, { color: COLORS.danger }]}>{customerSystemMessage(maintenance.dataQuality.message)}</Text> : null}
     <Button title={showHistory ? "Hide service history" : "Show service history"} variant="secondary" size="sm" onPress={() => setShowHistory(value => !value)} />
     {showHistory ? <View>
       {(report.serviceHistory || []).map((service, index) => <View key={`${service.date}-${index}`}>
         <DetailRow label={`${service.serviceLabel || service.type || "Service"} · ${dateLabel(service.date)}`} value={[service.findings, service.actionTaken].filter(Boolean).join("\n") || "Detailed service report not recorded"} multiline />
-        {service.evidence?.eligible === false ? <Text style={[body, { color: COLORS.danger }]}>{service.evidence.reason}</Text> : null}
+        {service.evidence?.eligible === false ? <Text style={[body, { color: COLORS.danger }]}>{customerSystemMessage(service.evidence.reason)}</Text> : null}
       </View>)}
       {!report.serviceHistory?.length ? <Text style={body}>No service history has been recorded.</Text> : null}
     </View> : null}
     <Button title={showDetails ? "Hide report details" : "How was this worked out?"} variant="ghost" size="sm" onPress={() => setShowDetails(value => !value)} />
     {showDetails ? <View>
       {summary ? <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} /> : null}
-      <DetailRow label="Calculation basis" value={maintenance.recommendationBasis || "Not recorded"} multiline />
+      <DetailRow label="Why this date?" value={customerSystemMessage(maintenance.recommendationBasis) || "Not recorded"} multiline />
       <DetailRow label="Room size and horsepower" value={maintenance.capacityAssessment?.summary || "Add room size and AC horsepower to see this comparison."} multiline />
-      <Text style={body}>When enough verified model or brand history is available, a next service plan asks AI to estimate the cleaning interval. Accepted dates are saved for your unit and reminders. Otherwise the system schedule remains. Cleaning methods and warranty rules stay system-controlled; AI does not book visits or approve claims.</Text>
+      <Text style={body}>AI can suggest when to clean your AC using complete cleaning records for the same model or brand. If there is not enough history, we show a system suggestion instead. The saved date helps you plan ahead; it does not book a visit, guarantee when a fault will occur, or approve warranty coverage.</Text>
       <DetailRow label="Report reference" value={report.reportId || "Not recorded"} multiline />
     </View> : null}
     <Text style={body}>No visit has been booked by this report. To request one, open Service Visits in this app.</Text>

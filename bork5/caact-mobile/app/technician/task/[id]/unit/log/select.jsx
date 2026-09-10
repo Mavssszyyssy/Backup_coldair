@@ -1,4 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../../../../services/liveRefresh";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -32,10 +33,10 @@ export default function LogSelectScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
-      async function load() {
-        setLoading(true);
+      async function load({ background }) {
+        if (!background) setLoading(true);
         setLoadError("");
-        setUnitHistory(null);
+        if (!background) setUnitHistory(null);
         try {
         const loadedTask = await getTaskById(taskId, { requireOnline: true });
         if (!loadedTask) throw new Error("This work order is no longer available.");
@@ -59,9 +60,10 @@ export default function LogSelectScreen() {
           if (active) setLoading(false);
         }
       }
-      load();
+      const stop = startLiveRefresh(load);
       return () => {
         active = false;
+        stop();
       };
     }, [taskId]),
   );

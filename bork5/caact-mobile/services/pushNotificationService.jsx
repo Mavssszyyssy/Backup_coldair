@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 
 import { registerPushToken } from "./api";
 import { resolveNotificationRoute } from "./notificationRouteService";
+import { notifyNotificationsChanged } from "./notificationEvents";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -55,12 +56,14 @@ export async function enablePushNotifications(token) {
 }
 
 export function listenForNotificationNavigation(router, role) {
+  const received = Notifications.addNotificationReceivedListener(() => notifyNotificationsChanged());
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    notifyNotificationsChanged();
     const route = getResponseRoute(response, role);
     if (route) router.push(route);
   });
 
-  return () => subscription.remove();
+  return () => { subscription.remove(); received.remove(); };
 }
 
 export async function openInitialNotification(router, role) {

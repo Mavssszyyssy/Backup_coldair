@@ -1,8 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { Image, View } from "react-native";
 import { paymentMethodLabel } from "../../../services/paymentMethodLabel";
+import { receiptReferences, customerStatus } from "../../../services/customerLanguage";
 
 import {
   BoutiqueButton,
@@ -22,7 +24,7 @@ import { getOrderById } from "../../../services/orderStorage";
 const formatDateTime = (value = "") => {
   if (!value) return "Pending";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 };
 
 const statusVariant = (status = "") => {
@@ -117,7 +119,7 @@ function DeliveryAddressDetails({ address }) {
   );
 }
 
-function DetailCell({ label, value, fullWidth = false }) {
+function DetailCell({ label, value, fullWidth = true }) {
   return (
     <View
       style={{
@@ -134,7 +136,7 @@ function DetailCell({ label, value, fullWidth = false }) {
       <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
         {label}
       </BoutiqueText>
-      <BoutiqueText variant="h3" numberOfLines={fullWidth ? 3 : 2}>
+      <BoutiqueText variant="body" selectable style={{ fontWeight: "600", flexShrink: 1 }}>
         {value || "Pending"}
       </BoutiqueText>
     </View>
@@ -173,30 +175,34 @@ export default function ReceiptScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setLoading(true);
-      getOrderById(id)
+      const stop = startLiveRefresh(({ background }) => {
+      if (!background) setLoading(true);
+      return getOrderById(id)
         .then((result) => {
           if (active) setOrder(result);
         })
         .catch(() => {
-          if (active) setOrder(null);
+          if (active && !background) setOrder(null);
         })
         .finally(() => {
           if (active) setLoading(false);
         });
+      });
       return () => {
         active = false;
+        stop();
       };
     }, [id]),
   );
 
   const receipt = receiptDetails(order || {});
   const invoice = order?.invoice || {};
+  const references = receiptReferences(receipt.receiptNumber, order?.orderCode || order?.id);
   const deliveryAddress = resolveDeliveryAddress(order || {});
 
   return (
     <>
-      <BoutiqueHeader title="E-Receipt" subtitle="Order payment record" onBack={() => router.back()} />
+      <BoutiqueHeader title="Your receipt" onBack={() => router.back()} />
       <BoutiqueScreen contentContainerStyle={{ padding: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl * 3 }}>
         {loading ? (
           <BoutiqueCard>
@@ -235,23 +241,27 @@ export default function ReceiptScreen() {
               >
                 <Image source={require("../../../images/cold logo.png")} accessibilityLabel="Cold Air logo" style={{ width: 54, height: 54 }} resizeMode="contain" />
               </View>
-              <View style={{ flex: 1, minWidth: 170, gap: 2 }}>
+              <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
                 <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>OFFICIAL E-RECEIPT</BoutiqueText>
-                <BoutiqueText variant="h1">Coldair ACT</BoutiqueText>
+                <BoutiqueText variant="h2">Coldair ACT</BoutiqueText>
               </View>
               <View style={{ alignItems: "flex-start", gap: BQ_SPACING.xs }}>
                 <BoutiqueChip label={String(receipt.paymentStatus).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
               </View>
             </View>
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: "#0f172a" }}>
-              <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">RECEIPT / ORDER</BoutiqueText>
-                <BoutiqueText variant="h3" color="#fff">{receipt.receiptNumber} · {order.orderCode || order.id}</BoutiqueText>
+            <View style={{ backgroundColor: "#0f172a" }}>
+              <View style={{ padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
+                <BoutiqueText variant="label" color="#94a3b8">Receipt number</BoutiqueText>
+                <BoutiqueText variant="body" selectable color="#fff" style={{ fontWeight: "600" }}>{references.receiptNumber}</BoutiqueText>
+                {references.orderNumber ? <>
+                  <BoutiqueText variant="label" color="#94a3b8" style={{ marginTop: BQ_SPACING.sm }}>Order number</BoutiqueText>
+                  <BoutiqueText variant="body" selectable color="#fff">{references.orderNumber}</BoutiqueText>
+                </> : null}
               </View>
-              <View style={{ flex: 1, minWidth: 160, padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">ISSUED</BoutiqueText>
-                <BoutiqueText variant="h3" color="#fff">{formatDateTime(receipt.issuedAt)}</BoutiqueText>
+              <View style={{ paddingHorizontal: BQ_SPACING.md, paddingBottom: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
+                <BoutiqueText variant="label" color="#94a3b8">Date issued</BoutiqueText>
+                <BoutiqueText variant="body" color="#fff">{formatDateTime(receipt.issuedAt)}</BoutiqueText>
               </View>
             </View>
 
@@ -262,7 +272,7 @@ export default function ReceiptScreen() {
               <DetailCell label="PAYMENT REFERENCE" value={receipt.paymentReference} />
               <DeliveryAddressDetails address={deliveryAddress} />
               <DetailCell label="BILLING ADDRESS" value={formatAddress(invoice.billingAddress || order.address) || "Same as delivery"} />
-              <DetailCell label="ORDER / DELIVERY" value={`${invoice.orderStatus || order.workflowLabel || "Pending"} · ${order.tracking?.currentLabel || "Order Placed"}`} />
+              <DetailCell label="Delivery progress" value={order.tracking?.currentLabel || customerStatus(invoice.orderStatus || order.workflowLabel || "Pending")} />
               <DetailCell label="WARRANTY / TECHNICIAN" value={[invoice.warranty, invoice.technician?.name && `${invoice.technician.name} (${invoice.technician.status})`].filter(Boolean).join("\n") || "Warranty activates after installation."} />
             </View>
 
@@ -293,7 +303,7 @@ export default function ReceiptScreen() {
 
             <View style={{ padding: BQ_SPACING.lg, gap: BQ_SPACING.lg }}>
               <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 21 }}>
-                This invoice is tied to one order and one receipt record in the Coldair ACT system.
+                Keep this receipt for payment questions and warranty support.
               </BoutiqueText>
               {!!order.tracking?.timeline?.length && (
                 <View style={{ gap: BQ_SPACING.xs, padding: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderRadius: BQ_RADIUS.sm }}>

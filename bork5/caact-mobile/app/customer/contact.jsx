@@ -157,7 +157,7 @@ export default function CustomerContactScreen() {
           variant="secondary"
           onPress={() => prepareMessage("service", "Help with my service or assigned technician")}
         />
-        <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, lineHeight: 18, marginTop: SPACING.sm }}>For privacy and safety, technician messages are relayed through the official support team and work order.</Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, lineHeight: 18, marginTop: SPACING.sm }}>For your privacy, contact our support team if you need to send a message to your technician.</Text>
         <View style={{ height: SPACING.sm }} />
         <Button title="View My Orders" variant="ghost" onPress={() => router.push("/customer/orders")} />
       </Card>

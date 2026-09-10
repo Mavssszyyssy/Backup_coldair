@@ -21,8 +21,8 @@ test('technician signs in, replaces initial password, and reaches work without a
     'technician/_layout': TechnicianLayout, 'technician/oobe/index': TechnicianOobe,
     'technician/home': () => <Text>Technician home fixture</Text>,
   }, { initialUrl: '/sign-in' });
-  await screen.findByPlaceholderText('you@example.com or your alias');
-  await fireEvent.changeText(screen.getByPlaceholderText('you@example.com or your alias'), 'tech.cavite.lebron');
+  await screen.findByPlaceholderText('you@example.com or your username');
+  await fireEvent.changeText(screen.getByPlaceholderText('you@example.com or your username'), 'tech.cavite.lebron');
   await fireEvent.changeText(screen.getByDisplayValue(''), 'fixture-password');
   await fireEvent.press(screen.getByText('Sign In'));
   await screen.findByText('Technician Setup');

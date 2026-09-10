@@ -384,7 +384,7 @@ export default function CustomerSettingsScreen() {
           <Button title={addresses.length ? "Add another address" : "Add delivery address"} variant="secondary" onPress={() => openAddressEditor()} />
         </Section>
         <Section title="Security & Session">
-          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Account Protection" subtitle="Password login and verified contact are enabled." />
+          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Account Protection" subtitle="Manage how you sign in and keep your account safe." />
           <CustomerSettingsRow icon="log-out-sharp" title="Sign Out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
         <Section title="Help & Support">
@@ -440,7 +440,7 @@ export default function CustomerSettingsScreen() {
         <TextField label="First name" value={profileForm.name_first} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={profileErrors.name_first} />
         <TextField label="Last name" value={profileForm.name_last} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={profileErrors.name_last} />
         <TextField label="Suffix (optional)" value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
-        <TextField label="Sign-in alias" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
+        <TextField label="Username" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField label="Email" value={profileForm.email} editable={false} />
         <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
       </Section>}

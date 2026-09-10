@@ -72,7 +72,7 @@ function OrderSummary({
       </div>
 
       <p className="checkout-flow-note">
-        Your fulfillment branch will review and dispatch your order.
+        Your branch will review your order and arrange delivery.
         {selectedPayment === "gcash" || selectedPayment === "credit"
           ? " Continue to secure payment after placing the order."
           : " Pay the assigned technician on delivery after arrival is confirmed."}

@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { Alert, Linking, View } from "react-native";
 
@@ -80,7 +81,7 @@ function workflowInfo(order = {}) {
   }
   return {
     label: order.workflowLabel || order.status || "Pending",
-    body: "Order progress will appear here once the backend updates fulfillment.",
+    body: "Delivery updates will appear here as your order moves forward.",
     activeStep: 0,
   };
 }
@@ -124,10 +125,10 @@ function paymentStatusLabel(order = {}) {
   }
   const labels = {
     paid: "Paid",
-    verified: "Payment verified",
+    verified: "Payment confirmed",
     cod_pending: "Cash on delivery",
     pending: "Payment pending",
-    pending_verification: "Payment verification pending",
+    pending_verification: "Checking payment",
     failed: "Payment failed",
     cancelled: "Payment cancelled",
     expired: "Payment link expired",
@@ -248,17 +249,16 @@ export default function CustomerOrdersScreen() {
     useCallback(() => {
       let active = true;
       const load = () => {
-        getOrdersByUser(current).then((items) => {
+        return getOrdersByUser(current).then((items) => {
           if (active) {
             setOrders(items);
           }
         });
       };
-      load();
-      const pollId = setInterval(load, 20000);
+      const stop = startLiveRefresh(load);
       return () => {
         active = false;
-        clearInterval(pollId);
+        stop();
       };
     }, [current]),
   );
@@ -324,7 +324,7 @@ export default function CustomerOrdersScreen() {
             {orders.length} order{orders.length === 1 ? "" : "s"}
           </BoutiqueText>
           <BoutiqueText color="rgba(255,255,255,0.76)">
-            Track stock approval, payment review, and fulfillment progress from mobile checkout.
+            Track your payment, delivery, and installation in one place.
           </BoutiqueText>
         </BoutiqueCard>
 
@@ -335,7 +335,7 @@ export default function CustomerOrdersScreen() {
               No orders yet
             </BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} align="center">
-              Browse the mobile boutique catalogue and your submitted orders will appear here.
+              Browse our AC products. Your orders will appear here after checkout.
             </BoutiqueText>
             <BoutiqueButton title="Shop AC Units" onPress={() => router.push("/customer/shop")} />
           </BoutiqueCard>

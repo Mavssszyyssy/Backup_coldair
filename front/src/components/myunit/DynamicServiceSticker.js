@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
+import { customerSystemMessage } from "../../domain/customerLanguage";
 
 const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
 const dateLabel = (value) => value
@@ -12,7 +13,7 @@ const serviceExplanation = (service) =>
     ? "Deep cleaning applies when the unit has gone more than one year without cleaning. The entire AC is taken down for a more thorough cleaning."
     : service === "regular_cleaning"
       ? "Regular cleaning applies when the unit was last cleaned within one year."
-      : "A verified installation or cleaning date is needed before a service method can be suggested.";
+      : "We need your installation date or last completed cleaning date to suggest the right cleaning service.";
 
 const capacityMessage = (assessment = {}) => {
   const messages = {
@@ -49,8 +50,8 @@ function DynamicServiceSticker({ unit }) {
   return <section className="service-sticker" aria-label="Recommended service schedule">
     <div className="service-sticker-header"><div><span className="service-sticker-label">Suggested Servicing Date</span><strong>{dateLabel(recommendation.bestServicedBy)}</strong></div></div>
     <div className="service-sticker-insight"><strong>{serviceLabel(recommendation.recommendedService)}</strong><p>{serviceExplanation(recommendation.recommendedService)}</p></div>
-    <p>{recommendation.recommendationBasis}</p>
-    {recommendation.dataQuality?.message ? <p role="status">{recommendation.dataQuality.message}</p> : null}
+    <p>{customerSystemMessage(recommendation.recommendationBasis)}</p>
+    {recommendation.dataQuality?.message ? <p role="status">{customerSystemMessage(recommendation.dataQuality.message)}</p> : null}
     {roomGuidance ? <p>{roomGuidance}</p> : null}
     <p className="service-sticker-app-note">Book this service in the Cold Air mobile app using your Cold Air account.</p>
   </section>;

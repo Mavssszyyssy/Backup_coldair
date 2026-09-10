@@ -1,6 +1,7 @@
 import { COLORS } from "../../constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { Alert, ActivityIndicator, Pressable, View } from "react-native";
 
@@ -61,16 +62,17 @@ export default function CustomerNotificationsScreen() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
+  const loadNotifications = useCallback(async ({ background, isCurrent }) => {
+    if (!background) setLoading(true);
     try {
-      setNotifications(await getNotificationsForUser(current));
+      const items = await getNotificationsForUser(current, { strict: true });
+      if (isCurrent()) setNotifications(items);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [current]);
 
-  useFocusEffect(useCallback(() => { loadNotifications(); }, [loadNotifications]));
+  useFocusEffect(useCallback(() => startLiveRefresh(loadNotifications), [loadNotifications]));
 
   const openNotification = async (item) => {
     try {

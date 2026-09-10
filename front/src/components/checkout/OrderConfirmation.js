@@ -239,7 +239,7 @@ function OrderConfirmation() {
                 </BoutiqueText>
                 {canRetryPayment ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">
-                    Complete payment to move this order forward for branch processing.
+                    Complete payment so our team can prepare your order.
                   </BoutiqueText>
                 ) : null}
               </BoutiqueBox>

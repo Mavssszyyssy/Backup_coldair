@@ -66,7 +66,7 @@ export function LoginScreen() {
         ? { authenticatorCode: result.error || "Incorrect authenticator code." }
         : {
           email: result.error || " ",
-          password: result.error || "Invalid credentials.",
+          password: result.error || "Check your username and password, then try again.",
         });
     } catch {
       setErrors({ email: "Unable to login right now.", password: "" });
@@ -111,7 +111,7 @@ export function LoginScreen() {
                 label="Email or Alias"
                 value={form.email}
                 onChangeText={(v) => updateField("email", v)}
-                placeholder="you@example.com or your alias"
+                placeholder="you@example.com or your username"
                 error={errors.email}
                 autoCapitalize="none"
               />

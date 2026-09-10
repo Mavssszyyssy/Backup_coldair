@@ -1,8 +1,9 @@
 import PagedItems from "../../../components/ui/PagedItems";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { startLiveRefresh } from "../../../services/liveRefresh";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Text, View } from "react-native";
 
 import {
   CustomerRecommendationPanel,
@@ -37,7 +38,7 @@ import {
   cacheUnitUpdate,
   getUnitByCode,
 } from "../../../services/unitStorage";
-import { createWarrantyClaim, generateAmpReport, getStoredToken, updateAmpRoomSize } from "../../../services/api";
+import { generateAmpReport, getStoredToken, updateAmpRoomSize } from "../../../services/api";
 
 function readParam(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -60,7 +61,7 @@ function formatDateTime(value = "") {
 }
 
 const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
-const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "AMP Reports"];
+const DETAIL_PAGES = ["Overview", "Warranty", "Service Visits", "Care Guide"];
 const DETAIL_PAGE_INDEX = { overview: 0, warranty: 1, service: 2, services: 2, amp: 3 };
 
 function detailPageFromParam(value) {
@@ -167,8 +168,6 @@ export default function CustomerUnitDetailsScreen() {
     completedServices: [],
   });
   const [loading, setLoading] = useState(true);
-  const [claimIssue, setClaimIssue] = useState("");
-  const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [ampReport, setAmpReport] = useState(null);
   const [ampReportLoading, setAmpReportLoading] = useState("");
   const [ampReportError, setAmpReportError] = useState("");
@@ -182,42 +181,6 @@ export default function CustomerUnitDetailsScreen() {
   useEffect(() => {
     setDetailPage(detailPageFromParam(params.page));
   }, [params.page]);
-
-  const handleWarrantyClaim = async () => {
-    if (!claimIssue.trim()) {
-      Alert.alert("Describe the issue", "Enter a short description of the warranty concern first.");
-      return;
-    }
-    const token = await getStoredToken();
-    if (!token || !unit?.id) {
-      Alert.alert("Sign in required", "Please sign in again before submitting a warranty claim.");
-      return;
-    }
-    setClaimSubmitting(true);
-    try {
-      const result = await createWarrantyClaim(token, unit.id, { issue: claimIssue.trim() });
-      if (!result.success) throw new Error(result.error);
-      const nextUnit = {
-        ...unit,
-        warranty: result.warranty,
-        warrantyStatus: result.warranty?.status || "under_review",
-      };
-      setUnit(nextUnit);
-      await cacheUnitUpdate(nextUnit.id, {
-        warranty: nextUnit.warranty,
-        warrantyStatus: nextUnit.warrantyStatus,
-      }).catch(() => null);
-      const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit });
-      setRecommendation(nextRecommendation);
-      setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-      setClaimIssue("");
-      Alert.alert("Warranty claim submitted", "Your claim is under review. We will notify you when it is updated.");
-    } catch (error) {
-      Alert.alert("Claim not submitted", error?.message || "Please try again.");
-    } finally {
-      setClaimSubmitting(false);
-    }
-  };
 
   const handleAmpReport = async (reportType) => {
     setAmpReport(null);
@@ -301,7 +264,7 @@ export default function CustomerUnitDetailsScreen() {
     useCallback(() => {
       let active = true;
 
-      Promise.all([
+      const stop = startLiveRefresh(({ background }) => Promise.all([
         getUnitByCode(unitId),
         getCustomerServiceHistory(current?.id),
       ])
@@ -325,14 +288,15 @@ export default function CustomerUnitDetailsScreen() {
           const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
           setRecommendation(nextRecommendation);
           setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-          setRoomSize(loadedUnit.roomSizeSqm ? String(loadedUnit.roomSizeSqm) : "");
+          if (!background) setRoomSize(loadedUnit.roomSizeSqm ? String(loadedUnit.roomSizeSqm) : "");
         })
         .finally(() => {
           if (active) setLoading(false);
-        });
+        }));
 
       return () => {
         active = false;
+        stop();
       };
     }, [current, unitId]),
   );
@@ -509,7 +473,7 @@ export default function CustomerUnitDetailsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Waiting for installation verification</Text>
                 <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 3 }}>
-                  No acceptance is required from you. Coverage dates and details will appear automatically after your technician completes the verified installation.
+                  You do not need to activate this yourself. Your warranty details will appear after the technician confirms installation.
                 </Text>
               </View>
             </View>
@@ -540,9 +504,8 @@ export default function CustomerUnitDetailsScreen() {
           </Text> : null}
           {canSubmitWarrantyClaim ? (
             <>
-              <Text style={{ color: COLORS.text, fontWeight: FONT.bold, marginTop: SPACING.sm }}>Request warranty support</Text>
-              <TextInput value={claimIssue} onChangeText={setClaimIssue} placeholder="Describe the issue with your AC unit" placeholderTextColor={COLORS.textMuted} multiline style={{ minHeight: 88, marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.sm, color: COLORS.text, textAlignVertical: "top" }} />
-              <Button title="Submit Warranty Claim" onPress={handleWarrantyClaim} loading={claimSubmitting} disabled={claimSubmitting} />
+              <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>Submit warranty claims through the Service Request form. Your coverage and claim updates remain here.</Text>
+              <Button title="Open Warranty Request Form" onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit.id, serviceType: "warranty" } })} />
             </>
           ) : null}
           {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
@@ -565,7 +528,7 @@ export default function CustomerUnitDetailsScreen() {
                 <DetailRow label="Technician" value={checkedInTask?.assignedTechnicianName || "Assigned technician"} />
                 <DetailRow label="Checked in" value={formatDateTime(latestCheckIn.checkedInAt)} />
                 <DetailRow label="GPS location" value={`${Number(latestCheckIn.latitude).toFixed(5)}, ${Number(latestCheckIn.longitude).toFixed(5)}`} multiline />
-                <DetailRow label="Location accuracy" value={Number(latestCheckIn.accuracy) > 0 ? `Within approximately ${Math.round(Number(latestCheckIn.accuracy))} meters` : "Device GPS verified"} multiline />
+                <DetailRow label="Location accuracy" value={Number(latestCheckIn.accuracy) > 0 ? `Within approximately ${Math.round(Number(latestCheckIn.accuracy))} meters` : "Location recorded by the technician’s phone"} multiline />
                 {latestCheckInMapUrl ? <Button title="Open Check-in Map" variant="secondary" onPress={() => Linking.openURL(latestCheckInMapUrl)} leftIcon={<Ionicons name="map-sharp" size={18} color={COLORS.primary} />} /> : null}
               </>
             ) : (
@@ -579,7 +542,7 @@ export default function CustomerUnitDetailsScreen() {
           <Card>
             <CustomerSectionHeader title="Service Requests" />
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-              {[["Open", activeRequests.length], ["Work orders", history.linkedTasks.length], ["Completed", history.completedServices.length]].map(([label, count]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.primaryLight, padding: 10, borderRadius: 10 }}><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 20 }}>{count}</Text><Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 3 }}>{label}</Text></View>)}
+              {[["Open", activeRequests.length], ["Assigned visits", history.linkedTasks.length], ["Completed", history.completedServices.length]].map(([label, count]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.primaryLight, padding: 10, borderRadius: 10 }}><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 20 }}>{count}</Text><Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 3 }}>{label}</Text></View>)}
             </View>
             {history.requests.length ? <PagedItems key={unit.id} label="Service visits" controlsPosition="top" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
               const statusColors = requestStatusColors(request.status);
@@ -621,18 +584,18 @@ export default function CustomerUnitDetailsScreen() {
                     </View>
                   </View>
                   <DetailRow label="Concern" value={request.issueDescription || request.concern || "Service requested"} multiline />
-                  <DetailRow label="Service amount" value={request.servicePayment?.amount == null ? ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "Not recorded" : "Awaiting Admin quote" : `PHP ${Number(request.servicePayment.amount).toFixed(2)}`} />
-                  <DetailRow label="Service payment" value={request.servicePayment?.status === "warranty_covered" ? "Covered by warranty — no cash due" : request.servicePayment?.status === "paid" ? "Cash collected" : request.servicePayment?.status === "no_charge" ? "No charge" : ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "No collection recorded" : request.servicePayment?.amount == null ? "Quote required before payment" : "Cash due after check-in"} />
+                  <DetailRow label="Service amount" value={request.servicePayment?.amount == null ? ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "Not recorded" : "Our team will confirm the price" : `PHP ${Number(request.servicePayment.amount).toFixed(2)}`} />
+                  <DetailRow label="Service payment" value={request.servicePayment?.status === "warranty_covered" ? "Covered by warranty — no cash due" : request.servicePayment?.status === "paid" ? "Cash collected" : request.servicePayment?.status === "no_charge" ? "No charge" : ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "No collection recorded" : request.servicePayment?.amount == null ? "Wait for the confirmed price before paying" : "Pay the technician after arrival is confirmed"} />
                   <DetailRow label={request.scheduledDate ? "Confirmed appointment" : "Preferred visit"} value={formatDate(request.scheduledDate || request.preferredDate)} />
                   {request.timeSlot ? <DetailRow label="Time slot" value={request.timeSlot} /> : null}
                   <DetailRow label="Submitted" value={formatDateTime(request.createdAt)} />
-                  <DetailRow label="Responsible branch" value={request.branch || "Being assigned"} />
+                  <DetailRow label="Your service branch" value={request.branch || "Being assigned"} />
                   <DetailRow
                     label="Technician"
                     value={request.assignedTechnicianName || linkedTask?.assignedTechnicianName || "Not assigned yet"}
                   />
                   {request.taskCode || linkedTask?.taskCode ? (
-                    <DetailRow label="Work order" value={request.taskCode || linkedTask.taskCode} />
+                    <DetailRow label="Visit reference" value={request.taskCode || linkedTask.taskCode} />
                   ) : null}
 
                   <CustomerRequestTimeline key={request.id || requestIndex} events={requestTimeline} formatDateTime={formatDateTime} color={statusColors.text} />
@@ -656,7 +619,7 @@ export default function CustomerUnitDetailsScreen() {
               </Text>
             )}
             <Button
-              title={activeServiceRequest ? "An Open Request Already Exists" : "Book Service for This AC"}
+              title={activeServiceRequest ? "You already have a service request" : "Book Service for This AC"}
               disabled={Boolean(activeServiceRequest)}
               onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })}
               leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />}

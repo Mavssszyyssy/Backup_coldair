@@ -38,7 +38,7 @@ test('real screens, session and API client recover a committed setup after a los
     'technician/_layout': TechnicianLayout, 'technician/oobe/index': TechnicianOobe,
     'technician/home': () => <Text>Technician work home</Text>,
   }, { initialUrl: '/sign-in' });
-  await fireEvent.changeText(await screen.findByPlaceholderText('you@example.com or your alias'), 'tech.cavite.fixture');
+  await fireEvent.changeText(await screen.findByPlaceholderText('you@example.com or your username'), 'tech.cavite.fixture');
   await fireEvent.changeText(screen.getByLabelText('Password'), 'initial.fixture');
   await fireEvent.press(screen.getByText('Sign In'));
   await screen.findByText('Technician Setup');

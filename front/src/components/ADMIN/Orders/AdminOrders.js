@@ -717,7 +717,6 @@ const AdminOrders = ({ embedded = false }) => {
                   <div className="admin-order-proof">
                     <strong>Proof of Installation</strong>
                     <span>Technician: {proof.technicianName || detailedTask.assignedTechnicianName || 'Technician'}</span>
-                    <span>Customer Sign-off: {proof.customerSignature?.name || detailedTask.customerSignatureName || 'No sign-off yet'}</span>
                     <span>Submitted: {formatDateTime(proof.submittedAt || detailedTask.proofSubmittedAt)}</span>
                     {detailedTask?.findings ? <span>Work completed: {detailedTask.findings}</span> : null}
                     {detailedTask?.afterCondition ? <span>Final condition: {detailedTask.afterCondition}</span> : null}
@@ -763,7 +762,7 @@ const AdminOrders = ({ embedded = false }) => {
                 ) : null}
                 {isWaitingTechnician ? (
                   <p className="admin-order-recovery-note">
-                    Waiting for the technician to finish AMP registration, submit an installed-unit photo, work summary, and receiver sign-off.
+                    Waiting for the technician to complete installation registration and submit all required proof.
                   </p>
                 ) : null}
                 {actionConfig || order.receipt?.receiptNumber || order.refundReview?.required || canRepairTask ? (

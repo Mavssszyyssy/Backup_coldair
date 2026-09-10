@@ -164,7 +164,7 @@ function MyUnit() {
                 align="center"
                 style={{ maxWidth: "320px" }}
               >
-                {unitLoadError || "Completed technician installations automatically appear here with their serial number, warranty, AMP, and service history."}
+                {unitLoadError || "Your AC will appear here after installation, along with its serial number, warranty, care plan, and service history."}
               </BoutiqueText>
               {unitLoadError ? (
                 <button type="button" className="bq-my-unit-retry" onClick={() => setReloadKey((value) => value + 1)}>Try again</button>

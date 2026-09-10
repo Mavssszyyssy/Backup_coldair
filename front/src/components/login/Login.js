@@ -102,7 +102,7 @@ function Login() {
 
       <BoutiqueAuthHeader
         title="Welcome Back"
-        subtitle="Sign in to your boutique account"
+        subtitle="Sign in to your Cold Air account"
       />
 
       <BoutiqueStack gap={24} className="bq-login-form-inner">

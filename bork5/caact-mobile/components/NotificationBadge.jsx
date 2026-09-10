@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
-import { AppState, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useUserContext } from "../context/UserContext";
 import { getNotificationsForUser } from "../services/notificationService";
-import { subscribeNotificationChanges } from "../services/notificationEvents";
+import { startLiveRefresh } from "../services/liveRefresh";
 
 export default function NotificationBadge() {
   const { current } = useUserContext();
@@ -21,11 +21,8 @@ export default function NotificationBadge() {
         if (active && request === version) setSnapshot({ owner: id, count: items.filter(item => item.unread && !item.read).length });
       } catch { /* Preserve the last confirmed count during an interruption. */ }
     };
-    refresh();
-    const timer = setInterval(refresh, 20000);
-    const unsubscribe = subscribeNotificationChanges(refresh);
-    const app = AppState.addEventListener("change", state => { if (state === "active") refresh(); });
-    return () => { active = false; clearInterval(timer); unsubscribe(); app.remove(); };
+    const stop = startLiveRefresh(refresh);
+    return () => { active = false; stop(); };
   }, [id, role]));
   const count = id && snapshot.owner === id ? snapshot.count : 0;
   if (!count) return null;

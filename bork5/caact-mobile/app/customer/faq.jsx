@@ -22,14 +22,14 @@ const FAQ_ITEMS = [
     category: "Payments",
     question: "What payment methods are supported?",
     answer:
-      "Available checkout methods may include GCash, credit or debit cards, Cash on Delivery, and Pay on Installation for eligible orders. Only a confirmed payment changes a paid order status.",
+      "Choose GCash, credit or debit card, or Cash on Delivery from the available checkout options. Your order is marked paid only after payment is confirmed.",
   },
   {
     id: "payment-status",
     category: "Payments",
     question: "Why is my payment still pending?",
     answer:
-      "Keep the payment page open until the provider confirms the result. Your order updates after secure payment confirmation. If it remains pending, open the order receipt or contact support before trying again.",
+      "Keep the payment page open until your payment is confirmed. Your order updates after secure payment confirmation. If it remains pending, open the order receipt or contact support before trying again.",
   },
   {
     id: "delivery",
@@ -60,15 +60,22 @@ const FAQ_ITEMS = [
       "Open My Units and select the registered AC. The unit record shows the warranty type, activation and expiration dates, covered components, and any claim or service history.",
   },
   {
+    id: "warranty-claim",
+    category: "Warranty",
+    question: "How do I submit a warranty claim?",
+    answer:
+      "Open Services, choose Warranty Claim, select your AC, and describe the problem. Our team reviews your coverage before arranging a visit. You can still view your coverage and claim history in My Units.",
+  },
+  {
     id: "maintenance",
     category: "Maintenance",
     question: "How do I request maintenance or repair?",
     answer:
-      "Go to Services, select your registered AC, choose the service type, describe the concern, and select a future preferred date. You will be notified when the request is reviewed or assigned.",
+      "Go to Services and choose Cleaning or Service. Select your AC, then Regular Cleaning, Deep Cleaning, or another available service. Describe the concern and choose today or a future preferred date. We will notify you when a technician and time are assigned. Delivery and installation are arranged through your order, not this form.",
   },
   {
     id: "amp-maintenance",
-    category: "AMP",
+    category: "AC Care",
     question: "What is the suggested servicing date?",
     answer:
       "It is the suggested date for your next AC cleaning, based on completed cleaning records for the same model or brand. Regular cleaning applies within one year of the last cleaning; deep cleaning applies after more than one year.",
@@ -92,7 +99,7 @@ const FAQ_ITEMS = [
     category: "Orders",
     question: "How do cancellation and refunds work?",
     answer:
-      "Cancellation eligibility depends on the current order stage. Request cancellation through the order details or support. Approved refunds follow the original payment method and provider processing times.",
+      "Cancellation eligibility depends on the current order stage. Request cancellation through the order details or support. Approved refunds follow the original payment method and the time needed by your bank or payment app.",
   },
   {
     id: "ac-concerns",

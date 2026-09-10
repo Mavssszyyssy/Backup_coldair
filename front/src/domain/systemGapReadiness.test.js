@@ -27,6 +27,9 @@ describe("cross-surface readiness gaps", () => {
     expect(orders).toContain("/tasks/${encodeURIComponent(taskId)}");
     expect(orders).toContain("proof?.hasAfterPhotos");
     expect(orders).toContain("Paid on delivery");
+    expect(orders).not.toContain("Customer Sign-off:");
+    expect(orders).not.toContain("No sign-off yet");
+    expect(orders).toContain("hasInstallationPhoto && hasCustomerSignoff && hasTechnicianSummary");
   });
 
   test("admin scheduling uses the Philippine business date", () => {
