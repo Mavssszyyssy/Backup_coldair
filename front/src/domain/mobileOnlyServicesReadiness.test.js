@@ -29,7 +29,7 @@ describe("mobile-only customer service workflow", () => {
 
     expect(mobileServices).toContain("createServiceRequest");
     expect(mobileServices).toContain("createWarrantyClaim");
-    expect(mobileServices).toContain("Submit Warranty Support");
+    expect(mobileServices).toContain("Submit Warranty Claim");
   });
 
   it("constrains customer-support icons so they cannot cover the page", () => {
