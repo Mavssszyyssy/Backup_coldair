@@ -156,6 +156,7 @@ const userSchema = new mongoose.Schema(
     },
     expoPushTokens: [{ type: String, trim: true }],
     skills: [{ type: String }],
+    serviceQuota: { type: Number, min: 1, default: null },
     permissions: [{ type: String }],
     department: { type: String },
     assignedBranch: { type: String, default: "" },

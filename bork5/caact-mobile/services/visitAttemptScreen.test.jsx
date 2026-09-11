@@ -32,3 +32,19 @@ test('without arrival even filled inputs cannot submit an unattended visit', asy
   await fireEvent.press(screen.getByText('Submit visit attempt'));
   expect(mockSubmit).not.toHaveBeenCalled();
 });
+
+test('failed installation keeps a confirmed GCash payment visible on the ticket', async () => {
+  mockGet.mockResolvedValue({
+    id: 'task-1',
+    taskCode: 'TSK-INSTALL',
+    orderId: 'order-1',
+    orderCode: 'ORD-TEST',
+    status: 'In Progress',
+    checkIn: { checkedInAt: '2026-09-10T02:00:00Z' },
+    orderPayment: { method: 'gcash', status: 'paid', amount: 25000 },
+  });
+  await render(<VisitAttemptScreen />);
+  expect(await screen.findByText('Failed to Install')).toBeTruthy();
+  expect(screen.getByText('GCash payment confirmed')).toBeTruthy();
+  expect(screen.getByText('PHP 25000.00 remains paid even though this installation attempt failed.')).toBeTruthy();
+});

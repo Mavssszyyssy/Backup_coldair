@@ -11,11 +11,12 @@ const emptyConsents = {
 
 describe("registration legal consents", () => {
   it("links each required consent to its own legal document", () => {
+    const onFieldChange = vi.fn();
     render(
       <RegisterLegalConsentsStep
         formData={emptyConsents}
         errors={{}}
-        onFieldChange={vi.fn()}
+        onFieldChange={onFieldChange}
         onNext={vi.fn()}
         onBack={vi.fn()}
       />,
@@ -28,6 +29,8 @@ describe("registration legal consents", () => {
       "/terms/app",
       "/privacy",
     ]);
+    fireEvent.click(links[0]);
+    expect(onFieldChange).toHaveBeenCalledWith("agreeTermsWarranty", true);
   });
 
   it("shows specific errors and blocks progress when policies are missing", () => {

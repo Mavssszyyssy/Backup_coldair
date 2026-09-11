@@ -230,7 +230,7 @@ export const LEGAL_POLICIES = {
         title: "4. Catalog, stock, and orders",
         paragraphs: [
           "Product descriptions, horsepower, pricing, images, and available stock are provided to support purchase decisions. Cold Air ACT may correct a clear error before confirming fulfillment and will inform the customer when the correction materially affects the order.",
-          "Adding an item to the cart does not reserve stock. An order is subject to confirmation, valid payment or payment method, stock allocation, delivery coverage, and other checkout requirements. For Cash on Delivery orders, stock is committed or deducted according to the confirmed dispatch workflow rather than merely when the order is placed.",
+          "Adding an item to the cart does not reserve stock. An order is subject to confirmation, valid payment or payment method, stock allocation, delivery coverage, and other checkout requirements. For Cash on Delivery orders, the assigned branch's stock is validated and reserved when the order is confirmed.",
         ],
       },
       {

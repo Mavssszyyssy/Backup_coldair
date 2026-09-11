@@ -13,6 +13,7 @@ const { validatePostalCodeForAddress } = require("../utils/postalCodeValidation"
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { isProtectedDemoStaff } = require("../domain/demoStaffPolicy");
 const { generatePasswordResetToken } = require("../domain/passwordResetLink");
+const { normalizeServiceQuota } = require("../domain/technicianServiceQuota");
 
 const PROFILE_VISIBILITY_VALUES = ["public", "private", "role_based"];
 const NOTIFICATION_TYPES = ["account", "order", "system"];
@@ -549,6 +550,17 @@ const updateProfileById = async (req, res) => {
 
   if (!canManageTargetProfile(req.authUser, target)) {
     return res.status(403).json({ message: "Forbidden" });
+  }
+
+  if (req.body?.serviceQuota !== undefined) {
+    if (target.role !== "technician") {
+      return res.status(400).json({ message: "Service Quota can only be set for a technician account." });
+    }
+    const serviceQuota = normalizeServiceQuota(req.body.serviceQuota);
+    if (!serviceQuota) {
+      return res.status(400).json({ message: "Service Quota must be a whole number greater than 0." });
+    }
+    target.serviceQuota = serviceQuota;
   }
 
   const result = await applyProfileUpdate(target, req.body || {});

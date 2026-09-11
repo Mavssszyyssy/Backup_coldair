@@ -1,5 +1,5 @@
 import { Snowflake } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import AmpReportCenter from "../AMP/AmpReportCenter";
@@ -17,6 +17,7 @@ import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
+import { filterCustomerUnits, sortCustomerUnits } from "../../domain/myunit/unitDisplay";
 
 const formatCustomerDate = (value = "") => {
   if (!value) return "";
@@ -37,8 +38,18 @@ const buildUnitFromBackend = (unit = {}) => ({
   brand: unit.brand || "Cold Air ACT",
   model: unit.model || unit.modelName || unit.unitName || "Installed AC Unit",
   serialNumber: unit.serialNumber || "",
+  orderCode: unit.orderCode || "",
+  purchaseDateRaw: unit.purchaseDate || "",
+  purchaseDate: formatCustomerDate(unit.purchaseDate),
   qrCode: unit.qrCode || "",
+  unitName: unit.unitName || [unit.brand, unit.model || unit.modelName].filter(Boolean).join(" ") || "Installed AC Unit",
+  serviceBranch: unit.serviceBranch || "",
+  placementArea: unit.placementArea || "",
+  installationEnvironment: unit.installationEnvironment || "",
+  installationDateRaw: unit.installationDate || "",
   installationDate: formatCustomerDate(unit.installationDate),
+  createdAt: unit.createdAt || "",
+  updatedAt: unit.updatedAt || "",
   status: unit.status || "Active",
   bestServicedByLabel:
     formatCustomerDate(unit.bestServicedBy),
@@ -56,6 +67,7 @@ const buildUnitFromBackend = (unit = {}) => ({
   warrantyExpirationDate: unit.warrantyExpirationDate || unit.warranty?.expirationDate || "",
   warrantyRecommendation: unit.warrantyRecommendation || "",
   serviceHistory: Array.isArray(unit.serviceHistory) ? unit.serviceHistory : [],
+  unitHistory: Array.isArray(unit.unitHistory) ? unit.unitHistory : (Array.isArray(unit.serviceHistory) ? unit.serviceHistory : []),
 });
 
 function MyUnit() {
@@ -68,6 +80,17 @@ function MyUnit() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitSort, setUnitSort] = useState("newest");
+
+  const visibleUnits = useMemo(
+    () => sortCustomerUnits(filterCustomerUnits(units, unitSearch), unitSort),
+    [unitSearch, unitSort, units],
+  );
+  const newestUnitId = useMemo(
+    () => sortCustomerUnits(units, "newest")[0]?.id || "",
+    [units],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -173,20 +196,61 @@ function MyUnit() {
           </BoutiqueBox>
         ) : (
           <>
+            <section className="unit-organizer" aria-label="Find and organize your AC units">
+              <div className="unit-organizer-copy">
+                <BoutiqueText variant="h3">Find your AC unit</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} size="13px">
+                  The newest purchase appears first. Search by model, serial number, order number, branch, or installation address.
+                </BoutiqueText>
+              </div>
+              <label className="unit-search-field">
+                <span>Search your units</span>
+                <input
+                  type="search"
+                  value={unitSearch}
+                  onChange={(event) => setUnitSearch(event.target.value)}
+                  placeholder="Model, serial, order number, branch, or address"
+                />
+              </label>
+              <label className="unit-sort-field">
+                <span>Arrange by</span>
+                <select value={unitSort} onChange={(event) => setUnitSort(event.target.value)}>
+                  <option value="newest">Newest purchase first</option>
+                  <option value="oldest">Oldest purchase first</option>
+                  <option value="name">Name A–Z</option>
+                </select>
+              </label>
+            </section>
+
+            <div className="unit-results-summary" aria-live="polite">
+              Showing {visibleUnits.length} of {units.length} registered AC unit{units.length === 1 ? "" : "s"}
+            </div>
+
+            {visibleUnits.length === 0 ? (
+              <div className="unit-no-results">
+                <Snowflake size={34} weight="bold" color={BQ_COLORS.inkFaint} />
+                <BoutiqueText variant="h3">No matching AC unit</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted}>Try a different model, serial number, order number, branch, or address.</BoutiqueText>
+                <button type="button" className="bq-my-unit-retry" onClick={() => setUnitSearch("")}>Clear search</button>
+              </div>
+            ) : (
             <BoutiqueGrid
               columns="repeat(auto-fill, minmax(320px, 1fr))"
               gap={24}
             >
-              {units.map((unit) => (
+              {visibleUnits.map((unit, index) => (
                 <UnitCard
                   key={unit.id}
                   unit={unit}
+                  position={index + 1}
+                  isNewest={unit.id === newestUnitId}
                   onClick={handleViewDetails}
                   onViewHistory={handleViewHistory}
                   onWarrantyStatus={handleWarrantyStatus}
                 />
               ))}
             </BoutiqueGrid>
+            )}
 
             <div className="customer-amp-report-center">
               <AmpReportCenter

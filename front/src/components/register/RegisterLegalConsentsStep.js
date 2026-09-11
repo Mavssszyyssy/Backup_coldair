@@ -83,7 +83,7 @@ export default function RegisterLegalConsentsStep({
           margin="7px 0 0"
           style={{ opacity: 0.8 }}
         >
-          Review and accept the four required documents.
+          Review each required document. Opening it marks that review complete automatically.
         </BoutiqueText>
       </BoutiqueBox>
 
@@ -131,8 +131,9 @@ export default function RegisterLegalConsentsStep({
               rel="noreferrer"
               className="bq-reg-link"
               aria-label={`Read ${consent.linkText} in a new tab`}
+              onClick={() => onFieldChange(consent.id, true)}
             >
-              Review
+              {formData[consent.id] ? "Reviewed" : "Review"}
               <ArrowSquareOut size={14} weight="bold" aria-hidden="true" />
             </a>
           </div>

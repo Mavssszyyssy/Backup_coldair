@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Linking, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
+import ServiceRequestPaymentSummary from "../../components/customer/ServiceRequestPaymentSummary";
 import BottomSheetSelect from "../../components/ui/BottomSheetSelect";
 import Button from "../../components/ui/Button";
 import CalendarDatePicker, { getTodayDateKey, isPastCalendarDate } from "../../components/ui/CalendarDatePicker";
@@ -72,6 +73,7 @@ export default function CustomerServicesScreen() {
   const [loadingUnits, setLoadingUnits] = useState(true);
   const appliedUnitParam = useRef("");
   const appliedTypeParam = useRef("");
+  const requestedUnitId = String(Array.isArray(params.unitId) ? params.unitId[0] || "" : params.unitId || "");
 
   const loadServiceCatalog = useCallback(async () => {
     const token = await getStoredToken();
@@ -101,6 +103,7 @@ export default function CustomerServicesScreen() {
         setUnits(items);
         // A background update must not switch the AC being booked.
         if (!background) setSelectedUnitId((currentId) => {
+          if (requestedUnitId && items.some((item) => String(item.id) === requestedUnitId)) return requestedUnitId;
           if (currentId && items.some((item) => String(item.id) === String(currentId))) return currentId;
           return items[0]?.id || "";
         });
@@ -110,7 +113,7 @@ export default function CustomerServicesScreen() {
       if (active) setLoadingUnits(false);
     }));
     return () => { active = false; stop(); };
-  }, [current?.id, loadServiceCatalog]));
+  }, [current?.id, loadServiceCatalog, requestedUnitId]));
 
   const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
@@ -121,12 +124,11 @@ export default function CustomerServicesScreen() {
   const warrantyEligible = hasActiveWarranty(selectedUnit) && !activeWarrantyClaim;
 
   useEffect(() => {
-    const requestedUnitId = Array.isArray(params.unitId) ? params.unitId[0] : params.unitId;
     if (requestedUnitId && appliedUnitParam.current !== String(requestedUnitId) && units.some((item) => String(item.id) === String(requestedUnitId))) {
       setSelectedUnitId(String(requestedUnitId));
       appliedUnitParam.current = String(requestedUnitId);
     }
-  }, [params.unitId, units]);
+  }, [requestedUnitId, units]);
 
   useEffect(() => {
     const rawType = Array.isArray(params.serviceType) ? params.serviceType[0] : params.serviceType;
@@ -313,6 +315,7 @@ export default function CustomerServicesScreen() {
         </> : null}
         {requestMode === "warranty" && !warrantyEligible && !activeWarrantyClaim ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, lineHeight: 20 }}>This AC does not currently have active warranty coverage. Choose Cleaning or Service for a standard request, or contact our team about your coverage.</Text> : null}
       </Card> : null}
+      <ServiceRequestPaymentSummary mode={requestMode} service={selectedService} payment={selectedActiveRequest?.servicePayment} />
       <Card>
         <CustomerSectionHeader title={requestMode === "warranty" ? "Warranty Claim Details" : "Visit Details"} />
         {requestMode === "service" ? <CalendarDatePicker label="Preferred Date" value={preferredDate} onChange={selectDate} minimumDate={getTodayDateKey()} required error={dateError} /> : null}

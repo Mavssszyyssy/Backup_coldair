@@ -8,6 +8,8 @@ function UnitCard({
   onClick,
   onViewHistory,
   onWarrantyStatus,
+  position,
+  isNewest = false,
 }) {
   const warrantyLabel = {
     pending_activation: "Activation in progress",
@@ -34,7 +36,11 @@ function UnitCard({
   return (
     <div className="unit-card" onClick={() => onClick(unit)}>
       <div className="unit-header">
-        <div className="unit-brand-model">{unit.brand}</div>
+        <div className="unit-identity-badges">
+          <span>AC Unit {position}</span>
+          {isNewest ? <span className="unit-newest-badge">Newest purchase</span> : null}
+        </div>
+        <div className="unit-brand-model">{unit.unitName || unit.brand || "Installed AC Unit"}</div>
         <div className="unit-model-code">{unit.productSku || unit.model || "Model not recorded"}</div>
         <div className="unit-header-actions">
           <UnitKebabMenu
@@ -61,7 +67,23 @@ function UnitCard({
           </div>
           <div className="info-row">
             <span className="info-label">Installation Date</span>
-            <span className="info-value">{unit.installationDate}</span>
+            <span className="info-value">{unit.installationDate || "Not recorded"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Order Number</span>
+            <span className="info-value">{unit.orderCode || "Not recorded"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Ordered On</span>
+            <span className="info-value">{unit.purchaseDate || "Not recorded"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Responsible Branch</span>
+            <span className="info-value">{unit.serviceBranch || "Not recorded"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Installed At</span>
+            <span className="info-value">{[unit.placementArea, unit.installationEnvironment].filter(Boolean).join(", ") || "Not recorded"}</span>
           </div>
           <div className="info-row">
             <span className="info-label">Status</span>

@@ -47,12 +47,26 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
           bg: "#fffbeb",
           icon: Truck,
         };
+      case "to_dispatch":
+        return {
+          label: "To Dispatch",
+          color: "#b45309",
+          bg: "#fff7ed",
+          icon: Truck,
+        };
       case "to_install":
         return {
           label: "To Install",
           color: "#7c3aed",
           bg: "#f5f3ff",
           icon: Wrench,
+        };
+      case "for_rescheduling":
+        return {
+          label: "For Rescheduling",
+          color: "#b45309",
+          bg: "#fffbeb",
+          icon: Calendar,
         };
       case "complete":
       case "delivered":
@@ -81,7 +95,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
 
   const statusCfg = getStatusConfig(order.status);
   const canRequestCancel =
-    ["to_pay", "to_deliver"].includes(String(order.status || "").toLowerCase()) &&
+    ["to_pay", "to_deliver", "to_dispatch", "for_rescheduling"].includes(String(order.status || "").toLowerCase()) &&
     !order.cancellationRequest?.requested;
   const cancellationLabel = cancellationStatusLabel(order);
   const isUnpaidGcash =
@@ -213,7 +227,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   Arrival
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700}>
-                  {new Date(order.estimatedArrival).toLocaleDateString()}
+                  {new Date(order.estimatedArrival).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
                 </BoutiqueText>
               </BoutiqueStack>
             )}

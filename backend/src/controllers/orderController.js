@@ -41,8 +41,12 @@ const workflowLabel = (status) => {
       return "TO PAY";
     case "to_deliver":
       return "TO DELIVER";
+    case "to_dispatch":
+      return "TO DISPATCH";
     case "to_install":
       return "TO INSTALL";
+    case "for_rescheduling":
+      return "FOR RESCHEDULING";
     case "complete":
       return "COMPLETE";
     default:
@@ -60,6 +64,9 @@ const fulfillmentStages = {
   installation: "Installation",
   completed: "Completed",
   cancelled: "Cancelled",
+  failed_installation: "Failed to Install",
+  for_rescheduling: "For Rescheduling",
+  revisit_confirmed: "Revisit Confirmed",
 };
 
 const appendFulfillmentEvent = (order, stage, detail = "", timestamp = new Date()) => {
@@ -93,7 +100,7 @@ const buildTrackingTimeline = (order = {}, task = null) => {
   };
 
   ensure("placed", order.createdAt, "Order submitted");
-  if (["to_deliver", "to_install", "complete"].includes(order.workflowStatus)) {
+  if (["to_deliver", "to_dispatch", "to_install", "for_rescheduling", "complete"].includes(order.workflowStatus)) {
     ensure("confirmed", order.paymongo?.paidAt || order.updatedAt, "Order approved");
     ensure("preparing", order.updatedAt, "Preparing your assigned unit");
   }
@@ -120,10 +127,11 @@ const buildTrackingTimeline = (order = {}, task = null) => {
     ensure("cancelled", order.cancelledAt || order.updatedAt, order.cancellationReason || "Order cancelled");
   }
 
-  const orderedStages = Object.keys(fulfillmentStages);
-  const timeline = orderedStages
-    .filter((stage) => byStage.has(stage))
-    .map((stage) => byStage.get(stage));
+  const timeline = [...byStage.values()].sort((left, right) => {
+    const leftTime = new Date(left.timestamp || 0).getTime();
+    const rightTime = new Date(right.timestamp || 0).getTime();
+    return leftTime - rightTime;
+  });
   const current = timeline[timeline.length - 1] || null;
   return { timeline, currentStage: current?.stage || "placed", currentLabel: current?.label || "Order Placed" };
 };
@@ -601,7 +609,7 @@ const lifecycleActions = {
       `Your order ${orderCode} was approved. Your order is now in TO DELIVER stage.`,
   },
   dispatch: {
-    from: ["to_deliver"],
+    from: ["to_deliver", "to_dispatch"],
     to: "to_install",
     status: "paid",
     deliveryStatus: "dispatched",
@@ -619,7 +627,7 @@ const lifecycleActions = {
       `Your order ${orderCode} has been completed. Thank you for choosing AeroPulse.`,
   },
   cancel: {
-    from: ["to_pay", "to_deliver"],
+    from: ["to_pay", "to_deliver", "to_dispatch", "for_rescheduling"],
     to: "cancelled",
     status: "cancelled",
     deliveryStatus: "cancelled",
@@ -670,9 +678,9 @@ const releaseOrderInventoryOnce = async (order, reason = "") => {
     return false;
   }
 
-  // COD orders do not reserve stock until they are dispatched. Mark the
-  // pending reservation released without incrementing inventory that was
-  // never deducted.
+  // Legacy COD orders created before checkout-time reservation may still be
+  // pending. Release those without incrementing inventory that was never
+  // deducted; all new orders are reserved during checkout.
   if (order.stockReservationStatus !== "pending") {
     await restoreStockForCancelledOrder(order);
   }
@@ -1940,8 +1948,8 @@ const createTaskForOrder = async (order, options = {}) => {
       );
       changed = true;
     }
-    if (options.timeSlot) {
-      existingTask.timeSlot = String(options.timeSlot);
+    if (options.timeSlot || order.installationTimeSlot) {
+      existingTask.timeSlot = String(options.timeSlot || order.installationTimeSlot);
       changed = true;
     }
     if (options.forceRefreshTask) changed = true;
@@ -2005,7 +2013,7 @@ const createTaskForOrder = async (order, options = {}) => {
       order.installationDate ||
       order.estimatedDelivery ||
       new Date().toISOString().split("T")[0],
-    timeSlot: String(options.timeSlot || "TBD"),
+    timeSlot: String(options.timeSlot || order.installationTimeSlot || "TBD"),
     assignedRole: "technician",
     branch,
     payload: {
@@ -2027,7 +2035,7 @@ const createTaskForOrder = async (order, options = {}) => {
         order.installationDate ||
         order.estimatedDelivery ||
         "",
-      timeSlot: String(options.timeSlot || "TBD"),
+      timeSlot: String(options.timeSlot || order.installationTimeSlot || "TBD"),
       status: activateTask ? "in-progress" : "pending",
       activatedAt: activateTask ? new Date().toISOString() : null,
       createdAt: new Date().toISOString(),
@@ -2184,7 +2192,7 @@ const createOrder = async (req, res) => {
     return res.status(400).json({ message: "Choose a supported cash-on-delivery or online payment method. Payment upon installation is no longer available for new orders." });
   }
   const usesOnlinePayment = isOnlinePaymentMethod(paymentMethod);
-  const deferStockUntilDispatch = String(paymentMethod || "").toLowerCase() === "cod";
+  const isCodCheckout = String(paymentMethod || "").toLowerCase() === "cod";
   const checkoutReturnTarget = normalizePaymentReturnTarget(
     paymentReturnTarget || returnTarget || clientType || platform,
   );
@@ -2324,27 +2332,25 @@ const createOrder = async (req, res) => {
         lastSourceBranch = finalBranch;
         let serialUnits = [];
         let serialNumbers = [];
-        if (!deferStockUntilDispatch) {
-          serialUnits = await reserveSerialUnitsForOrder(
+        serialUnits = await reserveSerialUnitsForOrder(
+          product,
+          finalBranch,
+          quantityNeeded,
+          orderCode,
+          session,
+        );
+        serialNumbers = serialUnits.map((unit) => unit.serialNumber);
+        try {
+          await decrementProductStockForOrder(
             product,
             finalBranch,
             quantityNeeded,
-            orderCode,
+            hasBranchSnapshot,
             session,
           );
-          serialNumbers = serialUnits.map((unit) => unit.serialNumber);
-          try {
-            await decrementProductStockForOrder(
-              product,
-              finalBranch,
-              quantityNeeded,
-              hasBranchSnapshot,
-              session,
-            );
-          } catch (error) {
-            await releaseReservedSerialUnits(product._id, serialNumbers, session);
-            throw error;
-          }
+        } catch (error) {
+          await releaseReservedSerialUnits(product._id, serialNumbers, session);
+          throw error;
         }
 
         completedReservations.push({
@@ -2442,9 +2448,9 @@ const createOrder = async (req, res) => {
       shippingFee: normalizedShipping,
       discountAmount: normalizedDiscount,
       totalAmount: normalizedTotal,
-      workflowStatus: deferStockUntilDispatch ? "to_deliver" : "to_pay",
+      workflowStatus: isCodCheckout ? "to_deliver" : "to_pay",
       status: "pending",
-      stockReservationStatus: deferStockUntilDispatch ? "pending" : "reserved",
+      stockReservationStatus: "reserved",
       fulfillmentTimeline: [
         {
           stage: "placed",
@@ -2698,6 +2704,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
   }
   if (options.estimatedArrival) order.estimatedArrival = options.estimatedArrival;
   if (options.installationDate) order.installationDate = options.installationDate;
+  if (options.timeSlot) order.installationTimeSlot = options.timeSlot;
   if (action === "cancel") {
     order.cancelledAt = new Date();
     order.cancellationReason = String(options.cancellationReason || "").trim();
@@ -2778,7 +2785,7 @@ const applyOrderLifecycleAction = async (order, action, options = {}) => {
         ? `${config.message(order.orderCode)} Technician assigned: ${order.assignedTechnician}.`
         : action === "cancel" && order.refundReview?.required
           ? `${config.message(order.orderCode)} Your paid order is marked for refund review.`
-          : config.message(order.orderCode),
+          : `${config.message(order.orderCode)}${[order.installationDate || order.estimatedArrival, order.installationTimeSlot].filter(Boolean).length ? ` Scheduled arrival: ${[order.installationDate || order.estimatedArrival, order.installationTimeSlot].filter(Boolean).join(" · ")}.` : ""}`,
   });
 };
 
@@ -2871,7 +2878,9 @@ const getMyOrderSummary = async (req, res) => {
   const summary = {
     toPay: 0,
     toDeliver: 0,
+    toDispatch: 0,
     toInstall: 0,
+    forRescheduling: 0,
     complete: 0,
     cancelled: 0,
   };
@@ -2879,7 +2888,9 @@ const getMyOrderSummary = async (req, res) => {
   orders.forEach((order) => {
     if (order.workflowStatus === "to_pay") summary.toPay += 1;
     if (order.workflowStatus === "to_deliver") summary.toDeliver += 1;
+    if (order.workflowStatus === "to_dispatch") summary.toDispatch += 1;
     if (order.workflowStatus === "to_install") summary.toInstall += 1;
+    if (order.workflowStatus === "for_rescheduling") summary.forRescheduling += 1;
     if (order.workflowStatus === "complete") summary.complete += 1;
     if (order.workflowStatus === "cancelled") summary.cancelled += 1;
   });
@@ -3045,6 +3056,7 @@ const recoverOrder = async (req, res) => {
     order.assignedTechnician = technician.assignedTechnicianName;
     if (form.estimatedArrival) order.estimatedArrival = form.estimatedArrival;
     if (form.installationDate) order.installationDate = form.installationDate;
+    if (form.timeSlot) order.installationTimeSlot = form.timeSlot;
     await order.save();
 
     const task = await createTaskForOrder(order, {
@@ -3052,7 +3064,7 @@ const recoverOrder = async (req, res) => {
       assignedTechnicianName: technician.assignedTechnicianName,
       estimatedArrival: form.estimatedArrival || order.estimatedArrival || "",
       installationDate: form.installationDate || order.installationDate || "",
-      timeSlot: form.timeSlot || "",
+      timeSlot: form.timeSlot || order.installationTimeSlot || "",
       forceRefreshTask: true,
     });
     const [hydratedOrder] = await hydrateOrdersWithInventoryQrCodes([order]);

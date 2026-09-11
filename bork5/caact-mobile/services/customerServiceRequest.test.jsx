@@ -42,6 +42,8 @@ test('warranty deep link submits a claim, not a dated paid service request', asy
  mockParams={unitId:'ac1',serviceType:'warranty'};
  await render(<CustomerServicesScreen/>);
  await screen.findByText('Submit Warranty Claim');
+ expect(screen.getByText('Payment Summary')).toBeTruthy();
+ expect(screen.getByText('No payment is collected when you submit a warranty claim. Admin reviews the coverage first and will show any payable amount before service.')).toBeTruthy();
  expect(screen.queryByText('Choose test date')).toBeNull();
  await fireEvent.changeText(screen.getByLabelText('AC problem'),'AC does not cool');
  await fireEvent.press(screen.getByText('Submit Warranty Claim'));
@@ -60,6 +62,14 @@ test('expired coverage does not fall through to a standard booking',async()=>{
  expect(createServiceRequest).not.toHaveBeenCalled();
 });
 
+test('booking from an AC details screen selects that exact AC instead of the first account unit',async()=>{
+ mockParams={unitId:'ac2',serviceType:'cleaning'};
+ await render(<CustomerServicesScreen/>);
+ await screen.findByText('Submit Service Request');
+ expect(screen.getByTestId('Select AC Unit').props.children).toBe('Second AC');
+ expect(screen.getByTestId('Service').props.children).toBe('Deep Cleaning');
+});
+
 test.each([['maintenance','Regular Cleaning'],['cleaning','Deep Cleaning']])('%s books the matching service and configured price',async(id,title)=>{
  await render(<CustomerServicesScreen/>);
  await screen.findByText('Submit Service Request');
@@ -67,6 +77,7 @@ test.each([['maintenance','Regular Cleaning'],['cleaning','Deep Cleaning']])('%s
  expect(screen.queryByLabelText('Service: Delivery')).toBeNull();
  expect(screen.queryByLabelText('Service: Installation')).toBeNull();
  await fireEvent.press(screen.getByLabelText(`Service: ${title}`));
+ expect(screen.getAllByText(id === 'maintenance' ? '₱800.00' : '₱1,500.00').length).toBeGreaterThan(0);
  await fireEvent.press(screen.getByText('Choose test date'));
  await fireEvent.changeText(screen.getByLabelText('Service Concern'),'Please clean my AC');
  await fireEvent.press(screen.getByText('Submit Service Request'));

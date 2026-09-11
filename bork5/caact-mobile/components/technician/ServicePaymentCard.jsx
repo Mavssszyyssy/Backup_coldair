@@ -10,7 +10,7 @@ export default function ServicePaymentCard({ task, onUpdated }) {
   const payment = task?.servicePayment;
   if (!payment) return null;
   const closed = ["completed", "cancelled"].includes(String(task.status || "").toLowerCase());
-  const confirm = () => Alert.alert("Confirm service cash received", `Have you received ${formatPeso(payment.amount)}? Only confirm after collecting the full amount.`, [
+  const confirm = () => Alert.alert("Confirm service cash received", `Payment summary\nService amount: ${formatPeso(payment.amount)}\nAdditional charges: None separately recorded\nTotal to collect: ${formatPeso(payment.amount)}\n\nOnly confirm after collecting the full amount.`, [
     { text: "Not yet", style: "cancel" },
     { text: "Cash received", onPress: async () => {
       if (busy) return;

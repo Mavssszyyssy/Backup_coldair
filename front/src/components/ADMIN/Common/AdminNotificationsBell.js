@@ -65,6 +65,7 @@ function AdminNotificationsBell() {
   const [readAt, setReadAt] = useState(() => getAdminNotificationsReadAt());
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState("active");
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -72,7 +73,7 @@ function AdminNotificationsBell() {
     setBusy(true);
     try {
       const [notificationResult, lowStockResult, ordersResult] = await Promise.all([
-        apiRequest("/notifications/me", { silentConnection: true }).catch(() => ({ notifications: [] })),
+        apiRequest(`/notifications/me?view=${view}`, { silentConnection: true }).catch(() => ({ notifications: [] })),
         apiRequest("/products/low-stock", { silentConnection: true }).catch(() => ({ products: [] })),
         apiRequest("/orders?summary=alerts", { silentConnection: true }).catch(() => ({ summary: { pendingOrders: 0 } })),
       ]);
@@ -93,7 +94,7 @@ function AdminNotificationsBell() {
       }));
 
       const next = [...backendItems];
-      if (lowStockCount > 0) {
+      if (view === "active" && lowStockCount > 0) {
         next.push({
           id: `low-stock-${lowStockCount}`,
           createdAt: new Date().toISOString(),
@@ -103,7 +104,7 @@ function AdminNotificationsBell() {
           source: "local",
         });
       }
-      if (pendingOrders > 0) {
+      if (view === "active" && pendingOrders > 0) {
         next.push({
           id: `pending-orders-${pendingOrders}`,
           createdAt: new Date().toISOString(),
@@ -119,7 +120,24 @@ function AdminNotificationsBell() {
       setBusy(false);
       refreshInFlightRef.current = false;
     }
-  }, []);
+  }, [view]);
+
+  const onArchive = async (item) => {
+    if (item.source === "local") {
+      const dismissed = readDismissedLocalAlerts();
+      dismissed.add(localAlertKey(item));
+      writeDismissedLocalAlerts(dismissed);
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      return;
+    }
+    if (!item.id) return;
+    try {
+      await apiRequest(`/notifications/${item.id}/${view === "archived" ? "restore" : "archive"}`, { method: "PATCH" });
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+    } catch (_error) {
+      // Keep the item visible when the archive request does not complete.
+    }
+  };
 
   useEffect(() => {
     refresh();
@@ -239,6 +257,9 @@ function AdminNotificationsBell() {
               </button>
             </div>
           </div>
+          <div className="admin-notifications-tabs" role="tablist" aria-label="Notification folders">
+            {[["active", "Current"], ["archived", "Archive"]].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? "active" : ""} onClick={() => setView(key)}>{label}</button>)}
+          </div>
 
           {items.length === 0 ? (
             <div className="admin-notifications-empty">
@@ -247,22 +268,14 @@ function AdminNotificationsBell() {
           ) : (
             <div className="admin-notifications-list">
               {items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`admin-notifications-item ${item.unread ? "unread" : ""}`}
-                  onClick={() => onNavigate(item)}
-                >
-                  <div className="admin-notifications-item-title">
-                    {item.title}
-                  </div>
-                  <div className="admin-notifications-item-msg">
-                    {item.message}
-                  </div>
-                  <time className="admin-notifications-item-time">
-                    {new Date(item.createdAt).toLocaleString()}
-                  </time>
-                </button>
+                <div className="admin-notifications-row" key={item.id}>
+                  <button type="button" className={`admin-notifications-item ${item.unread ? "unread" : ""}`} onClick={() => onNavigate(item)}>
+                    <div className="admin-notifications-item-title">{item.title}</div>
+                    <div className="admin-notifications-item-msg">{item.message}</div>
+                    <time className="admin-notifications-item-time">{new Date(item.createdAt).toLocaleString()}</time>
+                  </button>
+                  <button type="button" className="admin-notifications-archive" onClick={() => onArchive(item)}>{view === "archived" ? "Restore" : "Archive"}</button>
+                </div>
               ))}
             </div>
           )}

@@ -19,6 +19,7 @@ const { servicePaymentSummary } = require("../domain/servicePayment");
 const { getScheduledDateError } = require("../utils/scheduling");
 const { formatServiceAddress } = require("../domain/serviceAddress");
 const { cancelWarrantyForRequest, reconcileCancelledWarranty } = require("../domain/warrantyCancellation");
+const { validateWarrantyAssignmentQuota } = require("../domain/technicianServiceQuota");
 
 const normalizeStatus = (value = "", fallback = "Pending") =>
   normalizeServiceRequestStatus(value, fallback);
@@ -119,7 +120,7 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
   if (!technicianId) return null;
 
   const technician = mongoose.Types.ObjectId.isValid(technicianId)
-    ? await User.findById(technicianId).select("name name_first name_last email role accountStatus isDeleted activeBranch assignedBranch")
+    ? await User.findById(technicianId).select("name name_first name_last email role accountStatus isDeleted activeBranch assignedBranch serviceQuota")
     : null;
   if (
     !technician ||
@@ -134,6 +135,12 @@ const upsertServiceTaskForRequest = async (request, payload = {}) => {
   const technicianBranch = String(technician.activeBranch || technician.assignedBranch || "").trim();
   if (request.branch && technicianBranch && request.branch !== technicianBranch) {
     const error = new Error("The technician must belong to the service request branch.");
+    error.statusCode = 409;
+    throw error;
+  }
+  const quotaError = validateWarrantyAssignmentQuota({ request, technician });
+  if (quotaError) {
+    const error = new Error(quotaError);
     error.statusCode = 409;
     throw error;
   }

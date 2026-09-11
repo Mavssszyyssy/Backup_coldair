@@ -27,6 +27,8 @@ function normalizeUnit(unit = {}) {
     brand: unit.brand || "",
     model: unit.model || "",
     serialNumber: unit.serialNumber || "",
+    orderCode: unit.orderCode || "",
+    purchaseDate: unit.purchaseDate || "",
     qrUnitId: unit.qrUnitId || "",
     serviceBranch: unit.serviceBranch || "",
     status: unit.status || "Active",
@@ -54,8 +56,8 @@ function normalizeUnit(unit = {}) {
     warrantyExpirationDate: unit.warrantyExpirationDate || unit.warranty?.expirationDate || "",
     warrantyRecommendation: unit.warrantyRecommendation || "",
     serviceHistory: Array.isArray(unit.serviceHistory) ? unit.serviceHistory : [],
-    createdAt: unit.createdAt || new Date().toISOString(),
-    updatedAt: unit.updatedAt || new Date().toISOString(),
+    createdAt: unit.createdAt || "",
+    updatedAt: unit.updatedAt || "",
   };
 }
 

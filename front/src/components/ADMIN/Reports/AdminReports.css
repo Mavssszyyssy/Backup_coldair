@@ -1,0 +1,52 @@
+.company-report-shell { display: grid; gap: 18px; }
+.company-report-brand { display: flex; align-items: center; gap: 18px; padding: 20px 24px; background: #fff; border: 1px solid #cbd5e1; border-top: 5px solid #0f4c81; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
+.company-report-brand img { width: 82px; height: 82px; object-fit: contain; border-radius: 50%; }
+.company-report-brand div { display: grid; gap: 3px; }
+.company-report-brand p { margin: 0; color: #0f4c81; font-size: 12px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.company-report-brand h2 { margin: 0; color: #111827; font-size: clamp(22px, 3vw, 34px); text-transform: uppercase; }
+.company-report-brand span { color: #475569; font-size: 13px; line-height: 1.45; }
+.company-report-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.company-report-tabs button, .company-report-controls button { border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; padding: 10px 14px; font-weight: 800; cursor: pointer; }
+.company-report-tabs button.active { background: #0f4c81; border-color: #0f4c81; color: #fff; }
+.company-report-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 16px; background: #eaf2f9; border: 1px solid #b7cee1; border-radius: 12px; }
+.company-report-controls label { display: grid; gap: 5px; color: #334155; font-size: 12px; font-weight: 800; }
+.company-report-controls input, .company-report-controls select { min-height: 40px; min-width: 150px; border: 1px solid #94a3b8; border-radius: 8px; background: #fff; padding: 8px 10px; color: #0f172a; }
+.company-report-controls .company-report-search { flex: 1; min-width: 220px; }
+.company-report-controls .company-report-search input { width: 100%; }
+.company-report-controls .company-report-generate { background: #0f4c81; border-color: #0f4c81; color: #fff; }
+.company-report-controls button:disabled { cursor: not-allowed; opacity: .48; }
+.company-report-error { margin: 0; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; color: #991b1b; font-weight: 750; }
+.company-report-document { overflow: hidden; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
+.company-report-document-heading { display: flex; justify-content: space-between; gap: 20px; padding: 18px 22px; background: #0f4c81; color: #fff; }
+.company-report-document-heading p, .company-report-document-heading h2 { margin: 0; }
+.company-report-document-heading p { color: #bfdbfe; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.company-report-document-heading h2 { margin-top: 4px; font-size: 20px; }
+.company-report-document-heading > div:last-child { display: grid; align-content: center; text-align: right; }
+.company-report-document-heading span { color: #dbeafe; font-size: 11px; }
+.company-report-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); border-bottom: 1px solid #cbd5e1; }
+.company-report-summary > div { display: grid; gap: 4px; min-height: 84px; padding: 16px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+.company-report-summary span { color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.company-report-summary strong { color: #0f172a; font-size: 18px; }
+.company-report-basis { margin: 16px 20px 0; padding: 11px 13px; background: #f8fafc; border-left: 4px solid #0f4c81; color: #475569; font-size: 12px; line-height: 1.55; }
+.company-report-table-section { padding: 18px 20px 4px; }
+.company-report-table-section h3 { margin: 0 0 10px; color: #0f172a; font-size: 17px; }
+.company-report-table-wrap { overflow: auto; border: 1px solid #94a3b8; }
+.company-report-table { width: 100%; border-collapse: collapse; min-width: 880px; font-size: 12px; }
+.company-report-table th, .company-report-table td { padding: 9px 10px; border: 1px solid #cbd5e1; text-align: left; vertical-align: top; white-space: nowrap; }
+.company-report-table th { position: sticky; top: 0; z-index: 1; background: #9dc3e6; color: #102a43; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+.company-report-table tbody tr:nth-child(even) { background: #f8fafc; }
+.company-report-table .stock-cell { text-align: right; font-weight: 900; }
+.company-report-table .stock-cell--ok { background: #bbf7d0; color: #166534; }
+.company-report-table .stock-cell--low { background: #fef08a; color: #854d0e; }
+.company-report-table .stock-cell--out { background: #fecaca; color: #991b1b; }
+.company-report-empty { padding: 28px; border: 1px dashed #94a3b8; border-radius: 12px; background: #f8fafc; color: #64748b; text-align: center; font-weight: 700; }
+@media (max-width: 700px) {
+  .company-report-brand { align-items: flex-start; padding: 16px; }
+  .company-report-brand img { width: 58px; height: 58px; }
+  .company-report-brand h2 { font-size: 19px; }
+  .company-report-brand span { font-size: 11px; }
+  .company-report-document-heading { display: grid; }
+  .company-report-document-heading > div:last-child { text-align: left; }
+  .company-report-controls > * { flex: 1 1 145px; }
+  .company-report-controls input, .company-report-controls select { width: 100%; min-width: 0; }
+}

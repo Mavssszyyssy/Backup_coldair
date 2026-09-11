@@ -26,7 +26,7 @@ const humanizeLabel = (value = '') => String(value)
 
 const isCurrencyField = (label = '') => {
   const key = String(label).toLowerCase();
-  return /(sales|revenue|value|amount|price|fee|cost)/.test(key) && !/(count|stock|unit|order|minute)/.test(key);
+  return /(sales|revenue|value|amount|price|fee|cost|subtotal|discount)/.test(key) || /^(vat|total)$/.test(key);
 };
 
 const toSpreadsheetCell = (value, label = '') => {
@@ -54,6 +54,11 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
   const normalizedRows = Array.isArray(rows) ? rows : [];
   const headers = normalizedRows.length ? Object.keys(normalizedRows[0]) : [];
   const metadataRows = [
+    ['Company', metadata.companyName || metadata.name],
+    ['Company address', metadata.address],
+    ['Proprietor', metadata.proprietor],
+    ['Contact', metadata.contact],
+    ['Tax registration', metadata.taxRegistration],
     ['Branch', metadata.branch],
     ['Prepared by', metadata.representative],
     ['Representative role', metadata.representativeRole],
@@ -134,8 +139,11 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       * { box-sizing: border-box; }
       body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #172033; font-size: 11px; }
       .report-header { border-bottom: 3px solid #0f4c81; padding-bottom: 14px; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 20px; }
-      .brand { color: #0f4c81; font-size: 18px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-      .brand span { display: block; color: #64748b; font-size: 9px; letter-spacing: .12em; margin-top: 3px; }
+      .company-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .company-logo { width: 68px; height: 68px; object-fit: contain; border-radius: 50%; }
+      .brand { color: #0f172a; font-size: 19px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+      .brand span { display: block; color: #0f4c81; font-size: 9px; letter-spacing: .11em; margin-top: 3px; }
+      .company-details { color: #475569; font-size: 8px; line-height: 1.45; margin-top: 4px; max-width: 520px; }
       h1 { margin: 0; color: #0f172a; font-size: 20px; }
       .subtitle, .generated { color: #64748b; margin-top: 5px; }
       .generated { text-align: right; font-size: 10px; }
@@ -146,6 +154,7 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       table { width: 100%; border-collapse: collapse; margin-top: 10px; }
       th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
       th { background: #0f4c81; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+      .table-title { color: #0f172a; font-size: 14px; margin: 16px 0 6px; }
       tbody tr:nth-child(even) { background: #f8fafc; }
       .meta { color: #475569; font-size: 10px; margin: 0 0 12px; }
       .report-watermark { position: fixed; top: 43%; left: 8%; right: 8%; transform: rotate(-28deg); text-align: center; font-size: 74px; font-weight: 800; letter-spacing: .12em; color: rgba(15, 76, 129, .055); pointer-events: none; z-index: -1; }
@@ -159,7 +168,7 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
   </head>
   <body>
     <div class="report-watermark">${escapeHtml(metadata.watermark || 'AEROPULSE')}</div>
-    <header class="report-header"><div><div class="brand">AeroPulse <span>Airconditioning Trading</span></div></div><div class="generated">${metadata.reportId ? `Report ID: ${escapeHtml(metadata.reportId)}<br/>` : ''}${metadata.branch ? `Branch: ${escapeHtml(metadata.branch)}<br/>` : ''}Generated: ${escapeHtml(metadata.generatedAt || new Date().toLocaleString())}</div></header>
+    <header class="report-header"><div class="company-block">${metadata.logoUrl ? `<img class="company-logo" src="${escapeHtml(metadata.logoUrl)}" alt="" />` : ''}<div><div class="brand">${escapeHtml(metadata.companyName || metadata.name || 'Cold Air Airconditioning Trading')}<span>AEROPULSE operational reporting</span></div><div class="company-details">${escapeHtml(metadata.address || '')}${metadata.proprietor ? `<br/>${escapeHtml(metadata.proprietor)}` : ''}${metadata.contact ? ` · ${escapeHtml(metadata.contact)}` : ''}${metadata.taxRegistration ? ` · ${escapeHtml(metadata.taxRegistration)}` : ''}</div></div></div><div class="generated">${metadata.reportId ? `Report ID: ${escapeHtml(metadata.reportId)}<br/>` : ''}${metadata.branch ? `Branch: ${escapeHtml(metadata.branch)}<br/>` : ''}Generated: ${escapeHtml(metadata.generatedAt || new Date().toLocaleString())}</div></header>
     <section><h1>${escapeHtml(title || 'Report')}</h1>${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ''}</section>
     ${html || ''}
     ${metadata.representative ? `<section class="signature-section"><div class="signature-card"><strong>${escapeHtml(metadata.representative)}</strong><span>${escapeHtml(metadata.representativeRole || 'Authorized Representative')}</span><span>${escapeHtml(metadata.branch ? `${metadata.branch} Branch` : 'AEROPULSE')}</span></div></section>` : ''}

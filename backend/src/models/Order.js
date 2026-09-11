@@ -85,12 +85,13 @@ const orderSchema = new mongoose.Schema(
     estimatedDelivery: { type: String, default: "" },
     estimatedArrival: { type: String, default: "" },
     installationDate: { type: String, default: "" },
+    installationTimeSlot: { type: String, default: "" },
     visitAttempt: { type: mongoose.Schema.Types.Mixed, default: null },
     assignedTechnician: { type: String, default: "" },
     assignedTechnicianId: { type: String, default: "", index: true },
     deliveryStatus: {
       type: String,
-      enum: ["pending", "preparing", "dispatched", "installing", "completed", "cancelled"],
+      enum: ["pending", "preparing", "dispatched", "arrived", "installing", "failed_installation", "for_rescheduling", "completed", "cancelled"],
       default: "pending",
       index: true,
     },
@@ -130,7 +131,7 @@ const orderSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true, min: 0 },
     workflowStatus: {
       type: String,
-      enum: ["to_pay", "to_deliver", "to_install", "complete", "cancelled"],
+      enum: ["to_pay", "to_deliver", "to_dispatch", "to_install", "for_rescheduling", "complete", "cancelled"],
       default: "to_pay",
     },
     status: {

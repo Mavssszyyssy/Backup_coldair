@@ -56,6 +56,20 @@ function workflowInfo(order = {}) {
       activeStep: 1,
     };
   }
+  if (workflow === "to_dispatch") {
+    return {
+      label: "To Dispatch",
+      body: "The revisit could not proceed. Your branch must dispatch the installation again.",
+      activeStep: 1,
+    };
+  }
+  if (workflow === "for_rescheduling") {
+    return {
+      label: "For Rescheduling",
+      body: "The installation could not proceed because nobody was available. Admin will confirm a new schedule.",
+      activeStep: 1,
+    };
+  }
   if (workflow === "to_install") {
     return {
       label: "Installation in progress",
@@ -110,6 +124,8 @@ function deliveryStatusLabel(order = {}) {
     out_for_delivery: "Out for delivery",
     delivered: "Delivered",
     failed_attempt: "Delivery attempt unsuccessful",
+    failed_installation: "Failed to Install",
+    for_rescheduling: "For Rescheduling",
   };
   return labels[String(order.deliveryStatus || "").toLowerCase()] || humanizeStatus(order.deliveryStatus || "Not started");
 }
@@ -345,7 +361,7 @@ export default function CustomerOrdersScreen() {
             const itemCount = order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
             const progress = workflowInfo(order);
             const canRequestCancel =
-              ["to_pay", "to_deliver"].includes(String(order.workflowStatus || "").toLowerCase()) &&
+              ["to_pay", "to_deliver", "to_dispatch", "for_rescheduling"].includes(String(order.workflowStatus || "").toLowerCase()) &&
               !order.cancellationRequest?.requested;
             const cancellationLabel = cancellationStatusLabel(order);
             const isExpanded = expandedOrderId === String(order.id);
@@ -424,13 +440,15 @@ export default function CustomerOrdersScreen() {
                   {order.assignedTechnician ? (
                     <OrderProgressRow icon="construct-sharp" title="Technician" subtitle={order.assignedTechnician} color={BQ_COLORS.accent} />
                   ) : null}
-                  {order.estimatedDelivery || order.installationDate ? (
+                  {order.estimatedDelivery || order.estimatedArrival || order.installationDate ? (
                     <OrderProgressRow
                       icon="calendar-sharp"
                       title="Schedule"
                       subtitle={[
                         order.estimatedDelivery ? `Delivery ${formatDate(order.estimatedDelivery)}` : "",
+                        order.estimatedArrival ? `Arrival ${formatDate(order.estimatedArrival)}` : "",
                         order.installationDate ? `Install ${formatDate(order.installationDate)}` : "",
+                        order.installationTimeSlot || "",
                       ].filter(Boolean).join(" - ")}
                       color={BQ_COLORS.warning}
                     />

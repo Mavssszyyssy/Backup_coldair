@@ -93,6 +93,8 @@ test('Admin reschedule resets arrival, syncs schedule and is retry-safe', async 
   assert.equal(f.attempt().resolution.confirmedBy, userId);
   assert.equal((await f.call('scheduleNextVisit', 'admin', body)).statusCode, 200);
   assert.equal(f.request.payload.timeline.length, 2);
+  assert.ok(f.events.some(event => event.title === 'Next visit scheduled'));
+  assert.equal(f.events.some(event => event.title === 'Installation revisit confirmed'), false);
 });
 
 test('cancelled work orders cannot reopen through visit follow-up', async () => {
@@ -103,14 +105,26 @@ test('cancelled work orders cannot reopen through visit follow-up', async () => 
 test('delivery attempt preserves payment and fulfillment while syncing next appointment and customer alerts', async () => {
   const f = fixture({ delivery: true });
   assert.equal((await f.call('submitVisitAttempt', 'technician')).statusCode, 200);
-  assert.equal(f.order.workflowStatus, 'to_install');
+  assert.equal(f.order.workflowStatus, 'for_rescheduling');
+  assert.equal(f.order.deliveryStatus, 'for_rescheduling');
   assert.equal(f.order.paymentStatus, 'unpaid');
   assert.equal(f.order.visitAttempt.awaitingAdmin, true);
   assert.equal(f.events[0].route, '/admin/services/orders');
   assert.equal(f.events[1].route, '/customer/orders');
   assert.equal((await f.call('scheduleNextVisit', 'superadmin', { attemptId, scheduledDate: '2099-12-12', timeSlot: '10:00 AM – 12:00 PM' })).statusCode, 200);
   assert.equal(f.order.installationDate, '2099-12-12');
+  assert.equal(f.order.installationTimeSlot, '10:00 AM – 12:00 PM');
+  assert.equal(f.order.workflowStatus, 'to_install');
   assert.equal(f.order.fulfillmentTimeline.length, 2);
   assert.equal(f.order.visitAttempt.awaitingAdmin, false);
+  assert.equal(f.order.paymentStatus, 'unpaid');
+  assert.ok(f.events.some(event => event.title === 'Installation revisit confirmed'));
+
+  f.task().status = 'in-progress';
+  f.task().payload.checkIn = { ...checkIn, checkedInAt: '2099-12-12T02:00:00.000Z' };
+  const revisitInput = { ...input, checkedInAt: f.task().payload.checkIn.checkedInAt };
+  assert.equal((await f.call('submitVisitAttempt', 'technician', revisitInput)).statusCode, 200);
+  assert.equal(f.order.workflowStatus, 'to_dispatch');
+  assert.equal(f.order.deliveryStatus, 'failed_installation');
   assert.equal(f.order.paymentStatus, 'unpaid');
 });

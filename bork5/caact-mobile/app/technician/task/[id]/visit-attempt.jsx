@@ -26,6 +26,7 @@ export default function VisitAttemptScreen() {
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
+  const installationTask = Boolean((task?.orderId || task?.orderCode) && !task?.requestId);
   useFocusEffect(useCallback(() => {
     let active = true;
     getTaskById(id, { requireOnline: true }).then(value => { if (active) setTask(value); })
@@ -39,17 +40,25 @@ export default function VisitAttemptScreen() {
     submitting.current = true; setSaving(true); setError('');
     try {
       await submitVisitAttempt(id, { outcome, note: note.trim(), photo, checkedInAt: task.checkIn.checkedInAt });
-      Alert.alert('Visit attempt saved', 'This attempt is closed. The customer request stays open, and Admin will follow up. No service completion or payment was recorded.', [{ text: 'Back to work order', onPress: () => router.replace(`/technician/task/${id}/information`) }]);
+      const paidOnline = String(task?.orderPayment?.status || '').toLowerCase() === 'paid';
+      const savedMessage = installationTask
+        ? `This installation attempt is closed and Admin will follow up.${paidOnline ? ' The completed online payment remains recorded on the ticket.' : ' The order remains open and unpaid.'}`
+        : 'This visit attempt is closed and Admin will follow up. The customer request stays open, and no service completion was recorded.';
+      Alert.alert(installationTask ? 'Failed to Install saved' : 'Visit attempt saved', savedMessage, [{ text: 'Back to work order', onPress: () => router.replace(`/technician/task/${id}/information`) }]);
       setTask(previous => ({ ...previous, visitAttempt: { awaitingAdmin: true } }));
     } catch (err) { setError(err.message || 'Unable to save. Please retry.'); }
     finally { submitting.current = false; setSaving(false); }
   };
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <KeyboardAwareScrollView style={{ flex: 1 }} minBottomPadding={24} contentContainerStyle={{ padding: SPACING.md }}>
-      <PageHeader title="No one available" subtitle={task?.taskCode || 'Record an unattended visit'} color={COLORS.tech} onBack={() => !saving && router.back()} />
-      <Card><Text style={{ fontSize: FONT.md, lineHeight: 22, color: COLORS.textPrimary }}>Use this only when you have arrived but no one is available to receive you. This will not cancel the order or mark any service as completed.</Text>
+      <PageHeader title={installationTask ? "Failed to Install" : "No one available"} subtitle={task?.taskCode || (installationTask ? 'Record an unattended installation' : 'Record an unattended visit')} color={COLORS.tech} onBack={() => !saving && router.back()} />
+      <Card><Text style={{ fontSize: FONT.md, lineHeight: 22, color: COLORS.textPrimary }}>Use this only when you have arrived but no one is available to receive you. This will not cancel the {installationTask ? 'order' : 'service request'} or mark any work as completed.</Text>
         <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>{task?.checkIn?.checkedInAt ? `GPS arrival: ${new Date(task.checkIn.checkedInAt).toLocaleString()}` : 'GPS check-in is required first.'}</Text>
       </Card>
+      {String(task?.orderPayment?.status || '').toLowerCase() === 'paid' ? <Card>
+        <Text style={{ fontSize: FONT.lg, fontWeight: FONT.bold, color: COLORS.success }}>{String(task?.orderPayment?.method || '').toLowerCase() === 'gcash' ? 'GCash' : 'Online'} payment confirmed</Text>
+        <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>PHP {Number(task.orderPayment.amount || 0).toFixed(2)} remains paid even though this installation attempt failed.</Text>
+      </Card> : null}
       {task?.visitAttempt?.awaitingAdmin ? <Card><Text>Visit closed. Awaiting Admin follow-up.</Text><TechButton title="Back to work order" onPress={() => router.replace(`/technician/task/${id}/information`)} style={{ marginTop: SPACING.md }} /></Card> : <>
         <Card><Text style={{ fontSize: FONT.lg, fontWeight: FONT.bold, marginBottom: SPACING.sm }}>What should happen next?</Text>
           {choices.map(choice => <TouchableOpacity key={choice.id} accessibilityRole="radio" accessibilityState={{ checked: outcome === choice.id }} disabled={saving} onPress={() => setOutcome(choice.id)} style={{ padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: outcome === choice.id ? COLORS.tech : COLORS.border, backgroundColor: outcome === choice.id ? COLORS.techLight : COLORS.surface, marginBottom: SPACING.sm }}>

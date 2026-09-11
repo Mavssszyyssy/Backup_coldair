@@ -855,7 +855,16 @@
 .admin-notifications-list {
   display: flex;
   flex-direction: column;
+  max-height: min(420px, calc(100vh - 190px));
+  overflow-y: auto;
 }
+
+.admin-notifications-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--gray-200); }
+.admin-notifications-tabs button { border: 0; border-radius: 8px; padding: 7px; background: var(--gray-100); color: var(--gray-500); font-weight: 800; cursor: pointer; }
+.admin-notifications-tabs button.active { background: #dbeafe; color: var(--primary); }
+.admin-notifications-row { position: relative; border-bottom: 1px solid var(--gray-100); }
+.admin-notifications-row .admin-notifications-item { width: 100%; padding-right: 76px; border-bottom: 0; }
+.admin-notifications-archive { position: absolute; right: 10px; bottom: 10px; border: 0; border-radius: 7px; padding: 5px 7px; background: var(--gray-100); color: var(--primary); font-size: 11px; font-weight: 800; cursor: pointer; }
 
 .admin-notifications-item {
   text-align: left;

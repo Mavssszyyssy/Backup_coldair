@@ -10,7 +10,7 @@ const request = { id: 'request-1', status: 'Reviewed', branch: 'Bulacan', unitNa
 beforeEach(() => {
   vi.clearAllMocks();
   apiRequest.mockImplementation(async (path, options) => {
-    if (path.startsWith('/users')) return { users: [{ id: 'tech-1', name: 'Branch technician', assignedBranch: 'Bulacan' }] };
+    if (path.startsWith('/users')) return { users: [{ id: 'tech-1', name: 'Branch technician', assignedBranch: 'Bulacan', serviceQuota: 4 }] };
     if (options?.method === 'PATCH') return { request: { ...request, ...JSON.parse(options.body) } };
     return { task: { id: 'task-1', status: 'completed', checkIn: { latitude: 14.65, longitude: 121.02, checkedInAt: '2026-09-07T01:00:00Z' }, proof: { submittedAt: '2026-09-07T02:00:00Z' } } };
   });
@@ -45,6 +45,21 @@ describe('maintenance request controls', () => {
     expect(screen.getByRole('option', { name: '9:30 AM - 11:30 AM (Current appointment)' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Save assignment & schedule' }));
     await waitFor(() => expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH' && JSON.parse(opts.body).timeSlot === '9:30 AM - 11:30 AM')).toBe(true));
+  });
+
+  it('blocks warranty assignment when the technician has no Service Quota', async () => {
+    apiRequest.mockImplementation(async (path, options) => {
+      if (path.startsWith('/users')) return { users: [{ id: 'tech-1', name: 'Branch technician', assignedBranch: 'Bulacan', serviceQuota: null }] };
+      if (options?.method === 'PATCH') return { request };
+      return { task: null };
+    });
+    const date = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    render(<RequestDetails request={{ ...request, warrantyClaimId: 'claim-1', scheduledDate: date, timeSlot: TECHNICIAN_TIME_SLOTS[0] }} />);
+    await screen.findByRole('option', { name: /Service Quota required/ });
+    fireEvent.change(screen.getByLabelText('Choose technician'), { target: { value: 'tech-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign technician' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('A Service Quota is required before this technician can be assigned to a warranty claim.');
+    expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH')).toBe(false);
   });
 
   it('shows recorded GPS evidence without implying a signature is required', async () => {

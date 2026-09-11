@@ -3,6 +3,7 @@ const Unit = require("../models/Unit");
 const Product = require("../models/Product");
 const ServiceHistory = require("../models/ServiceHistory");
 const Task = require("../models/Task");
+const Order = require("../models/Order");
 const { calculateMaintenanceRecommendation } = require("../domain/ampMaintenanceService");
 const { getManagerServicePipeline, getOwnerServiceForecast, UNASSIGNED_BRANCH } = require("../domain/ampDashboardService");
 const { assessServiceEvidence, serviceLabel, serviceTypeFor } = require("../domain/serviceEvidence");
@@ -14,6 +15,14 @@ const { assertAmpBranch } = require("../domain/ampAccess");
 
 const INTERNAL_AMP_ROLES = new Set(["technician", "manager", "owner", "admin", "superadmin"]);
 const displayService = serviceLabel;
+
+const customerUnitName = (brand = "", model = "") => {
+  const cleanBrand = String(brand || "").trim();
+  const cleanModel = String(model || "").trim();
+  if (!cleanModel) return cleanBrand || "Installed AC Unit";
+  if (!cleanBrand || cleanModel.toLowerCase() === cleanBrand.toLowerCase() || cleanModel.toLowerCase().startsWith(`${cleanBrand.toLowerCase()} `)) return cleanModel;
+  return `${cleanBrand} ${cleanModel}`;
+};
 
 const resolveManagerPipelineScope = ({ role, requestedBranch = "", activeBranch = "" }) => {
   const canViewAllBranches = role === "superadmin" || role === "owner";
@@ -43,10 +52,57 @@ const serviceHistoryItem = (service) => ({
   findings: service.findings || service.technicianInputs?.notes || "",
   actionTaken: service.actionTaken || (service.serviceActions || []).join(", "),
   partsUsed: Array.isArray(service.partsUsed) ? service.partsUsed : [],
+  technician: service.technician && typeof service.technician === "object"
+    ? service.technician.name || [service.technician.name_first, service.technician.name_last].filter(Boolean).join(" ") || service.technician.email || ""
+    : "",
   evidence: assessServiceEvidence(service),
 });
 
-const serializeCustomerUnit = (unit, history = [], recommendation = null, product = null) => {
+const completeUnitHistory = (json, history = []) => {
+  const serviceRows = history.map((service) => ({
+    ...serviceHistoryItem(service),
+    eventType: serviceTypeFor(service) === "installation" ? "installation" : "service",
+    evidence: assessServiceEvidence(service, { installedAt: json.installation?.installedAt }),
+  }));
+  const serviceHistoryIds = new Set(serviceRows.map((row) => String(row.id || "")).filter(Boolean));
+  if (json.installation?.installedAt && !serviceRows.some((row) => row.serviceType === "installation")) {
+    serviceRows.push({
+      id: `installation-${json.id || json._id || json.serialNumber}`,
+      date: json.installation.installedAt,
+      serviceType: "installation",
+      eventType: "installation",
+      findings: "AC unit installed and registered.",
+      actionTaken: [json.installation.addressLine, json.installation.city, json.installation.province].filter(Boolean).join(", "),
+      partsUsed: [],
+    });
+  }
+  for (const record of json.warranty?.serviceRecords || []) {
+    if (record.serviceHistoryId && serviceHistoryIds.has(String(record.serviceHistoryId))) continue;
+    serviceRows.push({
+      id: record.serviceHistoryId || `warranty-service-${record._id || record.serviceDate}`,
+      date: record.serviceDate,
+      serviceType: record.visitType === "repair" ? "repair" : "inspection",
+      eventType: "warranty_service",
+      findings: record.summary || "Warranty service recorded.",
+      actionTaken: record.claimId ? `Warranty claim ${record.claimId}` : "",
+      partsUsed: [],
+    });
+  }
+  for (const claim of json.warranty?.claims || []) {
+    serviceRows.push({
+      id: `warranty-claim-${claim.claimId}`,
+      date: claim.resolvedAt || claim.reviewedAt || claim.requestedAt,
+      serviceType: "warranty_claim",
+      eventType: "warranty_claim",
+      findings: claim.issue || "Warranty claim",
+      actionTaken: `Status: ${String(claim.status || "submitted").replace(/_/g, " ")}${claim.decisionNote ? ` · ${claim.decisionNote}` : ""}`,
+      partsUsed: [],
+    });
+  }
+  return serviceRows.sort((left, right) => new Date(right.date || 0) - new Date(left.date || 0));
+};
+
+const serializeCustomerUnit = (unit, history = [], recommendation = null, product = null, sourceOrder = null) => {
   const json = unit.toJSON ? unit.toJSON() : unit;
   const productJson = product?.toJSON ? product.toJSON() : product || {};
   const productId = String(json.productId || productJson.id || productJson._id || "");
@@ -57,12 +113,13 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
   return {
     id: json.id || String(json._id || ""), userId: String(json.customer || ""),
     productId,
-    unitName: [json.brand, json.modelName].filter(Boolean).join(" ") || "Installed AC Unit",
+    unitName: customerUnitName(json.brand || productJson.brand, json.modelName || productJson.name),
     brand: json.brand || productJson.brand || "", model: json.modelName || productJson.name || "",
     productSku: productJson.sku || "", category: json.category || productJson.category || "",
     imageUrl: catalogImage || (productId ? `/api/products/${encodeURIComponent(productId)}/image` : ""),
     capacityHp: Number(json.capacityHp || 0), roomSizeSqm: json.roomSizeSqm || null,
     serialNumber: json.serialNumber || "", qrCode: json.qrCode || "", qrUnitId: json.qrUnitId || "",
+    orderCode: sourceOrder?.orderCode || "", purchaseDate: sourceOrder?.createdAt || "",
     serviceBranch: json.serviceBranch || "",
     status: json.status === "on_hold" ? "On Hold" : json.status === "retired" ? "Retired" : (recommendation ? recommendation.overdue : json.status === "service_due") ? "Service Due" : "Active",
     installationDate: json.installation?.installedAt ? formatDateKeyInTimeZone(json.installation.installedAt) : "",
@@ -80,6 +137,7 @@ const serializeCustomerUnit = (unit, history = [], recommendation = null, produc
     warranty: { ...warranty, claims: Array.isArray(warranty.claims) ? warranty.claims : [], serviceRecords: Array.isArray(warranty.serviceRecords) ? warranty.serviceRecords : [], timeline: Array.isArray(warranty.timeline) ? warranty.timeline : [] },
     warrantyStatus: warranty.status || "pending_activation", warrantyExpirationDate: warranty.expirationDate || "",
     warrantyRecommendation: getWarrantyRecommendation(warranty), serviceHistory: history.map((service) => ({ ...serviceHistoryItem(service), evidence: assessServiceEvidence(service, { installedAt: json.installation?.installedAt }) })),
+    unitHistory: completeUnitHistory(json, history),
     createdAt: json.createdAt, updatedAt: json.updatedAt,
   };
 };
@@ -143,14 +201,45 @@ const calculateNextServiceDate = async (req, res) => {
 
 const listMyUnits = async (req, res) => {
   try {
-    const units = await Unit.find({ customer: req.authUser._id, status: { $ne: "retired" } }).sort({ updatedAt: -1 });
+    const units = await Unit.find({ customer: req.authUser._id, status: { $ne: "retired" } })
+      .sort({ "installation.installedAt": -1, createdAt: -1, serialNumber: 1 });
     const productIds = units
       .map((unit) => String(unit.productId || ""))
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
     const products = productIds.length
-      ? await Product.find({ _id: { $in: productIds } }).select("name sku brand category image")
+      ? await Product.find({ _id: { $in: productIds } }).select("name sku brand category image serialUnits.serialNumber serialUnits.assignedOrderCode")
       : [];
     const productById = new Map(products.map((product) => [String(product._id), product]));
+    const orderCodeBySerial = new Map();
+    products.forEach((product) => (product.serialUnits || []).forEach((serialUnit) => {
+      const serialNumber = String(serialUnit.serialNumber || "").trim();
+      const orderCode = String(serialUnit.assignedOrderCode || "").trim();
+      if (serialNumber && orderCode) orderCodeBySerial.set(serialNumber, orderCode);
+    }));
+    const serialNumbers = units.map((unit) => String(unit.serialNumber || "").trim()).filter(Boolean);
+    const assignedOrderCodes = Array.from(new Set(serialNumbers.map((serial) => orderCodeBySerial.get(serial)).filter(Boolean)));
+    const sourceOrders = serialNumbers.length
+      ? await Order.find({
+          customer: req.authUser._id,
+          $or: [
+            { "items.serialNumbers": { $in: serialNumbers } },
+            { "items.serialUnits.serialNumber": { $in: serialNumbers } },
+            ...(assignedOrderCodes.length ? [{ orderCode: { $in: assignedOrderCodes } }] : []),
+          ],
+        }).select("orderCode items.serialNumbers items.serialUnits.serialNumber createdAt").sort({ createdAt: -1 })
+      : [];
+    const orderBySerial = new Map();
+    sourceOrders.forEach((order) => {
+      const itemSerials = (order.items || []).flatMap((item) => [
+        ...(item.serialNumbers || []),
+        ...(item.serialUnits || []).map((serialUnit) => serialUnit?.serialNumber),
+      ]).map((serial) => String(serial || "").trim()).filter(Boolean);
+      serialNumbers.forEach((serial) => {
+        const matchesItems = itemSerials.includes(serial);
+        const matchesAssignment = orderCodeBySerial.get(serial) === String(order.orderCode || "");
+        if ((matchesItems || matchesAssignment) && !orderBySerial.has(serial)) orderBySerial.set(serial, order);
+      });
+    });
     const histories = units.length ? await ServiceHistory.find({ unit: { $in: units.map((unit) => unit._id) } }).sort({ serviceDate: -1 }).limit(500) : [];
     const historyByUnit = new Map();
     histories.forEach((item) => historyByUnit.set(String(item.unit), [...(historyByUnit.get(String(item.unit)) || []), item]));
@@ -162,6 +251,7 @@ const listMyUnits = async (req, res) => {
         historyByUnit.get(String(unit._id)) || [],
         recommendations[index],
         productById.get(String(unit.productId || "")) || null,
+        orderBySerial.get(String(unit.serialNumber || "")) || null,
       )),
     });
   } catch (error) {

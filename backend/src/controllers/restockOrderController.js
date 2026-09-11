@@ -4,6 +4,7 @@ const Notification = require("../models/Notification");
 const AuditLog = require("../models/AuditLog");
 const User = require("../models/User");
 const { BRANCHES } = require("../domain/branchRouting");
+const { ensureProductSerialUnits } = require("./productController");
 
 /**
  * Owner creates a restock order
@@ -182,6 +183,7 @@ const markRestockReceived = async (req, res) => {
         }
 
         product.stock = Array.from(product.branchStock.values()).reduce((sum, val) => sum + val, 0);
+        await ensureProductSerialUnits(product, product.stock, { deferSave: true });
         await product.save();
 
         // Create audit log for each product

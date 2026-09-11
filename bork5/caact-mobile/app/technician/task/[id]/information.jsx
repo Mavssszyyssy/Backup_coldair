@@ -12,7 +12,7 @@ import Card from "../../../../components/ui/Card";
 import PageHeader from "../../../../components/ui/PageHeader";
 import StatusChip from "../../../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
-import { checkInTask, confirmCodCollection, getTaskById, getVisitAttempt, TASK_STATUS } from "../../../../services/taskStorage";
+import { checkInTask, confirmCodCollection, confirmInstallationArrival, getTaskById, getVisitAttempt, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
 import { formatWarrantyStatus, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
@@ -173,12 +173,21 @@ export default function TaskInformationScreen() {
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
   const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
+  const customerPresenceConfirmed = Boolean(
+    task?.arrivalValidation?.customerPresent &&
+    task?.arrivalValidation?.checkedInAt === task?.checkIn?.checkedInAt,
+  );
   React.useEffect(() => {
     let active = true;
     setVisitProof(null);
     if (task?.visitAttempt?.id) getVisitAttempt(id).then(attempt => { if (active) setVisitProof(attempt); }).catch(() => {});
     return () => { active = false; };
   }, [id, task?.visitAttempt?.id, task?.visitAttempt?.awaitingAdmin]);
+  const installationNextAction = task?.codPayment && !task.codPayment.collectedAt
+    ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
+    : registrationComplete
+      ? { title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+      : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
   const nextAction = task?.visitAttempt?.awaitingAdmin
     ? { title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
     : task?.status === TASK_STATUS.PENDING
@@ -186,17 +195,20 @@ export default function TaskInformationScreen() {
     : task?.status === TASK_STATUS.IN_PROGRESS
       ? !hasCheckedIn
         ? { title: installationTask ? "Check in at installation" : "Check in at service address", subtitle: installationTask ? "Record your GPS arrival before verifying the assigned AC unit." : "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
+        : installationTask && !customerPresenceConfirmed
+          ? { title: "Confirm customer presence", subtitle: "Validate whether the customer is present before installation can begin.", icon: "person-sharp", action: "validate-arrival" }
         : task?.codPayment && !task.codPayment.collectedAt
           ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
         : !installationTask
           ? { title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
-          : registrationComplete
-        ? { title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
-        : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" }
+          : installationNextAction
+      : task?.status === TASK_STATUS.INSTALLING && installationTask
+        ? installationNextAction
       : null;
 
   const runWorkOrderAction = async () => {
     if (!actionBusy && nextAction?.action === "cash") { confirmCash(); return; }
+    if (!actionBusy && nextAction?.action === "validate-arrival") { confirmPresence(); return; }
     if (actionBusy || !task || nextAction?.action !== "check-in") return;
     setActionBusy(true);
     try {
@@ -204,13 +216,32 @@ export default function TaskInformationScreen() {
       await checkInTask(id, location);
       const updated = await getTaskById(id);
       setTask(updated);
-      Alert.alert("Arrival recorded", installationTask ? "Your GPS check-in was recorded. You can now verify the assigned AC unit." : "Your GPS check-in was recorded. You can now complete the service report.");
+      Alert.alert("Arrival recorded", installationTask ? "Your GPS check-in was recorded. Confirm whether the customer is present before installation." : "Your GPS check-in was recorded. You can now complete the service report.");
     } catch (error) {
       Alert.alert("Unable to check in", error?.message || "Please check location permissions and try again.");
     } finally {
       setActionBusy(false);
     }
   };
+
+  const confirmPresence = () => Alert.alert(
+    "Is the customer present?",
+    "Installation can begin only after confirming that someone is available at the address.",
+    [
+      { text: "Nobody is present", style: "destructive", onPress: () => router.push(`/technician/task/${id}/visit-attempt`) },
+      { text: "Customer is present", onPress: async () => {
+        if (actionBusy) return;
+        setActionBusy(true);
+        try {
+          const updated = await confirmInstallationArrival(id);
+          setTask(updated);
+          Alert.alert("Installation validated", "Customer presence is recorded. You may now continue the installation.");
+        } catch (error) {
+          Alert.alert("Unable to validate arrival", error?.message || "Please try again.");
+        } finally { setActionBusy(false); }
+      } },
+    ],
+  );
 
   const changePage = (nextPage) => {
     const safePage = Math.max(0, Math.min(DETAIL_PAGES.length - 1, nextPage));
@@ -318,7 +349,7 @@ export default function TaskInformationScreen() {
               <SectionHeading icon="person-sharp" title="Customer & Schedule" subtitle="Essential visit details" />
               <DetailItem icon="person-circle-sharp" label="Customer" value={task?.customerName || "Unknown"} />
               <DetailItem icon="location-sharp" label="Delivery / Service Address" value={task?.address || "Not provided"} />
-              <DetailItem icon="calendar-sharp" label="Schedule" value={task?.scheduledDate || "Unscheduled"} accent={COLORS.warning} />
+              <DetailItem icon="calendar-sharp" label="Schedule" value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || "Unscheduled"} accent={COLORS.warning} />
               <DetailItem icon="chatbox-ellipses-sharp" label="Service Concern" value={task?.description || task?.concern || "None"} />
             </Card>
 
@@ -340,6 +371,12 @@ export default function TaskInformationScreen() {
               <SectionHeading icon="cash-sharp" title="Cash on Delivery" subtitle="Payment is confirmed by the collecting technician" />
               <DetailItem icon="cash-sharp" label="Order total" value={money(task.codPayment.amount)} />
               <Text>{task.codPayment.collectedAt ? "Cash collection confirmed" : hasCheckedIn ? "Confirm only after receiving the full cash payment." : "Check in at the customer location before confirming cash collection."}</Text>
+            </Card> : null}
+            {installationTask && task?.orderPayment && String(task.orderPayment.method || '').toLowerCase() !== 'cod' ? <Card>
+              <SectionHeading icon="card-sharp" title="Order payment" subtitle="Payment status recorded on this installation ticket" />
+              <DetailItem icon="wallet-sharp" label="Method" value={String(task.orderPayment.method || 'Online').replace(/\b\w/g, letter => letter.toUpperCase())} />
+              <DetailItem icon="checkmark-circle-sharp" label="Status" value={String(task.orderPayment.status || 'pending').replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())} accent={String(task.orderPayment.status).toLowerCase() === 'paid' ? COLORS.success : COLORS.warning} />
+              <DetailItem icon="cash-sharp" label="Amount" value={money(task.orderPayment.amount)} />
             </Card> : null}
 
             {hasCheckedIn ? (

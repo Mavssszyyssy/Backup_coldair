@@ -17,6 +17,8 @@ test('orders use only the assigned branch and give the required zero-stock messa
   assert.match(source, /const finalBranch = preferredBranch;/);
   assert.match(source, /This branch currently has no stock of this item/);
   assert.doesNotMatch(source, /Tried preferred and nearby branches/);
+  assert.doesNotMatch(source, /deferStockUntilDispatch/);
+  assert.match(source, /stockReservationStatus: "reserved"/);
 });
 
 test('GCash has three total checkout attempts including the original session', () => {

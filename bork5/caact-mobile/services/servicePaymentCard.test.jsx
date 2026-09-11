@@ -23,12 +23,14 @@ test("technician explicitly confirms the displayed quote after GPS check-in", as
   const updated = { ...task("paid", true) };
   collectServicePayment.mockResolvedValue(updated);
   const onUpdated = jest.fn();
-  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => buttons?.find(button => button.text === "Cash received")?.onPress());
+  const alert = jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => buttons?.find(button => button.text === "Cash received")?.onPress());
   const current = task("due", true);
   await render(<ServicePaymentCard task={current} onUpdated={onUpdated} />);
   await fireEvent.press(screen.getByText("Confirm service cash collected"));
   await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(updated));
   expect(collectServicePayment).toHaveBeenCalledWith("visit1", current.servicePayment);
+  expect(alert.mock.calls[0][1]).toContain("Payment summary");
+  expect(alert.mock.calls[0][1]).toContain("Total to collect: PHP 800.00");
 });
 
 test.each(["quote_required", "warranty_covered", "no_charge", "paid"])("%s never offers cash collection", async status => {

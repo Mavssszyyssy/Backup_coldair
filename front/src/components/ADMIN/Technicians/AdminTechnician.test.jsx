@@ -22,6 +22,7 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   expect(screen.getByText(/at least 2 letters or numbers/)).toBeInTheDocument();
   expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
   fireEvent.change(screen.getByLabelText(/^Login name/), { target: { value: 'j.delacruz' } });
+  fireEvent.change(screen.getByLabelText(/^Service Quota/), { target: { value: '3' } });
   expect(screen.getByText('tech.cavite.j.delacruz')).toBeInTheDocument();
   let finish;
   apiRequest.mockImplementation((path, options) => options?.method === 'POST'
@@ -31,6 +32,7 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   fireEvent.click(button);
   fireEvent.submit(button.closest('form'));
   expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
+  expect(JSON.parse(apiRequest.mock.calls.find(([, options]) => options?.method === 'POST')[1].body).serviceQuota).toBe(3);
   expect(screen.getByText('Close')).toBeDisabled();
   await act(async () => finish({ loginIdentifier: 'tech.cavite.j.delacruz', tempPassword: 'cavite.j.delacruz' }));
   expect(screen.getByText(/was added/)).toBeInTheDocument();

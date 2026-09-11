@@ -4,6 +4,7 @@ const User = require("../models/User");
 const { canSendEmail, sendEmail } = require("../utils/email");
 const { BRANCHES } = require("../domain/branchRouting");
 const { withIdentityConflict } = require("../utils/optionalIdentity");
+const { normalizeServiceQuota } = require("../domain/technicianServiceQuota");
 
 const credentialPart = (value = "") => String(value)
   .normalize("NFD")
@@ -29,7 +30,7 @@ const createStaff = async (req, res) => {
   if (req.authUser.role !== "superadmin") {
     return res.status(403).json({ message: "Only Super Admin can create staff accounts." });
   }
-  const { email, name_first, name_last, role, branch, loginName } = req.body;
+  const { email, name_first, name_last, role, branch, loginName, serviceQuota } = req.body;
   const firstName = String(name_first || "").trim();
   const lastName = String(name_last || "").trim();
   if (!firstName || !lastName || !role) {
@@ -43,6 +44,12 @@ const createStaff = async (req, res) => {
   }
 
   if (role === "technician") {
+    const normalizedServiceQuota = normalizeServiceQuota(serviceQuota);
+    if (!normalizedServiceQuota) {
+      return res.status(400).json({
+        message: "Service Quota is required for a technician account and must be a whole number greater than 0.",
+      });
+    }
     const credentials = buildTechnicianCredentials({
       branch,
       loginName,
@@ -89,6 +96,7 @@ const createStaff = async (req, res) => {
       activeBranch: branch,
       isFirstLogin: true,
       accountStatus: "active",
+      serviceQuota: normalizedServiceQuota,
     });
     return res.status(201).json({
       user: user.toJSON(),

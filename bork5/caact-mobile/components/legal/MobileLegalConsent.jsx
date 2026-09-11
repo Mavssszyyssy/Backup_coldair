@@ -32,9 +32,13 @@ export function LegalDocument({ policy, onClose }) {
 export default function MobileLegalConsent({ value, onChange, showErrors = false, disabled = false }) {
   const [policyId, setPolicyId] = useState(null);
   const missing = LEGAL_DOCUMENTS.filter(({ id }) => value?.[id] !== true);
+  const completePolicyReview = () => {
+    if (policyId && !disabled) onChange({ ...value, [policyId]: true });
+    setPolicyId(null);
+  };
   return <View style={{ backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 16, marginBottom: 16 }}>
     <Text accessibilityRole="header" style={{ fontSize: 19, color: COLORS.textPrimary, fontWeight: "700" }}>Terms & Privacy</Text>
-    <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 20, marginTop: 6 }}>Review each document, then select its checkbox to continue. Privacy acknowledgment is separate from the terms.</Text>
+    <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 20, marginTop: 6 }}>Review each document. Closing it marks that review complete automatically. Privacy acknowledgment is separate from the terms.</Text>
     {showErrors && missing.length ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginTop: 12, lineHeight: 20 }}>Please complete {missing.length} remaining required {missing.length === 1 ? "acknowledgment" : "acknowledgments"}.</Text> : null}
     {LEGAL_DOCUMENTS.map(doc => <View key={doc.id} style={{ borderTopWidth: 1, borderColor: COLORS.border, paddingTop: 12, marginTop: 12 }}>
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Read ${doc.title}`} onPress={() => setPolicyId(doc.id)} style={{ flexDirection: "row", gap: 12, justifyContent: "space-between", alignItems: "center", minHeight: 44 }}><Text style={{ flex: 1, fontSize: 14, fontWeight: "700", lineHeight: 20, color: COLORS.textPrimary }}>{doc.title}</Text><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 13 }}>Read ›</Text></TouchableOpacity>
@@ -43,6 +47,6 @@ export default function MobileLegalConsent({ value, onChange, showErrors = false
         <Text style={{ flex: 1, color: COLORS.textSecondary, fontSize: 13, lineHeight: 19 }}>{doc.action}</Text>
       </TouchableOpacity>
     </View>)}
-    {policyId ? <Modal visible animationType="slide" onRequestClose={() => setPolicyId(null)}><LegalDocument policy={legal.policies[policyId]} onClose={() => setPolicyId(null)} /></Modal> : null}
+    {policyId ? <Modal visible animationType="slide" onRequestClose={completePolicyReview}><LegalDocument policy={legal.policies[policyId]} onClose={completePolicyReview} /></Modal> : null}
   </View>;
 }

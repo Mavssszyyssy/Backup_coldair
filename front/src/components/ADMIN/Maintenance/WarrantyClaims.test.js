@@ -8,6 +8,7 @@ describe('component-specific warranty approval', () => {
     const claim = { unitId: 'unit-1', claimId: 'claim-1', status: 'submitted', unitName: 'Test AC', coverageSummary: '1 year parts, 5 years compressor.', componentCoverage: [{ component: 'Parts', status: 'expired' }, { component: 'Compressor', status: 'active' }] };
     const onReview = vi.fn();
     const { rerender } = render(<WarrantyClaims claims={[claim]} onReview={onReview} />);
+    expect(screen.getByRole('region', { name: 'In Warranty Analytics' })).toBeInTheDocument();
     const approve = screen.getByRole('button', { name: 'Approve repair' });
     expect(approve.disabled).toBe(true);
     expect(screen.getByRole('option', { name: 'Parts — expired' }).disabled).toBe(true);

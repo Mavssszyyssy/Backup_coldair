@@ -2,8 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -12,10 +12,11 @@ import CustomerUnitRow from "../../components/customer/CustomerUnitRow";
 import AppHero from "../../components/ui/AppHero";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
+import BottomSheetSelect from "../../components/ui/BottomSheetSelect";
 import EmptyState from "../../components/ui/EmptyState";
 import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
-import { COLORS, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
   getCustomerServiceHistory,
@@ -27,6 +28,13 @@ import {
   buildUnitRecommendationMap,
 } from "../../services/maintenanceRecommendationService";
 import { getUnitsByUser } from "../../services/unitStorage";
+import { filterCustomerUnits, sortCustomerUnits } from "../../services/unitDisplayService";
+
+const UNIT_SORT_OPTIONS = [
+  { id: "newest", name: "Newest purchase first" },
+  { id: "oldest", name: "Oldest purchase first" },
+  { id: "name", name: "Name A–Z" },
+];
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
@@ -36,6 +44,15 @@ export default function CustomerHomeScreen() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [activeOrderCount, setActiveOrderCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitSort, setUnitSort] = useState("newest");
+
+  const visibleUnits = useMemo(
+    () => sortCustomerUnits(filterCustomerUnits(units, unitSearch), unitSort),
+    [unitSearch, unitSort, units],
+  );
+  const newestUnitId = useMemo(() => sortCustomerUnits(units, "newest")[0]?.id || "", [units]);
+  const selectedSort = UNIT_SORT_OPTIONS.find((item) => item.id === unitSort) || UNIT_SORT_OPTIONS[0];
 
   useFocusEffect(
     useCallback(() => {
@@ -152,9 +169,48 @@ export default function CustomerHomeScreen() {
         <Card>
           <CustomerSectionHeader
             title="Registered AC Units"
-            right={<StatusChip label={`${units.length} active`} color={COLORS.primary} />}
+            right={<StatusChip label={`${units.length} unit${units.length === 1 ? "" : "s"}`} color={COLORS.primary} />}
           />
-          {units.map((unit) => (
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>
+            Newest purchase appears first. Search by model, serial number, order number, branch, or address.
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, paddingHorizontal: SPACING.sm, marginBottom: SPACING.sm }}>
+            <Ionicons name="search-sharp" size={18} color={COLORS.textMuted} />
+            <TextInput
+              value={unitSearch}
+              onChangeText={setUnitSearch}
+              placeholder="Find an AC unit"
+              placeholderTextColor={COLORS.textMuted}
+              returnKeyType="search"
+              style={{ flex: 1, minHeight: 46, paddingHorizontal: SPACING.sm, color: COLORS.textPrimary, fontSize: FONT.base }}
+              accessibilityLabel="Search registered AC units"
+            />
+            {unitSearch ? (
+              <Pressable onPress={() => setUnitSearch("")} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear AC unit search">
+                <Ionicons name="close-circle-sharp" size={19} color={COLORS.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
+          <BottomSheetSelect
+            label="Arrange units"
+            value={selectedSort.name}
+            items={UNIT_SORT_OPTIONS}
+            itemIcon="funnel-sharp"
+            searchPlaceholder="Search arrangement options"
+            onSelect={(item) => setUnitSort(item.id)}
+          />
+          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold, marginBottom: SPACING.xs }}>
+            Showing {visibleUnits.length} of {units.length}
+          </Text>
+          {visibleUnits.length === 0 ? (
+            <EmptyState
+              title="No matching AC unit"
+              message="Try a different model, serial number, order number, branch, or address."
+              icon="search-sharp"
+              iconColor={COLORS.primary}
+              action={<Button title="Clear Search" variant="secondary" onPress={() => setUnitSearch("")} />}
+            />
+          ) : visibleUnits.map((unit, index) => (
             (() => {
               const recommendation = recommendationMap[String(unit.id)];
               const maintenance = buildNextRecommendedMaintenance(recommendation);
@@ -163,6 +219,8 @@ export default function CustomerHomeScreen() {
                 <CustomerUnitRow
                   key={unit.id}
                   unit={unit}
+                  position={index + 1}
+                  isNewest={unit.id === newestUnitId}
                   recommendation={recommendation}
                   maintenance={maintenance}
                   onPress={() => router.push(`/customer/units/${unit.id}`)}

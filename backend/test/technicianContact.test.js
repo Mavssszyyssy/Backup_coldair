@@ -39,9 +39,16 @@ test('staff creation returns a useful conflict if another creation wins the uniq
   t.mock.method(User, 'findOne', async () => null);
   t.mock.method(User, 'create', async () => { throw Object.assign(new Error('duplicate'), { code: 11000, keyPattern: { username: 1 } }); });
   const res = response();
-  await createStaff({ authUser: { role: 'superadmin' }, body: { name_first: 'Fixture', name_last: 'Tech', loginName: 'fixture', role: 'technician', branch: 'Cavite' } }, res);
+  await createStaff({ authUser: { role: 'superadmin' }, body: { name_first: 'Fixture', name_last: 'Tech', loginName: 'fixture', role: 'technician', branch: 'Cavite', serviceQuota: 3 } }, res);
   assert.equal(res.statusCode, 409);
   assert.match(res.body.message, /username.*in use/i);
+});
+
+test('new technician accounts require a defined Service Quota', async () => {
+  const res = response();
+  await createStaff({ authUser: { role: 'superadmin' }, body: { name_first: 'Fixture', name_last: 'Tech', loginName: 'fixture', role: 'technician', branch: 'Cavite' } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.message, /Service Quota is required/);
 });
 
 test('phone save conflicts return a useful error rather than an internal server error', async (t) => {

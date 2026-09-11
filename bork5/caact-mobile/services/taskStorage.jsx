@@ -121,6 +121,7 @@ export function normalizeTask(item = {}) {
     orderId: value("orderId"),
     orderCode: value("orderCode"),
     codPayment: value("codPayment", null),
+    orderPayment: value("orderPayment", null),
     servicePayment: value("servicePayment", null),
     items: orderItems,
     serialNumbers,
@@ -167,6 +168,7 @@ export function normalizeTask(item = {}) {
     customerAdvice: item.customerAdvice || "",
     proof,
     checkIn: value("checkIn", null),
+    arrivalValidation: value("arrivalValidation", null),
     beforePhotoUri: item.beforePhotoUri || proof.beforePhotos?.[0]?.uri || "",
     afterPhotoUri: item.afterPhotoUri || proof.afterPhotos?.[0]?.uri || "",
     customerSignatureName: item.customerSignatureName || proof.customerSignature?.name || "",
@@ -469,6 +471,17 @@ export async function checkInTask(taskId, coordinates) {
   const tasks = await getAllTasks();
   await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? checkedIn : item)));
   return checkedIn;
+}
+
+export async function confirmInstallationArrival(taskId) {
+  const token = await api.getStoredToken();
+  if (!token) throw new Error("Please sign in again before validating the arrival.");
+  const result = await api.confirmInstallationArrival(token, taskId);
+  if (!result.success) throw new Error(result.error || "Unable to confirm customer presence.");
+  const updated = normalizeTask(result.task);
+  const tasks = await getAllTasks();
+  await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)));
+  return updated;
 }
 
 export async function confirmCodCollection(taskId) {

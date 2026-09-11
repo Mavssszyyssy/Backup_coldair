@@ -7,13 +7,13 @@ function ServiceHistory({ unit, onClose }) {
   const [filterType, setFilterType] = useState('all');
 
   const serviceTypes = useMemo(() => {
-    const list = unit.serviceHistory || [];
+    const list = unit.unitHistory || unit.serviceHistory || [];
     const types = [...new Set(list.map((s) => s.serviceType).filter(Boolean))];
     return types.sort();
-  }, [unit.serviceHistory]);
+  }, [unit.unitHistory, unit.serviceHistory]);
 
   const filteredSorted = useMemo(() => {
-    let list = [...(unit.serviceHistory || [])];
+    let list = [...(unit.unitHistory || unit.serviceHistory || [])];
     if (filterType !== 'all') {
       list = list.filter((s) => s.serviceType === filterType);
     }
@@ -23,13 +23,13 @@ function ServiceHistory({ unit, onClose }) {
       return sortBy === 'newest' ? db - da : da - db;
     });
     return list;
-  }, [unit.serviceHistory, filterType, sortBy]);
+  }, [unit.unitHistory, unit.serviceHistory, filterType, sortBy]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="unit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Service history — {unit.brand} {unit.model}</h3>
+          <h3>Complete AC unit history — {unit.brand} {unit.model}</h3>
           <button type="button" className="close-modal" onClick={onClose}>
             ×
           </button>

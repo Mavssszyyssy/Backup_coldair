@@ -91,7 +91,7 @@ function statusFromWorkflow(order = {}) {
   if (order.workflowStatus === "cancelled" || order.status === "cancelled") return ORDER_STATUS.CANCELLED;
   if (order.workflowStatus === "complete") return ORDER_STATUS.RELEASED;
   if (order.workflowStatus === "to_install") return ORDER_STATUS.RELEASED;
-  if (order.workflowStatus === "to_deliver" || order.status === "paid") return ORDER_STATUS.APPROVED;
+  if (["to_deliver", "to_dispatch", "for_rescheduling"].includes(order.workflowStatus) || order.status === "paid") return ORDER_STATUS.APPROVED;
   return order.status || ORDER_STATUS.PENDING;
 }
 
@@ -125,6 +125,7 @@ export function normalizeOrder(order = {}) {
     estimatedDelivery: order.estimatedDelivery || "",
     estimatedArrival: order.estimatedArrival || "",
     installationDate: order.installationDate || "",
+    installationTimeSlot: order.installationTimeSlot || "",
     assignedTechnician: order.assignedTechnician || "",
     receipt: order.receipt || null,
     codCollection: order.codCollection || null,

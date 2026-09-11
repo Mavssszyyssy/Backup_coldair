@@ -35,10 +35,11 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
   };
   const checkedIn = attempt?.checkIn;
   return <section className="visit-follow-up" aria-label="Visit follow-up">
-    <div className="visit-follow-up-heading"><h3>Visit follow-up</h3><span>{summary.awaitingAdmin && !confirmed ? 'Admin action needed' : 'Next visit confirmed'}</span></div>
-    <p><strong>{summary.outcome === 'reschedule' ? 'Technician requested a reschedule' : 'Technician closed this attempt'}</strong> — no one was available. The customer request has not been cancelled or completed.</p>
+    <div className="visit-follow-up-heading"><h3>{summary.installationFailed ? 'Failed installation follow-up' : 'Visit follow-up'}</h3><span>{summary.awaitingAdmin && !confirmed ? (summary.nextWorkflowStatus === 'to_dispatch' ? 'To Dispatch' : summary.installationFailed ? 'For Rescheduling' : 'Admin action needed') : 'Next visit confirmed'}</span></div>
+    <p><strong>{summary.installationFailed ? 'Failed to Install' : summary.outcome === 'reschedule' ? 'Technician requested a reschedule' : 'Technician closed this attempt'}</strong> — no one was available. The {summary.installationFailed ? 'installation' : 'customer request'} has not been completed.</p>
     <p>{summary.note}</p>
     <p className="visit-follow-up-meta">Recorded: {new Date(summary.submittedAt).toLocaleString()}{attempt?.technicianName ? ` · ${attempt.technicianName}` : ''}</p>
+    {summary.payment ? <div className="visit-follow-up-payment"><strong>Payment on ticket: {String(summary.payment.status || 'pending').replace(/_/g, ' ')}</strong><span>{String(summary.payment.method || 'Payment').toUpperCase()} · PHP {Number(summary.payment.amount || 0).toFixed(2)}</span>{summary.payment.paidAt ? <small>Confirmed {new Date(summary.payment.paidAt).toLocaleString()}</small> : null}</div> : null}
     {checkedIn ? <a href={`https://www.google.com/maps?q=${checkedIn.latitude},${checkedIn.longitude}`} target="_blank" rel="noreferrer">View this attempt’s GPS check-in</a> : null}
     {attempt?.photo?.uri ? <a href={attempt.photo.uri} target="_blank" rel="noreferrer"><img className="visit-follow-up-photo" src={attempt.photo.uri} alt="Technician proof of unattended visit" /></a> : <button type="button" onClick={() => setReload(value => value + 1)}>Reload proof photo</button>}
     {summary.awaitingAdmin && !confirmed && !['completed', 'cancelled'].includes(task.status) ? <form onSubmit={save}>

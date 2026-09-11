@@ -21,7 +21,9 @@ const VALID_ORDER_STATUSES = [
   "all",
   "to_pay",
   "to_deliver",
+  "to_dispatch",
   "to_install",
+  "for_rescheduling",
   "complete",
   "cancelled",
 ];
@@ -42,6 +44,7 @@ const normalizeCustomerOrder = (order = {}) => ({
   estimatedDelivery: order.estimatedDelivery || "",
   estimatedArrival: order.estimatedArrival || "",
   installationDate: order.installationDate || "",
+  installationTimeSlot: order.installationTimeSlot || "",
   assignedTechnician: order.assignedTechnician || "",
   receipt: order.receipt || null,
   refundReview: order.refundReview || null,
@@ -211,7 +214,7 @@ function MyOrders() {
           style={{ borderRadius: BQ_GEOMETRY.radiusPill, overflowX: "auto" }}
           className="bq-hide-scrollbar"
         >
-          {["all", "to_pay", "to_deliver", "to_install", "complete", "cancelled"].map(
+          {["all", "to_pay", "to_deliver", "to_dispatch", "to_install", "for_rescheduling", "complete", "cancelled"].map(
             (status) => (
               <button
                 key={status}
@@ -238,7 +241,7 @@ function MyOrders() {
                       : "none",
                 }}
               >
-                {({ all: "All Orders", to_pay: "Awaiting payment", to_deliver: "Delivery", to_install: "Installation", complete: "Completed", cancelled: "Cancelled" })[status]}
+                {({ all: "All Orders", to_pay: "Awaiting payment", to_deliver: "Delivery", to_dispatch: "To Dispatch", to_install: "Installation", for_rescheduling: "For Rescheduling", complete: "Completed", cancelled: "Cancelled" })[status]}
               </button>
             ),
           )}

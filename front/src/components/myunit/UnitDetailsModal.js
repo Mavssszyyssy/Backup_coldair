@@ -77,11 +77,11 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
             </div>
           )}
 
-          {unit.serviceHistory && unit.serviceHistory.length > 0 && (
+          {(unit.unitHistory || unit.serviceHistory || []).length > 0 && (
             <div style={{ marginTop: "20px" }}>
-              <h4>Service History</h4>
+              <h4>Installation &amp; Service History</h4>
               <div className="history-list">
-                {unit.serviceHistory.map((service, idx) => (
+                {(unit.unitHistory || unit.serviceHistory || []).map((service, idx) => (
                   <div key={idx} className="history-item">
                     <div className="history-date">{serviceDateLabel(service.date)}</div>
                     <div className="history-service">{serviceLabel(service.serviceType)}</div>

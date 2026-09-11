@@ -14,7 +14,7 @@ const STAGES = [
 ];
 const getStage = (status = '') => {
   if (status === 'to_pay') return 'pending';
-  if (status === 'to_deliver' || status === 'to_install') return 'in_progress';
+  if (['to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(status)) return 'in_progress';
   if (status === 'complete') return 'completed';
   if (status === 'cancelled') return 'cancelled';
   return 'pending';

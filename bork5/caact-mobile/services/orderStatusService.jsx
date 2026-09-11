@@ -4,6 +4,8 @@ export function resolveOrderDeliveryStatus(workflowStatus = "", fallback = "") {
   if (workflow === "cancelled") return "FAILED_ATTEMPT";
   if (fallback) return fallback;
   if (workflow === "to_deliver") return "PREPARING";
+  if (workflow === "to_dispatch") return "PREPARING";
+  if (workflow === "for_rescheduling") return "FAILED_ATTEMPT";
   if (workflow === "to_install") return "OUT_FOR_DELIVERY";
   return "NOT_STARTED";
 }

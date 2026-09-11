@@ -22,6 +22,8 @@ const { formatDateKeyInTimeZone, parseInstallationDateTime } = require("../utils
 const {
   getTaskMutationBlocker,
   hasVerifiedTaskCheckIn,
+  installationArrivalBlocker,
+  isOrderInstallationTask,
   normalizeTaskStatus: normalizeStatus,
   parseTaskStatus,
 } = require("../domain/taskWorkflow");
@@ -479,6 +481,8 @@ const syncOrderWorkflowForTask = async (task, status) => {
   if (task.assignedTechnicianName && !order.assignedTechnician) {
     order.assignedTechnician = task.assignedTechnicianName;
   }
+  if (trackingStatus === "arrived") order.deliveryStatus = "arrived";
+  if (trackingStatus === "installing") order.deliveryStatus = "installing";
   if (normalizedStatus !== "completed") {
     await order.save();
     if (!["pending", "accepted"].includes(normalizedStatus)) {
@@ -1047,7 +1051,7 @@ const updateTask = async (req, res) => {
       // The incoming technician must record their own arrival and service proof.
       task.proof = {};
       task.payload = { ...(task.payload || {}) };
-      for (const field of ["checkIn", "proof", "serviceLogs", "findings", "resolution", "serviceActions", "serviceHistoryId", "laborCost", "partsCost", "additionalCost"]) { delete task.payload[field]; delete payload[field]; }
+      for (const field of ["checkIn", "arrivalValidation", "installationStartedAt", "proof", "serviceLogs", "findings", "resolution", "serviceActions", "serviceHistoryId", "laborCost", "partsCost", "additionalCost"]) { delete task.payload[field]; delete payload[field]; }
     }
 
     if (req.authUser.role === "technician") {
@@ -1084,6 +1088,10 @@ const updateTask = async (req, res) => {
     }
     if (req.authUser.role === "technician" && nextStatus === "completed" && !hasVerifiedTaskCheckIn(task)) {
       return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before completing this work order." });
+    }
+    if (req.authUser.role === "technician" && nextStatus === "completed") {
+      const arrivalBlocker = installationArrivalBlocker(task);
+      if (arrivalBlocker) return res.status(409).json({ message: arrivalBlocker });
     }
     const technicianPayload = req.authUser.role === "technician"
       ? technicianReportPayload(payload)
@@ -1168,8 +1176,16 @@ const getTaskById = async (req, res) => {
     const unit = await getTaskUnitSummary(task);
     const order = await findLinkedOrderForTask(task);
     const codPayment = order && isCodOrder(order) ? { amount: order.totalAmount, collectedAt: order.codCollection?.collectedAt || null } : null;
+    const orderPayment = order ? {
+      method: order.paymentMethod || "",
+      provider: order.paymentProvider || "",
+      status: order.paymentStatus || order.status || "pending",
+      amount: Number(order.totalAmount || 0),
+      paidAt: order.paymongo?.paidAt || order.codCollection?.collectedAt || null,
+      reference: order.paymongo?.referenceNumber || order.receipt?.paymentReference || "",
+    } : null;
     const serviceRequest = task.payload?.requestId ? await ServiceRequest.findById(task.payload.requestId) : null;
-    return res.json({ task: { ...hydrateTaskResponse(task), unit, codPayment, servicePayment: servicePaymentSummary(serviceRequest) } });
+    return res.json({ task: { ...hydrateTaskResponse(task), unit, codPayment, orderPayment, servicePayment: servicePaymentSummary(serviceRequest) } });
   } catch (error) {
     console.error("Failed to fetch task:", error);
     return res.status(500).json({ message: "Unable to fetch task right now." });
@@ -1260,6 +1276,8 @@ const checkInTask = async (req, res) => {
     task.payload = {
       ...(task.payload || {}),
       checkIn: { latitude, longitude, accuracy: Number.isFinite(accuracy) ? accuracy : 0, checkedInAt: now },
+      arrivalValidation: null,
+      installationStartedAt: null,
       status: "in-progress",
       updatedAt: now,
     };
@@ -1270,6 +1288,39 @@ const checkInTask = async (req, res) => {
   } catch (error) {
     console.error("Failed to check in technician task:", error);
     return res.status(500).json({ message: "Unable to check in to this work order right now." });
+  }
+};
+
+const confirmInstallationArrival = async (req, res) => {
+  try {
+    if (req.authUser.role !== "technician") return res.status(403).json({ message: "Forbidden" });
+    if (req.body?.customerPresent !== true) {
+      return res.status(400).json({ message: "If nobody is present, submit Failed to Install with a proof photo." });
+    }
+    const task = await findTaskForRequest(req.params.taskId, req);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    if (!isOrderInstallationTask(task)) return res.status(409).json({ message: "Customer-presence validation applies only to installation work orders." });
+    if (normalizeStatus(task.status) !== "in-progress" || !hasVerifiedTaskCheckIn(task)) {
+      return res.status(409).json({ message: "Record a verified GPS check-in before confirming customer presence." });
+    }
+    const technicianId = String(req.authUser._id || "");
+    if (String(task.assignedTechnicianId || "") !== technicianId) return res.status(403).json({ message: "This task is assigned to another technician." });
+    const checkedInAt = task.payload.checkIn.checkedInAt;
+    const validatedAt = new Date().toISOString();
+    task.status = "installing";
+    task.payload = {
+      ...(task.payload || {}),
+      status: "installing",
+      arrivalValidation: { customerPresent: true, checkedInAt, validatedAt, technicianId },
+      installationStartedAt: task.payload?.installationStartedAt || validatedAt,
+      updatedAt: validatedAt,
+    };
+    await task.save();
+    await syncOrderWorkflowForTask(task, "installing");
+    return res.json({ task: hydrateTaskResponse(task), arrivalValidation: task.payload.arrivalValidation });
+  } catch (error) {
+    console.error("Failed to validate installation arrival:", error);
+    return res.status(500).json({ message: "Unable to confirm customer presence right now." });
   }
 };
 
@@ -1514,12 +1565,14 @@ const registerAmpUnit = async (req, res) => {
     if (requiredSerials.length > 0 && !assignedSerial) {
       return res.status(400).json({ message: "This AC unit is not part of the selected installation task." });
     }
-    if (normalizeStatus(task.status) !== "in-progress") {
-      return res.status(409).json({ message: "This work order must be activated by an administrator before the AC unit can be registered." });
+    if (normalizeStatus(task.status) !== "installing") {
+      return res.status(409).json({ message: "Confirm that the customer is present before registering the installed AC unit." });
     }
     if (!hasVerifiedTaskCheckIn(task)) {
       return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before scanning the assigned AC unit." });
     }
+    const arrivalBlocker = installationArrivalBlocker(task);
+    if (arrivalBlocker) return res.status(409).json({ message: arrivalBlocker });
 
     const isDefectiveHold = Boolean(payload.defectiveHold);
     if (isDefectiveHold && !String(payload.defectReason || "").trim()) {
@@ -1655,6 +1708,10 @@ const updateTaskStatus = async (req, res) => {
     if (req.authUser.role === "technician" && status === "completed" && !hasVerifiedTaskCheckIn(task)) {
       return res.status(409).json({ message: "Record a verified GPS check-in at the customer location before completing this work order." });
     }
+    if (req.authUser.role === "technician" && status === "completed") {
+      const arrivalBlocker = installationArrivalBlocker(task);
+      if (arrivalBlocker) return res.status(409).json({ message: arrivalBlocker });
+    }
     task.status = status;
     if (status === "completed") {
       const servicePaymentError = await getServiceCompletionPaymentBlocker(task);
@@ -1721,6 +1778,7 @@ module.exports = {
   getTaskById,
   acceptTask,
   checkInTask,
+  confirmInstallationArrival,
   confirmCodCollection,
   getRegistrationContextBySerial,
   getTechnicianUnitHistoryBySerial,

@@ -7,7 +7,7 @@ export function receiptReferences(receiptNumber, orderNumber) {
 }
 export function customerStatus(value) {
   const key = String(value || "").trim().toLowerCase().replace(/[ -]+/g, "_");
-  return ({ to_pay: "Awaiting payment", to_deliver: "Preparing for delivery", to_install: "Awaiting installation",
+  return ({ to_pay: "Awaiting payment", to_deliver: "Preparing for delivery", to_dispatch: "To Dispatch", to_install: "Awaiting installation", for_rescheduling: "For Rescheduling",
     complete: "Completed", completed: "Completed", in_progress: "In progress", on_the_way: "On the way",
     pending: "Pending", submitted: "Request sent", reviewed: "Reviewed by our team", assigned: "Technician assigned",
     cancelled: "Cancelled", paid: "Paid", verified: "Payment confirmed" })[key]

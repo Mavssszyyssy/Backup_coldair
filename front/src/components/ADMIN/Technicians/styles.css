@@ -9,7 +9,8 @@
 .tech-filter-heading p, .tech-section-heading p { margin: 4px 0 0; color: #64748b; font-size: 13px; line-height: 1.45; }
 .tech-filter-grid { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(145px, 1fr)); gap: 12px; margin-top: 16px; }
 .tech-filter-grid label, .tech-add-staff-form label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
-.tech-filter-grid input, .tech-filter-grid select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #0f172a; font: inherit; }
+.tech-filter-grid input, .tech-filter-grid select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select input, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px; background: #fff; color: #0f172a; font: inherit; }
+.tech-inline-select small { color: #64748b; font-weight: 600; line-height: 1.35; }
 .tech-filter-grid select:disabled { background: #f1f5f9; color: #64748b; }
 .tech-management-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); gap: 18px; align-items: start; }
 .tech-roster-card { display: grid; gap: 14px; }

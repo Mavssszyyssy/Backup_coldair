@@ -170,7 +170,7 @@ function TrackOrderModal({ order, onClose }) {
               >
                 Estimated Arrival:{" "}
                 <strong style={{ color: "#0f172a" }}>
-                  {new Date(order.estimatedArrival).toLocaleString()}
+                  {new Date(order.estimatedArrival).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
                 </strong>
               </div>
             )}
@@ -180,7 +180,7 @@ function TrackOrderModal({ order, onClose }) {
               >
                 Estimated Installation:{" "}
                 <strong style={{ color: "#0f172a" }}>
-                  {new Date(order.installationDate).toLocaleDateString()}
+                  {new Date(order.installationDate).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
                 </strong>
               </div>
             )}

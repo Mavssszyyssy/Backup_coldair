@@ -16,7 +16,7 @@ const buildAction = (state) => vm.runInNewContext(extract("const applyOrderLifec
   createTaskForOrder: async (o, opts) => { state.activated = opts.activate; },
   createOrderNotification: noop, createStaffOrderNotification: noop,
 });
-test("COD dispatch bypasses approval, reserves once, and does not record arrival or payment", async () => {
+test("legacy pending COD dispatch reserves once and does not record arrival or payment", async () => {
   const state = { reservations: 0, events: [] };
   const apply = buildAction(state);
   const order = { orderCode: "COD-1", workflowStatus: "to_pay", paymentMethod: "cod", paymentStatus: "pending", status: "pending", stockReservationStatus: "pending", save: noop };
@@ -33,6 +33,15 @@ test("COD dispatch bypasses approval, reserves once, and does not record arrival
   await assert.rejects(apply(order, "dispatch"), /Cannot dispatch/);
   assert.equal(state.reservations, 1);
   await assert.rejects(apply(order, "complete"), /confirm cash collection/);
+});
+test("new checkout-reserved COD dispatch does not reserve stock again", async () => {
+  const state = { reservations: 0, events: [] };
+  const apply = buildAction(state);
+  const order = { orderCode: "COD-2", workflowStatus: "to_deliver", paymentMethod: "cod", paymentStatus: "pending", status: "pending", stockReservationStatus: "reserved", save: noop };
+  await apply(order, "dispatch", { assignedTechnicianId: "tech" });
+  assert.equal(order.workflowStatus, "to_install");
+  assert.equal(state.reservations, 0);
+  assert.equal(state.activated, true);
 });
 test("cash collection requires COD, dispatch, assigned technician and check-in", () => {
   const order = { paymentMethod: "cod", workflowStatus: "to_install", dispatchedAt: new Date(), assignedTechnicianId: "tech" };

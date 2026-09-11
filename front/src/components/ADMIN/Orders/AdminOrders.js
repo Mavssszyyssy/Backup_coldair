@@ -130,10 +130,14 @@ const getDeliveryStatus = (order = {}) => {
   if (recorded === 'completed' || recorded === 'delivered') return 'Delivered';
   if (recorded === 'out for delivery' || recorded === 'dispatched') return 'Out for delivery';
   if (recorded === 'cancelled') return 'Cancelled';
+  if (recorded === 'failed installation') return 'Failed to Install';
+  if (recorded === 'for rescheduling') return 'For Rescheduling';
   if (recorded === 'pending') return 'Preparing for dispatch';
   if (recorded) return recorded.replace(/\b\w/g, (letter) => letter.toUpperCase());
   if (order.workflowStatus === 'complete') return 'Completed';
   if (order.workflowStatus === 'to_install') return 'Delivered / installation pending';
+  if (order.workflowStatus === 'to_dispatch') return 'To Dispatch';
+  if (order.workflowStatus === 'for_rescheduling') return 'For Rescheduling';
   if (order.workflowStatus === 'to_deliver') return 'Preparing for dispatch';
   if (order.workflowStatus === 'to_pay') return 'Awaiting payment';
   return order.workflowLabel || 'Not recorded';
@@ -160,6 +164,8 @@ const getInstallationStatus = (order = {}, task = null) => {
   }
   if (order.workflowStatus === 'complete') return 'Completed';
   if (order.workflowStatus === 'to_install') return 'Awaiting technician';
+  if (order.workflowStatus === 'to_dispatch') return 'To Dispatch';
+  if (order.workflowStatus === 'for_rescheduling') return 'For Rescheduling';
   return 'Not started';
 };
 
@@ -301,7 +307,7 @@ const AdminOrders = ({ embedded = false }) => {
         assignedTechnicianId: getSavedTechnicianId(order),
         estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
         installationDate: dateInputValue(order.installationDate),
-        timeSlot: '',
+        timeSlot: order.installationTimeSlot || '',
         cancellationReason: '',
         ...(current[key] || {}),
         ...patch,
@@ -315,7 +321,7 @@ const AdminOrders = ({ embedded = false }) => {
       assignedTechnicianId: getSavedTechnicianId(order),
       estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
       installationDate: dateInputValue(order.installationDate),
-      timeSlot: '',
+      timeSlot: order.installationTimeSlot || '',
       cancellationReason: '',
     };
   };
@@ -507,7 +513,7 @@ const AdminOrders = ({ embedded = false }) => {
         <div className="admin-orders-list">
           {paginatedOrders.map((order) => {
             const actionConfig = getOrderAction(order);
-            const canCancel = ['to_pay', 'to_deliver'].includes(order.workflowStatus);
+            const canCancel = ['to_pay', 'to_deliver', 'to_dispatch', 'for_rescheduling'].includes(order.workflowStatus);
             const isPaymongoPending =
               String(order.paymentProvider || '').toLowerCase() === 'paymongo' &&
               String(order.paymentStatus || '').toLowerCase() !== 'paid' &&
@@ -533,7 +539,7 @@ const AdminOrders = ({ embedded = false }) => {
               order.workflowStatus === 'to_install' &&
               actionConfig?.action === 'complete' &&
               (!taskCompleted || !hasProof);
-            const canRepairTask = ['to_deliver', 'to_install', 'complete'].includes(order.workflowStatus);
+            const canRepairTask = ['to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling', 'complete'].includes(order.workflowStatus);
             const canSyncInstalledUnits = taskCompleted || order.workflowStatus === 'complete';
             const paymentStatus = getPaymentStatus(order);
             const deliveryStatus = getDeliveryStatus(order);
@@ -568,6 +574,7 @@ const AdminOrders = ({ embedded = false }) => {
                     Fulfillment: {order.assignedTechnician || linkedTask?.assignedTechnicianName || 'Unassigned'}
                     {order.estimatedArrival ? ` | Delivery ${dateInputValue(order.estimatedArrival)}` : ''}
                     {order.installationDate ? ` | Install ${dateInputValue(order.installationDate)}` : ''}
+                    {order.installationTimeSlot ? ` | ${order.installationTimeSlot}` : ''}
                   </p>
                 ) : null}
                 {order.refundReview?.required ? (
@@ -596,7 +603,7 @@ const AdminOrders = ({ embedded = false }) => {
                     </small>
                   </div>
                 ) : null}
-                {['to_pay', 'to_deliver', 'to_install'].includes(order.workflowStatus) ? (
+                {['to_pay', 'to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(order.workflowStatus) ? (
                   <div className="admin-order-fulfillment">
                     <label>
                       Technician

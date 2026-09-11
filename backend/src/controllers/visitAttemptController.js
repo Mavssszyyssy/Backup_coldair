@@ -19,15 +19,33 @@ async function scopedTask(req) {
   return Task.findOne({ $and: scope });
 }
 
+async function linkedInstallationOrder(task) {
+  if (task.payload?.requestId) return null;
+  const identity = [{ orderCode: task.payload?.orderCode || '__none__' }];
+  if (mongoose.Types.ObjectId.isValid(task.payload?.orderId || '')) identity.push({ _id: task.payload.orderId });
+  return Order.findOne({ $or: identity });
+}
+
 // Idempotent timeline entries and notifications make a network retry safe.
 async function syncAttempt(task, attempt, resolved = false) {
   const eventId = `visit:${attempt._id}:${resolved ? 'scheduled' : 'closed'}`;
-  const title = resolved ? 'Next visit scheduled' : attempt.outcome === 'reschedule' ? 'Visit rescheduling requested' : 'Visit closed — no one available';
-  const description = resolved ? `Next visit: ${task.scheduledDate} · ${task.timeSlot}. A new GPS check-in is required.` : `${attempt.note} Admin will follow up. The request has not been cancelled or completed.`;
   const summary = task.payload.visitAttempt;
   const requestId = task.payload?.requestId;
   const request = mongoose.Types.ObjectId.isValid(requestId || '') ? await ServiceRequest.findById(requestId) : null;
   let order = null;
+  const installationAttempt = !request && Boolean(task.payload?.orderId || task.payload?.orderCode);
+  const title = resolved
+    ? installationAttempt ? 'Installation revisit confirmed' : 'Next visit scheduled'
+    : installationAttempt
+      ? 'Failed to Install — no one available'
+      : attempt.outcome === 'reschedule' ? 'Visit rescheduling requested' : 'Visit closed — no one available';
+  const description = resolved
+    ? installationAttempt
+      ? `Next visit: ${task.scheduledDate} · ${task.timeSlot}. The ticket is now To Install and a new GPS check-in is required.`
+      : `Next visit: ${task.scheduledDate} · ${task.timeSlot}. A new GPS check-in is required.`
+    : installationAttempt
+      ? `${attempt.note} Installation was not started. ${summary?.nextWorkflowStatus === 'to_dispatch' ? 'This revisit must return to To Dispatch.' : 'Admin must confirm the next schedule.'}`
+      : `${attempt.note} Admin will follow up. The request has not been cancelled or completed.`;
   if (request) {
     const timeline = Array.isArray(request.payload?.timeline) ? request.payload.timeline : [];
     if (!timeline.some(item => item.id === eventId)) timeline.push({ id: eventId, title, description, actor: resolved ? 'Admin' : attempt.technicianName, timestamp: new Date().toISOString() });
@@ -35,17 +53,26 @@ async function syncAttempt(task, attempt, resolved = false) {
       ...(resolved ? { scheduledDate: task.scheduledDate, timeSlot: task.timeSlot } : {}) };
     await request.save();
   } else {
-    const orderId = task.payload?.orderId;
-    const identity = [{ orderCode: task.payload?.orderCode || '__none__' }];
-    if (mongoose.Types.ObjectId.isValid(orderId || '')) identity.push({ _id: orderId });
-    order = await Order.findOne({ $or: identity });
+    order = await linkedInstallationOrder(task);
     if (order) {
       order.visitAttempt = summary;
       if (!Array.isArray(order.fulfillmentTimeline)) order.fulfillmentTimeline = [];
       if (!order.fulfillmentTimeline.some(event => event.stage === eventId)) {
         order.fulfillmentTimeline.push({ stage: eventId, label: title, detail: description, timestamp: new Date() });
       }
-      if (resolved) { order.installationDate = task.scheduledDate; order.estimatedArrival = task.scheduledDate; }
+      if (resolved) {
+        order.workflowStatus = 'to_install';
+        order.deliveryStatus = 'dispatched';
+        order.installationDate = task.scheduledDate;
+        order.estimatedArrival = task.scheduledDate;
+        order.installationTimeSlot = task.timeSlot;
+      } else {
+        order.workflowStatus = summary?.nextWorkflowStatus || 'for_rescheduling';
+        order.deliveryStatus = summary?.nextWorkflowStatus === 'to_dispatch' ? 'failed_installation' : 'for_rescheduling';
+        order.estimatedArrival = '';
+        order.installationDate = '';
+        order.installationTimeSlot = '';
+      }
       await order.save();
     }
   }
@@ -82,13 +109,30 @@ async function submitVisitAttempt(req, res) {
       const error = visitAttemptError(task, req.body);
       if (error) return res.status(400).json({ message: error });
       const checkIn = task.payload.checkIn;
+      const previousAttempt = task.payload?.visitAttempt || null;
       attempt = await VisitAttempt.findOneAndUpdate({ taskId: task._id, checkedInAt: checkIn.checkedInAt }, { $setOnInsert: {
         taskId: task._id, checkedInAt: checkIn.checkedInAt, checkIn, technicianId: String(req.authUser._id),
         technicianName: task.assignedTechnicianName, outcome: req.body.outcome, note: req.body.note.trim(), photo: { uri: req.body.photo.uri },
       } }, { upsert: true, new: true, runValidators: true });
-      const summary = { id: String(attempt._id), outcome: attempt.outcome, note: attempt.note, submittedAt: attempt.submittedAt, awaitingAdmin: true };
+      const order = await linkedInstallationOrder(task);
+      const attemptCount = Number(previousAttempt?.attemptNumber || 0) + 1;
+      const isRevisitFailure = Boolean(previousAttempt?.resolution) || attemptCount > 1;
+      const payment = order ? {
+        method: order.paymentMethod || '',
+        status: order.paymentStatus || order.status || 'pending',
+        amount: Number(order.totalAmount || 0),
+        paidAt: order.paymongo?.paidAt || order.codCollection?.collectedAt || null,
+        reference: order.paymongo?.referenceNumber || order.receipt?.paymentReference || '',
+      } : null;
+      const summary = {
+        id: String(attempt._id), outcome: attempt.outcome, note: attempt.note,
+        submittedAt: attempt.submittedAt, awaitingAdmin: true, attemptNumber: attemptCount,
+        installationFailed: Boolean(order),
+        nextWorkflowStatus: order ? (isRevisitFailure ? 'to_dispatch' : 'for_rescheduling') : '',
+        payment,
+      };
       task = await Task.findOneAndUpdate({ _id: task._id, status: 'in-progress', assignedTechnicianId: String(req.authUser._id), 'payload.checkIn.checkedInAt': checkIn.checkedInAt },
-        { $set: { status: 'on-hold', 'payload.status': 'on-hold', 'payload.visitAttempt': summary, 'payload.checkIn': null } }, { new: true });
+        { $set: { status: 'on-hold', 'payload.status': 'on-hold', 'payload.visitAttempt': summary, 'payload.failedInstallation': order ? summary : null, 'payload.checkIn': null, 'payload.arrivalValidation': null, 'payload.installationStartedAt': null } }, { new: true });
       if (!task) return res.status(409).json({ message: 'The work order changed. Reopen it to check the latest visit status.' });
     }
     await syncAttempt(task, attempt);
@@ -115,7 +159,7 @@ async function scheduleNextVisit(req, res) {
       task = await Task.findOneAndUpdate({ _id: task._id, status: 'on-hold', 'payload.visitAttempt.id': String(attempt._id), 'payload.visitAttempt.awaitingAdmin': true }, { $set: {
         status: 'in-progress', scheduledDate: resolution.scheduledDate, timeSlot: resolution.timeSlot,
         'payload.status': 'in-progress', 'payload.scheduledDate': resolution.scheduledDate, 'payload.timeSlot': resolution.timeSlot,
-        'payload.checkIn': null, 'payload.installationStartedAt': null, 'payload.visitAttempt.awaitingAdmin': false, 'payload.visitAttempt.resolution': resolution,
+        'payload.checkIn': null, 'payload.arrivalValidation': null, 'payload.installationStartedAt': null, 'payload.visitAttempt.awaitingAdmin': false, 'payload.visitAttempt.resolution': resolution,
       } }, { new: true });
       if (!task) return res.status(409).json({ message: 'The work order changed. Refresh before trying again.' });
     }

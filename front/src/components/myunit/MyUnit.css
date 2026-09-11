@@ -115,6 +115,72 @@
     perspective: 1100px;
 }
 
+.unit-organizer {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.3fr) minmax(190px, 0.7fr);
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 12px;
+  padding: 20px;
+  border: 1px solid #dbe7f5;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.unit-organizer-copy {
+  align-self: center;
+}
+
+.unit-search-field,
+.unit-sort-field {
+  display: grid;
+  gap: 7px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.unit-search-field input,
+.unit-sort-field select {
+  min-height: 46px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.unit-search-field input:focus,
+.unit-sort-field select:focus {
+  outline: 3px solid rgba(14, 165, 233, 0.16);
+  border-color: #0284c7;
+}
+
+.unit-results-summary {
+  margin: 0 2px 16px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.unit-no-results {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 38px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  background: #fff;
+  text-align: center;
+}
+
 .unit-card:hover {
     transform: translateY(-7px) rotateX(1.2deg) rotateY(-1.4deg);
     box-shadow: 0 22px 45px rgba(15, 23, 42, 0.16);
@@ -126,8 +192,33 @@
     color: white;
     position: relative;
     z-index: 3;
-    min-height: 108px;
+    min-height: 132px;
     box-sizing: border-box;
+}
+
+.unit-identity-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 48px 13px 0;
+}
+
+.unit-identity-badges > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.17);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.unit-identity-badges .unit-newest-badge {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .unit-brand-model {
@@ -148,8 +239,7 @@
 .unit-header-actions {
   position: absolute;
   right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 16px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -946,6 +1036,12 @@
     .units-grid {
         grid-template-columns: 1fr;
     }
+
+    .unit-organizer {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      padding: 16px;
+    }
   
   .form-row {
     grid-template-columns: 1fr;
@@ -964,4 +1060,23 @@
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+}
+
+:root[data-theme='dark'] .unit-organizer,
+:root[data-theme='dark'] .unit-no-results {
+  border-color: #334155;
+  background: #0f3460;
+}
+
+:root[data-theme='dark'] .unit-search-field,
+:root[data-theme='dark'] .unit-sort-field,
+:root[data-theme='dark'] .unit-results-summary {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .unit-search-field input,
+:root[data-theme='dark'] .unit-sort-field select {
+  border-color: #475569;
+  background: #172033;
+  color: #f8fafc;
 }

@@ -31,6 +31,23 @@ test("My Units preserves the Philippine installation day instead of the precedin
   const result = serializeCustomerUnit({ _id: "unit", installation: { installedAt: "2026-09-05T16:00:00Z" } });
   assert.equal(result.installationDate, "2026-09-06");
 });
+test("My Units identifies an installed unit using its actual source order", () => {
+  const { serializeCustomerUnit } = require("../src/controllers/ampController");
+  const result = serializeCustomerUnit(
+    { _id: "unit", serialNumber: "SERIAL-1", installation: { installedAt: "2026-09-10T00:00:00Z" } },
+    [],
+    null,
+    null,
+    { orderCode: "ORD-100", createdAt: "2026-09-08T12:00:00Z" },
+  );
+  assert.equal(result.orderCode, "ORD-100");
+  assert.equal(result.purchaseDate, "2026-09-08T12:00:00Z");
+});
+test("My Units does not repeat the brand in the customer-facing unit name", () => {
+  const { serializeCustomerUnit } = require("../src/controllers/ampController");
+  const result = serializeCustomerUnit({ _id: "unit", brand: "TCL", modelName: "TCL Full DC Inverter", installation: {} });
+  assert.equal(result.unitName, "TCL Full DC Inverter");
+});
 test("cohort intervals use actual cleaning evidence and ignore duplicate days and repairs", () => {
   const units = [{ _id: "a", installation: { installedAt: "2025-01-01" } }];
   const histories = [

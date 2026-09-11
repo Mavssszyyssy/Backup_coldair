@@ -195,6 +195,18 @@ describe("mobile customer readiness rules", () => {
     expect(settingsSource).not.toContain('title={addressForm.isDefault ? "Default delivery address"');
   });
 
+  test("installation arrival requires an explicit customer-presence decision", () => {
+    const informationSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "technician", "task", "[id]", "information.jsx"),
+      "utf8",
+    );
+    expect(informationSource).toContain("Confirm customer presence");
+    expect(informationSource).toContain("Nobody is present");
+    expect(informationSource).toContain("Customer is present");
+    expect(informationSource).toContain("confirmInstallationArrival(id)");
+    expect(informationSource).toContain("task?.timeSlot");
+  });
+
   test("technician installation captures room capacity and AMP alerts open the unit", () => {
     const registrationSource = fs.readFileSync(
       path.join(__dirname, "..", "app", "technician", "task", "[id]", "amp-registration.jsx"),

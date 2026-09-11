@@ -692,6 +692,16 @@ export async function checkInTask(token, taskId, coordinates) {
   return { success: false, error: getErrorMessage(data, "Unable to check in to this work order.") };
 }
 
+export async function confirmInstallationArrival(token, taskId) {
+  const { ok, data } = await patch(
+    `/tasks/${encodeURIComponent(taskId)}/arrival-validation`,
+    { customerPresent: true },
+    token,
+  );
+  if (ok) return { success: true, task: data.task, arrivalValidation: data.arrivalValidation };
+  return { success: false, error: getErrorMessage(data, "Unable to confirm customer presence.") };
+}
+
 export async function getVisitAttempt(token, taskId) {
   const { ok, data } = await get(`/tasks/${encodeURIComponent(taskId)}/visit-attempt`, token);
   if (!ok) throw new Error(getErrorMessage(data, 'Unable to load visit proof.'));

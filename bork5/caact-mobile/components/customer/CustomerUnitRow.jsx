@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
-import { formatUnitHorsepower } from "../../services/unitDisplayService";
+import { formatUnitHorsepower, formatUnitInstallationDate, formatUnitPurchaseDate } from "../../services/unitDisplayService";
 import CustomerUnitImage from "./CustomerUnitImage";
 
 export default function CustomerUnitRow({
@@ -10,6 +10,8 @@ export default function CustomerUnitRow({
   recommendation,
   maintenance,
   onPress,
+  position,
+  isNewest = false,
 }) {
   const modelLabel = [unit?.brand, unit?.productSku || unit?.model]
     .filter(Boolean)
@@ -21,8 +23,18 @@ export default function CustomerUnitRow({
         activeOpacity={0.72}
         accessibilityRole="button"
         accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
-        style={{ paddingVertical: SPACING.sm, minHeight: 104 }}
+        style={{ paddingVertical: SPACING.sm, minHeight: 104, borderBottomWidth: 1, borderBottomColor: COLORS.border }}
       >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs, marginBottom: SPACING.sm }}>
+          <View style={{ backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 4 }}>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.black }}>AC UNIT {position}</Text>
+          </View>
+          {isNewest ? (
+            <View style={{ backgroundColor: COLORS.successLight, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 4 }}>
+              <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: FONT.black }}>NEWEST PURCHASE</Text>
+            </View>
+          ) : null}
+        </View>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <CustomerUnitImage unit={unit} size={68} style={{ marginRight: SPACING.sm }} />
           <View style={{ flex: 1 }}>
@@ -34,6 +46,18 @@ export default function CustomerUnitRow({
             </Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
               Horsepower: {formatUnitHorsepower(unit)}
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
+              Serial: {unit?.serialNumber || "Not recorded"}
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
+              Order: {unit?.orderCode || "Not recorded"}
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
+              Ordered: {formatUnitPurchaseDate(unit)} · Installed: {formatUnitInstallationDate(unit)}
+            </Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
+              {[unit?.serviceBranch ? `${unit.serviceBranch} Branch` : "", unit?.placementArea].filter(Boolean).join(" · ") || "Branch and location not recorded"}
             </Text>
           </View>
           <Ionicons name="chevron-forward-sharp" size={19} color={COLORS.textMuted} />

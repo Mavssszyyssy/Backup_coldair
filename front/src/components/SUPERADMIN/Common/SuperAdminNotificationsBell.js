@@ -35,13 +35,14 @@ const SuperAdminNotificationsBell = () => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState('active');
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
     refreshInFlightRef.current = true;
     setBusy(true);
     try {
-      const result = await apiRequest('/notifications/me');
+      const result = await apiRequest(`/notifications/me?view=${view}`);
       setItems((result.notifications || []).map((item) => ({
         ...item,
         id: item.id || item._id,
@@ -54,7 +55,7 @@ const SuperAdminNotificationsBell = () => {
       setBusy(false);
       refreshInFlightRef.current = false;
     }
-  }, []);
+  }, [view]);
 
   useEffect(() => {
     refresh();
@@ -94,6 +95,13 @@ const SuperAdminNotificationsBell = () => {
     setOpen(false);
     navigate(item.to);
   };
+  const archiveNotification = async (item) => {
+    if (!item.id) return;
+    try {
+      await apiRequest(`/notifications/${item.id}/${view === 'archived' ? 'restore' : 'archive'}`, { method: 'PATCH' });
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+    } catch (_error) { /* Keep the notification visible if the request fails. */ }
+  };
 
   return <div className="super-notifications">
     <button ref={buttonRef} type="button" className="super-notifications-button" onClick={() => setOpen((value) => !value)} aria-label="Open notifications">
@@ -101,8 +109,9 @@ const SuperAdminNotificationsBell = () => {
       {unreadCount ? <span>{unreadCount > 99 ? '99+' : unreadCount}</span> : null}
     </button>
     {open ? <section ref={panelRef} className="super-notifications-panel" role="dialog" aria-label="Super Admin notifications">
-      <header><div><strong>Notifications</strong><small>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</small></div><div><button type="button" onClick={refresh} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button><button type="button" onClick={markAllRead} disabled={!unreadCount}>Mark read</button></div></header>
-      {items.length === 0 ? <p className="super-notifications-empty">No alerts right now.</p> : <div className="super-notifications-list">{items.map((item) => <button type="button" key={item.id} className={item.unread ? 'unread' : ''} onClick={() => openNotification(item)}><strong>{item.title || 'System notification'}</strong><span>{item.message || 'No additional details.'}</span><small>{timeLabel(item.createdAt)}</small></button>)}</div>}
+      <header><div><strong>Notifications</strong><small>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</small></div><div><button type="button" onClick={refresh} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button><button type="button" onClick={markAllRead} disabled={!unreadCount || view === 'archived'}>Mark read</button></div></header>
+      <div className="super-notifications-tabs" role="tablist" aria-label="Notification folders">{[['active', 'Current'], ['archived', 'Archive']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>{label}</button>)}</div>
+      {items.length === 0 ? <p className="super-notifications-empty">{view === 'archived' ? 'No archived notifications.' : 'No alerts right now.'}</p> : <div className="super-notifications-list">{items.map((item) => <div className="super-notifications-row" key={item.id}><button type="button" className={item.unread ? 'unread' : ''} onClick={() => openNotification(item)}><strong>{item.title || 'System notification'}</strong><span>{item.message || 'No additional details.'}</span><small>{timeLabel(item.createdAt)}</small></button><button type="button" className="super-notifications-archive" onClick={() => archiveNotification(item)}>{view === 'archived' ? 'Restore' : 'Archive'}</button></div>)}</div>}
     </section> : null}
   </div>;
 };

@@ -227,16 +227,16 @@ const main = async () => {
   let order = orderResult.data.order;
   const orderId = order.id || order._id;
   const placedProduct = await findProduct(superadmin.token, productId);
-  if (Number(placedProduct.stock) !== initialStock || order.stockReservationStatus !== "pending") {
-    throw new Error("COD stock changed before dispatch.");
+  if (Number(placedProduct.stock) !== initialStock - 1 || order.stockReservationStatus !== "reserved") {
+    throw new Error("COD checkout did not reserve assigned-branch stock before confirmation.");
   }
-  if ((order.items?.[0]?.serialNumbers || []).length !== 0) {
-    throw new Error("COD order received a serial before dispatch.");
+  if ((order.items?.[0]?.serialNumbers || []).length !== 1) {
+    throw new Error("COD checkout did not reserve exactly one serial unit.");
   }
   if (order.items?.[0]?.model !== `CA-${runId}` || Number(order.items?.[0]?.horsepower) !== 2.5) {
     throw new Error("COD order did not preserve the exact model and horsepower for customer review.");
   }
-  record("COD checkout preserves stock until dispatch");
+  record("COD checkout validates and reserves assigned-branch stock");
   const branchAdminSession = await login("admin.bulacan", "admin123");
   const orderAlerts = await request("/notifications/me", { token: branchAdminSession.token });
   if (!orderAlerts.data.notifications.some((notice) => notice.type === "order" && String(notice.targetId) === String(orderId))) {

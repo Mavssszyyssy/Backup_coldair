@@ -41,8 +41,31 @@ const hasVerifiedTaskCheckIn = (task) => {
   return valid(point.latitude, 90) && valid(point.longitude, 180);
 };
 
+const isOrderInstallationTask = (task) => Boolean(
+  (task?.payload?.orderId || task?.payload?.orderCode) &&
+  !String(task?.payload?.requestId || task?.requestId || "").trim(),
+);
+
+const hasCustomerPresentArrival = (task) => {
+  if (!isOrderInstallationTask(task) || !hasVerifiedTaskCheckIn(task)) return false;
+  const validation = task?.payload?.arrivalValidation;
+  return Boolean(
+    validation?.customerPresent === true &&
+    validation?.checkedInAt &&
+    validation.checkedInAt === task.payload.checkIn.checkedInAt,
+  );
+};
+
+const installationArrivalBlocker = (task) =>
+  isOrderInstallationTask(task) && !hasCustomerPresentArrival(task)
+    ? "Confirm that the customer is present after GPS check-in before starting installation. If nobody is present, submit Failed to Install with a proof photo."
+    : "";
+
 module.exports = {
+  hasCustomerPresentArrival,
   hasVerifiedTaskCheckIn,
+  installationArrivalBlocker,
+  isOrderInstallationTask,
   TASK_STATUSES,
   getTaskMutationBlocker,
   normalizeTaskStatus,

@@ -90,9 +90,13 @@ const listMyNotifications = async (req, res) => {
   // Fetch beyond the drawer's display size before collapsing duplicates and
   // applying preferences. Otherwise, suppressed alerts in the newest 30 can
   // hide older unread alerts that the user is still meant to see.
-  let notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(100);
+  const archivedView = String(req.query?.view || "active").toLowerCase() === "archived";
+  const archiveScope = archivedView
+    ? { archivedAt: { $ne: null } }
+    : { $or: [{ archivedAt: null }, { archivedAt: { $exists: false } }] };
+  let notifications = await Notification.find({ user: userId, ...archiveScope }).sort({ createdAt: -1 }).limit(100);
 
-  if (!notifications.length) {
+  if (!notifications.length && !archivedView) {
     // Check if this is the user's first login
     const isFirstLogin = !user.lastLogin;
     const role = String(user?.role || "customer").toLowerCase();
@@ -116,7 +120,7 @@ const listMyNotifications = async (req, res) => {
         message: statusMessage,
       },
     ]);
-    notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 }).limit(100);
+    notifications = await Notification.find({ user: userId, ...archiveScope }).sort({ createdAt: -1 }).limit(100);
   }
 
   notifications = collapseDuplicateNotifications(notifications).filter((item) => {
@@ -130,6 +134,26 @@ const listMyNotifications = async (req, res) => {
   return res.json({
     notifications: sanitizeLegacyNotifications(notifications, user?.role),
   });
+};
+
+const archiveNotification = async (req, res) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: req.params.id, user: req.authUser._id },
+    { $set: { archivedAt: new Date(), unread: false, status: "read" } },
+    { new: true },
+  );
+  if (!notification) return res.status(404).json({ message: "Notification not found" });
+  return res.json({ notification: notification.toJSON() });
+};
+
+const restoreNotification = async (req, res) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: req.params.id, user: req.authUser._id },
+    { $set: { archivedAt: null } },
+    { new: true },
+  );
+  if (!notification) return res.status(404).json({ message: "Notification not found" });
+  return res.json({ notification: notification.toJSON() });
 };
 
 const markNotificationRead = async (req, res) => {
@@ -180,5 +204,7 @@ module.exports = {
   listMyNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  archiveNotification,
+  restoreNotification,
   registerPushToken,
 };

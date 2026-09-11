@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema(
     dedupeKey: { type: String, default: "", index: true },
     status: { type: String, enum: ["unread", "read"], default: "unread", index: true },
     unread: { type: Boolean, default: true },
+    archivedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }
 );

@@ -3,6 +3,7 @@ const AuditLog = require("../models/AuditLog");
 const Product = require("../models/Product");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const { ensureProductSerialUnits } = require("./productController");
 
 /**
  * Manager creates a change request for inventory
@@ -144,6 +145,7 @@ const approveRequest = async (req, res) => {
     // Update inventory
     product.branchStock.set(request.branch, request.requestedStock);
     product.stock = Array.from(product.branchStock.values()).reduce((sum, val) => sum + val, 0);
+    await ensureProductSerialUnits(product, product.stock, { deferSave: true });
     await product.save();
 
     // Update request status

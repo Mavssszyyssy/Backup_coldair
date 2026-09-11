@@ -7,9 +7,9 @@ const WarrantyClaims = ({ claims = [], busyClaimId, onReview }) => {
   const activeClaims = claims.filter((claim) => ['submitted', 'under_review'].includes(String(claim.status || '').toLowerCase()));
 
   return (
-    <section className="maintenance-queue-panel" aria-label="Warranty claims">
+    <section className="maintenance-queue-panel" aria-label="In Warranty Analytics">
       <div className="maintenance-panel-heading">
-        <div><p className="maintenance-eyebrow">Warranty management</p><h2>Claims awaiting review</h2></div>
+        <div><p className="maintenance-eyebrow">In Warranty Analytics</p><h2>Claims awaiting review</h2></div>
         <span className="maintenance-task-chip">{activeClaims.length} open</span>
       </div>
       {!activeClaims.length ? <div className="maintenance-empty"><strong>No warranty claims awaiting review</strong><span>New customer claims will appear here.</span></div> : (

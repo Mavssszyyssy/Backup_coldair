@@ -82,6 +82,7 @@ const initialStaffDraft = (branch = "") => ({
   lastName: "",
   loginName: "",
   branch,
+  serviceQuota: "",
 });
 
 const AdminTechnician = ({ embedded = false }) => {
@@ -214,6 +215,7 @@ const AdminTechnician = ({ embedded = false }) => {
     const firstName = staffDraft.firstName.trim();
     const lastName = staffDraft.lastName.trim();
     const loginName = credentialPart(staffDraft.loginName);
+    const serviceQuota = Number(staffDraft.serviceQuota);
     if (!firstName || !lastName || !loginName || !staffDraft.branch) {
       setError("Enter the technician's name, login name, and assigned branch.");
       return;
@@ -224,6 +226,10 @@ const AdminTechnician = ({ embedded = false }) => {
     }
     if (loginName.length < 2) {
       setError("Enter a technician login name with at least 2 letters or numbers.");
+      return;
+    }
+    if (!Number.isSafeInteger(serviceQuota) || serviceQuota < 1) {
+      setError("Enter a Service Quota as a whole number greater than 0.");
       return;
     }
     staffSavePending.current = true;
@@ -241,6 +247,7 @@ const AdminTechnician = ({ embedded = false }) => {
           loginName,
           role: "technician",
           branch: staffDraft.branch,
+          serviceQuota,
         }),
       });
       setTemporaryPassword(result.tempPassword || "");
@@ -370,6 +377,7 @@ const AdminTechnician = ({ embedded = false }) => {
             </div>
             <label><span>Login name</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder="name" autoComplete="off" required /><small>Use a short, unique name such as juan or j.delacruz. Check the generated Login ID below.</small></label>
             <label><span>Assigned branch</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label><span>Service Quota</span><input type="number" min="1" step="1" value={staffDraft.serviceQuota} onChange={(event) => updateStaffDraft("serviceQuota", event.target.value)} placeholder="Maximum service jobs" required /><small>This value must be defined before the technician can receive warranty claims.</small></label>
             <div className="tech-credential-preview"><span>Login ID</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>Default password</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
             <p className="tech-staff-note">Email is not used. At first sign-in in the mobile app, the technician must confirm a contact number and replace the default password before accessing work.</p>
             <button type="submit" className="tech-primary-button" disabled={savingStaff}>{savingStaff ? "Adding technician…" : "Create technician account"}</button>
@@ -408,6 +416,8 @@ const AdminTechnician = ({ embedded = false }) => {
                   <span>Installations: <strong>{taskStats.activeInstallations}</strong></span>
                   <span>Completed jobs: <strong>{taskStats.completed}</strong></span>
                 </div>
+                <label className="tech-inline-select"><span>Service Quota</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment"}</small></label>
+                <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
                 {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
                 <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => updateTechnician(technician, { status: technician.accountStatus === "active" ? "disabled" : "active" }, `${technician.name}'s account is now ${technician.accountStatus === "active" ? "disabled" : "active"}.`)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
               </article>;
