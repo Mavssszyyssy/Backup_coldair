@@ -46,8 +46,8 @@ export default function CustomerAmpReport({ report, provider }) {
       {summary ? <DetailRow label="Suggested servicing date" value={dateLabel(maintenance.bestServicedBy)} /> : null}
       <DetailRow label="Why this date?" value={customerSystemMessage(maintenance.recommendationBasis) || "Not recorded"} multiline />
       <DetailRow label="Pattern used" value={pattern.source === "same_unit" ? "This AC unit's cleaning history" : pattern.source === "system_default" ? "6-month starting schedule" : "Verified similar AC cleaning history"} multiline />
-      <DetailRow label="Verified cleaning gaps" value={pattern.intervalsDays?.length ? `${pattern.intervalsDays.join(", ")} days` : "Not enough history yet"} multiline />
-      <DetailRow label="Typical gap" value={pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days (arithmetic average)` : "6 months (180 days)"} multiline />
+      <DetailRow label="Verified cleaning gaps" value={pattern.intervalsDays?.length ? pattern.intervalsDays.map((days) => `${Math.max(1, Math.round(days / 30))} month(s)`).join(", ") : "Not enough history yet"} multiline />
+      <DetailRow label="Typical gap" value={pattern.averageIntervalDays ? `${Math.max(1, Math.round(pattern.averageIntervalDays / 30))} calendar month(s) (normalized arithmetic average)` : "6 calendar months"} multiline />
       {signals.serviceRequestCount ? <DetailRow label="Service requests reviewed" value={String(signals.serviceRequestCount)} /> : null}
       {signals.serviceRequestFrequency?.averageGapDays ? <DetailRow label="Typical gap between requests" value={`${signals.serviceRequestFrequency.averageGapDays} days`} /> : null}
       {signals.filterDirtRecordCount || signals.coilDirtRecordCount ? <DetailRow label="Cleaning-related issues" value={`${signals.filterDirtRecordCount || 0} filter and ${signals.coilDirtRecordCount || 0} coil dirt-related record(s)`} multiline /> : null}

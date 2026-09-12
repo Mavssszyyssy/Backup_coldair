@@ -51,7 +51,7 @@ function PipelineTable({ units, onSelectPlan }) {
                 <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
               <td>
-                <details className="amp-details"><summary>Why this date?</summary><p>{unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>Pattern: {unit.patternAnalysis?.source === "same_unit" ? "this AC unit" : unit.patternAnalysis?.source === "system_default" ? "6-month baseline" : "verified similar units"} · {unit.patternAnalysis?.intervalCount || 0} verified interval(s){unit.patternAnalysis?.averageIntervalDays ? ` · ${unit.patternAnalysis.averageIntervalDays}-day arithmetic average` : ""}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
+                <details className="amp-details"><summary>Why this date?</summary><p>{unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>Pattern: {unit.patternAnalysis?.source === "same_unit" ? "this AC unit" : unit.patternAnalysis?.source === "system_default" ? "6-month baseline" : "verified similar units"} · {unit.patternAnalysis?.intervalCount || 0} verified interval(s){unit.patternAnalysis?.averageIntervalDays ? ` · ${Math.max(1, Math.round(unit.patternAnalysis.averageIntervalDays / 30))}-month normalized arithmetic average` : ""}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
               </td>
             </tr>
@@ -68,6 +68,8 @@ function ManagerAmpDashboard() {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [serviceWindow, setServiceWindow] = useState(30);
   const [pipeline, setPipeline] = useState([]);
+  const [pipelinePage, setPipelinePage] = useState(1);
+  const [pipelinePagination, setPipelinePagination] = useState({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
   const [branchSummary, setBranchSummary] = useState([]);
   const [reportUnits, setReportUnits] = useState([]);
   const [aggregate, setAggregate] = useState({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
@@ -84,12 +86,13 @@ function ManagerAmpDashboard() {
       ? `&branch=${encodeURIComponent(selectedBranch)}`
       : "";
     Promise.all([
-      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}${branchQuery}`),
+      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=50${branchQuery}`),
       apiRequest("/amp/report-units"),
     ])
       .then(([pipelineResult, reportUnitResult]) => {
         if (cancelled) return;
         setPipeline(pipelineResult.units || []);
+        setPipelinePagination(pipelineResult.pagination || { page: 1, pageSize: 50, total: pipelineResult.units?.length || 0, totalPages: 1 });
         setBranchSummary(pipelineResult.branchSummary || []);
         setReportUnits(reportUnitResult.units || []);
         setAggregate(pipelineResult.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
@@ -99,6 +102,7 @@ function ManagerAmpDashboard() {
         if (cancelled) return;
         setError(err.message || "Unable to load AMP pipeline.");
         setPipeline([]);
+        setPipelinePagination({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
         setBranchSummary([]);
         setReportUnits([]);
         setAggregate({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
@@ -109,7 +113,7 @@ function ManagerAmpDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [isCompanyWide, selectedBranch, serviceWindow, refreshRevision]);
+  }, [isCompanyWide, selectedBranch, serviceWindow, pipelinePage, refreshRevision]);
 
   const currentSummary = useMemo(() => {
     if (!branchSummary.length) {
@@ -186,13 +190,13 @@ function ManagerAmpDashboard() {
             <div className="amp-overview-filters">
               <label className="amp-branch-filter">
                 Service window
-                <select value={serviceWindow} onChange={(event) => setServiceWindow(Number(event.target.value))}>
+                <select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>
                   {SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}
                 </select>
               </label>
               <label className="amp-branch-filter">
                 Branch
-                <select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)}>
+                <select value={selectedBranch} onChange={(event) => { setPipelinePage(1); setSelectedBranch(event.target.value); }}>
                   <option value="all">All branches</option>
                   {[...BRANCHES, UNASSIGNED_BRANCH].map((branch) => <option key={branch} value={branch}>{branch}</option>)}
                 </select>
@@ -206,7 +210,7 @@ function ManagerAmpDashboard() {
                 type="button"
                 className={selectedBranch === item.branch ? "amp-branch-summary active" : "amp-branch-summary"}
                 key={item.branch}
-                onClick={() => setSelectedBranch(item.branch)}
+                onClick={() => { setPipelinePage(1); setSelectedBranch(item.branch); }}
                 aria-pressed={selectedBranch === item.branch}
                 aria-label={`Show ${item.branch} service workload`}
               >
@@ -216,7 +220,7 @@ function ManagerAmpDashboard() {
               </button>
             ))}
           </div>
-          {selectedBranch !== "all" ? <button type="button" className="amp-clear-branch" onClick={() => setSelectedBranch("all")}>Show all branches</button> : null}
+          {selectedBranch !== "all" ? <button type="button" className="amp-clear-branch" onClick={() => { setPipelinePage(1); setSelectedBranch("all"); }}>Show all branches</button> : null}
         </section>
       ) : null}
 
@@ -226,7 +230,7 @@ function ManagerAmpDashboard() {
             <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
             {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
           </div>
-          {!isCompanyWide ? <label className="amp-branch-filter">Service window<select value={serviceWindow} onChange={(event) => setServiceWindow(Number(event.target.value))}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}</select></label> : null}
+          {!isCompanyWide ? <label className="amp-branch-filter">Service window<select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}</select></label> : null}
           {loading ? <span>Loading...</span> : null}
         </div>
 
@@ -251,6 +255,13 @@ function ManagerAmpDashboard() {
         ) : null}
 
         {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} onSelectPlan={selectPlan} /> : null}
+        {!loading && !error && pipelinePagination.totalPages > 1 ? (
+          <nav className="amp-pagination" aria-label="Maintenance pipeline pages">
+            <button type="button" onClick={() => setPipelinePage((value) => Math.max(1, value - 1))} disabled={pipelinePage <= 1}>Previous</button>
+            <span>Page {pipelinePagination.page} of {pipelinePagination.totalPages} · {pipelinePagination.total} units</span>
+            <button type="button" onClick={() => setPipelinePage((value) => Math.min(pipelinePagination.totalPages, value + 1))} disabled={pipelinePage >= pipelinePagination.totalPages}>Next</button>
+          </nav>
+        ) : null}
       </section>
 
       <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. Accepted AI servicing dates are saved; the report identifies AI estimates and system fallbacks." /></div>

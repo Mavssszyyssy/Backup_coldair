@@ -65,6 +65,7 @@ const SUMMARY_LABELS = {
 const COLUMN_LABELS = {
   transactionDate: "Transaction date",
   orderCode: "Order number",
+  sku: "SKU",
   paymentMethod: "Payment method",
   paymentStatus: "Payment status",
   orderStatus: "Order status",

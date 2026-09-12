@@ -34,7 +34,7 @@ it("keeps Superadmin branch and service-window filters working with clearer labe
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("AMP · Maintenance across branches");
   fireEvent.change(screen.getByRole("combobox", { name: "Branch", exact: true }), { target: { value: "Bulacan" } });
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&branch=Bulacan"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=50&branch=Bulacan"));
   expect(screen.getByRole("link", { name: "12-month workload plan" })).toBeVisible();
 });
 
@@ -61,9 +61,20 @@ it("gives branch admins a service-window control without cross-branch access", a
   show(<ManagerAmpDashboard />);
   await screen.findByText(/No units are entering/);
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=50"));
   expect(screen.getByText(/Only completed cleaning-to-cleaning gaps form the interval pattern/)).toBeVisible();
   expect(screen.getByText(/With insufficient history, the system uses the 6-month baseline/)).toBeVisible();
+});
+
+it("loads later maintenance pipeline pages without hiding the total", async () => {
+  apiRequest.mockImplementation(async path => path.includes("pipeline")
+    ? { units: [], pagination: { page: path.includes("page=2") ? 2 : 1, pageSize: 50, total: 75, totalPages: 2 } }
+    : { units: [] });
+  show(<ManagerAmpDashboard />);
+  expect(await screen.findByText("Page 1 of 2 · 75 units")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=2&pageSize=50"));
+  expect(await screen.findByText("Page 2 of 2 · 75 units")).toBeVisible();
 });
 
 it("opens the selected unit's plan without automatically calling AI", async () => {

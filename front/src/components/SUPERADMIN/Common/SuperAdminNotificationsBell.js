@@ -1,8 +1,9 @@
 import { operationalAlertRoute } from '../../../domain/operationalAlerts';
 import { Bell } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
+import { announceNotificationUpdate, subscribeToNotificationUpdates } from '../../../utils/notificationSync';
 
 const routeForNotification = (item = {}) => {
   if (String(item.route || '').startsWith('/superadmin/')) return item.route;
@@ -34,6 +35,7 @@ const SuperAdminNotificationsBell = () => {
   const refreshInFlightRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState('active');
 
@@ -43,14 +45,16 @@ const SuperAdminNotificationsBell = () => {
     setBusy(true);
     try {
       const result = await apiRequest(`/notifications/me?view=${view}`);
-      setItems((result.notifications || []).map((item) => ({
+      const notificationItems = (result.notifications || []).map((item) => ({
         ...item,
         id: item.id || item._id,
         unread: Boolean(item.unread),
         to: routeForNotification(item),
-      })));
+      }));
+      setItems(notificationItems);
+      setUnreadCount((current) => Number(result.unreadCount ?? (view === 'active' ? notificationItems.filter((item) => item.unread).length : current)) || 0);
     } catch (_error) {
-      setItems([]);
+      // Keep the last synchronized result during a temporary connection issue.
     } finally {
       setBusy(false);
       refreshInFlightRef.current = false;
@@ -62,11 +66,13 @@ const SuperAdminNotificationsBell = () => {
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') refresh();
     };
-    const pollId = window.setInterval(refreshWhenVisible, 15000);
+    const pollId = window.setInterval(refreshWhenVisible, 5000);
+    const unsubscribe = subscribeToNotificationUpdates(refresh);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     window.addEventListener('focus', refresh);
     return () => {
       window.clearInterval(pollId);
+      unsubscribe();
       document.removeEventListener('visibilitychange', refreshWhenVisible);
       window.removeEventListener('focus', refresh);
     };
@@ -82,15 +88,22 @@ const SuperAdminNotificationsBell = () => {
     return () => document.removeEventListener('mousedown', closeOnOutsideClick);
   }, [open]);
 
-  const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items]);
   const markAllRead = async () => {
-    try { await apiRequest('/notifications/me/read-all', { method: 'PATCH' }); } catch (_error) { /* Refresh will retry later. */ }
-    setItems((current) => current.map((item) => ({ ...item, unread: false })));
+    try {
+      await apiRequest('/notifications/me/read-all', { method: 'PATCH' });
+      setItems((current) => current.map((item) => ({ ...item, unread: false })));
+      setUnreadCount(0);
+      announceNotificationUpdate();
+    } catch (_error) { /* Keep the server-backed unread state when the update does not complete. */ }
   };
   const openNotification = async (item) => {
     if (item.unread && item.id) {
-      try { await apiRequest(`/notifications/${item.id}/read`, { method: 'PATCH' }); } catch (_error) { /* Navigation remains available. */ }
-      setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, unread: false } : entry));
+      try {
+        await apiRequest(`/notifications/${item.id}/read`, { method: 'PATCH' });
+        setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, unread: false } : entry));
+        setUnreadCount((current) => Math.max(0, current - 1));
+        announceNotificationUpdate();
+      } catch (_error) { /* Navigation remains available while unread state remains server-backed. */ }
     }
     setOpen(false);
     navigate(item.to);
@@ -100,6 +113,8 @@ const SuperAdminNotificationsBell = () => {
     try {
       await apiRequest(`/notifications/${item.id}/${view === 'archived' ? 'restore' : 'archive'}`, { method: 'PATCH' });
       setItems((current) => current.filter((entry) => entry.id !== item.id));
+      if (view === 'active' && item.unread) setUnreadCount((current) => Math.max(0, current - 1));
+      announceNotificationUpdate();
     } catch (_error) { /* Keep the notification visible if the request fails. */ }
   };
 

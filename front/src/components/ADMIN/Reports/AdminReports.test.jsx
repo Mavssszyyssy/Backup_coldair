@@ -17,8 +17,8 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   apiRequest.mockResolvedValue({
     summary: { transactionCount: 1, totalOrderValue: 2490, amountCollected: 2490 },
     basis: "Stored paid transactions.", updatedAt: "2026-09-10T15:00:00.000Z",
-    transactions: [{ orderCode: "ORD-1", total: 2490, amountCollected: 2490 }],
-    products: [{ product: "AC One", unitsSold: 2, merchandiseSales: 2000 }],
+    transactions: [{ orderCode: "ORD-1", sku: "AC-ONE-1HP", total: 2490, amountCollected: 2490 }],
+    products: [{ sku: "AC-ONE-1HP", product: "AC One", unitsSold: 2, merchandiseSales: 2000 }],
   });
   renderReport();
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
@@ -30,6 +30,8 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   expect(requested).toContain("to=2026-09-10");
   expect(requested).toContain("status=paid");
   expect(screen.getByText("ORD-1")).toBeInTheDocument();
+  expect(screen.getAllByText("SKU").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("AC-ONE-1HP").length).toBeGreaterThan(0);
   expect(screen.getAllByText("₱2,490.00").length).toBeGreaterThan(0);
 });
 

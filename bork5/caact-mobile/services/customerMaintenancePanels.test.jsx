@@ -10,7 +10,7 @@ test("unit overview gives one recommendation with its basis, urgency and booking
   expect(screen.getAllByText("Regular cleaning")).toHaveLength(1);
   expect(screen.getAllByText("Regular cleaning applies when the unit was last cleaned within one year.")).toHaveLength(1);
   expect(screen.getByText("Suggested")).toBeTruthy();
-  expect(screen.getByText(/6 months \(180 days\)/)).toBeTruthy();
+  expect(screen.getByText(/6 calendar months/)).toBeTruthy();
   expect(screen.getByText("This is a suggestion. A visit is only booked after you submit a service request.")).toBeTruthy();
   expect(screen.getByText(/appears suitable based on an approximate/)).toBeTruthy();
 });

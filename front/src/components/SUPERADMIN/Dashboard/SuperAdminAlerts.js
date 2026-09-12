@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { alertCategory, operationalAlertRoute } from '../../../domain/operationalAlerts';
 import { apiRequest } from '../../../config/api';
+import { subscribeToNotificationUpdates } from '../../../utils/notificationSync';
 import '../superAdminShared.css';
 import './SuperAdminAlerts.css';
 
@@ -48,9 +49,12 @@ const SuperAdminAlerts = () => {
   const [branchFilter, setBranchFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const loadInFlightRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ showLoading = false } = {}) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    if (showLoading) setLoading(true);
     setError('');
     try {
       const [notificationResult, orderResult] = await Promise.all([
@@ -60,15 +64,29 @@ const SuperAdminAlerts = () => {
       setAlerts(Array.isArray(notificationResult.notifications) ? notificationResult.notifications : []);
       setOrders(Array.isArray(orderResult.orders) ? orderResult.orders : []);
     } catch (requestError) {
-      setAlerts([]);
-      setOrders([]);
       setError(requestError.message || 'Unable to load operational alerts.');
     } finally {
       setLoading(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load({ showLoading: true });
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    const pollId = window.setInterval(refreshWhenVisible, 5000);
+    const unsubscribe = subscribeToNotificationUpdates(() => load());
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(pollId);
+      unsubscribe();
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
+  }, [load]);
 
   const detailedAlerts = useMemo(() => {
     const byId = new Map(orders.map((order) => [String(order.id), order]));
@@ -96,7 +114,7 @@ const SuperAdminAlerts = () => {
         <div><strong>{detailedAlerts.length}</strong><span>Operational alerts</span></div>
         <div><strong>{detailedAlerts.filter((alert) => alert.severity === 'high').length}</strong><span>High priority</span></div>
         <div><strong>{new Set(detailedAlerts.map((alert) => alert.branch).filter((branch) => branch !== 'Not recorded')).size}</strong><span>Branches involved</span></div>
-        <button type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+        <button type="button" onClick={() => load({ showLoading: true })} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
       </section>
       <section className="alert-workspace">
         <div className="alert-heading"><div><p className="alert-eyebrow">Executive inbox</p><h2>Transactions, requests &amp; maintenance</h2><p>Review each event and open the relevant order, service request, or technician work record.</p></div></div>

@@ -15,7 +15,7 @@ test("AI text is visible on mobile without hiding evidence warnings or claiming 
   expect(screen.queryByText(/Board inspected/)).toBeNull();
   expect(screen.getByText(/No visit has been booked/)).toBeTruthy();
   await fireEvent.press(screen.getByText("How was this worked out?"));
-  expect(screen.getAllByText(/6 months \(180 days\)/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/6 calendar months/).length).toBeGreaterThan(0);
   await fireEvent.press(screen.getByText("Show service history"));
   expect(screen.getByText(/Board inspected/)).toBeTruthy();
 });
@@ -24,7 +24,7 @@ test("system fallback is not labeled AI and a history report opens past work fir
   expect(screen.getByText("Your service history")).toBeTruthy();
   expect(screen.getByText("Based on system records")).toBeTruthy();
   expect(screen.queryByText("AI-assisted explanation")).toBeNull();
-  expect(screen.getByText(/6 months \(180 days\)/)).toBeTruthy();
+  expect(screen.getByText(/6 calendar months/)).toBeTruthy();
   expect(screen.getByText(/Board inspected/)).toBeTruthy();
 });
 

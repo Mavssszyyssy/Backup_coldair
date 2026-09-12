@@ -1,12 +1,9 @@
 import { operationalAlertRoute } from "../../../domain/operationalAlerts";
 import { Bell } from "@phosphor-icons/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../../config/api";
-import {
-  getAdminNotificationsReadAt,
-  markAllAdminNotificationsRead,
-} from "../../../utils/adminNotifications";
+import { announceNotificationUpdate, subscribeToNotificationUpdates } from "../../../utils/notificationSync";
 
 const adminRouteAliases = {
   "/admin/orders": "/admin/services/orders",
@@ -14,27 +11,6 @@ const adminRouteAliases = {
   "/admin/service-requests": "/admin/services/service-requests",
   "/admin/technicians": "/admin/services/technicians",
 };
-
-const LOCAL_DISMISSED_KEY = "aeropulse_admin_local_notifications_dismissed";
-
-const readDismissedLocalAlerts = () => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LOCAL_DISMISSED_KEY) || "[]");
-    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
-  } catch (_error) {
-    return new Set();
-  }
-};
-
-const writeDismissedLocalAlerts = (keys) => {
-  try {
-    localStorage.setItem(LOCAL_DISMISSED_KEY, JSON.stringify([...keys].slice(-100)));
-  } catch (_error) {
-    // A private browsing storage failure must not break notifications.
-  }
-};
-
-const localAlertKey = (item = {}) => `local:${String(item.id || "")}`;
 
 const resolveNotificationRoute = (item = {}) => {
   if (String(item.route || "").startsWith("/admin/")) {
@@ -62,8 +38,8 @@ function AdminNotificationsBell() {
   const refreshInFlightRef = useRef(false);
 
   const [open, setOpen] = useState(false);
-  const [readAt, setReadAt] = useState(() => getAdminNotificationsReadAt());
   const [items, setItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState("active");
 
@@ -72,18 +48,7 @@ function AdminNotificationsBell() {
     refreshInFlightRef.current = true;
     setBusy(true);
     try {
-      const [notificationResult, lowStockResult, ordersResult] = await Promise.all([
-        apiRequest(`/notifications/me?view=${view}`, { silentConnection: true }).catch(() => ({ notifications: [] })),
-        apiRequest("/products/low-stock", { silentConnection: true }).catch(() => ({ products: [] })),
-        apiRequest("/orders?summary=alerts", { silentConnection: true }).catch(() => ({ summary: { pendingOrders: 0 } })),
-      ]);
-
-      const lowStockCount = (lowStockResult.products || []).filter(
-        (p) => Number(p.stock || 0) < 5,
-      ).length;
-
-      const pendingOrders = Number(ordersResult.summary?.pendingOrders || 0);
-
+      const notificationResult = await apiRequest(`/notifications/me?view=${view}`, { silentConnection: true });
       const backendItems = (notificationResult.notifications || []).map((item) => ({
         ...item,
         id: item.id || item._id,
@@ -92,30 +57,13 @@ function AdminNotificationsBell() {
         source: "backend",
         unread: Boolean(item.unread),
       }));
-
-      const next = [...backendItems];
-      if (view === "active" && lowStockCount > 0) {
-        next.push({
-          id: `low-stock-${lowStockCount}`,
-          createdAt: new Date().toISOString(),
-          title: "Low stock items",
-          message: `${lowStockCount} item(s) have < 5 units remaining.`,
-          to: "/admin/reorder",
-          source: "local",
-        });
-      }
-      if (view === "active" && pendingOrders > 0) {
-        next.push({
-          id: `pending-orders-${pendingOrders}`,
-          createdAt: new Date().toISOString(),
-          title: "Pending orders",
-          message: `${pendingOrders} pending order(s) are older than 24 hours.`,
-          to: "/admin/services/orders",
-          source: "local",
-        });
-      }
-      const dismissed = readDismissedLocalAlerts();
-      setItems(next.filter((item) => item.source !== "local" || !dismissed.has(localAlertKey(item))));
+      setItems(backendItems);
+      setUnreadCount((current) => Number(
+        notificationResult.unreadCount
+        ?? (view === "active" ? backendItems.filter((item) => item.unread).length : current),
+      ) || 0);
+    } catch (_error) {
+      // Keep the last synchronized result during a temporary connection issue.
     } finally {
       setBusy(false);
       refreshInFlightRef.current = false;
@@ -123,17 +71,12 @@ function AdminNotificationsBell() {
   }, [view]);
 
   const onArchive = async (item) => {
-    if (item.source === "local") {
-      const dismissed = readDismissedLocalAlerts();
-      dismissed.add(localAlertKey(item));
-      writeDismissedLocalAlerts(dismissed);
-      setItems((current) => current.filter((entry) => entry.id !== item.id));
-      return;
-    }
     if (!item.id) return;
     try {
       await apiRequest(`/notifications/${item.id}/${view === "archived" ? "restore" : "archive"}`, { method: "PATCH" });
       setItems((current) => current.filter((entry) => entry.id !== item.id));
+      if (view === "active" && item.unread) setUnreadCount((current) => Math.max(0, current - 1));
+      announceNotificationUpdate();
     } catch (_error) {
       // Keep the item visible when the archive request does not complete.
     }
@@ -145,11 +88,13 @@ function AdminNotificationsBell() {
       if (document.visibilityState === "visible") refresh();
     };
     const refreshWhenFocused = () => refresh();
-    const pollId = window.setInterval(refreshWhenVisible, 15000);
+    const pollId = window.setInterval(refreshWhenVisible, 5000);
+    const unsubscribe = subscribeToNotificationUpdates(refresh);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener("focus", refreshWhenFocused);
     return () => {
       window.clearInterval(pollId);
+      unsubscribe();
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenFocused);
     };
@@ -167,39 +112,20 @@ function AdminNotificationsBell() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  const unreadCount = useMemo(() => {
-    const readAtDate = readAt ? new Date(readAt) : null;
-    return items.filter((item) => {
-      if (item.source === "backend") return Boolean(item.unread);
-      if (!readAtDate) return true;
-      const created = new Date(item.createdAt);
-      if (Number.isNaN(created.getTime())) return true;
-      return created.getTime() > readAtDate.getTime();
-    }).length;
-  }, [items, readAt]);
-
   const onMarkAllRead = async () => {
     try {
       await apiRequest("/notifications/me/read-all", { method: "PATCH" });
+      setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+      setUnreadCount(0);
+      announceNotificationUpdate();
     } catch (_error) {
-      // Local alert state can still be marked read if the request is retried later.
+      // Keep the server-backed unread state when the update does not complete.
     }
-    const next = markAllAdminNotificationsRead();
-    const dismissed = readDismissedLocalAlerts();
-    items.filter((item) => item.source === "local").forEach((item) => dismissed.add(localAlertKey(item)));
-    writeDismissedLocalAlerts(dismissed);
-    setReadAt(next);
-    setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
   };
 
   const onNavigate = async (item) => {
     if (!item?.to) return;
-    if (item.source === "local") {
-      const dismissed = readDismissedLocalAlerts();
-      dismissed.add(localAlertKey(item));
-      writeDismissedLocalAlerts(dismissed);
-    }
-    if (item.source === "backend" && item.unread && item.id) {
+    if (item.unread && item.id) {
       try {
         await apiRequest(`/notifications/${item.id}/read`, { method: "PATCH" });
         setItems((prev) =>
@@ -207,6 +133,8 @@ function AdminNotificationsBell() {
             entry.id === item.id ? { ...entry, unread: false } : entry,
           ),
         );
+        setUnreadCount((current) => Math.max(0, current - 1));
+        announceNotificationUpdate();
       } catch (_error) {
         // Navigation remains useful even if read-state fails.
       }
@@ -252,6 +180,7 @@ function AdminNotificationsBell() {
                 type="button"
                 className="admin-notifications-link"
                 onClick={onMarkAllRead}
+                disabled={view === "archived" || unreadCount === 0}
               >
                 Mark all as read
               </button>
