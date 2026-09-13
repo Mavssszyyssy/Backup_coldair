@@ -156,6 +156,10 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       th { background: #0f4c81; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
       .table-title { color: #0f172a; font-size: 14px; margin: 16px 0 6px; }
       tbody tr:nth-child(even) { background: #f8fafc; }
+      tr { break-inside: avoid; page-break-inside: avoid; }
+      .report-page { break-after: page; page-break-after: always; }
+      .report-page:last-child { break-after: auto; page-break-after: auto; }
+      .report-page-heading { display: flex; justify-content: space-between; gap: 14px; margin: 14px 0 4px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
       .meta { color: #475569; font-size: 10px; margin: 0 0 12px; }
       .report-watermark { position: fixed; top: 43%; left: 8%; right: 8%; transform: rotate(-28deg); text-align: center; font-size: 74px; font-weight: 800; letter-spacing: .12em; color: rgba(15, 76, 129, .055); pointer-events: none; z-index: -1; }
       .signature-section { margin: 28px 0 32px; display: flex; justify-content: flex-end; page-break-inside: avoid; }

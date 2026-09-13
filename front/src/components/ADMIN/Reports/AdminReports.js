@@ -40,6 +40,7 @@ const INVENTORY_STATUS_OPTIONS = [
   ["low", "Low stock"],
   ["out", "Out of stock"],
 ];
+const INVENTORY_PAGE_SIZE = 10;
 
 const SUMMARY_LABELS = {
   transactionCount: "Transactions",
@@ -55,7 +56,6 @@ const SUMMARY_LABELS = {
   inventoryValue: "Inventory value",
   outOfStockItems: "Out-of-stock lines",
   lowStockItems: "Low-stock lines",
-  inventoryVarianceItems: "Serial variances",
   technicianCount: "Technicians",
   completedToday: "Completed today",
   completedThisWeek: "Completed this week",
@@ -77,18 +77,22 @@ const COLUMN_LABELS = {
   amountCollected: "Collected",
   unitPrice: "Unit price",
   currentStock: "Stock",
-  reorderLevel: "Reorder level",
   availableSerials: "Available QR units",
-  assignedUnits: "Assigned",
   soldUnits: "Sold",
-  serviceUnits: "In service",
-  retiredUnits: "Retired",
-  trackedUnits: "Tracked units",
-  inventoryVariance: "Stock / QR variance",
   stockValue: "Stock value",
   stockStatus: "Stock status",
   merchandiseSales: "Merchandise sales",
 };
+
+const OMITTED_INVENTORY_FIELDS = new Set([
+  "assignedUnits", "serviceUnits", "retiredUnits", "trackedUnits", "inventoryVariance", "reorderLevel",
+]);
+const inventoryReportRows = (rows = []) => rows.map((row) => Object.fromEntries(
+  Object.entries(row || {}).filter(([key]) => !OMITTED_INVENTORY_FIELDS.has(key)),
+));
+const inventoryReportSummary = (summary = {}) => Object.fromEntries(
+  Object.entries(summary || {}).filter(([key]) => key !== "inventoryVarianceItems"),
+);
 
 const toIsoDate = (date) => date.toISOString().split("T")[0];
 const defaultRange = () => {
@@ -108,6 +112,14 @@ const reportTableHtml = (rows, { title = "Report details" } = {}) => {
   if (!rows.length) return '<div class="meta">No matching records.</div>';
   const headers = Object.keys(rows[0]);
   return `<h2 class="table-title">${escapeHtml(title)}</h2><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(humanize(header))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+};
+
+const inventoryReportHtml = (rows, summaryHtml) => {
+  const pageCount = Math.max(1, Math.ceil(rows.length / INVENTORY_PAGE_SIZE));
+  return Array.from({ length: pageCount }, (_, index) => {
+    const pageRows = rows.slice(index * INVENTORY_PAGE_SIZE, (index + 1) * INVENTORY_PAGE_SIZE);
+    return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>Branch stock register</strong><span>Page ${index + 1} of ${pageCount}</span></div>${reportTableHtml(pageRows, { title: `Inventory records · Page ${index + 1}` })}</section>`;
+  }).join("");
 };
 
 function ReportTable({ title, rows, inventory = false }) {
@@ -137,17 +149,27 @@ function AdminReports() {
   const [salesStatus, setSalesStatus] = useState("paid");
   const [stockStatus, setStockStatus] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [reportPage, setReportPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "" });
 
   const setTab = (tab) => {
     setActiveTab(tab);
+    setReportPage(1);
     setError("");
     setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "" });
   };
   const rangeError = range.from && range.to && range.from > range.to ? "The report start date must be on or before the end date." : "";
   const canExport = data.rows.length > 0;
+  const inventoryTotalPages = Math.max(1, Math.ceil(data.rows.length / INVENTORY_PAGE_SIZE));
+  const currentReportPage = Math.min(reportPage, inventoryTotalPages);
+  const firstReportRowIndex = (currentReportPage - 1) * INVENTORY_PAGE_SIZE;
+  const displayedRows = activeTab === "inventory"
+    ? data.rows.slice(firstReportRowIndex, firstReportRowIndex + INVENTORY_PAGE_SIZE)
+    : data.rows;
+  const firstReportPageNumber = Math.max(1, Math.min(currentReportPage - 2, inventoryTotalPages - 4));
+  const reportPageNumbers = Array.from({ length: Math.min(5, inventoryTotalPages) }, (_, index) => firstReportPageNumber + index);
   const title = useMemo(() => {
     const label = TABS.find((tab) => tab.id === activeTab)?.label || "Report";
     return activeTab === "inventory" ? `${label} · ${branch === "all" ? "All Branches" : branch}` : `${label} · ${range.from} to ${range.to}`;
@@ -157,6 +179,7 @@ function AdminReports() {
     if (rangeError && activeTab !== "inventory") return setError(rangeError);
     setBusy(true);
     setError("");
+    setReportPage(1);
     try {
       if (activeTab === "sales") {
         const query = new URLSearchParams({ interval: "daily", from: range.from, to: range.to, status: salesStatus, topN: "50", branch });
@@ -165,9 +188,9 @@ function AdminReports() {
       } else if (activeTab === "inventory") {
         const query = new URLSearchParams({ branch, stock: stockStatus, search: inventorySearch.trim() });
         const result = await apiRequest(`/reports/inventory?${query}`);
-        setData({ summary: result.summary || {}, rows: result.rows || [], secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
+        setData({ summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       } else {
-        const dashboard = await apiRequest("/dashboard/me");
+        const dashboard = await apiRequest("/dashboard/me?includeAllTechnicians=true");
         const rows = (dashboard?.analytics?.technicianKPIs || []).map((item) => ({
           technician: item.name || "Technician", branch: item.branch || dashboard?.stats?.branchLabel || "",
           completedToday: Number(item.completedToday || 0), completedWeek: Number(item.completedWeek || 0), completedMonth: Number(item.completedMonth || 0),
@@ -200,7 +223,10 @@ function AdminReports() {
     const summaryHtml = `<div class="summary">${Object.entries(data.summary || {}).map(([key, value]) => `<div class="summary-item"><strong>${escapeHtml(formatReportValue(value, key))}</strong><span>${escapeHtml(humanize(key))}</span></div>`).join("")}</div>`;
     const primaryTitle = activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance";
     const secondary = data.secondaryRows.length ? reportTableHtml(data.secondaryRows, { title: "Product sales summary" }) : "";
-    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch}`, html: `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
+    const reportHtml = activeTab === "inventory"
+      ? inventoryReportHtml(data.rows, summaryHtml)
+      : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
+    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
   };
 
   return <Layout title="Reports" subtitle="Company-formatted sales, stock, and technician records">
@@ -228,7 +254,15 @@ function AdminReports() {
         <div className="company-report-document-heading"><div><p>{activeTab === "inventory" ? "Stock position" : "Reporting period"}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? "All Branches" : branch || assignedBranch}</strong><span>Generated {new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}</span></div></div>
         <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{humanize(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div>
         {data.basis ? <p className="company-report-basis"><strong>Report basis:</strong> {data.basis}</p> : null}
-        <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={data.rows} inventory={activeTab === "inventory"} />
+        <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />
+        {activeTab === "inventory" && data.rows.length ? <nav className="company-report-pagination" aria-label="Inventory report pagination">
+          <span>Showing {firstReportRowIndex + 1}–{Math.min(firstReportRowIndex + INVENTORY_PAGE_SIZE, data.rows.length)} of {data.rows.length} records</span>
+          <div>
+            <button type="button" onClick={() => setReportPage((page) => Math.max(1, page - 1))} disabled={currentReportPage === 1}>Previous</button>
+            {reportPageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentReportPage ? "is-current" : ""} aria-current={pageNumber === currentReportPage ? "page" : undefined} aria-label={`Inventory report page ${pageNumber}`} onClick={() => setReportPage(pageNumber)}>{pageNumber}</button>)}
+            <button type="button" onClick={() => setReportPage((page) => Math.min(inventoryTotalPages, page + 1))} disabled={currentReportPage === inventoryTotalPages}>Next</button>
+          </div>
+        </nav> : null}
         {data.secondaryRows.length ? <ReportTable title="Product sales summary" rows={data.secondaryRows} /> : null}
         {!data.rows.length ? <div className="company-report-empty">No records match the selected filters.</div> : null}
       </article> : <div className="company-report-empty">Choose the report filters, then select Generate report.</div>}

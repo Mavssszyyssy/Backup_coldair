@@ -12,6 +12,7 @@ const STAGES = [
   { id: 'completed', label: 'Completed', className: 'completed' },
   { id: 'cancelled', label: 'Cancelled', className: 'cancelled' },
 ];
+const PAGE_SIZE = 10;
 const getStage = (status = '') => {
   if (status === 'to_pay') return 'pending';
   if (['to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(status)) return 'in_progress';
@@ -45,6 +46,7 @@ const SuperAdminSales = () => {
   const [error, setError] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedStage, setSelectedStage] = useState('all');
+  const [page, setPage] = useState(1);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -63,9 +65,17 @@ const SuperAdminSales = () => {
   const branchScopedOrders = useMemo(() => orders.filter((order) => selectedBranch === 'all' || orderBranch(order) === selectedBranch), [orders, selectedBranch]);
   const stageCounts = useMemo(() => STAGES.reduce((counts, stage) => ({ ...counts, [stage.id]: stage.id === 'all' ? branchScopedOrders.length : branchScopedOrders.filter((order) => getStage(order.workflowStatus) === stage.id).length }), {}), [branchScopedOrders]);
   const visibleOrders = useMemo(() => branchScopedOrders.filter((order) => selectedStage === 'all' || getStage(order.workflowStatus) === selectedStage), [branchScopedOrders, selectedStage]);
-  const groups = useMemo(() => branchOptions.map((branch) => ({ branch, orders: visibleOrders.filter((order) => orderBranch(order) === branch) })).filter((group) => group.orders.length > 0), [branchOptions, visibleOrders]);
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const firstOrderIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageOrders = useMemo(() => visibleOrders.slice(firstOrderIndex, firstOrderIndex + PAGE_SIZE), [firstOrderIndex, visibleOrders]);
+  const groups = useMemo(() => branchOptions.map((branch) => ({ branch, orders: pageOrders.filter((order) => orderBranch(order) === branch) })).filter((group) => group.orders.length > 0), [branchOptions, pageOrders]);
+  const firstPageNumber = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, totalPages) }, (_, index) => firstPageNumber + index);
 
-  const clearFilters = () => { setSelectedBranch('all'); setSelectedStage('all'); };
+  useEffect(() => { setPage(1); }, [selectedBranch, selectedStage]);
+
+  const clearFilters = () => { setSelectedBranch('all'); setSelectedStage('all'); setPage(1); };
   return (
     <SuperAdminLayout title="Processing Sales" subtitle="Global order processing with branch and status controls">
       <section className="sales-filter-summary" aria-label="Order status filters">
@@ -77,7 +87,15 @@ const SuperAdminSales = () => {
         {error ? <div className="sales-error">{error}</div> : null}
         {loading ? <div className="sales-empty">Loading processing sales…</div> : null}
         {!loading && !error && visibleOrders.length === 0 ? <div className="sales-empty">No orders match the current branch and stage filters.</div> : null}
-        <div className="sales-branch-list">{groups.map((group) => <section className="sales-branch-group" key={group.branch}><header><div><h3>{group.branch}</h3><p>{group.orders.length} matching order{group.orders.length === 1 ? '' : 's'}</p></div></header><div className="sales-order-list">{group.orders.map((order) => <article className="sales-order-card" key={order.id}><div className="sales-order-top"><div><p>{order.orderCode || order.id}</p><h4>{order.customerName || 'Customer not recorded'}</h4></div><span className={`sales-stage sales-stage--${getStage(order.workflowStatus)}`}>{stageLabel(order)}</span></div><div className="sales-order-meta"><span><b>Total</b>{formatAmount(order.totalAmount || order.total)}</span><span><b>Payment</b>{paymentSummary(order)}</span><span><b>Purchase branch</b>{orderBranch(order)}</span>{order.customerBranch && order.customerBranch !== orderBranch(order) ? <span><b>Customer branch</b>{order.customerBranch}</span> : null}</div><p className="sales-items">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No item details recorded.'}</p></article>)}</div></section>)}</div>
+        <div className="sales-branch-list">{groups.map((group) => <section className="sales-branch-group" key={group.branch}><header><div><h3>{group.branch}</h3><p>{group.orders.length} order{group.orders.length === 1 ? '' : 's'} on this page</p></div></header><div className="sales-order-list">{group.orders.map((order) => <article className="sales-order-card" key={order.id}><div className="sales-order-top"><div><p>{order.orderCode || order.id}</p><h4>{order.customerName || 'Customer not recorded'}</h4></div><span className={`sales-stage sales-stage--${getStage(order.workflowStatus)}`}>{stageLabel(order)}</span></div><div className="sales-order-meta"><span><b>Total</b>{formatAmount(order.totalAmount || order.total)}</span><span><b>Payment</b>{paymentSummary(order)}</span><span><b>Purchase branch</b>{orderBranch(order)}</span>{order.customerBranch && order.customerBranch !== orderBranch(order) ? <span><b>Customer branch</b>{order.customerBranch}</span> : null}</div><p className="sales-items">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No item details recorded.'}</p></article>)}</div></section>)}</div>
+        {!loading && !error && visibleOrders.length > 0 ? <nav className="sales-pagination" aria-label="Processing sales pagination">
+          <span>Showing {firstOrderIndex + 1}–{Math.min(firstOrderIndex + PAGE_SIZE, visibleOrders.length)} of {visibleOrders.length} orders</span>
+          <div>
+            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={currentPage === 1}>Previous</button>
+            {pageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentPage ? 'is-current' : ''} aria-current={pageNumber === currentPage ? 'page' : undefined} aria-label={`Page ${pageNumber}`} onClick={() => setPage(pageNumber)}>{pageNumber}</button>)}
+            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={currentPage === totalPages}>Next</button>
+          </div>
+        </nav> : null}
       </section>
     </SuperAdminLayout>
   );
