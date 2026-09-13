@@ -48,3 +48,18 @@ test('failed installation keeps a confirmed GCash payment visible on the ticket'
   expect(screen.getByText('GCash payment confirmed')).toBeTruthy();
   expect(screen.getByText('PHP 25000.00 remains paid even though this installation attempt failed.')).toBeTruthy();
 });
+
+test('failed installation treats a confirmed card timestamp as paid when the saved status is stale', async () => {
+  mockGet.mockResolvedValue({
+    id: 'task-1',
+    taskCode: 'TSK-INSTALL',
+    orderId: 'order-1',
+    orderCode: 'ORD-TEST',
+    status: 'In Progress',
+    checkIn: { checkedInAt: '2026-09-10T02:00:00Z' },
+    orderPayment: { method: 'card', status: 'pending', amount: 25000, paidAt: '2026-09-13T02:00:00Z' },
+  });
+  await render(<VisitAttemptScreen />);
+  expect(await screen.findByText('Card payment confirmed')).toBeTruthy();
+  expect(screen.queryByText(/waiting for payment/i)).toBeNull();
+});

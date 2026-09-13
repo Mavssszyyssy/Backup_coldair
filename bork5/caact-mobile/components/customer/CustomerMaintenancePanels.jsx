@@ -38,7 +38,8 @@ export function CustomerRecommendationPanel({ recommendation, maintenance }) {
       <StatusChip label={serviceLabel(recommendation.recommendedService)} color={recommendation.overdue ? COLORS.danger : COLORS.success} />
     </View>
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{serviceExplanation(recommendation.recommendedService)}</Text>
-    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.recommendationBasis)}</Text>
+    <DetailRow label="AI Assessment" value={recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline />
+    <DetailRow label="Why This Date" value={recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline />
     {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.dataQuality.message)}</Text> : null}
     {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={maintenance.urgency} color={maintenance.color} /></View> : null}
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>This is a suggestion. A visit is only booked after you submit a service request.</Text>

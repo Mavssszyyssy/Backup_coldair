@@ -27,6 +27,7 @@ export default function VisitAttemptScreen() {
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
   const installationTask = Boolean((task?.orderId || task?.orderCode) && !task?.requestId);
+  const paidOnline = Boolean(task?.orderPayment?.paidAt) || ['paid', 'verified', 'completed', 'succeeded'].includes(String(task?.orderPayment?.status || '').toLowerCase());
   useFocusEffect(useCallback(() => {
     let active = true;
     getTaskById(id, { requireOnline: true }).then(value => { if (active) setTask(value); })
@@ -40,7 +41,6 @@ export default function VisitAttemptScreen() {
     submitting.current = true; setSaving(true); setError('');
     try {
       await submitVisitAttempt(id, { outcome, note: note.trim(), photo, checkedInAt: task.checkIn.checkedInAt });
-      const paidOnline = String(task?.orderPayment?.status || '').toLowerCase() === 'paid';
       const savedMessage = installationTask
         ? `This installation attempt is closed and Admin will follow up.${paidOnline ? ' The completed online payment remains recorded on the ticket.' : ' The order remains open and unpaid.'}`
         : 'This visit attempt is closed and Admin will follow up. The customer request stays open, and no service completion was recorded.';
@@ -55,8 +55,8 @@ export default function VisitAttemptScreen() {
       <Card><Text style={{ fontSize: FONT.md, lineHeight: 22, color: COLORS.textPrimary }}>Use this only when you have arrived but no one is available to receive you. This will not cancel the {installationTask ? 'order' : 'service request'} or mark any work as completed.</Text>
         <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>{task?.checkIn?.checkedInAt ? `GPS arrival: ${new Date(task.checkIn.checkedInAt).toLocaleString()}` : 'GPS check-in is required first.'}</Text>
       </Card>
-      {String(task?.orderPayment?.status || '').toLowerCase() === 'paid' ? <Card>
-        <Text style={{ fontSize: FONT.lg, fontWeight: FONT.bold, color: COLORS.success }}>{String(task?.orderPayment?.method || '').toLowerCase() === 'gcash' ? 'GCash' : 'Online'} payment confirmed</Text>
+      {paidOnline ? <Card>
+        <Text style={{ fontSize: FONT.lg, fontWeight: FONT.bold, color: COLORS.success }}>{String(task?.orderPayment?.method || '').toLowerCase() === 'gcash' ? 'GCash' : 'Card'} payment confirmed</Text>
         <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>PHP {Number(task.orderPayment.amount || 0).toFixed(2)} remains paid even though this installation attempt failed.</Text>
       </Card> : null}
       {task?.visitAttempt?.awaitingAdmin ? <Card><Text>Visit closed. Awaiting Admin follow-up.</Text><TechButton title="Back to work order" onPress={() => router.replace(`/technician/task/${id}/information`)} style={{ marginTop: SPACING.md }} /></Card> : <>

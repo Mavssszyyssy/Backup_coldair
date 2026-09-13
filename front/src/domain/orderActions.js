@@ -1,5 +1,6 @@
 export const isCodOrder = (order = {}) => /^(cod|cash on delivery)$/i.test(String(order.paymentMethod || '').trim());
 export const getOrderAction = (order = {}) => {
+  if (order.workflowStatus === 'to_dispatch' && String(order.deliveryStatus || '').toLowerCase() === 'dispatched') return undefined;
   if (isCodOrder(order) && ['to_pay', 'to_deliver', 'to_dispatch'].includes(order.workflowStatus)) return { label: 'Mark Dispatched', action: 'dispatch' };
   return {
     to_pay: { label: 'Approve Payment', action: 'approve' },

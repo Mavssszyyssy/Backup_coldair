@@ -150,7 +150,7 @@ const getPaymentStatus = (order = {}) => {
   if (isCod) {
     return order.codCollection?.collectedAt ? 'Paid on delivery' : 'Payment due on delivery';
   }
-  if (status === 'paid' || status === 'verified') return 'Paid online';
+  if (order.paymongo?.paidAt || order.receipt?.paymentStatus === 'paid' || status === 'paid' || status === 'verified') return 'Paid online';
   if (status === 'failed') return 'Payment failed';
   if (status === 'refunded') return 'Refunded';
   if (status === 'pending' || !status) return 'Payment pending';
@@ -521,6 +521,7 @@ const AdminOrders = ({ embedded = false }) => {
             const linkedTask = tasksByOrder[String(order.id || '').trim()] || tasksByOrder[String(order.orderCode || '').trim()];
             const taskDetailKey = linkedTask?.id || linkedTask?._id || linkedTask?.taskCode;
             const detailedTask = taskDetailsById[String(taskDetailKey || '')] || linkedTask;
+            const awaitingVisitFollowUp = Boolean(detailedTask?.visitAttempt?.awaitingAdmin || detailedTask?.payload?.visitAttempt?.awaitingAdmin);
             const proof = detailedTask?.proof || linkedTask?.proof || {};
             const ampRecords = Object.values(detailedTask?.ampRegistrations || linkedTask?.ampRegistrations || {})
               .filter((registration) => registration?.status === 'registered');
@@ -603,7 +604,7 @@ const AdminOrders = ({ embedded = false }) => {
                     </small>
                   </div>
                 ) : null}
-                {['to_pay', 'to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(order.workflowStatus) ? (
+                {!awaitingVisitFollowUp && ['to_pay', 'to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(order.workflowStatus) ? (
                   <div className="admin-order-fulfillment">
                     <label>
                       Technician

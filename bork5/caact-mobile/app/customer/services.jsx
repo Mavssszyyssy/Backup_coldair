@@ -104,8 +104,8 @@ export default function CustomerServicesScreen() {
         // A background update must not switch the AC being booked.
         if (!background) setSelectedUnitId((currentId) => {
           if (requestedUnitId && items.some((item) => String(item.id) === requestedUnitId)) return requestedUnitId;
-          if (currentId && items.some((item) => String(item.id) === String(currentId))) return currentId;
-          return items[0]?.id || "";
+          if (currentId && currentId === requestedUnitId && items.some((item) => String(item.id) === String(currentId))) return currentId;
+          return "";
         });
       }
       if (historyResult.status === "fulfilled") setRequests(historyResult.value.requests || []);
@@ -161,7 +161,7 @@ export default function CustomerServicesScreen() {
 
   const handleSubmit = async () => {
     if (requestMode === "service" && !selectedService) return Alert.alert("Required", "Choose a service offering.");
-    if (!selectedUnit) return Alert.alert("Required", "Select a registered AC unit first.");
+    if (!selectedUnit || String(selectedUnit.id) !== requestedUnitId) return Alert.alert("AC unit required", "Open a specific AC from Home, then tap Book Service for This AC.");
     if (selectedActiveRequest) {
       return Alert.alert("Request already open", "This AC unit already has a service request in progress. You do not need to submit another one.");
     }
@@ -278,7 +278,13 @@ export default function CustomerServicesScreen() {
       <Card>
         <CustomerSectionHeader title="What do you need?" />
         <BottomSheetSelect label="Request type" value={requestMode === "warranty" ? "Warranty Claim" : "Cleaning or Service"} items={[{ id:"service", title:"Cleaning or Service" }, { id:"warranty", title:"Warranty Claim" }]} getKey={item => item.id} getLabel={item => item.title} onSelect={item => setRequestMode(item.id)} />
-        <BottomSheetSelect label="Select AC Unit" value={selectedUnit?.unitName} placeholder="Choose registered AC unit" items={units} itemIcon="snow-sharp" getKey={(item) => String(item.id)} getLabel={(item) => `${item.unitName || "Unnamed AC Unit"} · ${item.serialNumber || "Serial not recorded"}`} onSelect={(unit) => setSelectedUnitId(unit.id)} />
+        {selectedUnit ? <View style={{ marginTop: SPACING.sm }}>
+          <DetailRow label="Selected AC" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>This request is securely linked to the AC you opened. Return to Home and open a different AC if needed.</Text>
+        </View> : <View style={{ gap: SPACING.sm, marginTop: SPACING.sm }}>
+          <EmptyState title="Choose the AC that needs service" message="Select a registered AC below. The booking form will lock to that exact unit." />
+          {units.map((unit) => <Button key={unit.id} title={`${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`} variant="secondary" onPress={() => router.setParams({ unitId: String(unit.id) })} />)}
+        </View>}
         {requestMode === "service" ? <>
         <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{selectedService?.summary}</Text>

@@ -12,7 +12,8 @@ describe("ServiceRequestPaymentSummary", () => {
       />,
     );
 
-    expect(screen.getByText("Final Admin quote")).toBeTruthy();
+    expect(screen.getByText("Base service price")).toBeTruthy();
+    expect(screen.getByText("Final service price")).toBeTruthy();
     expect(screen.getAllByText("₱950.00")).toHaveLength(2);
     expect(screen.getByText("due")).toBeTruthy();
   });

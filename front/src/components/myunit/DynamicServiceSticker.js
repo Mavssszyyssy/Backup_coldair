@@ -58,7 +58,7 @@ function DynamicServiceSticker({ unit }) {
   const recommendation = result?.recommendation;
   if (!recommendation) return null;
   const roomGuidance = capacityMessage(recommendation.capacityAssessment);
-  const recommendationReason = customerSystemMessage(recommendation.recommendationBasis);
+  const recommendationReason = recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis);
   return <section className="service-sticker" aria-label="Recommended service schedule">
     <header className="service-sticker-header">
       <span className="service-sticker-icon" aria-hidden="true"><CalendarBlank size={22} weight="fill" /></span>
@@ -78,6 +78,11 @@ function DynamicServiceSticker({ unit }) {
     </div>
 
     <p className="service-sticker-explanation">{serviceExplanation(recommendation.recommendedService)}</p>
+
+    {recommendation.aiAssessment ? <details className="service-sticker-reason" open onClick={(event) => event.stopPropagation()}>
+      <summary>AI Assessment</summary>
+      <p>{recommendation.aiAssessment}</p>
+    </details> : null}
 
     {recommendationReason ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
       <summary>Why this date?</summary>

@@ -57,6 +57,13 @@ function workflowInfo(order = {}) {
     };
   }
   if (workflow === "to_dispatch") {
+    if (String(order.deliveryStatus || "").toLowerCase() === "dispatched") {
+      return {
+        label: "Dispatch",
+        body: "Your AC is dispatched. Installation starts after the technician checks in and confirms someone is available.",
+        activeStep: 2,
+      };
+    }
     return {
       label: "To Dispatch",
       body: "The revisit could not proceed. Your branch must dispatch the installation again.",
@@ -121,6 +128,9 @@ function deliveryStatusLabel(order = {}) {
     not_started: "Not started",
     pending: "Waiting for dispatch",
     preparing: "Preparing your order",
+    dispatched: "Dispatch",
+    arrived: "Technician arrived",
+    installing: "Installation in progress",
     out_for_delivery: "Out for delivery",
     delivered: "Delivered",
     failed_attempt: "Delivery attempt unsuccessful",

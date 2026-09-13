@@ -23,3 +23,9 @@ test('no pending visit means no extra form; cancelled work cannot be rescheduled
   rerender(<VisitFollowUpPanel task={{ ...task, status: 'cancelled' }} />);
   expect(screen.queryByRole('button', { name: 'Confirm next visit' })).toBeNull();
 });
+test('shows a confirmed online payment as paid when its saved status is stale', async () => {
+  render(<VisitFollowUpPanel task={{ ...task, visitAttempt: { ...task.visitAttempt, installationFailed: true, payment: { method: 'card', status: 'pending', amount: 25000, paidAt: '2026-09-13T02:00:00Z' } } }} />);
+  await screen.findByAltText('Technician proof of unattended visit');
+  expect(screen.getByText('Payment on ticket: Paid')).toBeTruthy();
+  expect(screen.queryByText('Payment on ticket: pending')).toBeNull();
+});

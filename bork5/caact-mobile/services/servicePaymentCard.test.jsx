@@ -8,7 +8,7 @@ import { paymentMethodLabel } from "./paymentMethodLabel";
 jest.mock("./taskStorage", () => ({ collectServicePayment: jest.fn() }));
 jest.mock("./ecommerceService", () => ({ formatPeso: amount => `PHP ${Number(amount).toFixed(2)}` }));
 afterEach(() => { cleanup(); jest.restoreAllMocks(); jest.clearAllMocks(); });
-const task = (status, checkedIn = false) => ({ id: "visit1", status: "in-progress", checkIn: checkedIn ? { checkedInAt: "2026-09-09T00:00:00Z" } : null, servicePayment: { amount: status === "quote_required" ? null : 800, status, quoteId: "quote1" } });
+const task = (status, checkedIn = false, serviceNoteSaved = true) => ({ id: "visit1", status: "in-progress", checkIn: checkedIn ? { checkedInAt: "2026-09-09T00:00:00Z" } : null, serviceLogs: serviceNoteSaved ? [{ id: "note1" }] : [], servicePayment: { amount: status === "quote_required" ? null : 800, baseAmount: status === "quote_required" ? null : 800, laborCost: 0, partsCost: 0, status, quoteId: "quote1" } });
 
 test("cash collection is unavailable before GPS check-in", async () => {
   const alert = jest.spyOn(Alert, "alert");
@@ -30,7 +30,14 @@ test("technician explicitly confirms the displayed quote after GPS check-in", as
   await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(updated));
   expect(collectServicePayment).toHaveBeenCalledWith("visit1", current.servicePayment);
   expect(alert.mock.calls[0][1]).toContain("Payment summary");
-  expect(alert.mock.calls[0][1]).toContain("Total to collect: PHP 800.00");
+  expect(alert.mock.calls[0][1]).toContain("Final service price: PHP 800.00");
+});
+
+test("cash collection waits for the saved service note and final costs", async () => {
+  await render(<ServicePaymentCard task={task("due", true, false)} onUpdated={jest.fn()} />);
+  expect(screen.getByText("Save the service note and any labor or parts costs before collecting payment.")).toBeTruthy();
+  await fireEvent.press(screen.getByText("Confirm service cash collected"));
+  expect(collectServicePayment).not.toHaveBeenCalled();
 });
 
 test.each(["quote_required", "warranty_covered", "no_charge", "paid"])("%s never offers cash collection", async status => {

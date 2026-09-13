@@ -93,7 +93,9 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
     }
   };
 
-  const statusCfg = getStatusConfig(order.status);
+  const statusCfg = order.status === "to_dispatch" && String(order.deliveryStatus || "").toLowerCase() === "dispatched"
+    ? { label: "Dispatch", color: "#2563eb", bg: "#eff6ff", icon: Truck }
+    : getStatusConfig(order.status);
   const canRequestCancel =
     ["to_pay", "to_deliver", "to_dispatch", "for_rescheduling"].includes(String(order.status || "").toLowerCase()) &&
     !order.cancellationRequest?.requested;

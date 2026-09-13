@@ -375,7 +375,7 @@ export default function TaskInformationScreen() {
             {installationTask && task?.orderPayment && String(task.orderPayment.method || '').toLowerCase() !== 'cod' ? <Card>
               <SectionHeading icon="card-sharp" title="Order payment" subtitle="Payment status recorded on this installation ticket" />
               <DetailItem icon="wallet-sharp" label="Method" value={String(task.orderPayment.method || 'Online').replace(/\b\w/g, letter => letter.toUpperCase())} />
-              <DetailItem icon="checkmark-circle-sharp" label="Status" value={String(task.orderPayment.status || 'pending').replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())} accent={String(task.orderPayment.status).toLowerCase() === 'paid' ? COLORS.success : COLORS.warning} />
+              <DetailItem icon="checkmark-circle-sharp" label="Status" value={task.orderPayment.paidAt || ['paid', 'verified', 'completed', 'succeeded'].includes(String(task.orderPayment.status || '').toLowerCase()) ? 'Paid' : String(task.orderPayment.status || 'pending').replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())} accent={task.orderPayment.paidAt || ['paid', 'verified', 'completed', 'succeeded'].includes(String(task.orderPayment.status || '').toLowerCase()) ? COLORS.success : COLORS.warning} />
               <DetailItem icon="cash-sharp" label="Amount" value={money(task.orderPayment.amount)} />
             </Card> : null}
 

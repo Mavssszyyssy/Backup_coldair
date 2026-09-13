@@ -110,9 +110,10 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong><span>Recommended service</span></div>
         <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
       </div>
-      ${visit.provider === "openai" ? `<h2>Technician report AI assessment</h2><table><tbody><tr><th>Recorded concern</th><td>${escapeHtml(visit.predictedRisk || "No developing concern was identified from the submitted report.")}</td><th>Urgency</th><td>${escapeHtml(readableToken(visit.severity))}</td></tr><tr><th>Evidence confidence</th><td>${escapeHtml(readableToken(visit.evidenceConfidence))}</td><th>Component named</th><td>${escapeHtml(visit.affectedComponent === "not_specified" ? "Not specified by technician" : readableToken(visit.affectedComponent))}</td></tr></tbody></table>` : ""}
+      <h2>AI Assessment</h2><p>${escapeHtml(m.aiAssessment || visit.aiAssessment || "More completed service details are needed before this AC can be assessed.")}</p>
+      <h2>Why This Date</h2><p>${escapeHtml(m.whyThisDate || visit.whyThisDate || m.recommendationBasis || "A completed cleaning or installation date is needed.")}</p>
       ${condition ? `<h2>Separate routine cleaning plan</h2><p><strong>${escapeHtml(dateLabel(routine.bestServicedBy))} · ${escapeHtml(serviceLabel(routine.recommendedService))}</strong></p><p>${escapeHtml(routine.recommendationBasis || "")}</p><p>The earlier condition follow-up is shown first and does not erase the routine cleaning plan.</p>` : ""}
-      <h2>Maintenance recommendation</h2><p>${escapeHtml(m.interpretation || m.recommendationBasis || "")}</p>
+      <h2>Maintenance recommendation</h2><p>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</p>
       <h2>Pattern analysis</h2><p><strong>Source:</strong> ${escapeHtml(basisLabel(pattern.source || m.historicalBasis?.level))} · <strong>Verified intervals:</strong> ${escapeHtml(pattern.intervalCount ?? m.historicalBasis?.sampleSize ?? 0)} · <strong>Arithmetic average:</strong> ${escapeHtml(pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month baseline")}</p>
       ${pattern.intervalsDays?.length ? `<p><strong>Cleaning gaps:</strong> ${escapeHtml(pattern.intervalsDays.join(", "))} days</p>` : ""}
       ${contextItems.length ? `<ul>${contextItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
@@ -167,17 +168,15 @@ function AmpReportCenter({
         {report.explanationWarning ? <p role="status" className="amp-muted">{report.explanationWarning}</p> : null}
         <h3>{reportLabel || report.title}</h3>
         {!historyFirst ? <div className="amp-metrics"><article><span>{conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"}</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
-        <p>{maintenance.interpretation || maintenance.recommendationBasis}</p>
-        {visitAnalysis.provider === "openai" ? <details className="amp-details" open>
-          <summary>Technician report AI assessment</summary>
-          <p>{visitAnalysis.predictedRisk || "No developing concern was identified from the technician's submitted report."}</p>
-          <div className="amp-metrics">
-            <article><span>Urgency</span><strong>{readableToken(visitAnalysis.severity)}</strong></article>
-            <article><span>Evidence confidence</span><strong>{readableToken(visitAnalysis.evidenceConfidence)}</strong></article>
-            <article><span>Component named in report</span><strong>{visitAnalysis.affectedComponent === "not_specified" ? "Not specified" : readableToken(visitAnalysis.affectedComponent)}</strong></article>
-          </div>
-          <p className="amp-muted">This interpretation is based only on the technician’s submitted findings and recorded service history. The original technician report remains unchanged below.</p>
-        </details> : null}
+        <details className="amp-details" open>
+          <summary>AI Assessment</summary>
+          <p>{maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before this AC can be assessed."}</p>
+          <p className="amp-muted">This uses only the technician’s submitted findings and the AC records available in AEROPULSE. The original technician report remains unchanged below.</p>
+        </details>
+        <details className="amp-details" open>
+          <summary>Why This Date</summary>
+          <p>{maintenance.whyThisDate || visitAnalysis.whyThisDate || maintenance.recommendationBasis || "A completed cleaning or installation date is needed."}</p>
+        </details>
         {conditionFollowUp ? <details className="amp-details" open>
           <summary>Separate routine cleaning plan</summary>
           <div className="amp-metrics"><article><span>Routine cleaning date</span><strong>{dateLabel(routineMaintenance.bestServicedBy)}</strong></article><article><span>Routine service</span><strong>{serviceLabel(routineMaintenance.recommendedService)}</strong></article><article><span>Routine interval</span><strong>{routineMaintenance.intervalDays ? `${routineMaintenance.intervalDays} days` : "Not available"}</strong></article></div>

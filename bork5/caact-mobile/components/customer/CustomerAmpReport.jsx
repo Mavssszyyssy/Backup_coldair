@@ -24,6 +24,8 @@ export default function CustomerAmpReport({ report, provider }) {
   const conditionFollowUp = maintenance.conditionBasedFollowUp || null;
   const routine = maintenance.routineMaintenance || {};
   const explanation = customerSystemMessage(String(maintenance.interpretation || "").trim());
+  const aiAssessment = maintenance.aiAssessment || visitAnalysis.aiAssessment || explanation || "AEROPULSE needs more completed service details before it can assess this AC.";
+  const whyThisDate = maintenance.whyThisDate || visitAnalysis.whyThisDate || customerSystemMessage(maintenance.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested.";
   const aiAssisted = provider === "openai" && Boolean(explanation);
   return <View style={{ marginTop: SPACING.md }}>
     <Text accessibilityRole="header" style={{ color: COLORS.text, fontSize: FONT.lg, fontWeight: FONT.bold }}>{summary ? "Your service history" : "Your next service"}</Text>
@@ -33,13 +35,8 @@ export default function CustomerAmpReport({ report, provider }) {
       <DetailRow label={conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"} value={dateLabel(maintenance.bestServicedBy)} />
       <DetailRow label="Recommended service" value={methodLabel(maintenance.recommendedService)} />
     </> : <DetailRow label="Last recorded cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
-    <Text style={body}>{explanation || customerSystemMessage(maintenance.recommendationBasis) || "We need more details from completed visits to explain this suggestion."}</Text>
-    {visitAnalysis.provider === "openai" ? <View>
-      <DetailRow label="Recorded concern" value={visitAnalysis.predictedRisk || "No developing concern was identified from the technician's submitted report."} multiline />
-      <DetailRow label="Urgency" value={String(visitAnalysis.severity || "Not assessed").replaceAll("_", " ")} />
-      <DetailRow label="Evidence confidence" value={String(visitAnalysis.evidenceConfidence || "Not assessed").replaceAll("_", " ")} />
-      {visitAnalysis.affectedComponent && visitAnalysis.affectedComponent !== "not_specified" ? <DetailRow label="Component named in report" value={visitAnalysis.affectedComponent.replaceAll("_", " ")} /> : null}
-    </View> : null}
+    <DetailRow label="AI Assessment" value={aiAssessment} multiline />
+    <DetailRow label="Why This Date" value={whyThisDate} multiline />
     {conditionFollowUp ? <View>
       <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Routine cleaning plan</Text>
       <DetailRow label="Routine cleaning date" value={dateLabel(routine.bestServicedBy)} />
@@ -59,11 +56,11 @@ export default function CustomerAmpReport({ report, provider }) {
     <Button title={showDetails ? "Hide report details" : "How was this worked out?"} variant="ghost" size="sm" onPress={() => setShowDetails(value => !value)} />
     {showDetails ? <View>
       {summary ? <DetailRow label={conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"} value={dateLabel(maintenance.bestServicedBy)} /> : null}
-      <DetailRow label="Why this date?" value={customerSystemMessage(conditionFollowUp ? visitAnalysis.customerSummary : maintenance.recommendationBasis) || "Not recorded"} multiline />
+      <DetailRow label="Why this date?" value={whyThisDate} multiline />
       {conditionFollowUp ? <DetailRow label="Why the routine date?" value={customerSystemMessage(routine.recommendationBasis) || "Not recorded"} multiline /> : null}
       <DetailRow label="Pattern used" value={pattern.source === "same_unit" ? "This AC unit's cleaning history" : pattern.source === "system_default" ? "6-month starting schedule" : "Verified similar AC cleaning history"} multiline />
       <DetailRow label="Verified cleaning gaps" value={pattern.intervalsDays?.length ? pattern.intervalsDays.map((days) => `${Math.max(1, Math.round(days / 30))} month(s)`).join(", ") : "Not enough history yet"} multiline />
-      <DetailRow label="Typical gap" value={pattern.averageIntervalDays ? `${Math.max(1, Math.round(pattern.averageIntervalDays / 30))} calendar month(s) (normalized arithmetic average)` : "6 calendar months"} multiline />
+      <DetailRow label="Typical gap" value={pattern.averageIntervalDays ? `About ${Math.max(1, Math.round(pattern.averageIntervalDays / 30))} calendar month(s)` : "6 calendar months"} multiline />
       {signals.serviceRequestCount ? <DetailRow label="Service requests reviewed" value={String(signals.serviceRequestCount)} /> : null}
       {signals.serviceRequestFrequency?.averageGapDays ? <DetailRow label="Typical gap between requests" value={`${signals.serviceRequestFrequency.averageGapDays} days`} /> : null}
       {signals.filterDirtRecordCount || signals.coilDirtRecordCount ? <DetailRow label="Cleaning-related issues" value={`${signals.filterDirtRecordCount || 0} filter and ${signals.coilDirtRecordCount || 0} coil dirt-related record(s)`} multiline /> : null}

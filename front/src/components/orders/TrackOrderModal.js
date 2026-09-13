@@ -135,7 +135,7 @@ function TrackOrderModal({ order, onClose }) {
                 {order.tracking?.trackingNumber || order.trackingNumber || "Pending"}
               </div>
             </div>
-            <div style={{ fontSize: "13px", color: "#64748b" }}>
+            {!["to_dispatch", "to_install", "for_rescheduling", "complete"].includes(String(order.workflowStatus || order.status || "").toLowerCase()) ? <div style={{ fontSize: "13px", color: "#64748b" }}>
               Estimated Delivery:{" "}
               <span
                 className="delivery-date"
@@ -143,7 +143,7 @@ function TrackOrderModal({ order, onClose }) {
               >
                 {order.estimatedDelivery}
               </span>
-            </div>
+            </div> : null}
             {order.receipt?.receiptNumber && (
               <div
                 style={{ fontSize: "13px", marginTop: "4px", color: "#64748b" }}

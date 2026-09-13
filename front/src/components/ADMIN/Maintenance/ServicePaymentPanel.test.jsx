@@ -10,7 +10,7 @@ it('does not invent a price and saves the explicit admin quote', async () => {
   apiRequest.mockResolvedValue({ servicePayment: { amount: 800, status: 'due' } });
   render(<ServicePaymentPanel request={{ id: 'r1', status: 'In Progress', servicePayment: { status: 'quote_required', amount: null } }} onUpdated={onUpdated} />);
   expect(screen.getByText(/Admin quote required/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('Final service quote (PHP)'), { target: { value: '800' } });
+  fireEvent.change(screen.getByLabelText('Base service quote (PHP)'), { target: { value: '800' } });
   fireEvent.click(screen.getByText('Save service quote'));
   await vi.waitFor(() => expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ servicePayment: { amount: 800, status: 'due' } })));
   expect(apiRequest).toHaveBeenCalledWith('/service-requests/r1/quote', expect.objectContaining({ body: JSON.stringify({ amount: '800' }) }));

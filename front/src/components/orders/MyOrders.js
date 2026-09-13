@@ -85,6 +85,7 @@ function MyOrders() {
         if (!mounted) return;
         const normalized = (response.orders || []).map(normalizeCustomerOrder);
         setOrders(normalized);
+        setSelectedOrder((current) => current ? normalized.find((order) => String(order.id) === String(current.id)) || current : null);
       } catch (_error) {
         if (!mounted) return;
         // Orders are always sourced from the backend. Falling back to a

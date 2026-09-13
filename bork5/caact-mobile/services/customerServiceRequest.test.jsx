@@ -66,11 +66,14 @@ test('booking from an AC details screen selects that exact AC instead of the fir
  mockParams={unitId:'ac2',serviceType:'cleaning'};
  await render(<CustomerServicesScreen/>);
  await screen.findByText('Submit Service Request');
- expect(screen.getByTestId('Select AC Unit').props.children).toBe('Second AC');
+ expect(screen.getByText('Selected AC')).toBeTruthy();
+ expect(screen.getByText('Second AC\nSerial: S2')).toBeTruthy();
+ expect(screen.queryByTestId('Select AC Unit')).toBeNull();
  expect(screen.getByTestId('Service').props.children).toBe('Deep Cleaning');
 });
 
 test.each([['maintenance','Regular Cleaning'],['cleaning','Deep Cleaning']])('%s books the matching service and configured price',async(id,title)=>{
+ mockParams={unitId:'ac1'};
  await render(<CustomerServicesScreen/>);
  await screen.findByText('Submit Service Request');
  await screen.findByLabelText(`Service: ${title}`);
@@ -87,12 +90,12 @@ test.each([['maintenance','Regular Cleaning'],['cleaning','Deep Cleaning']])('%s
 });
 
 test('background updates preserve the unit and request type the customer selected',async()=>{
- mockParams={unitId:'ac1',serviceType:'warranty'};
+ mockParams={unitId:'ac2',serviceType:'maintenance'};
  await render(<CustomerServicesScreen/>);
- await screen.findByText('Submit Warranty Claim');
- await fireEvent.press(screen.getByLabelText('Request type: Cleaning or Service'));
- await fireEvent.press(screen.getByLabelText('Select AC Unit: Second AC · S2'));
+ await screen.findByText('Submit Service Request');
  await act(async()=>notifyNotificationsChanged());
- expect(screen.getByTestId('Select AC Unit').props.children).toBe('Second AC');
+ expect(screen.getByText('Second AC\nSerial: S2')).toBeTruthy();
+ expect(screen.queryByTestId('Select AC Unit')).toBeNull();
  expect(screen.getByTestId('Request type').props.children).toBe('Cleaning or Service');
+ expect(screen.getByTestId('Service').props.children).toBe('Regular Cleaning');
 });

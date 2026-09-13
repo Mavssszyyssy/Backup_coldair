@@ -25,12 +25,13 @@ export default function ServiceRequestPaymentSummary({ mode = "service", service
   return <Card>
     <CustomerSectionHeader title="Payment Summary" />
     <View style={{ gap: SPACING.xs }}>
-      <DetailRow label={isWarranty ? "Claim submission" : recordedQuote !== null ? "Final Admin quote" : "Service amount"} value={amountLabel} />
+      <DetailRow label={isWarranty ? "Claim submission" : recordedQuote !== null ? "Base service price" : "Service amount"} value={isWarranty ? amountLabel : recordedQuote !== null ? formatPeso(payment?.baseAmount ?? recordedQuote) : amountLabel} />
       <DetailRow
-        label="Additional charges"
-        value={isWarranty ? "Coverage review required" : amount === null ? "Included in Admin's final quote" : "None separately recorded"}
+        label="Labor"
+        value={isWarranty ? "Coverage review required" : amount === null ? "Not recorded yet" : formatPeso(payment?.laborCost || 0)}
       />
-      <DetailRow label="Amount due before service" value={isWarranty ? formatPeso(0) : amountLabel} />
+      <DetailRow label="Parts" value={isWarranty ? "Coverage review required" : amount === null ? "Not recorded yet" : formatPeso(payment?.partsCost || 0)} />
+      <DetailRow label="Final service price" value={isWarranty ? formatPeso(0) : amountLabel} />
       {!isWarranty && payment?.status ? <DetailRow label="Payment status" value={String(payment.status).replace(/_/g, " ")} /> : null}
     </View>
     <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
@@ -39,7 +40,7 @@ export default function ServiceRequestPaymentSummary({ mode = "service", service
         : amount === null
           ? "Admin must record the final quote before payment. The assigned technician may confirm cash only after GPS check-in."
           : recordedQuote !== null
-            ? "This is Admin's final recorded quote. The assigned technician may confirm cash only after GPS check-in."
+            ? "The final price includes the Admin base quote plus labor and parts saved by the technician. Payment is confirmed only after the updated total is shown."
             : "This is the currently recorded service amount. The assigned technician may confirm cash only after GPS check-in."}
     </Text>
   </Card>;

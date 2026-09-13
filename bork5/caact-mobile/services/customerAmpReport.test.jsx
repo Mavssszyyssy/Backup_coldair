@@ -4,12 +4,12 @@ import CustomerAmpReport from "../components/customer/CustomerAmpReport";
 
 const report = {
   reportId: "QA-REPORT", reportType: "predictive_maintenance",
-  maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.", interpretation: "Your completed visits explain this suggestion.", dataQuality: { message: "One incomplete record is excluded." } },
+  maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.", interpretation: "Your completed visits explain this suggestion.", aiAssessment: "Your completed visits explain this suggestion.", whyThisDate: "There are not enough completed cleaning visits to personalize this date yet. For now, we suggest your next cleaning 6 calendar months after the latest recorded cleaning or installation.", dataQuality: { message: "One incomplete record is excluded." } },
   serviceHistory: [{ date: "2026-01-01", serviceLabel: "Repair", findings: "Board inspected", actionTaken: "Connection repaired" }],
 };
 test("AI text is visible on mobile without hiding evidence warnings or claiming a booking", async () => {
   await render(<CustomerAmpReport report={report} provider="openai" />);
-  expect(screen.getByText("AI-assisted explanation")).toBeTruthy();
+  expect(screen.getByText("AI Assessment")).toBeTruthy();
   expect(screen.getByText(report.maintenance.interpretation)).toBeTruthy();
   expect(screen.getByText("One incomplete record is excluded.")).toBeTruthy();
   expect(screen.queryByText(/Board inspected/)).toBeNull();
@@ -35,10 +35,10 @@ test("AI outage explains that the usable report is a system fallback", async () 
 });
 
 test("an accepted AI date is distinguished from an AI explanation and system fallback", async () => {
-  await render(<CustomerAmpReport report={{ ...report, maintenance: { ...report.maintenance, predictionSource: "openai", recommendationBasis: "AI-estimated servicing interval: 150 days.", interpretation: "AI-estimated servicing interval: 150 days." } }} provider="openai" />);
+  await render(<CustomerAmpReport report={{ ...report, maintenance: { ...report.maintenance, predictionSource: "openai", recommendationBasis: "AI-estimated servicing interval: 150 days.", interpretation: "AI-estimated servicing interval: 150 days.", aiAssessment: "The completed records show a stable cleaning pattern.", whyThisDate: "AI-estimated servicing interval: 150 days." } }} provider="openai" />);
   expect(screen.getByText("AI-estimated servicing date")).toBeTruthy();
   expect(screen.queryByText("AI-assisted explanation")).toBeNull();
-  expect(screen.getByText("AI-estimated servicing interval: 150 days.")).toBeTruthy();
+  expect(screen.getAllByText("AI-estimated servicing interval: 150 days.").length).toBeGreaterThan(0);
 });
 test("visit analysis can recommend an inspection instead of labeling it cleaning", async () => {
   await render(<CustomerAmpReport report={{ ...report, maintenance: { ...report.maintenance, recommendedService: "inspection" } }} provider="openai" />);
@@ -50,6 +50,8 @@ test("condition follow-up is shown separately from the routine cleaning plan", a
     ...report.maintenance,
     bestServicedBy: "2026-09-18",
     recommendedService: "repair",
+    aiAssessment: "The technician recorded possible fan motor wear. Arrange an early repair assessment.",
+    whyThisDate: "The earlier date follows the urgent concern recorded during the completed visit.",
     latestVisitAnalysis: { provider: "openai", severity: "urgent", predictedRisk: "Possible fan motor wear based on the submitted report.", affectedComponent: "fan_motor", evidenceConfidence: "high", customerSummary: "Arrange an early repair assessment." },
     conditionBasedFollowUp: { provider: "openai", recommendationMode: "condition_based" },
     routineMaintenance: { bestServicedBy: "2027-03-13", recommendedService: "regular_cleaning", intervalDays: 180, recommendationBasis: "6-month routine cleaning schedule." },
@@ -57,7 +59,8 @@ test("condition follow-up is shown separately from the routine cleaning plan", a
   await render(<CustomerAmpReport report={{ ...report, maintenance }} provider="openai" />);
   expect(screen.getByText("AI-reviewed technician follow-up")).toBeTruthy();
   expect(screen.getByText("Condition follow-up date")).toBeTruthy();
-  expect(screen.getByText(/Possible fan motor wear/)).toBeTruthy();
+  expect(screen.getByText(/technician recorded possible fan motor wear/i)).toBeTruthy();
+  expect(screen.getByText(/earlier date follows the urgent concern/i)).toBeTruthy();
   expect(screen.getByText("Routine cleaning plan")).toBeTruthy();
   expect(screen.getByText("March 13, 2027")).toBeTruthy();
 });
