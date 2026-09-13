@@ -10,7 +10,7 @@ const emptyConsents = {
 };
 
 describe("registration legal consents", () => {
-  it("links each required consent to its own legal document", () => {
+  it("reviews each required consent on the current page", () => {
     const onFieldChange = vi.fn();
     render(
       <RegisterLegalConsentsStep
@@ -22,15 +22,16 @@ describe("registration legal consents", () => {
       />,
     );
 
-    const links = screen.getAllByRole("link", { name: /read .* in a new tab/i });
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/terms/warranty",
-      "/terms/service",
-      "/terms/app",
-      "/privacy",
-    ]);
-    fireEvent.click(links[0]);
+    const reviewButtons = screen.getAllByRole("button", { name: /review .*terms|review .*privacy/i });
+    fireEvent.click(reviewButtons[0]);
+    expect(
+      screen.getByRole("dialog", { name: /warranty terms and conditions/i }),
+    ).toBeInTheDocument();
+    expect(onFieldChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /finish review/i }));
     expect(onFieldChange).toHaveBeenCalledWith("agreeTermsWarranty", true);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows specific errors and blocks progress when policies are missing", () => {
