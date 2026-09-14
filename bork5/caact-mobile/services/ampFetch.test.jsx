@@ -28,6 +28,20 @@ test("an ordinary read recovers once from a temporary backend response", async (
     const response = await apiFetch("/orders/me", { method: "GET" });
     expect(response.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledTimes(2);
+    const firstUrl = global.fetch.mock.calls[0][0];
+    const secondUrl = global.fetch.mock.calls[1][0];
+    expect(firstUrl).toContain("/orders/me?_aeropulse_read=");
+    expect(secondUrl).toContain("/orders/me?_aeropulse_read=");
+    expect(secondUrl).not.toBe(firstUrl);
+    expect(global.fetch.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        cache: "no-store",
+        headers: expect.objectContaining({
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        }),
+      }),
+    );
   } finally {
     global.fetch = previousFetch;
   }

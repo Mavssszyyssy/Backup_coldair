@@ -100,6 +100,11 @@ const TRANSIENT_BACKEND_STATUSES = new Set([502, 503, 504]);
 const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+const freshReadPath = (path, attempt) => {
+  const separator = String(path).includes("?") ? "&" : "?";
+  return `${path}${separator}_aeropulse_read=${Date.now().toString(36)}-${attempt}`;
+};
+
 const fetchWithTimeout = async (
   url,
   options = {},
@@ -154,9 +159,24 @@ export async function apiFetch(path, options = {}) {
   for (const baseUrl of requestBases) {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       try {
+        // Vercel may still attach an ETag to a dynamic response even when the
+        // API sends Cache-Control: no-store. Expo Go can retain that validator
+        // across a long session and receive a bodyless 304. Give every safe
+        // read attempt a unique URL so dashboards always receive fresh JSON.
+        const requestPath = isSafeRead ? freshReadPath(path, attempt) : path;
         const response = await fetchWithTimeout(
-          `${baseUrl}${path}`,
-          fetchOptions,
+          `${baseUrl}${requestPath}`,
+          isSafeRead
+            ? {
+                ...fetchOptions,
+                cache: "no-store",
+                headers: {
+                  ...(fetchOptions.headers || {}),
+                  "Cache-Control": "no-cache",
+                  Pragma: "no-cache",
+                },
+              }
+            : fetchOptions,
           timeoutMs,
         );
         if (
