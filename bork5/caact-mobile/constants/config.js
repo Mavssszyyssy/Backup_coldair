@@ -89,18 +89,85 @@ export const API_BASE_FALLBACKS = configuredBaseUrl
   : [normalizeApiBase(`${getDefaultApiOrigin(BACKEND_FALLBACK_PORT)}/api`)];
 export const API_HEALTH_URL = `${API_BASE}/health`;
 
-export async function apiFetch(path, options) {
+// React Native can leave a fetch pending when Android resumes an old socket
+// after the app has been open or backgrounded for a long time. Bound every
+// request that does not already supply its own AbortSignal so one stale socket
+// cannot permanently block live refresh for the current screen.
+export const DIRECT_FETCH_TIMEOUT_MS = 12000;
+export const READ_RETRY_DELAY_MS = 300;
+const TRANSIENT_BACKEND_STATUSES = new Set([502, 503, 504]);
+
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const fetchWithTimeout = async (url, options = {}) => {
+  const ownsController =
+    !options.signal && typeof AbortController !== "undefined";
+  const controller = ownsController ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), DIRECT_FETCH_TIMEOUT_MS)
+    : null;
+
+  try {
+    return await fetch(url, {
+      ...options,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } catch (error) {
+    if (ownsController && controller?.signal?.aborted) {
+      const timeoutError = new Error(
+        "The backend request timed out. Please try again.",
+      );
+      timeoutError.name = "TimeoutError";
+      timeoutError.code = "BACKEND_FETCH_TIMEOUT";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
+export async function apiFetch(path, options = {}) {
   beginBackendConnection(path);
   let networkError;
-  // AI requests must not be replayed after an uncertain network result.
-  const requestBases = path.startsWith("/ai/") ? [API_BASE] : [API_BASE, ...API_BASE_FALLBACKS];
+  const method = String(options.method || "GET").toUpperCase();
+  const isSafeRead = method === "GET" || method === "HEAD";
+  // AI and payment-provider requests must never be replayed after an uncertain
+  // result. Only ordinary read requests get one automatic recovery attempt.
+  const excludesAutomaticRetry =
+    path.startsWith("/ai/") || path.includes("/paymongo/");
+  const maxAttempts = isSafeRead && !excludesAutomaticRetry ? 2 : 1;
+  const requestBases = path.startsWith("/ai/")
+    ? [API_BASE]
+    : [API_BASE, ...API_BASE_FALLBACKS];
+
   for (const baseUrl of requestBases) {
-    try {
-      const response = await fetch(`${baseUrl}${path}`, options);
-      finishBackendConnection(path);
-      return response;
-    } catch (error) {
-      networkError = error;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const response = await fetchWithTimeout(`${baseUrl}${path}`, options);
+        if (
+          TRANSIENT_BACKEND_STATUSES.has(response.status) &&
+          attempt + 1 < maxAttempts
+        ) {
+          await wait(READ_RETRY_DELAY_MS);
+          continue;
+        }
+        if (TRANSIENT_BACKEND_STATUSES.has(response.status)) {
+          failBackendConnection(path);
+        } else {
+          finishBackendConnection(path);
+        }
+        return response;
+      } catch (error) {
+        networkError = error;
+        const callerCancelled = error?.name === "AbortError";
+        if (!callerCancelled && attempt + 1 < maxAttempts) {
+          await wait(READ_RETRY_DELAY_MS);
+          continue;
+        }
+        break;
+      }
     }
   }
   failBackendConnection(path);

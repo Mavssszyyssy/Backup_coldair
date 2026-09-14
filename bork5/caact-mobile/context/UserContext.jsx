@@ -1,10 +1,12 @@
 // context/UserContext.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 
 import * as api from "../services/api";
 import { clearOperationalSessionCache } from "../services/sessionCache";
 import { requiredSetupRoute } from "../services/accountSetupRoute";
+import { subscribeBackendRecovery } from "../services/backendConnectionState";
 
 const TOKEN_KEY = "auth_token";
 const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
@@ -129,26 +131,29 @@ export function UserProvider({ children }) {
   const [token, setToken] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
-  // ── Hydrate session on mount ──────────────────────────────────────────────
-  useEffect(() => {
-    hydrate();
-  }, []);
-
-  const hydrate = async () => {
+  const hydrate = useCallback(async () => {
     try {
       const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
       if (storedToken) {
         const result = await withTimeout(
           api.me(storedToken),
           SESSION_HYDRATE_TIMEOUT_MS,
-          { success: false },
+          { success: false, transient: true },
         );
         if (result.success) {
           setToken(storedToken);
           setCurrent(normalizeUser(result.user));
-        } else {
-          // Token expired or invalid — clear it
+        } else if ([401, 403].includes(Number(result.status))) {
+          // Only an authoritative authentication rejection invalidates the
+          // stored session. A sleeping backend or temporary mobile connection
+          // must not sign the user out.
           await AsyncStorage.removeItem(TOKEN_KEY);
+          setToken(null);
+          setCurrent(null);
+        } else {
+          // Retain the valid local session so foreground/retry recovery can
+          // restore the user as soon as the backend responds again.
+          setToken(storedToken);
         }
       }
     } catch (error) {
@@ -156,7 +161,25 @@ export function UserProvider({ children }) {
     } finally {
       setInitialized(true);
     }
-  };
+  }, []);
+
+  // ── Hydrate session on mount and after long/backgrounded sessions ─────────
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    const unsubscribeRecovery = subscribeBackendRecovery(() => {
+      void hydrate();
+    });
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void hydrate();
+    });
+    return () => {
+      unsubscribeRecovery();
+      appStateSubscription.remove();
+    };
+  }, [hydrate]);
 
   // ── Persist token helper ──────────────────────────────────────────────────
   const storeToken = async (newToken) => {

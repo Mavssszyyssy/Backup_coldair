@@ -309,10 +309,14 @@ export async function logout(token) {
  * Returns { success, user } or { success: false }.
  */
 export async function me(token) {
-  if (!token) return { success: false };
-  const { ok, data } = await get("/auth/me", token);
+  if (!token) return { success: false, status: 0 };
+  const { ok, status, data } = await get("/auth/me", token);
   if (ok) return { success: true, user: data.user || data };
-  return { success: false };
+  return {
+    success: false,
+    status,
+    error: getErrorMessage(data, "Unable to restore your account."),
+  };
 }
 
 // ---------------------------------------------------------------------------
