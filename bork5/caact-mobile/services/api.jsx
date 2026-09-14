@@ -16,18 +16,30 @@ import { failBackendConnection } from "./backendConnectionState";
 // ---------------------------------------------------------------------------
 
 const REQUEST_TIMEOUT_MS = 10000;
+// A database-backed read can legitimately take longer after a serverless
+// function has been idle: the API first detects the stale Atlas socket, then
+// establishes a fresh connection. Keep mutations short, but allow ordinary
+// reads enough time for that verified reconnect and its one safe retry.
+export const READ_REQUEST_TIMEOUT_MS = 25000;
 const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const AMP_REPORT_TIMEOUT_MS = 30000;
 const CUSTOMER_CHAT_TIMEOUT_MS = 15000;
 
-async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+async function request(method, path, { token, body, timeoutMs } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const normalizedMethod = String(method || "GET").toUpperCase();
+  const effectiveTimeoutMs =
+    timeoutMs ??
+    (["GET", "HEAD"].includes(normalizedMethod)
+      ? READ_REQUEST_TIMEOUT_MS
+      : REQUEST_TIMEOUT_MS);
 
   const controller =
     typeof AbortController !== "undefined" ? new AbortController() : null;
   const timeoutId = controller
-    ? setTimeout(() => controller.abort(), timeoutMs)
+    ? setTimeout(() => controller.abort(), effectiveTimeoutMs)
     : null;
 
   let res;
@@ -42,7 +54,7 @@ async function request(method, path, { token, body, timeoutMs = REQUEST_TIMEOUT_
     if (error?.name === "AbortError" && path === "/ai/amp-report") {
       throw new Error("Your AC report took too long to load. Please try again. No service visit was booked.");
     }
-    if (error?.name === "AbortError" && timeoutMs === PROOF_UPLOAD_TIMEOUT_MS) {
+    if (error?.name === "AbortError" && effectiveTimeoutMs === PROOF_UPLOAD_TIMEOUT_MS) {
       throw new Error(
         "The installation photo upload timed out. Check your connection, then tap Complete installation again.",
       );
