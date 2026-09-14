@@ -15,6 +15,7 @@ export default function BackendConnectionStatus() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const [connection, setConnection] = useState({ state: "hidden" });
+  const [retrying, setRetrying] = useState(false);
   const displayTimer = useRef(null);
 
   useEffect(() => {
@@ -37,7 +38,13 @@ export default function BackendConnectionStatus() {
   }, []);
 
   const retry = async () => {
-    await checkBackendConnection();
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await checkBackendConnection();
+    } finally {
+      setRetrying(false);
+    }
   };
 
   // The entry screen owns the initial connection check and its retry action.
@@ -51,8 +58,14 @@ export default function BackendConnectionStatus() {
         {failed ? null : <LoadingLogo size={32} />}
         {failed ? <Text style={[styles.text, styles.failedText]}>{connection.message}</Text> : null}
         {failed ? (
-          <Pressable accessibilityRole="button" onPress={retry} style={styles.retryButton}>
-            <Text style={styles.retryText}>Retry</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: retrying, disabled: retrying }}
+            disabled={retrying}
+            onPress={retry}
+            style={[styles.retryButton, retrying ? styles.retryButtonDisabled : null]}
+          >
+            <Text style={styles.retryText}>{retrying ? "Retrying…" : "Retry"}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -87,5 +100,6 @@ const styles = {
   text: { color: COLORS.textPrimary, fontSize: 13, fontWeight: "700", marginLeft: SPACING.sm },
   failedText: { color: "#991B1B", flex: 1, lineHeight: 18, marginLeft: 0 },
   retryButton: { backgroundColor: COLORS.danger, borderRadius: RADIUS.full, marginLeft: SPACING.sm, paddingHorizontal: 12, paddingVertical: 7 },
+  retryButtonDisabled: { opacity: 0.65 },
   retryText: { color: COLORS.surface, fontSize: 12, fontWeight: "800" },
 };

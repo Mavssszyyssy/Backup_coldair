@@ -1,5 +1,6 @@
 import { AppState } from 'react-native';
 import { startLiveRefresh, LIVE_REFRESH_INTERVAL_MS } from './liveRefresh';
+import { beginBackendConnection, failBackendConnection, finishBackendConnection } from './backendConnectionState';
 import { notifyNotificationsChanged } from './notificationEvents';
 
 let onState;
@@ -65,4 +66,20 @@ test('does not overlap slow requests and retries after a network failure', async
   jest.advanceTimersByTime(LIVE_REFRESH_INTERVAL_MS);
   await settle();
   expect(load).toHaveBeenCalledTimes(3);
+});
+
+test('reloads the focused customer or technician screen as soon as a retry confirms recovery', async () => {
+  const load = jest.fn().mockResolvedValue();
+  start(load);
+  await settle();
+  expect(load).toHaveBeenCalledTimes(1);
+
+  beginBackendConnection('/orders');
+  failBackendConnection('/orders');
+  beginBackendConnection('/health');
+  finishBackendConnection('/health');
+  await settle();
+
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(load.mock.calls[1][0].background).toBe(true);
 });

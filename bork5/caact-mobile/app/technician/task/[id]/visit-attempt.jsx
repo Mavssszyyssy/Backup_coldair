@@ -10,6 +10,7 @@ import Card from '../../../../components/ui/Card';
 import TechButton from '../../../../components/technician/TechButton';
 import VisitProofCapture from '../../../../components/technician/VisitProofCapture';
 import { COLORS, FONT, RADIUS, SPACING } from '../../../../constants/theme';
+import { subscribeBackendRecovery } from '../../../../services/backendConnectionState';
 
 const choices = [
   { id: 'close', title: 'Close this visit', detail: 'End this attempt. Admin will contact the customer to follow up.' },
@@ -30,9 +31,16 @@ export default function VisitAttemptScreen() {
   const paidOnline = Boolean(task?.orderPayment?.paidAt) || ['paid', 'verified', 'completed', 'succeeded'].includes(String(task?.orderPayment?.status || '').toLowerCase());
   useFocusEffect(useCallback(() => {
     let active = true;
-    getTaskById(id, { requireOnline: true }).then(value => { if (active) setTask(value); })
+    const load = () => getTaskById(id, { requireOnline: true })
+      .then(value => {
+        if (!active) return;
+        setTask(value);
+        setError('');
+      })
       .catch(err => { if (active) setError(err.message || 'Unable to load this visit.'); });
-    return () => { active = false; };
+    void load();
+    const unsubscribeRecovery = subscribeBackendRecovery(() => { void load(); });
+    return () => { active = false; unsubscribeRecovery(); };
   }, [id]));
   const eligible = task?.status === TASK_STATUS.IN_PROGRESS && task?.checkIn?.checkedInAt && !task?.visitAttempt?.awaitingAdmin;
   const save = async () => {

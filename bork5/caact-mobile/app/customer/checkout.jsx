@@ -25,6 +25,7 @@ import {
 import { validatePhone } from "../../utils/authValidation";
 import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
 import { formatCartModel } from "../../services/cartDisplayService";
+import { subscribeBackendRecovery } from "../../services/backendConnectionState";
 
 const getProfileAddress = (user = {}) => {
   const billing = user?.billingAddress || user?.billing_address || {};
@@ -144,6 +145,7 @@ export default function CheckoutScreen() {
   const [branchStockById, setBranchStockById] = useState({});
   const [stockIssues, setStockIssues] = useState([]);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [connectionRecoveryRevision, setConnectionRecoveryRevision] = useState(0);
   const orderRequestKeyRef = useRef("");
   const address = useMemo(() => getDefaultAddress(current), [current]);
   const addressIssue = useMemo(() => {
@@ -156,12 +158,18 @@ export default function CheckoutScreen() {
   const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, inventoryBranch), [cart, inventoryBranch]);
 
   useEffect(() => {
+    return subscribeBackendRecovery(() => {
+      setConnectionRecoveryRevision((revision) => revision + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     let active = true;
     resolveConfiguredInventoryBranch(address)
       .then((branch) => { if (active) setInventoryBranch(branch); })
       .catch(() => { if (active) setInventoryBranch(""); });
     return () => { active = false; };
-  }, [address]);
+  }, [address, connectionRecoveryRevision]);
 
   const refreshCheckoutStock = useCallback(async () => {
     if (!inventoryBranch || cart.length === 0) {
@@ -194,7 +202,7 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     void refreshCheckoutStock();
-  }, [refreshCheckoutStock]);
+  }, [refreshCheckoutStock, connectionRecoveryRevision]);
 
   const submitOrder = async () => {
     if (submitting) return;

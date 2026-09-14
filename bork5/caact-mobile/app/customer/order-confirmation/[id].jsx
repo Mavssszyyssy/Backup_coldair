@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BoutiqueButton, BoutiqueCard, BoutiqueHeader, BoutiqueScreen, BoutiqueText, BQ_COLORS, BQ_SPACING } from "../../../components/boutique";
 import { getOrderById, retryOrderPayment, verifyOrderPayment } from "../../../services/orderStorage";
 import { paymentOutcome } from "../../../services/paymentOutcome";
+import { subscribeBackendRecovery } from "../../../services/backendConnectionState";
 
 export default function OrderConfirmationScreen() {
   const router = useRouter();
@@ -44,9 +45,11 @@ export default function OrderConfirmationScreen() {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") check();
     });
+    const unsubscribeRecovery = subscribeBackendRecovery(check);
     return () => {
       active = false;
       subscription.remove();
+      unsubscribeRecovery();
     };
   }, [id, payment, refresh]);
 

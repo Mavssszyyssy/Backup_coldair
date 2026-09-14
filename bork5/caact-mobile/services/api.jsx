@@ -9,6 +9,7 @@
 
 import { API_BASE, apiFetch } from "../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { failBackendConnection } from "./backendConnectionState";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -81,8 +82,10 @@ export async function getStoredToken() {
 export async function checkBackendConnection() {
   try {
     const { ok, status, data } = await get("/health");
+    const connected = ok && data?.status === "ok";
+    if (!connected) failBackendConnection("/health");
     return {
-      connected: ok && data?.status === "ok",
+      connected,
       status,
       baseUrl: API_BASE,
       message: ok

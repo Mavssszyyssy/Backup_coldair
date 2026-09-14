@@ -16,6 +16,7 @@ import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
 import { resolveInventoryQrSerial } from "../../../../services/qrLookupService";
 import { isInstallationWorkOrder, ROOM_SIZE_OPTIONS } from "../../../../services/technicianTaskLogic";
+import { subscribeBackendRecovery } from "../../../../services/backendConnectionState";
 
 const taskSerials = (task = {}) => {
   const progressSerials = task?.registrationProgress?.requiredSerials;
@@ -93,7 +94,10 @@ export default function AmpRegistrationScreen() {
     }
   }, [id, loadUnitHistory]);
 
-  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+  useFocusEffect(React.useCallback(() => {
+    void load();
+    return subscribeBackendRecovery(() => { void load(); });
+  }, [load]));
 
   const handleScanned = async (rawValue) => {
     if (saving || scanInFlight.current || !task) return;

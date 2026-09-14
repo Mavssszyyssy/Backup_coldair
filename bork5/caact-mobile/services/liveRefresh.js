@@ -1,4 +1,5 @@
 import { AppState } from "react-native";
+import { subscribeBackendRecovery } from "./backendConnectionState";
 import { subscribeNotificationChanges } from "./notificationEvents";
 
 export const LIVE_REFRESH_INTERVAL_MS = 10000;
@@ -27,10 +28,18 @@ export function startLiveRefresh(load, { intervalMs = LIVE_REFRESH_INTERVAL_MS }
   };
   const timer = setInterval(() => { void refresh(); }, intervalMs);
   const unsubscribe = subscribeNotificationChanges(() => { void refresh(true); });
+  const unsubscribeRecovery = subscribeBackendRecovery(() => { void refresh(true); });
   const app = AppState.addEventListener("change", state => {
     foreground = state === "active";
     if (foreground) void refresh(true);
   });
   void refresh();
-  return () => { disposed = true; queued = false; clearInterval(timer); unsubscribe(); app.remove(); };
+  return () => {
+    disposed = true;
+    queued = false;
+    clearInterval(timer);
+    unsubscribe();
+    unsubscribeRecovery();
+    app.remove();
+  };
 }
