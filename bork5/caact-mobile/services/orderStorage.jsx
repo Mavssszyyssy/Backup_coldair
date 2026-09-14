@@ -156,7 +156,7 @@ export function normalizeOrder(order = {}) {
 async function fetchBackendOrders() {
   const token = await getStoredToken();
   if (!token) return [];
-  const response = await apiFetch("/orders/me", {
+  const response = await apiFetch("/orders/me?limit=100", {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error("Unable to fetch backend orders.");
@@ -190,14 +190,32 @@ export async function saveAllOrders(orders = []) {
 }
 
 export async function getOrderById(orderId) {
-  const orders = await getAllOrders();
-  return (
-    orders.find(
+  const orders = await getAllOrders({ sync: false });
+  const cachedOrder = orders.find(
       (item) =>
         String(item.id) === String(orderId) ||
         String(item.orderCode || "") === String(orderId),
-    ) || null
-  );
+    ) || null;
+
+  try {
+    const token = await getStoredToken();
+    if (!token) return cachedOrder;
+    const response = await apiFetch(
+      `/orders/me/${encodeURIComponent(orderId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok) throw new Error("Unable to fetch this order.");
+    const data = await response.json().catch(() => ({}));
+    if (!data?.order) return cachedOrder;
+    const normalized = normalizeOrder(data.order);
+    await saveAllOrders([
+      normalized,
+      ...orders.filter((item) => String(item.id) !== String(normalized.id)),
+    ]);
+    return normalized;
+  } catch {
+    return cachedOrder;
+  }
 }
 
 export async function getOrdersByUser(user = {}) {
