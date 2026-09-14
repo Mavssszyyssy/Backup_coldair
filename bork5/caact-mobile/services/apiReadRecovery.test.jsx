@@ -12,32 +12,21 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
 }));
 
-test("a database-backed mobile read remains active beyond the old ten-second cutoff", async () => {
-  jest.useFakeTimers();
-  let requestSignal;
-  apiFetch.mockImplementation((_path, options) => {
-    requestSignal = options.signal;
-    return new Promise((_resolve, reject) => {
-      options.signal.addEventListener("abort", () => {
-        const error = new Error("Aborted");
-        error.name = "AbortError";
-        reject(error);
-      });
-    });
+test("the Retry action checks a database route with the full read-attempt timeout", async () => {
+  const timeout = new Error("Timed out");
+  timeout.name = "TimeoutError";
+  timeout.code = "BACKEND_FETCH_TIMEOUT";
+  apiFetch.mockRejectedValue(timeout);
+
+  await expect(checkBackendConnection()).resolves.toMatchObject({
+    connected: false,
+    status: 0,
   });
-
-  try {
-    const resultPromise = checkBackendConnection();
-    await jest.advanceTimersByTimeAsync(10000);
-    expect(requestSignal.aborted).toBe(false);
-
-    await jest.advanceTimersByTimeAsync(READ_REQUEST_TIMEOUT_MS - 10000);
-    await expect(resultPromise).resolves.toMatchObject({
-      connected: false,
-      status: 0,
-    });
-    expect(requestSignal.aborted).toBe(true);
-  } finally {
-    jest.useRealTimers();
-  }
+  expect(apiFetch).toHaveBeenCalledWith(
+    "/products/public",
+    expect.objectContaining({
+      method: "GET",
+      timeoutMs: READ_REQUEST_TIMEOUT_MS,
+    }),
+  );
 });

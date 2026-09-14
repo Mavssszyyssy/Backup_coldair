@@ -432,9 +432,17 @@ export async function getTasksByTechnician(technicianId) {
         return result.tasks.map(normalizeTask);
       }
     }
-  } catch {}
+  } catch {
+    // Continue with the last confirmed device cache. Do not call getAllTasks
+    // here: that function performs the same remote /tasks request again and
+    // previously doubled every failing dashboard request.
+  }
 
-  const tasks = await getAllTasks();
+  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+  const cachedTasks = safeParse(raw, []);
+  const tasks = Array.isArray(cachedTasks)
+    ? cachedTasks.map(normalizeTask)
+    : [];
   return tasks.filter(
     (item) => String(item.assignedTechnicianId) === String(technicianId)
   );

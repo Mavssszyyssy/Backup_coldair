@@ -6,8 +6,8 @@ beforeEach(() => { jest.useFakeTimers(); jest.clearAllMocks(); });
 afterEach(() => { jest.useRealTimers(); });
 
 test("AMP report can finish after the old ten-second cutoff", async () => {
-  apiFetch.mockImplementation((_path, options) => new Promise((resolve, reject) => {
-    options.signal.addEventListener("abort", () => { const error = new Error("Abort"); error.name = "AbortError"; reject(error); });
+  apiFetch.mockImplementation((_path, options) => new Promise((resolve) => {
+    expect(options.timeoutMs).toBe(30000);
     setTimeout(() => resolve({ ok: true, status: 200, json: async () => ({ report: { reportId: "late-report" }, provider: "system-fallback" }) }), 12000);
   }));
   const pending = generateAmpReport("test-token", { unitId: "unit-1" });
@@ -17,7 +17,12 @@ test("AMP report can finish after the old ten-second cutoff", async () => {
 
 test("AMP timeout uses report wording, not installation-photo wording", async () => {
   apiFetch.mockImplementation((_path, options) => new Promise((_resolve, reject) => {
-    options.signal.addEventListener("abort", () => { const error = new Error("Abort"); error.name = "AbortError"; reject(error); });
+    setTimeout(() => {
+      const error = new Error("Timed out");
+      error.name = "TimeoutError";
+      error.code = "BACKEND_FETCH_TIMEOUT";
+      reject(error);
+    }, options.timeoutMs);
   }));
   const pending = generateAmpReport("test-token", { unitId: "unit-1" });
   const assertion = expect(pending).rejects.toThrow("Your AC report took too long to load");

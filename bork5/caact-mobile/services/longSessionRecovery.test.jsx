@@ -7,8 +7,8 @@ import { UserProvider, useUserContext } from "../context/UserContext";
 import * as api from "./api";
 import {
   beginBackendConnection,
+  confirmBackendRecovery,
   failBackendConnection,
-  finishBackendConnection,
 } from "./backendConnectionState";
 
 jest.mock("./api", () => ({ me: jest.fn() }));
@@ -53,12 +53,12 @@ test("keeps a saved session during a temporary backend failure and restores it a
   await act(async () => {
     beginBackendConnection("/orders");
     failBackendConnection("/orders");
-    beginBackendConnection("/health");
-    finishBackendConnection("/health");
+    confirmBackendRecovery("/auth/me");
   });
 
   await view.findByText("ready|saved-session-token|customer@example.com");
   expect(api.me).toHaveBeenCalledTimes(2);
+  view.unmount();
 });
 
 test("clears a saved session only when the backend rejects its authentication", async () => {
@@ -72,4 +72,5 @@ test("clears a saved session only when the backend rejects its authentication", 
 
   await waitFor(() => expect(AsyncStorage.removeItem).toHaveBeenCalledWith("auth_token"));
   expect(view.getByText("ready|no-token|no-user")).toBeTruthy();
+  view.unmount();
 });

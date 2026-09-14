@@ -13,7 +13,7 @@ const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
 // Session restoration calls /auth/me, which is a database-backed read. It must
 // outlive the mobile client's cold database reconnect window so Expo Go does
 // not show a signed-out/offline state while a valid session is recovering.
-const SESSION_HYDRATE_TIMEOUT_MS = 30000;
+const SESSION_HYDRATE_TIMEOUT_MS = 50000;
 
 // The context value is assembled dynamically below. Keep the initial null
 // state while preventing TypeScript 6 from narrowing every consumer to null.

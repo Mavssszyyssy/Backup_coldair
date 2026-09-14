@@ -9,7 +9,10 @@
 
 import { API_BASE, apiFetch } from "../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { failBackendConnection } from "./backendConnectionState";
+import {
+  confirmBackendRecovery,
+  failBackendConnection,
+} from "./backendConnectionState";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -19,8 +22,8 @@ const REQUEST_TIMEOUT_MS = 10000;
 // A database-backed read can legitimately take longer after a serverless
 // function has been idle: the API first detects the stale Atlas socket, then
 // establishes a fresh connection. Keep mutations short, but allow ordinary
-// reads enough time for that verified reconnect and its one safe retry.
-export const READ_REQUEST_TIMEOUT_MS = 25000;
+// reads enough time for each bounded, safe recovery attempt.
+export const READ_REQUEST_TIMEOUT_MS = 15000;
 const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const AMP_REPORT_TIMEOUT_MS = 30000;
 const CUSTOMER_CHAT_TIMEOUT_MS = 15000;
@@ -36,25 +39,23 @@ async function request(method, path, { token, body, timeoutMs } = {}) {
       ? READ_REQUEST_TIMEOUT_MS
       : REQUEST_TIMEOUT_MS);
 
-  const controller =
-    typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = controller
-    ? setTimeout(() => controller.abort(), effectiveTimeoutMs)
-    : null;
-
   let res;
   try {
     res = await apiFetch(path, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      ...(controller ? { signal: controller.signal } : {}),
+      timeoutMs: effectiveTimeoutMs,
     });
   } catch (error) {
-    if (error?.name === "AbortError" && path === "/ai/amp-report") {
+    const timedOut =
+      error?.code === "BACKEND_FETCH_TIMEOUT" ||
+      error?.name === "TimeoutError" ||
+      error?.name === "AbortError";
+    if (timedOut && path === "/ai/amp-report") {
       throw new Error("Your AC report took too long to load. Please try again. No service visit was booked.");
     }
-    if (error?.name === "AbortError" && effectiveTimeoutMs === PROOF_UPLOAD_TIMEOUT_MS) {
+    if (timedOut && effectiveTimeoutMs === PROOF_UPLOAD_TIMEOUT_MS) {
       throw new Error(
         "The installation photo upload timed out. Check your connection, then tap Complete installation again.",
       );
@@ -64,8 +65,6 @@ async function request(method, path, { token, body, timeoutMs } = {}) {
     throw new Error(
       "Unable to connect to the server. Please check your connection and try again.",
     );
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
   }
 
   let data;
@@ -93,16 +92,23 @@ export async function getStoredToken() {
 
 export async function checkBackendConnection() {
   try {
-    const { ok, status, data } = await get("/health");
-    const connected = ok && data?.status === "ok";
-    if (!connected) failBackendConnection("/health");
+    // /health intentionally works without MongoDB, so it cannot prove that
+    // dashboards and work orders are available. Probe a database-backed route
+    // instead; authenticated users use /auth/me and signed-out users use the
+    // public catalog.
+    const token = await getStoredToken();
+    const probePath = token ? "/auth/me" : "/products/public";
+    const { ok, status, data } = await get(probePath, token || undefined);
+    const connected = ok;
+    if (connected) confirmBackendRecovery(probePath);
+    else failBackendConnection(probePath);
     return {
       connected,
       status,
       baseUrl: API_BASE,
       message: ok
-        ? "Backend is reachable."
-        : getErrorMessage(data, "Backend health check failed."),
+        ? "Backend and database are reachable."
+        : getErrorMessage(data, "Backend database check failed."),
     };
   } catch (error) {
     return {

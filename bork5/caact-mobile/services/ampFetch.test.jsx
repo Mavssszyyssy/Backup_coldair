@@ -51,11 +51,9 @@ test("a stale direct read is timed out instead of blocking mobile refresh foreve
     const expectation = expect(apiFetch("/orders/me")).rejects.toMatchObject({
       code: "BACKEND_FETCH_TIMEOUT",
     });
-    await jest.advanceTimersByTimeAsync(
-      DIRECT_FETCH_TIMEOUT_MS * 2 + READ_RETRY_DELAY_MS,
-    );
+    await jest.runAllTimersAsync();
     await expectation;
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   } finally {
     global.fetch = previousFetch;
     API_BASE_FALLBACKS.splice(

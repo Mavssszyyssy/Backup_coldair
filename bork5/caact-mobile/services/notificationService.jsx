@@ -12,6 +12,23 @@ import { resolveNotificationRoute } from "./notificationRouteService";
 export { resolveNotificationRoute } from "./notificationRouteService";
 
 const STORAGE_KEY = "local_notifications_v1";
+let activeNotificationRead = null;
+
+const fetchNotificationsOnce = async (token) => {
+  // The side menu, header badge, and notification screen can refresh at the
+  // same instant. Share that one read so a focused mobile screen does not send
+  // duplicate database requests or amplify a recovering backend.
+  if (activeNotificationRead?.token === token) {
+    return activeNotificationRead.promise;
+  }
+  const promise = fetchNotifications(token).finally(() => {
+    if (activeNotificationRead?.promise === promise) {
+      activeNotificationRead = null;
+    }
+  });
+  activeNotificationRead = { token, promise };
+  return promise;
+};
 
 function safeParse(value, fallback) {
   try {
@@ -69,7 +86,7 @@ export async function getNotificationsForUser(user = {}, { strict = false } = {}
   const token = await getStoredToken();
   if (token) {
     try {
-      const result = await fetchNotifications(token);
+      const result = await fetchNotificationsOnce(token);
       if (result.success) {
         return result.notifications.map((item) => {
           const normalized = normalizeNotification(item);

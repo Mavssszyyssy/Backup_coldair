@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import { startLiveRefresh, LIVE_REFRESH_INTERVAL_MS } from './liveRefresh';
-import { beginBackendConnection, failBackendConnection, finishBackendConnection } from './backendConnectionState';
+import { beginBackendConnection, confirmBackendRecovery, failBackendConnection, finishBackendConnection } from './backendConnectionState';
 import { notifyNotificationsChanged } from './notificationEvents';
 
 let onState;
@@ -76,8 +76,14 @@ test('reloads the focused customer or technician screen as soon as a retry confi
 
   beginBackendConnection('/orders');
   failBackendConnection('/orders');
-  beginBackendConnection('/health');
-  finishBackendConnection('/health');
+  beginBackendConnection('/auth/me');
+  finishBackendConnection('/auth/me');
+  await settle();
+
+  // Success on an unrelated route must not create a recovery refresh loop.
+  expect(load).toHaveBeenCalledTimes(1);
+
+  confirmBackendRecovery('/auth/me');
   await settle();
 
   expect(load).toHaveBeenCalledTimes(2);

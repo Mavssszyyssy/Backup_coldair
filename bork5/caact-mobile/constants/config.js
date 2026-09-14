@@ -100,12 +100,16 @@ const TRANSIENT_BACKEND_STATUSES = new Set([502, 503, 504]);
 const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-const fetchWithTimeout = async (url, options = {}) => {
+const fetchWithTimeout = async (
+  url,
+  options = {},
+  timeoutMs = DIRECT_FETCH_TIMEOUT_MS,
+) => {
   const ownsController =
     !options.signal && typeof AbortController !== "undefined";
   const controller = ownsController ? new AbortController() : null;
   const timeoutId = controller
-    ? setTimeout(() => controller.abort(), DIRECT_FETCH_TIMEOUT_MS)
+    ? setTimeout(() => controller.abort(), timeoutMs)
     : null;
 
   try {
@@ -131,13 +135,18 @@ const fetchWithTimeout = async (url, options = {}) => {
 export async function apiFetch(path, options = {}) {
   beginBackendConnection(path);
   let networkError;
-  const method = String(options.method || "GET").toUpperCase();
+  // timeoutMs is an AEROPULSE client option, not part of the Fetch API. Keep
+  // it out of the native request while applying it independently to every
+  // recovery attempt. This is important on Android: reusing one already-
+  // aborted signal made the second attempt fail immediately.
+  const { timeoutMs = DIRECT_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const method = String(fetchOptions.method || "GET").toUpperCase();
   const isSafeRead = method === "GET" || method === "HEAD";
   // AI and payment-provider requests must never be replayed after an uncertain
-  // result. Only ordinary read requests get one automatic recovery attempt.
+  // result. Only ordinary read requests get bounded automatic recovery.
   const excludesAutomaticRetry =
     path.startsWith("/ai/") || path.includes("/paymongo/");
-  const maxAttempts = isSafeRead && !excludesAutomaticRetry ? 2 : 1;
+  const maxAttempts = isSafeRead && !excludesAutomaticRetry ? 3 : 1;
   const requestBases = path.startsWith("/ai/")
     ? [API_BASE]
     : [API_BASE, ...API_BASE_FALLBACKS];
@@ -145,12 +154,16 @@ export async function apiFetch(path, options = {}) {
   for (const baseUrl of requestBases) {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       try {
-        const response = await fetchWithTimeout(`${baseUrl}${path}`, options);
+        const response = await fetchWithTimeout(
+          `${baseUrl}${path}`,
+          fetchOptions,
+          timeoutMs,
+        );
         if (
           TRANSIENT_BACKEND_STATUSES.has(response.status) &&
           attempt + 1 < maxAttempts
         ) {
-          await wait(READ_RETRY_DELAY_MS);
+          await wait(READ_RETRY_DELAY_MS * (attempt + 1));
           continue;
         }
         if (TRANSIENT_BACKEND_STATUSES.has(response.status)) {
@@ -163,7 +176,7 @@ export async function apiFetch(path, options = {}) {
         networkError = error;
         const callerCancelled = error?.name === "AbortError";
         if (!callerCancelled && attempt + 1 < maxAttempts) {
-          await wait(READ_RETRY_DELAY_MS);
+          await wait(READ_RETRY_DELAY_MS * (attempt + 1));
           continue;
         }
         break;
