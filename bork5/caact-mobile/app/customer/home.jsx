@@ -55,26 +55,38 @@ export default function CustomerHomeScreen() {
     useCallback(() => {
       let active = true;
       setLoading(true);
+      const applyResults = ([unitsResult, ordersResult]) => {
+        if (!active) return;
+        if (unitsResult.status === "fulfilled") {
+          const nextUnits = unitsResult.value;
+          setUnits(nextUnits);
+          setRecommendationMap(buildUnitRecommendationMap(nextUnits));
+        }
+        if (ordersResult.status === "fulfilled") {
+          const nextOrders = ordersResult.value;
+          setRecentOrders(nextOrders.slice(0, 3));
+          setActiveOrderCount(nextOrders.filter((order) => !["complete", "completed", "cancelled"].includes(String(order.workflowStatus || order.status || "").toLowerCase())).length);
+        }
+      };
       const load = () => {
         return Promise.allSettled([
           getUnitsByUser(current?.id),
           getOrdersByUser(current),
-        ]).then(([unitsResult, ordersResult]) => {
-          if (!active) return;
-          if (unitsResult.status === "fulfilled") {
-            const nextUnits = unitsResult.value;
-            setUnits(nextUnits);
-            setRecommendationMap(buildUnitRecommendationMap(nextUnits));
-          }
-          if (ordersResult.status === "fulfilled") {
-            const nextOrders = ordersResult.value;
-            setRecentOrders(nextOrders.slice(0, 3));
-            setActiveOrderCount(nextOrders.filter((order) => !["complete", "completed", "cancelled"].includes(String(order.workflowStatus || order.status || "").toLowerCase())).length);
-          }
-        }).finally(() => {
+        ]).then(applyResults).finally(() => {
           if (active) setLoading(false);
         });
       };
+      // Paint the last confirmed data first; the live refresh below replaces
+      // it with the server-authoritative result without blocking the screen.
+      Promise.allSettled([
+        getUnitsByUser(current?.id, { sync: false }),
+        getOrdersByUser(current, { sync: false }),
+      ]).then((results) => {
+        applyResults(results);
+        if (active && results.some((result) => result.status === "fulfilled" && result.value.length > 0)) {
+          setLoading(false);
+        }
+      });
       const stop = startLiveRefresh(load);
 
       return () => {

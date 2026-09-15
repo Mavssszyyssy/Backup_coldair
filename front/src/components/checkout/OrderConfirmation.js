@@ -181,7 +181,7 @@ function OrderConfirmation() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title={outcome.title}
+        title="Order payment"
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
       />

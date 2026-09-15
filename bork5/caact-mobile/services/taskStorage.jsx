@@ -422,8 +422,8 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
   return updated;
 }
 
-export async function getTasksByTechnician(technicianId) {
-  try {
+export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
+  if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
       const result = await api.fetchTasks(token, { technicianId });

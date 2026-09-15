@@ -104,8 +104,8 @@ export async function cacheUnitUpdate(unitId, patch = {}) {
   return updated;
 }
 
-export async function getUnitsByUser(userId) {
-  try {
+export async function getUnitsByUser(userId, { sync = true } = {}) {
+  if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
       const result = await api.fetchCustomerAmpUnits(token);
@@ -135,8 +135,8 @@ export async function addUnit() {
   throw new Error("AC units are added after a verified installation, not from this device.");
 }
 
-export async function getUnitByCode(rawValue) {
-  try {
+export async function getUnitByCode(rawValue, { sync = true } = {}) {
+  if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
       const result = await api.fetchCustomerAmpUnits(token);

@@ -255,6 +255,23 @@ export default function CustomerUnitDetailsScreen() {
     useCallback(() => {
       let active = true;
 
+      const applyUnit = (loadedUnit) => {
+        if (!active) return false;
+        const ownsUnit =
+          loadedUnit &&
+          String(loadedUnit.userId || "") === String(current?.id || "");
+        if (!ownsUnit) return false;
+        setUnit(loadedUnit);
+        const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
+        setRecommendation(nextRecommendation);
+        setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
+        return true;
+      };
+
+      getUnitByCode(unitId, { sync: false }).then((cachedUnit) => {
+        if (applyUnit(cachedUnit)) setLoading(false);
+      }).catch(() => {});
+
       const stop = startLiveRefresh(({ background }) => Promise.all([
         getUnitByCode(unitId),
         getCustomerServiceHistory(current?.id),
@@ -262,9 +279,7 @@ export default function CustomerUnitDetailsScreen() {
         .then(([loadedUnit, loadedHistory]) => {
           if (!active) return;
 
-          const ownsUnit =
-            loadedUnit &&
-            String(loadedUnit.userId || "") === String(current?.id || "");
+          const ownsUnit = applyUnit(loadedUnit);
 
           if (!ownsUnit) {
             setUnit(null);
@@ -274,11 +289,7 @@ export default function CustomerUnitDetailsScreen() {
             return;
           }
 
-          setUnit(loadedUnit);
           setHistory(serviceRequestHistoryForUnit(loadedUnit, loadedHistory));
-          const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
-          setRecommendation(nextRecommendation);
-          setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
         })
         .finally(() => {
           if (active) setLoading(false);

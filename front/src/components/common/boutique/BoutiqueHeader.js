@@ -55,7 +55,12 @@ export default function BoutiqueHeader({
           gap={20}
           className="bq-header-left"
         >
-          <button className="bq-action-btn" onClick={onLeftAction}>
+          <button
+            type="button"
+            className="bq-action-btn"
+            onClick={onLeftAction}
+            aria-label={leftAction === "back" ? "Go back" : "Open menu"}
+          >
             {leftAction === "back" ? (
               <ArrowLeft size={18} weight="bold" />
             ) : (
@@ -114,8 +119,10 @@ export default function BoutiqueHeader({
         >
           {isAuthenticated && onNotificationClick && (
             <button
+              type="button"
               className="bq-action-btn bq-notif-btn"
               onClick={onNotificationClick}
+              aria-label="Open notifications"
             >
               <Bell size={22} weight="bold" />
               {notificationCount > 0 && (
@@ -128,6 +135,7 @@ export default function BoutiqueHeader({
 
           {!hideCart && typeof onCartClick === "function" ? (
             <button
+              type="button"
               className="bq-cart-trigger"
               onClick={onCartClick}
               aria-label="Open cart"

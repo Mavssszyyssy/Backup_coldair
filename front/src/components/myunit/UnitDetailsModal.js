@@ -36,10 +36,6 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
           </div>
 
           <div className="info-row">
-            <span className="info-label">Model</span>
-            <span className="info-value">{unit.productSku || unit.model || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
             <span className="info-label">Horsepower</span>
             <span className="info-value">{formatUnitHorsepower(unit)}</span>
           </div>

@@ -93,6 +93,11 @@ export default function CustomerServicesScreen() {
     let active = true;
     setLoadingUnits(true);
     loadServiceCatalog();
+    getUnitsByUser(current?.id, { sync: false }).then((items) => {
+      if (!active || items.length === 0) return;
+      setUnits(items);
+      setLoadingUnits(false);
+    }).catch(() => {});
     const stop = startLiveRefresh(({ background }) => Promise.allSettled([
       getUnitsByUser(current?.id),
       getCustomerServiceHistory(current?.id, { includeTasks: false }),

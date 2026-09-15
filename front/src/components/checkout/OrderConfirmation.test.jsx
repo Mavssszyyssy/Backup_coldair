@@ -16,6 +16,8 @@ beforeEach(() => {
 test("browser Back verifies pending checkout and displays Transaction Failed, not Order Success", async () => {
   show();
   await screen.findByRole("heading", { name: "Transaction Failed", level: 1 });
+  expect(screen.getAllByText("Transaction Failed")).toHaveLength(1);
+  expect(screen.getByRole("heading", { name: "Order payment", level: 2 })).toBeInTheDocument();
   expect(apiRequest).toHaveBeenCalledWith("/orders/order123/paymongo/verify", { method: "POST" });
   expect(screen.queryByText("Order Success")).not.toBeInTheDocument();
 });

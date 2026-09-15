@@ -218,8 +218,8 @@ export async function getOrderById(orderId) {
   }
 }
 
-export async function getOrdersByUser(user = {}) {
-  const orders = await getAllOrders();
+export async function getOrdersByUser(user = {}, { sync = true } = {}) {
+  const orders = await getAllOrders({ sync });
   return orders
     .filter((order) => {
       if (user?.id && String(order.userId) === String(user.id)) return true;

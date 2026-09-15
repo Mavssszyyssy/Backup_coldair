@@ -2,7 +2,12 @@ import { AppState } from "react-native";
 import { subscribeBackendRecovery } from "./backendConnectionState";
 import { subscribeNotificationChanges } from "./notificationEvents";
 
-export const LIVE_REFRESH_INTERVAL_MS = 10000;
+// Push/notification and connectivity events already trigger an immediate
+// refresh. A 30-second safety poll keeps open screens current without making
+// every customer and technician view continuously compete for the mobile
+// connection (the former 10-second interval was especially costly on mobile
+// data and after a serverless cold start).
+export const LIVE_REFRESH_INTERVAL_MS = 30000;
 
 // Start inside a screen's focus effect and return/call the cleanup on blur.
 // Never starts a payment, generates an AI report, or changes server records.

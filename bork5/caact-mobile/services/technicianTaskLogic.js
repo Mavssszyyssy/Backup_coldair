@@ -31,6 +31,35 @@ export function isInstallationWorkOrder(task = {}) {
   return /\b(install|installation|delivery|fulfillment)\b/.test(description);
 }
 
+export function getInstallationWorkflowState(task = {}) {
+  const safeTask = task && typeof task === "object" ? task : {};
+  const status = text(safeTask.status).toLowerCase().replace(/[_\s]+/g, "-");
+  const proofSubmitted = Boolean(
+    safeTask?.proof?.submittedAt || safeTask.proofSubmittedAt || status === "completed",
+  );
+  if (proofSubmitted) return { step: 2, finished: true };
+
+  const checkedInAt = text(safeTask?.checkIn?.checkedInAt);
+  const presenceValidated = Boolean(
+    checkedInAt &&
+    safeTask?.arrivalValidation?.customerPresent === true &&
+    text(safeTask?.arrivalValidation?.checkedInAt) === checkedInAt,
+  );
+  const paymentCollected = !safeTask.codPayment || Boolean(safeTask.codPayment.collectedAt);
+  const overviewComplete = Boolean(
+    checkedInAt &&
+    presenceValidated &&
+    paymentCollected &&
+    !safeTask?.visitAttempt?.awaitingAdmin,
+  );
+  if (!overviewComplete) return { step: 0, finished: false };
+
+  const serials = getTaskSerialNumbers(safeTask);
+  const registrationComplete =
+    safeTask?.registrationProgress?.isComplete ?? serials.length === 0;
+  return { step: registrationComplete ? 2 : 1, finished: false };
+}
+
 export function formatWarrantyStatus(status, { installationPending = false } = {}) {
   const normalized = text(status).toLowerCase().replace(/[\s-]+/g, "_");
   const labels = {

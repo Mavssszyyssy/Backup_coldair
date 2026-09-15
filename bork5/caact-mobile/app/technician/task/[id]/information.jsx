@@ -15,7 +15,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { checkInTask, confirmCodCollection, confirmInstallationArrival, getTaskById, getVisitAttempt, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
-import { formatWarrantyStatus, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
+import { formatWarrantyStatus, getInstallationWorkflowState, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
 
 function money(value) {
   return `PHP ${Number(value || 0).toFixed(2)}`;
@@ -86,19 +86,21 @@ function DetailItem({ icon, label, value, accent = COLORS.tech }) {
   );
 }
 
-function InstallationTimeline({ pages, currentPage, onChange }) {
+function InstallationTimeline({ pages, currentPage, workflowPage, finished, onChange }) {
   return (
     <Card style={{ marginBottom: SPACING.md }}>
       <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.black }}>
         Installation details
       </Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
-        Review the work order in this order.
+        Complete each stage in order. The highlighted stage is the next work to perform.
       </Text>
       <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: SPACING.md }}>
         {pages.map((page, index) => {
-          const selected = currentPage === index;
-          const passed = index < currentPage;
+          const viewed = currentPage === index;
+          const current = !finished && workflowPage === index;
+          const passed = finished || index < workflowPage;
+          const lineComplete = finished || index < workflowPage;
           return (
             <View key={page.key} style={{ flex: 1, alignItems: "center" }}>
               {index < pages.length - 1 ? (
@@ -109,7 +111,7 @@ function InstallationTimeline({ pages, currentPage, onChange }) {
                     left: "50%",
                     right: "-50%",
                     height: 3,
-                    backgroundColor: passed ? COLORS.tech : COLORS.borderInput,
+                    backgroundColor: lineComplete ? COLORS.success : COLORS.borderInput,
                   }}
                 />
               ) : null}
@@ -117,7 +119,7 @@ function InstallationTimeline({ pages, currentPage, onChange }) {
                 onPress={() => onChange(index)}
                 accessibilityRole="button"
                 accessibilityLabel={`Installation details: Step ${index + 1}, ${page.label}`}
-                accessibilityState={{ selected }}
+                accessibilityState={{ selected: viewed }}
                 style={{ alignItems: "center", width: "100%", zIndex: 1 }}
               >
                 <View
@@ -128,22 +130,22 @@ function InstallationTimeline({ pages, currentPage, onChange }) {
                     alignItems: "center",
                     justifyContent: "center",
                     borderWidth: 2,
-                    borderColor: selected || passed ? COLORS.tech : COLORS.borderInput,
-                    backgroundColor: selected ? COLORS.tech : COLORS.surface,
+                    borderColor: passed ? COLORS.success : current || viewed ? COLORS.tech : COLORS.borderInput,
+                    backgroundColor: passed ? COLORS.success : current ? COLORS.tech : COLORS.surface,
                   }}
                 >
                   <Ionicons
-                    name={page.icon}
+                    name={passed ? "checkmark-sharp" : page.icon}
                     size={18}
-                    color={selected ? COLORS.surface : selected || passed ? COLORS.tech : COLORS.textMuted}
+                    color={passed || current ? COLORS.surface : viewed ? COLORS.tech : COLORS.textMuted}
                   />
                 </View>
-                <Text style={{ color: COLORS.textMuted, fontSize: 10, fontWeight: FONT.bold, marginTop: 7 }}>
-                  STEP {index + 1}
+                <Text style={{ color: passed ? COLORS.success : current ? COLORS.tech : COLORS.textMuted, fontSize: 10, fontWeight: FONT.bold, marginTop: 7 }}>
+                  {passed ? "DONE" : current ? "CURRENT" : `STEP ${index + 1}`}
                 </Text>
                 <Text
                   numberOfLines={1}
-                  style={{ color: selected ? COLORS.tech : COLORS.textPrimary, fontSize: FONT.sm, fontWeight: selected ? FONT.black : FONT.bold, marginTop: 2 }}
+                  style={{ color: viewed || current ? COLORS.tech : COLORS.textPrimary, fontSize: FONT.sm, fontWeight: viewed || current ? FONT.black : FONT.bold, marginTop: 2 }}
                 >
                   {page.label}
                 </Text>
@@ -266,6 +268,9 @@ export default function TaskInformationScreen() {
     task?.arrivalValidation?.customerPresent &&
     task?.arrivalValidation?.checkedInAt === task?.checkIn?.checkedInAt,
   );
+  const installationWorkflow = getInstallationWorkflowState(task);
+  const installationFinished = installationWorkflow.finished;
+  const installationWorkflowPage = installationWorkflow.step;
   React.useEffect(() => {
     let active = true;
     setVisitProof(null);
@@ -276,26 +281,29 @@ export default function TaskInformationScreen() {
     if (detailPage >= detailPages.length) setDetailPage(detailPages.length - 1);
   }, [detailPage, detailPages.length]);
   const installationNextAction = task?.codPayment && !task.codPayment.collectedAt
-    ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
+    ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
     : registrationComplete
-      ? { title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
-      : { title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
+      ? { stage: "proof", title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+      : { stage: "unit", title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
+  const activeFieldStatus = [TASK_STATUS.IN_PROGRESS, TASK_STATUS.INSTALLING].includes(task?.status);
   const nextAction = task?.visitAttempt?.awaitingAdmin
-    ? { title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
+    ? { stage: "overview", title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
     : task?.status === TASK_STATUS.PENDING
-    ? { title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
-    : task?.status === TASK_STATUS.IN_PROGRESS
+    ? { stage: "overview", title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
+    : installationTask && activeFieldStatus
       ? !hasCheckedIn
-        ? { title: installationTask ? "Check in at installation" : "Check in at service address", subtitle: installationTask ? "Record your GPS arrival before verifying the assigned AC unit." : "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
-        : installationTask && !customerPresenceConfirmed
-          ? { title: "Confirm customer presence", subtitle: "Validate whether the customer is present before installation can begin.", icon: "person-sharp", action: "validate-arrival" }
+        ? { stage: "overview", title: "Check in at installation", subtitle: "Record your GPS arrival before verifying the assigned AC unit.", icon: "location-sharp", action: "check-in" }
+        : !customerPresenceConfirmed
+          ? { stage: "overview", title: "Confirm customer presence", subtitle: "Validate whether the customer is present before installation can begin.", icon: "person-sharp", action: "validate-arrival" }
         : task?.codPayment && !task.codPayment.collectedAt
-          ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
-        : !installationTask
-          ? { title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
-          : installationNextAction
-      : task?.status === TASK_STATUS.INSTALLING && installationTask
-        ? installationNextAction
+          ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
+        : installationNextAction
+    : !installationTask && task?.status === TASK_STATUS.IN_PROGRESS
+      ? !hasCheckedIn
+        ? { stage: "overview", title: "Check in at service address", subtitle: "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
+        : task?.codPayment && !task.codPayment.collectedAt
+          ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
+          : { stage: "overview", title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
       : null;
 
   const runWorkOrderAction = async () => {
@@ -348,7 +356,8 @@ export default function TaskInformationScreen() {
       if (actionBusy) return;
       setActionBusy(true);
       try {
-        setTask(await confirmCodCollection(id));
+        const updated = await confirmCodCollection(id);
+        setTask(updated);
         Alert.alert("Payment recorded", "Cash collection is now visible on the order and receipt.");
       } catch (error) {
         Alert.alert("Unable to confirm payment", error?.message || "Please try again.");
@@ -409,7 +418,13 @@ export default function TaskInformationScreen() {
           </View>
 
           {installationTask ? (
-            <InstallationTimeline pages={detailPages} currentPage={detailPage} onChange={changePage} />
+            <InstallationTimeline
+              pages={detailPages}
+              currentPage={detailPage}
+              workflowPage={installationWorkflowPage}
+              finished={installationFinished}
+              onChange={changePage}
+            />
           ) : (
             <Card style={{ padding: SPACING.xs, marginBottom: SPACING.md }}>
               <View style={{ flexDirection: "row" }}>
@@ -432,6 +447,15 @@ export default function TaskInformationScreen() {
             </Card>
           )}
 
+          {nextAction && (!installationTask || activePage.key === nextAction.stage) ? (
+            <Card style={{ borderColor: nextAction.disabled ? COLORS.warning : COLORS.tech, backgroundColor: nextAction.disabled ? COLORS.warningLight : COLORS.techLight }}>
+              <SectionHeading icon={nextAction.icon} title="Next Action" subtitle={`${activePage.label} stage`} />
+              <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.md }}>{nextAction.title}</Text>
+              <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4 }}>{nextAction.subtitle}</Text>
+              {!nextAction.disabled ? <TechButton title={actionBusy ? "Saving..." : nextAction.title} loading={actionBusy} onPress={() => nextAction.href ? router.push(nextAction.href) : runWorkOrderAction()} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} /> : null}
+            </Card>
+          ) : null}
+
           {activePage.key === "proof" && task?.visitAttempt?.id ? <Card>
             <SectionHeading icon="time-sharp" title="Unattended visit" subtitle={task.visitAttempt.awaitingAdmin ? 'Awaiting Admin follow-up' : 'Previous attempt — next visit confirmed'} />
             <Text style={{ color: COLORS.textPrimary, lineHeight: 21 }}>{task.visitAttempt.note}</Text>
@@ -441,15 +465,6 @@ export default function TaskInformationScreen() {
             }} />}
           </Card> : null}
           {activePage.key === "overview" ? <>
-            {nextAction ? (
-              <Card style={{ borderColor: nextAction.disabled ? COLORS.warning : COLORS.tech, backgroundColor: nextAction.disabled ? COLORS.warningLight : COLORS.techLight }}>
-                <SectionHeading icon={nextAction.icon} title="Next Action" subtitle="Continue this work order" />
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.md }}>{nextAction.title}</Text>
-                <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4 }}>{nextAction.subtitle}</Text>
-                {!nextAction.disabled ? <TechButton title={actionBusy ? "Saving..." : nextAction.title} loading={actionBusy} onPress={() => nextAction.href ? router.push(nextAction.href) : runWorkOrderAction()} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={nextAction.icon} size={17} color={COLORS.surface} />} /> : null}
-              </Card>
-            ) : null}
-
             <Card>
               <SectionHeading icon="person-sharp" title="Customer & Schedule" subtitle="Essential visit details" />
               <DetailItem icon="person-circle-sharp" label="Customer" value={task?.customerName || "Unknown"} />
@@ -484,17 +499,17 @@ export default function TaskInformationScreen() {
               </Card>
             ) : null}
 
-            {assignedSerials.length > 0 ? (
+          </> : null}
+
+          {activePage.key === "unit" ? (<>
+            {installationTask && assignedSerials.length > 0 ? (
               <Card>
                 <SectionHeading icon="analytics-sharp" title="Installation Progress" subtitle="Assigned QR verification" />
                 <DetailItem icon="checkmark-done-sharp" label="Registered Units" value={`${registrationProgress?.totalRegistered || 0} of ${registrationProgress?.totalRequired || assignedSerials.length}`} accent={registrationComplete ? COLORS.success : COLORS.warning} />
                 <DetailItem icon="qr-code-sharp" label="Serial Numbers" value={assignedSerials.join(", ")} />
-                <DetailItem icon="navigate-sharp" label="Next Step" value={registrationComplete ? "Capture one installed-unit photo to complete the work order." : "Scan each assigned AC unit QR before completing the installation."} />
+                <DetailItem icon="navigate-sharp" label="Next Step" value={registrationComplete ? "Continue to Proof and capture the installed-unit photo." : "Scan each assigned AC unit QR before continuing to Proof."} />
               </Card>
             ) : null}
-          </> : null}
-
-          {activePage.key === "unit" ? (
             <Card>
               <SectionHeading icon="snow-sharp" title="AC Unit Details" subtitle="Equipment assigned to this work order" />
               <DetailItem icon="cube-sharp" label="AC Unit" value={unit?.unitName || task?.unitName || "Unassigned"} />
@@ -506,7 +521,7 @@ export default function TaskInformationScreen() {
               {unit?.warrantyCoverage?.coverageSummary ? <DetailItem icon="document-text-sharp" label="Warranty Coverage" value={unit.warrantyCoverage.coverageSummary} /> : null}
               {!installationTask && unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
             </Card>
-          ) : null}
+          </>) : null}
 
           {activePage.key === "service" ? <>
             <Card>

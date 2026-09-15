@@ -696,7 +696,7 @@ const Shop = () => {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <BoutiqueScreen withHeader padding={0}>
+    <BoutiqueScreen withHeader={false} padding={0}>
       <BoutiqueHeader
         title="Shop AC Units"
         subtitle="Available stock across all branches"

@@ -58,13 +58,23 @@ export default function TechDashboard() {
   useFocusEffect(
     React.useCallback(() => {
       if (!current?.id) return;
-      return startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
+      let active = true;
+      const applyTasks = (tasks) => {
+        if (!active) return;
+        setStats(getTaskStats(tasks));
+        setWorkOrders(tasks.slice(0, 3));
+      };
+      getTasksByTechnician(current.id, { sync: false }).then(applyTasks).catch(() => {});
+      const stop = startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
         .then((tasks) => {
           if (!isCurrent()) return;
-          setStats(getTaskStats(tasks));
-          setWorkOrders(tasks.slice(0, 3));
+          applyTasks(tasks);
         })
         .catch(() => {}));
+      return () => {
+        active = false;
+        stop();
+      };
     }, [current]),
   );
 

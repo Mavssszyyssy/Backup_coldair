@@ -54,10 +54,6 @@ function UnitCard({
       <div className="unit-body">
         <div className="unit-info">
           <div className="info-row">
-            <span className="info-label">Model</span>
-            <span className="info-value">{unit.productSku || unit.model || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
             <span className="info-label">Horsepower</span>
             <span className="info-value">{formatUnitHorsepower(unit)}</span>
           </div>

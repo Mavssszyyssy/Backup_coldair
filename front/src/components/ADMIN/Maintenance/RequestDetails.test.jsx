@@ -47,6 +47,22 @@ describe('maintenance request controls', () => {
     await waitFor(() => expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH' && JSON.parse(opts.body).timeSlot === '9:30 AM - 11:30 AM')).toBe(true));
   });
 
+  it('keeps the customer-selected service date read-only while Admin assigns the time', async () => {
+    const date = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    render(<RequestDetails request={{ ...request, preferredDate: date }} />);
+    await screen.findByRole('option', { name: /Branch technician/ });
+    expect(screen.queryByLabelText('Appointment date')).toBeNull();
+    expect(screen.getByText(date)).toBeTruthy();
+    expect(screen.getByText('Selected by customer')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Choose technician'), { target: { value: 'tech-1' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Time slot' }), { target: { value: TECHNICIAN_TIME_SLOTS[0] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign technician' }));
+    await waitFor(() => {
+      const updateCall = apiRequest.mock.calls.find(([path, options]) => path === '/service-requests/request-1/status' && options?.method === 'PATCH');
+      expect(JSON.parse(updateCall[1].body)).toMatchObject({ scheduledDate: date, timeSlot: TECHNICIAN_TIME_SLOTS[0] });
+    });
+  });
+
   it('blocks warranty assignment when the technician has no Service Quota', async () => {
     apiRequest.mockImplementation(async (path, options) => {
       if (path.startsWith('/users')) return { users: [{ id: 'tech-1', name: 'Branch technician', assignedBranch: 'Bulacan', serviceQuota: null }] };

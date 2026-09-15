@@ -25,6 +25,7 @@ it('shows paid COD only with recorded collection', async () => {
   expect(screen.getAllByText('RCP-1')).toHaveLength(1);
   expect(screen.getByText('Receipt Number')).toBeInTheDocument();
   expect(screen.getByText('Paid on delivery')).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: /back/i })).toHaveLength(1);
 });
 
 it.each([['gcash', 'GCash'], ['credit', 'Credit / debit card']])('shows the actual %s method and Cold Air logo, not the processor', async (method, label) => {

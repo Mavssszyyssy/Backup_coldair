@@ -1,4 +1,4 @@
-import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react";
+import { DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
 import { receiptOrderName, receiptReferences, customerStatus } from "../../domain/customerLanguage";
 import { useEffect, useState } from "react";
@@ -156,7 +156,6 @@ function ReceiptView() {
       <main className="receipt-page">
         <section className="receipt-shell">
           <div className="receipt-actions">
-            <button type="button" className="receipt-link" onClick={returnToWorkspace}><ArrowLeft size={18} /> Back</button>
             <div className="receipt-action-buttons">
               <BoutiqueButton onClick={downloadReceipt} style={{ width: "auto" }}>
                 <DownloadSimple size={18} /> Save as PDF
@@ -273,8 +272,7 @@ function ReceiptView() {
         @page { size: A4; margin: 14mm; }
         .receipt-page { max-width: 1000px; margin: 0 auto; padding: 30px 20px 72px; color: #0f172a; }
         .receipt-shell { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; }
-        .receipt-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-        .receipt-link { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #2563eb; font-weight: 800; cursor: pointer; }
+        .receipt-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; }
         .receipt-action-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .receipt-paper { background: #fff; border: 1px solid #dbe4ee; border-radius: 10px; overflow: hidden; box-shadow: 0 18px 50px rgba(15,23,42,.08); }
         .receipt-brand { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 26px; border-bottom: 1px solid #e2e8f0; }

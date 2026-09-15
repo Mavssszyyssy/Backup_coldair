@@ -274,6 +274,9 @@ export default function CustomerOrdersScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      getOrdersByUser(current, { sync: false }).then((items) => {
+        if (active) setOrders(items);
+      });
       const load = () => {
         return getOrdersByUser(current).then((items) => {
           if (active) {
