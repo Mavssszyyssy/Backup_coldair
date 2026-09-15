@@ -72,11 +72,23 @@ export const finishBackendConnection = (path = "") => {
   if (recovered && !stillFailed) publishRecovery();
 };
 
-export const failBackendConnection = (path = "") => {
+export const failBackendConnection = (path = "", message = CONNECTION_FAILED_MESSAGE) => {
   if (path) failedPaths.add(path);
   publish({
     activeRequests: Math.max(0, snapshot.activeRequests - 1),
-    message: CONNECTION_FAILED_MESSAGE,
+    message,
+    path: path || snapshot.path,
+    state: "failed",
+  });
+};
+
+// A device-connectivity event is not the completion of a tracked API call, so
+// it must not decrement another request's counter while that request unwinds.
+export const reportBackendUnavailable = (path = "", message = CONNECTION_FAILED_MESSAGE) => {
+  if (path) failedPaths.add(path);
+  publish({
+    activeRequests: snapshot.activeRequests,
+    message,
     path: path || snapshot.path,
     state: "failed",
   });

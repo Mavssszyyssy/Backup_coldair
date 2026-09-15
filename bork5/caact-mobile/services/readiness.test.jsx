@@ -79,7 +79,7 @@ describe("mobile customer readiness rules", () => {
     expect(formatUnitHorsepower(null)).toBe("Not recorded");
   });
 
-  test("AC unit details use pages, a room-size selector, and customer-visible GPS check-in", () => {
+  test("AC unit details use pages, technician-recorded room size, and customer-visible GPS check-in", () => {
     const detailsSource = fs.readFileSync(
       path.join(__dirname, "..", "app", "customer", "units", "[id].jsx"),
       "utf8",
@@ -90,7 +90,8 @@ describe("mobile customer readiness rules", () => {
     );
 
     expect(detailsSource).toContain("DETAIL_PAGES");
-    expect(detailsSource).toContain("BottomSheetSelect");
+    expect(detailsSource).toContain('label="Room size"');
+    expect(detailsSource).not.toContain("Save Room Size");
     expect(detailsSource).toContain("Current Visit Check-in");
     expect(detailsSource).toContain("Latest Recorded Check-in");
     expect(detailsSource).toContain("Open Check-in Map");
@@ -240,6 +241,18 @@ describe("mobile customer readiness rules", () => {
     expect(resolveNotificationRoute({ route: "/customer/service-requests" }, "customer")).toBe("/customer/services");
     expect(resolveNotificationRoute({ route: "/tech/tasks/TSK-1" }, "technician")).toBe("/technician/tasks");
     expect(resolveNotificationRoute({ route: "/technician/tasks" }, "technician")).toBe("/technician/tasks");
+    expect(resolveNotificationRoute({ route: "/technician/tasks", targetType: "task", targetId: "TSK-1" }, "technician")).toBe("/technician/task/TSK-1/information");
+  });
+
+  test("customer AC details show technician-recorded room size without edit controls", () => {
+    const unitSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "units", "[id].jsx"),
+      "utf8",
+    );
+    expect(unitSource).toContain('label="Room size"');
+    expect(unitSource).toContain("Recorded by the technician during installation");
+    expect(unitSource).not.toContain("Save Room Size");
+    expect(unitSource).not.toContain("updateAmpRoomSize");
   });
 
   test("technician maintenance uses a service report instead of installation progress", () => {
@@ -261,6 +274,25 @@ describe("mobile customer readiness rules", () => {
     expect(completionSource).toContain("<ServiceReportQuickChoices");
     expect(completionSource).toContain("onFindingsChange={setFindings}");
     expect(logSource).toContain("serviceActions");
+  });
+
+  test("work-order details use a stable, action-first page order", () => {
+    const detailsSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "technician", "task", "[id]", "information.jsx"),
+      "utf8",
+    );
+    expect(detailsSource).toContain("setDetailPage(0)");
+    expect(detailsSource).toContain("InstallationTimeline");
+    expect(detailsSource).toContain('installation: [');
+    expect(detailsSource).toMatch(/installation:\s*\[\s*\{ key: "overview"[\s\S]*\{ key: "unit"[\s\S]*\{ key: "proof"/);
+    expect(detailsSource).toContain("installationTask ? WORK_ORDER_PAGES.installation : WORK_ORDER_PAGES.service");
+    expect(detailsSource).toContain('activePage.key === "service"');
+    expect(detailsSource).toContain("!isInstallationWorkOrder(loadedTask)");
+    expect(detailsSource).toContain("!installationTask ? <ServicePaymentCard");
+    expect(detailsSource.indexOf('title="Next Action"')).toBeLessThan(detailsSource.indexOf('title="Customer & Schedule"'));
+    expect(detailsSource).toContain('activePage.key === "proof" && task?.visitAttempt?.id');
+    expect(detailsSource).not.toContain("(detailPage === 0 || detailPage === 3) && task?.visitAttempt?.id");
+    expect(detailsSource).not.toContain("DETAIL_PAGES");
   });
 
   test("customer screens distinguish loading from a real empty account", () => {

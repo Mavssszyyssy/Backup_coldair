@@ -45,3 +45,12 @@ it('does not repeat the order number already included in the receipt reference',
   expect(screen.getAllByText(`RCP-${orderCode}`)).toHaveLength(1);
   expect(screen.queryByText(orderCode, {exact:true})).not.toBeInTheDocument();
 });
+
+it('places the order name above the receipt reference details', async () => {
+  session.user = { role: 'customer' };
+  apiRequest.mockResolvedValue({ order: { id:'order1', orderCode:'ORD-1', receiptAvailable:true, paymentMethod:'gcash', paymentStatus:'paid', receipt:{ receiptNumber:'RCP-1' }, items:[{ name:'LG Premium Dual Inverter', quantity:1, price:46499 }] } });
+  mount();
+  const orderName = await screen.findAllByText('LG Premium Dual Inverter');
+  const receiptNumber = screen.getByText('Receipt Number');
+  expect(orderName[0].compareDocumentPosition(receiptNumber) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

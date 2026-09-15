@@ -95,7 +95,7 @@ export default function CustomerServicesScreen() {
     loadServiceCatalog();
     const stop = startLiveRefresh(({ background }) => Promise.allSettled([
       getUnitsByUser(current?.id),
-      getCustomerServiceHistory(current?.id),
+      getCustomerServiceHistory(current?.id, { includeTasks: false }),
     ]).then(([unitsResult, historyResult]) => {
       if (!active) return;
       if (unitsResult.status === "fulfilled") {

@@ -485,8 +485,11 @@ export async function completeTechnicianOnboarding(token, payload) {
 // Technician tasks
 // ---------------------------------------------------------------------------
 
-export async function fetchTasks(token, { technicianId } = {}) {
-  const query = technicianId ? `?technician_id=${encodeURIComponent(technicianId)}` : "";
+export async function fetchTasks(token, { technicianId, limit = 100 } = {}) {
+  const params = new URLSearchParams();
+  if (technicianId) params.set("technician_id", technicianId);
+  params.set("limit", String(Math.min(Math.max(Number(limit) || 100, 1), 200)));
+  const query = `?${params.toString()}`;
   const { ok, data } = await get(`/tasks${query}`, token);
   if (ok) return { success: true, tasks: data.tasks || [] };
   return {

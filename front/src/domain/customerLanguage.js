@@ -5,6 +5,14 @@ export function receiptReferences(receiptNumber, orderNumber) {
   return { receiptNumber: receipt || order || "Not available",
     orderNumber: receipt && order && receipt !== order && receipt !== `RCP-${order}` ? order : "" };
 }
+export function receiptOrderName(items = []) {
+  const names = [...new Set((Array.isArray(items) ? items : [])
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean))];
+  if (!names.length) return "Order items";
+  if (names.length === 1) return names[0];
+  return `${names[0]} and ${names.length - 1} more item${names.length > 2 ? "s" : ""}`;
+}
 export function customerStatus(value) {
   const key = String(value || "").trim().toLowerCase().replace(/[ -]+/g, "_");
   return ({ to_pay: "Awaiting payment", to_deliver: "Preparing for delivery", dispatch: "Dispatch", dispatched: "Dispatch", to_dispatch: "To Dispatch", to_install: "Awaiting installation", for_rescheduling: "For Rescheduling",

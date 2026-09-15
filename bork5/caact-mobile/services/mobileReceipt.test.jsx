@@ -19,12 +19,14 @@ test('long derived receipt reference is not repeated and contact details are not
  expect(screen.getByText(/long.customer.address@example.com/).props.numberOfLines).toBeUndefined();
 });
 test('mobile receipt shows one receipt identifier and preserves the separate order reference',async()=>{
+ getOrderById.mockResolvedValueOnce({id:'order1',orderCode:'ORD-1',receiptAvailable:true,paymentMethod:'gcash',paymentStatus:'paid',receipt:{receiptNumber:'RCP-1'},items:[{name:'LG Premium Dual Inverter'}]});
  await render(<ReceiptScreen/>);
  await screen.findByText(/RCP-1/);
  expect(screen.getAllByText(/RCP-1/)).toHaveLength(1);
  expect(screen.getByText(/ORD-1/)).toBeTruthy();
  expect(screen.getByText('GCash')).toBeTruthy();
  expect(screen.getByLabelText('Cold Air logo')).toBeTruthy();
+ expect(screen.getAllByText('LG Premium Dual Inverter')).toHaveLength(2);
 });
 
 test('receipt updates in place when a payment/delivery notification arrives', async () => {

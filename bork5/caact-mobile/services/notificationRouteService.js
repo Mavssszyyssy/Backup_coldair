@@ -4,6 +4,10 @@ export function resolveNotificationRoute(item = {}, role = "") {
   const route = typeof item.route === "string" ? item.route : "";
 
   if (normalizedRole === "technician") {
+    if (route.startsWith("/technician/task/")) return route;
+    if (item.targetType === "task" && item.targetId) {
+      return `/technician/task/${encodeURIComponent(item.targetId)}/information`;
+    }
     if (route.startsWith("/technician/")) return route;
     if (route === "/tech/tasks" || route.startsWith("/tech/tasks/")) return "/technician/tasks";
     if (route === "/tech/dashboard") return "/technician/dashboard";

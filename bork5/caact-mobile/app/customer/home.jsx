@@ -18,9 +18,6 @@ import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import {
-  getCustomerServiceHistory,
-} from "../../services/customerHistoryService";
 import { getOrdersByUser } from "../../services/orderStorage";
 import { getDisplayName } from "../../services/profileService";
 import {
@@ -62,14 +59,12 @@ export default function CustomerHomeScreen() {
         return Promise.allSettled([
           getUnitsByUser(current?.id),
           getOrdersByUser(current),
-          getCustomerServiceHistory(current?.id),
-        ]).then(([unitsResult, ordersResult, historyResult]) => {
+        ]).then(([unitsResult, ordersResult]) => {
           if (!active) return;
           if (unitsResult.status === "fulfilled") {
             const nextUnits = unitsResult.value;
             setUnits(nextUnits);
-            const history = historyResult.status === "fulfilled" ? historyResult.value : { requests: [], linkedTasks: [] };
-            setRecommendationMap(buildUnitRecommendationMap(nextUnits, history.requests || [], history.linkedTasks || []));
+            setRecommendationMap(buildUnitRecommendationMap(nextUnits));
           }
           if (ordersResult.status === "fulfilled") {
             const nextOrders = ordersResult.value;

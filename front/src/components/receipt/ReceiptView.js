@@ -1,6 +1,6 @@
 import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
-import { receiptReferences, customerStatus } from "../../domain/customerLanguage";
+import { receiptOrderName, receiptReferences, customerStatus } from "../../domain/customerLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
@@ -133,6 +133,7 @@ function ReceiptView() {
 
   const deliveryAddress = resolveDeliveryAddress(order || {});
   const references = receiptReferences(order?.invoice?.invoiceNumber || order?.receipt?.receiptNumber, order?.orderCode);
+  const orderName = receiptOrderName(order?.items);
   const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
   const isCompleted = Boolean(order?.codCollection?.collectedAt);
   const paymentMethodLabel = methodLabel(order?.paymentMethod || order?.receipt?.paymentMethod);
@@ -173,6 +174,11 @@ function ReceiptView() {
               <div className="receipt-status">
                 <span>{paymentStatusLabel.toUpperCase()}</span>
               </div>
+            </div>
+
+            <div className="receipt-order-name">
+              <span>Order</span>
+              <strong>{orderName}</strong>
             </div>
 
             <div className="receipt-band">
@@ -278,6 +284,9 @@ function ReceiptView() {
         .receipt-status { display: grid; gap: 6px; justify-items: end; text-align: right; }
         .receipt-status span { background: #ecfdf5; color: #047857; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; }
         .receipt-status strong { font-size: 18px; }
+        .receipt-order-name { display: grid; gap: 4px; padding: 16px 26px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .receipt-order-name span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .receipt-order-name strong { color: #0f172a; font-size: 18px; overflow-wrap: anywhere; }
         .receipt-band { display: grid; grid-template-columns: 1fr 1fr; background: #0f172a; color: #fff; }
         .receipt-band div { padding: 18px 26px; display: grid; gap: 5px; }
         .receipt-band span, .receipt-grid span { color: #94a3b8; font-size: 12px; font-weight: 800; text-transform: uppercase; }

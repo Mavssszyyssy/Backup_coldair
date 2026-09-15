@@ -4,7 +4,7 @@ import { startLiveRefresh } from "../../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { Image, View } from "react-native";
 import { paymentMethodLabel } from "../../../services/paymentMethodLabel";
-import { receiptReferences, customerStatus } from "../../../services/customerLanguage";
+import { receiptOrderName, receiptReferences, customerStatus } from "../../../services/customerLanguage";
 
 import {
   BoutiqueButton,
@@ -198,6 +198,7 @@ export default function ReceiptScreen() {
   const receipt = receiptDetails(order || {});
   const invoice = order?.invoice || {};
   const references = receiptReferences(receipt.receiptNumber, order?.orderCode || order?.id);
+  const orderName = receiptOrderName(order?.items);
   const deliveryAddress = resolveDeliveryAddress(order || {});
 
   return (
@@ -248,6 +249,11 @@ export default function ReceiptScreen() {
               <View style={{ alignItems: "flex-start", gap: BQ_SPACING.xs }}>
                 <BoutiqueChip label={String(receipt.paymentStatus).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
               </View>
+            </View>
+
+            <View style={{ paddingHorizontal: BQ_SPACING.lg, paddingVertical: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderTopWidth: 1, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
+              <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>ORDER</BoutiqueText>
+              <BoutiqueText variant="h3" style={{ marginTop: BQ_SPACING.xs }}>{orderName}</BoutiqueText>
             </View>
 
             <View style={{ backgroundColor: "#0f172a" }}>

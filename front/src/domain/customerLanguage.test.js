@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { receiptReferences, customerStatus, customerSystemMessage } from './customerLanguage';
+import { receiptOrderName, receiptReferences, customerStatus, customerSystemMessage } from './customerLanguage';
 
 describe('customer-friendly display text', () => {
   it('keeps web and mobile rules identical', () => {
@@ -12,6 +12,10 @@ describe('customer-friendly display text', () => {
     ['', 'ORD-123', { receiptNumber: 'ORD-123', orderNumber: '' }],
     ['ORD-123', 'ORD-123', { receiptNumber: 'ORD-123', orderNumber: '' }],
   ])('avoids repeated identifiers: %s', (receipt, order, expected) => expect(receiptReferences(receipt, order)).toEqual(expected));
+  it('provides one concise order name for receipt headers', () => {
+    expect(receiptOrderName([{ name: 'LG Premium Dual Inverter' }])).toBe('LG Premium Dual Inverter');
+    expect(receiptOrderName([{ name: 'LG Premium Dual Inverter' }, { name: 'TCL Window AC' }])).toBe('LG Premium Dual Inverter and 1 more item');
+  });
   it('uses readable order states', () => expect(customerStatus('to_deliver')).toBe('Preparing for delivery'));
   it('preserves the difference between fallback and AI plans', () => {
     const fallback = customerSystemMessage("Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.");

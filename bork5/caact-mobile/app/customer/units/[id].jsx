@@ -19,7 +19,6 @@ import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import DetailRow from "../../../components/ui/DetailRow";
 import EmptyState from "../../../components/ui/EmptyState";
-import BottomSheetSelect from "../../../components/ui/BottomSheetSelect";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import {
@@ -38,7 +37,7 @@ import {
   cacheUnitUpdate,
   getUnitByCode,
 } from "../../../services/unitStorage";
-import { generateAmpReport, getStoredToken, updateAmpRoomSize } from "../../../services/api";
+import { generateAmpReport, getStoredToken } from "../../../services/api";
 
 function readParam(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -68,12 +67,6 @@ function detailPageFromParam(value) {
   const normalized = String(readParam(value) || "").trim().toLowerCase();
   return DETAIL_PAGE_INDEX[normalized] ?? 0;
 }
-const ROOM_SIZE_OPTIONS = [6, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 50].map((size) => ({
-  id: String(size),
-  value: size,
-  label: `Approximately ${size} m²`,
-}));
-
 function checkInMapUrl(checkIn = {}) {
   const latitude = Number(checkIn?.latitude);
   const longitude = Number(checkIn?.longitude);
@@ -171,8 +164,6 @@ export default function CustomerUnitDetailsScreen() {
   const [ampReport, setAmpReport] = useState(null);
   const [ampReportLoading, setAmpReportLoading] = useState("");
   const [ampReportError, setAmpReportError] = useState("");
-  const [roomSize, setRoomSize] = useState("");
-  const [roomSaving, setRoomSaving] = useState(false);
   const [cancellingRequestId, setCancellingRequestId] = useState("");
   const [detailPage, setDetailPage] = useState(() => detailPageFromParam(params.page));
 
@@ -288,7 +279,6 @@ export default function CustomerUnitDetailsScreen() {
           const nextRecommendation = buildMaintenanceRecommendation({ unit: loadedUnit });
           setRecommendation(nextRecommendation);
           setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-          if (!background) setRoomSize(loadedUnit.roomSizeSqm ? String(loadedUnit.roomSizeSqm) : "");
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -343,9 +333,6 @@ export default function CustomerUnitDetailsScreen() {
   const checkedInTask = latestCheckInRecord?.task || null;
   const latestCheckIn = latestCheckInRecord?.checkIn || null;
   const latestCheckInMapUrl = checkInMapUrl(latestCheckIn);
-  const selectedRoomSize = ROOM_SIZE_OPTIONS.find(
-    (option) => String(option.value) === String(roomSize),
-  );
   const goToDetailPage = (nextPage) => {
     setDetailPage(Math.max(0, Math.min(DETAIL_PAGES.length - 1, nextPage)));
   };
@@ -436,29 +423,11 @@ export default function CustomerUnitDetailsScreen() {
             <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
             <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
             <DetailRow label="Horsepower" value={formatUnitHorsepower(unit)} />
-            <BottomSheetSelect
+            <DetailRow
               label="Room size"
-              value={selectedRoomSize?.label || (roomSize ? `${roomSize} m²` : "")}
-              placeholder="Choose the closest room size"
-              items={ROOM_SIZE_OPTIONS}
-              itemIcon="resize-sharp"
-              searchPlaceholder="Search room sizes"
-              getKey={(option) => option.id}
-              getLabel={(option) => option.label}
-              onSelect={(option) => setRoomSize(String(option.value))}
+              value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : "Recorded by the technician during installation"}
+              multiline
             />
-            <Button title="Save Room Size" loading={roomSaving} disabled={roomSaving} onPress={async () => {
-              const value = Number(roomSize);
-              if (!value || value <= 0) return Alert.alert("Choose a room size", "Select the closest room size before saving.");
-              setRoomSaving(true);
-              try {
-                const token = await getStoredToken(); const result = await updateAmpRoomSize(token, unit.id, value);
-                if (!result.success) throw new Error(result.error);
-                const nextUnit = { ...unit, roomSizeSqm: value, capacityAssessment: result.recommendation?.capacityAssessment };
-                setUnit(nextUnit); const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit }); setRecommendation(nextRecommendation); setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-                Alert.alert("Room size saved", result.recommendation?.capacityAssessment?.summary || "Capacity assessment updated.");
-              } catch (error) { Alert.alert("Unable to save", error.message || "Please try again."); } finally { setRoomSaving(false); }
-            }} />
             <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
           </Card>
         </>

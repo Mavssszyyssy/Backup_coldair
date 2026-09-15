@@ -15,6 +15,13 @@ import {
   listenForNotificationNavigation,
   openInitialNotification,
 } from "../services/pushNotificationService";
+import { checkBackendConnection } from "../services/api";
+import { startNetworkRecovery } from "../services/networkRecovery";
+
+function NetworkRecoverySetup() {
+  useEffect(() => startNetworkRecovery(checkBackendConnection), []);
+  return null;
+}
 
 function PushNotificationSetup() {
   const router = useRouter();
@@ -44,6 +51,7 @@ export default function RootLayout() {
       <UserProvider>
         <CartProvider>
           <PushNotificationSetup />
+          <NetworkRecoverySetup />
           <BackendConnectionStatus />
           <KeyboardAvoidingView
             style={{ flex: 1 }}

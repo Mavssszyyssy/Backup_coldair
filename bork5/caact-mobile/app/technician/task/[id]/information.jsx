@@ -28,12 +28,19 @@ function checkInMapUrl(checkIn = {}) {
   return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
-const DETAIL_PAGES = [
-  { label: "Overview", icon: "clipboard-sharp" },
-  { label: "AC Unit", icon: "snow-sharp" },
-  { label: "Service", icon: "construct-sharp" },
-  { label: "Proof", icon: "camera-sharp" },
-];
+const WORK_ORDER_PAGES = {
+  installation: [
+    { key: "overview", label: "Overview", icon: "clipboard-sharp" },
+    { key: "unit", label: "AC Unit", icon: "snow-sharp" },
+    { key: "proof", label: "Proof", icon: "camera-sharp" },
+  ],
+  service: [
+    { key: "overview", label: "Overview", icon: "clipboard-sharp" },
+    { key: "unit", label: "AC Unit", icon: "snow-sharp" },
+    { key: "service", label: "Service", icon: "construct-sharp" },
+    { key: "proof", label: "Proof", icon: "camera-sharp" },
+  ],
+};
 
 const STATUS_COLORS = {
   pending: COLORS.warning,
@@ -76,6 +83,76 @@ function DetailItem({ icon, label, value, accent = COLORS.tech }) {
         <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.bold, marginTop: 3, lineHeight: 21 }}>{String(value ?? "Not provided")}</Text>
       </View>
     </View>
+  );
+}
+
+function InstallationTimeline({ pages, currentPage, onChange }) {
+  return (
+    <Card style={{ marginBottom: SPACING.md }}>
+      <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.black }}>
+        Installation details
+      </Text>
+      <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
+        Review the work order in this order.
+      </Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: SPACING.md }}>
+        {pages.map((page, index) => {
+          const selected = currentPage === index;
+          const passed = index < currentPage;
+          return (
+            <View key={page.key} style={{ flex: 1, alignItems: "center" }}>
+              {index < pages.length - 1 ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 19,
+                    left: "50%",
+                    right: "-50%",
+                    height: 3,
+                    backgroundColor: passed ? COLORS.tech : COLORS.borderInput,
+                  }}
+                />
+              ) : null}
+              <TouchableOpacity
+                onPress={() => onChange(index)}
+                accessibilityRole="button"
+                accessibilityLabel={`Installation details: Step ${index + 1}, ${page.label}`}
+                accessibilityState={{ selected }}
+                style={{ alignItems: "center", width: "100%", zIndex: 1 }}
+              >
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 2,
+                    borderColor: selected || passed ? COLORS.tech : COLORS.borderInput,
+                    backgroundColor: selected ? COLORS.tech : COLORS.surface,
+                  }}
+                >
+                  <Ionicons
+                    name={page.icon}
+                    size={18}
+                    color={selected ? COLORS.surface : selected || passed ? COLORS.tech : COLORS.textMuted}
+                  />
+                </View>
+                <Text style={{ color: COLORS.textMuted, fontSize: 10, fontWeight: FONT.bold, marginTop: 7 }}>
+                  STEP {index + 1}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{ color: selected ? COLORS.tech : COLORS.textPrimary, fontSize: FONT.sm, fontWeight: selected ? FONT.black : FONT.bold, marginTop: 2 }}
+                >
+                  {page.label}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+    </Card>
   );
 }
 
@@ -132,6 +209,14 @@ export default function TaskInformationScreen() {
   const [detailPage, setDetailPage] = useState(0);
   const [visitProof, setVisitProof] = useState(null);
 
+  // A direct notification can replace the task ID without remounting this
+  // screen. Always start each work order on its overview instead of retaining
+  // the tab that happened to be open for the previous task.
+  React.useEffect(() => {
+    setDetailPage(0);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [id]);
+
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
@@ -145,7 +230,9 @@ export default function TaskInformationScreen() {
           }
           const loadedUnit = loadedTask.unit || null;
           const loadedRequests = loadedTask.requestId ? [{ id: loadedTask.requestId }] : [];
-          const loadedLogs = loadedTask?.id ? await getServiceLogsByTask(loadedTask.id) : [];
+          const loadedLogs = !isInstallationWorkOrder(loadedTask) && loadedTask?.id
+            ? await getServiceLogsByTask(loadedTask.id)
+            : [];
           if (active) {
             setTask(loadedTask);
             setUnit(loadedUnit);
@@ -170,6 +257,8 @@ export default function TaskInformationScreen() {
   const proof = task?.proof || {};
   const registrationProgress = task?.registrationProgress;
   const installationTask = isInstallationWorkOrder(task);
+  const detailPages = installationTask ? WORK_ORDER_PAGES.installation : WORK_ORDER_PAGES.service;
+  const activePage = detailPages[detailPage] || detailPages[0];
   const registrationComplete =
     registrationProgress?.isComplete ?? assignedSerials.length === 0;
   const hasCheckedIn = Boolean(task?.checkIn?.checkedInAt);
@@ -183,6 +272,9 @@ export default function TaskInformationScreen() {
     if (task?.visitAttempt?.id) getVisitAttempt(id).then(attempt => { if (active) setVisitProof(attempt); }).catch(() => {});
     return () => { active = false; };
   }, [id, task?.visitAttempt?.id, task?.visitAttempt?.awaitingAdmin]);
+  React.useEffect(() => {
+    if (detailPage >= detailPages.length) setDetailPage(detailPages.length - 1);
+  }, [detailPage, detailPages.length]);
   const installationNextAction = task?.codPayment && !task.codPayment.collectedAt
     ? { title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
     : registrationComplete
@@ -244,7 +336,7 @@ export default function TaskInformationScreen() {
   );
 
   const changePage = (nextPage) => {
-    const safePage = Math.max(0, Math.min(DETAIL_PAGES.length - 1, nextPage));
+    const safePage = Math.max(0, Math.min(detailPages.length - 1, nextPage));
     setDetailPage(safePage);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   };
@@ -312,31 +404,35 @@ export default function TaskInformationScreen() {
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.md }}>
               <StatusChip label={String(task?.status || "Unknown").replace(/[-_]/g, " ")} color={statusColor(task?.status)} tone="solid" />
-              <Text style={{ color: "#E0F2FE", fontSize: FONT.sm }}>{detailPage + 1} of {DETAIL_PAGES.length}</Text>
+              <Text style={{ color: "#E0F2FE", fontSize: FONT.sm }}>{detailPage + 1} of {detailPages.length}</Text>
             </View>
           </View>
 
-          <Card style={{ padding: SPACING.xs, marginBottom: SPACING.md }}>
-            <View style={{ flexDirection: "row" }}>
-              {DETAIL_PAGES.map((page, index) => {
-                const selected = detailPage === index;
-                return (
-                  <TouchableOpacity
-                    key={page.label}
-                    onPress={() => changePage(index)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    style={{ flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: RADIUS.md, backgroundColor: selected ? COLORS.tech : "transparent", paddingHorizontal: 2 }}
-                  >
-                    <Ionicons name={page.icon} size={19} color={selected ? COLORS.surface : COLORS.textMuted} />
-                    <Text numberOfLines={1} style={{ color: selected ? COLORS.surface : COLORS.textSecondary, fontSize: 11, fontWeight: selected ? FONT.black : FONT.bold, marginTop: 4 }}>{page.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Card>
+          {installationTask ? (
+            <InstallationTimeline pages={detailPages} currentPage={detailPage} onChange={changePage} />
+          ) : (
+            <Card style={{ padding: SPACING.xs, marginBottom: SPACING.md }}>
+              <View style={{ flexDirection: "row" }}>
+                {detailPages.map((page, index) => {
+                  const selected = detailPage === index;
+                  return (
+                    <TouchableOpacity
+                      key={page.key}
+                      onPress={() => changePage(index)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      style={{ flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", borderRadius: RADIUS.md, backgroundColor: selected ? COLORS.tech : "transparent", paddingHorizontal: 2 }}
+                    >
+                      <Ionicons name={page.icon} size={19} color={selected ? COLORS.surface : COLORS.textMuted} />
+                      <Text numberOfLines={1} style={{ color: selected ? COLORS.surface : COLORS.textSecondary, fontSize: 11, fontWeight: selected ? FONT.black : FONT.bold, marginTop: 4 }}>{page.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </Card>
+          )}
 
-          {(detailPage === 0 || detailPage === 3) && task?.visitAttempt?.id ? <Card>
+          {activePage.key === "proof" && task?.visitAttempt?.id ? <Card>
             <SectionHeading icon="time-sharp" title="Unattended visit" subtitle={task.visitAttempt.awaitingAdmin ? 'Awaiting Admin follow-up' : 'Previous attempt — next visit confirmed'} />
             <Text style={{ color: COLORS.textPrimary, lineHeight: 21 }}>{task.visitAttempt.note}</Text>
             <Text style={{ color: COLORS.textSecondary, marginVertical: SPACING.sm }}>{new Date(task.visitAttempt.submittedAt).toLocaleString()}</Text>
@@ -344,15 +440,7 @@ export default function TaskInformationScreen() {
               try { setVisitProof(await getVisitAttempt(id)); } catch (error) { Alert.alert('Unable to load proof', error.message); }
             }} />}
           </Card> : null}
-          {detailPage === 0 ? <>
-            <Card>
-              <SectionHeading icon="person-sharp" title="Customer & Schedule" subtitle="Essential visit details" />
-              <DetailItem icon="person-circle-sharp" label="Customer" value={task?.customerName || "Unknown"} />
-              <DetailItem icon="location-sharp" label="Delivery / Service Address" value={task?.address || "Not provided"} />
-              <DetailItem icon="calendar-sharp" label="Schedule" value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || "Unscheduled"} accent={COLORS.warning} />
-              <DetailItem icon="chatbox-ellipses-sharp" label="Service Concern" value={task?.description || task?.concern || "None"} />
-            </Card>
-
+          {activePage.key === "overview" ? <>
             {nextAction ? (
               <Card style={{ borderColor: nextAction.disabled ? COLORS.warning : COLORS.tech, backgroundColor: nextAction.disabled ? COLORS.warningLight : COLORS.techLight }}>
                 <SectionHeading icon={nextAction.icon} title="Next Action" subtitle="Continue this work order" />
@@ -362,7 +450,15 @@ export default function TaskInformationScreen() {
               </Card>
             ) : null}
 
-            <ServicePaymentCard task={task} onUpdated={setTask} />
+            <Card>
+              <SectionHeading icon="person-sharp" title="Customer & Schedule" subtitle="Essential visit details" />
+              <DetailItem icon="person-circle-sharp" label="Customer" value={task?.customerName || "Unknown"} />
+              <DetailItem icon="location-sharp" label="Delivery / Service Address" value={task?.address || "Not provided"} />
+              <DetailItem icon="calendar-sharp" label="Schedule" value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || "Unscheduled"} accent={COLORS.warning} />
+              <DetailItem icon="chatbox-ellipses-sharp" label={installationTask ? "Installation Details" : "Service Concern"} value={task?.description || task?.concern || (installationTask ? "No special instructions" : "None")} />
+            </Card>
+
+            {!installationTask ? <ServicePaymentCard task={task} onUpdated={setTask} /> : null}
             {hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
               <SectionHeading icon="person-remove-sharp" title="No one available?" subtitle="Record an unattended visit after arrival" />
               <TechButton title="Close visit / request reschedule" variant="secondary" onPress={() => router.push(`/technician/task/${id}/visit-attempt`)} />
@@ -398,7 +494,7 @@ export default function TaskInformationScreen() {
             ) : null}
           </> : null}
 
-          {detailPage === 1 ? (
+          {activePage.key === "unit" ? (
             <Card>
               <SectionHeading icon="snow-sharp" title="AC Unit Details" subtitle="Equipment assigned to this work order" />
               <DetailItem icon="cube-sharp" label="AC Unit" value={unit?.unitName || task?.unitName || "Unassigned"} />
@@ -408,11 +504,11 @@ export default function TaskInformationScreen() {
               <DetailItem icon="resize-sharp" label="Room Size" value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : "Not recorded"} />
               <DetailItem icon="shield-checkmark-sharp" label="Warranty Status" value={formatWarrantyStatus(unit?.warrantyStatus, { installationPending: installationTask && !unit?.installationDate })} accent={COLORS.success} />
               {unit?.warrantyCoverage?.coverageSummary ? <DetailItem icon="document-text-sharp" label="Warranty Coverage" value={unit.warrantyCoverage.coverageSummary} /> : null}
-              {unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
+              {!installationTask && unit?.bestServicedBy ? <DetailItem icon="calendar-number-sharp" label="Suggested Servicing Date" value={`${new Date(unit.bestServicedBy).toLocaleDateString()} · ${String(unit.recommendedService || "regular_cleaning").replace(/_/g, " ")}`} accent={COLORS.warning} /> : null}
             </Card>
           ) : null}
 
-          {detailPage === 2 ? <>
+          {activePage.key === "service" ? <>
             <Card>
               <SectionHeading icon="document-text-sharp" title="Service Report" subtitle="Recorded findings and resolution" />
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />
@@ -430,7 +526,7 @@ export default function TaskInformationScreen() {
             </Card>
           </> : null}
 
-          {detailPage === 3 ? (
+          {activePage.key === "proof" ? (
             <Card>
               <SectionHeading icon="camera-sharp" title={installationTask ? "Installation proof" : "Service proof"} subtitle={proof.submittedAt ? "Saved work confirmation" : "Proof will appear after the visit is completed"} />
               <View style={{ flexDirection: 'row', gap: SPACING.md, borderBottomWidth: 1, borderColor: COLORS.border, paddingBottom: SPACING.md }}>
@@ -454,13 +550,18 @@ export default function TaskInformationScreen() {
                 <Text style={{ color: detailPage === 0 ? COLORS.textMuted : COLORS.tech, fontWeight: FONT.black }}>Previous</Text>
               </TouchableOpacity>
               <View style={{ alignItems: "center", minWidth: 64 }}>
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{detailPage + 1} / {DETAIL_PAGES.length}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.bold }}>
+                  {installationTask ? "INSTALLATION DETAILS" : "WORK ORDER DETAILS"}
+                </Text>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginTop: 2 }}>
+                  Step {detailPage + 1} of {detailPages.length} · {activePage.label}
+                </Text>
                 <View style={{ flexDirection: "row", gap: 4, marginTop: 5 }}>
-                  {DETAIL_PAGES.map((page, index) => <View key={page.label} style={{ width: index === detailPage ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: index === detailPage ? COLORS.tech : COLORS.borderInput }} />)}
+                  {detailPages.map((page, index) => <View key={page.key} style={{ width: index === detailPage ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: index === detailPage ? COLORS.tech : COLORS.borderInput }} />)}
                 </View>
               </View>
-              <TouchableOpacity disabled={detailPage === DETAIL_PAGES.length - 1} onPress={() => changePage(detailPage + 1)} style={{ flex: 1, minHeight: 44, borderRadius: RADIUS.md, backgroundColor: detailPage === DETAIL_PAGES.length - 1 ? COLORS.border : COLORS.tech, alignItems: "center", justifyContent: "center", opacity: detailPage === DETAIL_PAGES.length - 1 ? 0.55 : 1 }}>
-                <Text style={{ color: detailPage === DETAIL_PAGES.length - 1 ? COLORS.textMuted : COLORS.surface, fontWeight: FONT.black }}>Next</Text>
+              <TouchableOpacity disabled={detailPage === detailPages.length - 1} onPress={() => changePage(detailPage + 1)} style={{ flex: 1, minHeight: 44, borderRadius: RADIUS.md, backgroundColor: detailPage === detailPages.length - 1 ? COLORS.border : COLORS.tech, alignItems: "center", justifyContent: "center", opacity: detailPage === detailPages.length - 1 ? 0.55 : 1 }}>
+                <Text style={{ color: detailPage === detailPages.length - 1 ? COLORS.textMuted : COLORS.surface, fontWeight: FONT.black }}>Next</Text>
               </TouchableOpacity>
             </View>
           </Card>

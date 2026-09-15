@@ -109,7 +109,11 @@ export async function getNotificationsForUser(user = {}, { strict = false } = {}
       if (item.role && String(item.role) === String(user.role)) return true;
       return !item.userId && !item.role;
     })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((item) => ({
+      ...item,
+      route: resolveNotificationRoute(item, user?.role),
+    }));
 }
 
 export async function markNotificationRead(notificationId) {
