@@ -10,6 +10,7 @@ const BOTTOM_NAV_ROUTES = new Set([
   "/technician",
   "/technician/home",
   "/technician/dashboard",
+  "/technician/tasks",
   "/technician/notifications",
   "/technician/profile",
 ]);
@@ -23,6 +24,8 @@ export function TechHero({ eyebrow, title, subtitle, icon = "construct-sharp", c
         padding: SPACING.md,
         marginBottom: SPACING.md,
         overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.16)",
       }}
     >
       <View
@@ -154,6 +157,10 @@ export default function TechnicianScreen({
           paddingHorizontal: SPACING.md,
           paddingTop: SPACING.xs,
           paddingBottom: SPACING.sm,
+          minHeight: 62,
+          backgroundColor: COLORS.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
         }}
       >
         {isTopLevel && !onBack ? (

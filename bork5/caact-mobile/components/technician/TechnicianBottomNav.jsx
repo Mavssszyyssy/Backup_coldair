@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 const ITEMS = [
-  { href: "/technician/dashboard", label: "Dashboard", icon: "speedometer-sharp" },
+  { href: "/technician/dashboard", label: "Today", icon: "speedometer-sharp" },
+  { href: "/technician/tasks", label: "Work Orders", icon: "clipboard-sharp" },
   { href: "/technician/notifications", label: "Alerts", icon: "notifications-sharp" },
   { href: "/technician/profile", label: "Profile", icon: "person-sharp" },
 ];
@@ -26,7 +27,7 @@ function NavItem({ item }) {
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
       style={{
-        flex: item.elevated ? 1.15 : 1,
+        flex: 1,
         alignItems: "center",
         justifyContent: "center",
         minHeight: 58,
@@ -34,12 +35,14 @@ function NavItem({ item }) {
     >
       <View
         style={{
-          width: 34,
+          width: 38,
           height: 34,
           borderRadius: RADIUS.full,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: active ? COLORS.techLight : "transparent",
+          borderWidth: active ? 1 : 0,
+          borderColor: active ? `${COLORS.tech}25` : "transparent",
         }}
       >
         <Ionicons

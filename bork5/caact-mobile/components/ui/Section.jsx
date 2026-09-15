@@ -17,6 +17,8 @@ export default function Section({ title, children, style, right }) {
           borderRadius: RADIUS.lg,
           padding: SPACING.md,
           marginTop: 18,
+          borderWidth: 1,
+          borderColor: COLORS.border,
         },
         style,
       ]}

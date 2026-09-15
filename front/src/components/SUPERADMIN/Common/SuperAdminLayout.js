@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import SuperAdminHeader from './SuperAdminHeader';
 import SuperAdminSidebar from './SuperAdminSidebar';
 import '../superAdminShared.css';
+import '../../common/operationsDesignSystem.css';
 
 const SuperAdminLayout = ({ title, subtitle, children, embedded = false }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,10 +20,12 @@ const SuperAdminLayout = ({ title, subtitle, children, embedded = false }) => {
 
   return (
     <div className="super-layout">
+      <a className="ops-skip-link" href="#superadmin-main-content">Skip to main content</a>
       <button
         className={`super-burger-button ${menuOpen ? 'open' : ''}`}
         type="button"
         aria-label="Toggle menu"
+        aria-expanded={menuOpen}
         onClick={() => setMenuOpen((open) => !open)}
       >
         <span />
@@ -30,10 +33,10 @@ const SuperAdminLayout = ({ title, subtitle, children, embedded = false }) => {
         <span />
       </button>
       <SuperAdminSidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
-      <div className="super-layout-main">
+      <main className="super-layout-main" id="superadmin-main-content">
         <SuperAdminHeader title={title} subtitle={subtitle} />
         {children}
-      </div>
+      </main>
       {menuOpen && <div className="super-menu-overlay" onClick={() => setMenuOpen(false)} />}
     </div>
   );

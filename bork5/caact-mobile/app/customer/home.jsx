@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
@@ -16,6 +16,7 @@ import BottomSheetSelect from "../../components/ui/BottomSheetSelect";
 import EmptyState from "../../components/ui/EmptyState";
 import IconRow from "../../components/ui/IconRow";
 import StatusChip from "../../components/ui/StatusChip";
+import { PageControls } from "../../components/ui/PagedItems";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getOrdersByUser } from "../../services/orderStorage";
@@ -32,6 +33,7 @@ const UNIT_SORT_OPTIONS = [
   { id: "oldest", name: "Oldest purchase first" },
   { id: "name", name: "Name A–Z" },
 ];
+const UNIT_PAGE_SIZE = 3;
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
@@ -43,6 +45,7 @@ export default function CustomerHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [unitSearch, setUnitSearch] = useState("");
   const [unitSort, setUnitSort] = useState("newest");
+  const [unitPage, setUnitPage] = useState(0);
 
   const visibleUnits = useMemo(
     () => sortCustomerUnits(filterCustomerUnits(units, unitSearch), unitSort),
@@ -50,6 +53,14 @@ export default function CustomerHomeScreen() {
   );
   const newestUnitId = useMemo(() => sortCustomerUnits(units, "newest")[0]?.id || "", [units]);
   const selectedSort = UNIT_SORT_OPTIONS.find((item) => item.id === unitSort) || UNIT_SORT_OPTIONS[0];
+  const unitPageCount = Math.max(1, Math.ceil(visibleUnits.length / UNIT_PAGE_SIZE));
+  const currentUnitPage = Math.min(unitPage, unitPageCount - 1);
+  const firstUnitIndex = currentUnitPage * UNIT_PAGE_SIZE;
+  const pagedUnits = visibleUnits.slice(firstUnitIndex, firstUnitIndex + UNIT_PAGE_SIZE);
+
+  useEffect(() => {
+    setUnitPage(0);
+  }, [unitSearch, unitSort]);
 
   useFocusEffect(
     useCallback(() => {
@@ -207,7 +218,9 @@ export default function CustomerHomeScreen() {
             onSelect={(item) => setUnitSort(item.id)}
           />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold, marginBottom: SPACING.xs }}>
-            Showing {visibleUnits.length} of {units.length}
+            {visibleUnits.length
+              ? `Showing ${firstUnitIndex + 1}–${Math.min(firstUnitIndex + UNIT_PAGE_SIZE, visibleUnits.length)} of ${visibleUnits.length} matching units (${units.length} registered)`
+              : `Showing 0 of ${units.length} registered units`}
           </Text>
           {visibleUnits.length === 0 ? (
             <EmptyState
@@ -217,7 +230,7 @@ export default function CustomerHomeScreen() {
               iconColor={COLORS.primary}
               action={<Button title="Clear Search" variant="secondary" onPress={() => setUnitSearch("")} />}
             />
-          ) : visibleUnits.map((unit, index) => (
+          ) : pagedUnits.map((unit, index) => (
             (() => {
               const recommendation = recommendationMap[String(unit.id)];
               const maintenance = buildNextRecommendedMaintenance(recommendation);
@@ -226,7 +239,7 @@ export default function CustomerHomeScreen() {
                 <CustomerUnitRow
                   key={unit.id}
                   unit={unit}
-                  position={index + 1}
+                   position={firstUnitIndex + index + 1}
                   isNewest={unit.id === newestUnitId}
                   recommendation={recommendation}
                   maintenance={maintenance}
@@ -235,6 +248,7 @@ export default function CustomerHomeScreen() {
               );
             })()
           ))}
+          {visibleUnits.length > UNIT_PAGE_SIZE ? <PageControls page={currentUnitPage} total={unitPageCount} onChange={setUnitPage} label="My AC Units" /> : null}
         </Card>
       )}
 

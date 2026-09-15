@@ -54,7 +54,8 @@ const INVENTORY_CATEGORY_OPTIONS = [
   ["window", "Window Type"],
   ["floor", "Floor Type"],
 ];
-const INVENTORY_PAGE_SIZE = 10;
+const REPORT_PAGE_SIZE = 10;
+const BUSINESS_INTELLIGENCE_PAGES = ["Sales intelligence", "Service intelligence", "Inventory intelligence", "AMP intelligence"];
 
 const SUMMARY_LABELS = {
   transactionCount: "Transactions",
@@ -131,12 +132,66 @@ const reportTableHtml = (rows, { title = "Report details" } = {}) => {
 };
 
 const inventoryReportHtml = (rows, summaryHtml) => {
-  const pageCount = Math.max(1, Math.ceil(rows.length / INVENTORY_PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(rows.length / REPORT_PAGE_SIZE));
   return Array.from({ length: pageCount }, (_, index) => {
-    const pageRows = rows.slice(index * INVENTORY_PAGE_SIZE, (index + 1) * INVENTORY_PAGE_SIZE);
+    const pageRows = rows.slice(index * REPORT_PAGE_SIZE, (index + 1) * REPORT_PAGE_SIZE);
     return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>Branch stock register</strong><span>Page ${index + 1} of ${pageCount}</span></div>${reportTableHtml(pageRows, { title: `Inventory records · Page ${index + 1}` })}</section>`;
   }).join("");
 };
+
+const paginatedReportHtml = (rows, { summaryHtml = "", title = "Report details", secondaryHtml = "" } = {}) => {
+  const pageCount = Math.max(1, Math.ceil(rows.length / REPORT_PAGE_SIZE));
+  return Array.from({ length: pageCount }, (_, index) => {
+    const pageRows = rows.slice(index * REPORT_PAGE_SIZE, (index + 1) * REPORT_PAGE_SIZE);
+    return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>${escapeHtml(title)}</strong><span>Page ${index + 1} of ${pageCount}</span></div>${reportTableHtml(pageRows, { title: `${title} · Page ${index + 1}` })}${index === pageCount - 1 ? secondaryHtml : ""}</section>`;
+  }).join("");
+};
+
+const businessIntelligenceRows = (intelligence = {}) => {
+  const summary = businessIntelligenceSummary(intelligence.summary || {});
+  const rows = [
+    { section: "Sales summary", record: "Amount collected", detail: "Verified paid transactions", value: summary.amountCollected },
+    { section: "Sales summary", record: "Units sold", detail: "Recorded units in selected period", value: summary.unitsSold },
+    { section: "Service summary", record: "Completed services", detail: "Completed service records", value: summary.completedServices },
+    { section: "Inventory summary", record: "Current stock units", detail: "Current recorded branch stock", value: summary.currentStockUnits },
+    { section: "AMP summary", record: "Due within 30 days", detail: "Saved unit-level schedules", value: summary.dueWithin30Days },
+    { section: "AMP summary", record: "Overdue units", detail: "Saved unit-level schedules", value: summary.overdueUnits },
+    { section: "AMP summary", record: "Condition follow-ups", detail: "Technician-log-driven follow-ups", value: summary.conditionFollowUps },
+  ];
+  Object.entries(intelligence.insights || {}).forEach(([category, items]) => (items || []).forEach((item) => rows.push({
+    section: `${category === "amp" ? "AMP" : humanize(category)} insight`,
+    record: item.statement || "Recorded insight",
+    detail: item.action || "No manager action recorded",
+    value: "—",
+  })));
+  const addRows = (section, items, mapper) => (items || []).forEach((item) => rows.push({ section, ...mapper(item) }));
+  addRows("Sales trend", intelligence.charts?.salesTrend, (item) => ({ record: String(item.bucket || "").slice(0, 10), detail: `${item.unitsSold || 0} unit(s)`, value: item.amountCollected || 0 }));
+  addRows("Service trend", intelligence.charts?.serviceTrend, (item) => ({ record: String(item.bucket || "").slice(0, 10), detail: "Completed services", value: item.count || 0 }));
+  addRows("Best-selling model", intelligence.tables?.topModels, (item) => ({ record: [item.brand, item.model].filter(Boolean).join(" ") || item.sku, detail: item.sku || "SKU not recorded", value: item.unitsSold || 0 }));
+  addRows("Best-selling brand", intelligence.tables?.topBrands, (item) => ({ record: item.brand || "Unspecified", detail: "Units sold", value: item.unitsSold || 0 }));
+  addRows("Serviced model", intelligence.tables?.servicedModels, (item) => ({ record: item.model || "Unspecified", detail: "Completed services", value: item.count || 0 }));
+  addRows("Service concern", intelligence.tables?.commonIssues, (item) => ({ record: item.issue || "Unspecified", detail: "Completed records", value: item.count || 0 }));
+  addRows("Service part", intelligence.tables?.serviceParts, (item) => ({ record: item.part || "Unspecified", detail: "Recorded uses", value: item.count || 0 }));
+  addRows("Inventory movement", intelligence.tables?.inventoryMovement, (item) => ({ record: item.product || item.sku, detail: `${item.branch || "Unassigned"} · ${item.sku || "No SKU"} · Stock: ${item.currentStock || 0}`, value: item.unitsSoldInPeriod || 0 }));
+  addRows("Slow-moving inventory", intelligence.tables?.slowMovingInventory, (item) => ({ record: item.product || item.sku, detail: `${item.branch || "Unassigned"} · ${item.sku || "No SKU"}`, value: item.currentStock || 0 }));
+  return rows;
+};
+
+const businessIntelligenceSummary = (summary = {}) => ({
+  amountCollected: summary.sales?.amountCollected || 0,
+  unitsSold: summary.sales?.unitsSold || 0,
+  completedServices: summary.service?.completedServices || 0,
+  currentStockUnits: summary.inventory?.currentStockUnits || 0,
+  dueWithin30Days: summary.amp?.dueWithin30Days || 0,
+  overdueUnits: summary.amp?.overdue || 0,
+  conditionFollowUps: summary.amp?.conditionFollowUps || 0,
+});
+
+const businessIntelligenceReportHtml = (intelligence = {}, summaryHtml = "") => BUSINESS_INTELLIGENCE_PAGES.map((label, index) => {
+  const category = ["sales", "service", "inventory", "amp"][index];
+  const categoryRows = businessIntelligenceRows(intelligence).filter((row) => row.section.toLowerCase().startsWith(category) || (category === "sales" && row.section.includes("selling")) || (category === "inventory" && row.section.toLowerCase().includes("inventory")) || (category === "service" && ["Serviced", "Service"].some((word) => row.section.startsWith(word))));
+  return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>${escapeHtml(label)}</strong><span>Page ${index + 1} of ${BUSINESS_INTELLIGENCE_PAGES.length}</span></div>${reportTableHtml(categoryRows, { title: label })}</section>`;
+}).join("");
 
 function ReportTable({ title, rows, inventory = false }) {
   if (!rows.length) return null;
@@ -172,7 +227,7 @@ function IntelligenceTrend({ title, rows = [], valueKey, valueLabel, money = fal
   </section>;
 }
 
-function BusinessIntelligenceView({ data }) {
+function BusinessIntelligenceView({ data, page = 1 }) {
   const intelligence = data.intelligence || {};
   const summary = intelligence.summary || {};
   const insights = intelligence.insights || {};
@@ -186,25 +241,32 @@ function BusinessIntelligenceView({ data }) {
     ["AMP due / overdue", `${summary.amp?.dueWithin30Days || 0} / ${summary.amp?.overdue || 0}`],
     ["Condition follow-ups", summary.amp?.conditionFollowUps || 0],
   ];
+  const category = ["sales", "service", "inventory", "amp"][page - 1] || "sales";
   return <>
-    <div className="company-bi-metrics">{metrics.map(([metric, value]) => <article key={metric}><span>{metric}</span><strong>{value}</strong></article>)}</div>
+    {page === 1 ? <div className="company-bi-metrics">{metrics.map(([metric, value]) => <article key={metric}><span>{metric}</span><strong>{value}</strong></article>)}</div> : null}
     {data.warning ? <p className="company-report-basis" role="status"><strong>Analysis status:</strong> {data.warning}</p> : null}
-    <div className="company-bi-insights">{["sales", "service", "inventory", "amp"].map((category) => <section key={category}>
+    <div className="company-bi-page-heading"><span>Business intelligence page {page} of {BUSINESS_INTELLIGENCE_PAGES.length}</span><h3>{BUSINESS_INTELLIGENCE_PAGES[page - 1]}</h3></div>
+    <div className="company-bi-insights"><section>
       <h3>{category === "amp" ? "AMP / Predictive Maintenance" : `${humanize(category)} Performance`}</h3>
       {(insights[category] || []).map((item) => <article key={item.id}><p>{item.statement}</p>{item.action ? <p><strong>Manager action:</strong> {item.action}</p> : null}</article>)}
-    </section>)}</div>
-    <div className="company-bi-trends">
-      <IntelligenceTrend title="Collected sales trend" rows={charts.salesTrend || []} valueKey="amountCollected" valueLabel="collected" money />
-      <IntelligenceTrend title="Completed service trend" rows={charts.serviceTrend || []} valueKey="count" valueLabel="services" />
-    </div>
-    <ReportTable title="Recorded service mix" rows={(charts.serviceByType || []).map(({ label, count }) => ({ serviceType: label, completedServices: count }))} />
-    <ReportTable title="Best-selling AC models" rows={(tables.topModels || []).map(({ brand, model, sku, unitsSold, sales }) => ({ brand, model, sku, unitsSold, sales }))} />
-    <ReportTable title="Best-selling brands" rows={(tables.topBrands || []).map(({ brand, unitsSold }) => ({ brand, unitsSold }))} />
-    <ReportTable title="Most frequently serviced AC models" rows={(tables.servicedModels || []).map(({ model, count }) => ({ model, completedServices: count }))} />
-    <ReportTable title="Common recorded service concerns" rows={(tables.commonIssues || []).map(({ issue, count }) => ({ issue, completedRecords: count }))} />
-    <ReportTable title="Frequently recorded service parts" rows={(tables.serviceParts || []).map(({ part, count }) => ({ part, recordedUses: count }))} />
-    <ReportTable title="Inventory movement and current stock" rows={(tables.inventoryMovement || []).map(({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }) => ({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }))} inventory />
-    <ReportTable title="Stocked lines with no paid sales in this period" rows={(tables.slowMovingInventory || []).map(({ branch, product, sku, currentStock, stockStatus }) => ({ branch, product, sku, currentStock, stockStatus }))} inventory />
+    </section></div>
+    {category === "sales" ? <>
+      <div className="company-bi-trends"><IntelligenceTrend title="Collected sales trend" rows={charts.salesTrend || []} valueKey="amountCollected" valueLabel="collected" money /></div>
+      <ReportTable title="Best-selling AC models" rows={(tables.topModels || []).map(({ brand, model, sku, unitsSold, sales }) => ({ brand, model, sku, unitsSold, sales }))} />
+      <ReportTable title="Best-selling brands" rows={(tables.topBrands || []).map(({ brand, unitsSold }) => ({ brand, unitsSold }))} />
+    </> : null}
+    {category === "service" ? <>
+      <div className="company-bi-trends"><IntelligenceTrend title="Completed service trend" rows={charts.serviceTrend || []} valueKey="count" valueLabel="services" /></div>
+      <ReportTable title="Recorded service mix" rows={(charts.serviceByType || []).map(({ label, count }) => ({ serviceType: label, completedServices: count }))} />
+      <ReportTable title="Most frequently serviced AC models" rows={(tables.servicedModels || []).map(({ model, count }) => ({ model, completedServices: count }))} />
+      <ReportTable title="Common recorded service concerns" rows={(tables.commonIssues || []).map(({ issue, count }) => ({ issue, completedRecords: count }))} />
+      <ReportTable title="Frequently recorded service parts" rows={(tables.serviceParts || []).map(({ part, count }) => ({ part, recordedUses: count }))} />
+    </> : null}
+    {category === "inventory" ? <>
+      <ReportTable title="Inventory movement and current stock" rows={(tables.inventoryMovement || []).map(({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }) => ({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }))} inventory />
+      <ReportTable title="Stocked lines with no paid sales in this period" rows={(tables.slowMovingInventory || []).map(({ branch, product, sku, currentStock, stockStatus }) => ({ branch, product, sku, currentStock, stockStatus }))} inventory />
+    </> : null}
+    {category === "amp" ? <p className="company-report-basis">Unit-level AMP recommendations remain available in AMP Planning, where managers can review the supporting service history and action for each AC unit.</p> : null}
   </>;
 }
 
@@ -218,11 +280,12 @@ function AdminReports() {
   const [branch, setBranch] = useState(isSuperAdmin ? "all" : assignedBranch);
   const [salesStatus, setSalesStatus] = useState("paid");
   const [salesPaymentMethod, setSalesPaymentMethod] = useState("all");
-  const [salesSearch, setSalesSearch] = useState("");
+  const [salesSku, setSalesSku] = useState("");
+  const [salesCustomer, setSalesCustomer] = useState("");
   const [stockStatus, setStockStatus] = useState("all");
   const [inventoryCategory, setInventoryCategory] = useState("all");
   const [inventoryBrand, setInventoryBrand] = useState("");
-  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventorySku, setInventorySku] = useState("");
   const [technicianSearch, setTechnicianSearch] = useState("");
   const [reportPage, setReportPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -237,14 +300,17 @@ function AdminReports() {
   };
   const rangeError = range.from && range.to && range.from > range.to ? "The report start date must be on or before the end date." : "";
   const canExport = data.rows.length > 0;
-  const inventoryTotalPages = Math.max(1, Math.ceil(data.rows.length / INVENTORY_PAGE_SIZE));
-  const currentReportPage = Math.min(reportPage, inventoryTotalPages);
-  const firstReportRowIndex = (currentReportPage - 1) * INVENTORY_PAGE_SIZE;
-  const displayedRows = activeTab === "inventory"
-    ? data.rows.slice(firstReportRowIndex, firstReportRowIndex + INVENTORY_PAGE_SIZE)
+  const isPaginatedReport = ["sales", "inventory", "intelligence"].includes(activeTab);
+  const reportTotalPages = activeTab === "intelligence"
+    ? BUSINESS_INTELLIGENCE_PAGES.length
+    : Math.max(1, Math.ceil(data.rows.length / REPORT_PAGE_SIZE));
+  const currentReportPage = Math.min(reportPage, reportTotalPages);
+  const firstReportRowIndex = (currentReportPage - 1) * REPORT_PAGE_SIZE;
+  const displayedRows = ["sales", "inventory"].includes(activeTab)
+    ? data.rows.slice(firstReportRowIndex, firstReportRowIndex + REPORT_PAGE_SIZE)
     : data.rows;
-  const firstReportPageNumber = Math.max(1, Math.min(currentReportPage - 2, inventoryTotalPages - 4));
-  const reportPageNumbers = Array.from({ length: Math.min(5, inventoryTotalPages) }, (_, index) => firstReportPageNumber + index);
+  const firstReportPageNumber = Math.max(1, Math.min(currentReportPage - 2, reportTotalPages - 4));
+  const reportPageNumbers = Array.from({ length: Math.min(5, reportTotalPages) }, (_, index) => firstReportPageNumber + index);
   const title = useMemo(() => {
     const label = TABS.find((tab) => tab.id === activeTab)?.label || "Report";
     return activeTab === "inventory" ? `${label} · ${branch === "all" ? "All Branches" : branch}` : `${label} · ${range.from} to ${range.to}`;
@@ -259,18 +325,18 @@ function AdminReports() {
       if (activeTab === "intelligence") {
         const query = new URLSearchParams({ from: range.from, to: range.to, branch });
         const result = await apiRequest(`/reports/business-intelligence?${query}`);
-        setData({ summary: result.summary || {}, rows: [], secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "", intelligence: result, warning: result.warning || "" });
+        setData({ summary: result.summary || {}, rows: businessIntelligenceRows(result), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "", intelligence: result, warning: result.warning || "" });
       } else if (activeTab === "sales") {
         const query = new URLSearchParams({
           interval: "daily", from: range.from, to: range.to, status: salesStatus,
-          paymentMethod: salesPaymentMethod, search: salesSearch.trim(), topN: "50", branch,
+          paymentMethod: salesPaymentMethod, sku: salesSku.trim(), customer: salesCustomer.trim(), topN: "10", branch,
         });
         const result = await apiRequest(`/reports/sales?${query}`);
         setData({ summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       } else if (activeTab === "inventory") {
         const query = new URLSearchParams({
           branch, stock: stockStatus, category: inventoryCategory,
-          brand: inventoryBrand.trim(), search: inventorySearch.trim(),
+          brand: inventoryBrand.trim(), sku: inventorySku.trim(),
         });
         const result = await apiRequest(`/reports/inventory?${query}`);
         setData({ summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
@@ -295,21 +361,26 @@ function AdminReports() {
     reportId: `APR-${activeTab.toUpperCase()}-${(activeTab === "inventory" ? toIsoDate(new Date()) : range.from).replaceAll("-", "")}-${activeTab === "inventory" ? String(branch || "ALL").toUpperCase() : range.to.replaceAll("-", "")}`,
     generatedAt: new Date().toLocaleString("en-PH"),
     filters: activeTab === "sales"
-      ? `Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; Search: ${salesSearch.trim() || "None"}`
+      ? `Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; SKU: ${salesSku.trim() || "All"}; Customer: ${salesCustomer.trim() || "All"}`
       : activeTab === "inventory"
-        ? `Stock: ${INVENTORY_STATUS_OPTIONS.find(([value]) => value === stockStatus)?.[1] || stockStatus}; Category: ${INVENTORY_CATEGORY_OPTIONS.find(([value]) => value === inventoryCategory)?.[1] || inventoryCategory}; Brand: ${inventoryBrand.trim() || "All"}; Search: ${inventorySearch.trim() || "None"}`
-        : `Technician search: ${technicianSearch.trim() || "None"}`,
+        ? `Stock: ${INVENTORY_STATUS_OPTIONS.find(([value]) => value === stockStatus)?.[1] || stockStatus}; Category: ${INVENTORY_CATEGORY_OPTIONS.find(([value]) => value === inventoryCategory)?.[1] || inventoryCategory}; Brand: ${inventoryBrand.trim() || "All"}; SKU: ${inventorySku.trim() || "All"}`
+        : activeTab === "intelligence" ? "Verified sales, service, inventory, and AMP records" : `Technician search: ${technicianSearch.trim() || "None"}`,
   });
 
-  const exportExcel = () => exportToExcel({ filename: `cold-air-${activeTab}-${toIsoDate(new Date())}.xls`, title, summary: data.summary, rows: data.rows, metadata: metadata() });
+  const exportExcel = () => exportToExcel({ filename: `cold-air-${activeTab}-${toIsoDate(new Date())}.xls`, title, summary: activeTab === "intelligence" ? businessIntelligenceSummary(data.summary) : data.summary, rows: data.rows, metadata: metadata() });
   const exportPdf = () => {
     const reportMetadata = metadata();
-    const summaryHtml = `<div class="summary">${Object.entries(data.summary || {}).map(([key, value]) => `<div class="summary-item"><strong>${escapeHtml(formatReportValue(value, key))}</strong><span>${escapeHtml(humanize(key))}</span></div>`).join("")}</div>`;
+    const exportSummary = activeTab === "intelligence" ? businessIntelligenceSummary(data.summary) : data.summary;
+    const summaryHtml = `<div class="summary">${Object.entries(exportSummary || {}).map(([key, value]) => `<div class="summary-item"><strong>${escapeHtml(formatReportValue(value, key))}</strong><span>${escapeHtml(humanize(key))}</span></div>`).join("")}</div>`;
     const primaryTitle = activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance";
     const secondary = data.secondaryRows.length ? reportTableHtml(data.secondaryRows, { title: "Product sales summary" }) : "";
     const reportHtml = activeTab === "inventory"
       ? inventoryReportHtml(data.rows, summaryHtml)
-      : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
+      : activeTab === "sales"
+        ? paginatedReportHtml(data.rows, { summaryHtml, title: primaryTitle, secondaryHtml: secondary })
+        : activeTab === "intelligence"
+          ? businessIntelligenceReportHtml(data.intelligence, summaryHtml)
+          : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
     exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch} · Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
   };
 
@@ -325,20 +396,27 @@ function AdminReports() {
       <div className="company-report-controls">
         {activeTab !== "inventory" ? <><label>From<input type="date" value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>To<input type="date" value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
         {isSuperAdmin ? <label>Branch<select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : null}
-        {activeTab === "sales" ? <>
-          <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>Payment method<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label className="company-report-search">Search sales<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder="Order, customer, SKU…" /></label>
-        </> : null}
-        {activeTab === "inventory" ? <>
-          <label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>Category<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>Brand<input type="search" value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)} placeholder="All brands" /></label>
-          <label className="company-report-search">Search inventory<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Product, SKU, brand, model…" /></label>
-        </> : null}
+        {activeTab === "sales" ? <details className="company-report-filter-panel" open>
+          <summary>Sales filters</summary>
+          <div className="company-report-filter-grid">
+            <label>SKU<input type="search" value={salesSku} onChange={(event) => setSalesSku(event.target.value)} placeholder="All SKUs" /></label>
+            <label>Customer<input type="search" value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)} placeholder="All customers" /></label>
+            <label>Payment method<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          </div>
+        </details> : null}
+        {activeTab === "inventory" ? <details className="company-report-filter-panel" open>
+          <summary>Inventory filters</summary>
+          <div className="company-report-filter-grid">
+            <label>SKU<input type="search" value={inventorySku} onChange={(event) => setInventorySku(event.target.value)} placeholder="All SKUs" /></label>
+            <label>Brand<input type="search" value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)} placeholder="All brands" /></label>
+            <label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label>Category<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          </div>
+        </details> : null}
         {activeTab === "tech" ? <label className="company-report-search">Search technicians<input type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder="Technician or branch…" /></label> : null}
         <button className="company-report-generate" type="button" onClick={generate} disabled={busy || Boolean(rangeError && activeTab !== "inventory")}>{busy ? "Generating…" : "Generate report"}</button>
-        {activeTab !== "intelligence" ? <><button type="button" onClick={exportExcel} disabled={!canExport}>Export Excel</button><button type="button" onClick={exportPdf} disabled={!canExport}>Export PDF</button></> : null}
+        <button type="button" onClick={exportExcel} disabled={!canExport}>Export Excel</button><button type="button" onClick={exportPdf} disabled={!canExport}>Export PDF</button>
       </div>
       {rangeError && activeTab !== "inventory" ? <p className="company-report-error" role="alert">{rangeError}</p> : null}
       {error ? <p className="company-report-error" role="alert">{error}</p> : null}
@@ -347,16 +425,16 @@ function AdminReports() {
         <div className="company-report-document-heading"><div><p>{activeTab === "inventory" ? "Stock position" : "Reporting period"}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? "All Branches" : branch || assignedBranch}</strong><span>Generated {new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}</span></div></div>
         {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{humanize(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
         {data.basis ? <p className="company-report-basis"><strong>Report basis:</strong> {data.basis}</p> : null}
-        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} /> : <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
-        {activeTab === "inventory" && data.rows.length ? <nav className="company-report-pagination" aria-label="Inventory report pagination">
-          <span>Showing {firstReportRowIndex + 1}–{Math.min(firstReportRowIndex + INVENTORY_PAGE_SIZE, data.rows.length)} of {data.rows.length} records</span>
+        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} page={currentReportPage} /> : <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
+        {isPaginatedReport && data.rows.length ? <nav className="company-report-pagination" aria-label={`${activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report"} pagination`}>
+          <span>{activeTab === "intelligence" ? BUSINESS_INTELLIGENCE_PAGES[currentReportPage - 1] : `Showing ${firstReportRowIndex + 1}–${Math.min(firstReportRowIndex + REPORT_PAGE_SIZE, data.rows.length)} of ${data.rows.length} records`}</span>
           <div>
             <button type="button" onClick={() => setReportPage((page) => Math.max(1, page - 1))} disabled={currentReportPage === 1}>Previous</button>
-            {reportPageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentReportPage ? "is-current" : ""} aria-current={pageNumber === currentReportPage ? "page" : undefined} aria-label={`Inventory report page ${pageNumber}`} onClick={() => setReportPage(pageNumber)}>{pageNumber}</button>)}
-            <button type="button" onClick={() => setReportPage((page) => Math.min(inventoryTotalPages, page + 1))} disabled={currentReportPage === inventoryTotalPages}>Next</button>
+            {reportPageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentReportPage ? "is-current" : ""} aria-current={pageNumber === currentReportPage ? "page" : undefined} aria-label={`${activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report"} page ${pageNumber}`} onClick={() => setReportPage(pageNumber)}>{pageNumber}</button>)}
+            <button type="button" onClick={() => setReportPage((page) => Math.min(reportTotalPages, page + 1))} disabled={currentReportPage === reportTotalPages}>Next</button>
           </div>
         </nav> : null}
-        {data.secondaryRows.length ? <ReportTable title="Product sales summary" rows={data.secondaryRows} /> : null}
+        {data.secondaryRows.length && activeTab === "sales" && currentReportPage === 1 ? <ReportTable title="Product sales summary" rows={data.secondaryRows} /> : null}
         {activeTab !== "intelligence" && !data.rows.length ? <div className="company-report-empty">No records match the selected filters.</div> : null}
       </article> : <div className="company-report-empty">Choose the report filters, then select Generate report.</div>}
     </section>

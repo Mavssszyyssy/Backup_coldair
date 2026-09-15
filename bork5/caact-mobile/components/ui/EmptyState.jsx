@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
 import { Text, View } from "react-native";
 
-import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
 export default function EmptyState({
   title = "Nothing here yet",
@@ -19,6 +19,10 @@ export default function EmptyState({
         justifyContent: "center",
         paddingHorizontal: SPACING.xl,
         paddingVertical: SPACING.xl,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.surfaceAlt,
+        borderWidth: 1,
+        borderColor: COLORS.border,
       }}
     >
       <View

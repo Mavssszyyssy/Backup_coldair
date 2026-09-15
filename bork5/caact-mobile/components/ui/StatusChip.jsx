@@ -16,6 +16,8 @@ export default function StatusChip({
           paddingHorizontal: SPACING.sm,
           paddingVertical: 5,
           alignSelf: "flex-start",
+          borderWidth: tone === "solid" ? 0 : 1,
+          borderColor: tone === "solid" ? "transparent" : `${color}32`,
         },
         style,
       ]}

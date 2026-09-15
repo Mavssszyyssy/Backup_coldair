@@ -16,7 +16,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 
-import { COLORS, FONT } from "../../constants/theme";
+import { COLORS, FONT, RADIUS } from "../../constants/theme";
 
 export default function NavButton({
   iconName,
@@ -72,7 +72,7 @@ export default function NavButton({
           justifyContent: "center",
         }}
       >
-        <View style={{ position: "relative" }}>
+        <View style={{ position: "relative", width: 38, height: 32, borderRadius: RADIUS.full, alignItems: "center", justifyContent: "center", backgroundColor: isActive ? COLORS.primaryLight : "transparent" }}>
           <Ionicons name={iconName} size={size} color={iconTintColor} />
           {badge > 0 ? (
             <View style={{ position: "absolute", top: -8, right: -12, backgroundColor: COLORS.danger, borderRadius: RADIUS.full, minWidth: 18, height: 18, justifyContent: "center", alignItems: "center", paddingHorizontal: 4 }}>

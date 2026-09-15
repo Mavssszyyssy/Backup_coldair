@@ -6,6 +6,7 @@ import AdminNotificationsBell from './AdminNotificationsBell';
 import SuperAdminLayout from '../../SUPERADMIN/Common/SuperAdminLayout';
 import '../adminShared.css';
 import './styles.css';
+import '../../common/operationsDesignSystem.css';
 
 const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
   const { user } = useUser();
@@ -42,10 +43,12 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
 
   return (
     <div className="admin-layout">
+      <a className="ops-skip-link" href="#admin-main-content">Skip to main content</a>
       <button
         className={`burger-button ${isSidebarOpen ? 'open' : ''}`}
         onClick={toggleSidebar}
         aria-label="Toggle menu"
+        aria-expanded={isSidebarOpen}
         type="button"
       >
         <span />
@@ -61,7 +64,7 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
 
       <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
-      <main className="admin-main-content">
+      <main className="admin-main-content" id="admin-main-content">
         <div className="admin-content-wrapper">
           {(title || subtitle) && (
             <header className="admin-header">
@@ -74,7 +77,10 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
               <div className="admin-header-user">
                 <AdminNotificationsBell />
                 <div className="admin-user-avatar">{initials}</div>
-                <div>{user?.name || 'Admin'}</div>
+                <div className="admin-header-identity">
+                  <strong>{user?.name || 'Admin'}</strong>
+                  <small>Branch administrator</small>
+                </div>
               </div>
             </header>
           )}

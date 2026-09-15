@@ -59,6 +59,8 @@ function DynamicServiceSticker({ unit }) {
   if (!recommendation) return null;
   const roomGuidance = capacityMessage(recommendation.capacityAssessment);
   const recommendationReason = recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis);
+  const serviceActions = (recommendation.latestVisitAnalysis?.recommendedActions || recommendation.conditionBasedFollowUp?.recommendedActions || [])
+    .filter(Boolean);
   return <section className="service-sticker" aria-label="Recommended service schedule">
     <header className="service-sticker-header">
       <span className="service-sticker-icon" aria-hidden="true"><CalendarBlank size={22} weight="fill" /></span>
@@ -78,6 +80,12 @@ function DynamicServiceSticker({ unit }) {
     </div>
 
     <p className="service-sticker-explanation">{serviceExplanation(recommendation.recommendedService)}</p>
+
+    {serviceActions.length ? <section className="service-sticker-plan" aria-label="Recommended service action plan">
+      <strong>Recommended service action plan</strong>
+      <ol>{serviceActions.map((action, index) => <li key={`${action}-${index}`}>{customerSystemMessage(action)}</li>)}</ol>
+      <p>These steps are based on the recorded technician findings. Final repair or replacement is confirmed only after inspection.</p>
+    </section> : null}
 
     {recommendation.aiAssessment ? <details className="service-sticker-reason" open onClick={(event) => event.stopPropagation()}>
       <summary>AI Assessment</summary>

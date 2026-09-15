@@ -27,3 +27,23 @@ it("organizes the maintenance recommendation into concise, named sections", asyn
   expect(screen.getByText("Room size guidance")).toBeVisible();
   expect(screen.getByText("Book this service using your Cold Air mobile account.")).toBeVisible();
 });
+
+it("shows the technician-grounded service action plan for a repair assessment", async () => {
+  apiRequest.mockResolvedValue({ recommendation: {
+    bestServicedBy: "2026-10-15T00:00:00.000Z",
+    recommendedService: "repair",
+    predictionSource: "openai",
+    latestVisitAnalysis: {
+      recommendedActions: [
+        "Arrange a qualified technician assessment of the recorded control board concern; confirm the cause before approving repair or replacement work.",
+        "Repair assessment is recommended by 2026-10-15.",
+      ],
+    },
+  } });
+
+  render(<DynamicServiceSticker unit={{ ampUnitId: "64fa00000000000000000001" }} />);
+
+  expect(await screen.findByText("Recommended service action plan")).toBeVisible();
+  expect(screen.getByText(/recorded control board concern/i)).toBeVisible();
+  expect(screen.getByText(/final repair or replacement is confirmed only after inspection/i)).toBeVisible();
+});

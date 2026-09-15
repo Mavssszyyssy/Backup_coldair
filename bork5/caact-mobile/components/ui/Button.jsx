@@ -1,6 +1,6 @@
 // components/ui/Button.jsx
 import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SHADOWS, SPACING, TOUCH } from "../../constants/theme";
 
 const SIZE_STYLES = {
   sm: {
@@ -75,12 +75,8 @@ export default function Button({
           borderColor: v.border ?? "transparent",
           flexDirection: "row",
           justifyContent: JUSTIFY[align] || JUSTIFY.center,
-          minHeight: size === "sm" ? 42 : 52,
-          shadowColor: variant === "primary" ? accentColor : "transparent",
-          shadowOffset: { width: 0, height: 5 },
-          shadowOpacity: variant === "primary" && !inactive ? 0.2 : 0,
-          shadowRadius: 8,
-          elevation: variant === "primary" && !inactive ? 3 : 0,
+          minHeight: size === "sm" ? TOUCH.minimum : TOUCH.comfortable,
+          ...(variant === "primary" && !inactive ? SHADOWS.card : {}),
         },
         style,
       ]}

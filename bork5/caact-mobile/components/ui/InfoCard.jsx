@@ -18,6 +18,8 @@ export default function InfoCard({ label, value }) {
         borderRadius: RADIUS.md,
         padding: SPACING.md,
         marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
       }}
     >
       <Text

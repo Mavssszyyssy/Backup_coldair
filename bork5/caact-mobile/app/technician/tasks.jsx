@@ -53,6 +53,12 @@ const PRIORITY_FILTERS = [
   { key: "low", label: "Low" },
 ];
 const PAGE_SIZE = 8;
+const manilaDateKey = () => new Date(Date.now() + (8 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+const SCHEDULE_FILTERS = [
+  { key: "today", label: "Today" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "all", label: "All dates" },
+];
 
 const taskMatchesQuery = (task = {}, query = "") => {
   const term = String(query || "").trim().toLowerCase();
@@ -66,6 +72,11 @@ const taskMatchesQuery = (task = {}, query = "") => {
     task.address,
     task.unitName,
     task.unitType,
+    task.customerPhone,
+    task.timeSlot,
+    task.schedule?.driverName,
+    task.schedule?.notes,
+    ...(task.schedule?.teamMemberNames || []),
     ...getTaskSerials(task),
   ]
     .filter(Boolean)
@@ -216,6 +227,7 @@ export default function TasksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterVisible, setFilterVisible] = useState(false);
   const [page, setPage] = useState(1);
+  const [scheduleFilter, setScheduleFilter] = useState("today");
 
   const sortWorkOrders = React.useCallback((all = []) => [...all].sort((a, b) => {
     const order = {
@@ -230,7 +242,18 @@ export default function TasksScreen() {
       [TASK_STATUS.FAILED]: 5,
       [TASK_STATUS.COMPLETED]: 6,
     };
-    return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+    const statusDifference = (order[a.status] ?? 3) - (order[b.status] ?? 3);
+    if (statusDifference) return statusDifference;
+    const dateDifference = String(a.scheduledDate || "9999-12-31").localeCompare(String(b.scheduledDate || "9999-12-31"));
+    if (dateDifference) return dateDifference;
+    const minutes = (value = "") => {
+      const match = String(value).match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return Number.MAX_SAFE_INTEGER;
+      let hour = Number(match[1]) % 12;
+      if (match[3].toUpperCase() === "PM") hour += 12;
+      return hour * 60 + Number(match[2]);
+    };
+    return minutes(a.timeSlot) - minutes(b.timeSlot);
   }), []);
 
   const refresh = ({ isCurrent = () => true } = {}) => {
@@ -264,18 +287,23 @@ export default function TasksScreen() {
       const normalizedStatus = taskStatusKey(task.status);
       const statusMatch = statusFilter === "all" || STATUS_GROUPS[statusFilter]?.has(normalizedStatus) || normalizedStatus === statusFilter;
       const priorityMatch = priorityFilter === "all" || taskPriorityKey(task.priority) === priorityFilter;
-      return statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
+      const scheduledDate = String(task.scheduledDate || "").slice(0, 10);
+      const currentDate = manilaDateKey();
+      const scheduleMatch = scheduleFilter === "all"
+        || (scheduleFilter === "today" && scheduledDate === currentDate)
+        || (scheduleFilter === "upcoming" && scheduledDate > currentDate);
+      return scheduleMatch && statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
     }),
-    [tasks, statusFilter, priorityFilter, searchQuery],
+    [tasks, scheduleFilter, statusFilter, priorityFilter, searchQuery],
   );
-  const activeFilterCount = Number(statusFilter !== "all") + Number(priorityFilter !== "all") + Number(Boolean(searchQuery.trim()));
+  const activeFilterCount = Number(scheduleFilter !== "today") + Number(statusFilter !== "all") + Number(priorityFilter !== "all") + Number(Boolean(searchQuery.trim()));
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
   const visibleTasks = useMemo(
     () => filteredTasks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filteredTasks, page],
   );
 
-  React.useEffect(() => setPage(1), [statusFilter, priorityFilter, searchQuery]);
+  React.useEffect(() => setPage(1), [scheduleFilter, statusFilter, priorityFilter, searchQuery]);
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -319,12 +347,34 @@ export default function TasksScreen() {
       {!!item.scheduledDate && (
         <IconRow
           icon="calendar-sharp"
-          title="Scheduled"
+          title={`${item.scheduledDate === manilaDateKey() ? "Today" : "Scheduled"}${item.timeSlot ? ` · ${item.timeSlot}` : ""}`}
           subtitle={item.scheduledDate}
           color={COLORS.warning}
           style={{ paddingVertical: SPACING.xs }}
         />
       )}
+      <IconRow
+        icon="people-sharp"
+        title={String(item.assignedTechnicianId) === String(current?.id) ? "Primary technician" : "Support team"}
+        subtitle={[item.assignedTechnicianName, ...(item.schedule?.teamMemberNames || [])].filter(Boolean).join(", ") || "Team not recorded"}
+        color={COLORS.tech}
+        style={{ paddingVertical: SPACING.xs }}
+      />
+      {(item.customerPhone || item.schedule?.driverName) ? <IconRow
+        icon="call-sharp"
+        title={item.customerPhone || "Contact not recorded"}
+        subtitle={item.schedule?.driverName ? `Driver: ${item.schedule.driverName}` : "No driver assigned"}
+        color={COLORS.success}
+        style={{ paddingVertical: SPACING.xs }}
+      /> : null}
+      {item.scheduleDetails ? <IconRow
+        icon="briefcase-sharp"
+        title={item.scheduleDetails.workDescription || item.issueType || "Assigned work"}
+        subtitle={[item.scheduleDetails.paymentMethod, item.scheduleDetails.paymentStatus].filter(Boolean).join(" · ") || "Payment details not recorded"}
+        color={COLORS.warning}
+        style={{ paddingVertical: SPACING.xs }}
+      /> : null}
+      {item.schedule?.notes ? <View style={{ marginTop: SPACING.xs, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>Admin schedule note</Text><Text style={{ color: COLORS.textPrimary, marginTop: 4, lineHeight: 19 }}>{item.schedule.notes}</Text></View> : null}
       {getTaskSerials(item).length > 0 && (
         <IconRow
           icon="qr-code-sharp"
@@ -366,10 +416,16 @@ export default function TasksScreen() {
           <View>
             <TechHero
               eyebrow="Work Order Board"
-              title={`${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
-              subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Prioritize active work, open AC unit records, and submit service reports."}
+              title={scheduleFilter === "today" ? `${filteredTasks.length} job${filteredTasks.length === 1 ? "" : "s"} today` : `${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
+              subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Live Admin assignments, customer details, schedule notes, and work-order status."}
               icon="map-sharp"
             />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+              {SCHEDULE_FILTERS.map((filter) => {
+                const active = scheduleFilter === filter.key;
+                return <TouchableOpacity key={filter.key} onPress={() => setScheduleFilter(filter.key)} style={{ minHeight: 38, justifyContent: "center", paddingHorizontal: SPACING.md, borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface }}><Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontWeight: FONT.black }}>{filter.label}</Text></TouchableOpacity>;
+              })}
+            </View>
             <Card
               onPress={() => setFilterVisible(true)}
               accessibilityLabel="Open work order filters"
@@ -406,6 +462,7 @@ export default function TasksScreen() {
                   setStatusFilter("all");
                   setPriorityFilter("all");
                   setSearchQuery("");
+                  setScheduleFilter("today");
                 }}
               />
             ) : null}

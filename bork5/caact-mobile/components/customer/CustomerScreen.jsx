@@ -85,6 +85,10 @@ export default function CustomerScreen({
           paddingHorizontal: SPACING.md,
           paddingTop: SPACING.xs,
           paddingBottom: SPACING.sm,
+          minHeight: 62,
+          backgroundColor: COLORS.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
         }}
       >
         {isTabRoute && !onBack ? (

@@ -1,5 +1,5 @@
 // components/ui/TextField.jsx
-import React, { forwardRef, useId } from "react";
+import React, { forwardRef, useId, useState } from "react";
 import {
   InputAccessoryView,
   Keyboard,
@@ -25,12 +25,15 @@ const TextField = forwardRef(function TextField({
   onSubmitEditing,
   returnKeyType,
   blurOnSubmit,
+  onFocus,
+  onBlur,
   style,
   ...props
 }, forwardedRef) {
   const generatedId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const accessoryId = inputAccessoryViewID || `coldair-keyboard-${generatedId}`;
   const usesAccessory = Platform.OS === "ios" && showKeyboardDone;
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={{ marginBottom: SPACING.sm + 6 }}>
@@ -62,6 +65,14 @@ const TextField = forwardRef(function TextField({
         onSubmitEditing={onSubmitEditing || (showKeyboardDone ? Keyboard.dismiss : undefined)}
         returnKeyType={returnKeyType || (showKeyboardDone ? "done" : undefined)}
         blurOnSubmit={showKeyboardDone || blurOnSubmit}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         style={[
           {
             backgroundColor: COLORS.surface,
@@ -69,9 +80,11 @@ const TextField = forwardRef(function TextField({
             paddingHorizontal: SPACING.md - 2,
             paddingVertical: SPACING.md - 2,
             borderWidth: 1,
-            borderColor: error ? COLORS.danger : COLORS.borderInput,
+            borderColor: error ? COLORS.danger : focused ? COLORS.borderFocus : COLORS.borderInput,
+            borderWidth: focused || error ? 1.5 : 1,
             fontSize: FONT.base,
             color: COLORS.textPrimary,
+            minHeight: 50,
           },
           style,
         ]}

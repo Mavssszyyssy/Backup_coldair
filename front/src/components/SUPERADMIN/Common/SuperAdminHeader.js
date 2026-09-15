@@ -4,6 +4,7 @@ import SuperAdminNotificationsBell from './SuperAdminNotificationsBell';
 
 const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control' }) => {
   const { user } = useUser();
+  const initial = (user?.name || 'S').charAt(0).toUpperCase();
 
   return (
     <header className="super-header">
@@ -15,7 +16,8 @@ const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control
       </div>
       <div className="super-header-actions">
         <SuperAdminNotificationsBell />
-        <strong>{user?.name || 'Super Admin'}</strong>
+        <span className="super-header-avatar">{initial}</span>
+        <span className="super-header-identity"><strong>{user?.name || 'Super Admin'}</strong><small>Company administrator</small></span>
       </div>
     </header>
   );

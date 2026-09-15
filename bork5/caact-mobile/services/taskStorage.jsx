@@ -147,6 +147,11 @@ export function normalizeTask(item = {}) {
     plusCode: value("plusCode"),
     assignedTechnicianId: value("assignedTechnicianId"),
     assignedTechnicianName: value("assignedTechnicianName"),
+    branch: value("branch"),
+    timeSlot: value("timeSlot"),
+    schedule: value("schedule", { driverName: "", teamMemberIds: [], teamMemberNames: [], notes: "" }),
+    scheduleDetails: value("scheduleDetails", null),
+    technicianAccessRole: value("technicianAccessRole", "primary"),
     priority: value("priority") || "Normal",
     scheduledDate:
       value("scheduledDate") || value("preferredDate") || value("preferredSchedule"),

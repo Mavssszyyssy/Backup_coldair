@@ -14,6 +14,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmDialog } from "../../../utils/dialog";
+import logo from "../../common/images/Cold Air Logo.jpg";
 
 const links = [
   { to: "/superadmin/dashboard", label: "Dashboard", icon: ShieldCheck },
@@ -45,12 +46,15 @@ const SuperAdminSidebar = ({ isOpen, onClose }) => {
   return (
     <aside className={`super-sidebar ${isOpen ? "open" : ""}`}>
       <div className="super-sidebar-top">
-        <div className="super-sidebar-brand">AeroPulse HQ</div>
+        <div className="super-sidebar-brand">
+          <img src={logo} alt="" />
+          <span className="super-sidebar-brand-copy"><span>AeroPulse HQ</span><small>Company operations</small></span>
+        </div>
         <button type="button" className="super-close" onClick={onClose}>
           {"\u2715"}
         </button>
       </div>
-      <nav className="super-nav">
+      <nav className="super-nav" aria-label="Superadmin navigation">
         {links.map((link) => (
           <NavLink
             key={link.to}

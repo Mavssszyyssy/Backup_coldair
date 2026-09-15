@@ -5,11 +5,13 @@ import AdminMaintenance from '../Maintenance/AdminMaintenance';
 import AdminOrders from '../Orders/AdminOrders';
 import AdminTechnician from '../Technicians/AdminTechnician';
 import AdminContactMessages from '../ContactMessages/AdminContactMessages';
+import DailyWorkSchedule from '../Technicians/DailyWorkSchedule';
 import '../Inventory/styles.css';
 
 const TABS = [
   { id: 'orders', label: 'Customer Orders' },
   { id: 'service-requests', label: 'Service Requests' },
+  { id: 'daily-schedule', label: 'Daily Schedule' },
   { id: 'technicians', label: 'Technicians' },
   { id: 'customer-messages', label: 'Customer Messages' },
 ];
@@ -34,6 +36,7 @@ const AdminServices = () => {
       </div>
       {activeTab === 'orders' ? <AdminOrders embedded /> : null}
       {activeTab === 'service-requests' ? <AdminMaintenance embedded /> : null}
+      {activeTab === 'daily-schedule' ? <DailyWorkSchedule /> : null}
       {activeTab === 'technicians' ? <AdminTechnician embedded /> : null}
       {activeTab === 'customer-messages' ? <AdminContactMessages /> : null}
     </AdminLayout>

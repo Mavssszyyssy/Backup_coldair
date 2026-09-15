@@ -54,7 +54,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               style={{ borderRadius: "4px", width: "20px", height: "20px" }}
             />
           </span>
-          <span>AeroPulse</span>
+          <span className="admin-sidebar-brand-copy"><span>AeroPulse</span><small>Branch operations</small></span>
         </div>
         <button
           className="admin-sidebar-close"
@@ -66,7 +66,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         </button>
       </div>
 
-      <nav className="admin-sidebar-nav">
+      <nav className="admin-sidebar-nav" aria-label="Admin navigation">
         {navItems.map((item) => (
           <NavLink
             key={item.to}

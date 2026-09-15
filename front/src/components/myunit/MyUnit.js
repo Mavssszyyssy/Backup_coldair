@@ -19,6 +19,8 @@ import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
 import { filterCustomerUnits, sortCustomerUnits } from "../../domain/myunit/unitDisplay";
 
+const UNITS_PER_PAGE = 6;
+
 const formatCustomerDate = (value = "") => {
   if (!value) return "";
   const date = new Date(value);
@@ -82,6 +84,7 @@ function MyUnit() {
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [unitSearch, setUnitSearch] = useState("");
   const [unitSort, setUnitSort] = useState("newest");
+  const [unitPage, setUnitPage] = useState(1);
 
   const visibleUnits = useMemo(
     () => sortCustomerUnits(filterCustomerUnits(units, unitSearch), unitSort),
@@ -91,6 +94,14 @@ function MyUnit() {
     () => sortCustomerUnits(units, "newest")[0]?.id || "",
     [units],
   );
+  const unitPageCount = Math.max(1, Math.ceil(visibleUnits.length / UNITS_PER_PAGE));
+  const currentUnitPage = Math.min(unitPage, unitPageCount);
+  const firstUnitIndex = (currentUnitPage - 1) * UNITS_PER_PAGE;
+  const pagedUnits = visibleUnits.slice(firstUnitIndex, firstUnitIndex + UNITS_PER_PAGE);
+
+  useEffect(() => {
+    setUnitPage(1);
+  }, [unitSearch, unitSort]);
 
   useEffect(() => {
     let mounted = true;
@@ -223,7 +234,9 @@ function MyUnit() {
             </section>
 
             <div className="unit-results-summary" aria-live="polite">
-              Showing {visibleUnits.length} of {units.length} registered AC unit{units.length === 1 ? "" : "s"}
+              {visibleUnits.length
+                ? `Showing ${firstUnitIndex + 1}–${Math.min(firstUnitIndex + UNITS_PER_PAGE, visibleUnits.length)} of ${visibleUnits.length} matching AC units (${units.length} registered)`
+                : `Showing 0 of ${units.length} registered AC units`}
             </div>
 
             {visibleUnits.length === 0 ? (
@@ -238,11 +251,11 @@ function MyUnit() {
               columns="repeat(auto-fill, minmax(320px, 1fr))"
               gap={24}
             >
-              {visibleUnits.map((unit, index) => (
+              {pagedUnits.map((unit, index) => (
                 <UnitCard
                   key={unit.id}
                   unit={unit}
-                  position={index + 1}
+                  position={firstUnitIndex + index + 1}
                   isNewest={unit.id === newestUnitId}
                   onClick={handleViewDetails}
                   onViewHistory={handleViewHistory}
@@ -251,6 +264,12 @@ function MyUnit() {
               ))}
             </BoutiqueGrid>
             )}
+
+            {visibleUnits.length > UNITS_PER_PAGE ? <nav className="unit-list-pagination" aria-label="My AC Units pagination">
+              <button type="button" onClick={() => setUnitPage((page) => Math.max(1, page - 1))} disabled={currentUnitPage === 1}>Previous</button>
+              <span>Page {currentUnitPage} of {unitPageCount}</span>
+              <button type="button" onClick={() => setUnitPage((page) => Math.min(unitPageCount, page + 1))} disabled={currentUnitPage === unitPageCount}>Next</button>
+            </nav> : null}
 
             <div className="customer-amp-report-center">
               <AmpReportCenter

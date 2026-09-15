@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import AdminReports from "./AdminReports";
-import { exportHtmlToPdfViaPrint } from "../../../utils/exporters";
+import { exportHtmlToPdfViaPrint, exportToExcel } from "../../../utils/exporters";
 
 const apiRequest = vi.fn();
 vi.mock("../../../config/api", () => ({ apiRequest: (...args) => apiRequest(...args) }));
@@ -29,7 +29,8 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
   fireEvent.change(screen.getByLabelText("Payment method"), { target: { value: "gcash" } });
-  fireEvent.change(screen.getByLabelText("Search sales"), { target: { value: "ORD-1" } });
+  fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-ONE-1HP" } });
+  fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "Customer One" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/sales?"))).toBe(true));
   const requested = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/sales?"))[0];
@@ -37,7 +38,8 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   expect(requested).toContain("to=2026-09-10");
   expect(requested).toContain("status=paid");
   expect(requested).toContain("paymentMethod=gcash");
-  expect(requested).toContain("search=ORD-1");
+  expect(requested).toContain("sku=AC-ONE-1HP");
+  expect(requested).toContain("customer=Customer+One");
   expect(screen.getByText("ORD-1")).toBeInTheDocument();
   expect(screen.getAllByText("SKU").length).toBeGreaterThan(0);
   expect(screen.getAllByText("AC-ONE-1HP").length).toBeGreaterThan(0);
@@ -54,14 +56,14 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   fireEvent.click(screen.getByRole("button", { name: "Inventory Report" }));
   fireEvent.change(screen.getByLabelText("Category"), { target: { value: "split" } });
   fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Cold Air" } });
-  fireEvent.change(screen.getByLabelText("Search inventory"), { target: { value: "AC-1" } });
+  fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?")));
   const reportRequest = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/inventory?"))[0];
   expect(reportRequest).not.toContain("low-stock");
   expect(reportRequest).toContain("category=split");
   expect(reportRequest).toContain("brand=Cold+Air");
-  expect(reportRequest).toContain("search=AC-1");
+  expect(reportRequest).toContain("sku=AC-1");
   expect(screen.getByText("AC-1")).toBeInTheDocument();
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   for (const removedHeader of ["Assigned", "In service", "Retired", "Tracked units", "Stock / QR variance", "Reorder level"]) {
@@ -157,14 +159,40 @@ it("renders grounded sales, service, inventory, and AMP business intelligence", 
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/business-intelligence?"))).toBe(true));
   expect(screen.getByText("Model A has the highest recorded sales volume.")).toBeInTheDocument();
-  expect(screen.getByText("Regular cleaning is the most recorded service.")).toBeInTheDocument();
-  expect(screen.getByText("Two lines are low in stock.")).toBeInTheDocument();
-  expect(screen.getByText("One unit needs a condition follow-up.")).toBeInTheDocument();
   expect(screen.getByText("₱50,000.00")).toBeInTheDocument();
   expect(screen.getByText("Collected sales trend")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Business intelligence page 2" }));
+  expect(screen.getByText("Regular cleaning is the most recorded service.")).toBeInTheDocument();
   expect(screen.getByText("Completed service trend")).toBeInTheDocument();
   expect(screen.getByText("Frequently recorded service parts")).toBeInTheDocument();
   expect(screen.getByText("air filter")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Business intelligence page 3" }));
+  expect(screen.getByText("Two lines are low in stock.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Business intelligence page 4" }));
+  expect(screen.getByText("One unit needs a condition follow-up.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  expect(exportToExcel).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const exportedHtml = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0].html;
+  expect((exportedHtml.match(/class="report-page"/g) || []).length).toBe(4);
+});
+
+it("paginates the sales transaction register", async () => {
+  const transactions = Array.from({ length: 12 }, (_, index) => ({
+    orderCode: `ORD-${String(index + 1).padStart(2, "0")}`,
+    customer: `Customer ${index + 1}`,
+    sku: `SKU-${index + 1}`,
+    total: 1000 + index,
+  }));
+  apiRequest.mockResolvedValue({ summary: { transactionCount: 12 }, transactions, products: [], basis: "Paid records.", updatedAt: "2026-09-16T00:00:00.000Z" });
+  renderReport();
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(await screen.findByText("ORD-01")).toBeInTheDocument();
+  expect(screen.queryByText("ORD-11")).not.toBeInTheDocument();
+  expect(screen.getByText("Showing 1–10 of 12 records")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Sales report page 2" }));
+  expect(screen.getByText("ORD-11")).toBeInTheDocument();
+  expect(screen.queryByText("ORD-01")).not.toBeInTheDocument();
 });
 
 it("blocks a reversed reporting range before requesting data", () => {

@@ -286,7 +286,7 @@ export default function TaskInformationScreen() {
       ? { stage: "proof", title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
       : { stage: "unit", title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
   const activeFieldStatus = [TASK_STATUS.IN_PROGRESS, TASK_STATUS.INSTALLING].includes(task?.status);
-  const nextAction = task?.visitAttempt?.awaitingAdmin
+  const primaryNextAction = task?.visitAttempt?.awaitingAdmin
     ? { stage: "overview", title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
     : task?.status === TASK_STATUS.PENDING
     ? { stage: "overview", title: "Awaiting Admin activation", subtitle: "Admin dispatches this work order when it is ready for your field work.", icon: "time-sharp", disabled: true }
@@ -305,6 +305,10 @@ export default function TaskInformationScreen() {
           ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
           : { stage: "overview", title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
       : null;
+  const isPrimaryTechnician = task?.technicianAccessRole !== "support";
+  const nextAction = !isPrimaryTechnician
+    ? { stage: "overview", title: "Support-team assignment", subtitle: `You can review this schedule and assist ${task?.assignedTechnicianName || "the primary technician"}. The primary technician records check-in, payment, reports, and completion.`, icon: "people-sharp", disabled: true }
+    : primaryNextAction;
 
   const runWorkOrderAction = async () => {
     if (!actionBusy && nextAction?.action === "cash") { confirmCash(); return; }
@@ -470,11 +474,15 @@ export default function TaskInformationScreen() {
               <DetailItem icon="person-circle-sharp" label="Customer" value={task?.customerName || "Unknown"} />
               <DetailItem icon="location-sharp" label="Delivery / Service Address" value={task?.address || "Not provided"} />
               <DetailItem icon="calendar-sharp" label="Schedule" value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || "Unscheduled"} accent={COLORS.warning} />
+              <DetailItem icon="call-sharp" label="Customer Contact" value={task?.customerPhone || "Not recorded"} />
+              <DetailItem icon="people-sharp" label="Assigned Team" value={[task?.assignedTechnicianName, ...(task?.schedule?.teamMemberNames || [])].filter(Boolean).join(", ") || "Not recorded"} />
+              {task?.schedule?.driverName ? <DetailItem icon="car-sharp" label="Driver" value={task.schedule.driverName} /> : null}
+              {task?.schedule?.notes ? <DetailItem icon="reader-sharp" label="Admin Schedule Note" value={task.schedule.notes} accent={COLORS.warning} /> : null}
               <DetailItem icon="chatbox-ellipses-sharp" label={installationTask ? "Installation Details" : "Service Concern"} value={task?.description || task?.concern || (installationTask ? "No special instructions" : "None")} />
             </Card>
 
-            {!installationTask ? <ServicePaymentCard task={task} onUpdated={setTask} /> : null}
-            {hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
+            {!installationTask ? <ServicePaymentCard task={task} onUpdated={setTask} readOnly={!isPrimaryTechnician} /> : null}
+            {isPrimaryTechnician && hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
               <SectionHeading icon="person-remove-sharp" title="No one available?" subtitle="Record an unattended visit after arrival" />
               <TechButton title="Close visit / request reschedule" variant="secondary" onPress={() => router.push(`/technician/task/${id}/visit-attempt`)} />
             </Card> : null}
@@ -536,7 +544,7 @@ export default function TaskInformationScreen() {
               {!task?.unitId ? <Text style={{ color: COLORS.textSecondary }}>No linked AC unit is available for service notes.</Text> : null}
               <View style={{ gap: SPACING.sm }}>
                 {!!task?.unitId ? <TechButton title="View Service Notes" onPress={() => router.push(`/technician/task/${task.id}/unit/log/select`)} size="sm" leftIcon={<Ionicons name="reader-sharp" size={17} color={COLORS.surface} />} /> : null}
-                {[TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(task?.status) && !!task?.unitId ? <TechButton title="Add Service Note" onPress={() => router.push(`/technician/task/${task.id}/unit/log/insert`)} size="sm" variant="secondary" leftIcon={<Ionicons name="add-circle-sharp" size={17} color={COLORS.tech} />} /> : null}
+                {isPrimaryTechnician && [TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(task?.status) && !!task?.unitId ? <TechButton title="Add Service Note" onPress={() => router.push(`/technician/task/${task.id}/unit/log/insert`)} size="sm" variant="secondary" leftIcon={<Ionicons name="add-circle-sharp" size={17} color={COLORS.tech} />} /> : null}
               </View>
             </Card>
           </> : null}

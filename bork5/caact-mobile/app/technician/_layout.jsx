@@ -16,6 +16,7 @@ export default function TechnicianLayout() {
     "/technician",
     "/technician/home",
     "/technician/dashboard",
+    "/technician/tasks",
     "/technician/notifications",
     "/technician/profile",
   ];

@@ -4,12 +4,14 @@ import AdminMaintenance from '../../ADMIN/Maintenance/AdminMaintenance';
 import AdminOrders from '../../ADMIN/Orders/AdminOrders';
 import AdminTechnician from '../../ADMIN/Technicians/AdminTechnician';
 import AdminContactMessages from '../../ADMIN/ContactMessages/AdminContactMessages';
+import DailyWorkSchedule from '../../ADMIN/Technicians/DailyWorkSchedule';
 import '../../ADMIN/Inventory/styles.css';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 
 const TABS = [
   { id: 'orders', label: 'Customer Orders' },
   { id: 'service-requests', label: 'Service Requests' },
+  { id: 'daily-schedule', label: 'Daily Schedule' },
   { id: 'technicians', label: 'Technicians' },
   { id: 'customer-messages', label: 'Customer Messages' },
 ];
@@ -44,6 +46,7 @@ const SuperAdminServices = () => {
       </div>
       {activeTab === 'orders' ? <AdminOrders embedded /> : null}
       {activeTab === 'service-requests' ? <AdminMaintenance embedded /> : null}
+      {activeTab === 'daily-schedule' ? <DailyWorkSchedule /> : null}
       {activeTab === 'technicians' ? <AdminTechnician embedded /> : null}
       {activeTab === 'customer-messages' ? <AdminContactMessages /> : null}
     </SuperAdminLayout>

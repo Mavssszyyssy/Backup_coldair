@@ -5,7 +5,7 @@
 .company-report-brand p { margin: 0; color: #0f4c81; font-size: 12px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .company-report-brand h2 { margin: 0; color: #111827; font-size: clamp(22px, 3vw, 34px); text-transform: uppercase; }
 .company-report-brand span { color: #475569; font-size: 13px; line-height: 1.45; }
-.company-report-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.company-report-tabs { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px; overflow-x: auto; }
 .company-report-tabs button, .company-report-controls button { border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; padding: 10px 14px; font-weight: 800; cursor: pointer; }
 .company-report-tabs button.active { background: #0f4c81; border-color: #0f4c81; color: #fff; }
 .company-report-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 16px; background: #eaf2f9; border: 1px solid #b7cee1; border-radius: 12px; }
@@ -15,6 +15,10 @@
 .company-report-controls .company-report-search input { width: 100%; }
 .company-report-controls .company-report-generate { background: #0f4c81; border-color: #0f4c81; color: #fff; }
 .company-report-controls button:disabled { cursor: not-allowed; opacity: .48; }
+.company-report-filter-panel { flex: 1 1 100%; padding: 10px 12px 12px; border: 1px solid #b7cee1; border-radius: 10px; background: rgba(255, 255, 255, .72); }
+.company-report-filter-panel summary { color: #0f4c81; font-size: 12px; font-weight: 900; cursor: pointer; }
+.company-report-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.company-report-filter-grid input, .company-report-filter-grid select { width: 100%; min-width: 0; }
 .company-report-error { margin: 0; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; color: #991b1b; font-weight: 750; }
 .company-report-document { overflow: hidden; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
 .company-report-document-heading { display: flex; justify-content: space-between; gap: 20px; padding: 18px 22px; background: #0f4c81; color: #fff; }
@@ -49,6 +53,9 @@
 .company-bi-metrics article { display: grid; gap: 5px; min-height: 86px; padding: 15px; border: 1px solid #cbd5e1; border-radius: 11px; background: linear-gradient(135deg, #f8fafc, #eff6ff); }
 .company-bi-metrics span { color: #64748b; font-size: 11px; font-weight: 850; text-transform: uppercase; }
 .company-bi-metrics strong { color: #0f4c81; font-size: 21px; }
+.company-bi-page-heading { margin: 18px 20px 0; padding: 14px 16px; border-radius: 11px; background: #eaf2f9; border-left: 4px solid #0f4c81; }
+.company-bi-page-heading span { color: #64748b; font-size: 10px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.company-bi-page-heading h3 { margin: 3px 0 0; color: #0f172a; }
 .company-bi-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 18px 20px 4px; }
 .company-bi-insights > section { padding: 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
 .company-bi-insights h3 { margin: 0 0 10px; color: #0f172a; }
@@ -65,6 +72,8 @@
 .company-bi-trend-track { display: block; height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #e8eef6; }
 .company-bi-trend-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1594d0, #225ccc); }
 @media (max-width: 700px) {
+  .company-report-tabs { grid-template-columns: repeat(4, minmax(165px, 1fr)); }
+  .company-report-filter-grid { grid-template-columns: 1fr 1fr; }
   .company-bi-trends { grid-template-columns: 1fr; padding-inline: 14px; }
   .company-report-brand { align-items: flex-start; padding: 16px; }
   .company-report-brand img { width: 58px; height: 58px; }
@@ -75,4 +84,7 @@
   .company-report-controls > * { flex: 1 1 145px; }
   .company-report-controls input, .company-report-controls select { width: 100%; min-width: 0; }
   .company-report-pagination { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 460px) {
+  .company-report-filter-grid { grid-template-columns: 1fr; }
 }
