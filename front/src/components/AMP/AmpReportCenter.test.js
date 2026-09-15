@@ -89,7 +89,7 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  expect(await screen.findByText("AI Assessment")).toBeVisible();
+  expect(await screen.findByText("Predictive Maintenance Assessment")).toBeVisible();
   expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
   expect(screen.getByText("Repair")).toBeVisible();
   expect(screen.getByText("Why This Date")).toBeVisible();
@@ -135,7 +135,7 @@ it("separates a condition-based AI follow-up from the routine cleaning plan", as
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   expect(await screen.findByText("AI-reviewed technician follow-up")).toBeVisible();
   expect(screen.getByText("Condition follow-up date")).toBeVisible();
-  expect(screen.getByText("AI Assessment")).toBeVisible();
+  expect(screen.getByText("Predictive Maintenance Assessment")).toBeVisible();
   expect(screen.getByText(/technician found wear affecting the fan motor/)).toBeVisible();
   expect(screen.getByText("Why This Date")).toBeVisible();
   expect(screen.getByText(/urgent concern recorded during the completed visit/)).toBeVisible();

@@ -9,7 +9,7 @@ const report = {
 };
 test("AI text is visible on mobile without hiding evidence warnings or claiming a booking", async () => {
   await render(<CustomerAmpReport report={report} provider="openai" />);
-  expect(screen.getByText("AI Assessment")).toBeTruthy();
+  expect(screen.getByText("Assessment Summary")).toBeTruthy();
   expect(screen.getByText(report.maintenance.interpretation)).toBeTruthy();
   expect(screen.getByText("One incomplete record is excluded.")).toBeTruthy();
   expect(screen.queryByText(/Board inspected/)).toBeNull();
@@ -63,4 +63,26 @@ test("condition follow-up is shown separately from the routine cleaning plan", a
   expect(screen.getByText(/earlier date follows the urgent concern/i)).toBeTruthy();
   expect(screen.getByText("Routine cleaning plan")).toBeTruthy();
   expect(screen.getByText("March 13, 2027")).toBeTruthy();
+});
+
+test("complete predictive assessment shows factors, custom observations, actions, and priority", async () => {
+  const maintenance = {
+    ...report.maintenance,
+    predictiveAssessment: {
+      priority: "Schedule soon",
+      assessmentSummary: "A developing concern was recorded during the latest visit.",
+      reasonForRecommendation: "The earlier date reflects the recorded vibration.",
+      factorsConsidered: [{ label: "AC model", value: "Dual Inverter" }],
+      observationsConsidered: [{ source: "Customer custom / Other input", value: "Unusual vibration during startup" }],
+      recommendedActions: ["Arrange an inspection within 30 days."],
+      evidenceNotice: "This is not a confirmed diagnosis.",
+    },
+  };
+  await render(<CustomerAmpReport report={{ ...report, maintenance }} provider="openai" />);
+  expect(screen.getByText("Schedule soon")).toBeTruthy();
+  expect(screen.getByText("Factors Considered")).toBeTruthy();
+  expect(screen.getByText("Technician and Customer Observations Considered")).toBeTruthy();
+  expect(screen.getByText("Unusual vibration during startup")).toBeTruthy();
+  expect(screen.getByText(/Arrange an inspection within 30 days/)).toBeTruthy();
+  expect(screen.getByText("This is not a confirmed diagnosis.")).toBeTruthy();
 });

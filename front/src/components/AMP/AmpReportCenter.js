@@ -101,6 +101,7 @@ function AmpReportCenter({
     const visit = m.latestVisitAnalysis || {};
     const condition = m.conditionBasedFollowUp || null;
     const routine = m.routineMaintenance || {};
+    const assessment = m.predictiveAssessment || {};
     const contextItems = maintenanceContextItems(m.maintenanceSignals);
     const historyRows = (report.serviceHistory || []).map((item) => `<tr><td>${escapeHtml(dateLabel(item.date))}</td><td>${escapeHtml(item.serviceLabel || serviceLabel(item.type))}</td><td>${escapeHtml(item.findings || "Not recorded")}${item.evidence?.eligible === false ? `<p>${escapeHtml(item.evidence.reason)}</p>` : ""}${item.aiInterpretation?.customerSummary ? `<p><strong>${item.aiInterpretation.provider === "openai" ? "AI follow-up recommendation" : "Follow-up schedule"}:</strong> ${escapeHtml(item.aiInterpretation.customerSummary)}</p>` : ""}</td><td>${escapeHtml(item.actionTaken || "Not recorded")}</td><td>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</td></tr>`).join("") || '<tr><td colspan="5">No service history has been recorded.</td></tr>';
     const modelRows = (report.aggregateReliability?.modelsByRecordedService || []).map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.count)}</td></tr>`).join("");
@@ -110,8 +111,12 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong><span>Recommended service</span></div>
         <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
       </div>
-      <h2>AI Assessment</h2><p>${escapeHtml(m.aiAssessment || visit.aiAssessment || "More completed service details are needed before this AC can be assessed.")}</p>
+      <h2>Predictive Maintenance Assessment</h2><p><strong>Priority:</strong> ${escapeHtml(assessment.priority || "Routine")}</p>
+      <h2>Assessment Summary</h2><p>${escapeHtml(assessment.assessmentSummary || m.aiAssessment || visit.aiAssessment || "More completed service details are needed before this AC can be assessed.")}</p>
+      ${assessment.factorsConsidered?.length ? `<h2>Factors Considered</h2><ul>${assessment.factorsConsidered.map(item => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
+      ${assessment.observationsConsidered?.length ? `<h2>Technician and Customer Observations Considered</h2><ul>${assessment.observationsConsidered.map(item => `<li><strong>${escapeHtml(item.source)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
       <h2>Why This Date</h2><p>${escapeHtml(m.whyThisDate || visit.whyThisDate || m.recommendationBasis || "A completed cleaning or installation date is needed.")}</p>
+      ${assessment.recommendedActions?.length ? `<h2>Recommended Actions</h2><ul>${assessment.recommendedActions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
       ${condition ? `<h2>Separate routine cleaning plan</h2><p><strong>${escapeHtml(dateLabel(routine.bestServicedBy))} · ${escapeHtml(serviceLabel(routine.recommendedService))}</strong></p><p>${escapeHtml(routine.recommendationBasis || "")}</p><p>The earlier condition follow-up is shown first and does not erase the routine cleaning plan.</p>` : ""}
       <h2>Maintenance recommendation</h2><p>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</p>
       <h2>Pattern analysis</h2><p><strong>Source:</strong> ${escapeHtml(basisLabel(pattern.source || m.historicalBasis?.level))} · <strong>Verified intervals:</strong> ${escapeHtml(pattern.intervalCount ?? m.historicalBasis?.sampleSize ?? 0)} · <strong>Arithmetic average:</strong> ${escapeHtml(pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month baseline")}</p>
@@ -149,6 +154,7 @@ function AmpReportCenter({
   const visitAnalysis = maintenance.latestVisitAnalysis || {};
   const conditionFollowUp = maintenance.conditionBasedFollowUp || null;
   const routineMaintenance = maintenance.routineMaintenance || {};
+  const assessment = maintenance.predictiveAssessment || {};
   const contextItems = maintenanceContextItems(signals);
   const historyFirst = ["maintenance_summary", "summary_report"].includes(report?.reportType || reportType);
   const reportLabel = REPORT_TYPES.find(item => item.value === (report?.reportType || reportType))?.label;
@@ -169,14 +175,19 @@ function AmpReportCenter({
         <h3>{reportLabel || report.title}</h3>
         {!historyFirst ? <div className="amp-metrics"><article><span>{conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"}</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
         <details className="amp-details" open>
-          <summary>AI Assessment</summary>
-          <p>{maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before this AC can be assessed."}</p>
+          <summary>Predictive Maintenance Assessment</summary>
+          <div className="amp-metrics"><article><span>Priority</span><strong>{assessment.priority || "Routine"}</strong></article><article><span>Recommended schedule</span><strong>{dateLabel(assessment.recommendedServicingDate || maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(assessment.recommendedService || maintenance.recommendedService)}</strong></article></div>
+          <h4>Assessment Summary</h4>
+          <p>{assessment.assessmentSummary || maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before this AC can be assessed."}</p>
           <p className="amp-muted">This uses only the technician’s submitted findings and the AC records available in AEROPULSE. The original technician report remains unchanged below.</p>
         </details>
+        {assessment.factorsConsidered?.length ? <details className="amp-details" open><summary>Factors Considered</summary><dl className="amp-factor-list">{assessment.factorsConsidered.map((item) => <div key={`${item.label}-${item.value}`}><dt>{item.label}</dt><dd>{/date/i.test(item.label) ? dateLabel(item.value) : item.value}</dd></div>)}</dl></details> : null}
+        {assessment.observationsConsidered?.length ? <details className="amp-details" open><summary>Technician and Customer Observations Considered</summary><ul>{assessment.observationsConsidered.map((item, index) => <li key={`${item.source}-${index}`}><strong>{item.source}:</strong> {item.value}</li>)}</ul><p className="amp-muted">Customer-reported observations remain unverified until a technician confirms them.</p></details> : null}
         <details className="amp-details" open>
           <summary>Why This Date</summary>
-          <p>{maintenance.whyThisDate || visitAnalysis.whyThisDate || maintenance.recommendationBasis || "A completed cleaning or installation date is needed."}</p>
+          <p>{assessment.reasonForRecommendation || maintenance.whyThisDate || visitAnalysis.whyThisDate || maintenance.recommendationBasis || "A completed cleaning or installation date is needed."}</p>
         </details>
+        {assessment.recommendedActions?.length ? <details className="amp-details" open><summary>Recommended Actions</summary><ol>{assessment.recommendedActions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ol><p className="amp-muted">{assessment.evidenceNotice}</p></details> : null}
         {conditionFollowUp ? <details className="amp-details" open>
           <summary>Separate routine cleaning plan</summary>
           <div className="amp-metrics"><article><span>Routine cleaning date</span><strong>{dateLabel(routineMaintenance.bestServicedBy)}</strong></article><article><span>Routine service</span><strong>{serviceLabel(routineMaintenance.recommendedService)}</strong></article><article><span>Routine interval</span><strong>{routineMaintenance.intervalDays ? `${routineMaintenance.intervalDays} days` : "Not available"}</strong></article></div>

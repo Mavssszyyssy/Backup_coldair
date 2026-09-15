@@ -23,6 +23,7 @@ export default function CustomerAmpReport({ report, provider }) {
   const visitAnalysis = maintenance.latestVisitAnalysis || {};
   const conditionFollowUp = maintenance.conditionBasedFollowUp || null;
   const routine = maintenance.routineMaintenance || {};
+  const assessment = maintenance.predictiveAssessment || {};
   const explanation = customerSystemMessage(String(maintenance.interpretation || "").trim());
   const aiAssessment = maintenance.aiAssessment || visitAnalysis.aiAssessment || explanation || "AEROPULSE needs more completed service details before it can assess this AC.";
   const whyThisDate = maintenance.whyThisDate || visitAnalysis.whyThisDate || customerSystemMessage(maintenance.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested.";
@@ -35,8 +36,23 @@ export default function CustomerAmpReport({ report, provider }) {
       <DetailRow label={conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"} value={dateLabel(maintenance.bestServicedBy)} />
       <DetailRow label="Recommended service" value={methodLabel(maintenance.recommendedService)} />
     </> : <DetailRow label="Last recorded cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
-    <DetailRow label="AI Assessment" value={aiAssessment} multiline />
-    <DetailRow label="Why This Date" value={whyThisDate} multiline />
+    <DetailRow label="Priority" value={assessment.priority || (maintenance.overdue ? "Schedule soon" : "Routine")} />
+    <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || aiAssessment} multiline />
+    {assessment.factorsConsidered?.length ? <View>
+      <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Factors Considered</Text>
+      {assessment.factorsConsidered.map((item, index) => <DetailRow key={`${item.label}-${index}`} label={item.label} value={/date/i.test(item.label) ? dateLabel(item.value) : String(item.value)} multiline />)}
+    </View> : null}
+    {assessment.observationsConsidered?.length ? <View>
+      <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Technician and Customer Observations Considered</Text>
+      {assessment.observationsConsidered.map((item, index) => <DetailRow key={`${item.source}-${index}`} label={item.source} value={item.value} multiline />)}
+      <Text style={body}>Customer-reported observations remain unverified until a technician confirms them.</Text>
+    </View> : null}
+    <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || whyThisDate} multiline />
+    {assessment.recommendedActions?.length ? <View>
+      <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Recommended Actions</Text>
+      {assessment.recommendedActions.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}
+      <Text style={body}>{assessment.evidenceNotice}</Text>
+    </View> : null}
     {conditionFollowUp ? <View>
       <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Routine cleaning plan</Text>
       <DetailRow label="Routine cleaning date" value={dateLabel(routine.bestServicedBy)} />

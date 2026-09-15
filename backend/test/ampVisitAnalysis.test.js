@@ -94,6 +94,29 @@ test("free-text technician notes identify an unlisted control-board concern and 
   assert.equal(new Date(result.recommendedFollowUpDate).toISOString().slice(0, 10), "2026-09-17");
 });
 
+test("customer comments and custom Other text are labeled evidence without becoming technician findings", () => {
+  const withCustomerContext = {
+    ...service,
+    findings: "The unit was cleaned and tested.",
+    customerInputs: {
+      reportedIssue: "Customer reports unusual vibration when the compressor starts.",
+      notes: "The vibration is intermittent.",
+      other: "A new custom symptom not present in the dropdown.",
+    },
+  };
+  const evidence = buildVisitEvidence({ serviceHistory: withCustomerContext, recommendation });
+  assert.match(evidence.fact_catalog.customer_reported_issue, /unusual vibration/i);
+  assert.match(evidence.fact_catalog.customer_other_observation, /custom symptom/i);
+  assert.match(evidence.visit.observation_text, /Customer-reported concern/);
+  assert.equal(evidence.visit.findings, "The unit was cleaned and tested.");
+  const monitored = insight({ severity: "monitor", risk_type: "component_deterioration", affected_component: "compressor", evidence_confidence: "medium", follow_up_action: "inspection", follow_up_days: 45, repair_or_replacement: "inspection_needed", evidence_fact_ids: ["latest_observations", "customer_reported_issue"] });
+  assert.equal(validVisitAnalysis(monitored, evidence), true);
+  const result = finalizeVisitAnalysis({ serviceHistory: withCustomerContext, recommendation, evidence, providerResult: { provider: "openai", insight: monitored } });
+  assert.match(result.aiAssessment, /Customer observations considered/);
+  assert.match(result.aiAssessment, /unusual vibration/i);
+  assert.match(result.predictedRisk, /possible developing/i);
+});
+
 test("negated free-text component concerns do not create a false failure", () => {
   const normal = {
     ...service,

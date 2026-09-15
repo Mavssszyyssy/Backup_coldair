@@ -17,6 +17,7 @@ const COMPANY = {
 };
 
 const TABS = [
+  { id: "intelligence", label: "Business Intelligence" },
   { id: "sales", label: "Sales Report" },
   { id: "inventory", label: "Inventory Report" },
   { id: "tech", label: "Technician Performance" },
@@ -34,11 +35,24 @@ const SALES_STATUS_OPTIONS = [
   ["cancelled", "Cancelled"],
 ];
 
+const SALES_PAYMENT_OPTIONS = [
+  ["all", "All payment methods"],
+  ["gcash", "GCash"],
+  ["card", "Credit / debit card"],
+  ["cod", "Cash on Delivery"],
+];
+
 const INVENTORY_STATUS_OPTIONS = [
   ["all", "All stock states"],
   ["available", "In stock"],
   ["low", "Low stock"],
   ["out", "Out of stock"],
+];
+const INVENTORY_CATEGORY_OPTIONS = [
+  ["all", "All categories"],
+  ["split", "Split Type"],
+  ["window", "Window Type"],
+  ["floor", "Floor Type"],
 ];
 const INVENTORY_PAGE_SIZE = 10;
 
@@ -57,6 +71,7 @@ const SUMMARY_LABELS = {
   outOfStockItems: "Out-of-stock lines",
   lowStockItems: "Low-stock lines",
   technicianCount: "Technicians",
+  completedInPeriod: "Completed in period",
   completedToday: "Completed today",
   completedThisWeek: "Completed this week",
   completedThisMonth: "Completed this month",
@@ -82,6 +97,7 @@ const COLUMN_LABELS = {
   stockValue: "Stock value",
   stockStatus: "Stock status",
   merchandiseSales: "Merchandise sales",
+  completedWorkOrders: "Completed work orders",
 };
 
 const OMITTED_INVENTORY_FIELDS = new Set([
@@ -138,6 +154,60 @@ function ReportTable({ title, rows, inventory = false }) {
   </section>;
 }
 
+function IntelligenceTrend({ title, rows = [], valueKey, valueLabel, money = false }) {
+  if (!rows.length) return null;
+  const maximum = Math.max(1, ...rows.map((row) => Number(row[valueKey] || 0)));
+  return <section className="company-bi-trend" aria-label={title}>
+    <h3>{title}</h3>
+    <div className="company-bi-trend-list">
+      {rows.map((row) => {
+        const value = Number(row[valueKey] || 0);
+        const display = money ? formatReportValue(value, "amountCollected") : value;
+        return <article key={`${row.bucket}-${value}`}>
+          <div><span>{String(row.bucket || "").slice(0, 10)}</span><strong>{display} {valueLabel}</strong></div>
+          <span className="company-bi-trend-track" aria-hidden="true"><span style={{ width: `${Math.max(value > 0 ? 4 : 0, (value / maximum) * 100)}%` }} /></span>
+        </article>;
+      })}
+    </div>
+  </section>;
+}
+
+function BusinessIntelligenceView({ data }) {
+  const intelligence = data.intelligence || {};
+  const summary = intelligence.summary || {};
+  const insights = intelligence.insights || {};
+  const tables = intelligence.tables || {};
+  const charts = intelligence.charts || {};
+  const metrics = [
+    ["Sales collected", formatReportValue(summary.sales?.amountCollected || 0, "amountCollected")],
+    ["Units sold", summary.sales?.unitsSold || 0],
+    ["Completed services", summary.service?.completedServices || 0],
+    ["Current stock units", summary.inventory?.currentStockUnits || 0],
+    ["AMP due / overdue", `${summary.amp?.dueWithin30Days || 0} / ${summary.amp?.overdue || 0}`],
+    ["Condition follow-ups", summary.amp?.conditionFollowUps || 0],
+  ];
+  return <>
+    <div className="company-bi-metrics">{metrics.map(([metric, value]) => <article key={metric}><span>{metric}</span><strong>{value}</strong></article>)}</div>
+    {data.warning ? <p className="company-report-basis" role="status"><strong>Analysis status:</strong> {data.warning}</p> : null}
+    <div className="company-bi-insights">{["sales", "service", "inventory", "amp"].map((category) => <section key={category}>
+      <h3>{category === "amp" ? "AMP / Predictive Maintenance" : `${humanize(category)} Performance`}</h3>
+      {(insights[category] || []).map((item) => <article key={item.id}><p>{item.statement}</p>{item.action ? <p><strong>Manager action:</strong> {item.action}</p> : null}</article>)}
+    </section>)}</div>
+    <div className="company-bi-trends">
+      <IntelligenceTrend title="Collected sales trend" rows={charts.salesTrend || []} valueKey="amountCollected" valueLabel="collected" money />
+      <IntelligenceTrend title="Completed service trend" rows={charts.serviceTrend || []} valueKey="count" valueLabel="services" />
+    </div>
+    <ReportTable title="Recorded service mix" rows={(charts.serviceByType || []).map(({ label, count }) => ({ serviceType: label, completedServices: count }))} />
+    <ReportTable title="Best-selling AC models" rows={(tables.topModels || []).map(({ brand, model, sku, unitsSold, sales }) => ({ brand, model, sku, unitsSold, sales }))} />
+    <ReportTable title="Best-selling brands" rows={(tables.topBrands || []).map(({ brand, unitsSold }) => ({ brand, unitsSold }))} />
+    <ReportTable title="Most frequently serviced AC models" rows={(tables.servicedModels || []).map(({ model, count }) => ({ model, completedServices: count }))} />
+    <ReportTable title="Common recorded service concerns" rows={(tables.commonIssues || []).map(({ issue, count }) => ({ issue, completedRecords: count }))} />
+    <ReportTable title="Frequently recorded service parts" rows={(tables.serviceParts || []).map(({ part, count }) => ({ part, recordedUses: count }))} />
+    <ReportTable title="Inventory movement and current stock" rows={(tables.inventoryMovement || []).map(({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }) => ({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }))} inventory />
+    <ReportTable title="Stocked lines with no paid sales in this period" rows={(tables.slowMovingInventory || []).map(({ branch, product, sku, currentStock, stockStatus }) => ({ branch, product, sku, currentStock, stockStatus }))} inventory />
+  </>;
+}
+
 function AdminReports() {
   const { user } = useUser();
   const isSuperAdmin = user?.role === "superadmin";
@@ -147,18 +217,23 @@ function AdminReports() {
   const [range, setRange] = useState(defaultRange);
   const [branch, setBranch] = useState(isSuperAdmin ? "all" : assignedBranch);
   const [salesStatus, setSalesStatus] = useState("paid");
+  const [salesPaymentMethod, setSalesPaymentMethod] = useState("all");
+  const [salesSearch, setSalesSearch] = useState("");
   const [stockStatus, setStockStatus] = useState("all");
+  const [inventoryCategory, setInventoryCategory] = useState("all");
+  const [inventoryBrand, setInventoryBrand] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [technicianSearch, setTechnicianSearch] = useState("");
   const [reportPage, setReportPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [data, setData] = useState({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "" });
+  const [data, setData] = useState({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
 
   const setTab = (tab) => {
     setActiveTab(tab);
     setReportPage(1);
     setError("");
-    setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "" });
+    setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
   };
   const rangeError = range.from && range.to && range.from > range.to ? "The report start date must be on or before the end date." : "";
   const canExport = data.rows.length > 0;
@@ -181,28 +256,32 @@ function AdminReports() {
     setError("");
     setReportPage(1);
     try {
-      if (activeTab === "sales") {
-        const query = new URLSearchParams({ interval: "daily", from: range.from, to: range.to, status: salesStatus, topN: "50", branch });
+      if (activeTab === "intelligence") {
+        const query = new URLSearchParams({ from: range.from, to: range.to, branch });
+        const result = await apiRequest(`/reports/business-intelligence?${query}`);
+        setData({ summary: result.summary || {}, rows: [], secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "", intelligence: result, warning: result.warning || "" });
+      } else if (activeTab === "sales") {
+        const query = new URLSearchParams({
+          interval: "daily", from: range.from, to: range.to, status: salesStatus,
+          paymentMethod: salesPaymentMethod, search: salesSearch.trim(), topN: "50", branch,
+        });
         const result = await apiRequest(`/reports/sales?${query}`);
         setData({ summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       } else if (activeTab === "inventory") {
-        const query = new URLSearchParams({ branch, stock: stockStatus, search: inventorySearch.trim() });
+        const query = new URLSearchParams({
+          branch, stock: stockStatus, category: inventoryCategory,
+          brand: inventoryBrand.trim(), search: inventorySearch.trim(),
+        });
         const result = await apiRequest(`/reports/inventory?${query}`);
         setData({ summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       } else {
-        const dashboard = await apiRequest("/dashboard/me?includeAllTechnicians=true");
-        const rows = (dashboard?.analytics?.technicianKPIs || []).map((item) => ({
-          technician: item.name || "Technician", branch: item.branch || dashboard?.stats?.branchLabel || "",
-          completedToday: Number(item.completedToday || 0), completedWeek: Number(item.completedWeek || 0), completedMonth: Number(item.completedMonth || 0),
-        }));
-        setData({
-          summary: { technicianCount: rows.length, completedToday: rows.reduce((sum, row) => sum + row.completedToday, 0), completedThisWeek: rows.reduce((sum, row) => sum + row.completedWeek, 0), completedThisMonth: rows.reduce((sum, row) => sum + row.completedMonth, 0) },
-          rows, secondaryRows: [], basis: "Completed technician work recorded by the operational dashboard.", updatedAt: new Date().toISOString(),
-        });
+        const query = new URLSearchParams({ from: range.from, to: range.to, branch, search: technicianSearch.trim() });
+        const result = await apiRequest(`/reports/technicians?${query}`);
+        setData({ summary: result.summary || {}, rows: result.rows || [], secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       }
     } catch (requestError) {
       setError(requestError?.message || "Failed to generate report.");
-      setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "" });
+      setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
     } finally { setBusy(false); }
   };
 
@@ -215,6 +294,11 @@ function AdminReports() {
     reportingPeriod: activeTab === "inventory" ? `Inventory as of ${new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}` : `${range.from} to ${range.to}`,
     reportId: `APR-${activeTab.toUpperCase()}-${(activeTab === "inventory" ? toIsoDate(new Date()) : range.from).replaceAll("-", "")}-${activeTab === "inventory" ? String(branch || "ALL").toUpperCase() : range.to.replaceAll("-", "")}`,
     generatedAt: new Date().toLocaleString("en-PH"),
+    filters: activeTab === "sales"
+      ? `Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; Search: ${salesSearch.trim() || "None"}`
+      : activeTab === "inventory"
+        ? `Stock: ${INVENTORY_STATUS_OPTIONS.find(([value]) => value === stockStatus)?.[1] || stockStatus}; Category: ${INVENTORY_CATEGORY_OPTIONS.find(([value]) => value === inventoryCategory)?.[1] || inventoryCategory}; Brand: ${inventoryBrand.trim() || "All"}; Search: ${inventorySearch.trim() || "None"}`
+        : `Technician search: ${technicianSearch.trim() || "None"}`,
   });
 
   const exportExcel = () => exportToExcel({ filename: `cold-air-${activeTab}-${toIsoDate(new Date())}.xls`, title, summary: data.summary, rows: data.rows, metadata: metadata() });
@@ -226,10 +310,10 @@ function AdminReports() {
     const reportHtml = activeTab === "inventory"
       ? inventoryReportHtml(data.rows, summaryHtml)
       : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
-    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
+    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch} · Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
   };
 
-  return <Layout title="Reports" subtitle="Company-formatted sales, stock, and technician records">
+  return <Layout title="Analytics & Reports" subtitle="AI-prioritized business intelligence and company-formatted operational records">
     <section className="company-report-shell">
       <header className="company-report-brand">
         <img src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" />
@@ -240,21 +324,30 @@ function AdminReports() {
 
       <div className="company-report-controls">
         {activeTab !== "inventory" ? <><label>From<input type="date" value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>To<input type="date" value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
-        {isSuperAdmin && activeTab !== "tech" ? <label>Branch<select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : null}
-        {activeTab === "sales" ? <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label> : null}
-        {activeTab === "inventory" ? <><label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="company-report-search">Search<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Product, SKU, brand, model…" /></label></> : null}
+        {isSuperAdmin ? <label>Branch<select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : null}
+        {activeTab === "sales" ? <>
+          <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Payment method<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="company-report-search">Search sales<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder="Order, customer, SKU…" /></label>
+        </> : null}
+        {activeTab === "inventory" ? <>
+          <label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Category<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Brand<input type="search" value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)} placeholder="All brands" /></label>
+          <label className="company-report-search">Search inventory<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Product, SKU, brand, model…" /></label>
+        </> : null}
+        {activeTab === "tech" ? <label className="company-report-search">Search technicians<input type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder="Technician or branch…" /></label> : null}
         <button className="company-report-generate" type="button" onClick={generate} disabled={busy || Boolean(rangeError && activeTab !== "inventory")}>{busy ? "Generating…" : "Generate report"}</button>
-        <button type="button" onClick={exportExcel} disabled={!canExport}>Export Excel</button>
-        <button type="button" onClick={exportPdf} disabled={!canExport}>Export PDF</button>
+        {activeTab !== "intelligence" ? <><button type="button" onClick={exportExcel} disabled={!canExport}>Export Excel</button><button type="button" onClick={exportPdf} disabled={!canExport}>Export PDF</button></> : null}
       </div>
       {rangeError && activeTab !== "inventory" ? <p className="company-report-error" role="alert">{rangeError}</p> : null}
       {error ? <p className="company-report-error" role="alert">{error}</p> : null}
 
       {data.summary ? <article className="company-report-document">
         <div className="company-report-document-heading"><div><p>{activeTab === "inventory" ? "Stock position" : "Reporting period"}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? "All Branches" : branch || assignedBranch}</strong><span>Generated {new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}</span></div></div>
-        <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{humanize(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div>
+        {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{humanize(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
         {data.basis ? <p className="company-report-basis"><strong>Report basis:</strong> {data.basis}</p> : null}
-        <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />
+        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} /> : <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
         {activeTab === "inventory" && data.rows.length ? <nav className="company-report-pagination" aria-label="Inventory report pagination">
           <span>Showing {firstReportRowIndex + 1}–{Math.min(firstReportRowIndex + INVENTORY_PAGE_SIZE, data.rows.length)} of {data.rows.length} records</span>
           <div>
@@ -264,7 +357,7 @@ function AdminReports() {
           </div>
         </nav> : null}
         {data.secondaryRows.length ? <ReportTable title="Product sales summary" rows={data.secondaryRows} /> : null}
-        {!data.rows.length ? <div className="company-report-empty">No records match the selected filters.</div> : null}
+        {activeTab !== "intelligence" && !data.rows.length ? <div className="company-report-empty">No records match the selected filters.</div> : null}
       </article> : <div className="company-report-empty">Choose the report filters, then select Generate report.</div>}
     </section>
   </Layout>;

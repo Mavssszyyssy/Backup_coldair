@@ -28,12 +28,16 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   renderReport();
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
+  fireEvent.change(screen.getByLabelText("Payment method"), { target: { value: "gcash" } });
+  fireEvent.change(screen.getByLabelText("Search sales"), { target: { value: "ORD-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/sales?"))).toBe(true));
   const requested = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/sales?"))[0];
   expect(requested).toContain("from=2026-09-01");
   expect(requested).toContain("to=2026-09-10");
   expect(requested).toContain("status=paid");
+  expect(requested).toContain("paymentMethod=gcash");
+  expect(requested).toContain("search=ORD-1");
   expect(screen.getByText("ORD-1")).toBeInTheDocument();
   expect(screen.getAllByText("SKU").length).toBeGreaterThan(0);
   expect(screen.getAllByText("AC-ONE-1HP").length).toBeGreaterThan(0);
@@ -48,10 +52,16 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   });
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Inventory Report" }));
+  fireEvent.change(screen.getByLabelText("Category"), { target: { value: "split" } });
+  fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Cold Air" } });
+  fireEvent.change(screen.getByLabelText("Search inventory"), { target: { value: "AC-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?")));
   const reportRequest = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/inventory?"))[0];
   expect(reportRequest).not.toContain("low-stock");
+  expect(reportRequest).toContain("category=split");
+  expect(reportRequest).toContain("brand=Cold+Air");
+  expect(reportRequest).toContain("search=AC-1");
   expect(screen.getByText("AC-1")).toBeInTheDocument();
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   for (const removedHeader of ["Assigned", "In service", "Retired", "Tracked units", "Stock / QR variance", "Reorder level"]) {
@@ -94,16 +104,67 @@ it("paginates inventory rows in the screen and preserves those pages in the PDF"
   expect(exportedHtml).toContain("AC-23");
 });
 
-it("requests the complete active technician KPI list for the technician report", async () => {
+it("requests active technician performance for the selected date range and search", async () => {
   apiRequest.mockResolvedValue({
-    stats: { branchLabel: "Cavite" },
-    analytics: { technicianKPIs: [{ name: "Active Technician", branch: "Cavite", completedToday: 1, completedWeek: 2, completedMonth: 3 }] },
+    summary: { technicianCount: 1, completedInPeriod: 3 },
+    basis: "Completed work orders in the period.",
+    updatedAt: "2026-09-10T15:00:00.000Z",
+    rows: [{ technician: "Active Technician", branch: "Cavite", completedWorkOrders: 3 }],
   });
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Technician Performance" }));
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
+  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
+  fireEvent.change(screen.getByLabelText("Search technicians"), { target: { value: "Active" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/dashboard/me?includeAllTechnicians=true"));
+  await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/technicians?"))).toBe(true));
+  const requested = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/technicians?"))[0];
+  expect(requested).toContain("from=2026-09-01");
+  expect(requested).toContain("to=2026-09-10");
+  expect(requested).toContain("search=Active");
   expect(screen.getByText("Active Technician")).toBeInTheDocument();
+  expect(screen.getAllByText("3").length).toBeGreaterThan(0);
+});
+
+it("renders grounded sales, service, inventory, and AMP business intelligence", async () => {
+  apiRequest.mockResolvedValue({
+    provider: "openai",
+    summary: {
+      sales: { amountCollected: 50000, unitsSold: 3 },
+      service: { completedServices: 4 },
+      inventory: { currentStockUnits: 12 },
+      amp: { dueWithin30Days: 2, overdue: 1, conditionFollowUps: 1 },
+    },
+    insights: {
+      sales: [{ id: "sales", statement: "Model A has the highest recorded sales volume.", action: "Review stock." }],
+      service: [{ id: "service", statement: "Regular cleaning is the most recorded service.", action: "Plan capacity." }],
+      inventory: [{ id: "inventory", statement: "Two lines are low in stock.", action: "Review replenishment." }],
+      amp: [{ id: "amp", statement: "One unit needs a condition follow-up.", action: "Review its plan." }],
+    },
+    charts: {
+      salesTrend: [{ bucket: "2026-09-01T00:00:00.000Z", amountCollected: 50000 }],
+      serviceTrend: [{ bucket: "2026-09", count: 4 }],
+      serviceByType: [{ type: "regular_cleaning", label: "regular cleaning", count: 4 }],
+    },
+    tables: {
+      topModels: [], topBrands: [], servicedModels: [], commonIssues: [],
+      serviceParts: [{ part: "air filter", count: 2 }], inventoryMovement: [],
+    },
+    basis: "Verified records.", updatedAt: "2026-09-16T00:00:00.000Z",
+  });
+  renderReport();
+  fireEvent.click(screen.getByRole("button", { name: "Business Intelligence" }));
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/business-intelligence?"))).toBe(true));
+  expect(screen.getByText("Model A has the highest recorded sales volume.")).toBeInTheDocument();
+  expect(screen.getByText("Regular cleaning is the most recorded service.")).toBeInTheDocument();
+  expect(screen.getByText("Two lines are low in stock.")).toBeInTheDocument();
+  expect(screen.getByText("One unit needs a condition follow-up.")).toBeInTheDocument();
+  expect(screen.getByText("₱50,000.00")).toBeInTheDocument();
+  expect(screen.getByText("Collected sales trend")).toBeInTheDocument();
+  expect(screen.getByText("Completed service trend")).toBeInTheDocument();
+  expect(screen.getByText("Frequently recorded service parts")).toBeInTheDocument();
+  expect(screen.getByText("air filter")).toBeInTheDocument();
 });
 
 it("blocks a reversed reporting range before requesting data", () => {

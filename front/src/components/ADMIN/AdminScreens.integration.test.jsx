@@ -74,7 +74,7 @@ it.each([
   ["dashboard", AdminDashboard, "/admin/dashboard", "Commerce analytics"],
   ["inventory", AdminInventory, "/admin/inventory", "Inventory Management"],
   ["services", AdminServices, "/admin/services", "Services"],
-  ["reports", AdminReports, "/admin/reports", "Reports"],
+  ["reports", AdminReports, "/admin/reports", "Analytics & Reports"],
   ["settings", AdminSettings, "/admin/settings", "Settings"],
   ["profile", AdminProfile, "/admin/profile", "Admin Profile"],
 ])("renders the real Admin %s screen", (_name, Component, entry, heading) => {

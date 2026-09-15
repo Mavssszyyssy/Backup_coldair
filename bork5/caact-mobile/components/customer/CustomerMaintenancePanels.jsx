@@ -31,6 +31,7 @@ const roomSizeMessage = (assessment = {}) => ({
 
 export function CustomerRecommendationPanel({ recommendation, maintenance }) {
   if (!recommendation) return null;
+  const assessment = recommendation.predictiveAssessment || {};
   return <Card>
     <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
       <View style={{ width: 52, height: 52, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}><Ionicons name="calendar-clear-sharp" size={25} color={COLORS.primary} /></View>
@@ -38,8 +39,10 @@ export function CustomerRecommendationPanel({ recommendation, maintenance }) {
       <StatusChip label={serviceLabel(recommendation.recommendedService)} color={recommendation.overdue ? COLORS.danger : COLORS.success} />
     </View>
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{serviceExplanation(recommendation.recommendedService)}</Text>
-    <DetailRow label="AI Assessment" value={recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline />
-    <DetailRow label="Why This Date" value={recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline />
+    <DetailRow label="Priority" value={assessment.priority || (recommendation.overdue ? "Schedule soon" : "Routine")} />
+    <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline />
+    <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline />
+    {assessment.recommendedActions?.length ? <DetailRow label="Recommended Actions" value={assessment.recommendedActions.map((item, index) => `${index + 1}. ${item}`).join("\n")} multiline /> : null}
     {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.dataQuality.message)}</Text> : null}
     {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={maintenance.urgency} color={maintenance.color} /></View> : null}
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>This is a suggestion. A visit is only booked after you submit a service request.</Text>

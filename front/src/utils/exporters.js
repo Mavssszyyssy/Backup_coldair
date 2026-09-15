@@ -63,6 +63,7 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
     ['Prepared by', metadata.representative],
     ['Representative role', metadata.representativeRole],
     ['Reporting period', metadata.reportingPeriod],
+    ['Applied filters', metadata.filters],
     ['Report ID', metadata.reportId],
   ].filter(([, value]) => value);
   const columnCount = Math.max(2, headers.length || 2);
