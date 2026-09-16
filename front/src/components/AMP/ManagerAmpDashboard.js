@@ -17,6 +17,80 @@ const humanLabel = (value, fallback) => String(value || fallback || "")
   .replaceAll("_", " ")
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const SERVICE_ACTIONS = {
+  repair: {
+    title: "Review repair assessments",
+    action: "Verify the recorded technician findings, then arrange a qualified inspection before approving repair or replacement work.",
+  },
+  inspection: {
+    title: "Arrange unit inspections",
+    action: "Review the recorded concern and schedule a technician assessment before deciding on repair or replacement.",
+  },
+  deep_cleaning: {
+    title: "Prepare deep-cleaning capacity",
+    action: "Confirm customer availability and assign sufficient technician time for the recorded deep-cleaning recommendations.",
+  },
+  regular_cleaning: {
+    title: "Prepare routine-cleaning capacity",
+    action: "Contact the affected customers and plan routine-cleaning slots within the selected service window.",
+  },
+};
+
+const unitWord = (count) => `${count} unit${Number(count) === 1 ? "" : "s"}`;
+
+export const buildManagementActions = ({ summary = {}, actionSummary = {}, serviceWindow = 30 } = {}) => {
+  const total = Number(summary.total || 0);
+  const overdue = Number(summary.overdue || 0);
+  const upcoming = Number(summary.upcoming || 0);
+  if (total === 0) return [{
+    level: "monitor",
+    title: "Continue monitoring",
+    description: `No units have a saved servicing date inside the selected ${serviceWindow}-day window. No customer follow-up is indicated by the current AMP records.`,
+  }];
+
+  const actions = [overdue > 0 ? {
+    level: "urgent",
+    title: "Contact overdue customers first",
+    description: `${unitWord(overdue)} passed the saved suggested servicing date. Review each unit's evidence and service plan before contacting the customer to arrange the appropriate follow-up.`,
+  } : {
+    level: "upcoming",
+    title: "Prepare upcoming customer follow-ups",
+    description: `${unitWord(upcoming)} ${upcoming === 1 ? "is" : "are"} due within the selected ${serviceWindow}-day window, with no overdue unit recorded. Review the saved plans before arranging service.`,
+  }];
+
+  (actionSummary.serviceDemand || []).forEach((demand) => {
+    const definition = SERVICE_ACTIONS[demand.serviceType];
+    const count = Number(demand.count || 0);
+    if (!definition || count < 1) return;
+    actions.push({
+      level: demand.overdue > 0 ? "urgent" : "service",
+      title: definition.title,
+      description: `${unitWord(count)} ${count === 1 ? "has" : "have"} a saved ${humanLabel(demand.serviceType)} recommendation${demand.overdue > 0 ? `; ${unitWord(demand.overdue)} ${Number(demand.overdue) === 1 ? "is" : "are"} overdue` : ""}. ${definition.action}`,
+    });
+  });
+
+  const priorityUnits = actionSummary.priorityUnits?.length
+    ? actionSummary.priorityUnits
+    : actionSummary.earliestDueUnit ? [actionSummary.earliestDueUnit] : [];
+  priorityUnits.slice(0, 3).forEach((unit) => {
+    if (!unit?.bestServicedBy) return;
+    const details = [
+      `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}`,
+      `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.bestServicedBy)}.`,
+      unit.affectedComponent ? `Recorded component: ${unit.affectedComponent}.` : "",
+      unit.severity ? `Recorded follow-up priority: ${humanLabel(unit.severity)}.` : "",
+      unit.assessment ? `Assessment: ${unit.assessment}` : "",
+      unit.recommendedActions?.[0] ? `Next action: ${unit.recommendedActions[0]}` : "Open the service plan to verify the recorded basis and next steps.",
+    ].filter(Boolean);
+    actions.push({
+      level: unit.severity && ["urgent", "critical"].includes(unit.severity) ? "urgent" : "next",
+      title: `Unit action · ${unit.modelName || "AC Unit"}`,
+      description: details.join(" "),
+    });
+  });
+  return actions;
+};
+
 function PipelineTable({ units, onSelectPlan }) {
   return (
     <div className="amp-table-wrap">
@@ -71,6 +145,7 @@ function ManagerAmpDashboard() {
   const [pipelinePage, setPipelinePage] = useState(1);
   const [pipelinePagination, setPipelinePagination] = useState({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
   const [branchSummary, setBranchSummary] = useState([]);
+  const [actionSummary, setActionSummary] = useState({ serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
   const [reportUnits, setReportUnits] = useState([]);
   const [aggregate, setAggregate] = useState({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
   const [loading, setLoading] = useState(true);
@@ -94,6 +169,7 @@ function ManagerAmpDashboard() {
         setPipeline(pipelineResult.units || []);
         setPipelinePagination(pipelineResult.pagination || { page: 1, pageSize: 50, total: pipelineResult.units?.length || 0, totalPages: 1 });
         setBranchSummary(pipelineResult.branchSummary || []);
+        setActionSummary(pipelineResult.actionSummary || { serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
         setReportUnits(reportUnitResult.units || []);
         setAggregate(pipelineResult.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
         setError("");
@@ -104,6 +180,7 @@ function ManagerAmpDashboard() {
         setPipeline([]);
         setPipelinePagination({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
         setBranchSummary([]);
+        setActionSummary({ serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
         setReportUnits([]);
         setAggregate({ modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
       })
@@ -151,6 +228,43 @@ function ManagerAmpDashboard() {
   }, [isCompanyWide, reportUnits, selectedBranch]);
 
   const unassignedCount = branchSummary.find((item) => item.branch === UNASSIGNED_BRANCH)?.total || 0;
+  const effectiveActionSummary = useMemo(() => {
+    if (actionSummary.serviceDemand?.length || actionSummary.priorityUnits?.length || actionSummary.earliestDueUnit) return actionSummary;
+    const serviceDemand = Array.from(pipeline.reduce((counts, unit) => {
+      const serviceType = unit.recommendedService || "inspection";
+      const current = counts.get(serviceType) || { serviceType, count: 0, overdue: 0 };
+      current.count += 1;
+      if (unit.overdue) current.overdue += 1;
+      counts.set(serviceType, current);
+      return counts;
+    }, new Map()).values());
+    const first = pipeline[0];
+    return {
+      serviceDemand,
+      priorityUnits: first ? [{
+        unitId: first.unitId,
+        modelName: first.modelName,
+        serialNumber: first.serialNumber,
+        customerName: first.customerName,
+        bestServicedBy: first.bestServicedBy,
+        recommendedService: first.recommendedService,
+        assessment: first.aiAssessment,
+      }] : [],
+      earliestDueUnit: first ? {
+        unitId: first.unitId,
+        modelName: first.modelName,
+        serialNumber: first.serialNumber,
+        customerName: first.customerName,
+        bestServicedBy: first.bestServicedBy,
+        recommendedService: first.recommendedService,
+      } : null,
+    };
+  }, [actionSummary, pipeline]);
+  const managementActions = useMemo(() => buildManagementActions({
+    summary: currentSummary,
+    actionSummary: effectiveActionSummary,
+    serviceWindow,
+  }), [currentSummary, effectiveActionSummary, serviceWindow]);
   const pageTitle = isCompanyWide ? "AMP · Maintenance across branches" : "AMP · My branch maintenance";
   const pageSubtitle = isCompanyWide
     ? "See which branches need attention. Branch admins remain responsible for service processing."
@@ -163,14 +277,17 @@ function ManagerAmpDashboard() {
         <article>
           <span>Units to follow up</span>
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.total}</strong>
+          <small>Review these saved unit-level plans.</small>
         </article>
         <article>
           <span>Due within {serviceWindow} days</span>
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.upcoming}</strong>
+          <small>Prepare customer contact and service capacity.</small>
         </article>
         <article>
           <span>Overdue · follow up first</span>
           <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.overdue}</strong>
+          <small>Prioritize verified overdue plans first.</small>
         </article>
         {isCompanyWide ? (
           <article>
@@ -179,6 +296,28 @@ function ManagerAmpDashboard() {
           </article>
         ) : null}
       </div>
+
+      {!loading && !error ? (
+        <section className="amp-card amp-management-actions" aria-labelledby="amp-management-actions-title">
+          <div className="amp-action-heading">
+            <div>
+              <span className="amp-action-eyebrow">Decision support</span>
+              <h2 id="amp-management-actions-title">What the branch should do next</h2>
+              <p>These actions come from the saved servicing dates and service recommendations for the selected branch and service window.</p>
+            </div>
+            {currentSummary.total > 0 ? <a href="#amp-follow-up-units">Review affected units</a> : null}
+          </div>
+          <div className="amp-action-grid">
+            {managementActions.map((action, index) => (
+              <article className={`amp-action-item ${action.level}`} key={`${action.title}-${index}`}>
+                <span>{index + 1}</span>
+                <div><h3>{action.title}</h3><p>{action.description}</p></div>
+              </article>
+            ))}
+          </div>
+          <p className="amp-action-disclaimer">Recommendations guide follow-up and staffing. Confirm each unit’s original technician evidence before scheduling or approving repair work.</p>
+        </section>
+      ) : null}
 
       {isCompanyWide ? (
         <section className="amp-card amp-branch-overview">
@@ -224,7 +363,7 @@ function ManagerAmpDashboard() {
         </section>
       ) : null}
 
-      <section className="amp-card">
+      <section className="amp-card" id="amp-follow-up-units">
         <div className="amp-card-header">
           <div>
             <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>

@@ -89,6 +89,54 @@ it("opens the selected unit's plan without automatically calling AI", async () =
   expect(apiRequest.mock.calls.some(([path]) => path === "/ai/amp-report")).toBe(false);
 });
 
+it("turns maintenance totals into data-backed management recommendations", async () => {
+  apiRequest.mockImplementation(async path => path.includes("pipeline") ? {
+    units: [{
+      unitId: "unit-1",
+      modelName: "Samsung Windfree 1.5",
+      serialNumber: "CAACT-001",
+      customerName: "Edrian Mab",
+      bestServicedBy: "2026-09-28T00:00:00.000Z",
+      daysUntilDue: 12,
+      overdue: false,
+      recommendedService: "repair",
+    }],
+    branchSummary: [{ branch: "Bulacan", total: 1, upcoming: 1, overdue: 0 }],
+    actionSummary: {
+      serviceDemand: [{ serviceType: "repair", count: 1, overdue: 0 }],
+      priorityUnits: [{
+        unitId: "unit-1",
+        modelName: "Samsung Windfree 1.5",
+        serialNumber: "CAACT-001",
+        customerName: "Edrian Mab",
+        bestServicedBy: "2026-09-28T00:00:00.000Z",
+        recommendedService: "repair",
+        affectedComponent: "control board",
+        severity: "urgent",
+        assessment: "The technician recorded signs of control-board failure.",
+        recommendedActions: ["Arrange a qualified technician assessment before approving replacement."],
+      }],
+      earliestDueUnit: {
+        unitId: "unit-1",
+        modelName: "Samsung Windfree 1.5",
+        serialNumber: "CAACT-001",
+        customerName: "Edrian Mab",
+        bestServicedBy: "2026-09-28T00:00:00.000Z",
+        recommendedService: "repair",
+      },
+    },
+  } : { units: [] });
+
+  show(<ManagerAmpDashboard />);
+
+  expect(await screen.findByRole("heading", { name: "What the branch should do next" })).toBeVisible();
+  expect(screen.getByText("Prepare upcoming customer follow-ups")).toBeVisible();
+  expect(screen.getByText("Review repair assessments")).toBeVisible();
+  expect(screen.getByText(/verify the recorded technician findings/i)).toBeVisible();
+  expect(screen.getByText("Unit action · Samsung Windfree 1.5")).toBeVisible();
+  expect(screen.getByText(/Edrian Mab.*CAACT-001.*Repair by September 28, 2026.*control board.*Urgent.*qualified technician assessment/i)).toBeVisible();
+});
+
 it("refreshes branch workload after a generated plan without making another paid request", async () => {
   let pipelineReads = 0;
   let generations = 0;
