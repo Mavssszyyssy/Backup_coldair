@@ -25,11 +25,12 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
     transactions: [{ orderCode: "ORD-1", sku: "AC-ONE-1HP", total: 2490, amountCollected: 2490 }],
     products: [{ sku: "AC-ONE-1HP", product: "AC One", unitsSold: 2, merchandiseSales: 2000 }],
   };
-  apiRequest.mockImplementation(async (path) => path === "/products"
-    ? { products: [{ sku: "AC-ONE-1HP", brand: "Cold Air" }] }
+  apiRequest.mockImplementation(async (path) => path.startsWith("/reports/filter-options?")
+    ? { customers: ["Customer One"], technicians: [], skus: ["AC-ONE-1HP"], brands: ["Cold Air"] }
     : report);
   renderReport();
   await screen.findByRole("option", { name: "AC-ONE-1HP" });
+  expect(screen.getByLabelText("Customer").tagName).toBe("SELECT");
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
   fireEvent.change(screen.getByLabelText("Payment method"), { target: { value: "gcash" } });
@@ -58,8 +59,8 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
     basis: "Current branch stock.", updatedAt: "2026-09-10T15:00:00.000Z",
     rows: [{ branch: "Cavite", sku: "AC-1", product: "AC One", currentStock: 3, availableSerials: 2, soldUnits: 1, stockValue: 60000, stockStatus: "In stock", assignedUnits: 1, serviceUnits: 0, retiredUnits: 0, trackedUnits: 3, inventoryVariance: 1, reorderLevel: 2 }],
   };
-  apiRequest.mockImplementation(async (path) => path === "/products"
-    ? { products: [{ sku: "AC-1", brand: "Cold Air" }] }
+  apiRequest.mockImplementation(async (path) => path.startsWith("/reports/filter-options?")
+    ? { customers: [], technicians: [], skus: ["AC-1"], brands: ["Cold Air"] }
     : report);
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Inventory Report" }));
@@ -117,24 +118,30 @@ it("paginates inventory rows in the screen and preserves those pages in the PDF"
 });
 
 it("requests active technician performance for the selected date range and search", async () => {
-  apiRequest.mockResolvedValue({
+  const report = {
     summary: { technicianCount: 1, completedInPeriod: 3 },
     basis: "Completed work orders in the period.",
     updatedAt: "2026-09-10T15:00:00.000Z",
     rows: [{ technician: "Active Technician", branch: "Cavite", completedWorkOrders: 3 }],
-  });
+  };
+  apiRequest.mockImplementation(async (path) => path.startsWith("/reports/filter-options?")
+    ? { customers: [], technicians: [{ value: "507f1f77bcf86cd799439011", label: "Active Technician", branch: "Cavite" }], skus: [], brands: [] }
+    : report);
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Technician Performance" }));
+  await screen.findByRole("option", { name: "Active Technician" });
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
-  fireEvent.change(screen.getByLabelText("Search technicians"), { target: { value: "Active" } });
+  fireEvent.change(screen.getByLabelText("Search"), { target: { value: "Active" } });
+  fireEvent.change(screen.getByLabelText("Technician"), { target: { value: "507f1f77bcf86cd799439011" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
   await waitFor(() => expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/technicians?"))).toBe(true));
   const requested = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/technicians?"))[0];
   expect(requested).toContain("from=2026-09-01");
   expect(requested).toContain("to=2026-09-10");
   expect(requested).toContain("search=Active");
-  expect(screen.getByText("Active Technician")).toBeInTheDocument();
+  expect(requested).toContain("technician=507f1f77bcf86cd799439011");
+  expect(screen.getAllByText("Active Technician").length).toBeGreaterThan(0);
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
 });
 
@@ -211,5 +218,5 @@ it("blocks a reversed reporting range before requesting data", () => {
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
   expect(screen.getByRole("alert")).toHaveTextContent("start date must be on or before");
   expect(screen.getByRole("button", { name: "Generate report" })).toBeDisabled();
-  expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/"))).toBe(false);
+  expect(apiRequest.mock.calls.some(([path]) => ["/reports/sales?", "/reports/inventory?", "/reports/technicians?", "/reports/business-intelligence?"].some((prefix) => path.startsWith(prefix)))).toBe(false);
 });
