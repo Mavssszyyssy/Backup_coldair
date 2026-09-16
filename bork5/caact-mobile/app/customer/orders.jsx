@@ -227,9 +227,10 @@ function OrderStepTimeline({ tracking = {}, activeStep = 0 }) {
 }
 
 function OrderItemSummary({ item }) {
+  const serialNumbers = Array.isArray(item.serialNumbers) ? item.serialNumbers.filter(Boolean) : [];
   const unitText =
-    item.serialNumbers.length > 0
-      ? item.serialNumbers.join(", ")
+    serialNumbers.length > 0
+      ? serialNumbers.join(", ")
       : "Unit serial pending";
   const horsepower = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
 
@@ -381,6 +382,12 @@ export default function CustomerOrdersScreen() {
 
             return (
               <BoutiqueCard key={order.id} style={{ gap: BQ_SPACING.md }}>
+                <View style={{ gap: BQ_SPACING.sm }} accessibilityLabel="Ordered items">
+                  {order.items.map((item) => (
+                    <OrderItemSummary key={item.id} item={item} />
+                  ))}
+                </View>
+
                 <View style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
                   <View style={{ flex: 1 }}>
                     <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
@@ -501,12 +508,6 @@ export default function CustomerOrdersScreen() {
                     />
                   );
                 })() : null}
-
-                <View style={{ gap: BQ_SPACING.sm }}>
-                  {order.items.map((item) => (
-                    <OrderItemSummary key={item.id} item={item} />
-                  ))}
-                </View>
                   </>
                 ) : null}
               </BoutiqueCard>

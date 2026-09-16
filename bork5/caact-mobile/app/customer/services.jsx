@@ -109,7 +109,7 @@ export default function CustomerServicesScreen() {
         // A background update must not switch the AC being booked.
         if (!background) setSelectedUnitId((currentId) => {
           if (requestedUnitId && items.some((item) => String(item.id) === requestedUnitId)) return requestedUnitId;
-          if (currentId && currentId === requestedUnitId && items.some((item) => String(item.id) === String(currentId))) return currentId;
+          if (currentId && items.some((item) => String(item.id) === String(currentId))) return currentId;
           return "";
         });
       }
@@ -166,7 +166,7 @@ export default function CustomerServicesScreen() {
 
   const handleSubmit = async () => {
     if (requestMode === "service" && !selectedService) return Alert.alert("Required", "Choose a service offering.");
-    if (!selectedUnit || String(selectedUnit.id) !== requestedUnitId) return Alert.alert("AC unit required", "Open a specific AC from Home, then tap Book Service for This AC.");
+    if (!selectedUnit) return Alert.alert("AC unit required", "Choose the registered AC unit that needs service.");
     if (selectedActiveRequest) {
       return Alert.alert("Request already open", "This AC unit already has a service request in progress. You do not need to submit another one.");
     }
@@ -282,14 +282,22 @@ export default function CustomerServicesScreen() {
       {!loadingUnits && units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title="What do you need?" />
+        <BottomSheetSelect
+          label="AC unit"
+          value={selectedUnit ? `${selectedUnit.unitName || "AC Unit"} · ${selectedUnit.serialNumber || "Serial not recorded"}` : ""}
+          placeholder="Choose a registered AC"
+          items={units}
+          itemIcon="snow-sharp"
+          searchPlaceholder="Search model or serial number"
+          getKey={(unit) => String(unit.id)}
+          getLabel={(unit) => `${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`}
+          onSelect={(unit) => setSelectedUnitId(String(unit.id))}
+        />
         <BottomSheetSelect label="Request type" value={requestMode === "warranty" ? "Warranty Claim" : "Cleaning or Service"} items={[{ id:"service", title:"Cleaning or Service" }, { id:"warranty", title:"Warranty Claim" }]} getKey={item => item.id} getLabel={item => item.title} onSelect={item => setRequestMode(item.id)} />
         {selectedUnit ? <View style={{ marginTop: SPACING.sm }}>
           <DetailRow label="Selected AC" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
-          <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>This request is securely linked to the AC you opened. Return to Home and open a different AC if needed.</Text>
-        </View> : <View style={{ gap: SPACING.sm, marginTop: SPACING.sm }}>
-          <EmptyState title="Choose the AC that needs service" message="Select a registered AC below. The booking form will lock to that exact unit." />
-          {units.map((unit) => <Button key={unit.id} title={`${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`} variant="secondary" onPress={() => router.setParams({ unitId: String(unit.id) })} />)}
-        </View>}
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>The request will be linked to this exact registered unit. Use the AC unit dropdown above to change it.</Text>
+        </View> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>Choose one registered AC unit before completing the request.</Text>}
         {requestMode === "service" ? <>
         <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{selectedService?.summary}</Text>

@@ -116,8 +116,9 @@ export default function CustomerScreen({
           </Pressable>
         )}
 
-        <View style={{ flex: 1, marginHorizontal: SPACING.sm }}>
+        <View style={{ flex: 1, minWidth: 0, marginHorizontal: SPACING.sm }}>
           <Text
+            numberOfLines={2}
             style={{
               color: COLORS.textPrimary,
               fontWeight: FONT.black,
@@ -139,7 +140,7 @@ export default function CustomerScreen({
           ) : null}
         </View>
 
-        <View style={{ minWidth: 40, alignItems: "flex-end" }}>
+        <View style={{ minWidth: right ? 40 : 0, flexShrink: 0, alignItems: "flex-end" }}>
           {right ?? null}
         </View>
       </View>

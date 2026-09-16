@@ -124,7 +124,7 @@ export default function CustomerHomeScreen() {
         subtitle="Manage your AC units and get support in one place."
         icon="snow-sharp"
       >
-        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+        <View style={{ gap: SPACING.sm }}>
           <Button
             title="Shop AC Units"
             onPress={() => router.push("/customer/shop")}
@@ -134,7 +134,7 @@ export default function CustomerHomeScreen() {
             rightIcon={<Ionicons name="chevron-forward-sharp" size={18} color={COLORS.primary} />}
           />
           <Button
-            title="Choose AC for Service"
+            title="Book AC Service"
             onPress={() => Alert.alert("Choose an AC", "Open the AC that needs service below, then tap Book Service for This AC.")}
             variant="secondary"
             style={{ flex: 1 }}

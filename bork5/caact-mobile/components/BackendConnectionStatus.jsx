@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, RADIUS, SPACING } from "../constants/theme";
 import { checkBackendConnection } from "../services/api";
 import { subscribeBackendConnection } from "../services/backendConnectionState";
-import LoadingLogo from "./LoadingLogo";
 
 // A small, app-wide status surface. It is deliberately separate from screen
 // loading placeholders: it tells the user whether the delay is network-related
@@ -16,25 +15,20 @@ export default function BackendConnectionStatus() {
   const pathname = usePathname();
   const [connection, setConnection] = useState({ state: "hidden" });
   const [retrying, setRetrying] = useState(false);
-  const displayTimer = useRef(null);
 
   useEffect(() => {
     const unsubscribe = subscribeBackendConnection((next) => {
-      if (displayTimer.current) clearTimeout(displayTimer.current);
       if (next.state === "failed") {
         setConnection(next);
         return;
       }
-      if (next.state === "connecting") {
-        displayTimer.current = setTimeout(() => setConnection(next), 700);
-        return;
-      }
+      // Screen-level loaders already show request progress. Keeping a second
+      // floating connection spinner here covered actions and bottom navigation
+      // during normal background refreshes, so this global surface is now
+      // reserved for actionable connection failures only.
       setConnection({ ...next, state: "hidden" });
     });
-    return () => {
-      unsubscribe();
-      if (displayTimer.current) clearTimeout(displayTimer.current);
-    };
+    return unsubscribe;
   }, []);
 
   const retry = async () => {
@@ -51,23 +45,19 @@ export default function BackendConnectionStatus() {
   // Suppressing this global surface there prevents two competing error cards.
   if (pathname === "/" || connection.state === "hidden") return null;
 
-  const failed = connection.state === "failed";
   return (
     <View pointerEvents="box-none" style={[styles.container, { bottom: Math.max(insets.bottom, SPACING.sm) + 72 }]}>
-      <View style={[styles.card, failed ? styles.failedCard : styles.statusCard]}>
-        {failed ? null : <LoadingLogo size={32} />}
-        {failed ? <Text style={[styles.text, styles.failedText]}>{connection.message}</Text> : null}
-        {failed ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ busy: retrying, disabled: retrying }}
-            disabled={retrying}
-            onPress={retry}
-            style={[styles.retryButton, retrying ? styles.retryButtonDisabled : null]}
-          >
-            <Text style={styles.retryText}>{retrying ? "Retrying…" : "Retry"}</Text>
-          </Pressable>
-        ) : null}
+      <View style={[styles.card, styles.failedCard]}>
+        <Text style={[styles.text, styles.failedText]}>{connection.message}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: retrying, disabled: retrying }}
+          disabled={retrying}
+          onPress={retry}
+          style={[styles.retryButton, retrying ? styles.retryButtonDisabled : null]}
+        >
+          <Text style={styles.retryText}>{retrying ? "Retrying…" : "Retry"}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -95,7 +85,6 @@ const styles = {
     shadowRadius: 9,
     elevation: 5,
   },
-  statusCard: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1 },
   failedCard: { backgroundColor: COLORS.dangerLight, borderColor: "#FCA5A5", borderWidth: 1, borderRadius: RADIUS.md },
   text: { color: COLORS.textPrimary, fontSize: 13, fontWeight: "700", marginLeft: SPACING.sm },
   failedText: { color: "#991B1B", flex: 1, lineHeight: 18, marginLeft: 0 },

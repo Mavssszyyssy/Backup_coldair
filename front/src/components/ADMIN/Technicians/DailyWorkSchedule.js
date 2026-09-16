@@ -156,10 +156,12 @@ const DailyWorkSchedule = () => {
     </header>
 
     <div className="daily-schedule__filters">
-      <button type="button" aria-label="Previous day" onClick={() => setDate((value) => shiftDate(value, -1))}>‹</button>
-      <label><span>Schedule date</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-      <button type="button" aria-label="Next day" onClick={() => setDate((value) => shiftDate(value, 1))}>›</button>
-      <button type="button" className="daily-schedule__today" onClick={() => setDate(today())}>Today</button>
+      <div className="daily-schedule__date-navigation">
+        <button type="button" aria-label="Previous day" title="Previous day" onClick={() => setDate((value) => shiftDate(value, -1))}>‹</button>
+        <label><span>Schedule date</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+        <button type="button" aria-label="Next day" title="Next day" onClick={() => setDate((value) => shiftDate(value, 1))}>›</button>
+      </div>
+      <button type="button" className="daily-schedule__today" onClick={() => setDate(today())} disabled={date === today()}><span>Today</span><small>{date === today() ? "Current date selected" : "Return to current date"}</small></button>
       {isSuperAdmin ? <label><span>Branch</span><select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : <div className="daily-schedule__branch"><span>Branch</span><strong>{homeBranch || "Assigned branch"}</strong></div>}
     </div>
     <p className="daily-schedule__date">{formatDate(date)} · {tasks.length} job{tasks.length === 1 ? "" : "s"}</p>

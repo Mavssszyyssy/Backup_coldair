@@ -68,7 +68,7 @@ test('booking from an AC details screen selects that exact AC instead of the fir
  await screen.findByText('Submit Service Request');
  expect(screen.getByText('Selected AC')).toBeTruthy();
  expect(screen.getByText('Second AC\nSerial: S2')).toBeTruthy();
- expect(screen.queryByTestId('Select AC Unit')).toBeNull();
+ expect(screen.getByTestId('AC unit').props.children).toBe('Second AC · S2');
  expect(screen.getByTestId('Service').props.children).toBe('Deep Cleaning');
 });
 
@@ -95,7 +95,20 @@ test('background updates preserve the unit and request type the customer selecte
  await screen.findByText('Submit Service Request');
  await act(async()=>notifyNotificationsChanged());
  expect(screen.getByText('Second AC\nSerial: S2')).toBeTruthy();
- expect(screen.queryByTestId('Select AC Unit')).toBeNull();
+ expect(screen.getByTestId('AC unit').props.children).toBe('Second AC · S2');
  expect(screen.getByTestId('Request type').props.children).toBe('Cleaning or Service');
  expect(screen.getByTestId('Service').props.children).toBe('Regular Cleaning');
+});
+
+test('the AC dropdown changes the exact unit used by a service request',async()=>{
+ mockParams={unitId:'ac1'};
+ await render(<CustomerServicesScreen/>);
+ await screen.findByText('Submit Service Request');
+ await fireEvent.press(screen.getByLabelText('AC unit: Second AC · S2'));
+ expect(screen.getByTestId('AC unit').props.children).toBe('Second AC · S2');
+ await fireEvent.press(screen.getByLabelText('Service: Regular Cleaning'));
+ await fireEvent.press(screen.getByText('Choose test date'));
+ await fireEvent.changeText(screen.getByLabelText('Service Concern'),'Please inspect this unit');
+ await fireEvent.press(screen.getByText('Submit Service Request'));
+ expect(createServiceRequest).toHaveBeenCalledWith(expect.objectContaining({unitId:'ac2'}));
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
@@ -280,17 +280,35 @@ function AdminReports() {
   const [branch, setBranch] = useState(isSuperAdmin ? "all" : assignedBranch);
   const [salesStatus, setSalesStatus] = useState("paid");
   const [salesPaymentMethod, setSalesPaymentMethod] = useState("all");
+  const [salesSearch, setSalesSearch] = useState("");
   const [salesSku, setSalesSku] = useState("");
   const [salesCustomer, setSalesCustomer] = useState("");
   const [stockStatus, setStockStatus] = useState("all");
   const [inventoryCategory, setInventoryCategory] = useState("all");
   const [inventoryBrand, setInventoryBrand] = useState("");
   const [inventorySku, setInventorySku] = useState("");
+  const [inventorySearch, setInventorySearch] = useState("");
   const [technicianSearch, setTechnicianSearch] = useState("");
+  const [catalogProducts, setCatalogProducts] = useState([]);
   const [reportPage, setReportPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/products")
+      .then((result) => { if (active) setCatalogProducts(result.products || []); })
+      .catch(() => { if (active) setCatalogProducts([]); });
+    return () => { active = false; };
+  }, []);
+
+  const skuOptions = useMemo(() => Array.from(new Set(catalogProducts
+    .map((product) => String(product.sku || "").trim())
+    .filter(Boolean))).sort((left, right) => left.localeCompare(right)), [catalogProducts]);
+  const brandOptions = useMemo(() => Array.from(new Set(catalogProducts
+    .map((product) => String(product.brand || "").trim())
+    .filter(Boolean))).sort((left, right) => left.localeCompare(right)), [catalogProducts]);
 
   const setTab = (tab) => {
     setActiveTab(tab);
@@ -329,14 +347,14 @@ function AdminReports() {
       } else if (activeTab === "sales") {
         const query = new URLSearchParams({
           interval: "daily", from: range.from, to: range.to, status: salesStatus,
-          paymentMethod: salesPaymentMethod, sku: salesSku.trim(), customer: salesCustomer.trim(), topN: "10", branch,
+          paymentMethod: salesPaymentMethod, search: salesSearch.trim(), sku: salesSku.trim(), customer: salesCustomer.trim(), topN: "10", branch,
         });
         const result = await apiRequest(`/reports/sales?${query}`);
         setData({ summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
       } else if (activeTab === "inventory") {
         const query = new URLSearchParams({
           branch, stock: stockStatus, category: inventoryCategory,
-          brand: inventoryBrand.trim(), sku: inventorySku.trim(),
+          search: inventorySearch.trim(), brand: inventoryBrand.trim(), sku: inventorySku.trim(),
         });
         const result = await apiRequest(`/reports/inventory?${query}`);
         setData({ summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
@@ -361,9 +379,9 @@ function AdminReports() {
     reportId: `APR-${activeTab.toUpperCase()}-${(activeTab === "inventory" ? toIsoDate(new Date()) : range.from).replaceAll("-", "")}-${activeTab === "inventory" ? String(branch || "ALL").toUpperCase() : range.to.replaceAll("-", "")}`,
     generatedAt: new Date().toLocaleString("en-PH"),
     filters: activeTab === "sales"
-      ? `Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; SKU: ${salesSku.trim() || "All"}; Customer: ${salesCustomer.trim() || "All"}`
+      ? `Search: ${salesSearch.trim() || "None"}; Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; SKU: ${salesSku.trim() || "All"}; Customer: ${salesCustomer.trim() || "All"}`
       : activeTab === "inventory"
-        ? `Stock: ${INVENTORY_STATUS_OPTIONS.find(([value]) => value === stockStatus)?.[1] || stockStatus}; Category: ${INVENTORY_CATEGORY_OPTIONS.find(([value]) => value === inventoryCategory)?.[1] || inventoryCategory}; Brand: ${inventoryBrand.trim() || "All"}; SKU: ${inventorySku.trim() || "All"}`
+        ? `Search: ${inventorySearch.trim() || "None"}; Stock: ${INVENTORY_STATUS_OPTIONS.find(([value]) => value === stockStatus)?.[1] || stockStatus}; Category: ${INVENTORY_CATEGORY_OPTIONS.find(([value]) => value === inventoryCategory)?.[1] || inventoryCategory}; Brand: ${inventoryBrand.trim() || "All"}; SKU: ${inventorySku.trim() || "All"}`
         : activeTab === "intelligence" ? "Verified sales, service, inventory, and AMP records" : `Technician search: ${technicianSearch.trim() || "None"}`,
   });
 
@@ -395,11 +413,12 @@ function AdminReports() {
 
       <div className="company-report-controls">
         {activeTab !== "inventory" ? <><label>From<input type="date" value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>To<input type="date" value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
-        {isSuperAdmin ? <label>Branch<select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : null}
+        <label>Branch<select value={branch || assignedBranch} disabled={!isSuperAdmin} onChange={(event) => setBranch(event.target.value)}>{isSuperAdmin ? <option value="all">All branches</option> : null}{(isSuperAdmin ? BRANCHES : [assignedBranch]).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         {activeTab === "sales" ? <details className="company-report-filter-panel" open>
           <summary>Sales filters</summary>
           <div className="company-report-filter-grid">
-            <label>SKU<input type="search" value={salesSku} onChange={(event) => setSalesSku(event.target.value)} placeholder="All SKUs" /></label>
+            <label className="company-report-filter-search">Search<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder="Order number, product, SKU, or customer" /></label>
+            <label>SKU<select value={salesSku} onChange={(event) => setSalesSku(event.target.value)}><option value="">All SKUs</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
             <label>Customer<input type="search" value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)} placeholder="All customers" /></label>
             <label>Payment method<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -408,8 +427,9 @@ function AdminReports() {
         {activeTab === "inventory" ? <details className="company-report-filter-panel" open>
           <summary>Inventory filters</summary>
           <div className="company-report-filter-grid">
-            <label>SKU<input type="search" value={inventorySku} onChange={(event) => setInventorySku(event.target.value)} placeholder="All SKUs" /></label>
-            <label>Brand<input type="search" value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)} placeholder="All brands" /></label>
+            <label className="company-report-filter-search">Search<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Product, model, SKU, or branch" /></label>
+            <label>SKU<select value={inventorySku} onChange={(event) => setInventorySku(event.target.value)}><option value="">All SKUs</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
+            <label>Brand<select value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)}><option value="">All brands</option>{brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
             <label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label>Category<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           </div>

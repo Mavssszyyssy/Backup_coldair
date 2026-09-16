@@ -17,8 +17,9 @@
 .company-report-controls button:disabled { cursor: not-allowed; opacity: .48; }
 .company-report-filter-panel { flex: 1 1 100%; padding: 10px 12px 12px; border: 1px solid #b7cee1; border-radius: 10px; background: rgba(255, 255, 255, .72); }
 .company-report-filter-panel summary { color: #0f4c81; font-size: 12px; font-weight: 900; cursor: pointer; }
-.company-report-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.company-report-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 10px; }
 .company-report-filter-grid input, .company-report-filter-grid select { width: 100%; min-width: 0; }
+.company-report-filter-search { grid-column: span 2; }
 .company-report-error { margin: 0; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; color: #991b1b; font-weight: 750; }
 .company-report-document { overflow: hidden; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
 .company-report-document-heading { display: flex; justify-content: space-between; gap: 20px; padding: 18px 22px; background: #0f4c81; color: #fff; }
@@ -87,4 +88,5 @@
 }
 @media (max-width: 460px) {
   .company-report-filter-grid { grid-template-columns: 1fr; }
+  .company-report-filter-search { grid-column: 1; }
 }

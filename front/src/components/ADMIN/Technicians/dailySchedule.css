@@ -4,8 +4,14 @@
 .daily-schedule__header p { margin: 5px 0 0; color: #64748b; line-height: 1.5; }
 .daily-schedule__eyebrow { color: #0b82c5 !important; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .daily-schedule__actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.daily-schedule__filters { display: grid; grid-template-columns: auto minmax(190px, 240px) auto auto minmax(190px, 240px); gap: 10px; align-items: end; padding: 16px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
-.daily-schedule__filters > button { min-height: 43px; padding: 0 14px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #075985; font: inherit; font-weight: 900; cursor: pointer; }
+.daily-schedule__filters { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(170px, auto) minmax(190px, 240px); gap: 12px; align-items: end; padding: 16px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+.daily-schedule__date-navigation { display: grid; grid-template-columns: 44px minmax(190px, 1fr) 44px; gap: 8px; align-items: end; }
+.daily-schedule__date-navigation > button, .daily-schedule__today { min-height: 43px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #075985; font: inherit; font-weight: 900; cursor: pointer; }
+.daily-schedule__date-navigation > button { width: 44px; padding: 0; font-size: 20px; }
+.daily-schedule__today { display: grid; place-content: center; gap: 1px; padding: 5px 14px; text-align: center; }
+.daily-schedule__today span { font-weight: 900; }
+.daily-schedule__today small { color: #4b6b83; font-size: 10px; font-weight: 700; }
+.daily-schedule__today:disabled { cursor: default; border-color: #cbd5e1; background: #f8fafc; color: #475569; }
 .daily-schedule__filters label, .daily-schedule__branch { display: grid; gap: 6px; color: #475569; font-size: 12px; font-weight: 800; }
 .daily-schedule__filters input, .daily-schedule__filters select { min-height: 43px; box-sizing: border-box; width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padding: 9px 10px; background: #fff; color: #0f172a; font: inherit; }
 .daily-schedule__branch strong { min-height: 43px; display: flex; align-items: center; border: 1px solid #e2e8f0; border-radius: 9px; padding: 0 11px; background: #f8fafc; color: #0f172a; }
@@ -38,8 +44,8 @@
 .daily-schedule__editor-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
 .daily-schedule__empty { display: grid; gap: 5px; padding: 32px; border: 1px dashed #cbd5e1; border-radius: 14px; text-align: center; color: #64748b; background: #f8fafc; }
 .daily-schedule__empty strong { color: #0f172a; }
-@media (max-width: 900px) { .daily-schedule__header { display: grid; } .daily-schedule__filters { grid-template-columns: auto 1fr auto auto; } .daily-schedule__filters label:last-child, .daily-schedule__branch { grid-column: 1 / -1; } .daily-schedule__editor { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .daily-schedule__actions { display: grid; width: 100%; } .daily-schedule__filters { grid-template-columns: auto 1fr auto; } .daily-schedule__today { grid-column: 1 / -1; } .daily-schedule__editor { grid-template-columns: 1fr; } .daily-schedule__editor fieldset, .daily-schedule__note-field { grid-column: 1; } }
+@media (max-width: 900px) { .daily-schedule__header { display: grid; } .daily-schedule__filters { grid-template-columns: minmax(280px, 1fr) minmax(170px, auto); } .daily-schedule__filters > label:last-child, .daily-schedule__branch { grid-column: 1 / -1; } .daily-schedule__editor { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .daily-schedule__actions { display: grid; width: 100%; } .daily-schedule__filters { grid-template-columns: 1fr; } .daily-schedule__date-navigation { grid-template-columns: 42px minmax(0, 1fr) 42px; } .daily-schedule__today { width: 100%; } .daily-schedule__editor { grid-template-columns: 1fr; } .daily-schedule__editor fieldset, .daily-schedule__note-field { grid-column: 1; } }
 @media (max-width: 760px) {
   .daily-schedule__table-wrap { overflow: visible; padding: 10px; background: #f8fafc; }
   .daily-schedule__table { display: block; min-width: 0; }

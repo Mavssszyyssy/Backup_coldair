@@ -19,16 +19,21 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const renderReport = () => render(<MemoryRouter><AdminReports /></MemoryRouter>);
 
 it("requests paid branch sales with unshifted date-only filters and renders stored totals", async () => {
-  apiRequest.mockResolvedValue({
+  const report = {
     summary: { transactionCount: 1, totalOrderValue: 2490, amountCollected: 2490 },
     basis: "Stored paid transactions.", updatedAt: "2026-09-10T15:00:00.000Z",
     transactions: [{ orderCode: "ORD-1", sku: "AC-ONE-1HP", total: 2490, amountCollected: 2490 }],
     products: [{ sku: "AC-ONE-1HP", product: "AC One", unitsSold: 2, merchandiseSales: 2000 }],
-  });
+  };
+  apiRequest.mockImplementation(async (path) => path === "/products"
+    ? { products: [{ sku: "AC-ONE-1HP", brand: "Cold Air" }] }
+    : report);
   renderReport();
+  await screen.findByRole("option", { name: "AC-ONE-1HP" });
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
   fireEvent.change(screen.getByLabelText("Payment method"), { target: { value: "gcash" } });
+  fireEvent.change(screen.getByLabelText("Search"), { target: { value: "ORD-1" } });
   fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-ONE-1HP" } });
   fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "Customer One" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
@@ -38,6 +43,7 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   expect(requested).toContain("to=2026-09-10");
   expect(requested).toContain("status=paid");
   expect(requested).toContain("paymentMethod=gcash");
+  expect(requested).toContain("search=ORD-1");
   expect(requested).toContain("sku=AC-ONE-1HP");
   expect(requested).toContain("customer=Customer+One");
   expect(screen.getByText("ORD-1")).toBeInTheDocument();
@@ -47,13 +53,17 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
 });
 
 it("loads the complete inventory report endpoint instead of the low-stock product endpoint", async () => {
-  apiRequest.mockResolvedValue({
+  const report = {
     summary: { productLines: 1, currentStockUnits: 3, inventoryValue: 60000, outOfStockItems: 0, lowStockItems: 0 },
     basis: "Current branch stock.", updatedAt: "2026-09-10T15:00:00.000Z",
     rows: [{ branch: "Cavite", sku: "AC-1", product: "AC One", currentStock: 3, availableSerials: 2, soldUnits: 1, stockValue: 60000, stockStatus: "In stock", assignedUnits: 1, serviceUnits: 0, retiredUnits: 0, trackedUnits: 3, inventoryVariance: 1, reorderLevel: 2 }],
-  });
+  };
+  apiRequest.mockImplementation(async (path) => path === "/products"
+    ? { products: [{ sku: "AC-1", brand: "Cold Air" }] }
+    : report);
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Inventory Report" }));
+  await screen.findByRole("option", { name: "AC-1" });
   fireEvent.change(screen.getByLabelText("Category"), { target: { value: "split" } });
   fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Cold Air" } });
   fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-1" } });
@@ -64,7 +74,7 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   expect(reportRequest).toContain("category=split");
   expect(reportRequest).toContain("brand=Cold+Air");
   expect(reportRequest).toContain("sku=AC-1");
-  expect(screen.getByText("AC-1")).toBeInTheDocument();
+  expect(screen.getAllByText("AC-1").length).toBeGreaterThan(1);
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   for (const removedHeader of ["Assigned", "In service", "Retired", "Tracked units", "Stock / QR variance", "Reorder level"]) {
     expect(screen.queryByRole("columnheader", { name: removedHeader })).not.toBeInTheDocument();
