@@ -3,7 +3,7 @@ import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -135,7 +135,7 @@ export default function CustomerHomeScreen() {
           />
           <Button
             title="Book AC Service"
-            onPress={() => Alert.alert("Choose an AC", "Open the AC that needs service below, then tap Book Service for This AC.")}
+            onPress={() => router.push("/customer/services")}
             variant="secondary"
             style={{ flex: 1 }}
             leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.primary} />}

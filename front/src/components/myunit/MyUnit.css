@@ -888,37 +888,63 @@
 }
 
 .service-sticker-service {
-  display: flex;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  column-gap: 14px;
+  min-height: 74px;
   margin: 14px 14px 0;
-  padding: 12px;
+  padding: 13px 14px;
+  box-sizing: border-box;
+  overflow: hidden;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background: #f8fafc;
 }
 
 .service-sticker-service-icon {
-  width: 36px;
-  height: 36px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  justify-self: start;
+  align-self: center;
   color: #b45309;
   background: #fef3c7;
 }
 
-.service-sticker-service span {
+.service-sticker-service-icon svg {
   display: block;
-  margin-bottom: 2px;
+  width: 20px;
+  height: 20px;
+}
+
+.service-sticker-service-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.service-sticker-service-copy > span {
+  display: block;
+  margin: 0;
   color: #64748b;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
+  line-height: 1.25;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
-.service-sticker-service strong {
+.service-sticker-service-copy > strong {
   display: block;
+  min-width: 0;
   color: #0f172a;
   font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .service-sticker-explanation {

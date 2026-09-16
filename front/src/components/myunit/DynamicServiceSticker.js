@@ -73,7 +73,7 @@ function DynamicServiceSticker({ unit }) {
 
     <div className="service-sticker-service">
       <span className="service-sticker-service-icon" aria-hidden="true"><Wrench size={19} weight="bold" /></span>
-      <div>
+      <div className="service-sticker-service-copy">
         <span>Recommended service</span>
         <strong>{serviceLabel(recommendation.recommendedService)}</strong>
       </div>
