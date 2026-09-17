@@ -321,8 +321,12 @@ export default function TaskInformationScreen() {
     try {
       const location = await getCurrentLocationSnapshot();
       await checkInTask(id, location);
-      const updated = await getTaskById(id);
+      const updated = await getTaskById(id, { requireOnline: true });
       setTask(updated);
+      if (!installationTask) {
+        const servicePageIndex = detailPages.findIndex((page) => page.key === "service");
+        if (servicePageIndex >= 0) changePage(servicePageIndex);
+      }
       Alert.alert("Arrival recorded", installationTask ? "Your GPS check-in was recorded. Confirm whether the customer is present before installation." : "Your GPS check-in was recorded. You can now complete the service report.");
     } catch (error) {
       Alert.alert("Unable to check in", error?.message || "Please check location permissions and try again.");
@@ -454,7 +458,7 @@ export default function TaskInformationScreen() {
             </Card>
           )}
 
-          {nextAction && (!installationTask || activePage.key === nextAction.stage) ? (
+          {nextAction && activePage.key === nextAction.stage ? (
             <Card style={{ borderColor: nextAction.disabled ? COLORS.warning : COLORS.tech, backgroundColor: nextAction.disabled ? COLORS.warningLight : COLORS.techLight }}>
               <SectionHeading icon={nextAction.icon} title="Next Action" subtitle={`${activePage.label} stage`} />
               <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.md }}>{nextAction.title}</Text>

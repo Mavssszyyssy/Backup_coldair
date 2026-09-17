@@ -13,4 +13,10 @@ test("service cash follows report, payment, and completion in that order", () =>
   expect(completion).toContain("await upsertServiceLog");
   expect(information).toContain("Add service note and final costs");
   expect(information).toContain("Confirm payment and complete");
+  expect(information).toContain("activePage.key === nextAction.stage");
+  expect(information).toContain('page.key === "service"');
+  expect(information).toContain("changePage(servicePageIndex)");
+  expect(completion).toContain("completionSynchronized !== false");
+  expect(completion).toContain("You do not need to submit the proof again");
+  expect(completion).toContain("getTaskById(id, { requireOnline: true })");
 });
