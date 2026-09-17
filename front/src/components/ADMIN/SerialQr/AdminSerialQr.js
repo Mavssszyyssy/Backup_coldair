@@ -56,7 +56,7 @@ const AdminSerialQr = ({ embedded = false }) => {
   const [editingSerial, setEditingSerial] = useState(null);
   const [serialDraft, setSerialDraft] = useState("");
   const [savingSerial, setSavingSerial] = useState(false);
-  const pageSize = 10;
+  const pageSize = 12;
 
   const load = async () => {
     setError("");
@@ -135,9 +135,34 @@ const AdminSerialQr = ({ embedded = false }) => {
       ).length,
     0,
   );
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-  const firstProductIndex = (page - 1) * pageSize;
-  const pageProducts = filteredProducts.slice(firstProductIndex, firstProductIndex + pageSize);
+  const filteredEntries = useMemo(() => filteredProducts.flatMap((product) => {
+    const serialUnits = product.filteredSerialUnits || [];
+    return serialUnits.length
+      ? serialUnits.map((unit) => ({ product, unit }))
+      : [{ product, unit: null }];
+  }), [filteredProducts]);
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const firstRecordIndex = (page - 1) * pageSize;
+  const pageEntries = filteredEntries.slice(firstRecordIndex, firstRecordIndex + pageSize);
+  const pageProducts = useMemo(() => {
+    const grouped = new Map();
+    pageEntries.forEach(({ product, unit }) => {
+      const existing = grouped.get(product.id);
+      if (existing) {
+        if (unit) existing.filteredSerialUnits.push(unit);
+        return;
+      }
+      grouped.set(product.id, {
+        ...product,
+        filteredSerialCount: (product.filteredSerialUnits || []).length,
+        filteredAvailableCount: (product.filteredSerialUnits || []).filter(
+          (candidate) => (candidate.status || "available") === "available",
+        ).length,
+        filteredSerialUnits: unit ? [unit] : [],
+      });
+    });
+    return Array.from(grouped.values());
+  }, [pageEntries]);
 
   useEffect(() => {
     setPage(1);
@@ -243,11 +268,12 @@ const AdminSerialQr = ({ embedded = false }) => {
                   </p>
                 </div>
                 <span className="serialqr-count">
-                  {
-                    serialUnits.filter(
-                      (unit) => (unit.status || "available") === "available",
-                    ).length
-                  } available · {serialUnits.length} QR records
+                  {product.filteredAvailableCount ?? serialUnits.filter(
+                    (unit) => (unit.status || "available") === "available",
+                  ).length} available · {product.filteredSerialCount ?? serialUnits.length} QR records
+                  {(product.filteredSerialCount ?? serialUnits.length) > serialUnits.length
+                    ? ` · ${serialUnits.length} shown`
+                    : ""}
                 </span>
               </header>
 
@@ -317,9 +343,9 @@ const AdminSerialQr = ({ embedded = false }) => {
         })}
       </div>
 
-      {!loading && filteredProducts.length > 0 ? (
+      {!loading && filteredEntries.length > 0 ? (
         <div className="serialqr-pagination" aria-label="QR registry pagination">
-          <span>Showing {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, filteredProducts.length)} of {filteredProducts.length} models</span>
+          <span>Showing {firstRecordIndex + 1}-{Math.min(firstRecordIndex + pageSize, filteredEntries.length)} of {filteredEntries.length} registry items</span>
           <div>
             <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button>
             <span>Page {page} of {totalPages}</span>
@@ -328,7 +354,7 @@ const AdminSerialQr = ({ embedded = false }) => {
         </div>
       ) : null}
 
-      {!loading && filteredProducts.length === 0 ? (
+      {!loading && filteredEntries.length === 0 ? (
         <div className="admin-card">No AC unit models matched your search.</div>
       ) : null}
     </AdminLayout>

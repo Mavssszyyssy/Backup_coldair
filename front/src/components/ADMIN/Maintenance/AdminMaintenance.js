@@ -140,7 +140,7 @@ const AdminMaintenance = ({ embedded = false }) => {
               <label className="maintenance-search-field"><span>Search</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Customer, unit, issue, address" /></label>
               <label><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
               <label><span>Technician</span><select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">All technicians</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</select></label>
-              <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>Clear</button>
+              <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>Clear filters</button>
             </div>
             {loading ? <div className="maintenance-loading">Loading service requests…</div> : <ServiceRequests requests={filteredRequests} selectedId={selected?.id} onSelect={setSelected} />}
           </div>

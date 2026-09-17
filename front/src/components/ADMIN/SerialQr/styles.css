@@ -277,6 +277,23 @@
     grid-template-columns: 1fr;
   }
 
+  .serialqr-actions {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+
+  .serialqr-actions input,
+  .serialqr-actions select,
+  .serialqr-actions button,
+  .serialqr-branch-scope {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    box-sizing: border-box;
+  }
+
   .serialqr-codebox {
     width: 100%;
   }
