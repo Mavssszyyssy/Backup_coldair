@@ -29,7 +29,7 @@ const links = [
   { to: "/superadmin/settings", label: "Settings", icon: Gear },
 ];
 
-const SuperAdminSidebar = ({ isOpen, onClose }) => {
+const SuperAdminSidebar = () => {
   const navigate = useNavigate();
   const { logout } = useUser();
 
@@ -44,15 +44,12 @@ const SuperAdminSidebar = ({ isOpen, onClose }) => {
   };
 
   return (
-    <aside className={`super-sidebar ${isOpen ? "open" : ""}`}>
+    <aside className="super-sidebar open">
       <div className="super-sidebar-top">
         <div className="super-sidebar-brand">
           <img src={logo} alt="" />
           <span className="super-sidebar-brand-copy"><span>AeroPulse HQ</span><small>Company operations</small></span>
         </div>
-        <button type="button" className="super-close" onClick={onClose}>
-          {"\u2715"}
-        </button>
       </div>
       <nav className="super-nav" aria-label="Superadmin navigation">
         {links.map((link) => (
@@ -62,7 +59,6 @@ const SuperAdminSidebar = ({ isOpen, onClose }) => {
             className={({ isActive }) =>
               `super-nav-link ${isActive ? "active" : ""}`
             }
-            onClick={onClose}
           >
             <span className="super-nav-icon-wrap">
               <link.icon size={20} weight="bold" className="inline-icon" />

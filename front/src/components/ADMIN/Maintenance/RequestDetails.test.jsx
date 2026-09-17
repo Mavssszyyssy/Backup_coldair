@@ -26,25 +26,24 @@ describe('maintenance request controls', () => {
     expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH')).toBe(false);
     const date = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
     fireEvent.change(screen.getByLabelText('Appointment date'), { target: { value: date } });
-    const slot = screen.getByRole('combobox', { name: 'Time slot' });
+    const slot = screen.getByRole('combobox', { name: 'Available time slot' });
     expect(Array.from(slot.options, option => option.value)).toEqual(['', ...TECHNICIAN_TIME_SLOTS]);
     fireEvent.click(screen.getByRole('button', { name: 'Assign technician' }));
     expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH')).toBe(false);
     fireEvent.change(slot, { target: { value: TECHNICIAN_TIME_SLOTS[0] } });
     fireEvent.click(screen.getByRole('button', { name: 'Assign technician' }));
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/service-requests/request-1/status', expect.objectContaining({ body: JSON.stringify({ status: 'In Progress', assignedTechnicianId: 'tech-1', assignedTechnicianName: 'Branch technician', scheduledDate: date, timeSlot: TECHNICIAN_TIME_SLOTS[0] }) })));
-    expect(screen.getByRole('combobox', { name: 'Time slot' }).value).toBe(TECHNICIAN_TIME_SLOTS[0]);
+    await screen.findByText('Assignment saved');
+    expect(screen.queryByLabelText('Choose technician')).toBeNull();
   });
 
   it('preserves an existing custom appointment without offering free-text entry', async () => {
     const date = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
     render(<RequestDetails request={{ ...request, timeSlot: '9:30 AM - 11:30 AM', scheduledDate: date, assignedTechnicianId: 'tech-1' }} />);
-    await screen.findByRole('option', { name: /Branch technician/ });
-    const slot = screen.getByRole('combobox', { name: 'Time slot' });
-    expect(slot.value).toBe('9:30 AM - 11:30 AM');
-    expect(screen.getByRole('option', { name: '9:30 AM - 11:30 AM (Current appointment)' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Save assignment & schedule' }));
-    await waitFor(() => expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH' && JSON.parse(opts.body).timeSlot === '9:30 AM - 11:30 AM')).toBe(true));
+    await screen.findByText('Assignment saved');
+    expect(screen.getByText('9:30 AM - 11:30 AM')).toBeTruthy();
+    expect(screen.queryByLabelText('Choose technician')).toBeNull();
+    expect(apiRequest.mock.calls.some(([, opts]) => opts?.method === 'PATCH')).toBe(false);
   });
 
   it('keeps the customer-selected service date read-only while Admin assigns the time', async () => {
@@ -55,7 +54,7 @@ describe('maintenance request controls', () => {
     expect(screen.getByText(date)).toBeTruthy();
     expect(screen.getByText('Selected by customer')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Choose technician'), { target: { value: 'tech-1' } });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Time slot' }), { target: { value: TECHNICIAN_TIME_SLOTS[0] } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Available time slot' }), { target: { value: TECHNICIAN_TIME_SLOTS[0] } });
     fireEvent.click(screen.getByRole('button', { name: 'Assign technician' }));
     await waitFor(() => {
       const updateCall = apiRequest.mock.calls.find(([path, options]) => path === '/service-requests/request-1/status' && options?.method === 'PATCH');

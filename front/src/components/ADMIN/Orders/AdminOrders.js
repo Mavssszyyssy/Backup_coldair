@@ -301,26 +301,31 @@ const AdminOrders = ({ embedded = false }) => {
 
   const updateFulfillmentForm = (order, patch) => {
     const key = String(order.id || order.orderCode || '');
+    const savedDate = dateInputValue(order.installationDate || order.estimatedArrival || order.estimatedDelivery);
+    const synchronizedPatch = Object.prototype.hasOwnProperty.call(patch, 'installationDate')
+      ? { ...patch, estimatedArrival: patch.installationDate }
+      : patch;
     setFulfillmentForms((current) => ({
       ...current,
       [key]: {
         assignedTechnicianId: getSavedTechnicianId(order),
-        estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
-        installationDate: dateInputValue(order.installationDate),
+        estimatedArrival: savedDate,
+        installationDate: savedDate,
         timeSlot: order.installationTimeSlot || '',
         cancellationReason: '',
         ...(current[key] || {}),
-        ...patch,
+        ...synchronizedPatch,
       },
     }));
   };
 
   const getFulfillmentForm = (order) => {
     const key = String(order.id || order.orderCode || '');
+    const savedDate = dateInputValue(order.installationDate || order.estimatedArrival || order.estimatedDelivery);
     return fulfillmentForms[key] || {
       assignedTechnicianId: getSavedTechnicianId(order),
-      estimatedArrival: dateInputValue(order.estimatedArrival || order.estimatedDelivery),
-      installationDate: dateInputValue(order.installationDate),
+      estimatedArrival: savedDate,
+      installationDate: savedDate,
       timeSlot: order.installationTimeSlot || '',
       cancellationReason: '',
     };
@@ -349,8 +354,8 @@ const AdminOrders = ({ embedded = false }) => {
       alert('Select a technician before marking this order dispatched. Dispatch creates the assigned technician work order.');
       return;
     }
-    if (['approve', 'dispatch'].includes(config.action) && (isPastCalendarDate(form.estimatedArrival) || isPastCalendarDate(form.installationDate))) {
-      alert('Delivery and installation dates must be today or a future date.');
+    if (['approve', 'dispatch'].includes(config.action) && isPastCalendarDate(form.installationDate)) {
+      alert('Installation date must be today or a future date.');
       return;
     }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
@@ -414,8 +419,8 @@ const AdminOrders = ({ embedded = false }) => {
 
     const processingKey = `${order.id}:recovery-${action}`;
     const form = getFulfillmentForm(order);
-    if (['assign_technician', 'recreate_task'].includes(action) && (isPastCalendarDate(form.estimatedArrival) || isPastCalendarDate(form.installationDate))) {
-      alert('Delivery and installation dates must be today or a future date.');
+    if (['assign_technician', 'recreate_task'].includes(action) && isPastCalendarDate(form.installationDate)) {
+      alert('Installation date must be today or a future date.');
       return;
     }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
@@ -622,22 +627,14 @@ const AdminOrders = ({ embedded = false }) => {
                       </select>
                     </label>
                     <label>
-                      Delivery Date
-                      <input
-                        type="date"
-                        min={getTodayDateInput()}
-                        value={getFulfillmentForm(order).estimatedArrival}
-                        onChange={(event) => updateFulfillmentForm(order, { estimatedArrival: event.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Install Date
+                      Installation &amp; delivery date
                       <input
                         type="date"
                         min={getTodayDateInput()}
                         value={getFulfillmentForm(order).installationDate}
                         onChange={(event) => updateFulfillmentForm(order, { installationDate: event.target.value })}
                       />
+                      <small>Delivery automatically uses this same confirmed date.</small>
                     </label>
                     <label>
                       Time Slot

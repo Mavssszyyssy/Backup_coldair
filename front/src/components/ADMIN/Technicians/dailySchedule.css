@@ -40,6 +40,11 @@
 .daily-schedule__editor fieldset div { display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .daily-schedule__editor fieldset label { display: flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 700; }
 .daily-schedule__editor fieldset input { width: auto; }
+.daily-schedule__readonly-field { display: grid; gap: 5px; min-width: 0; padding: 10px; border: 1px solid #dbeafe; border-radius: 9px; background: #eff6ff; color: #334155; font-size: 12px; }
+.daily-schedule__readonly-field > span { color: #64748b; font-weight: 800; }
+.daily-schedule__readonly-field > strong { color: #0f172a; font-size: 13px; }
+.daily-schedule__readonly-field > small, .daily-schedule__editor label > small { color: #64748b; font-weight: 600; line-height: 1.4; }
+.daily-schedule__editor fieldset label.is-unavailable { color: #94a3b8; }
 .daily-schedule__note-field { grid-column: span 2; }
 .daily-schedule__editor-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
 .daily-schedule__empty { display: grid; gap: 5px; padding: 32px; border: 1px dashed #cbd5e1; border-radius: 14px; text-align: center; color: #64748b; background: #f8fafc; }

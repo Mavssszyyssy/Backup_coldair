@@ -36,13 +36,13 @@ test("shows linked operational data and saves schedule changes on the existing t
   expect(screen.getByText("GCash")).toBeVisible();
   expect(screen.getByText("Driver One")).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Edit schedule" }));
-  fireEvent.change(screen.getByLabelText("Driver (if applicable)"), { target: { value: "Driver Two" } });
+  expect(screen.getByText("The assigned team leader is also the scheduled driver.")).toBeVisible();
   fireEvent.click(screen.getByLabelText("Tech Two"));
   fireEvent.click(screen.getByRole("button", { name: "Save schedule" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/tasks/task-1", expect.objectContaining({ method: "PATCH" })));
   const call = apiRequest.mock.calls.find(([path, options]) => path === "/tasks/task-1" && options?.method === "PATCH");
   expect(JSON.parse(call[1].body)).toMatchObject({
     assignedTechnicianId: "tech-1",
-    schedule: { driverName: "Driver Two", teamMemberIds: ["tech-2"], notes: "Bring ladder" },
+    schedule: { driverName: "Tech One", teamMemberIds: ["tech-2"], notes: "Bring ladder" },
   });
 });

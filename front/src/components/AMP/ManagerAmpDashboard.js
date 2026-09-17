@@ -125,7 +125,15 @@ function PipelineTable({ units, onSelectPlan }) {
                 <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
               <td>
-                <details className="amp-details"><summary>Review explanation</summary><p><strong>AI Assessment</strong></p><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p><p><strong>Why This Date</strong></p><p>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</p><p>{unit.capacityAssessment?.summary || "Room size is still needed for the HP suitability check."}</p><p>Warranty: {humanLabel(unit.warrantyStatus, "pending_activation")} · {unit.serviceBranch || "Branch pending"}</p></details>
+                <details className="amp-details amp-recommendation-details"><summary>Review recommendation</summary><div className="amp-recommendation-sections">
+                  <section><h4>Summary</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p></section>
+                  {(unit.condition || unit.capacityAssessment?.summary) ? <section><h4>Current AC condition</h4>{unit.condition ? <p>{humanLabel(unit.condition)}</p> : null}{unit.capacityAssessment?.summary ? <p>{unit.capacityAssessment.summary}</p> : null}</section> : null}
+                  {(unit.affectedComponent || unit.severity) ? <section><h4>Identified issues</h4><p>{unit.affectedComponent ? `Recorded component: ${humanLabel(unit.affectedComponent)}.` : ""}{unit.severity ? ` Follow-up priority: ${humanLabel(unit.severity)}.` : ""}</p></section> : null}
+                  <section><h4>Recommended action</h4>{unit.recommendedActions?.length ? <ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul> : <p>{`Review the records and arrange ${humanLabel(unit.recommendedService, "the recommended service").toLowerCase()} with the customer.`}</p>}</section>
+                  <section><h4>Recommended schedule</h4><p>{serviceDateLabel(unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p></section>
+                  <section><h4>Explanation</h4><p>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</p></section>
+                  <section><h4>Operational context</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
+                </div></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
               </td>
             </tr>

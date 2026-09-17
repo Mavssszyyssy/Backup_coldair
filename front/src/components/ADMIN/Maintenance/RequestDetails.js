@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
+import { technicianHasConflict } from '../../../domain/scheduleConflicts';
 import './styles.css';
 import ServicePaymentPanel from './ServicePaymentPanel';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
@@ -24,6 +25,7 @@ const RequestDetails = ({ request, onUpdated }) => {
   const [message, setMessage] = useState(null);
   const [scheduledDate, setScheduledDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
+  const [scheduledTasks, setScheduledTasks] = useState([]);
 
   useEffect(() => {
     setCurrent(request);
@@ -53,6 +55,14 @@ const RequestDetails = ({ request, onUpdated }) => {
     const time = current?.timeSlot || linkedTask?.timeSlot || current?.preferredSchedule || '';
     setTimeSlot(time === 'TBD' ? '' : time);
   }, [current?.id, current?.scheduledDate, current?.preferredDate, current?.timeSlot, current?.preferredSchedule, linkedTask?.scheduledDate, linkedTask?.timeSlot]);
+  useEffect(() => {
+    let active = true;
+    if (!scheduledDate) { setScheduledTasks([]); return () => { active = false; }; }
+    apiRequest(`/tasks?scheduled_date=${encodeURIComponent(scheduledDate)}&limit=200`)
+      .then((result) => { if (active) setScheduledTasks(Array.isArray(result.tasks) ? result.tasks : []); })
+      .catch(() => { if (active) setScheduledTasks([]); });
+    return () => { active = false; };
+  }, [scheduledDate, current?.updatedAt]);
 
   const proof = linkedTask?.proof || null;
   const checkIn = linkedTask?.checkIn || linkedTask?.payload?.checkIn;
@@ -67,6 +77,14 @@ const RequestDetails = ({ request, onUpdated }) => {
   const customerSelectedAppointment = Boolean(
     current?.preferredDate && dateValue(current.preferredDate) === dateValue(appointmentDate),
   );
+  const assignmentLocked = Boolean(current?.assignedTechnicianId);
+  const slotConflicts = (slot) => technicianHasConflict(scheduledTasks, {
+    technicianId: selectedTechnicianId,
+    scheduledDate,
+    timeSlot: slot,
+    excludeTaskId: linkedTask?.id,
+  });
+  const availableTimeSlots = TECHNICIAN_TIME_SLOTS.filter((slot) => !slotConflicts(slot));
   const branchTechnicians = technicians.filter((technician) => {
     const technicianBranch = technician.assignedBranch || technician.activeBranch || '';
     return !current?.branch || !technicianBranch || technicianBranch === current.branch;
@@ -100,6 +118,7 @@ const RequestDetails = ({ request, onUpdated }) => {
   };
 
   const assignTechnician = () => {
+    if (assignmentLocked) { setMessage({ type: 'error', text: 'This technician assignment is already saved and permanently locked.' }); return; }
     const technician = technicians.find((item) => String(item.id) === String(selectedTechnicianId));
     if (!technician) { setMessage({ type: 'error', text: 'Choose a technician before assigning this request.' }); return; }
     if (current?.warrantyClaimId && (!Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1)) {
@@ -107,6 +126,7 @@ const RequestDetails = ({ request, onUpdated }) => {
       return;
     }
     if (!scheduledDate || scheduledDate < today() || !timeSlot.trim()) { setMessage({ type: 'error', text: 'Choose today or a future appointment date and a time slot.' }); return; }
+    if (slotConflicts(timeSlot)) { setMessage({ type: 'error', text: 'This technician already has an overlapping job during the selected time. Choose an available time slot.' }); return; }
     updateRequest(
       { status: 'In Progress', assignedTechnicianId: technician.id, assignedTechnicianName: getDisplayName(technician), scheduledDate, timeSlot: timeSlot.trim() },
       'Technician and appointment saved. The customer and technician receive the updated schedule.',
@@ -124,8 +144,8 @@ const RequestDetails = ({ request, onUpdated }) => {
     <div className="maintenance-detail-header"><div><p className="maintenance-eyebrow">Request details</p><h2>{current.unitName || 'Service request'}</h2><p className="maintenance-request-id">Request #{current.requestNumber || current.id}</p></div><span className={`maintenance-status maintenance-status-${String(current.status || '').toLowerCase().replace(/\s+/g, '-')}`}>{current.status || 'Submitted'}</span></div>
     {message ? <div className={`maintenance-message maintenance-message--${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div> : null}
     <div className="maintenance-detail-section"><h3>Customer & request</h3><dl className="maintenance-detail-grid"><div><dt>Customer</dt><dd>{current.customerName || current.customer || 'Not provided'}</dd></div><div><dt>AC unit</dt><dd>{current.unitName || 'Not provided'}</dd></div><div><dt>Service type</dt><dd>{current.issueType || current.serviceType || 'Service request'}</dd></div><div><dt>Priority</dt><dd>{priority}</dd></div>{isClosed ? <><div><dt>Appointment date</dt><dd>{appointmentDate}</dd></div><div><dt>Time slot</dt><dd>{appointmentTime}</dd></div></> : null}<div><dt>Branch</dt><dd>{current.branch || 'Unassigned'}</dd></div><div className="maintenance-detail-grid--wide"><dt>Issue</dt><dd>{current.issueDescription || current.issue || 'No description provided'}</dd></div><div className="maintenance-detail-grid--wide"><dt>Service address</dt><dd>{current.address || 'Not provided'}</dd></div></dl></div>
-    {!isClosed ? <div className="maintenance-detail-section"><h3>Service appointment</h3><p>{appointmentDateIsLocked ? 'The appointment date is already recorded. Choose the technician and available time slot.' : 'Choose the appointment date and time slot before assigning a technician.'}</p>{appointmentDateIsLocked ? <div className="maintenance-locked-field"><span>Appointment date</span><strong>{scheduledDate}</strong><small>{customerSelectedAppointment ? 'Selected by customer' : 'Confirmed appointment date'}</small></div> : <label className="maintenance-assignment-field"><span>Appointment date</span><input type="date" min={today()} value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} disabled={busy} /></label>}<label className="maintenance-assignment-field"><span>Time slot</span><select value={timeSlot} onChange={event => setTimeSlot(event.target.value)} disabled={busy} required><option value="">Select time slot</option>{timeSlot && !TECHNICIAN_TIME_SLOTS.includes(timeSlot) ? <option value={timeSlot}>{timeSlot} (Current appointment)</option> : null}{TECHNICIAN_TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select></label></div> : null}
-    <div className="maintenance-detail-section"><div className="maintenance-section-heading"><div><h3>Technician assignment</h3><p>{current.assignedTechnicianName ? `Currently assigned to ${current.assignedTechnicianName}.` : 'No technician has been assigned yet.'}</p></div>{linkedTask ? <span className="maintenance-task-chip">Work order: {linkedTask.taskCode || linkedTask.id} · {taskStatus || 'pending'}</span> : null}</div><label className="maintenance-assignment-field"><span>Choose technician</span><select value={selectedTechnicianId} disabled={busy || isClosed} onChange={(event) => setSelectedTechnicianId(event.target.value)}><option value="">Select technician</option>{branchTechnicians.map((technician) => <option key={technician.id} value={technician.id}>{getDisplayName(technician)}{(technician.assignedBranch || technician.activeBranch) ? ` · ${technician.assignedBranch || technician.activeBranch}` : ''}{current?.warrantyClaimId ? technician.serviceQuota ? ` · Service Quota ${technician.serviceQuota}` : ' · Service Quota required' : ''}</option>)}</select></label>{current?.warrantyClaimId ? <p className="maintenance-muted">A defined Service Quota is required for warranty assignment.</p> : null}<div className="maintenance-action-row"><button type="button" className="maintenance-button" onClick={assignTechnician} disabled={busy || isClosed || !selectedTechnicianId}>{busy ? 'Saving…' : current.assignedTechnicianId ? 'Save assignment & schedule' : 'Assign technician'}</button>{!isClosed && current.status === 'Submitted' ? <button type="button" className="maintenance-button maintenance-button--secondary" onClick={() => updateRequest({ status: 'Reviewed' }, 'Request marked as reviewed.')} disabled={busy}>Mark reviewed</button> : null}</div></div>
+    {!isClosed ? <div className="maintenance-detail-section"><h3>Service appointment</h3><p>{assignmentLocked ? 'The saved appointment and primary technician are locked. Use Visit follow-up only when a new visit is required.' : appointmentDateIsLocked ? 'The appointment date is already recorded. Choose the technician and an available time slot.' : 'Choose the appointment date and time slot before assigning a technician.'}</p>{appointmentDateIsLocked || assignmentLocked ? <div className="maintenance-locked-field"><span>Appointment date</span><strong>{scheduledDate}</strong><small>{customerSelectedAppointment ? 'Selected by customer' : 'Confirmed appointment date'}</small></div> : <label className="maintenance-assignment-field"><span>Appointment date</span><input type="date" min={today()} value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} disabled={busy} /></label>}{assignmentLocked ? <div className="maintenance-locked-field"><span>Time slot</span><strong>{timeSlot || appointmentTime}</strong><small>Saved with this assignment</small></div> : <label className="maintenance-assignment-field"><span>Available time slot</span><select value={timeSlot} onChange={event => setTimeSlot(event.target.value)} disabled={busy || !selectedTechnicianId} required><option value="">{selectedTechnicianId ? 'Select available time slot' : 'Choose a technician first'}</option>{timeSlot && !TECHNICIAN_TIME_SLOTS.includes(timeSlot) && !slotConflicts(timeSlot) ? <option value={timeSlot}>{timeSlot} (Current appointment)</option> : null}{availableTimeSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}</select>{selectedTechnicianId && availableTimeSlots.length === 0 ? <small className="maintenance-conflict-note">This technician has no available standard time slots on this date.</small> : null}</label>}</div> : null}
+    <div className="maintenance-detail-section"><div className="maintenance-section-heading"><div><h3>Technician assignment</h3><p>{current.assignedTechnicianName ? `${current.assignedTechnicianName} is permanently assigned to this request.` : 'No technician has been assigned yet.'}</p></div>{linkedTask ? <span className="maintenance-task-chip">Work order: {linkedTask.taskCode || linkedTask.id} · {taskStatus || 'pending'}</span> : null}</div>{assignmentLocked ? <div className="maintenance-assignment-lock" role="status"><strong>Assignment saved</strong><span>{current.assignedTechnicianName || 'Assigned technician'}</span><small>The primary technician cannot be replaced through the normal assignment flow.</small></div> : <label className="maintenance-assignment-field"><span>Choose technician</span><select value={selectedTechnicianId} disabled={busy || isClosed} onChange={(event) => setSelectedTechnicianId(event.target.value)}><option value="">Select technician</option>{branchTechnicians.map((technician) => <option key={technician.id} value={technician.id}>{getDisplayName(technician)}{(technician.assignedBranch || technician.activeBranch) ? ` · ${technician.assignedBranch || technician.activeBranch}` : ''}{current?.warrantyClaimId ? technician.serviceQuota ? ` · Service Quota ${technician.serviceQuota}` : ' · Service Quota required' : ''}</option>)}</select></label>}{current?.warrantyClaimId ? <p className="maintenance-muted">A defined Service Quota is required for warranty assignment.</p> : null}<div className="maintenance-action-row">{!assignmentLocked ? <button type="button" className="maintenance-button" onClick={assignTechnician} disabled={busy || isClosed || !selectedTechnicianId}>{busy ? 'Saving…' : 'Assign technician'}</button> : null}{!isClosed && current.status === 'Submitted' ? <button type="button" className="maintenance-button maintenance-button--secondary" onClick={() => updateRequest({ status: 'Reviewed' }, 'Request marked as reviewed.')} disabled={busy}>Mark reviewed</button> : null}</div></div>
     <ServicePaymentPanel request={current} onUpdated={updated => { setCurrent(updated); onUpdated?.(updated); }} />
     <VisitFollowUpPanel task={linkedTask} onUpdated={async () => {
       const result = await apiRequest(`/tasks/${encodeURIComponent(linkedTask.id || linkedTask.taskCode)}`);

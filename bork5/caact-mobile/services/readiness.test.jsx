@@ -267,12 +267,13 @@ describe("mobile customer readiness rules", () => {
     const logSource = fs.readFileSync(path.join(__dirname, "unitServiceLogStorage.jsx"), "utf8");
 
     expect(detailsSource).toContain("isInstallationWorkOrder");
-    expect(detailsSource).toContain("Complete service report");
+    expect(detailsSource).toContain("Add service note and final costs");
+    expect(detailsSource).toContain("Confirm payment and complete");
     expect(detailsSource).toContain("Open check-in map");
     expect(detailsSource).toContain("formatWarrantyStatus");
     expect(completionSource).toContain("Complete service visit");
     expect(completionSource).toContain("<ServiceReportQuickChoices");
-    expect(completionSource).toContain("onFindingsChange={setFindings}");
+    expect(completionSource).toContain("onFindingsChange={editReportField(setFindings)}");
     expect(logSource).toContain("serviceActions");
   });
 

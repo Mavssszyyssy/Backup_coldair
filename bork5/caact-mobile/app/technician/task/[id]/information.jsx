@@ -286,6 +286,7 @@ export default function TaskInformationScreen() {
       ? { stage: "proof", title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
       : { stage: "unit", title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
   const activeFieldStatus = [TASK_STATUS.IN_PROGRESS, TASK_STATUS.INSTALLING].includes(task?.status);
+  const hasSavedServiceReport = Array.isArray(task?.serviceLogs) && task.serviceLogs.length > 0;
   const primaryNextAction = task?.visitAttempt?.awaitingAdmin
     ? { stage: "overview", title: 'Awaiting Admin follow-up', subtitle: 'This visit attempt is closed. Admin will contact the customer and confirm the next visit. The request is still open.', icon: 'time-sharp', disabled: true }
     : task?.status === TASK_STATUS.PENDING
@@ -303,7 +304,9 @@ export default function TaskInformationScreen() {
         ? { stage: "overview", title: "Check in at service address", subtitle: "Record your GPS arrival before completing the maintenance work.", icon: "location-sharp", action: "check-in" }
         : task?.codPayment && !task.codPayment.collectedAt
           ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
-          : { stage: "overview", title: "Complete service report", subtitle: "Record findings and work performed, then close this maintenance visit.", href: `/technician/task/${id}/complete-service`, icon: "document-text-sharp" }
+          : !hasSavedServiceReport
+            ? { stage: "service", title: "Add service note and final costs", subtitle: "Save the technician findings, work performed, labor, and parts before collecting payment.", href: `/technician/task/${id}/unit/log/insert`, icon: "document-text-sharp" }
+            : { stage: "proof", title: "Confirm payment and complete", subtitle: "The service note is saved. Confirm the exact cash payment, capture proof, and complete the visit.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
       : null;
   const isPrimaryTechnician = task?.technicianAccessRole !== "support";
   const nextAction = !isPrimaryTechnician

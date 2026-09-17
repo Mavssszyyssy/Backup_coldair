@@ -43,7 +43,7 @@
   z-index: 980;
   width: 40px;
   height: 40px;
-  display: flex;
+  display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -97,7 +97,7 @@
 .super-sidebar {
   position: fixed;
   top: 0;
-  left: -320px;
+  left: 0;
   width: 260px;
   height: 100vh;
   background: linear-gradient(180deg, #ffffff 0%, #f7f8ff 100%);
@@ -138,7 +138,7 @@
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #475569;
-  display: grid;
+  display: none;
   place-items: center;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -538,6 +538,53 @@
 }
 
 @media (max-width: 1024px) {
+  .super-layout {
+    display: block;
+  }
+  .super-layout .super-sidebar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 950;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    transform: none;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(79, 70, 229, 0.18);
+    border-radius: 0;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.08);
+  }
+  .super-layout .super-sidebar-top {
+    padding: 0 0 8px;
+    margin: 0 0 8px;
+  }
+  .super-layout .super-nav {
+    display: flex;
+    gap: 7px;
+    margin: 0;
+    padding: 0 0 3px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+  .super-layout .super-nav-link {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+  .super-layout .super-nav-icon-wrap {
+    width: 28px;
+    height: 28px;
+  }
+  .super-layout .super-logout {
+    width: auto;
+    margin: 8px 0 0;
+    padding: 8px 12px;
+  }
   .super-layout-main {
     margin-left: 0;
     padding: 18px 16px 26px;

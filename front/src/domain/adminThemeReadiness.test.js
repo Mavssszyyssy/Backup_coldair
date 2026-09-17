@@ -41,6 +41,16 @@ describe("Admin and SuperAdmin theme isolation", () => {
     expect(inventory).toContain(".admin-card .inventory-page-controls button");
   });
 
+  it("keeps service queue filters inside the queue panel", () => {
+    const maintenance = source("ADMIN", "Maintenance", "styles.css");
+
+    expect(maintenance).toContain(".maintenance-filters { width: 100%; min-width: 0;");
+    expect(maintenance).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(maintenance).toContain(".maintenance-search-field { grid-column: 1 / -1; }");
+    expect(maintenance).toContain(".maintenance-filter-reset { grid-column: 1 / -1; width: 100%; min-width: 0;");
+    expect(maintenance).not.toContain("minmax(105px, auto)");
+  });
+
   it("keeps AMP and ordinary reports as distinct destinations", () => {
     const adminSidebar = source("ADMIN", "Common", "AdminSidebar.js");
     const superadminSidebar = source("SUPERADMIN", "Common", "SuperAdminSidebar.js");
