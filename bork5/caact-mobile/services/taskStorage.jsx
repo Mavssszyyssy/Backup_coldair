@@ -245,6 +245,12 @@ export async function getAllTasks() {
   return Array.isArray(parsed) ? parsed.map(normalizeTask) : [];
 }
 
+async function getCachedTasks() {
+  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+  const parsed = safeParse(raw, []);
+  return Array.isArray(parsed) ? parsed.map(normalizeTask) : [];
+}
+
 export async function loadTasks() {
   return getAllTasks();
 }
@@ -333,8 +339,17 @@ export async function updateTask(taskId, patch = {}) {
 }
 
 export async function updateTaskStatus(taskId, status, actor = "Technician", patch = {}) {
-  const tasks = await getAllTasks();
-  const target = tasks.find((item) => String(item.id) === String(taskId));
+  // The active work-order screen already has this task. A full /tasks refresh
+  // before completion delays the technician and can repeat a slow connection
+  // recovery. Start from the device cache and read only this task if needed.
+  let tasks = await getCachedTasks();
+  let target = tasks.find((item) => String(item.id) === String(taskId));
+  if (!target) {
+    target = await getTaskById(taskId, { requireOnline: true });
+    if (target) {
+      tasks = [target, ...tasks.filter((item) => String(item.id) !== String(taskId))];
+    }
+  }
   if (!target) return null;
   const isCompleting = String(status).toLowerCase() === "completed";
   const completionNotes =

@@ -52,6 +52,21 @@ export function normalizeServiceLog(log = {}) {
   };
 }
 
+// A work-order response already contains its current service logs. Reusing it
+// prevents the Service Notes screen from immediately requesting the same task
+// a second time before it can render the technician's visit notes.
+export function serviceLogsFromTask(task = {}, taskId = "") {
+  const logs = Array.isArray(task?.serviceLogs)
+    ? task.serviceLogs
+    : Array.isArray(task?.payload?.serviceLogs)
+      ? task.payload.serviceLogs
+      : [];
+  return logs
+    .map(normalizeServiceLog)
+    .map((log) => ({ ...log, taskId: log.taskId || taskId }))
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
 export async function getAllServiceLogs() {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const parsed = safeParse(raw, []);
@@ -71,14 +86,9 @@ export async function getServiceLogsByTask(taskId) {
   const result = await api.fetchTask(token, taskId);
   if (!result.success) throw new Error(result.error || "Unable to load service notes.");
 
-  const logs = Array.isArray(result.task?.serviceLogs)
-    ? result.task.serviceLogs
-    : Array.isArray(result.task?.payload?.serviceLogs)
-      ? result.task.payload.serviceLogs
-      : [];
-  const normalized = logs.map(normalizeServiceLog).map((log) => ({ ...log, taskId: log.taskId || taskId }));
+  const normalized = serviceLogsFromTask(result.task, taskId);
   await saveAllServiceLogs(normalized);
-  return normalized.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  return normalized;
 }
 
 export async function getServiceLogById(taskId, logId) {

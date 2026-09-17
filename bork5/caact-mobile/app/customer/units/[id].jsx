@@ -34,10 +34,39 @@ import {
 import { cancelServiceRequest } from "../../../services/serviceRequestStorage";
 import { formatUnitHorsepower } from "../../../services/unitDisplayService";
 import {
-  cacheUnitUpdate,
   getUnitByCode,
 } from "../../../services/unitStorage";
-import { generateAmpReport, getStoredToken } from "../../../services/api";
+
+const careGuideReportFromUnit = (loadedUnit = {}, reportType = "predictive_maintenance") => {
+  const amp = loadedUnit.amp || {};
+  const maintenance = {
+    predictionSource: loadedUnit.predictionSource || amp.predictionSource || "system",
+    bestServicedBy: loadedUnit.bestServicedBy || amp.bestServicedBy || amp.nextIdealServiceDate || "",
+    recommendedService: loadedUnit.recommendedService || amp.recommendedService || "",
+    lastServiceDate: loadedUnit.lastServiceDate || amp.lastServiceDate || null,
+    lastCleaningDate: loadedUnit.lastCleaningDate || amp.lastCleaningDate || null,
+    recommendationBasis: loadedUnit.recommendationBasis || amp.recommendationBasis || "",
+    capacityAssessment: loadedUnit.capacityAssessment || amp.capacityAssessment || null,
+    patternAnalysis: amp.patternAnalysis || {},
+    maintenanceSignals: amp.maintenanceSignals || {},
+    routineMaintenance: amp.routineMaintenance || {},
+    latestVisitAnalysis: loadedUnit.latestVisitAnalysis || amp.latestVisitAnalysis || amp.visitFollowUp || null,
+    conditionBasedFollowUp: amp.conditionBasedFollowUp || null,
+    dataQuality: loadedUnit.dataQuality || amp.dataQuality || null,
+    overdue: Boolean(loadedUnit.overdue || amp.overdue),
+    aiAssessment: loadedUnit.aiAssessment || amp.aiAssessment || "",
+    whyThisDate: loadedUnit.whyThisDate || amp.whyThisDate || "",
+    predictiveAssessment: amp.predictiveAssessment || {},
+    interpretation: amp.interpretation || loadedUnit.recommendationBasis || "",
+  };
+  return {
+    reportType,
+    reportId: `UNIT-${loadedUnit.id || "AC"}-${reportType}`,
+    generatedAt: new Date().toISOString(),
+    maintenance,
+    serviceHistory: Array.isArray(loadedUnit.serviceHistory) ? loadedUnit.serviceHistory : [],
+  };
+};
 
 function readParam(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -178,19 +207,11 @@ export default function CustomerUnitDetailsScreen() {
     setAmpReportError("");
     setAmpReportLoading(reportType);
     try {
-      const token = await getStoredToken();
-      if (!token || !unit?.id) throw new Error("Please sign in again before generating a report.");
-      const result = await generateAmpReport(token, { unitId: unit.id, reportType });
-      if (!result.success || !result.report) throw new Error(result.error);
-      setAmpReport({ ...result.report, provider: result.provider });
-      if (reportType === "predictive_maintenance" && result.report.maintenance) {
-        const nextUnit = { ...unit, ...result.report.maintenance, amp: { ...unit.amp, ...result.report.maintenance } };
-        setUnit(nextUnit);
-        const nextRecommendation = buildMaintenanceRecommendation({ unit: nextUnit });
-        setRecommendation(nextRecommendation);
-        setMaintenance(buildNextRecommendedMaintenance(nextRecommendation));
-        await cacheUnitUpdate(unit.id, nextUnit).catch(() => null);
-      }
+      if (!unit?.id) throw new Error("Your AC record is unavailable. Return to My Units and open it again.");
+      // Care Guide reads the latest already-synchronized unit and service
+      // history. It must not start another AI request merely to display data
+      // that has already been saved for this customer.
+      setAmpReport(careGuideReportFromUnit(unit, reportType));
     } catch (error) {
       setAmpReportError(error?.message || "Report unavailable. Please try again.");
     } finally {

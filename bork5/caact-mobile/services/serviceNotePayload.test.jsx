@@ -1,10 +1,18 @@
-import { upsertServiceLog, getServiceLogsByTask, deleteServiceLog } from "./unitServiceLogStorage";
+import { upsertServiceLog, getServiceLogsByTask, deleteServiceLog, serviceLogsFromTask } from "./unitServiceLogStorage";
 import * as api from "./api";
 jest.mock("@react-native-async-storage/async-storage", () => require("@react-native-async-storage/async-storage/jest/async-storage-mock"));
 jest.mock("./api", () => ({ getStoredToken: jest.fn(async () => "test-session"), fetchTask: jest.fn(async () => ({ success: true, task: { serviceLogs: [] } })), patchTask: jest.fn(async () => ({ success: true, task: {} })) }));
 test("dropdown sentences reach the API as individual actions with the existing report format", async () => {
   await upsertServiceLog({ taskId: "task1", logType: "deep_cleaning", findings: "Dust buildup on the evaporator coil.", resolution: "Removed and disassembled the indoor unit for deep cleaning.\nCleaned the evaporator coil.", notes: "Customer advice." });
   expect(api.patchTask).toHaveBeenCalledWith("test-session", "task1", expect.objectContaining({ serviceType: "deep_cleaning", findings: "Dust buildup on the evaporator coil.", serviceActions: ["Removed and disassembled the indoor unit for deep cleaning.", "Cleaned the evaporator coil."], notes: "Customer advice." }));
+});
+
+test("a loaded work order supplies its notes without requesting the task again", () => {
+  api.fetchTask.mockClear();
+  const logs = serviceLogsFromTask({ serviceLogs: [{ id: "note-1", findings: "Coil cleaned", createdAt: "2026-09-18T00:00:00.000Z" }] }, "task1");
+  expect(logs).toHaveLength(1);
+  expect(logs[0]).toMatchObject({ id: "note-1", taskId: "task1", findings: "Coil cleaned" });
+  expect(api.fetchTask).not.toHaveBeenCalled();
 });
 
 test("actual costs and hours survive save, reload and edit; deleting a note recalculates costs", async () => {

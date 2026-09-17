@@ -17,7 +17,7 @@ import { getTaskById, TASK_STATUS } from "../../../../../../services/taskStorage
 import { isInstallationWorkOrder } from "../../../../../../services/technicianTaskLogic";
 import {
   LOG_TYPES,
-  getServiceLogsByTask,
+  serviceLogsFromTask,
 } from "../../../../../../services/unitServiceLogStorage";
 
 export default function LogSelectScreen() {
@@ -28,7 +28,26 @@ export default function LogSelectScreen() {
   const [unitHistory, setUnitHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [view, setView] = useState("notes");
+
+  const loadUnitHistory = React.useCallback(async (taskForHistory) => {
+    const serialNumber = taskForHistory?.unit?.serialNumber;
+    if (!serialNumber || !taskForHistory?.id) return;
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const token = await getStoredToken();
+      const history = await fetchTechnicianUnitHistory(token, serialNumber, taskForHistory.id);
+      if (!history.success) throw new Error(history.error || "Unable to load previous AC service history.");
+      setUnitHistory(history);
+    } catch (error) {
+      setHistoryError(error?.message || "Unable to load previous AC service history.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -36,24 +55,13 @@ export default function LogSelectScreen() {
       async function load({ background }) {
         if (!background) setLoading(true);
         setLoadError("");
-        if (!background) setUnitHistory(null);
         try {
-        const loadedTask = await getTaskById(taskId, { requireOnline: true });
-        if (!loadedTask) throw new Error("This work order is no longer available.");
-        const loadedLogs = loadedTask?.id
-          ? await getServiceLogsByTask(loadedTask.id)
-          : [];
-        if (active) {
-          setTask(loadedTask);
-          setLogs(loadedLogs);
-        }
-        const serialNumber = loadedTask.unit?.serialNumber;
-        if (serialNumber) {
-          const token = await getStoredToken();
-          const history = await fetchTechnicianUnitHistory(token, serialNumber, loadedTask.id);
-          if (!history.success) throw new Error(history.error || "Unable to load previous AC service history.");
-          if (active) setUnitHistory(history);
-        }
+          const loadedTask = await getTaskById(taskId, { requireOnline: true });
+          if (!loadedTask) throw new Error("This work order is no longer available.");
+          if (active) {
+            setTask(loadedTask);
+            setLogs(serviceLogsFromTask(loadedTask, loadedTask.id));
+          }
         } catch (error) {
           if (active) setLoadError(error?.message || "Unable to load service notes.");
         } finally {
@@ -96,7 +104,7 @@ export default function LogSelectScreen() {
         />
 
         <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 8, marginBottom: SPACING.md }}>
-          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
+          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => { setView(key); if (key === "history" && !unitHistory && !historyLoading) void loadUnitHistory(task); }} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
         </View>
 
         {view === "notes" && canEdit && (
@@ -140,7 +148,7 @@ export default function LogSelectScreen() {
           </Card>
         )}
 
-        {loading ? <Text style={{ color: COLORS.textSecondary }}>Loading work-order notes and AC history...</Text> : null}
+        {loading ? <Text style={{ color: COLORS.textSecondary }}>Loading work-order notes...</Text> : null}
         {loadError ? <Text style={{ color: COLORS.danger }}>{loadError}</Text> : null}
         {!loading && !loadError && view === "notes" ? logs.length === 0 ? (
           <EmptyState
@@ -193,7 +201,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           )} />
         ) : null}
-        {!loading && !loadError && view === "history" ? unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
+        {!loading && !loadError && view === "history" ? historyLoading ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Text style={{ color: COLORS.danger }}>{historyError}</Text> : unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
       </ScrollView>
     </SafeAreaView>
   );

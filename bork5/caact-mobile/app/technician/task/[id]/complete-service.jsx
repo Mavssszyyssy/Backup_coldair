@@ -259,8 +259,9 @@ export default function CompleteServiceScreen() {
         proofSubmittedAt: submittedAt,
         proof: { ...(task?.proof || {}), afterPhotos, technicianName, submittedAt, notes: findings.trim() },
       });
-      const refreshed = await getTaskById(id, { requireOnline: true }).catch(() => updated);
-      setTask(refreshed);
+      // The completion response is authoritative. Re-reading the task here
+      // held the completed screen open behind another network request.
+      setTask(updated);
       Alert.alert(installationTask ? "Installation completed" : "Service visit completed", installationTask ? "The verified AC unit, photo proof, customer order, warranty, and AMP record are now synchronized." : "The service report, AC history, warranty record, customer request, and next AMP servicing recommendation are now synchronized.", [{ text: "Back to Work Orders", onPress: () => router.replace("/technician/tasks") }]);
     } catch (error) {
       // The response can be interrupted after the server commits the visit.
