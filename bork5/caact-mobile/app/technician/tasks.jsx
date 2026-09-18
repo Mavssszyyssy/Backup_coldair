@@ -15,6 +15,7 @@ import StatusChip from "../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getTasksByTechnician, TASK_STATUS } from "../../services/taskStorage";
+import { manilaDateKey, taskMatchesScheduleWindow } from "../../services/taskScheduleFilter";
 
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
@@ -53,7 +54,6 @@ const PRIORITY_FILTERS = [
   { key: "low", label: "Low" },
 ];
 const PAGE_SIZE = 8;
-const manilaDateKey = () => new Date(Date.now() + (8 * 60 * 60 * 1000)).toISOString().slice(0, 10);
 const SCHEDULE_FILTERS = [
   { key: "today", label: "Today" },
   { key: "upcoming", label: "Upcoming" },
@@ -287,11 +287,8 @@ export default function TasksScreen() {
       const normalizedStatus = taskStatusKey(task.status);
       const statusMatch = statusFilter === "all" || STATUS_GROUPS[statusFilter]?.has(normalizedStatus) || normalizedStatus === statusFilter;
       const priorityMatch = priorityFilter === "all" || taskPriorityKey(task.priority) === priorityFilter;
-      const scheduledDate = String(task.scheduledDate || "").slice(0, 10);
       const currentDate = manilaDateKey();
-      const scheduleMatch = scheduleFilter === "all"
-        || (scheduleFilter === "today" && scheduledDate === currentDate)
-        || (scheduleFilter === "upcoming" && scheduledDate > currentDate);
+      const scheduleMatch = taskMatchesScheduleWindow(task, scheduleFilter, currentDate);
       return scheduleMatch && statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
     }),
     [tasks, scheduleFilter, statusFilter, priorityFilter, searchQuery],
