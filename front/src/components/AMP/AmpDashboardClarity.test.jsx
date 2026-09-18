@@ -114,6 +114,9 @@ it("turns maintenance totals into data-backed management recommendations", async
         affectedComponent: "control board",
         severity: "urgent",
         assessment: "The technician recorded signs of control-board failure.",
+        technicianRecorded: "Button controls were not working properly.",
+        workCompleted: "Cleaned the air filter.",
+        customerObservation: "Customer reported intermittent controls.",
         recommendedActions: ["Arrange a qualified technician assessment before approving replacement."],
       }],
       earliestDueUnit: {
@@ -134,7 +137,16 @@ it("turns maintenance totals into data-backed management recommendations", async
   expect(screen.getByText("Review repair assessments")).toBeVisible();
   expect(screen.getByText(/verify the recorded technician findings/i)).toBeVisible();
   expect(screen.getByText("Unit action · Samsung Windfree 1.5")).toBeVisible();
-  expect(screen.getByText(/Edrian Mab.*CAACT-001.*Repair by September 28, 2026.*control board.*Urgent.*qualified technician assessment/i)).toBeVisible();
+  expect(screen.getByText("Assessment")).toBeVisible();
+  expect(screen.getByText("Technician recorded")).toBeVisible();
+  expect(screen.getByText("Work completed")).toBeVisible();
+  expect(screen.getByText("Customer observation")).toBeVisible();
+  expect(screen.getByText("Follow-up priority")).toBeVisible();
+  expect(screen.getAllByText("Recommended action").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText(/The technician recorded signs of control-board failure/i)).toBeVisible();
+  expect(screen.getByText(/Button controls were not working properly/i)).toBeVisible();
+  expect(screen.getByText(/Cleaned the air filter/i)).toBeVisible();
+  expect(screen.getByText(/Arrange a qualified technician assessment before approving replacement/i)).toBeVisible();
 });
 
 it("refreshes branch workload after a generated plan without making another paid request", async () => {

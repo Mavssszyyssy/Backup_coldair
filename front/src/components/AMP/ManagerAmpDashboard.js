@@ -45,17 +45,17 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
   if (total === 0) return [{
     level: "monitor",
     title: "Continue monitoring",
-    description: `No units have a saved servicing date inside the selected ${serviceWindow}-day window. No customer follow-up is indicated by the current AMP records.`,
+    sections: [{ label: "Current workload", value: `No units have a saved servicing date inside the selected ${serviceWindow}-day window. No customer follow-up is indicated by the current AMP records.` }],
   }];
 
   const actions = [overdue > 0 ? {
     level: "urgent",
     title: "Contact overdue customers first",
-    description: `${unitWord(overdue)} passed the saved suggested servicing date. Review each unit's evidence and service plan before contacting the customer to arrange the appropriate follow-up.`,
+    sections: [{ label: "Required follow-up", value: `${unitWord(overdue)} passed the saved suggested servicing date. Review each unit's evidence and service plan before contacting the customer to arrange the appropriate follow-up.` }],
   } : {
     level: "upcoming",
     title: "Prepare upcoming customer follow-ups",
-    description: `${unitWord(upcoming)} ${upcoming === 1 ? "is" : "are"} due within the selected ${serviceWindow}-day window, with no overdue unit recorded. Review the saved plans before arranging service.`,
+    sections: [{ label: "Required follow-up", value: `${unitWord(upcoming)} ${upcoming === 1 ? "is" : "are"} due within the selected ${serviceWindow}-day window, with no overdue unit recorded. Review the saved plans before arranging service.` }],
   }];
 
   (actionSummary.serviceDemand || []).forEach((demand) => {
@@ -65,7 +65,10 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
     actions.push({
       level: demand.overdue > 0 ? "urgent" : "service",
       title: definition.title,
-      description: `${unitWord(count)} ${count === 1 ? "has" : "have"} a saved ${humanLabel(demand.serviceType)} recommendation${demand.overdue > 0 ? `; ${unitWord(demand.overdue)} ${Number(demand.overdue) === 1 ? "is" : "are"} overdue` : ""}. ${definition.action}`,
+      sections: [
+        { label: "Saved recommendation", value: `${unitWord(count)} ${count === 1 ? "has" : "have"} a saved ${humanLabel(demand.serviceType)} recommendation${demand.overdue > 0 ? `; ${unitWord(demand.overdue)} ${Number(demand.overdue) === 1 ? "is" : "are"} overdue` : ""}.` },
+        { label: "Manager action", value: definition.action },
+      ],
     });
   });
 
@@ -74,18 +77,20 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
     : actionSummary.earliestDueUnit ? [actionSummary.earliestDueUnit] : [];
   priorityUnits.slice(0, 3).forEach((unit) => {
     if (!unit?.bestServicedBy) return;
-    const details = [
-      `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}`,
-      `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.bestServicedBy)}.`,
-      unit.affectedComponent ? `Recorded component: ${unit.affectedComponent}.` : "",
-      unit.severity ? `Recorded follow-up priority: ${humanLabel(unit.severity)}.` : "",
-      unit.assessment ? `Assessment: ${unit.assessment}` : "",
-      unit.recommendedActions?.[0] ? `Next action: ${unit.recommendedActions[0]}` : "Open the service plan to verify the recorded basis and next steps.",
+    const sections = [
+      { label: "Unit and customer", value: `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}` },
+      { label: "Recommended schedule", value: `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.bestServicedBy)}.` },
+      unit.assessment ? { label: "Assessment", value: unit.assessment } : null,
+      unit.technicianRecorded ? { label: "Technician recorded", value: unit.technicianRecorded } : null,
+      unit.workCompleted ? { label: "Work completed", value: unit.workCompleted } : null,
+      unit.customerObservation ? { label: "Customer observation", value: unit.customerObservation } : null,
+      (unit.affectedComponent || unit.severity) ? { label: "Follow-up priority", value: [unit.affectedComponent ? `Recorded component: ${humanLabel(unit.affectedComponent)}.` : "", unit.severity ? `Priority: ${humanLabel(unit.severity)}.` : ""].filter(Boolean).join(" ") } : null,
+      { label: "Recommended action", value: unit.recommendedActions?.length ? unit.recommendedActions : ["Open the service plan to verify the recorded basis and next steps."] },
     ].filter(Boolean);
     actions.push({
       level: unit.severity && ["urgent", "critical"].includes(unit.severity) ? "urgent" : "next",
       title: `Unit action · ${unit.modelName || "AC Unit"}`,
-      description: details.join(" "),
+      sections,
     });
   });
   return actions;
@@ -319,7 +324,7 @@ function ManagerAmpDashboard() {
             {managementActions.map((action, index) => (
               <article className={`amp-action-item ${action.level}`} key={`${action.title}-${index}`}>
                 <span>{index + 1}</span>
-                <div><h3>{action.title}</h3><p>{action.description}</p></div>
+                <div><h3>{action.title}</h3><dl className="amp-action-sections">{action.sections?.map((section) => <div key={section.label}><dt>{section.label}</dt>{Array.isArray(section.value) ? <dd><ul>{section.value.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}</ul></dd> : <dd>{section.value}</dd>}</div>)}</dl></div>
               </article>
             ))}
           </div>

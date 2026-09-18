@@ -16,6 +16,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getTasksByTechnician, TASK_STATUS } from "../../services/taskStorage";
 import { manilaDateKey, taskMatchesScheduleWindow } from "../../services/taskScheduleFilter";
+import { sortTechnicianWorkOrders } from "../../services/technicianWorkOrderSort";
 
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
@@ -36,7 +37,7 @@ const WORK_FILTERS = [
   { key: "active", label: "Active" },
   { key: "pending", label: "Awaiting Admin" },
   { key: "on-hold", label: "On hold" },
-  { key: "completed", label: "Completed" },
+  { key: "completed", label: "Completed (newest first)" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -229,38 +230,11 @@ export default function TasksScreen() {
   const [page, setPage] = useState(1);
   const [scheduleFilter, setScheduleFilter] = useState("today");
 
-  const sortWorkOrders = React.useCallback((all = []) => [...all].sort((a, b) => {
-    const order = {
-      [TASK_STATUS.ARRIVED]: 0,
-      [TASK_STATUS.INSTALLING]: 0,
-      [TASK_STATUS.IN_PROGRESS]: 0,
-      [TASK_STATUS.ON_THE_WAY]: 0,
-      [TASK_STATUS.ACCEPTED]: 1,
-      [TASK_STATUS.PENDING]: 2,
-      [TASK_STATUS.ON_HOLD]: 3,
-      [TASK_STATUS.RESCHEDULED]: 4,
-      [TASK_STATUS.FAILED]: 5,
-      [TASK_STATUS.COMPLETED]: 6,
-    };
-    const statusDifference = (order[a.status] ?? 3) - (order[b.status] ?? 3);
-    if (statusDifference) return statusDifference;
-    const dateDifference = String(a.scheduledDate || "9999-12-31").localeCompare(String(b.scheduledDate || "9999-12-31"));
-    if (dateDifference) return dateDifference;
-    const minutes = (value = "") => {
-      const match = String(value).match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!match) return Number.MAX_SAFE_INTEGER;
-      let hour = Number(match[1]) % 12;
-      if (match[3].toUpperCase() === "PM") hour += 12;
-      return hour * 60 + Number(match[2]);
-    };
-    return minutes(a.timeSlot) - minutes(b.timeSlot);
-  }), []);
-
   const refresh = ({ isCurrent = () => true } = {}) => {
     if (!current?.id) return;
     return getTasksByTechnician(current.id)
       .then((all) => {
-        if (isCurrent()) setTasks(sortWorkOrders(all));
+        if (isCurrent()) setTasks(sortTechnicianWorkOrders(all));
       })
       .catch(() => {});
   };
@@ -271,7 +245,7 @@ export default function TasksScreen() {
       getTasksByTechnician(current.id, { sync: false })
         .then((all) => {
           if (!active) return;
-          setTasks(sortWorkOrders(all));
+          setTasks(sortTechnicianWorkOrders(all));
         })
         .catch(() => {});
       const stop = startLiveRefresh(refresh);
@@ -279,7 +253,7 @@ export default function TasksScreen() {
         active = false;
         stop();
       };
-    }, [current, sortWorkOrders]),
+    }, [current]),
   );
 
   const filteredTasks = useMemo(
@@ -350,6 +324,13 @@ export default function TasksScreen() {
           style={{ paddingVertical: SPACING.xs }}
         />
       )}
+      {taskStatusKey(item.status) === "completed" ? <IconRow
+        icon="checkmark-done-sharp"
+        title="Completed work"
+        subtitle={item.completedAt ? `Finished ${new Date(item.completedAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}` : "Completion time was not recorded"}
+        color={COLORS.success}
+        style={{ paddingVertical: SPACING.xs }}
+      /> : null}
       <IconRow
         icon="people-sharp"
         title={String(item.assignedTechnicianId) === String(current?.id) ? "Primary technician" : "Support team"}
@@ -435,7 +416,7 @@ export default function TasksScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
                   <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                    {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                    {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Completed work is newest first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
                   </Text>
                 </View>
                 <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>

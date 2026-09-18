@@ -385,13 +385,18 @@
   font-size: 15px;
 }
 
-.amp-action-item p {
-  margin: 5px 0 0;
+.amp-action-sections { display: grid; gap: 7px; margin: 8px 0 0; }
+.amp-action-sections > div { border-left: 2px solid #bfdbfe; padding-left: 8px; }
+.amp-action-sections dt { color: #1e3a5f; font-size: 10px; font-weight: 850; letter-spacing: .035em; text-transform: uppercase; }
+.amp-action-sections dd {
+  margin: 2px 0 0;
   color: #475569;
   font-size: 13px;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
+.amp-action-sections ul { margin: 0; padding-left: 17px; }
+.amp-action-sections li + li { margin-top: 3px; }
 
 .amp-action-disclaimer {
   margin: 14px 0 0;

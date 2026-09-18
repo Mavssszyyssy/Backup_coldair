@@ -4,6 +4,7 @@ import Button from "../ui/Button";
 import DetailRow from "../ui/DetailRow";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { customerSystemMessage } from "../../services/customerLanguage";
+import VisitFollowUpPlan from "./VisitFollowUpPlan";
 
 const dateLabel = (value) => {
   const date = value ? new Date(value) : null;
@@ -64,7 +65,7 @@ export default function CustomerAmpReport({ report, provider }) {
     {showHistory ? <View>
       {(report.serviceHistory || []).map((service, index) => <View key={`${service.date}-${index}`}>
         <DetailRow label={`${service.serviceLabel || service.type || "Service"} · ${dateLabel(service.date)}`} value={[service.findings, service.actionTaken].filter(Boolean).join("\n") || "Detailed service report not recorded"} multiline />
-        {service.aiInterpretation?.customerSummary ? <DetailRow label={service.aiInterpretation.provider === "openai" ? "AI follow-up recommendation" : "Follow-up schedule"} value={service.aiInterpretation.customerSummary} multiline /> : null}
+        <VisitFollowUpPlan interpretation={service.aiInterpretation} />
         {service.evidence?.eligible === false ? <Text style={[body, { color: COLORS.danger }]}>{customerSystemMessage(service.evidence.reason)}</Text> : null}
       </View>)}
       {!report.serviceHistory?.length ? <Text style={body}>No service history has been recorded.</Text> : null}

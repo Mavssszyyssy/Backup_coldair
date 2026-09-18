@@ -11,6 +11,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getDisplayName } from "../../services/profileService";
 import { getTasksByTechnician, getTaskStats } from "../../services/taskStorage";
+import { sortTechnicianWorkOrders } from "../../services/technicianWorkOrderSort";
 
 function MetricCard({ label, value, icon, color }) {
   return (
@@ -61,8 +62,9 @@ export default function TechDashboard() {
       let active = true;
       const applyTasks = (tasks) => {
         if (!active) return;
-        setStats(getTaskStats(tasks));
-        setWorkOrders(tasks.slice(0, 3));
+        const orderedTasks = sortTechnicianWorkOrders(tasks);
+        setStats(getTaskStats(orderedTasks));
+        setWorkOrders(orderedTasks.slice(0, 3));
       };
       getTasksByTechnician(current.id, { sync: false }).then(applyTasks).catch(() => {});
       const stop = startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
