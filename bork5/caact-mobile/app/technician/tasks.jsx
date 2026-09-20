@@ -3,7 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TechnicianScreen, {
   TechHero,
 } from "../../components/technician/TechnicianScreen";
@@ -382,52 +382,47 @@ export default function TasksScreen() {
       icon="clipboard-sharp"
       scroll={false}
     >
-      <FlatList
+      <ScrollView
         style={{ flex: 1 }}
-        data={visibleTasks}
-        keyExtractor={(i) => String(i.id)}
-        renderItem={renderItem}
-        contentContainerStyle={{
-          paddingBottom: SPACING.lg,
-        }}
-        ListHeaderComponent={
-          <View>
-            <TechHero
-              eyebrow="Work Order Board"
-              title={scheduleFilter === "today" ? `${filteredTasks.length} job${filteredTasks.length === 1 ? "" : "s"} today` : `${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
-              subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Live Admin assignments, customer details, schedule notes, and work-order status."}
-              icon="map-sharp"
-            />
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
-              {SCHEDULE_FILTERS.map((filter) => {
-                const active = scheduleFilter === filter.key;
-                return <TouchableOpacity key={filter.key} onPress={() => setScheduleFilter(filter.key)} style={{ minHeight: 38, justifyContent: "center", paddingHorizontal: SPACING.md, borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface }}><Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontWeight: FONT.black }}>{filter.label}</Text></TouchableOpacity>;
-              })}
-            </View>
-            <Card
-              onPress={() => setFilterVisible(true)}
-              accessibilityLabel="Open work order filters"
-              style={{ marginBottom: SPACING.md, padding: SPACING.sm + 4 }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <View style={{ width: 38, height: 38, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
-                  <Ionicons name="options-sharp" size={20} color={COLORS.tech} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                    {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Completed work is newest first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
-                  </Text>
-                </View>
-                <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>
-                  <Text style={{ color: activeFilterCount ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.black }}>{filteredTasks.length}</Text>
-                </View>
-                <Ionicons name="chevron-forward-sharp" size={20} color={COLORS.textMuted} />
-              </View>
-            </Card>
+        contentContainerStyle={{ paddingBottom: SPACING.lg }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          <TechHero
+            eyebrow="Work Order Board"
+            title={scheduleFilter === "today" ? `${filteredTasks.length} job${filteredTasks.length === 1 ? "" : "s"} today` : `${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
+            subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Live Admin assignments, customer details, schedule notes, and work-order status."}
+            icon="map-sharp"
+          />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+            {SCHEDULE_FILTERS.map((filter) => {
+              const active = scheduleFilter === filter.key;
+              return <TouchableOpacity key={filter.key} onPress={() => setScheduleFilter(filter.key)} style={{ minHeight: 38, justifyContent: "center", paddingHorizontal: SPACING.md, borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface }}><Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontWeight: FONT.black }}>{filter.label}</Text></TouchableOpacity>;
+            })}
           </View>
-        }
-        ListEmptyComponent={
+          <Card
+            onPress={() => setFilterVisible(true)}
+            accessibilityLabel="Open work order filters"
+            style={{ marginBottom: SPACING.md, padding: SPACING.sm + 4 }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 38, height: 38, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
+                <Ionicons name="options-sharp" size={20} color={COLORS.tech} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
+                  {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Completed work is newest first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                </Text>
+              </View>
+              <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>
+                <Text style={{ color: activeFilterCount ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.black }}>{filteredTasks.length}</Text>
+              </View>
+              <Ionicons name="chevron-forward-sharp" size={20} color={COLORS.textMuted} />
+            </View>
+          </Card>
+        </View>
+        {visibleTasks.length === 0 ? (
           <EmptyState
             title={tasks.length ? "No matching work orders" : "No work orders assigned"}
             message={tasks.length ? "Try clearing or changing the current filters." : "Assigned service work will appear here."}
@@ -445,15 +440,19 @@ export default function TasksScreen() {
               />
             ) : null}
           />
-        }
-        ListFooterComponent={filteredTasks.length > PAGE_SIZE ? (
+        ) : visibleTasks.map((item, index) => (
+          <View key={`${String(item.id || item.taskCode || "work-order")}:${index}`}>
+            {renderItem({ item })}
+          </View>
+        ))}
+        {filteredTasks.length > PAGE_SIZE ? (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACING.sm, paddingTop: SPACING.sm }}>
             <TechButton title="Previous" size="sm" variant="secondary" disabled={page === 1} onPress={() => setPage((currentPage) => Math.max(1, currentPage - 1))} style={{ flex: 1 }} />
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{`Page ${page} of ${totalPages}`}</Text>
             <TechButton title="Next" size="sm" disabled={page === totalPages} onPress={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))} style={{ flex: 1 }} />
           </View>
         ) : null}
-      />
+      </ScrollView>
       <FilterSheet
         visible={filterVisible}
         onClose={() => setFilterVisible(false)}

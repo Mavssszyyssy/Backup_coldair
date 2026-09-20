@@ -137,9 +137,9 @@ it("turns maintenance totals into data-backed management recommendations", async
   expect(screen.getByText("Review repair assessments")).toBeVisible();
   expect(screen.getByText(/verify the recorded technician findings/i)).toBeVisible();
   expect(screen.getByText("Unit action · Samsung Windfree 1.5")).toBeVisible();
-  expect(screen.getByText("Assessment")).toBeVisible();
+  expect(screen.getAllByText("Assessment").length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText("Technician recorded")).toBeVisible();
-  expect(screen.getByText("Work completed")).toBeVisible();
+  expect(screen.getByText("Completed work")).toBeVisible();
   expect(screen.getByText("Customer observation")).toBeVisible();
   expect(screen.getByText("Follow-up priority")).toBeVisible();
   expect(screen.getAllByText("Recommended action").length).toBeGreaterThanOrEqual(1);

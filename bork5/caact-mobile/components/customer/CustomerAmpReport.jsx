@@ -39,6 +39,12 @@ export default function CustomerAmpReport({ report, provider }) {
     </> : <DetailRow label="Last recorded cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
     <DetailRow label="Priority" value={assessment.priority || (maintenance.overdue ? "Schedule soon" : "Routine")} />
     <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || aiAssessment} multiline />
+    <DetailRow label="Current Status" value={assessment.currentStatus || visitAnalysis.currentStatus || "Not recorded"} multiline />
+    <DetailRow label="Technician Recorded" value={assessment.technicianRecorded || visitAnalysis.technicianRecorded || "Not recorded"} multiline />
+    {assessment.previousVisitHistory?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Previous Visit History</Text>{assessment.previousVisitHistory.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : null}
+    {assessment.currentIssues?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Current Issues</Text>{assessment.currentIssues.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : <DetailRow label="Current Issues" value="No unresolved issue is recorded in the latest visit assessment." multiline />}
+    {assessment.completedWork?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Completed Work</Text>{assessment.completedWork.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : null}
+    <DetailRow label="Recommended Part" value={assessment.recommendedPart || visitAnalysis.recommendedPart || "No part recommendation is supported by the recorded history."} multiline />
     {assessment.factorsConsidered?.length ? <View>
       <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Factors Considered</Text>
       {assessment.factorsConsidered.map((item, index) => <DetailRow key={`${item.label}-${index}`} label={item.label} value={/date/i.test(item.label) ? dateLabel(item.value) : String(item.value)} multiline />)}
@@ -65,6 +71,7 @@ export default function CustomerAmpReport({ report, provider }) {
     {showHistory ? <View>
       {(report.serviceHistory || []).map((service, index) => <View key={`${service.date}-${index}`}>
         <DetailRow label={`${service.serviceLabel || service.type || "Service"} · ${dateLabel(service.date)}`} value={[service.findings, service.actionTaken].filter(Boolean).join("\n") || "Detailed service report not recorded"} multiline />
+        {service.technicianStatus ? <DetailRow label="Technician status" value={String(service.technicianStatus).replace(/_/g, " ")} /> : null}
         <VisitFollowUpPlan interpretation={service.aiInterpretation} />
         {service.evidence?.eligible === false ? <Text style={[body, { color: COLORS.danger }]}>{customerSystemMessage(service.evidence.reason)}</Text> : null}
       </View>)}

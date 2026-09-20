@@ -79,13 +79,18 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
     if (!unit?.bestServicedBy) return;
     const sections = [
       { label: "Unit and customer", value: `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}` },
-      { label: "Recommended schedule", value: `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.bestServicedBy)}.` },
+      unit.currentStatus ? { label: "Current status", value: humanLabel(unit.currentStatus) } : null,
       unit.assessment ? { label: "Assessment", value: unit.assessment } : null,
       unit.technicianRecorded ? { label: "Technician recorded", value: unit.technicianRecorded } : null,
-      unit.workCompleted ? { label: "Work completed", value: unit.workCompleted } : null,
+      unit.previousVisitHistory?.length ? { label: "Previous visit history", value: unit.previousVisitHistory } : null,
+      unit.currentIssues?.length ? { label: "Current issues", value: unit.currentIssues } : { label: "Current issues", value: unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit assessment." },
+      unit.completedWork?.length ? { label: "Completed work", value: unit.completedWork } : unit.workCompleted ? { label: "Completed work", value: unit.workCompleted } : null,
       unit.customerObservation ? { label: "Customer observation", value: unit.customerObservation } : null,
       (unit.affectedComponent || unit.severity) ? { label: "Follow-up priority", value: [unit.affectedComponent ? `Recorded component: ${humanLabel(unit.affectedComponent)}.` : "", unit.severity ? `Priority: ${humanLabel(unit.severity)}.` : ""].filter(Boolean).join(" ") } : null,
       { label: "Recommended action", value: unit.recommendedActions?.length ? unit.recommendedActions : ["Open the service plan to verify the recorded basis and next steps."] },
+      unit.recommendedPart ? { label: "Recommended part", value: unit.recommendedPart } : null,
+      { label: "Next possible visit", value: `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}.` },
+      unit.reason ? { label: "Why this date", value: unit.reason } : null,
     ].filter(Boolean);
     actions.push({
       level: unit.severity && ["urgent", "critical"].includes(unit.severity) ? "urgent" : "next",
@@ -131,12 +136,17 @@ function PipelineTable({ units, onSelectPlan }) {
               </td>
               <td>
                 <details className="amp-details amp-recommendation-details"><summary>Review recommendation</summary><div className="amp-recommendation-sections">
-                  <section><h4>Summary</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p></section>
+                  <section><h4>Assessment</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p></section>
+                  <section><h4>Current Status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
+                  <section><h4>Technician Recorded</h4><p>{unit.technicianRecorded || "No technician observation is recorded for the latest visit."}</p></section>
+                  {unit.previousVisitHistory?.length ? <section><h4>Previous Visit History</h4><ul>{unit.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
                   {(unit.condition || unit.capacityAssessment?.summary) ? <section><h4>Current AC condition</h4>{unit.condition ? <p>{humanLabel(unit.condition)}</p> : null}{unit.capacityAssessment?.summary ? <p>{unit.capacityAssessment.summary}</p> : null}</section> : null}
-                  {(unit.affectedComponent || unit.severity) ? <section><h4>Identified issues</h4><p>{unit.affectedComponent ? `Recorded component: ${humanLabel(unit.affectedComponent)}.` : ""}{unit.severity ? ` Follow-up priority: ${humanLabel(unit.severity)}.` : ""}</p></section> : null}
-                  <section><h4>Recommended action</h4>{unit.recommendedActions?.length ? <ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul> : <p>{`Review the records and arrange ${humanLabel(unit.recommendedService, "the recommended service").toLowerCase()} with the customer.`}</p>}</section>
-                  <section><h4>Recommended schedule</h4><p>{serviceDateLabel(unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p></section>
-                  <section><h4>Explanation</h4><p>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</p></section>
+                  <section><h4>Current Issues</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit assessment."}</p>}</section>
+                  {unit.completedWork?.length ? <section><h4>Completed Work</h4><ul>{unit.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
+                  <section><h4>Recommended Action</h4>{unit.recommendedActions?.length ? <ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul> : <p>{`Review the records and arrange ${humanLabel(unit.recommendedService, "the recommended service").toLowerCase()} with the customer.`}</p>}</section>
+                  <section><h4>Recommended Part</h4><p>{unit.recommendedPart || "No part recommendation is supported by the recorded history."}</p></section>
+                  <section><h4>Next Possible Visit</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p></section>
+                  <section><h4>Why This Date</h4><p>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</p></section>
                   <section><h4>Operational context</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
                 </div></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>

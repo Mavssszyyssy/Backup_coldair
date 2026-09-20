@@ -5,7 +5,10 @@ import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-libra
 import CompleteServiceScreen from "../app/technician/task/[id]/complete-service";
 import { notifyNotificationsChanged } from './notificationEvents';
 const mockUpdate = jest.fn();
-afterEach(() => { cleanup(); jest.restoreAllMocks(); mockUpdate.mockClear(); });
+const mockGetTask = jest.fn();
+const maintenanceTask = { id: "visit1", requestId: "request1", title: "Maintenance", description: "Please check the airflow", status: "in-progress" };
+beforeEach(() => { mockGetTask.mockResolvedValue(maintenanceTask); });
+afterEach(() => { cleanup(); jest.restoreAllMocks(); mockUpdate.mockClear(); mockGetTask.mockReset(); });
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: "visit1" }), useFocusEffect: (callback) => require("react").useEffect(callback, [callback]) }));
 jest.mock("expo-camera", () => ({
   CameraView: require("react").forwardRef((_props, ref) => {
@@ -15,7 +18,32 @@ jest.mock("expo-camera", () => ({
   useCameraPermissions: () => [{ granted: true }, jest.fn()],
 }));
 jest.mock("../context/UserContext", () => ({ useUserContext: () => ({ current: { id: "tech1", name_first: "Technician" } }) }));
-jest.mock("./taskStorage", () => ({ TASK_STATUS: { COMPLETED: "completed" }, getTaskById: async () => ({ id: "visit1", requestId: "request1", title: "Maintenance", description: "Please check the airflow", status: "in-progress" }), updateTaskStatus: (...args) => mockUpdate(...args) }));
+jest.mock("./taskStorage", () => ({ TASK_STATUS: { COMPLETED: "completed" }, getTaskById: (...args) => mockGetTask(...args), updateTaskStatus: (...args) => mockUpdate(...args) }));
+
+test("does not flash service-note controls while an installation work order is loading", async () => {
+  let resolveTask;
+  mockGetTask.mockReturnValueOnce(new Promise((resolve) => { resolveTask = resolve; }));
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><CompleteServiceScreen /></SafeAreaProvider>);
+
+  expect(screen.getByText("Complete work order")).toBeTruthy();
+  expect(screen.getByText("Loading the current work order…")).toBeTruthy();
+  expect(screen.queryByText("1. Record the completed service")).toBeNull();
+  expect(screen.queryByText("Save report and update payment total")).toBeNull();
+
+  await act(async () => resolveTask({
+    id: "visit1",
+    orderId: "order1",
+    title: "Install AC unit",
+    status: "installing",
+    serialNumbers: ["CAACT-001"],
+    registrationProgress: { totalRequired: 1, totalRegistered: 1, isComplete: true },
+    ampRegistrations: { "CAACT-001": { serialNumber: "CAACT-001", status: "registered" } },
+  }));
+
+  expect((await screen.findAllByText("Complete installation")).length).toBeGreaterThan(0);
+  expect(screen.getByText("Capture installation photo")).toBeTruthy();
+  expect(screen.queryByText("1. Record the completed service")).toBeNull();
+});
 
 test("technician can select actual observations/actions and submit one complete report without retyping; generic completion is blocked locally", async () => {
   let confirmCompletion = false;
@@ -25,6 +53,7 @@ test("technician can select actual observations/actions and submit one complete 
   mockUpdate.mockResolvedValue({ status: "completed" });
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><CompleteServiceScreen /></SafeAreaProvider>);
   await screen.findByText("Regular Cleaning");
+  await fireEvent.press(screen.getByText("Completed"));
   expect(screen.queryByText("Inspection")).toBeNull();
   await fireEvent.press(screen.getByLabelText("Select Technician Findings"));
   await fireEvent.press(screen.getByLabelText("Technician Findings: Other"));
@@ -51,7 +80,7 @@ test("technician can select actual observations/actions and submit one complete 
   confirmCompletion = true;
   await fireEvent.press(screen.getAllByText("Complete service visit").at(-1));
   await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
-  expect(mockUpdate.mock.calls[0][3]).toMatchObject({ serviceType: "regular_cleaning", findings: "Dust buildup on the air filter.", serviceActions: ["Cleaned the air filter.", "Tested cooling and airflow after cleaning."] });
+  expect(mockUpdate.mock.calls[0][3]).toMatchObject({ serviceType: "regular_cleaning", technicianStatus: "completed", findings: "Dust buildup on the air filter.", serviceActions: ["Cleaned the air filter.", "Tested cooling and airflow after cleaning."] });
   expect(mockUpdate.mock.calls[0][3]).toMatchObject({ afterCondition: "Good", proof: { afterPhotos: [{ uri: "data:image/jpeg;base64,cHJvb2Y=" }] } });
   expect(mockUpdate.mock.calls[0][3].notes).toBe("Advised the customer to keep the air inlet clear.");
   alert.mockRestore();

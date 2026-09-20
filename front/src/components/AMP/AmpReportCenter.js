@@ -113,6 +113,12 @@ function AmpReportCenter({
       </div>
       <h2>Predictive Maintenance Assessment</h2><p><strong>Priority:</strong> ${escapeHtml(assessment.priority || "Routine")}</p>
       <h2>Assessment Summary</h2><p>${escapeHtml(assessment.assessmentSummary || m.aiAssessment || visit.aiAssessment || "More completed service details are needed before this AC can be assessed.")}</p>
+      <h2>Current Status</h2><p>${escapeHtml(assessment.currentStatus || "Not recorded")}</p>
+      <h2>Technician Recorded</h2><p>${escapeHtml(assessment.technicianRecorded || "Not recorded")}</p>
+      ${assessment.previousVisitHistory?.length ? `<h2>Previous Visit History</h2><ul>${assessment.previousVisitHistory.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      <h2>Current Issues</h2>${assessment.currentIssues?.length ? `<ul>${assessment.currentIssues.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No unresolved issue is recorded in the latest visit assessment.</p>"}
+      ${assessment.completedWork?.length ? `<h2>Completed Work</h2><ul>${assessment.completedWork.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      <h2>Recommended Part</h2><p>${escapeHtml(assessment.recommendedPart || "No part recommendation is supported by the recorded history.")}</p>
       ${assessment.factorsConsidered?.length ? `<h2>Factors Considered</h2><ul>${assessment.factorsConsidered.map(item => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
       ${assessment.observationsConsidered?.length ? `<h2>Technician and Customer Observations Considered</h2><ul>${assessment.observationsConsidered.map(item => `<li><strong>${escapeHtml(item.source)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
       <h2>Why This Date</h2><p>${escapeHtml(m.whyThisDate || visit.whyThisDate || m.recommendationBasis || "A completed cleaning or installation date is needed.")}</p>
@@ -179,6 +185,14 @@ function AmpReportCenter({
           <div className="amp-metrics"><article><span>Priority</span><strong>{assessment.priority || "Routine"}</strong></article><article><span>Recommended schedule</span><strong>{dateLabel(assessment.recommendedServicingDate || maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(assessment.recommendedService || maintenance.recommendedService)}</strong></article></div>
           <h4>Assessment Summary</h4>
           <p>{assessment.assessmentSummary || maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before this AC can be assessed."}</p>
+          <dl className="amp-factor-list">
+            <div><dt>Current Status</dt><dd>{assessment.currentStatus || "Not recorded"}</dd></div>
+            <div><dt>Technician Recorded</dt><dd>{assessment.technicianRecorded || "Not recorded"}</dd></div>
+          </dl>
+          {assessment.previousVisitHistory?.length ? <><h4>Previous Visit History</h4><ul>{assessment.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
+          <h4>Current Issues</h4>{assessment.currentIssues?.length ? <ul>{assessment.currentIssues.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <p>No unresolved issue is recorded in the latest visit assessment.</p>}
+          {assessment.completedWork?.length ? <><h4>Completed Work</h4><ul>{assessment.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
+          <h4>Recommended Part</h4><p>{assessment.recommendedPart || "No part recommendation is supported by the recorded history."}</p>
           <p className="amp-muted">This uses only the technician’s submitted findings and the AC records available in AEROPULSE. The original technician report remains unchanged below.</p>
         </details>
         {assessment.factorsConsidered?.length ? <details className="amp-details" open><summary>Factors Considered</summary><dl className="amp-factor-list">{assessment.factorsConsidered.map((item) => <div key={`${item.label}-${item.value}`}><dt>{item.label}</dt><dd>{/date/i.test(item.label) ? dateLabel(item.value) : item.value}</dd></div>)}</dl></details> : null}

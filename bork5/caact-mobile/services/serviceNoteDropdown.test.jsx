@@ -16,12 +16,14 @@ beforeEach(() => {
   getTaskById.mockResolvedValue({ id: "task1", title: "Maintenance", unitName: "Test AC", status: "in-progress" });
   getLogDraft.mockResolvedValue(null); getServiceLogById.mockResolvedValue(null);
   upsertServiceLog.mockResolvedValue({});
+  saveLogDraft.mockResolvedValue();
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
 afterEach(() => { cleanup(); jest.restoreAllMocks(); delete mockParams.logId; });
 
 test("hours and parts dropdowns, actual costs and written report survive pagination", async () => {
   await mount(); await screen.findByText("Test AC");
+  await fireEvent.press(screen.getByText("Completed"));
   await fireEvent.press(screen.getByLabelText("Select Hours Worked"));
   await fireEvent.press(screen.getByLabelText("Hours Worked: 2.5"));
   await fireEvent.press(screen.getByLabelText("Select Parts Used"));
@@ -43,6 +45,7 @@ test("hours and parts dropdowns, actual costs and written report survive paginat
 
 test("direct Add Service Note offers cleaning dropdowns, rejects blank report, and saves selected sentences", async () => {
   await mount(); await screen.findByText("Test AC");
+  await fireEvent.press(screen.getByText("Completed"));
   await fireEvent.press(screen.getByLabelText("Service note: Next page"));
   await fireEvent.press(screen.getByLabelText("Service note: Next page"));
   expect(upsertServiceLog).not.toHaveBeenCalled();
@@ -58,7 +61,7 @@ test("direct Add Service Note offers cleaning dropdowns, rejects blank report, a
 });
 
 test("draft custom findings and deep-cleaning method survive a save and reopen", async () => {
-  getLogDraft.mockResolvedValue({ logType: "deep_cleaning", findings: "Existing custom coil observation.", resolution: "Removed and disassembled the indoor unit for deep cleaning.", notes: "Saved advice." });
+  getLogDraft.mockResolvedValue({ logType: "deep_cleaning", technicianStatus: "completed", findings: "Existing custom coil observation.", resolution: "Removed and disassembled the indoor unit for deep cleaning.", notes: "Saved advice." });
   await mount(); await screen.findByText("Test AC");
   await fireEvent.press(screen.getByLabelText("Service note: Next page"));
   expect(screen.getByLabelText("Other technician findings").props.value).toBe("Existing custom coil observation.");
@@ -70,7 +73,7 @@ test("draft custom findings and deep-cleaning method survive a save and reopen",
 
 test("editing an existing note preserves custom text and reports failed saves without clearing it", async () => {
   mockParams.logId = "log1";
-  getServiceLogById.mockResolvedValue({ logType: "regular_cleaning", findings: "Existing custom observation.", resolution: "Cleaned the air filter." });
+  getServiceLogById.mockResolvedValue({ logType: "regular_cleaning", technicianStatus: "completed", findings: "Existing custom observation.", resolution: "Cleaned the air filter." });
   upsertServiceLog.mockRejectedValue(new Error("Connection interrupted"));
   await mount("update"); await screen.findByText("Test AC");
   await fireEvent.press(screen.getByLabelText("Service note: Next page"));

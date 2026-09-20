@@ -4,6 +4,7 @@ import PagedItems from "../ui/PagedItems";
 import Card from "../ui/Card";
 import { COLORS, SPACING } from "../../constants/theme";
 import { groupMaintenancePlans } from "../../services/maintenancePlanHistory";
+import { technicianVisitStatusLabel } from "../../services/technicianVisitStatus";
 
 const formatDate = value => {
   if (!value) return "Not recorded";
@@ -14,8 +15,8 @@ const words = value => String(value || "Not recorded").replace(/_/g, " ");
 const hours = value => value == null ? "Not recorded" : `${value} hours`;
 const money = value => value == null ? "Not recorded" : `PHP ${Number(value).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fields = {
-  maintenance: [["date", "Service date", formatDate], ["serviceType", "Service", words], ["technician", "Technician"], ["findings", "Findings"], ["actionTaken", "Work performed"], ["hoursSpent", "Hours worked", hours], ["laborCost", "Labor cost", money], ["partsCost", "Parts cost", money], ["totalServiceCost", "Recorded total", money], ["status", "Status"]],
-  repairs: [["date", "Service date", formatDate], ["issue", "Concern"], ["diagnosis", "Findings"], ["actionTaken", "Work performed"], ["partsUsed", "Parts used"], ["hoursSpent", "Hours worked", hours], ["laborCost", "Labor cost", money], ["partsCost", "Parts cost", money], ["totalServiceCost", "Recorded total", money], ["technician", "Technician"], ["status", "Status"]],
+  maintenance: [["date", "Service date", formatDate], ["serviceType", "Service", words], ["technicianStatus", "Technician status", technicianVisitStatusLabel], ["technician", "Technician"], ["findings", "Findings"], ["actionTaken", "Work performed"], ["hoursSpent", "Hours worked", hours], ["laborCost", "Labor cost", money], ["partsCost", "Parts cost", money], ["totalServiceCost", "Recorded total", money], ["status", "Status"]],
+  repairs: [["date", "Service date", formatDate], ["technicianStatus", "Technician status", technicianVisitStatusLabel], ["issue", "Concern"], ["diagnosis", "Findings"], ["actionTaken", "Work performed"], ["partsUsed", "Parts used"], ["hoursSpent", "Hours worked", hours], ["laborCost", "Labor cost", money], ["partsCost", "Parts cost", money], ["totalServiceCost", "Recorded total", money], ["technician", "Technician"], ["status", "Status"]],
   past: [["bestServicedBy", "Suggested servicing date", formatDate], ["recommendedService", "Service", words], ["recommendationBasis", "Why this date"]],
 };
 function Field({ label, value }) {

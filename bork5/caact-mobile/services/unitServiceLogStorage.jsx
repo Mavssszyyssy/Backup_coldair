@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
+import { normalizeTechnicianVisitStatus } from "./technicianVisitStatus";
 
 const STORAGE_KEY = "unit_service_logs_storage_v1";
 const DRAFT_KEY = "unit_service_log_draft_v1";
@@ -40,6 +41,7 @@ export function normalizeServiceLog(log = {}) {
     logType: log.logType || "other",
     label: log.label || LOG_TYPES.find((type) => type.id === log.logType)?.label || "Other",
     condition: log.condition || "Good",
+    technicianStatus: normalizeTechnicianVisitStatus(log.technicianStatus),
     hoursSpent: recordedAmount(log.hoursSpent),
     laborCost: recordedAmount(log.laborCost),
     partsCost: recordedAmount(log.partsCost),
@@ -129,6 +131,7 @@ export async function upsertServiceLog(log = {}) {
     ...serviceLogCosts(next),
     serviceType: serviceTypeByLogType[normalized.logType] || "inspection",
     beforeCondition: normalized.condition,
+    technicianStatus: normalized.technicianStatus,
     conditionRating: String(normalized.condition || "good").toLowerCase(),
     findings: normalized.findings || normalized.notes,
     resolution: normalized.resolution,
@@ -157,6 +160,7 @@ export async function deleteServiceLog(taskId, logId) {
     ...serviceLogCosts(next),
     ...(latest ? {
       beforeCondition: latest.condition,
+      technicianStatus: latest.technicianStatus,
       conditionRating: String(latest.condition || "good").toLowerCase(),
       findings: latest.findings || latest.notes,
       resolution: latest.resolution,
@@ -165,6 +169,7 @@ export async function deleteServiceLog(taskId, logId) {
       notes: latest.notes,
     } : {
       beforeCondition: "",
+      technicianStatus: "",
       findings: "",
       resolution: "",
       serviceActions: [],

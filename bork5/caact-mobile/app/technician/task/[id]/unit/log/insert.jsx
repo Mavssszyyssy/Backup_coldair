@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ServiceNoteDetails from "../../../../../../components/technician/ServiceNoteDetails";
+import TechnicianStatusSelector from "../../../../../../components/technician/TechnicianStatusSelector";
 
 import ServiceResourcesFields from "../../../../../../components/technician/ServiceResourcesFields";
 import { PageControls } from "../../../../../../components/ui/PagedItems";
@@ -39,6 +40,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
   const [resolution, setResolution] = useState("");
   const [notes, setNotes] = useState("");
   const [condition, setCondition] = useState("Good");
+  const [technicianStatus, setTechnicianStatus] = useState("");
   const [hoursSpent, setHoursSpent] = useState("");
   const [partsUsed, setPartsUsed] = useState("");
   const [laborCost, setLaborCost] = useState("");
@@ -69,6 +71,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
           setResolution(source.resolution || "");
           setNotes(source.notes || "");
           setCondition(source.condition || "Good");
+          setTechnicianStatus(source.technicianStatus || "");
           setHoursSpent(source.hoursSpent ? String(source.hoursSpent) : "");
           setPartsUsed(source.partsUsed || "");
           setLaborCost(source.laborCost == null ? "" : String(source.laborCost));
@@ -91,18 +94,20 @@ export default function LogInsertScreen({ mode = "insert" }) {
       resolution,
       notes,
       condition,
+      technicianStatus,
       hoursSpent,
       partsUsed,
       laborCost,
       partsCost,
     };
-  }, [condition, findings, hoursSpent, label, reportType, notes, partsUsed, resolution, taskId, laborCost, partsCost]);
+  }, [condition, technicianStatus, findings, hoursSpent, label, reportType, notes, partsUsed, resolution, taskId, laborCost, partsCost]);
 
   useEffect(() => {
     return () => {
       const draft = draftStateRef.current;
       const hasDraftContent =
         String(draft.findings || "").trim() ||
+        String(draft.technicianStatus || "").trim() ||
         String(draft.resolution || "").trim() ||
         String(draft.notes || "").trim() ||
         String(draft.hoursSpent || "").trim() ||
@@ -110,7 +115,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         String(draft.laborCost ?? "").trim() || String(draft.partsCost ?? "").trim();
 
       if (!isUpdate && !skipDraftSaveRef.current && draft.taskId && hasDraftContent) {
-        saveLogDraft(draft.taskId, draft).catch(() => {});
+        Promise.resolve(saveLogDraft(draft.taskId, draft)).catch(() => {});
       }
     };
   }, [isUpdate]);
@@ -128,6 +133,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         resolution,
         notes,
         condition,
+        technicianStatus,
         hoursSpent,
         partsUsed,
         laborCost,
@@ -149,6 +155,10 @@ export default function LogInsertScreen({ mode = "insert" }) {
       return;
     }
     const reportError = resourcesError || choiceError || serviceReportError(findings, resolution);
+    if (!technicianStatus) {
+      Alert.alert("Technician status required", "Choose For Repair, For Further Inspection, or Completed for this visit.");
+      return;
+    }
     if (reportError) {
       Alert.alert("Service report incomplete", reportError);
       return;
@@ -170,6 +180,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         resolution: resolution.trim(),
         notes: notes.trim(),
         condition,
+        technicianStatus,
         hoursSpent: hoursSpent === "" ? null : Number(hoursSpent),
         laborCost: laborCost === "" ? null : Number(laborCost),
         partsCost: partsCost === "" ? null : Number(partsCost),
@@ -212,6 +223,10 @@ export default function LogInsertScreen({ mode = "insert" }) {
 
         <Text style={{ fontWeight: "700", marginBottom: SPACING.md }}>{["1. Condition and resources", "2. Findings and work performed", "3. Review service note"][page]}</Text>
         <View style={{ display: page === 0 ? "flex" : "none" }}>
+        <Card style={{ marginBottom: SPACING.md }}>
+          <TechnicianStatusSelector value={technicianStatus} onChange={setTechnicianStatus} />
+        </Card>
+
         <Card style={{ marginBottom: SPACING.md }}>
           <Text
             style={{
@@ -269,7 +284,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
 
         </View>
         {page === 2 ? <>
-        <ServiceNoteDetails unitName={task?.unitName} log={{ condition, hoursSpent: hoursSpent === "" ? null : Number(hoursSpent), partsUsed, laborCost: laborCost === "" ? null : Number(laborCost), partsCost: partsCost === "" ? null : Number(partsCost), findings, resolution, notes, technicianName: getDisplayName(current) }} />
+        <ServiceNoteDetails unitName={task?.unitName} log={{ condition, technicianStatus, hoursSpent: hoursSpent === "" ? null : Number(hoursSpent), partsUsed, laborCost: laborCost === "" ? null : Number(laborCost), partsCost: partsCost === "" ? null : Number(partsCost), findings, resolution, notes, technicianName: getDisplayName(current) }} />
         <TechButton
           title={saving ? "Saving..." : "Save Service Note"}
           onPress={handleSubmit}
@@ -280,7 +295,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         </> : null}
         <PageControls page={page} total={3} label="Service note" onChange={next => {
           if (saving) return;
-          const error = next > page ? (page === 0 ? resourcesError : choiceError || serviceReportError(findings, resolution)) : "";
+          const error = next > page ? (page === 0 ? (!technicianStatus ? "Choose the technician status for this visit." : resourcesError) : choiceError || serviceReportError(findings, resolution)) : "";
           if (error) { Alert.alert("Check service note", error); return; }
           Keyboard.dismiss();
           setPage(next);

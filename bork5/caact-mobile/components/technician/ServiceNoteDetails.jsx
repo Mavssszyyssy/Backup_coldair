@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import Card from "../ui/Card";
 import ServiceCostSummary from "./ServiceCostSummary";
 import { COLORS } from "../../constants/theme";
+import { technicianVisitStatusLabel } from "../../services/technicianVisitStatus";
 
 function Field({ label, value }) {
   return <View style={{ marginTop: 12 }}>
@@ -19,6 +20,7 @@ export default function ServiceNoteDetails({ log, unitName }) {
       <Heading>Visit details</Heading>
       <Field label="AC unit" value={log.unitName || unitName || "Not recorded"} />
       <Field label="Technician" value={log.technicianName || "Not recorded"} />
+      <Field label="Technician status" value={technicianVisitStatusLabel(log.technicianStatus)} />
       <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
         {[["Condition", log.condition || "Not recorded"], ["Hours worked", log.hoursSpent == null ? "Not recorded" : `${log.hoursSpent} hours`]].map(([label, value]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.techLight, padding: 12, borderRadius: 10 }}><Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{label}</Text><Text style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: "700", marginTop: 5 }}>{value}</Text></View>)}
       </View>

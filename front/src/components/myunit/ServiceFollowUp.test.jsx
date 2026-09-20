@@ -16,8 +16,9 @@ test('shows a component concern separately from normal AC performance', () => {
   }} />);
   expect(screen.getByText('Evidence-based follow-up plan')).toBeVisible();
   expect(screen.getByText('Overall AC performance')).toBeVisible();
-  expect(screen.getByText('Recorded component concern')).toBeVisible();
-  expect(screen.getByText('Recommended part or component')).toBeVisible();
+  expect(screen.getByText('Current Issues')).toBeVisible();
+  expect(screen.getByText('A recorded button panel concern requires verification; this is not a confirmed mechanical diagnosis.')).toBeVisible();
+  expect(screen.getByText('Recommended Part')).toBeVisible();
   expect(screen.getByText('Button panel / affected button')).toBeVisible();
   expect(screen.getByText('Recommended actions', { exact: false })).toBeVisible();
 });

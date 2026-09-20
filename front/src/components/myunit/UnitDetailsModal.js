@@ -82,6 +82,7 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
                   <div key={idx} className="history-item">
                     <div className="history-date">{serviceDateLabel(service.date)}</div>
                     <div className="history-service">{serviceLabel(service.serviceType)}</div>
+                    {service.technicianStatus ? <div className="history-details">Technician status: {String(service.technicianStatus).replaceAll('_', ' ')}</div> : null}
                     <div className="history-details">{serviceDetails(service)}</div>
                     <ServiceFollowUp interpretation={service.aiInterpretation} />
                     {servicePriceLabel(service) ? <div className="history-price">{servicePriceLabel(service)}</div> : null}

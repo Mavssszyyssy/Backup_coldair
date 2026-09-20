@@ -6,6 +6,7 @@ import {
   assignTechnicianToServiceRequest,
   updateServiceRequestStatus,
 } from "./serviceRequestStorage";
+import { normalizeTaskCollection as normalizeCollection } from "./technicianTaskCollection";
 
 const STORAGE_KEY = "technician_tasks_storage_v2";
 
@@ -162,6 +163,7 @@ export function normalizeTask(item = {}) {
     beforeCondition: value("beforeCondition"),
     afterCondition: value("afterCondition"),
     conditionRating: value("conditionRating"),
+    technicianStatus: value("technicianStatus"),
     serviceType: value("serviceType"),
     serviceActions: value("serviceActions", []),
     serviceLogs: value("serviceLogs", []),
@@ -201,6 +203,8 @@ export function normalizeTask(item = {}) {
   };
 }
 
+export const normalizeTaskCollection = (items = []) => normalizeCollection(items, normalizeTask);
+
 function appendTimeline(task, event) {
   const existing = Array.isArray(task.timeline) ? task.timeline : [];
   return [...existing, event];
@@ -234,21 +238,20 @@ export async function getAllTasks() {
     if (token) {
       const result = await api.fetchTasks(token);
       if (result.success) {
-        await saveAllTasks(result.tasks);
-        return result.tasks.map(normalizeTask);
+        return saveAllTasks(result.tasks);
       }
     }
   } catch {}
 
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const parsed = safeParse(raw, []);
-  return Array.isArray(parsed) ? parsed.map(normalizeTask) : [];
+  return normalizeTaskCollection(parsed);
 }
 
 async function getCachedTasks() {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const parsed = safeParse(raw, []);
-  return Array.isArray(parsed) ? parsed.map(normalizeTask) : [];
+  return normalizeTaskCollection(parsed);
 }
 
 export async function loadTasks() {
@@ -256,7 +259,7 @@ export async function loadTasks() {
 }
 
 export async function saveAllTasks(items = []) {
-  const normalized = items.map(normalizeTask);
+  const normalized = normalizeTaskCollection(items);
   // Proof photos remain authoritative on the backend. Keeping base64 camera
   // images in the shared offline task cache can exceed the native storage
   // quota after an otherwise successful completion request.
@@ -449,8 +452,11 @@ export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
     if (token) {
       const result = await api.fetchTasks(token, { technicianId });
       if (result.success) {
-        await saveAllTasks(result.tasks);
-        return result.tasks.map(normalizeTask);
+        const saved = await saveAllTasks(result.tasks);
+        return saved.filter(
+          (item) => String(item.assignedTechnicianId) === String(technicianId)
+            || (item.schedule?.teamMemberIds || []).some((id) => String(id) === String(technicianId)),
+        );
       }
     }
   } catch {
@@ -461,11 +467,10 @@ export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
 
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const cachedTasks = safeParse(raw, []);
-  const tasks = Array.isArray(cachedTasks)
-    ? cachedTasks.map(normalizeTask)
-    : [];
+  const tasks = normalizeTaskCollection(cachedTasks);
   return tasks.filter(
     (item) => String(item.assignedTechnicianId) === String(technicianId)
+      || (item.schedule?.teamMemberIds || []).some((id) => String(id) === String(technicianId))
   );
 }
 
