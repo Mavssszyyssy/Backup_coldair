@@ -288,7 +288,8 @@ export async function getTaskById(taskId, { requireOnline = false } = {}) {
     const token = await api.getStoredToken();
     if (token) {
       const result = await api.fetchTask(token, normalizedTaskId);
-      if (result.success) return normalizeTask(result.task);
+      if (result.success && result.task?.id) return normalizeTask(result.task);
+      if (result.success) throw new Error("The server returned an incomplete work order. Please refresh and try again.");
       // A response from the server is authoritative. Falling back to an old
       // local copy for a 401/403/404 made Work Details report a misleading
       // missing task and could send a technician into the wrong installation.
@@ -344,19 +345,24 @@ export async function updateTask(taskId, patch = {}) {
   return upsertCachedTask(result.task);
 }
 
-export async function updateTaskStatus(taskId, status, actor = "Technician", patch = {}) {
+export async function updateTaskStatus(taskId, status, actor = "Technician", patch = {}, { currentTask = null } = {}) {
   // The active work-order screen already has this task. A full /tasks refresh
   // before completion delays the technician and can repeat a slow connection
   // recovery. Start from the device cache and read only this task if needed.
   let tasks = await getCachedTasks();
-  let target = tasks.find((item) => String(item.id) === String(taskId));
+  let target = currentTask && String(currentTask.id) === String(taskId)
+    ? normalizeTask(currentTask)
+    : tasks.find((item) => String(item.id) === String(taskId));
+  if (target && !tasks.some((item) => String(item.id) === String(taskId))) {
+    tasks = [target, ...tasks];
+  }
   if (!target) {
     target = await getTaskById(taskId, { requireOnline: true });
     if (target) {
       tasks = [target, ...tasks.filter((item) => String(item.id) !== String(taskId))];
     }
   }
-  if (!target) return null;
+  if (!target) throw new Error("This work order could not be verified. Return to Work Orders and open it again.");
   const isCompleting = String(status).toLowerCase() === "completed";
   const completionNotes =
     patch.completionNotes ||
@@ -417,6 +423,7 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
     };
     const result = await api.patchTask(token, taskId, requestPayload);
     if (!result.success) throw new Error(result.error || "Failed to update task.");
+    if (!result.task?.id) throw new Error("The server completed the request without returning the updated work order. Refresh before trying again.");
     const backendTask = normalizeTask(result.task);
     await saveAllTasks(
       next.map((item) => (String(item.id) === String(taskId) ? backendTask : item)),

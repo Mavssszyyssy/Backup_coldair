@@ -8,7 +8,7 @@ const mockUpdate = jest.fn();
 const mockGetTask = jest.fn();
 const maintenanceTask = { id: "visit1", requestId: "request1", title: "Maintenance", description: "Please check the airflow", status: "in-progress" };
 beforeEach(() => { mockGetTask.mockResolvedValue(maintenanceTask); });
-afterEach(() => { cleanup(); jest.restoreAllMocks(); mockUpdate.mockClear(); mockGetTask.mockReset(); });
+afterEach(() => { cleanup(); jest.restoreAllMocks(); mockUpdate.mockReset(); mockGetTask.mockReset(); });
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: "visit1" }), useFocusEffect: (callback) => require("react").useEffect(callback, [callback]) }));
 jest.mock("expo-camera", () => ({
   CameraView: require("react").forwardRef((_props, ref) => {
@@ -50,7 +50,7 @@ test("technician can select actual observations/actions and submit one complete 
   const alert = jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
     if (confirmCompletion) buttons?.find((button) => button.text === "Complete")?.onPress();
   });
-  mockUpdate.mockResolvedValue({ status: "completed" });
+  mockUpdate.mockResolvedValue({ id: "visit1", status: "completed" });
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><CompleteServiceScreen /></SafeAreaProvider>);
   await screen.findByText("Regular Cleaning");
   await fireEvent.press(screen.getByText("Completed"));
@@ -84,6 +84,47 @@ test("technician can select actual observations/actions and submit one complete 
   expect(mockUpdate.mock.calls[0][3]).toMatchObject({ afterCondition: "Good", proof: { afterPhotos: [{ uri: "data:image/jpeg;base64,cHJvb2Y=" }] } });
   expect(mockUpdate.mock.calls[0][3].notes).toBe("Advised the customer to keep the air inlet clear.");
   alert.mockRestore();
+});
+
+test("installation completion uses the loaded work order on the first tap and never falls into the load-error page", async () => {
+  const installationTask = {
+    id: "visit1",
+    orderId: "order1",
+    title: "Install AC unit",
+    status: "installing",
+    serialNumbers: ["CAACT-001"],
+    registrationProgress: { totalRequired: 1, totalRegistered: 1, isComplete: true },
+    ampRegistrations: { "CAACT-001": { serialNumber: "CAACT-001", status: "registered" } },
+  };
+  mockGetTask.mockResolvedValue(installationTask);
+  let finishCompletion;
+  mockUpdate.mockReturnValue(new Promise((resolve) => { finishCompletion = resolve; }));
+  const alert = jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    buttons?.find((button) => button.text === "Complete")?.onPress();
+  });
+
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><CompleteServiceScreen /></SafeAreaProvider>);
+  await screen.findByText("Capture installation photo");
+  await fireEvent.press(screen.getByText("Capture installation photo"));
+  await fireEvent.press(screen.getByText("Use this photo"));
+  await waitFor(() => expect(screen.getAllByText("Complete installation").length).toBeGreaterThan(1));
+  await act(async () => {
+    fireEvent.press(screen.getAllByText("Complete installation").at(-1));
+  });
+
+  await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+  expect(mockUpdate.mock.calls[0][4]).toEqual({ currentTask: expect.objectContaining({ id: "visit1", orderId: "order1" }) });
+  const readsBeforeNotification = mockGetTask.mock.calls.length;
+  await act(async () => notifyNotificationsChanged());
+  expect(mockGetTask).toHaveBeenCalledTimes(readsBeforeNotification);
+  await act(async () => finishCompletion({
+    ...installationTask,
+    status: "completed",
+    completionSynchronized: true,
+    proof: { afterPhotos: [{ uri: "data:image/jpeg;base64,cHJvb2Y=" }] },
+  }));
+  await waitFor(() => expect(alert.mock.calls.some(([title]) => title === "Installation completed")).toBe(true));
+  expect(screen.queryByText("Work order could not be loaded")).toBeNull();
 });
 
 test("changing cleaning method asks first, clears report selections, and keeps photo and additional notes", async () => {

@@ -111,6 +111,7 @@ export default function CompleteServiceScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const completionInFlight = useRef(false);
   const progress = task?.registrationProgress;
   const requiredCount = progress?.totalRequired || getTaskSerialNumbers(task).length;
   const canComplete = Boolean(progress?.isComplete ?? requiredCount === 0);
@@ -127,6 +128,10 @@ export default function CompleteServiceScreen() {
   }, [task]);
 
   const load = React.useCallback(async ({ background = false, isCurrent = () => true } = {}) => {
+    // Completion is authoritative and may trigger notifications immediately.
+    // Do not let a concurrent live refresh replace the active task while its
+    // proof upload and linked-record synchronization are still returning.
+    if (completionInFlight.current) return;
     if (!background) {
       setLoading(true);
       setLoadError("");
@@ -262,6 +267,7 @@ export default function CompleteServiceScreen() {
     const submittedAt = new Date().toISOString();
     const technicianName = getDisplayName(current) || task?.assignedTechnicianName || "Technician";
     setSubmitting(true);
+    completionInFlight.current = true;
     try {
       const existingLogs = Array.isArray(task?.serviceLogs) ? task.serviceLogs : [];
       const completionLog = {
@@ -302,7 +308,8 @@ export default function CompleteServiceScreen() {
         notes: additionalNotes.trim(),
         proofSubmittedAt: submittedAt,
         proof: { ...(task?.proof || {}), afterPhotos, technicianName, submittedAt, notes: findings.trim() },
-      });
+      }, { currentTask: task });
+      if (!updated?.id) throw new Error("The completed work order was not returned. The app will verify it before allowing another submission.");
       // The completion response is authoritative. Re-reading the task here
       // held the completed screen open behind another network request.
       setTask(updated);
@@ -322,7 +329,10 @@ export default function CompleteServiceScreen() {
       } catch {}
       Alert.alert("Unable to complete", error?.message || (installationTask ? "Could not submit the installation proof." : "Could not save the service report."));
     }
-    finally { setSubmitting(false); }
+    finally {
+      completionInFlight.current = false;
+      setSubmitting(false);
+    }
   };
 
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}><KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl }} keyboardShouldPersistTaps="handled"><PageHeader title={installationTask ? "Complete installation" : "Complete service visit"} subtitle={installationTask ? "Verified QR + one installed-unit photo" : "Written report + one after-service photo"} color={COLORS.tech} onBack={() => router.back()} />
