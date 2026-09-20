@@ -59,7 +59,7 @@ const SuperAdminAlerts = () => {
     try {
       const [notificationResult, orderResult] = await Promise.all([
         apiRequest('/notifications/me'),
-        apiRequest('/orders').catch(() => ({ orders: [] })),
+        apiRequest('/orders?view=compact&limit=200').catch(() => ({ orders: [] })),
       ]);
       setAlerts(Array.isArray(notificationResult.notifications) ? notificationResult.notifications : []);
       setOrders(Array.isArray(orderResult.orders) ? orderResult.orders : []);
@@ -76,7 +76,10 @@ const SuperAdminAlerts = () => {
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') load();
     };
-    const pollId = window.setInterval(refreshWhenVisible, 5000);
+    // Notification events trigger an immediate refresh. This slower fallback
+    // poll keeps long-open tabs synchronized without downloading the same
+    // unchanged alert context twelve times per minute.
+    const pollId = window.setInterval(refreshWhenVisible, 15000);
     const unsubscribe = subscribeToNotificationUpdates(() => load());
     document.addEventListener('visibilitychange', refreshWhenVisible);
     window.addEventListener('focus', refreshWhenVisible);

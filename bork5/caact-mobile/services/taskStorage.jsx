@@ -254,6 +254,17 @@ async function getCachedTasks() {
   return normalizeTaskCollection(parsed);
 }
 
+async function upsertCachedTask(task) {
+  const normalized = normalizeTask(task);
+  const tasks = await getCachedTasks();
+  const exists = tasks.some((item) => String(item.id) === String(normalized.id));
+  const next = exists
+    ? tasks.map((item) => (String(item.id) === String(normalized.id) ? normalized : item))
+    : [normalized, ...tasks];
+  await saveAllTasks(next);
+  return normalized;
+}
+
 export async function loadTasks() {
   return getAllTasks();
 }
@@ -310,10 +321,7 @@ export async function createTask(payload = {}, actor = "Admin") {
   if (!token) throw new Error("Please sign in again before creating a task.");
   const result = await api.createTask(token, normalizeTask(payload));
   if (!result.success) throw new Error(result.error || "Unable to create the task.");
-  const created = normalizeTask(result.task);
-  const tasks = await getAllTasks();
-  await saveAllTasks([created, ...tasks.filter((task) => task.id !== created.id)]);
-  return created;
+  return upsertCachedTask(result.task);
 }
 
 export async function updateTask(taskId, patch = {}) {
@@ -333,12 +341,7 @@ export async function updateTask(taskId, patch = {}) {
   });
   const result = await api.patchTask(token, taskId, payload);
   if (!result.success) throw new Error(result.error || "Unable to update the task.");
-  const updated = normalizeTask(result.task);
-  const tasks = await getAllTasks();
-  await saveAllTasks(
-    tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)),
-  );
-  return updated;
+  return upsertCachedTask(result.task);
 }
 
 export async function updateTaskStatus(taskId, status, actor = "Technician", patch = {}) {
@@ -480,12 +483,7 @@ export async function acceptTask(taskId) {
     if (token) {
       const result = await api.acceptTask(token, taskId);
       if (result.success) {
-        const accepted = normalizeTask(result.task);
-        const tasks = await getAllTasks();
-        await saveAllTasks(
-          tasks.map((item) => (String(item.id) === String(taskId) ? accepted : item)),
-        );
-        return accepted;
+        return upsertCachedTask(result.task);
       }
       throw new Error(result.error || "Failed to accept task.");
     }
@@ -501,10 +499,7 @@ export async function checkInTask(taskId, coordinates) {
   if (!token) throw new Error("Please sign in again before checking in.");
   const result = await api.checkInTask(token, taskId, coordinates);
   if (!result.success) throw new Error(result.error || "Unable to check in to this work order.");
-  const checkedIn = normalizeTask(result.task);
-  const tasks = await getAllTasks();
-  await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? checkedIn : item)));
-  return checkedIn;
+  return upsertCachedTask(result.task);
 }
 
 export async function confirmInstallationArrival(taskId) {
@@ -512,10 +507,7 @@ export async function confirmInstallationArrival(taskId) {
   if (!token) throw new Error("Please sign in again before validating the arrival.");
   const result = await api.confirmInstallationArrival(token, taskId);
   if (!result.success) throw new Error(result.error || "Unable to confirm customer presence.");
-  const updated = normalizeTask(result.task);
-  const tasks = await getAllTasks();
-  await saveAllTasks(tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)));
-  return updated;
+  return upsertCachedTask(result.task);
 }
 
 export async function confirmCodCollection(taskId) {
@@ -523,7 +515,7 @@ export async function confirmCodCollection(taskId) {
   if (!token) throw new Error("Please sign in again.");
   const result = await api.confirmCodCollection(token, taskId);
   if (!result.success) throw new Error(result.error);
-  return getTaskById(taskId);
+  return upsertCachedTask(result.task);
 }
 
 export async function getVisitAttempt(taskId) {
@@ -558,11 +550,7 @@ export async function registerTaskAmpUnit(taskId, payload = {}) {
     throw new Error(`${result.error || "Failed to submit AMP registration."}${missing}`);
   }
 
-  const updated = normalizeTask(result.task);
-  const tasks = await getAllTasks();
-  await saveAllTasks(
-    tasks.map((item) => (String(item.id) === String(taskId) ? updated : item)),
-  );
+  const updated = await upsertCachedTask(result.task);
   return {
     task: updated,
     registration: result.registration,

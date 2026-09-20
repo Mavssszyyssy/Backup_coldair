@@ -52,7 +52,7 @@ const SuperAdminSales = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await apiRequest('/orders');
+      const result = await apiRequest('/orders?view=compact&limit=500');
       setOrders(Array.isArray(result.orders) ? result.orders : []);
     } catch (requestError) {
       setOrders([]);
