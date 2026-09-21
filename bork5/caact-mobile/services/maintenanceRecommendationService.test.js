@@ -25,3 +25,18 @@ test("service-request warranty notices go to services, and technicians never nav
   expect(resolveNotificationRoute({ type: "service", targetType: "service_request", targetId: "request-id", title: "Warranty service completed" }, "customer")).toContain("/customer/services");
   expect(resolveNotificationRoute({ type: "warranty", targetType: "unit", targetId: "unit-id" }, "technician")).not.toContain("/customer/");
 });
+test("installation-complete order notifications never treat an order ID as an AC-unit ID", () => {
+  const notification = {
+    type: "order",
+    targetType: "order",
+    targetId: "order-id",
+    route: "/customer/orders",
+    title: "Installation completed",
+    message: "Your warranty and active unit record are now available.",
+  };
+  expect(resolveNotificationRoute(notification, "customer")).toBe("/customer/orders");
+  expect(resolveNotificationRoute({
+    ...notification,
+    route: "/customer/units/order-id?page=warranty",
+  }, "customer")).toBe("/customer/orders");
+});

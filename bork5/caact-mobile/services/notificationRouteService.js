@@ -16,7 +16,14 @@ export function resolveNotificationRoute(item = {}, role = "") {
 
   if (["service_request", "service"].includes(item.targetType) || route === "/customer/service-requests") return "/customer/services";
 
-  if (item.type === "warranty" || item.targetType === "warranty" || text.includes("warranty")) {
+  // Route from authoritative notification metadata before inspecting message
+  // wording. Installation-complete order notices mention that the warranty is
+  // now active; that word must not turn the order ID into an AC-unit ID.
+  if (item.targetType === "order" || ["order", "payment", "delivery"].includes(item.type)) {
+    return "/customer/orders";
+  }
+
+  if (item.type === "warranty" || item.targetType === "warranty") {
     return item.targetId ? `/customer/units/${encodeURIComponent(item.targetId)}?page=warranty` : "/customer/units";
   }
   if (item.targetType === "unit" || ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category)) {
@@ -32,6 +39,9 @@ export function resolveNotificationRoute(item = {}, role = "") {
   }
   if (route.startsWith("/")) return route;
 
+  // Compatibility for old notifications that had no route or target metadata.
+  if (!route && !item.targetType && text.includes("warranty")) return "/customer/units";
+
   if (normalizedRole === "technician") {
     if (text.includes("part")) return "/technician/tasks";
     if (item.type === "order" || text.includes("order") || text.includes("task") || text.includes("work order")) {
@@ -43,7 +53,7 @@ export function resolveNotificationRoute(item = {}, role = "") {
   if (text.includes("service") || text.includes("appointment") || text.includes("request")) {
     return "/customer/home";
   }
-  if (item.type === "order" || text.includes("order")) return "/customer/orders";
+  if (text.includes("order")) return "/customer/orders";
   if (item.type === "account") return "/customer/settings";
   return "/customer/home";
 }
