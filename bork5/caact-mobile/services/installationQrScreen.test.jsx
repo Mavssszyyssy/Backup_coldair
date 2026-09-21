@@ -45,7 +45,43 @@ test.each(['Bulacan', 'Cavite', 'Laguna', 'Bataan', 'Pangasinan', 'Ilocos'])('as
   registerTaskAmpUnit.mockResolvedValue({ task: { ...task(), registrationProgress: { isComplete: true, totalRequired: 1, totalRegistered: 1 } } });
   await fireEvent.press(screen.getByText('Save room size and verify unit'));
   expect(registerTaskAmpUnit).toHaveBeenCalledWith('task1', expect.objectContaining({ serialNumber: 'CAACT-FIXTURE', roomSizeSqm: 12, registrationSource: 'qr_scan' }));
-  await screen.findByText('Assigned QR verified');
+  await screen.findByText('Assigned AC unit verified');
+});
+
+test('manually entered assigned serial uses the same live verification and registration flow', async () => {
+  await mount();
+  await fireEvent.press(screen.getByLabelText('Enter serial'));
+  const serialInput = await screen.findByLabelText('Assigned AC serial number');
+  await fireEvent.changeText(serialInput, 'CAACT-FIXTURE');
+  await fireEvent.press(screen.getByLabelText('Verify serial number'));
+  expect(getTaskById).toHaveBeenCalledTimes(2);
+
+  await screen.findByText('Room capacity check');
+  expect(getTaskById).toHaveBeenLastCalledWith('task1', { requireOnline: true });
+  expect(apiFetch).toHaveBeenCalledWith('/products/serial/CAACT-FIXTURE', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer fixture-token' }) }));
+  expect(screen.getByText('Serial confirmed')).toBeTruthy();
+
+  await fireEvent.press(screen.getByText('Choose 12 square meters'));
+  registerTaskAmpUnit.mockResolvedValue({ task: { ...task(), registrationProgress: { isComplete: true, totalRequired: 1, totalRegistered: 1 } } });
+  await fireEvent.press(screen.getByText('Save room size and verify unit'));
+  expect(registerTaskAmpUnit).toHaveBeenCalledWith('task1', expect.objectContaining({
+    serialNumber: 'CAACT-FIXTURE',
+    roomSizeSqm: 12,
+    registrationSource: 'manual_serial',
+  }));
+  await screen.findByText('Assigned AC unit verified');
+});
+
+test('manual entry rejects an unassigned serial before registration', async () => {
+  await mount();
+  await fireEvent.press(screen.getByLabelText('Enter serial'));
+  await fireEvent.changeText(screen.getByLabelText('Assigned AC serial number'), 'OTHER-BRANCH-UNIT');
+  apiFetch.mockResolvedValue({ ok: true, json: async () => ({ unit: { serialNumber: 'OTHER-BRANCH-UNIT' } }) });
+  await fireEvent.press(screen.getByLabelText('Verify serial number'));
+
+  expect(alert).toHaveBeenCalledWith('Wrong AC unit', expect.stringContaining('not assigned'));
+  expect(screen.queryByText('Room capacity check')).toBeNull();
+  expect(registerTaskAmpUnit).not.toHaveBeenCalled();
 });
 
 test('a real inventory QR for another assigned unit is still rejected', async () => {

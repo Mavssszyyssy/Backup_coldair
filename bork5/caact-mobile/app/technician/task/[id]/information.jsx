@@ -283,8 +283,8 @@ export default function TaskInformationScreen() {
   const installationNextAction = task?.codPayment && !task.codPayment.collectedAt
     ? { stage: "overview", title: "Confirm cash collected", subtitle: "Record the customer's full COD payment after receiving it.", icon: "cash-sharp", action: "cash" }
     : registrationComplete
-      ? { stage: "proof", title: "Capture photo and complete", subtitle: "The assigned QR is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
-      : { stage: "unit", title: "Verify assigned AC unit", subtitle: "Scan and register the assigned QR serial before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
+      ? { stage: "proof", title: "Capture photo and complete", subtitle: "The assigned AC unit is verified. Capture one installed-unit photo to close this work order.", href: `/technician/task/${id}/complete-service`, icon: "checkmark-circle-sharp" }
+      : { stage: "unit", title: "Verify assigned AC unit", subtitle: "Scan the assigned QR or enter its serial number before submitting proof.", href: `/technician/task/${id}/amp-registration`, icon: "qr-code-sharp" };
   const activeFieldStatus = [TASK_STATUS.IN_PROGRESS, TASK_STATUS.INSTALLING].includes(task?.status);
   const hasSavedServiceReport = Array.isArray(task?.serviceLogs) && task.serviceLogs.length > 0;
   const primaryNextAction = task?.visitAttempt?.awaitingAdmin
@@ -519,10 +519,10 @@ export default function TaskInformationScreen() {
           {activePage.key === "unit" ? (<>
             {installationTask && assignedSerials.length > 0 ? (
               <Card>
-                <SectionHeading icon="analytics-sharp" title="Installation Progress" subtitle="Assigned QR verification" />
+                <SectionHeading icon="analytics-sharp" title="Installation Progress" subtitle="Assigned AC unit verification" />
                 <DetailItem icon="checkmark-done-sharp" label="Registered Units" value={`${registrationProgress?.totalRegistered || 0} of ${registrationProgress?.totalRequired || assignedSerials.length}`} accent={registrationComplete ? COLORS.success : COLORS.warning} />
                 <DetailItem icon="qr-code-sharp" label="Serial Numbers" value={assignedSerials.join(", ")} />
-                <DetailItem icon="navigate-sharp" label="Next Step" value={registrationComplete ? "Continue to Proof and capture the installed-unit photo." : "Scan each assigned AC unit QR before continuing to Proof."} />
+                <DetailItem icon="navigate-sharp" label="Next Step" value={registrationComplete ? "Continue to Proof and capture the installed-unit photo." : "Scan each assigned QR or enter its serial number before continuing to Proof."} />
               </Card>
             ) : null}
             <Card>
