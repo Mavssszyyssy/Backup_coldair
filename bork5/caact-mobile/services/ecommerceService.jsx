@@ -15,6 +15,9 @@ const CATALOG_IMAGE_SOURCES = {
 
 export const getProductImageAssetKey = (product = {}) => {
   const sku = String(product.sku || product.model || "").toUpperCase();
+  const description = [product.brand, product.name, product.model, product.unitName]
+    .map((value) => String(value || "").toUpperCase())
+    .join(" ");
   if (sku.startsWith("AHAC-MINV")) {
     return "american-home-ahac-minv.jpg";
   }
@@ -28,6 +31,9 @@ export const getProductImageAssetKey = (product = {}) => {
     return "midea-celest-msce.jpg";
   }
   if (/^AR(?:09|12|18|24)TY/.test(sku)) {
+    return "samsung-ar9500t.png";
+  }
+  if (description.includes("SAMSUNG")) {
     return "samsung-ar9500t.png";
   }
   if (sku.startsWith("HSN30")) {

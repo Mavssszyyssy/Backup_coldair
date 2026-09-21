@@ -78,3 +78,31 @@ test("a stale direct read is timed out instead of blocking mobile refresh foreve
     jest.useRealTimers();
   }
 });
+
+test("a reconciliation read can opt into one bounded attempt", async () => {
+  jest.useFakeTimers();
+  const previousFetch = global.fetch;
+  const previousFallbacks = [...API_BASE_FALLBACKS];
+  API_BASE_FALLBACKS.splice(0, API_BASE_FALLBACKS.length);
+  global.fetch = jest.fn((_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => {
+      const error = new Error("Aborted");
+      error.name = "AbortError";
+      reject(error);
+    });
+  }));
+  try {
+    const expectation = expect(apiFetch("/tasks/task-1", {
+      method: "GET",
+      maxAttempts: 1,
+      timeoutMs: 3000,
+    })).rejects.toMatchObject({ code: "BACKEND_FETCH_TIMEOUT" });
+    await jest.runAllTimersAsync();
+    await expectation;
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  } finally {
+    global.fetch = previousFetch;
+    API_BASE_FALLBACKS.splice(0, API_BASE_FALLBACKS.length, ...previousFallbacks);
+    jest.useRealTimers();
+  }
+});

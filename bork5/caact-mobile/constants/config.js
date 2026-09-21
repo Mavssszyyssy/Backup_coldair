@@ -144,14 +144,21 @@ export async function apiFetch(path, options = {}) {
   // it out of the native request while applying it independently to every
   // recovery attempt. This is important on Android: reusing one already-
   // aborted signal made the second attempt fail immediately.
-  const { timeoutMs = DIRECT_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const {
+    timeoutMs = DIRECT_FETCH_TIMEOUT_MS,
+    maxAttempts: requestedMaxAttempts,
+    ...fetchOptions
+  } = options;
   const method = String(fetchOptions.method || "GET").toUpperCase();
   const isSafeRead = method === "GET" || method === "HEAD";
   // AI and payment-provider requests must never be replayed after an uncertain
   // result. Only ordinary read requests get bounded automatic recovery.
   const excludesAutomaticRetry =
     path.startsWith("/ai/") || path.includes("/paymongo/");
-  const maxAttempts = isSafeRead && !excludesAutomaticRetry ? 3 : 1;
+  const defaultMaxAttempts = isSafeRead && !excludesAutomaticRetry ? 3 : 1;
+  const maxAttempts = Number.isFinite(Number(requestedMaxAttempts))
+    ? Math.min(Math.max(Math.trunc(Number(requestedMaxAttempts)), 1), defaultMaxAttempts)
+    : defaultMaxAttempts;
   const requestBases = path.startsWith("/ai/")
     ? [API_BASE]
     : [API_BASE, ...API_BASE_FALLBACKS];

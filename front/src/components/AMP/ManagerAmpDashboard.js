@@ -10,6 +10,7 @@ import "./styles.css";
 
 const SERVICE_WINDOWS = [30, 90, 180, 365];
 const UNASSIGNED_BRANCH = "Unassigned";
+const PIPELINE_PAGE_SIZE = 10;
 
 const humanLabel = (value, fallback) => String(value || fallback || "")
   .trim()
@@ -135,7 +136,7 @@ function PipelineTable({ units, onSelectPlan }) {
                 <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
               <td>
-                <details className="amp-details amp-recommendation-details"><summary>Review recommendation</summary><div className="amp-recommendation-sections">
+                <details className="amp-details amp-recommendation-details"><summary>See more</summary><div className="amp-recommendation-sections">
                   <section><h4>Assessment</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p></section>
                   <section><h4>Current Status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
                   <section><h4>Technician Recorded</h4><p>{unit.technicianRecorded || "No technician observation is recorded for the latest visit."}</p></section>
@@ -166,7 +167,7 @@ function ManagerAmpDashboard() {
   const [serviceWindow, setServiceWindow] = useState(30);
   const [pipeline, setPipeline] = useState([]);
   const [pipelinePage, setPipelinePage] = useState(1);
-  const [pipelinePagination, setPipelinePagination] = useState({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
+  const [pipelinePagination, setPipelinePagination] = useState({ page: 1, pageSize: PIPELINE_PAGE_SIZE, total: 0, totalPages: 1 });
   const [branchSummary, setBranchSummary] = useState([]);
   const [actionSummary, setActionSummary] = useState({ serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
   const [reportUnits, setReportUnits] = useState([]);
@@ -184,13 +185,13 @@ function ManagerAmpDashboard() {
       ? `&branch=${encodeURIComponent(selectedBranch)}`
       : "";
     Promise.all([
-      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=50${branchQuery}`),
+      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=${PIPELINE_PAGE_SIZE}${branchQuery}`),
       apiRequest("/amp/report-units"),
     ])
       .then(([pipelineResult, reportUnitResult]) => {
         if (cancelled) return;
         setPipeline(pipelineResult.units || []);
-        setPipelinePagination(pipelineResult.pagination || { page: 1, pageSize: 50, total: pipelineResult.units?.length || 0, totalPages: 1 });
+        setPipelinePagination(pipelineResult.pagination || { page: 1, pageSize: PIPELINE_PAGE_SIZE, total: pipelineResult.units?.length || 0, totalPages: 1 });
         setBranchSummary(pipelineResult.branchSummary || []);
         setActionSummary(pipelineResult.actionSummary || { serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
         setReportUnits(reportUnitResult.units || []);
@@ -201,7 +202,7 @@ function ManagerAmpDashboard() {
         if (cancelled) return;
         setError(err.message || "Unable to load AMP pipeline.");
         setPipeline([]);
-        setPipelinePagination({ page: 1, pageSize: 50, total: 0, totalPages: 1 });
+        setPipelinePagination({ page: 1, pageSize: PIPELINE_PAGE_SIZE, total: 0, totalPages: 1 });
         setBranchSummary([]);
         setActionSummary({ serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
         setReportUnits([]);
@@ -334,7 +335,14 @@ function ManagerAmpDashboard() {
             {managementActions.map((action, index) => (
               <article className={`amp-action-item ${action.level}`} key={`${action.title}-${index}`}>
                 <span>{index + 1}</span>
-                <div><h3>{action.title}</h3><dl className="amp-action-sections">{action.sections?.map((section) => <div key={section.label}><dt>{section.label}</dt>{Array.isArray(section.value) ? <dd><ul>{section.value.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}</ul></dd> : <dd>{section.value}</dd>}</div>)}</dl></div>
+                <div>
+                  <h3>{action.title}</h3>
+                  {action.sections?.[0] ? <p className="amp-action-preview">{Array.isArray(action.sections[0].value) ? action.sections[0].value[0] : action.sections[0].value}</p> : null}
+                  <details className="amp-action-more">
+                    <summary>See more</summary>
+                    <dl className="amp-action-sections">{action.sections?.map((section) => <div key={section.label}><dt>{section.label}</dt>{Array.isArray(section.value) ? <dd><ul>{section.value.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}</ul></dd> : <dd>{section.value}</dd>}</div>)}</dl>
+                  </details>
+                </div>
               </article>
             ))}
           </div>
@@ -417,7 +425,7 @@ function ManagerAmpDashboard() {
         ) : null}
 
         {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} onSelectPlan={selectPlan} /> : null}
-        {!loading && !error && pipelinePagination.totalPages > 1 ? (
+        {!loading && !error && pipelinePagination.total > 0 ? (
           <nav className="amp-pagination" aria-label="Maintenance pipeline pages">
             <button type="button" onClick={() => setPipelinePage((value) => Math.max(1, value - 1))} disabled={pipelinePage <= 1}>Previous</button>
             <span>Page {pipelinePagination.page} of {pipelinePagination.totalPages} · {pipelinePagination.total} units</span>

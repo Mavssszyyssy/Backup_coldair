@@ -122,6 +122,7 @@ export default function CustomerServicesScreen() {
 
   const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
+  const hasRequestedUnit = Boolean(requestedUnitId && selectedUnit && String(selectedUnit.id) === requestedUnitId);
   const selectedActiveRequest = useMemo(() => requests.find((request) =>
     String(request.unitId || "") === String(selectedUnitId || "") &&
     ACTIVE_REQUEST_STATUSES.has(String(request.status || "").toLowerCase())), [requests, selectedUnitId]);
@@ -282,22 +283,26 @@ export default function CustomerServicesScreen() {
       {!loadingUnits && units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title="What do you need?" />
-        <BottomSheetSelect
-          label="AC unit"
-          value={selectedUnit ? `${selectedUnit.unitName || "AC Unit"} · ${selectedUnit.serialNumber || "Serial not recorded"}` : ""}
-          placeholder="Choose a registered AC"
-          items={units}
-          itemIcon="snow-sharp"
-          searchPlaceholder="Search model or serial number"
-          getKey={(unit) => String(unit.id)}
-          getLabel={(unit) => `${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`}
-          onSelect={(unit) => setSelectedUnitId(String(unit.id))}
-        />
+        {hasRequestedUnit ? (
+          <DetailRow label="AC unit selected for this request" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
+        ) : (
+          <BottomSheetSelect
+            label="AC unit"
+            value={selectedUnit ? `${selectedUnit.unitName || "AC Unit"} · ${selectedUnit.serialNumber || "Serial not recorded"}` : ""}
+            placeholder="Choose a registered AC"
+            items={units}
+            itemIcon="snow-sharp"
+            searchPlaceholder="Search model or serial number"
+            getKey={(unit) => String(unit.id)}
+            getLabel={(unit) => `${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`}
+            onSelect={(unit) => setSelectedUnitId(String(unit.id))}
+          />
+        )}
         <BottomSheetSelect label="Request type" value={requestMode === "warranty" ? "Warranty Claim" : "Cleaning or Service"} items={[{ id:"service", title:"Cleaning or Service" }, { id:"warranty", title:"Warranty Claim" }]} getKey={item => item.id} getLabel={item => item.title} onSelect={item => setRequestMode(item.id)} />
-        {selectedUnit ? <View style={{ marginTop: SPACING.sm }}>
+        {selectedUnit && !hasRequestedUnit ? <View style={{ marginTop: SPACING.sm }}>
           <DetailRow label="Selected AC" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>The request will be linked to this exact registered unit. Use the AC unit dropdown above to change it.</Text>
-        </View> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>Choose one registered AC unit before completing the request.</Text>}
+        </View> : hasRequestedUnit ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>This request is locked to the AC unit you opened. Return to My AC Units to choose a different unit.</Text> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>Choose one registered AC unit before completing the request.</Text>}
         {requestMode === "service" ? <>
         <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{selectedService?.summary}</Text>

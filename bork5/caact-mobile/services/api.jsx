@@ -19,6 +19,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const REQUEST_TIMEOUT_MS = 10000;
+const OPERATIONAL_WRITE_TIMEOUT_MS = 25000;
 // A database-backed read can legitimately take longer after a serverless
 // function has been idle: the API first detects the stale Atlas socket, then
 // establishes a fresh connection. Keep mutations short, but allow ordinary
@@ -28,7 +29,7 @@ const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const AMP_REPORT_TIMEOUT_MS = 30000;
 const CUSTOMER_CHAT_TIMEOUT_MS = 15000;
 
-async function request(method, path, { token, body, timeoutMs } = {}) {
+async function request(method, path, { token, body, timeoutMs, maxAttempts } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -37,7 +38,7 @@ async function request(method, path, { token, body, timeoutMs } = {}) {
     timeoutMs ??
     (["GET", "HEAD"].includes(normalizedMethod)
       ? READ_REQUEST_TIMEOUT_MS
-      : REQUEST_TIMEOUT_MS);
+      : OPERATIONAL_WRITE_TIMEOUT_MS);
 
   let res;
   try {
@@ -46,6 +47,7 @@ async function request(method, path, { token, body, timeoutMs } = {}) {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       timeoutMs: effectiveTimeoutMs,
+      ...(maxAttempts ? { maxAttempts } : {}),
     });
   } catch (error) {
     const timedOut =
@@ -62,15 +64,29 @@ async function request(method, path, { token, body, timeoutMs } = {}) {
     }
     // Network and timeout failures deliberately use one customer-facing
     // message. The app-wide connection banner provides a Retry action.
-    throw new Error(
+    const connectionError = new Error(
       "Unable to connect to the server. Please check your connection and try again.",
     );
+    connectionError.code = error?.code || "API_NETWORK_ERROR";
+    connectionError.status = 0;
+    connectionError.uncertainMutation = !["GET", "HEAD"].includes(normalizedMethod);
+    throw connectionError;
   }
 
   let data;
   try {
     data = await res.json();
-  } catch {
+  } catch (error) {
+    if (res.ok && Number(res.status) !== 204) {
+      failBackendConnection(path);
+      const responseError = new Error(
+        "The server response was interrupted. Please check your connection and try again.",
+      );
+      responseError.code = "BACKEND_RESPONSE_INTERRUPTED";
+      responseError.status = 0;
+      responseError.uncertainMutation = !["GET", "HEAD"].includes(normalizedMethod);
+      throw responseError;
+    }
     data = {};
   }
 
@@ -85,6 +101,49 @@ const post = (path, body, token) => request("POST", path, { token, body });
 const patch = (path, body, token) => request("PATCH", path, { token, body });
 const del = (path, token) => request("DELETE", path, { token });
 const TOKEN_KEY = "auth_token";
+
+const mutationId = (scope = "write") =>
+  `${scope}-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+// A weak connection can deliver a write to the API but lose its response.
+// Never replay that write automatically. Instead, perform one bounded read
+// and accept success only when the server record proves that exact outcome.
+async function reconcileUncertainMutation(path, originalError, verify) {
+  if (!originalError?.uncertainMutation || typeof verify !== "function") {
+    throw originalError;
+  }
+  try {
+    const reconciled = await verify();
+    if (reconciled) {
+      confirmBackendRecovery(path);
+      return reconciled;
+    }
+  } catch {
+    // Preserve the original uncertain-write message. The global Retry action
+    // will refresh the focused screen after connectivity is restored.
+  }
+  throw originalError;
+}
+
+async function fetchTaskForReconciliation(token, taskId) {
+  const path = `/tasks/${encodeURIComponent(taskId)}`;
+  const { ok, data } = await request("GET", path, {
+    token,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    maxAttempts: 1,
+  });
+  return ok ? data.task || null : null;
+}
+
+async function fetchMyRequestsForReconciliation(token) {
+  const path = "/service-requests/me";
+  const { ok, data } = await request("GET", path, {
+    token,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    maxAttempts: 1,
+  });
+  return ok ? data.requests || [] : [];
+}
 
 export async function getStoredToken() {
   return AsyncStorage.getItem(TOKEN_KEY);
@@ -516,21 +575,31 @@ export async function createTask(token, payload) {
 }
 
 export async function patchTask(token, taskId, payload) {
+  const clientMutationId = String(payload?.clientMutationId || mutationId("task"));
+  const requestPayload = { ...payload, clientMutationId };
   const proofPhotos = [
-    ...(Array.isArray(payload?.proof?.afterPhotos) ? payload.proof.afterPhotos : []),
-    ...(Array.isArray(payload?.proof?.beforePhotos) ? payload.proof.beforePhotos : []),
+    ...(Array.isArray(requestPayload?.proof?.afterPhotos) ? requestPayload.proof.afterPhotos : []),
+    ...(Array.isArray(requestPayload?.proof?.beforePhotos) ? requestPayload.proof.beforePhotos : []),
   ];
   const hasPhotoProof = proofPhotos
     .some((photo) => String(photo?.uri || photo || "").startsWith("data:image/"));
-  const { ok, status, data } = await request(
-    "PATCH",
-    `/tasks/${encodeURIComponent(taskId)}`,
-    {
+  const path = `/tasks/${encodeURIComponent(taskId)}`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
       token,
-      body: payload,
-      timeoutMs: hasPhotoProof ? PROOF_UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
-    },
-  );
+      body: requestPayload,
+      timeoutMs: hasPhotoProof ? PROOF_UPLOAD_TIMEOUT_MS : OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      return String(task?.clientMutationId || "") === clientMutationId
+        ? { success: true, task, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, status, data } = response;
   if (ok) return { success: true, task: data.task };
   const fallback = status === 413
     ? "The installation photo is too large to upload. Retake the photo and try again."
@@ -563,11 +632,30 @@ export async function fetchRegistrationContext(token, serialNumber) {
 }
 
 export async function registerAmpUnit(token, taskId, payload) {
-  const { ok, data } = await patch(
-    `/tasks/${encodeURIComponent(taskId)}/amp-registration`,
-    payload,
-    token,
-  );
+  const path = `/tasks/${encodeURIComponent(taskId)}/amp-registration`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: payload,
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      const serial = String(payload?.serialNumber || "").trim();
+      const registration = task?.ampRegistrations?.[serial];
+      if (!registration || !["registered", "defective_hold"].includes(registration.status)) return null;
+      return {
+        success: true,
+        task,
+        registration,
+        registrationProgress: task.registrationProgress,
+        reconciled: true,
+      };
+    });
+  }
+  const { ok, data } = response;
   if (ok) {
     return {
       success: true,
@@ -711,21 +799,45 @@ export async function retryPaymongoCheckout(token, orderId) {
 }
 
 export async function checkInTask(token, taskId, coordinates) {
-  const { ok, data } = await patch(
-    `/tasks/${encodeURIComponent(taskId)}/check-in`,
-    { coordinates },
-    token,
-  );
+  const path = `/tasks/${encodeURIComponent(taskId)}/check-in`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: { coordinates },
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      return task?.checkIn?.checkedInAt
+        ? { success: true, task, checkIn: task.checkIn, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   if (ok) return { success: true, task: data.task, checkIn: data.checkIn };
   return { success: false, error: getErrorMessage(data, "Unable to check in to this work order.") };
 }
 
 export async function confirmInstallationArrival(token, taskId) {
-  const { ok, data } = await patch(
-    `/tasks/${encodeURIComponent(taskId)}/arrival-validation`,
-    { customerPresent: true },
-    token,
-  );
+  const path = `/tasks/${encodeURIComponent(taskId)}/arrival-validation`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: { customerPresent: true },
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      return task?.arrivalValidation?.customerPresent
+        ? { success: true, task, arrivalValidation: task.arrivalValidation, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   if (ok) return { success: true, task: data.task, arrivalValidation: data.arrivalValidation };
   return { success: false, error: getErrorMessage(data, "Unable to confirm customer presence.") };
 }
@@ -737,23 +849,94 @@ export async function getVisitAttempt(token, taskId) {
 }
 
 export async function submitVisitAttempt(token, taskId, input) {
-  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/visit-attempt`, input, token);
+  const path = `/tasks/${encodeURIComponent(taskId)}/visit-attempt`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: input,
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const { ok, data } = await request("GET", path, {
+        token,
+        timeoutMs: REQUEST_TIMEOUT_MS,
+        maxAttempts: 1,
+      });
+      const attempt = ok ? data.attempt : null;
+      const sameArrival = String(attempt?.checkedInAt || "") === String(input?.checkedInAt || "");
+      const sameOutcome = String(attempt?.outcome || "") === String(input?.outcome || "");
+      return attempt && sameArrival && sameOutcome
+        ? { ...attempt, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   if (!ok) throw new Error(getErrorMessage(data, 'Unable to save this visit.'));
   return data.attempt;
 }
 
 export async function confirmCodCollection(token, taskId) {
-  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/cod-collection`, { confirmed: true }, token);
+  const path = `/tasks/${encodeURIComponent(taskId)}/cod-collection`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: { confirmed: true },
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      return task?.codPayment?.collectedAt
+        ? { success: true, task, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   return ok ? { success: true, task: data.task } : { success: false, error: getErrorMessage(data, "Unable to confirm cash collection.") };
 }
 
 export async function collectServicePayment(token, taskId, payment) {
-  const { ok, data } = await patch(`/tasks/${encodeURIComponent(taskId)}/service-payment`, { confirmed: true, amount: payment.amount, quoteId: payment.quoteId }, token);
+  const path = `/tasks/${encodeURIComponent(taskId)}/service-payment`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: { confirmed: true, amount: payment.amount, quoteId: payment.quoteId },
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const task = await fetchTaskForReconciliation(token, taskId);
+      return task?.servicePayment?.status === "paid" || task?.servicePayment?.collectedAt
+        ? { success: true, task, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   return ok ? { success: true } : { success: false, error: getErrorMessage(data, "Unable to confirm service payment.") };
 }
 
 export async function createMyServiceRequest(token, payload) {
-  const { ok, data } = await post("/service-requests/me", payload, token);
+  const path = "/service-requests/me";
+  let response;
+  try {
+    response = await request("POST", path, {
+      token,
+      body: payload,
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const requests = await fetchMyRequestsForReconciliation(token);
+      const request = requests.find((item) =>
+        payload?.idempotencyKey && String(item?.idempotencyKey || "") === String(payload.idempotencyKey));
+      return request ? { success: true, request, reconciled: true } : null;
+    });
+  }
+  const { ok, data } = response;
   if (ok) return { success: true, request: data.request };
   return {
     success: false,
@@ -771,11 +954,26 @@ export async function createContactMessage(token, payload) {
 }
 
 export async function patchServiceRequestStatus(token, requestId, payload) {
-  const { ok, data } = await patch(
-    `/service-requests/${encodeURIComponent(requestId)}/status`,
-    payload,
-    token,
-  );
+  const path = `/service-requests/${encodeURIComponent(requestId)}/status`;
+  let response;
+  try {
+    response = await request("PATCH", path, {
+      token,
+      body: payload,
+      timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS,
+    });
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const requests = await fetchMyRequestsForReconciliation(token);
+      const request = requests.find((item) => String(item?.id || item?._id || "") === String(requestId));
+      const expected = String(payload?.status || "").trim().toLowerCase();
+      const actual = String(request?.status || "").trim().toLowerCase();
+      return request && expected && actual === expected
+        ? { success: true, request, reconciled: true }
+        : null;
+    });
+  }
+  const { ok, data } = response;
   if (ok) return { success: true, request: data.request };
   return {
     success: false,

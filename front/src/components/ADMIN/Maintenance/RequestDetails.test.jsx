@@ -92,4 +92,28 @@ describe('maintenance request controls', () => {
     rerender(<RequestDetails request={{ ...request, linkedTaskId: 'task-1', updatedAt: 'new' }} />);
     await waitFor(() => expect(apiRequest.mock.calls.filter(([path]) => path === '/tasks/task-1').length).toBeGreaterThan(before));
   });
+
+  it('verifies a saved cancellation when a weak connection loses the PATCH response', async () => {
+    const confirmed = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    apiRequest.mockImplementation(async (path, options) => {
+      if (path.startsWith('/users')) return { users: [] };
+      if (options?.method === 'PATCH') {
+        const error = new Error('The server took too long to respond. Please retry.');
+        error.status = 0;
+        throw error;
+      }
+      if (path.startsWith('/service-requests?')) {
+        return { requests: [{ ...request, status: 'Cancelled' }] };
+      }
+      return { task: null };
+    });
+
+    render(<RequestDetails request={request} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel request' }));
+
+    expect(await screen.findByText(/Connection restored and the saved result was verified/)).toBeTruthy();
+    expect(screen.getByText('Cancelled')).toBeTruthy();
+    expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'PATCH')).toHaveLength(1);
+    confirmed.mockRestore();
+  });
 });

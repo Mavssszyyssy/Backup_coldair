@@ -38,14 +38,14 @@ function normalizeNumberOrNull(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function normalizeServiceRequest(item = {}) {
+export function normalizeServiceRequest(item = {}) {
   const createdAt = item.createdAt || new Date().toISOString();
   const issueDescription = item.issueDescription || item.concern || item.issue || "";
   const preferredDate = item.preferredDate || item.preferredSchedule || "";
   const payload = item.payload && typeof item.payload === "object" ? item.payload : {};
 
   return {
-    id: item.id || `service_request_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+    id: String(item.id || item._id || payload.id || payload._id || `service_request_${Date.now()}_${Math.floor(Math.random() * 100000)}`),
     userId: item.userId || item.customerId || item.createdBy || null,
     customerName: item.customerName || item.customer || "",
     customerEmail: item.customerEmail || "",

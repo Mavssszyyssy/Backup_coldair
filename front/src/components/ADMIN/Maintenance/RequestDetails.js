@@ -113,6 +113,30 @@ const RequestDetails = ({ request, onUpdated }) => {
       }
       setMessage({ type: 'success', text: successText });
     } catch (error) {
+      // A weak connection can lose the PATCH response after MongoDB already
+      // saved the request (and its linked task). Verify the authoritative
+      // record once instead of reporting failure or replaying the write.
+      if (Number(error?.status) === 0) {
+        try {
+          const result = await apiRequest('/service-requests?limit=200', {
+            timeoutMs: 10000,
+            silentConnection: true,
+          });
+          const saved = (result.requests || []).find(item => String(item.id) === String(current.id));
+          const expectedStatus = String(payload.status || '').trim().toLowerCase();
+          const statusMatches = !expectedStatus || String(saved?.status || '').trim().toLowerCase() === expectedStatus;
+          const technicianMatches = !payload.assignedTechnicianId
+            || String(saved?.assignedTechnicianId || '') === String(payload.assignedTechnicianId);
+          if (saved && statusMatches && technicianMatches) {
+            setCurrent(saved);
+            onUpdated?.(saved);
+            setMessage({ type: 'success', text: `${successText} Connection restored and the saved result was verified.` });
+            return;
+          }
+        } catch {
+          // Keep the original error when the verification read also fails.
+        }
+      }
       setMessage({ type: 'error', text: error?.message || 'Request update failed.' });
     } finally { setBusy(false); }
   };

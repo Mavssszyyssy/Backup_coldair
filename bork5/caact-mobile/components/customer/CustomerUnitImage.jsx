@@ -4,6 +4,7 @@ import { Image, View } from "react-native";
 
 import { API_BASE } from "../../constants/config";
 import { COLORS, RADIUS } from "../../constants/theme";
+import { getProductImageSource } from "../../services/ecommerceService";
 
 const resolveImageUrl = (value = "") => {
   const source = String(value || "").trim();
@@ -15,6 +16,12 @@ const resolveImageUrl = (value = "") => {
 
 export default function CustomerUnitImage({ unit, size = 68, style }) {
   const imageUrl = useMemo(() => resolveImageUrl(unit?.imageUrl || unit?.image), [unit?.imageUrl, unit?.image]);
+  const catalogImageSource = useMemo(() => getProductImageSource({
+    brand: unit?.brand,
+    name: unit?.unitName,
+    sku: unit?.productSku || unit?.model || unit?.unitName,
+    model: unit?.model || unit?.unitName,
+  }), [unit?.productSku, unit?.model, unit?.unitName]);
   const [broken, setBroken] = useState(false);
 
   useEffect(() => setBroken(false), [imageUrl]);
@@ -55,6 +62,13 @@ export default function CustomerUnitImage({ unit, size = 68, style }) {
           accessibilityLabel={`${unit?.brand || "AC"} ${unit?.model || unit?.unitName || "unit"} photo`}
           resizeMode="contain"
           onError={() => setBroken(true)}
+          style={{ width: "100%", height: "100%" }}
+        />
+      ) : catalogImageSource ? (
+        <Image
+          source={catalogImageSource}
+          accessibilityLabel={`${unit?.brand || "AC"} ${unit?.model || unit?.unitName || "unit"} catalog photo`}
+          resizeMode="contain"
           style={{ width: "100%", height: "100%" }}
         />
       ) : (
