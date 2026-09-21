@@ -37,7 +37,7 @@ const WORK_FILTERS = [
   { key: "active", label: "Active" },
   { key: "pending", label: "Awaiting Admin" },
   { key: "on-hold", label: "On hold" },
-  { key: "completed", label: "Completed (newest first)" },
+  { key: "completed", label: "Completed" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -412,7 +412,7 @@ export default function TasksScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                  {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Completed work is newest first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                  {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Latest activity appears first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
                 </Text>
               </View>
               <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>

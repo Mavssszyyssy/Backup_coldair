@@ -1,11 +1,6 @@
-const normalizedStatus = (status = "") => String(status).trim().toLowerCase().replace(/[_\s]+/g, "-");
-
-const timestamp = (...values) => {
-  for (const value of values) {
-    const time = new Date(value || "").getTime();
-    if (Number.isFinite(time)) return time;
-  }
-  return 0;
+const timestamp = (value) => {
+  const time = new Date(value || "").getTime();
+  return Number.isFinite(time) ? time : 0;
 };
 
 const startMinutes = (value = "") => {
@@ -16,34 +11,30 @@ const startMinutes = (value = "") => {
   return hour * 60 + Number(match[2]);
 };
 
-// Active work stays visible first. Completed work is deliberately ordered by
-// its completion time, newest first, so a technician can find recent work.
+const latestActivityTime = (task = {}) => Math.max(
+  timestamp(task.completedAt),
+  timestamp(task.updatedAt),
+  timestamp(task.proofSubmittedAt),
+  timestamp(task.proof?.submittedAt),
+  timestamp(task.createdAt),
+);
+
+const scheduleTime = (task = {}) => {
+  const scheduledDay = timestamp(task.scheduledDate);
+  if (!scheduledDay) return 0;
+  const minutes = startMinutes(task.timeSlot);
+  return scheduledDay + (Number.isFinite(minutes) && minutes !== Number.MAX_SAFE_INTEGER ? minutes * 60 * 1000 : 0);
+};
+
+// The Work Orders list is an activity history. Keep its order independent of
+// status so a newly completed job is not hidden below older active records.
 export const sortTechnicianWorkOrders = (all = []) => [...all].sort((a, b) => {
-  const rank = {
-    arrived: 0,
-    installing: 0,
-    "in-progress": 0,
-    "on-the-way": 0,
-    accepted: 1,
-    pending: 2,
-    "on-hold": 3,
-    rescheduled: 4,
-    failed: 5,
-    completed: 6,
-    cancelled: 7,
-  };
-  const aStatus = normalizedStatus(a?.status);
-  const bStatus = normalizedStatus(b?.status);
-  const rankDifference = (rank[aStatus] ?? 3) - (rank[bStatus] ?? 3);
-  if (rankDifference) return rankDifference;
+  const activityDifference = latestActivityTime(b) - latestActivityTime(a);
+  if (activityDifference) return activityDifference;
 
-  if (aStatus === "completed" && bStatus === "completed") {
-    return timestamp(b.completedAt, b.updatedAt, b.createdAt) - timestamp(a.completedAt, a.updatedAt, a.createdAt);
-  }
-
-  const dateDifference = String(a?.scheduledDate || "9999-12-31").localeCompare(String(b?.scheduledDate || "9999-12-31"));
-  if (dateDifference) return dateDifference;
-  const timeDifference = startMinutes(a?.timeSlot) - startMinutes(b?.timeSlot);
-  if (timeDifference) return timeDifference;
-  return timestamp(b?.updatedAt, b?.createdAt) - timestamp(a?.updatedAt, a?.createdAt);
+  // Legacy cached work orders may not have timestamps. Keep those predictable
+  // by falling back to their most recent scheduled slot and then a stable id.
+  const scheduleDifference = scheduleTime(b) - scheduleTime(a);
+  if (scheduleDifference) return scheduleDifference;
+  return String(b?.id || b?.taskCode || "").localeCompare(String(a?.id || a?.taskCode || ""));
 });

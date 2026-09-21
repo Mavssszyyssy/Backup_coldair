@@ -2,14 +2,27 @@ import { sortTechnicianWorkOrders } from "./technicianWorkOrderSort";
 import { normalizeTaskCollection } from "./technicianTaskCollection";
 
 describe("technician work-order ordering", () => {
-  test("keeps active work first and completed work newest first", () => {
-    const ordered = sortTechnicianWorkOrders([
+  test("keeps the latest work-order activity first regardless of status", () => {
+    const source = [
       { id: "completed-old", status: "Completed", completedAt: "2026-09-16T09:00:00.000Z" },
-      { id: "active", status: "In Progress", scheduledDate: "2026-09-20" },
+      { id: "active", status: "In Progress", updatedAt: "2026-09-17T09:00:00.000Z" },
       { id: "completed-new", status: "Completed", completedAt: "2026-09-18T09:00:00.000Z" },
+    ];
+    const ordered = sortTechnicianWorkOrders(source);
+
+    expect(ordered.map((task) => task.id)).toEqual(["completed-new", "active", "completed-old"]);
+    expect(source.map((task) => task.id)).toEqual(["completed-old", "active", "completed-new"]);
+  });
+
+  test("uses the newest available activity marker and handles legacy records predictably", () => {
+    const ordered = sortTechnicianWorkOrders([
+      { id: "proof", status: "Installing", proof: { submittedAt: "2026-09-19T08:00:00.000Z" } },
+      { id: "updated", status: "In Progress", updatedAt: "2026-09-20T08:00:00.000Z" },
+      { id: "legacy-old", status: "Pending", scheduledDate: "2026-09-21", timeSlot: "8:00 AM - 10:00 AM" },
+      { id: "legacy-new", status: "Pending", scheduledDate: "2026-09-22", timeSlot: "8:00 AM - 10:00 AM" },
     ]);
 
-    expect(ordered.map((task) => task.id)).toEqual(["active", "completed-new", "completed-old"]);
+    expect(ordered.map((task) => task.id)).toEqual(["updated", "proof", "legacy-new", "legacy-old"]);
   });
 });
 
