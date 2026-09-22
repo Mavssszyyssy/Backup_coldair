@@ -240,7 +240,7 @@ describe("mobile customer readiness rules", () => {
     expect(resolveNotificationRoute({ route: "/my-orders" }, "customer")).toBe("/customer/orders");
     expect(resolveNotificationRoute({ route: "/customer/service-requests" }, "customer")).toBe("/customer/services");
     expect(resolveNotificationRoute({ route: "/tech/tasks/TSK-1" }, "technician")).toBe("/technician/tasks");
-    expect(resolveNotificationRoute({ route: "/technician/tasks" }, "technician")).toBe("/technician/tasks");
+    expect(resolveNotificationRoute({ route: "/technician/tasks" }, "technician")).toBe("/technician/tasks?schedule=all");
     expect(resolveNotificationRoute({ route: "/technician/tasks", targetType: "task", targetId: "TSK-1" }, "technician")).toBe("/technician/task/TSK-1/information");
   });
 

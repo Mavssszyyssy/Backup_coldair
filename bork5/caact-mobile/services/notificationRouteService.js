@@ -8,10 +8,11 @@ export function resolveNotificationRoute(item = {}, role = "") {
     if (item.targetType === "task" && item.targetId) {
       return `/technician/task/${encodeURIComponent(item.targetId)}/information`;
     }
+    if (route === "/technician/tasks") return "/technician/tasks?schedule=all";
     if (route.startsWith("/technician/")) return route;
     if (route === "/tech/tasks" || route.startsWith("/tech/tasks/")) return "/technician/tasks";
     if (route === "/tech/dashboard") return "/technician/dashboard";
-    return item.targetType === "task" || /task|work order|warranty|service|part/.test(text) ? "/technician/tasks" : "/technician/dashboard";
+    return item.targetType === "task" || /task|work order|warranty|service|part/.test(text) ? "/technician/tasks?schedule=all" : "/technician/dashboard";
   }
 
   if (["service_request", "service"].includes(item.targetType) || route === "/customer/service-requests") return "/customer/services";

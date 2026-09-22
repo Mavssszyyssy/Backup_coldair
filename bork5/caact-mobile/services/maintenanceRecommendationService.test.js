@@ -40,3 +40,14 @@ test("installation-complete order notifications never treat an order ID as an AC
     route: "/customer/units/order-id?page=warranty",
   }, "customer")).toBe("/customer/orders");
 });
+test("technician task-list alerts open all schedule dates while task alerts open the exact task", () => {
+  expect(resolveNotificationRoute({
+    route: "/technician/tasks",
+    title: "Work schedule updated",
+  }, "technician")).toBe("/technician/tasks?schedule=all");
+  expect(resolveNotificationRoute({
+    route: "/technician/tasks",
+    targetType: "task",
+    targetId: "task-id",
+  }, "technician")).toBe("/technician/task/task-id/information");
+});

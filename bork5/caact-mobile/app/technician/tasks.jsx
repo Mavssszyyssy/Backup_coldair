@@ -1,6 +1,6 @@
 // app/(technician)/tasks.jsx
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -17,6 +17,7 @@ import { useUserContext } from "../../context/UserContext";
 import { getTasksByTechnician, TASK_STATUS } from "../../services/taskStorage";
 import { manilaDateKey, taskMatchesScheduleWindow } from "../../services/taskScheduleFilter";
 import { sortTechnicianWorkOrders } from "../../services/technicianWorkOrderSort";
+import { workOrderRouteFilters } from "../../services/technicianWorkOrderFilters";
 
 const STATUS_COLOR = {
   [TASK_STATUS.PENDING]: COLORS.warning,
@@ -221,14 +222,22 @@ function FilterSheet({
 
 export default function TasksScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const routeFilters = workOrderRouteFilters(params);
   const { current } = useUserContext();
   const [tasks, setTasks] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(routeFilters.status);
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(routeFilters.search);
   const [filterVisible, setFilterVisible] = useState(false);
   const [page, setPage] = useState(1);
-  const [scheduleFilter, setScheduleFilter] = useState("today");
+  const [scheduleFilter, setScheduleFilter] = useState(routeFilters.schedule);
+
+  React.useEffect(() => {
+    setStatusFilter(routeFilters.status);
+    setScheduleFilter(routeFilters.schedule);
+    setSearchQuery(routeFilters.search);
+  }, [routeFilters.status, routeFilters.schedule, routeFilters.search]);
 
   const refresh = ({ isCurrent = () => true } = {}) => {
     if (!current?.id) return;
