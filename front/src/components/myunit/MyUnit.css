@@ -522,6 +522,17 @@
   color: #666;
 }
 
+.view-more-btn {
+  border: 1px solid #1e88e5;
+  background: #fff;
+  color: #1565c0;
+}
+
+.view-more-btn:hover,
+.view-more-btn:focus-visible {
+  background: #eaf5ff;
+}
+
 .empty-units {
   text-align: center;
   padding: 80px 20px;

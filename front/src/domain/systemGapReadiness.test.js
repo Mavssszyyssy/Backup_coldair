@@ -23,7 +23,7 @@ describe("cross-surface readiness gaps", () => {
 
   test("admin orders load full proof media only on demand", () => {
     const orders = source("src/components/ADMIN/Orders/AdminOrders.js");
-    expect(orders).toContain("View proof photos");
+    expect(orders).toContain("View technician proof picture");
     expect(orders).toContain("/tasks/${encodeURIComponent(taskId)}");
     expect(orders).toContain("proof?.hasAfterPhotos");
     expect(orders).toContain("Paid on delivery");

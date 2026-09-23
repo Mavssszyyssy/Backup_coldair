@@ -87,6 +87,7 @@ it.each([
   ["serial registry", "/admin/inventory?tab=serial-qr", "AC Unit QR Registry"],
   ["service requests", "/admin/services?tab=service-requests", "Requests"],
   ["technicians", "/admin/services?tab=technicians", "Find a technician"],
+  ["daily schedule inside technicians", "/admin/services?tab=daily-schedule", "Daily work schedule"],
   ["customer messages", "/admin/services?tab=customer-messages", "Customer Messages"],
 ])("renders the real Admin %s module", async (_name, entry, heading) => {
   const Component = entry.startsWith("/admin/inventory") ? AdminInventory : AdminServices;

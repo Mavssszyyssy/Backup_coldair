@@ -5,6 +5,7 @@ import { BRANCHES } from "../../../domain/branches/branches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
+import DailyWorkSchedule from "./DailyWorkSchedule";
 import "../adminShared.css";
 import "./styles.css";
 
@@ -85,7 +86,7 @@ const initialStaffDraft = (branch = "") => ({
   serviceQuota: "",
 });
 
-const AdminTechnician = ({ embedded = false }) => {
+const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const { user } = useUser();
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
@@ -108,6 +109,11 @@ const AdminTechnician = ({ embedded = false }) => {
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [createdLoginIdentifier, setCreatedLoginIdentifier] = useState("");
   const [updatingId, setUpdatingId] = useState("");
+  const [workspaceView, setWorkspaceView] = useState(initialView === "schedule" ? "schedule" : "technicians");
+
+  useEffect(() => {
+    setWorkspaceView(initialView === "schedule" ? "schedule" : "technicians");
+  }, [initialView]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -347,7 +353,11 @@ const AdminTechnician = ({ embedded = false }) => {
 
   return (
     <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized." embedded={embedded}>
-      <section className="tech-management">
+      <div className="module-tabs tech-workspace-tabs" role="tablist" aria-label="Technician workspace sections">
+        <button type="button" role="tab" aria-selected={workspaceView === "technicians"} className={workspaceView === "technicians" ? "active" : ""} onClick={() => setWorkspaceView("technicians")}>Technicians</button>
+        <button type="button" role="tab" aria-selected={workspaceView === "schedule"} className={workspaceView === "schedule" ? "active" : ""} onClick={() => setWorkspaceView("schedule")}>Daily Schedule</button>
+      </div>
+      {workspaceView === "schedule" ? <DailyWorkSchedule /> : <section className="tech-management">
         <div className="tech-summary-grid">
           <article><span>Total technicians</span><strong>{technicians.length}</strong><small>Visible to your access level</small></article>
           <article><span>Active accounts</span><strong>{activeCount}</strong><small>Ready for work assignment</small></article>
@@ -460,7 +470,7 @@ const AdminTechnician = ({ embedded = false }) => {
             </article>;
           })}</div>}
         </section>
-      </section>
+      </section>}
     </AdminLayout>
   );
 };

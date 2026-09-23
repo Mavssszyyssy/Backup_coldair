@@ -1,3 +1,4 @@
+import { useState } from "react";
 import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitKebabMenu from "./UnitKebabMenu";
 import UnitProductVisual from "./UnitProductVisual";
@@ -11,6 +12,7 @@ function UnitCard({
   position,
   isNewest = false,
 }) {
+  const [expanded, setExpanded] = useState(false);
   const warrantyLabel = {
     pending_activation: "Activation in progress",
     under_review: "Claim under review",
@@ -58,44 +60,37 @@ function UnitCard({
             <span className="info-value">{formatUnitHorsepower(unit)}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Serial Number</span>
-            <span className="info-value">{unit.serialNumber}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Installation Date</span>
-            <span className="info-value">{unit.installationDate || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Order Number</span>
-            <span className="info-value">{unit.orderCode || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Ordered On</span>
-            <span className="info-value">{unit.purchaseDate || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Responsible Branch</span>
-            <span className="info-value">{unit.serviceBranch || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Installed At</span>
-            <span className="info-value">{[unit.placementArea, unit.installationEnvironment].filter(Boolean).join(", ") || "Not recorded"}</span>
-          </div>
-          <div className="info-row">
             <span className="info-label">Status</span>
             <span className={`unit-status ${getStatusClass()}`}>
               {unit.status}
             </span>
           </div>
-          <div className="info-row">
-            <span className="info-label">Warranty</span>
-            <span className="info-value">{warrantyLabel}</span>
-          </div>
+          {expanded ? <div className="unit-more-details" aria-label="Additional AC unit details">
+            <div className="info-row"><span className="info-label">Serial Number</span><span className="info-value">{unit.serialNumber || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Installation Date</span><span className="info-value">{unit.installationDate || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Order Number</span><span className="info-value">{unit.orderCode || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Ordered On</span><span className="info-value">{unit.purchaseDate || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Responsible Branch</span><span className="info-value">{unit.serviceBranch || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Installed At</span><span className="info-value">{[unit.placementArea, unit.installationEnvironment].filter(Boolean).join(", ") || "Not recorded"}</span></div>
+            <div className="info-row"><span className="info-label">Warranty</span><span className="info-value">{warrantyLabel}</span></div>
+          </div> : null}
         </div>
-        <DynamicServiceSticker unit={unit} />
+        {expanded ? <DynamicServiceSticker unit={unit} /> : null}
       </div>
       <div className="unit-footer">
         <button
+          type="button"
+          className="unit-btn view-more-btn"
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+        >
+          {expanded ? "View Less" : "View More"}
+        </button>
+        <button
+          type="button"
           className="unit-btn history-btn"
           onClick={(e) => {
             e.stopPropagation();

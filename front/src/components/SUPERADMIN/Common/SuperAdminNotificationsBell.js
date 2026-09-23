@@ -32,51 +32,56 @@ const SuperAdminNotificationsBell = () => {
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
-  const refreshInFlightRef = useRef(false);
+  const refreshInFlightRef = useRef({ active: false, archived: false });
+  const loadedViewsRef = useRef({ active: false, archived: false });
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
+  const [itemsByView, setItemsByView] = useState({ active: [], archived: [] });
   const [unreadCount, setUnreadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState('active');
+  const items = itemsByView[view] || [];
 
-  const refresh = useCallback(async () => {
-    if (refreshInFlightRef.current) return;
-    refreshInFlightRef.current = true;
-    setBusy(true);
+  const refresh = useCallback(async (targetView = 'active', { showBusy = true } = {}) => {
+    if (refreshInFlightRef.current[targetView]) return;
+    refreshInFlightRef.current[targetView] = true;
+    if (showBusy) setBusy(true);
     try {
-      const result = await apiRequest(`/notifications/me?view=${view}`);
+      const result = await apiRequest(`/notifications/me?view=${targetView}`, { silentConnection: true });
       const notificationItems = (result.notifications || []).map((item) => ({
         ...item,
         id: item.id || item._id,
         unread: Boolean(item.unread),
         to: routeForNotification(item),
       }));
-      setItems(notificationItems);
-      setUnreadCount((current) => Number(result.unreadCount ?? (view === 'active' ? notificationItems.filter((item) => item.unread).length : current)) || 0);
+      setItemsByView((current) => ({ ...current, [targetView]: notificationItems }));
+      loadedViewsRef.current[targetView] = true;
+      setUnreadCount((current) => Number(result.unreadCount ?? (targetView === 'active' ? notificationItems.filter((item) => item.unread).length : current)) || 0);
     } catch (_error) {
       // Keep the last synchronized result during a temporary connection issue.
     } finally {
-      setBusy(false);
-      refreshInFlightRef.current = false;
+      if (showBusy) setBusy(false);
+      refreshInFlightRef.current[targetView] = false;
     }
-  }, [view]);
+  }, []);
 
   useEffect(() => {
-    refresh();
+    refresh(view);
+    if (view === 'active' && !loadedViewsRef.current.archived) refresh('archived', { showBusy: false });
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') refresh(view, { showBusy: false });
     };
-    const pollId = window.setInterval(refreshWhenVisible, 5000);
-    const unsubscribe = subscribeToNotificationUpdates(refresh);
+    const pollId = view === 'active' ? window.setInterval(refreshWhenVisible, 15000) : null;
+    const unsubscribe = subscribeToNotificationUpdates(() => refresh('active', { showBusy: false }));
     document.addEventListener('visibilitychange', refreshWhenVisible);
-    window.addEventListener('focus', refresh);
+    const refreshWhenFocused = () => refresh(view, { showBusy: false });
+    window.addEventListener('focus', refreshWhenFocused);
     return () => {
-      window.clearInterval(pollId);
+      if (pollId) window.clearInterval(pollId);
       unsubscribe();
       document.removeEventListener('visibilitychange', refreshWhenVisible);
-      window.removeEventListener('focus', refresh);
+      window.removeEventListener('focus', refreshWhenFocused);
     };
-  }, [refresh]);
+  }, [refresh, view]);
 
   useEffect(() => {
     const closeOnOutsideClick = (event) => {
@@ -91,7 +96,7 @@ const SuperAdminNotificationsBell = () => {
   const markAllRead = async () => {
     try {
       await apiRequest('/notifications/me/read-all', { method: 'PATCH' });
-      setItems((current) => current.map((item) => ({ ...item, unread: false })));
+      setItemsByView((current) => ({ ...current, active: current.active.map((item) => ({ ...item, unread: false })) }));
       setUnreadCount(0);
       announceNotificationUpdate();
     } catch (_error) { /* Keep the server-backed unread state when the update does not complete. */ }
@@ -100,7 +105,7 @@ const SuperAdminNotificationsBell = () => {
     if (item.unread && item.id) {
       try {
         await apiRequest(`/notifications/${item.id}/read`, { method: 'PATCH' });
-        setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, unread: false } : entry));
+        setItemsByView((current) => ({ ...current, [view]: current[view].map((entry) => entry.id === item.id ? { ...entry, unread: false } : entry) }));
         setUnreadCount((current) => Math.max(0, current - 1));
         announceNotificationUpdate();
       } catch (_error) { /* Navigation remains available while unread state remains server-backed. */ }
@@ -112,7 +117,18 @@ const SuperAdminNotificationsBell = () => {
     if (!item.id) return;
     try {
       await apiRequest(`/notifications/${item.id}/${view === 'archived' ? 'restore' : 'archive'}`, { method: 'PATCH' });
-      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      setItemsByView((current) => {
+        const source = view;
+        const destination = view === 'archived' ? 'active' : 'archived';
+        const moved = view === 'archived'
+          ? { ...item, archivedAt: null, unread: false }
+          : { ...item, archivedAt: new Date().toISOString(), unread: false };
+        return {
+          ...current,
+          [source]: current[source].filter((entry) => entry.id !== item.id),
+          [destination]: [moved, ...current[destination].filter((entry) => entry.id !== item.id)],
+        };
+      });
       if (view === 'active' && item.unread) setUnreadCount((current) => Math.max(0, current - 1));
       announceNotificationUpdate();
     } catch (_error) { /* Keep the notification visible if the request fails. */ }
@@ -124,7 +140,7 @@ const SuperAdminNotificationsBell = () => {
       {unreadCount ? <span>{unreadCount > 99 ? '99+' : unreadCount}</span> : null}
     </button>
     {open ? <section ref={panelRef} className="super-notifications-panel" role="dialog" aria-label="Super Admin notifications">
-      <header><div><strong>Notifications</strong><small>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</small></div><div><button type="button" onClick={refresh} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button><button type="button" onClick={markAllRead} disabled={!unreadCount || view === 'archived'}>Mark read</button></div></header>
+      <header><div><strong>Notifications</strong><small>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</small></div><div><button type="button" onClick={() => refresh(view)} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button><button type="button" onClick={markAllRead} disabled={!unreadCount || view === 'archived'}>Mark read</button></div></header>
       <div className="super-notifications-tabs" role="tablist" aria-label="Notification folders">{[['active', 'Current'], ['archived', 'Archive']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>{label}</button>)}</div>
       {items.length === 0 ? <p className="super-notifications-empty">{view === 'archived' ? 'No archived notifications.' : 'No alerts right now.'}</p> : <div className="super-notifications-list">{items.map((item) => <div className="super-notifications-row" key={item.id}><button type="button" className={item.unread ? 'unread' : ''} onClick={() => openNotification(item)}><strong>{item.title || 'System notification'}</strong><span>{item.message || 'No additional details.'}</span><small>{timeLabel(item.createdAt)}</small></button><button type="button" className="super-notifications-archive" onClick={() => archiveNotification(item)}>{view === 'archived' ? 'Restore' : 'Archive'}</button></div>)}</div>}
     </section> : null}

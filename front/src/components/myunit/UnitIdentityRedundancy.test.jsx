@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
@@ -23,6 +23,10 @@ test("the AC card shows its model once", () => {
     />,
   );
   expect(screen.getAllByText(unit.productSku)).toHaveLength(1);
+  expect(screen.queryByText("Serial Number")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "View More" }));
+  expect(screen.getByText("Serial Number")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "View Less" })).toHaveAttribute("aria-expanded", "true");
 });
 
 test("the AC details modal shows its model once", () => {

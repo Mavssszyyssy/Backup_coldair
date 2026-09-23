@@ -35,20 +35,22 @@ function AdminNotificationsBell() {
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
-  const refreshInFlightRef = useRef(false);
+  const refreshInFlightRef = useRef({ active: false, archived: false });
+  const loadedViewsRef = useRef({ active: false, archived: false });
 
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
+  const [itemsByView, setItemsByView] = useState({ active: [], archived: [] });
   const [unreadCount, setUnreadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState("active");
+  const items = itemsByView[view] || [];
 
-  const refresh = useCallback(async () => {
-    if (refreshInFlightRef.current) return;
-    refreshInFlightRef.current = true;
-    setBusy(true);
+  const refresh = useCallback(async (targetView = "active", { showBusy = true } = {}) => {
+    if (refreshInFlightRef.current[targetView]) return;
+    refreshInFlightRef.current[targetView] = true;
+    if (showBusy) setBusy(true);
     try {
-      const notificationResult = await apiRequest(`/notifications/me?view=${view}`, { silentConnection: true });
+      const notificationResult = await apiRequest(`/notifications/me?view=${targetView}`, { silentConnection: true });
       const backendItems = (notificationResult.notifications || []).map((item) => ({
         ...item,
         id: item.id || item._id,
@@ -57,24 +59,36 @@ function AdminNotificationsBell() {
         source: "backend",
         unread: Boolean(item.unread),
       }));
-      setItems(backendItems);
+      setItemsByView((current) => ({ ...current, [targetView]: backendItems }));
+      loadedViewsRef.current[targetView] = true;
       setUnreadCount((current) => Number(
         notificationResult.unreadCount
-        ?? (view === "active" ? backendItems.filter((item) => item.unread).length : current),
+        ?? (targetView === "active" ? backendItems.filter((item) => item.unread).length : current),
       ) || 0);
     } catch (_error) {
       // Keep the last synchronized result during a temporary connection issue.
     } finally {
-      setBusy(false);
-      refreshInFlightRef.current = false;
+      if (showBusy) setBusy(false);
+      refreshInFlightRef.current[targetView] = false;
     }
-  }, [view]);
+  }, []);
 
   const onArchive = async (item) => {
     if (!item.id) return;
     try {
       await apiRequest(`/notifications/${item.id}/${view === "archived" ? "restore" : "archive"}`, { method: "PATCH" });
-      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      setItemsByView((current) => {
+        const source = view;
+        const destination = view === "archived" ? "active" : "archived";
+        const moved = view === "archived"
+          ? { ...item, archivedAt: null, unread: false }
+          : { ...item, archivedAt: new Date().toISOString(), unread: false };
+        return {
+          ...current,
+          [source]: current[source].filter((entry) => entry.id !== item.id),
+          [destination]: [moved, ...current[destination].filter((entry) => entry.id !== item.id)],
+        };
+      });
       if (view === "active" && item.unread) setUnreadCount((current) => Math.max(0, current - 1));
       announceNotificationUpdate();
     } catch (_error) {
@@ -83,22 +97,23 @@ function AdminNotificationsBell() {
   };
 
   useEffect(() => {
-    refresh();
+    refresh(view);
+    if (view === "active" && !loadedViewsRef.current.archived) refresh("archived", { showBusy: false });
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState === "visible") refresh(view, { showBusy: false });
     };
-    const refreshWhenFocused = () => refresh();
-    const pollId = window.setInterval(refreshWhenVisible, 5000);
-    const unsubscribe = subscribeToNotificationUpdates(refresh);
+    const refreshWhenFocused = () => refresh(view, { showBusy: false });
+    const pollId = view === "active" ? window.setInterval(refreshWhenVisible, 15000) : null;
+    const unsubscribe = subscribeToNotificationUpdates(() => refresh("active", { showBusy: false }));
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener("focus", refreshWhenFocused);
     return () => {
-      window.clearInterval(pollId);
+      if (pollId) window.clearInterval(pollId);
       unsubscribe();
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenFocused);
     };
-  }, [refresh]);
+  }, [refresh, view]);
 
   useEffect(() => {
     const onClickOutside = (event) => {
@@ -115,7 +130,7 @@ function AdminNotificationsBell() {
   const onMarkAllRead = async () => {
     try {
       await apiRequest("/notifications/me/read-all", { method: "PATCH" });
-      setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+      setItemsByView((current) => ({ ...current, active: current.active.map((item) => ({ ...item, unread: false })) }));
       setUnreadCount(0);
       announceNotificationUpdate();
     } catch (_error) {
@@ -128,11 +143,9 @@ function AdminNotificationsBell() {
     if (item.unread && item.id) {
       try {
         await apiRequest(`/notifications/${item.id}/read`, { method: "PATCH" });
-        setItems((prev) =>
-          prev.map((entry) =>
+        setItemsByView((current) => ({ ...current, [view]: current[view].map((entry) =>
             entry.id === item.id ? { ...entry, unread: false } : entry,
-          ),
-        );
+          ) }));
         setUnreadCount((current) => Math.max(0, current - 1));
         announceNotificationUpdate();
       } catch (_error) {
@@ -171,7 +184,7 @@ function AdminNotificationsBell() {
               <button
                 type="button"
                 className="admin-notifications-link"
-                onClick={refresh}
+                onClick={() => refresh(view)}
                 disabled={busy}
               >
                 {busy ? "Refreshing..." : "Refresh"}

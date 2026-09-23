@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
@@ -13,17 +14,19 @@ export default function CustomerUnitRow({
   position,
   isNewest = false,
 }) {
+  const [expanded, setExpanded] = useState(false);
   const modelLabel = [unit?.brand, unit?.productSku || unit?.model]
     .filter(Boolean)
     .join(" · ") || "Model not recorded";
 
   return (
+    <View style={{ paddingVertical: SPACING.sm, minHeight: 104, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.72}
         accessibilityRole="button"
         accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
-        style={{ paddingVertical: SPACING.sm, minHeight: 104, borderBottomWidth: 1, borderBottomColor: COLORS.border }}
+        style={{ minHeight: 86 }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs, marginBottom: SPACING.sm }}>
           <View style={{ backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 4 }}>
@@ -47,21 +50,23 @@ export default function CustomerUnitRow({
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
               Horsepower: {formatUnitHorsepower(unit)}
             </Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
-              Serial: {unit?.serialNumber || "Not recorded"}
-            </Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
-              Order: {unit?.orderCode || "Not recorded"}
-            </Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
-              Ordered: {formatUnitPurchaseDate(unit)} · Installed: {formatUnitInstallationDate(unit)}
-            </Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
-              {[unit?.serviceBranch ? `${unit.serviceBranch} Branch` : "", unit?.placementArea].filter(Boolean).join(" · ") || "Branch and location not recorded"}
-            </Text>
           </View>
           <Ionicons name="chevron-forward-sharp" size={19} color={COLORS.textMuted} />
         </View>
+      </TouchableOpacity>
+      {expanded ? <View accessibilityLabel="Additional AC unit details" style={{ paddingTop: SPACING.xs }}>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
+          Serial: {unit?.serialNumber || "Not recorded"}
+        </Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
+          Order: {unit?.orderCode || "Not recorded"}
+        </Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
+          Ordered: {formatUnitPurchaseDate(unit)} · Installed: {formatUnitInstallationDate(unit)}
+        </Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
+          {[unit?.serviceBranch ? `${unit.serviceBranch} Branch` : "", unit?.placementArea].filter(Boolean).join(" · ") || "Branch and location not recorded"}
+        </Text>
         {recommendation ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: SPACING.sm, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}>
             <Ionicons name="calendar-sharp" size={17} color={maintenance?.color || COLORS.primary} />
@@ -72,6 +77,17 @@ export default function CustomerUnitRow({
             <Text style={{ color: maintenance?.color || COLORS.primary, fontWeight: FONT.black, fontSize: FONT.sm }}>{maintenance?.urgency || "Scheduled"}</Text>
           </View>
         ) : null}
+      </View> : null}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? "View less AC unit information" : "View more AC unit information"}
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={{ minHeight: 44, marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: SPACING.xs }}
+      >
+        <Text style={{ color: COLORS.primary, fontWeight: FONT.black }}>{expanded ? "View Less" : "View More"}</Text>
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={17} color={COLORS.primary} />
       </TouchableOpacity>
+    </View>
   );
 }

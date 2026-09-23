@@ -4,14 +4,12 @@ import AdminMaintenance from '../../ADMIN/Maintenance/AdminMaintenance';
 import AdminOrders from '../../ADMIN/Orders/AdminOrders';
 import AdminTechnician from '../../ADMIN/Technicians/AdminTechnician';
 import AdminContactMessages from '../../ADMIN/ContactMessages/AdminContactMessages';
-import DailyWorkSchedule from '../../ADMIN/Technicians/DailyWorkSchedule';
 import '../../ADMIN/Inventory/styles.css';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 
 const TABS = [
   { id: 'orders', label: 'Customer Orders' },
   { id: 'service-requests', label: 'Service Requests' },
-  { id: 'daily-schedule', label: 'Daily Schedule' },
   { id: 'technicians', label: 'Technicians' },
   { id: 'customer-messages', label: 'Customer Messages' },
 ];
@@ -19,7 +17,9 @@ const TABS = [
 const SuperAdminServices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const activeTab = TABS.some((tab) => tab.id === requestedTab) ? requestedTab : 'orders';
+  const activeTab = requestedTab === 'daily-schedule'
+    ? 'technicians'
+    : TABS.some((tab) => tab.id === requestedTab) ? requestedTab : 'orders';
 
   const selectTab = (tab) => {
     setSearchParams(tab === 'orders' ? {} : { tab }, { replace: true });
@@ -46,8 +46,9 @@ const SuperAdminServices = () => {
       </div>
       {activeTab === 'orders' ? <AdminOrders embedded /> : null}
       {activeTab === 'service-requests' ? <AdminMaintenance embedded /> : null}
-      {activeTab === 'daily-schedule' ? <DailyWorkSchedule /> : null}
-      {activeTab === 'technicians' ? <AdminTechnician embedded /> : null}
+      {activeTab === 'technicians' ? (
+        <AdminTechnician embedded initialView={requestedTab === 'daily-schedule' ? 'schedule' : 'technicians'} />
+      ) : null}
       {activeTab === 'customer-messages' ? <AdminContactMessages /> : null}
     </SuperAdminLayout>
   );

@@ -525,7 +525,8 @@ const AdminOrders = ({ embedded = false }) => {
               order.workflowStatus === 'to_pay';
             const linkedTask = tasksByOrder[String(order.id || '').trim()] || tasksByOrder[String(order.orderCode || '').trim()];
             const taskDetailKey = linkedTask?.id || linkedTask?._id || linkedTask?.taskCode;
-            const detailedTask = taskDetailsById[String(taskDetailKey || '')] || linkedTask;
+            const loadedTaskDetail = taskDetailsById[String(taskDetailKey || '')];
+            const detailedTask = loadedTaskDetail || linkedTask;
             const awaitingVisitFollowUp = Boolean(detailedTask?.visitAttempt?.awaitingAdmin || detailedTask?.payload?.visitAttempt?.awaitingAdmin);
             const proof = detailedTask?.proof || linkedTask?.proof || {};
             const ampRecords = Object.values(detailedTask?.ampRegistrations || linkedTask?.ampRegistrations || {})
@@ -540,7 +541,15 @@ const AdminOrders = ({ embedded = false }) => {
             const taskCompleted = String(linkedTask?.status || '').toLowerCase() === 'completed';
             const registrationComplete = Boolean(detailedTask?.registrationProgress?.isComplete);
             const hasProof = taskCompleted && registrationComplete && hasInstallationPhoto && hasCustomerSignoff && hasTechnicianSummary;
-            const hasAnyInstallationEvidence = Boolean(proof?.submittedAt || hasInstallationPhoto || hasCustomerSignoff || ampRecords.length);
+            // Task list responses intentionally omit base64 proof media. A completed
+            // installation must still expose its proof panel so Admin and Super Admin
+            // can request the full task record on demand.
+            const hasAnyInstallationEvidence = Boolean(
+              taskCompleted || proof?.submittedAt || hasInstallationPhoto || hasCustomerSignoff || ampRecords.length,
+            );
+            const embeddedProofPhotos = [...(proof?.beforePhotos || []), ...(proof?.afterPhotos || [])]
+              .filter((photo) => photo?.uri);
+            const canLoadTechnicianProof = Boolean(linkedTask && taskDetailKey && !loadedTaskDetail && embeddedProofPhotos.length === 0);
             const isWaitingTechnician =
               order.workflowStatus === 'to_install' &&
               actionConfig?.action === 'complete' &&
@@ -754,15 +763,18 @@ const AdminOrders = ({ embedded = false }) => {
                         </a>
                       ))}
                     </div>
-                    {hasInstallationPhoto && !(proof?.afterPhotos || []).some((photo) => photo?.uri) ? (
+                    {canLoadTechnicianProof ? (
                       <button
                         type="button"
                         className="admin-process-btn admin-proof-load-btn"
                         onClick={() => loadTaskProof(linkedTask)}
                         disabled={proofLoadingId === String(taskDetailKey || '')}
                       >
-                        {proofLoadingId === String(taskDetailKey || '') ? 'Loading photos...' : 'View proof photos'}
+                        {proofLoadingId === String(taskDetailKey || '') ? 'Loading picture...' : 'View technician proof picture'}
                       </button>
+                    ) : null}
+                    {loadedTaskDetail && embeddedProofPhotos.length === 0 ? (
+                      <span className="admin-order-no-serials">No technician proof picture was saved for this work order.</span>
                     ) : null}
                   </div>
                 ) : null}
