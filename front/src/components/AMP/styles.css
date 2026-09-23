@@ -333,12 +333,14 @@
 .amp-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
   gap: 12px;
 }
 
 .amp-action-item {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
+  align-self: start;
   gap: 12px;
   min-width: 0;
   padding: 14px;

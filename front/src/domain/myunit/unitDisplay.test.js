@@ -53,4 +53,14 @@ describe("customer AC unit display", () => {
     expect(css).toMatch(/\.unit-product-visual\s*\{[^}]*z-index:\s*1/s);
     expect(css).toContain("overflow-wrap: anywhere");
   });
+
+  it("lets only the selected AC card grow when View More is opened", () => {
+    const css = fs.readFileSync(
+      path.resolve(process.cwd(), "src", "components", "myunit", "MyUnit.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(/\.units-grid\s*\{[^}]*align-items:\s*start/s);
+    expect(css).toMatch(/\.unit-card\s*\{[^}]*height:\s*auto[^}]*align-self:\s*start/s);
+  });
 });

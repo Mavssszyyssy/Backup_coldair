@@ -48,6 +48,7 @@ const readableToken = (value, fallback = "Not assessed") => String(value || fall
 
 function AmpReportCenter({
   units = [],
+  unitsLoading = false,
   initialUnitId = "",
   onPlanGenerated,
   title = "AC care reports",
@@ -169,11 +170,11 @@ function AmpReportCenter({
       <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
       <div className="amp-report-controls">
         <label>Report type<select disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label>Installed AC unit<select disabled={loading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Select a unit</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{user?.role !== "customer" ? `${unit.customerName || "Customer name not recorded"} · ` : ""}{unit.modelName || unit.model || "AC Unit"}{unit.capacityHp ? ` · ${unit.capacityHp} HP` : ""} · {unit.serialNumber || value}</option>; })}</select></label>
-        <button type="button" onClick={generate} disabled={loading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
+        <label>Installed AC unit<select disabled={loading || unitsLoading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">{unitsLoading ? "Loading installed AC units…" : "Select a unit"}</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{user?.role !== "customer" ? `${unit.customerName || "Customer name not recorded"} · ` : ""}{unit.modelName || unit.model || "AC Unit"}{unit.capacityHp ? ` · ${unit.capacityHp} HP` : ""} · {unit.serialNumber || value}</option>; })}</select></label>
+        <button type="button" onClick={generate} disabled={loading || unitsLoading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
       </div>
       <p className="amp-muted">{types.find(item => item.value === reportType)?.help}</p>
-      {!reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
+      {unitsLoading ? <p className="amp-muted" role="status">Loading installed AC units…</p> : !reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
       {report ? <div className="amp-report-result">
         <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{conditionFollowUp ? "AI-reviewed technician follow-up" : maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>

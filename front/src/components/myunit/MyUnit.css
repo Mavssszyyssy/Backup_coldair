@@ -98,6 +98,7 @@
 .units-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    align-items: start;
     gap: 25px;
 }
 
@@ -107,7 +108,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: auto;
+    align-self: start;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: transform 0.38s cubic-bezier(.2,.8,.2,1), box-shadow 0.38s ease;
     cursor: pointer;

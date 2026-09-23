@@ -1,4 +1,6 @@
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import fs from "node:fs";
+import path from "node:path";
+import { act, render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { apiRequest } from "../../config/api";
@@ -15,6 +17,13 @@ beforeEach(() => {
   apiRequest.mockResolvedValue({ units: [], forecast: [{ month: "2026-09", label: "Sep 2026", serviceVolume: 0, projectedRevenue: 0 }] });
 });
 const show = (component) => render(<MemoryRouter>{component}</MemoryRouter>);
+
+it("keeps each AMP See more card at its own content height", () => {
+  const css = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "styles.css"), "utf8");
+
+  expect(css).toMatch(/\.amp-action-grid\s*\{[^}]*align-items:\s*start/s);
+  expect(css).toMatch(/\.amp-action-item\s*\{[^}]*align-self:\s*start/s);
+});
 
 it("explains branch admin follow-up without exposing company-wide controls", async () => {
   show(<ManagerAmpDashboard />);
@@ -55,6 +64,39 @@ it("does not invent a busiest month when no services are due", async () => {
   fireEvent.click(screen.getByText("How the potential service value is calculated"));
   expect(screen.getByText("Scenario Revenue")).toBeVisible();
   expect(screen.getByText("Estimate only, not earned revenue")).toBeVisible();
+});
+
+it("renders the 12-month workload before the AC selector and defers hidden history", async () => {
+  useUser.mockReturnValue({ userRole: "superadmin", user: { role: "superadmin" }, logout: vi.fn() });
+  let resolveReportUnits;
+  const reportUnitsRequest = new Promise((resolve) => { resolveReportUnits = resolve; });
+  apiRequest.mockImplementation((requestPath) => {
+    if (requestPath === "/amp/report-units") return reportUnitsRequest;
+    if (requestPath.includes("includeHistory=true")) return Promise.resolve({
+      recordedPartsTrend: [{ component: "Control Board", count: 1 }],
+      modelTrends: [],
+      brandTrends: [],
+    });
+    return Promise.resolve({
+      forecast: [{ month: "2026-09", label: "Sep 2026", serviceVolume: 2, projectedRevenue: 5000 }],
+      totalForecastedServices: 2,
+      branchMaintenanceVolume: [{ branch: "Bulacan", upcomingServices: 2 }],
+      recommendedServiceDemand: [{ serviceType: "regular_cleaning", count: 2 }],
+    });
+  });
+
+  show(<OwnerAmpDashboard />);
+
+  expect((await screen.findAllByText("Sep 2026"))[0]).toBeVisible();
+  expect(screen.getByRole("status", { name: "" })).toHaveTextContent("Loading installed AC units");
+  expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=false");
+  expect(apiRequest).not.toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true");
+
+  fireEvent.click(screen.getByText("Cleaning recommendations and parts history"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true"));
+  expect(await screen.findByText("Control Board")).toBeVisible();
+
+  await act(async () => resolveReportUnits({ units: [] }));
 });
 
 it("gives branch admins a service-window control without cross-branch access", async () => {
