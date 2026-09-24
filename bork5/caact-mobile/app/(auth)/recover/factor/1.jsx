@@ -157,11 +157,11 @@ export default function RecoverPasswordScreen() {
                 setAccountLoginId(value);
                 setErrors((previous) => ({ ...previous, accountLoginId: "" }));
               }}
-              placeholder="admin.cavite or tech.cavite.carl"
+              placeholder="admin.cavite or tech.main"
               autoCapitalize="none"
               editable={phase === "send"}
               error={errors.accountLoginId}
-              helperText="Required because this demo inbox belongs to five separate accounts."
+              helperText="Required because this demo inbox belongs to six separate accounts."
             />
           )}
         </Card>

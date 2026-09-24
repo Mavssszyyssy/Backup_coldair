@@ -44,7 +44,7 @@ it('uses the shared demo email with a separate account login ID', async () => {
   fireEvent.change(screen.getByPlaceholderText('you@example.com or account.login'), {
     target: { value: 'lanlords2025@gmail.com' },
   });
-  const accountLogin = await screen.findByPlaceholderText('admin.cavite or tech.cavite.carl');
+  const accountLogin = await screen.findByPlaceholderText('admin.cavite or tech.main');
   fireEvent.change(accountLogin, { target: { value: 'tech.cavite.carl' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send verification code' }));
 
