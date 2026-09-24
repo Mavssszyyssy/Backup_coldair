@@ -1197,3 +1197,16 @@ export async function verifyTotpSetup(token, code) {
   if (ok) return { success: true, security: data.security || {}, user: data.user, token: data.token };
   return { success: false, error: getErrorMessage(data, "Incorrect authenticator code.") };
 }
+
+export async function resetTotpAuthenticator(token, payload) {
+  const { ok, data } = await post("/security/totp/reset", payload, token);
+  if (ok) return {
+    success: true,
+    security: data.security || {},
+    user: data.user,
+    token: data.token,
+    requiresTotpReset: Boolean(data.requiresTotpReset),
+    message: data.message,
+  };
+  return { success: false, error: getErrorMessage(data, "Unable to reset the authenticator.") };
+}

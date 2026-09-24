@@ -311,6 +311,21 @@ export const UserProvider = ({ children }) => {
     });
   };
 
+  const resetAuthenticator = async ({ currentPassword = "", currentCode = "" } = {}) => {
+    const result = await apiRequest("/security/totp/reset", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, currentCode }),
+    });
+    const nextUser = result.user;
+    const userBranch = nextUser?.activeBranch || nextUser?.assignedBranch || "";
+    saveSession(result.token, nextUser, userBranch);
+    setUser(nextUser);
+    setUserRole(nextUser?.role || null);
+    setCurrentSession(nextUser);
+    setIsAuthenticated(true);
+    return result;
+  };
+
   const requestPasswordChangeEmail = async () => {
     return apiRequest("/users/password/request-email", {
       method: "POST",
@@ -369,6 +384,7 @@ export const UserProvider = ({ children }) => {
     updateNotifications,
     updateSettings,
     changePassword,
+    resetAuthenticator,
     requestPasswordChangeEmail,
     deleteAccount,
     showAuthRequiredPrompt,

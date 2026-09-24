@@ -25,9 +25,8 @@ import {
 export default function RecoverPasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const email = Array.isArray(params.email)
-    ? params.email[0]
-    : params.email || "";
+  const rawIdentifier = params.identifier || params.email || "";
+  const identifier = Array.isArray(rawIdentifier) ? rawIdentifier[0] : rawIdentifier;
 
   const [phase, setPhase] = useState("send"); // "send" | "verify" | "done"
   const [loading, setLoading] = useState(false);
@@ -39,7 +38,7 @@ export default function RecoverPasswordScreen() {
   const handleSendCode = async () => {
     setLoading(true);
     try {
-      const result = await forgotPassword(email, "email");
+      const result = await forgotPassword(identifier, "email");
       if (result.success) {
         setPhase("verify");
       } else {
@@ -80,7 +79,7 @@ export default function RecoverPasswordScreen() {
       // Reset validates and consumes the OTP in one request. Verifying it in
       // a separate request would invalidate a one-time code before reset.
       const resetResult = await resetPassword(
-        email,
+        identifier,
         otp.trim(),
         newPassword,
         "email",
@@ -134,8 +133,8 @@ export default function RecoverPasswordScreen() {
 
         <Card>
           <TextField
-            label="Email"
-            value={email}
+            label="Email or Account Login ID"
+            value={identifier}
             onChangeText={() => {}}
             editable={false}
             style={{ color: COLORS.textMuted }}

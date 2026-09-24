@@ -76,12 +76,12 @@ const RoleRoute = ({ allowedRoles, children }) => {
   );
 };
 
-const AuthenticatedCustomerSetupRoute = ({ children }) => {
+const AuthenticatedAuthenticatorSetupRoute = ({ children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
   const location = useLocation();
   if (loading) return <div className="loading-screen"><LoadingLogo /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (userRole !== "customer") return <Navigate to={getRoleHomePath(userRole)} replace />;
+  if (!["customer", "technician"].includes(userRole)) return <Navigate to={getRoleHomePath(userRole)} replace />;
   return children;
 };
 
@@ -186,7 +186,7 @@ export function AppContent() {
         />
         <Route
           path="/security/setup-authenticator"
-          element={<AuthenticatedCustomerSetupRoute><AuthenticatorSetup /></AuthenticatedCustomerSetupRoute>}
+          element={<AuthenticatedAuthenticatorSetupRoute><AuthenticatorSetup /></AuthenticatedAuthenticatorSetupRoute>}
         />
         {/* Home route - accessible to both authenticated and unauthenticated users */}
         <Route
@@ -409,7 +409,7 @@ export function AppContent() {
         />
         {/* Retired bookmarks show guidance, never an operational web workspace. */}
         <Route path="/tech/*" element={<Navigate to={TECHNICIAN_MOBILE_NOTICE_PATH} replace />} />
-        <Route path={TECHNICIAN_MOBILE_NOTICE_PATH} element={<TechnicianMobileNotice />} />
+        <Route path={TECHNICIAN_MOBILE_NOTICE_PATH} element={<RoleRoute allowedRoles={["technician"]}><TechnicianMobileNotice /></RoleRoute>} />
         <Route
           path="/manager/amp"
           element={

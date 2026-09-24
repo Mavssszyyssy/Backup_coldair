@@ -1,5 +1,4 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import NotificationBadge from "../../components/NotificationBadge";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -7,6 +6,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-nativ
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
+import CustomerHeaderActions from "../../components/customer/CustomerHeaderActions";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
 import CustomerUnitRow from "../../components/customer/CustomerUnitRow";
 import AppHero from "../../components/ui/AppHero";
@@ -111,12 +111,7 @@ export default function CustomerHomeScreen() {
     <CustomerScreen
       title="Home"
       subtitle={`Welcome back, ${getDisplayName(current)}`}
-      right={
-        <Pressable onPress={() => router.push("/customer/notifications")} hitSlop={12} accessibilityRole="button" accessibilityLabel="Notifications">
-          <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />
-          <NotificationBadge />
-        </Pressable>
-      }
+      right={<CustomerHeaderActions />}
     >
       <AppHero
         eyebrow="Cold Air ACT"

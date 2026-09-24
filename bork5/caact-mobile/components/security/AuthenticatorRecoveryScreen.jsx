@@ -48,7 +48,7 @@ export default function AuthenticatorRecoveryScreen() {
     } catch (reason) { setError(reason.message || "Unable to verify your authenticator. Try again."); }
     finally { setSubmitting(false); }
   };
-  const uri = secret ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.email || current?.username || current?.alias || "account")}?secret=${encodeURIComponent(secret)}&issuer=ColdAir` : "";
+  const uri = secret ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.alias || current?.username || current?.id || current?.email || "account")}?secret=${encodeURIComponent(secret)}&issuer=ColdAir` : "";
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={132}>
       <PageHeader title="Reset Authenticator App" subtitle="Secure your account with a new authenticator" onBack={switchAccount} />

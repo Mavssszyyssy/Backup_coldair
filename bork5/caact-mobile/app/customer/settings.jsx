@@ -10,6 +10,7 @@ import Button from "../../components/ui/Button";
 import Section from "../../components/ui/Section";
 import StickyActionBar from "../../components/ui/StickyActionBar";
 import TextField from "../../components/ui/TextField";
+import PasswordField from "../../components/ui/PasswordField";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
@@ -27,6 +28,7 @@ import {
 import {
   canonicalizePhMobile,
   sanitizePhMobileInput,
+  validateAccountPassword,
   validatePersonName,
   validatePhone,
   validateRequired,
@@ -100,6 +102,8 @@ export default function CustomerSettingsScreen() {
     current,
     logout,
     updateMyAccount,
+    changeMyPassword,
+    resetMyAuthenticator,
     saveDeliveryAddress,
     deleteDeliveryAddress,
   } = useUserContext();
@@ -110,6 +114,11 @@ export default function CustomerSettingsScreen() {
   const [addressErrors, setAddressErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [securityMode, setSecurityMode] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentAuthenticatorCode, setCurrentAuthenticatorCode] = useState("");
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [localities, setLocalities] = useState([]);
@@ -122,7 +131,7 @@ export default function CustomerSettingsScreen() {
 
   const addresses = Array.isArray(current?.addresses) ? current.addresses : [];
   const isEditingAddress = Boolean(addressForm);
-  const isEditing = editingProfile || isEditingAddress;
+  const isEditing = editingProfile || isEditingAddress || Boolean(securityMode);
 
   useEffect(() => {
     setProfileForm(buildEditableProfile(current));
@@ -209,8 +218,59 @@ export default function CustomerSettingsScreen() {
     addressEditorRequest.current += 1;
     setEditingProfile(false);
     setAddressForm(null);
+    setSecurityMode("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setCurrentAuthenticatorCode("");
     setProfileErrors({});
     setAddressErrors({});
+  };
+
+  const savePassword = async () => {
+    const validationError = validateAccountPassword(newPassword);
+    if (!currentPassword || validationError || newPassword !== confirmPassword) {
+      Alert.alert("Check your password", !currentPassword ? "Enter your current password." : validationError || "New passwords do not match.");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      Alert.alert("Check your password", "New password must be different from your current password.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await changeMyPassword({ currentPassword, newPassword });
+      if (!result.success) return Alert.alert("Password not changed", result.error || "Please try again.");
+      setNotice("Password changed successfully.");
+      closeEditor();
+    } finally { setSaving(false); }
+  };
+
+  const resetAuthenticator = async () => {
+    if (!currentPassword) {
+      Alert.alert("Verification required", "Enter your current password.");
+      return;
+    }
+    if (!/^\d{6}$/.test(currentAuthenticatorCode)) {
+      Alert.alert("Verification required", "Enter the six-digit code from your current authenticator.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await resetMyAuthenticator({ currentPassword, currentCode: currentAuthenticatorCode });
+      if (!result.success) return Alert.alert("Authenticator not reset", result.error || "Please try again.");
+      router.replace("/customer/oobe/reset");
+    } finally { setSaving(false); }
+  };
+
+  const openAuthenticatorManagement = () => {
+    if (!current?.security?.totpEnabled) {
+      router.push("/customer/oobe/reset");
+      return;
+    }
+    setAddressForm(null);
+    setEditingProfile(false);
+    setSecurityMode("authenticator");
   };
 
   const selectRegion = (item) => {
@@ -360,13 +420,15 @@ export default function CustomerSettingsScreen() {
     Alert.alert("Sign Out", "Sign out of this customer account?", [{ text: "Cancel", style: "cancel" }, { text: "Sign Out", style: "destructive", onPress: performLogout }]);
   };
 
-  const subtitle = isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
+  const subtitle = securityMode === "password" ? "Change your password" : securityMode === "authenticator" ? "Change or reset your authenticator" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
+  const saveCurrentEditor = securityMode === "password" ? savePassword : securityMode === "authenticator" ? resetAuthenticator : isEditingAddress ? saveAddress : saveProfile;
+  const saveTitle = securityMode === "password" ? "Change Password" : securityMode === "authenticator" ? "Reset Authenticator" : isEditingAddress ? "Save Address" : "Save Account";
   return (
     <CustomerScreen
       title="Account"
       subtitle={subtitle}
       contentContainerStyle={{ paddingBottom: isEditing ? 176 : 96 }}
-      stickyAction={isEditing ? <StickyActionBar><Button title={saving ? "Saving..." : isEditingAddress ? "Save Address" : "Save Account"} onPress={isEditingAddress ? saveAddress : saveProfile} loading={saving} disabled={saving} /><Button title="Cancel" variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}
+      stickyAction={isEditing ? <StickyActionBar><Button title={saving ? "Saving..." : saveTitle} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title="Cancel" variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}
     >
       {notice ? <View style={{ flexDirection: "row", gap: 8, alignItems: "center", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}><Ionicons name="checkmark-circle" size={20} color={COLORS.success} /><Text style={{ flex: 1, color: "#166534", fontWeight: "700" }}>{notice}</Text></View> : null}
 
@@ -384,14 +446,23 @@ export default function CustomerSettingsScreen() {
           <Button title={addresses.length ? "Add another address" : "Add delivery address"} variant="secondary" onPress={() => openAddressEditor()} />
         </Section>
         <Section title="Security & Session">
-          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Account Protection" subtitle="Manage how you sign in and keep your account safe." />
+          <CustomerSettingsRow icon="key-sharp" title="Change Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
+          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Authentication Change / Reset" subtitle={current?.security?.totpEnabled ? "Replace the authenticator registered to this account." : "Set up an authenticator app for this account."} onPress={openAuthenticatorManagement} />
           <CustomerSettingsRow icon="log-out-sharp" title="Sign Out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
         <Section title="Help & Support">
           <CustomerSettingsRow icon="help-buoy-sharp" title="Frequently Asked Questions" subtitle="Orders, payments, delivery, warranty, and AC care" onPress={() => router.push("/customer/faq")} />
           <CustomerSettingsRow icon="chatbubble-ellipses-sharp" title="Contact Customer Support" subtitle="Get help with an order or service request" onPress={() => router.push("/customer/contact")} />
         </Section>
-      </> : isEditingAddress ? <>
+      </> : securityMode === "password" ? <Section title="Change Password">
+        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <PasswordField label="New Password" value={newPassword} onChangeText={setNewPassword} showRequirements editable={!saving} />
+        <PasswordField label="Confirm New Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
+      </Section> : securityMode === "authenticator" ? <Section title="Authentication Change / Reset">
+        <Text style={{ color: COLORS.textSecondary, lineHeight: 21, marginBottom: SPACING.sm }}>Verify your current password and authenticator code. Other sessions and old recovery codes will be revoked before you register a new authenticator.</Text>
+        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <TextField label="Current Authenticator Code" value={currentAuthenticatorCode} onChangeText={(value) => setCurrentAuthenticatorCode(value.replace(/\D/g, "").slice(0, 6))} keyboardType="number-pad" maxLength={6} showKeyboardDone editable={!saving} />
+      </Section> : isEditingAddress ? <>
         <Section title="Address details">
           <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />
           <TextField label="Recipient name" value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />

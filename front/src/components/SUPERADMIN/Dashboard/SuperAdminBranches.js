@@ -15,6 +15,7 @@ const SuperAdminBranches = () => {
   const [adminId, setAdminId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingEmailId, setSavingEmailId] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -88,6 +89,29 @@ const SuperAdminBranches = () => {
     } finally { setSaving(false); }
   };
 
+  const saveAdminEmail = async (admin) => {
+    setMessage('');
+    setError('');
+    const email = String(admin.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError(`Enter a valid email address for ${admin.name || 'this administrator'}.`);
+      return;
+    }
+    setSavingEmailId(admin.id);
+    try {
+      const result = await apiRequest(`/users/${admin.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ email }),
+      });
+      setAdmins((current) => current.map((item) => item.id === admin.id ? result.user : item));
+      setMessage(`${result.user.name || 'Administrator'}'s email was updated successfully.`);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to update the administrator email.');
+    } finally {
+      setSavingEmailId('');
+    }
+  };
+
   return <SuperAdminLayout title="Branch Management" subtitle="Assign one accountable administrator to each operating branch">
     <div className="branch-summary"><div><strong>{BRANCHES.length}</strong><span>Operating branches</span></div><div><strong>{Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>Assigned admins</span></div><div><strong>{BRANCHES.length - Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>Need assignment</span></div></div>
     <section className="branch-workspace">
@@ -105,6 +129,7 @@ const SuperAdminBranches = () => {
       {message ? <p className="branch-success">{message}</p> : null}{error ? <p className="branch-error">{error}</p> : null}
     </section>
     <section className="branch-directory" aria-label="Branch assignments"><header><div><p>Branch directory</p><h2>Current ownership</h2></div></header>{loading ? <p className="branch-empty">Loading branch assignments…</p> : <div>{BRANCHES.map((name) => { const admin = assignmentByBranch[name]; const areas = coverage.find((item) => item.name === name)?.coverageAreas || []; return <article key={name}><div><strong>{name}</strong><span>{admin ? 'Assigned' : 'Needs an administrator'}</span></div>{admin ? <div className="branch-admin-detail"><b>{admin.name || 'Administrator'}</b><small>{admin.email || 'No email recorded'} · {lastActive(admin.lastLogin)}</small></div> : <p>Choose this branch above to assign an administrator.</p>}<small className="branch-coverage-list">Coverage: {areas.join(', ') || 'Not configured'}</small></article>; })}</div>}</section>
+    <section className="branch-directory branch-email-directory" aria-label="Administrator email management"><header><div><p>Administrator accounts</p><h2>Contact email addresses</h2><span>Editing an email does not change the administrator's account ID, branch, permissions, password, or authenticator.</span></div></header>{loading ? <p className="branch-empty">Loading administrator accounts…</p> : <div>{admins.map((admin) => <article key={admin.id}><div><strong>{admin.name || 'Administrator'}</strong><span>{admin.assignedBranch || 'Unassigned'}</span></div><label>Email address<input type="email" value={admin.email || ''} onChange={(event) => setAdmins((current) => current.map((item) => item.id === admin.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" disabled={savingEmailId === admin.id} /></label><button type="button" onClick={() => saveAdminEmail(admin)} disabled={Boolean(savingEmailId)}>{savingEmailId === admin.id ? 'Saving…' : 'Save email'}</button></article>)}</div>}</section>
   </SuperAdminLayout>;
 };
 

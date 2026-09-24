@@ -98,7 +98,7 @@ function EditAction({ onPress }) {
 
 export default function TechProfile() {
   const router = useRouter();
-  const { current, logout, updateMyAccount, changeMyPassword } = useUserContext();
+  const { current, logout, updateMyAccount, changeMyPassword, resetMyAuthenticator } = useUserContext();
   const displayName = getDisplayName(current);
   const [alias, setAlias] = useState(current?.alias || "");
   const [phone, setPhone] = useState(canonicalizePhMobile(current?.phone || ""));
@@ -106,6 +106,8 @@ export default function TechProfile() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isResettingAuthenticator, setIsResettingAuthenticator] = useState(false);
+  const [currentAuthenticatorCode, setCurrentAuthenticatorCode] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -158,6 +160,32 @@ export default function TechProfile() {
     } finally { setSaving(false); }
   };
 
+  const handleAuthenticatorReset = async () => {
+    if (saving) return;
+    if (!currentPassword || !/^\d{6}$/.test(currentAuthenticatorCode)) {
+      Alert.alert("Verification required", !currentPassword ? "Enter your current password." : "Enter the six-digit code from your current authenticator.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await resetMyAuthenticator({ currentPassword, currentCode: currentAuthenticatorCode });
+      if (!result.success) { Alert.alert("Authenticator not reset", result.error || "Please try again."); return; }
+      router.replace("/technician/oobe/reset");
+    } catch (error) {
+      Alert.alert("Authenticator not reset", error.message || "Please try again.");
+    } finally { setSaving(false); }
+  };
+
+  const openAuthenticatorManagement = () => {
+    if (!current?.security?.totpEnabled) {
+      router.push("/technician/oobe/reset");
+      return;
+    }
+    setIsEditing(false);
+    setIsChangingPassword(false);
+    setIsResettingAuthenticator(true);
+  };
+
   const handleLogout = () =>
     confirmAction({
       title: "Sign Out",
@@ -173,15 +201,15 @@ export default function TechProfile() {
   return (
     <TechnicianScreen
       title="Profile"
-      subtitle={isChangingPassword ? "Change your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
+      subtitle={isChangingPassword ? "Change your password" : isResettingAuthenticator ? "Change or reset your authenticator" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
       icon="person-sharp"
-      contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : 96 }}
+      contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword || isResettingAuthenticator ? 160 : 96 }}
       stickyAction={
-        isEditing || isChangingPassword ? (
+        isEditing || isChangingPassword || isResettingAuthenticator ? (
           <StickyActionBar>
             <TechButton
               title={saving ? "Saving..." : "Save Changes"}
-              onPress={isChangingPassword ? handlePasswordSave : handleSave}
+              onPress={isChangingPassword ? handlePasswordSave : isResettingAuthenticator ? handleAuthenticatorReset : handleSave}
               loading={saving}
               leftIcon={
                 <Ionicons name="save-sharp" size={18} color={COLORS.surface} />
@@ -190,7 +218,7 @@ export default function TechProfile() {
             <TechButton
               title="Cancel"
               disabled={saving}
-              onPress={() => { if (saving) return; setIsEditing(false); setIsChangingPassword(false); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
+              onPress={() => { if (saving) return; setIsEditing(false); setIsChangingPassword(false); setIsResettingAuthenticator(false); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); setCurrentAuthenticatorCode(""); }}
               variant="secondary"
             />
           </StickyActionBar>
@@ -208,6 +236,10 @@ export default function TechProfile() {
         <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
         <PasswordField label="New Password" value={password} onChangeText={setPassword} showRequirements editable={!saving} />
         <PasswordField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
+      </Card> : isResettingAuthenticator ? <Card>
+        <Text style={{ color: COLORS.textSecondary, lineHeight: 21, marginBottom: SPACING.sm }}>Verify your current password and authenticator code. Other sessions and old recovery codes will be revoked before you register a new authenticator.</Text>
+        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <TextField label="Current Authenticator Code" value={currentAuthenticatorCode} onChangeText={(value) => setCurrentAuthenticatorCode(value.replace(/\D/g, "").slice(0, 6))} keyboardType="number-pad" maxLength={6} showKeyboardDone editable={!saving} />
       </Card> : !isEditing ? (
         <>
           <Card>
@@ -261,6 +293,13 @@ export default function TechProfile() {
                   color={COLORS.textMuted}
                 />
               }
+            />
+            <SettingsRow
+              icon="shield-checkmark-sharp"
+              title="Authentication Change / Reset"
+              subtitle={current?.security?.totpEnabled ? "Replace the authenticator registered to this account." : "Set up an authenticator app for this account."}
+              onPress={openAuthenticatorManagement}
+              right={<Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} />}
             />
 
           </Card>

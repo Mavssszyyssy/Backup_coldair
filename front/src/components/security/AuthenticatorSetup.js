@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
+import { getRoleHomePath } from "../../domain/webRoleHome";
 import LoadingLogo from "../common/LoadingLogo";
 import "./AuthenticatorSetup.css";
 
 export default function AuthenticatorSetup() {
   const navigate = useNavigate();
-  const { completeAuthenticatorSetup } = useUser();
+  const { completeAuthenticatorSetup, userRole } = useUser();
+  const homePath = getRoleHomePath(userRole);
   const [setup, setSetup] = useState(null);
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
@@ -23,7 +25,7 @@ export default function AuthenticatorSetup() {
         const status = await apiRequest("/security/status");
         if (!active) return;
         if (status.security?.totpEnabled) {
-          navigate("/shop", { replace: true });
+          navigate(homePath, { replace: true });
           return;
         }
         const result = await apiRequest("/security/totp/setup", {
@@ -39,7 +41,7 @@ export default function AuthenticatorSetup() {
     };
     load();
     return () => { active = false; };
-  }, [navigate]);
+  }, [homePath, navigate]);
 
   const verify = async (event) => {
     event.preventDefault();
@@ -73,7 +75,11 @@ export default function AuthenticatorSetup() {
             <div className="authenticator-recovery-grid">
               {recoveryCodes.map((recoveryCode) => <code key={recoveryCode}>{recoveryCode}</code>)}
             </div>
-            <button type="button" className="authenticator-primary" onClick={() => navigate("/shop", { replace: true })}>
+            <button
+              type="button"
+              className="authenticator-primary"
+              onClick={() => navigate(homePath, { replace: true, state: { authenticatorSetupComplete: true } })}
+            >
               I saved my recovery codes
             </button>
           </>

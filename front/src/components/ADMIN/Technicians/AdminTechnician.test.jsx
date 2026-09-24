@@ -37,3 +37,25 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   await act(async () => finish({ loginIdentifier: 'tech.cavite.j.delacruz', tempPassword: 'cavite.j.delacruz' }));
   expect(screen.getByText(/was added/)).toBeInTheDocument();
 });
+
+test('superadmin can update a technician contact email without changing the login ID', async () => {
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=technician') return { users: [{ id: 'tech-carl', name: 'Carl Demo', alias: 'tech.cavite.carl', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3, email: 'old@example.com' }] };
+    if (path === '/tasks') return { tasks: [] };
+    if (path === '/users/tech-carl' && options?.method === 'PATCH') {
+      return { user: { id: 'tech-carl', name: 'Carl Demo', alias: 'tech.cavite.carl', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3, email: 'lanlords2025@gmail.com' } };
+    }
+    return {};
+  });
+  render(<AdminTechnician />);
+  const email = await screen.findByLabelText(/Email address/);
+  expect(screen.getByText('tech.cavite.carl')).toBeInTheDocument();
+  fireEvent.change(email, { target: { value: 'lanlords2025@gmail.com' } });
+  fireEvent.click(screen.getByText('Save email'));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/users/tech-carl', expect.objectContaining({
+    method: 'PATCH',
+    body: JSON.stringify({ email: 'lanlords2025@gmail.com' }),
+  })));
+  expect(await screen.findByText(/email was updated successfully/i)).toBeInTheDocument();
+  expect(screen.getByText('tech.cavite.carl')).toBeInTheDocument();
+});

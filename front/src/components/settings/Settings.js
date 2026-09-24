@@ -49,7 +49,8 @@ function Settings() {
     updatePrivacy,
     updateNotifications,
     updateSettings,
-    requestPasswordChangeEmail,
+    changePassword,
+    resetAuthenticator,
     deleteAccount,
     logout,
   } = useUser();
@@ -136,11 +137,11 @@ function Settings() {
       navigate("/login", { replace: true });
     }, "Account deleted successfully.");
 
-  const handleRequestPasswordChangeEmail = () =>
-    callWithToast(
-      () => requestPasswordChangeEmail(),
-      "Password change link sent to your email.",
-    );
+  const handleResetAuthenticator = async (payload) => {
+    const result = await resetAuthenticator(payload);
+    navigate("/security/setup-authenticator", { replace: true });
+    return result;
+  };
 
   const handleBack = () => {
     if (window.history.length > 2) {
@@ -294,7 +295,9 @@ function Settings() {
             {activeTab === "security" && (
               <AccountSettings
                 user={formattedUser}
-                onRequestPasswordChangeEmail={handleRequestPasswordChangeEmail}
+                onChangePassword={changePassword}
+                onResetAuthenticator={handleResetAuthenticator}
+                onBeginAuthenticatorSetup={() => navigate("/security/setup-authenticator")}
                 onDeleteAccount={handleDeleteAccount}
               />
             )}

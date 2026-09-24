@@ -29,7 +29,7 @@ export default function CustomerOobeScreen() {
   const [verifying, setVerifying] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const totpUri = totpSecret
-    ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.email || current?.alias || "customer")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
+    ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.alias || current?.username || current?.id || current?.email || "customer")}?secret=${encodeURIComponent(totpSecret)}&issuer=ColdAir`
     : "";
 
   useFocusEffect(

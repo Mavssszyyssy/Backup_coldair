@@ -10,11 +10,13 @@ vi.mock('./components/login/Login', () => ({ default: () => <p>Website sign-in f
 function Path() { return <output data-testid="path">{useLocation().pathname}</output>; }
 afterEach(cleanup);
 
-test.each(['/tech/dashboard', '/tech/tasks', '/tech/tasks/TSK-1', '/tech/field-registration?serial=QA-123', '/tech/profile', '/tech/profile/edit', '/login'])('retired destination %s displays mobile guidance, with no operational page or redirect loop', async (url) => {
+test.each(['/tech/dashboard', '/tech/tasks', '/tech/tasks/TSK-1', '/tech/field-registration?serial=QA-123', '/tech/profile', '/tech/profile/edit', '/login'])('retired destination %s displays account management and mobile work guidance without an operational page or redirect loop', async (url) => {
   session.isAuthenticated = true;
   session.userRole = 'technician';
   render(<MemoryRouter initialEntries={[url]}><AppContent /><Path /></MemoryRouter>);
-  expect(await screen.findByText('Technician access is mobile-only')).toBeInTheDocument();
+  expect(await screen.findByText('Technician Account Management')).toBeInTheDocument();
+  expect(screen.getByText('Profile / Account Information')).toBeInTheDocument();
+  expect(screen.getAllByText('Change Password').length).toBeGreaterThan(0);
   expect(screen.getByTestId('path')).toHaveTextContent('/technician-mobile');
   expect(screen.queryByText('Task Board')).toBeNull();
 });

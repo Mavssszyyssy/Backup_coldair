@@ -6,8 +6,11 @@ import TechProfile from '../app/technician/profile';
 import { validateAccountPassword } from '../utils/authValidation';
 const mockChange = jest.fn();
 const mockUpdate = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ replace: jest.fn() }), usePathname: () => '/technician/profile' }));
-jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate }) }));
+const mockResetAuthenticator = jest.fn();
+const mockReplace = jest.fn();
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }), usePathname: () => '/technician/profile' }));
+jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789', security: { totpEnabled: true } }, changeMyPassword: mockChange, updateMyAccount: mockUpdate, resetMyAuthenticator: mockResetAuthenticator }) }));
 
 test('technician contact editing normalizes formatted numbers, rejects excess digits, and allows retry', async () => {
   mockUpdate.mockReset().mockRejectedValueOnce(new Error('Connection interrupted'));
@@ -36,7 +39,7 @@ test('technician contact editing normalizes formatted numbers, rejects excess di
 test('technician password UI sends current and new password to the dedicated action', async () => {
   mockChange.mockResolvedValue({ success: true });
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
-  expect(screen.queryByText(/authenticator|recovery codes/i)).toBeNull();
+  expect(screen.getByText('Authentication Change / Reset')).toBeTruthy();
   await fireEvent.press(screen.getByText('Change Password'));
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'NewPass123!');
@@ -44,6 +47,17 @@ test('technician password UI sends current and new password to the dedicated act
   await fireEvent.press(screen.getByText('Save Changes'));
   await waitFor(() => expect(mockChange).toHaveBeenCalledWith({ currentPassword: 'OldPass123!', newPassword: 'NewPass123!' }));
   expect(mockUpdate).not.toHaveBeenCalled();
+});
+
+test('technician authenticator reset verifies the current account before opening setup', async () => {
+  mockResetAuthenticator.mockResolvedValue({ success: true });
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+  await fireEvent.press(screen.getByText('Authentication Change / Reset'));
+  await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
+  await fireEvent.changeText(screen.getByLabelText('Current Authenticator Code'), '123456');
+  await fireEvent.press(screen.getByText('Save Changes'));
+  await waitFor(() => expect(mockResetAuthenticator).toHaveBeenCalledWith({ currentPassword: 'OldPass123!', currentCode: '123456' }));
+  expect(mockReplace).toHaveBeenCalledWith('/technician/oobe/reset');
 });
 test('password validation agrees with server rules before submission', () => {
   for (const value of ['LongPassword123', 'onlylowercase!', 'A1!shor', 'Valid123! ', 'Valid123!\n', 'Valid123!\u0000']) expect(validateAccountPassword(value)).not.toBe('');

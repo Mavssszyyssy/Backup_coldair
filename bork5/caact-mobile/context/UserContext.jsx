@@ -459,6 +459,19 @@ export function UserProvider({ children }) {
     }
   };
 
+  const resetMyAuthenticator = async (payload) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    try {
+      const result = await api.resetTotpAuthenticator(token, payload);
+      if (!result.success) return result;
+      if (result.token) await storeToken(result.token);
+      if (result.user) setCurrent(normalizeUser(result.user));
+      return result;
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to reset the authenticator." };
+    }
+  };
+
   const completeTechnicianOnboarding = async (payload) => {
     if (!token) return { success: false, error: "Please sign in again." };
     try {
@@ -581,6 +594,7 @@ export function UserProvider({ children }) {
       updateMyAccount,
       completeTechnicianOnboarding,
       changeMyPassword,
+      resetMyAuthenticator,
       saveDeliveryAddress,
       deleteDeliveryAddress,
       makeDefaultDeliveryAddress,

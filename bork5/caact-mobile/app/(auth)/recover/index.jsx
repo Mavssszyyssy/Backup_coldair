@@ -11,21 +11,21 @@ import PageHeader from "../../../components/ui/PageHeader";
 import TextField from "../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../../constants/theme";
-import { normalizeEmail, validateEmail } from "../../../utils/authValidation";
+import { validateEmail } from "../../../utils/authValidation";
 
 export default function RecoverScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [errors, setErrors] = useState({});
 
   const handleSubmit = () => {
     const nextErrors = {};
 
-    if (!email.trim()) {
-      nextErrors.email = "Email is required.";
-    } else {
-      const emailError = validateEmail(email);
-      if (emailError) nextErrors.email = emailError;
+    if (!identifier.trim()) {
+      nextErrors.identifier = "Email or account login ID is required.";
+    } else if (identifier.includes("@")) {
+      const emailError = validateEmail(identifier);
+      if (emailError) nextErrors.identifier = emailError;
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -37,7 +37,7 @@ export default function RecoverScreen() {
     // channel.  Go directly to the working code-and-password step.
     router.push({
       pathname: "/recover/factor/1",
-      params: { email: normalizeEmail(email) },
+      params: { identifier: identifier.trim().toLowerCase() },
     });
   };
 
@@ -53,22 +53,21 @@ export default function RecoverScreen() {
       >
         <PageHeader
           title="Recover Account"
-          subtitle="Use your registered email to receive a verification code"
+          subtitle="Use your registered email or unique account login ID"
           color={COLORS.primary}
           onBack={() => router.push("/sign-in")}
         />
 
         <Card>
           <TextField
-            label="Email"
-            value={email}
+            label="Email or Account Login ID"
+            value={identifier}
             onChangeText={(v) => {
-              setEmail(v);
-              setErrors((prev) => ({ ...prev, email: "" }));
+              setIdentifier(v);
+              setErrors((prev) => ({ ...prev, identifier: "" }));
             }}
-            placeholder="you@example.com"
-            error={errors.email}
-            keyboardType="email-address"
+            placeholder="you@example.com or tech.cavite.name"
+            error={errors.identifier}
             autoCapitalize="none"
           />
         </Card>
