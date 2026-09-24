@@ -1,7 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
@@ -94,29 +104,34 @@ export default function CustomerChatScreen() {
       onBack={() => router.back()}
       contentContainerStyle={{ paddingTop: 0 }}
     >
-      <View style={{ flex: 1, minHeight: 0 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.screen}
+      >
         <FlatList
           ref={listRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingVertical: SPACING.sm, gap: SPACING.sm }}
+          style={styles.messageList}
+          contentContainerStyle={styles.messageListContent}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: true })}
           renderItem={({ item }) => {
             const fromUser = item.from === "user";
             return (
               <View style={{ alignItems: fromUser ? "flex-end" : "flex-start" }}>
                 <View
-                  style={{
-                    maxWidth: "88%",
-                    paddingHorizontal: SPACING.md,
-                    paddingVertical: SPACING.sm + 3,
-                    borderRadius: RADIUS.lg,
-                    backgroundColor: fromUser ? COLORS.primary : COLORS.surface,
-                    borderWidth: fromUser ? 0 : 1,
-                    borderColor: COLORS.border,
-                  }}
+                  style={[
+                    styles.messageBubble,
+                    fromUser ? styles.userBubble : styles.botBubble,
+                  ]}
                 >
-                  <Text style={{ color: fromUser ? "#FFFFFF" : COLORS.textPrimary, fontSize: FONT.base, lineHeight: 21 }}>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      { color: fromUser ? "#FFFFFF" : COLORS.textPrimary },
+                    ]}
+                  >
                     {item.text}
                   </Text>
                   {item.route ? (
@@ -136,32 +151,43 @@ export default function CustomerChatScreen() {
             );
           }}
           ListFooterComponent={sending ? (
-            <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.sm }}>
+            <View style={styles.thinkingRow}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={{ color: COLORS.textSecondary }}>AEROPULSE is thinking…</Text>
             </View>
           ) : null}
         />
 
-        <FlatList
-          horizontal
-          data={QUICK_QUESTIONS}
-          keyExtractor={(item) => item}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: SPACING.sm, paddingVertical: SPACING.sm }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => send(item)}
-              disabled={sending}
-              accessibilityRole="button"
-              style={{ borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, backgroundColor: COLORS.surface }}
-            >
-              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.sm }}>{item}</Text>
-            </Pressable>
-          )}
-        />
+        <View style={styles.quickSection}>
+          <Text style={styles.quickLabel}>Quick questions</Text>
+          <FlatList
+            horizontal
+            data={QUICK_QUESTIONS}
+            keyExtractor={(item) => item}
+            testID="quick-question-list"
+            style={styles.quickList}
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.quickListContent}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => send(item)}
+                disabled={sending}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.quickChip,
+                  sending && styles.controlDisabled,
+                  pressed && !sending && styles.quickChipPressed,
+                ]}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.primary} />
+                <Text numberOfLines={2} style={styles.quickText}>{item}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
 
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: SPACING.sm, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+        <View style={styles.composer}>
           <TextInput
             value={input}
             onChangeText={setInput}
@@ -171,7 +197,7 @@ export default function CustomerChatScreen() {
             placeholder="Ask about customer features…"
             placeholderTextColor={COLORS.textMuted}
             accessibilityLabel="Message AEROPULSE assistant"
-            style={{ flex: 1, maxHeight: 112, minHeight: 48, borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, paddingHorizontal: SPACING.md, paddingVertical: 12, color: COLORS.textPrimary, fontSize: FONT.base }}
+            style={styles.input}
           />
           <Pressable
             onPress={() => send(input)}
@@ -179,12 +205,135 @@ export default function CustomerChatScreen() {
             accessibilityRole="button"
             accessibilityLabel="Send message"
             accessibilityState={{ disabled: sending || !input.trim() }}
-            style={{ width: 48, height: 48, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: sending || !input.trim() ? "#CBD5E1" : COLORS.primary }}
+            style={[
+              styles.sendButton,
+              { backgroundColor: sending || !input.trim() ? "#CBD5E1" : COLORS.primary },
+            ]}
           >
             <Ionicons name="send-sharp" size={20} color="#FFFFFF" />
           </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </CustomerScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    minHeight: 0,
+  },
+  messageList: {
+    flex: 1,
+    minHeight: 0,
+  },
+  messageListContent: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  messageBubble: {
+    maxWidth: "88%",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm + 3,
+    borderRadius: RADIUS.lg,
+  },
+  botBubble: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderBottomLeftRadius: RADIUS.sm,
+  },
+  userBubble: {
+    backgroundColor: COLORS.primary,
+    borderBottomRightRadius: RADIUS.sm,
+  },
+  messageText: {
+    fontSize: FONT.base,
+    lineHeight: 21,
+  },
+  thinkingRow: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    padding: SPACING.sm,
+  },
+  quickSection: {
+    flexShrink: 0,
+    marginBottom: SPACING.sm,
+  },
+  quickLabel: {
+    marginBottom: SPACING.xs,
+    color: COLORS.textSecondary,
+    fontSize: FONT.sm,
+    fontWeight: FONT.bold,
+  },
+  quickList: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  quickListContent: {
+    gap: SPACING.sm,
+    paddingRight: SPACING.md,
+  },
+  quickChip: {
+    width: 224,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderInput,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
+  },
+  quickChipPressed: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  quickText: {
+    flex: 1,
+    color: COLORS.textPrimary,
+    fontSize: FONT.sm,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+  controlDisabled: {
+    opacity: 0.55,
+  },
+  composer: {
+    flexShrink: 0,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: SPACING.sm,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  input: {
+    flex: 1,
+    minHeight: 48,
+    maxHeight: 112,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderInput,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    color: COLORS.textPrimary,
+    fontSize: FONT.base,
+    lineHeight: 20,
+  },
+  sendButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: RADIUS.md,
+  },
+});

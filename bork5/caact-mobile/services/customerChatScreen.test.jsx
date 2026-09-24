@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import CustomerChatScreen from "../app/customer/chat";
 
 const mockPush = jest.fn();
@@ -37,4 +38,15 @@ test("mobile customer chat sends the question to AI and maps its page action", a
   }));
   fireEvent.press(screen.getByText("Open page"));
   expect(mockPush).toHaveBeenCalledWith("/customer/orders");
+});
+
+test("mobile customer chat keeps quick questions compact instead of stretching vertically", async () => {
+  await render(<CustomerChatScreen />);
+
+  const quickList = screen.getByTestId("quick-question-list");
+  expect(StyleSheet.flatten(quickList.props.style)).toEqual(expect.objectContaining({
+    flexGrow: 0,
+    flexShrink: 0,
+  }));
+  expect(screen.getByText("Quick questions")).toBeTruthy();
 });
