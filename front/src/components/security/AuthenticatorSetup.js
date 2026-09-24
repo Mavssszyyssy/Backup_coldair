@@ -24,7 +24,7 @@ export default function AuthenticatorSetup() {
       try {
         const status = await apiRequest("/security/status");
         if (!active) return;
-        if (status.security?.totpEnabled) {
+        if (status.security?.totpEnabled && !status.security?.totpResetRequired) {
           navigate(homePath, { replace: true });
           return;
         }

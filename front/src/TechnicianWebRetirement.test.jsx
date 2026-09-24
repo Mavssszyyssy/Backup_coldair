@@ -4,7 +4,8 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
 import { AppContent } from './App';
 
-const session = vi.hoisted(() => ({ isAuthenticated: true, loading: false, userRole: 'technician', logout: vi.fn(), hideAuthRequiredPrompt: vi.fn() }));
+const enrolledTechnician = { role: 'technician', security: { totpEnabled: true } };
+const session = vi.hoisted(() => ({ isAuthenticated: true, loading: false, userRole: 'technician', user: { role: 'technician', security: { totpEnabled: true } }, logout: vi.fn(), hideAuthRequiredPrompt: vi.fn() }));
 vi.mock('./context/UserContext', () => ({ useUser: () => session, UserProvider: ({ children }) => children }));
 vi.mock('./components/login/Login', () => ({ default: () => <p>Website sign-in fixture</p> }));
 function Path() { return <output data-testid="path">{useLocation().pathname}</output>; }
@@ -13,6 +14,7 @@ afterEach(cleanup);
 test.each(['/tech/dashboard', '/tech/tasks', '/tech/tasks/TSK-1', '/tech/field-registration?serial=QA-123', '/tech/profile', '/tech/profile/edit', '/login'])('retired destination %s displays account management and mobile work guidance without an operational page or redirect loop', async (url) => {
   session.isAuthenticated = true;
   session.userRole = 'technician';
+  session.user = enrolledTechnician;
   render(<MemoryRouter initialEntries={[url]}><AppContent /><Path /></MemoryRouter>);
   expect(await screen.findByText('Technician Account Management')).toBeInTheDocument();
   expect(screen.getByText('Profile / Account Information')).toBeInTheDocument();
@@ -23,7 +25,9 @@ test.each(['/tech/dashboard', '/tech/tasks', '/tech/tasks/TSK-1', '/tech/field-r
 
 test('technician can leave the guidance screen and return to website sign-in', async () => {
   session.isAuthenticated = true;
-  session.logout.mockImplementation(() => { session.isAuthenticated = false; session.userRole = null; });
+  session.userRole = 'technician';
+  session.user = enrolledTechnician;
+  session.logout.mockImplementation(() => { session.isAuthenticated = false; session.userRole = null; session.user = null; });
   render(<MemoryRouter initialEntries={['/technician-mobile']}><AppContent /><Path /></MemoryRouter>);
   fireEvent.click(screen.getByText('Sign out and use another account'));
   expect(session.logout).toHaveBeenCalled();

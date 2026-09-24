@@ -10,6 +10,7 @@ import TextField from "../../../components/ui/TextField";
 import PasswordField from "../../../components/ui/PasswordField";
 import { COLORS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
+import { requiredSetupRoute } from "../../../services/accountSetupRoute";
 import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../../utils/authValidation";
 
 export default function TechnicianOobe() {
@@ -21,7 +22,9 @@ export default function TechnicianOobe() {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  if (current && !current.isFirstLogin) return <Redirect href="/technician/home" />;
+  if (current && !current.isFirstLogin) {
+    return <Redirect href={requiredSetupRoute(current) || "/technician/home"} />;
+  }
 
   const switchAccount = async () => { if (saving) return; await logout(); router.replace("/sign-in"); };
   const handleSubmit = async () => {

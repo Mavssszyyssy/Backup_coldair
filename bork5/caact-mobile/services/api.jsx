@@ -400,10 +400,11 @@ export async function me(token) {
 // Password reset
 // ---------------------------------------------------------------------------
 
-export async function forgotPassword(identifier, channel = "email") {
+export async function forgotPassword(identifier, channel = "email", accountLoginId = "") {
   const { ok, data } = await post("/auth/forgot-password", {
     identifier,
     channel,
+    ...(accountLoginId ? { accountLoginId } : {}),
   });
   if (ok) return { success: true, message: data.message };
   return { success: false, error: getErrorMessage(data, "Request failed.") };
@@ -420,10 +421,11 @@ export async function verifyOtp(email, code) {
   return { success: false, error: getErrorMessage(data, "Invalid OTP.") };
 }
 
-export async function resetPassword(identifier, code, newPassword, channel = "email") {
+export async function resetPassword(identifier, code, newPassword, channel = "email", accountLoginId = "") {
   const { ok, data } = await post("/auth/reset-password", {
     identifier,
     channel,
+    ...(accountLoginId ? { accountLoginId } : {}),
     code,
     newPassword,
   });

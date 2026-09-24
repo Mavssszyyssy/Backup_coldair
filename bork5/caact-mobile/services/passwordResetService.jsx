@@ -5,9 +5,9 @@
 import * as api from "./api";
 import { normalizeEmail } from "../utils/authValidation";
 
-export async function requestPasswordResetOtp(email, roleType = "customer") {
+export async function requestPasswordResetOtp(email, roleType = "customer", accountLoginId = "") {
   const normalized = normalizeEmail(email);
-  const result = await api.forgotPassword(normalized, "email");
+  const result = await api.forgotPassword(normalized, "email", accountLoginId);
 
   if (!result.success) {
     throw new Error(result.error || "Failed to send OTP.");
@@ -21,13 +21,14 @@ export async function requestPasswordResetOtp(email, roleType = "customer") {
   };
 }
 
-export async function resetPasswordWithOtp(email, otpCode, newPassword) {
+export async function resetPasswordWithOtp(email, otpCode, newPassword, accountLoginId = "") {
   const normalized = normalizeEmail(email);
   const result = await api.resetPassword(
     normalized,
     String(otpCode || "").trim(),
     String(newPassword || ""),
     "email",
+    accountLoginId,
   );
 
   if (!result.success) {

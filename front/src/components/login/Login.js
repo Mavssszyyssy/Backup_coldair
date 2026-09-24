@@ -10,6 +10,7 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
+import { requiresTotpEnrollment } from "../../domain/accountSecurityPolicy";
 import { getRoleHomePath } from "../../domain/webRoleHome";
 
 const getCustomerLoginDestination = (location) => {
@@ -71,7 +72,7 @@ function Login() {
         return;
       }
       setLoading(false);
-      if (loggedInUser?.role === "customer" && !loggedInUser?.security?.totpEnabled) {
+      if (requiresTotpEnrollment(loggedInUser)) {
         navigate("/security/setup-authenticator", { replace: true });
         return;
       }

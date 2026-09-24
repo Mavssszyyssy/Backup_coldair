@@ -22,6 +22,8 @@ export default function AuthenticatorRecoveryScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const isInitialEnrollment = !current?.security?.totpEnabled
+    && !current?.security?.totpResetRequired;
   useEffect(() => {
     let active = true;
     setLoading(true); setError("");
@@ -51,7 +53,13 @@ export default function AuthenticatorRecoveryScreen() {
   const uri = secret ? `otpauth://totp/ColdAir:${encodeURIComponent(current?.alias || current?.username || current?.id || current?.email || "account")}?secret=${encodeURIComponent(secret)}&issuer=ColdAir` : "";
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={132}>
-      <PageHeader title="Reset Authenticator App" subtitle="Secure your account with a new authenticator" onBack={switchAccount} />
+      <PageHeader
+        title={isInitialEnrollment ? "Set Up Authenticator App" : "Reset Authenticator App"}
+        subtitle={isInitialEnrollment
+          ? "Authenticator verification is required before you can use this account"
+          : "Secure your account with a new authenticator"}
+        onBack={switchAccount}
+      />
       <Card>
         <Text>Scan the QR code or enter this setup key in your authenticator app. Then enter the new six-digit code below.</Text>
         <Text>Keep this setup key private. Your account stays restricted until verification is complete.</Text>

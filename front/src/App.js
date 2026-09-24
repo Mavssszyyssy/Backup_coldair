@@ -19,6 +19,7 @@ const OwnerAmpDashboard = lazyWithReload(() => import("./components/AMP/OwnerAmp
 const LegalPolicyPage = lazyWithReload(() => import("./components/legal/LegalPolicyPage"), "LegalPolicyPage");
 const AuthenticatorSetup = lazyWithReload(() => import("./components/security/AuthenticatorSetup"), "AuthenticatorSetup");
 import TechnicianMobileNotice from "./components/common/TechnicianMobileNotice";
+import { requiresTotpEnrollment, roleRequiresTotp } from "./domain/accountSecurityPolicy";
 import { getRoleHomePath, TECHNICIAN_MOBILE_NOTICE_PATH } from "./domain/webRoleHome";
 const SuperAdminAlerts = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"), "SuperAdminAlerts");
 const SuperAdminBranches = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"), "SuperAdminBranches");
@@ -65,7 +66,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (userRole === "customer" && allowedRoles.includes("customer") && !user?.security?.totpEnabled) {
+  if (requiresTotpEnrollment({ role: userRole, security: user?.security })) {
     return <Navigate to="/security/setup-authenticator" replace />;
   }
 
@@ -81,7 +82,7 @@ const AuthenticatedAuthenticatorSetupRoute = ({ children }) => {
   const location = useLocation();
   if (loading) return <div className="loading-screen"><LoadingLogo /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (!["customer", "technician"].includes(userRole)) return <Navigate to={getRoleHomePath(userRole)} replace />;
+  if (!roleRequiresTotp(userRole)) return <Navigate to={getRoleHomePath(userRole)} replace />;
   return children;
 };
 
@@ -108,7 +109,7 @@ const HomeRoute = ({ children }) => {
     return <div className="loading-screen"><LoadingLogo /></div>;
   }
 
-  if (isAuthenticated && userRole === "customer" && !user?.security?.totpEnabled) {
+  if (isAuthenticated && requiresTotpEnrollment({ role: userRole, security: user?.security })) {
     return <Navigate to="/security/setup-authenticator" replace />;
   }
 

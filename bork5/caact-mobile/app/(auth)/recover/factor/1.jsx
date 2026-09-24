@@ -22,23 +22,32 @@ import {
   validatePasswordStrength,
 } from "../../../../utils/authValidation";
 
+const SHARED_DEMO_EMAIL = "lanlords2025@gmail.com";
+
 export default function RecoverPasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const rawIdentifier = params.identifier || params.email || "";
   const identifier = Array.isArray(rawIdentifier) ? rawIdentifier[0] : rawIdentifier;
+  const usesSharedDemoEmail = String(identifier || "").trim().toLowerCase() === SHARED_DEMO_EMAIL;
 
   const [phase, setPhase] = useState("send"); // "send" | "verify" | "done"
   const [loading, setLoading] = useState(false);
+  const [accountLoginId, setAccountLoginId] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
 
   const handleSendCode = async () => {
+    const selectedAccountLoginId = accountLoginId.trim().toLowerCase();
+    if (usesSharedDemoEmail && !selectedAccountLoginId) {
+      setErrors({ accountLoginId: "Enter the unique login ID for the demo account you want to recover." });
+      return;
+    }
     setLoading(true);
     try {
-      const result = await forgotPassword(identifier, "email");
+      const result = await forgotPassword(identifier, "email", selectedAccountLoginId);
       if (result.success) {
         setPhase("verify");
       } else {
@@ -83,6 +92,7 @@ export default function RecoverPasswordScreen() {
         otp.trim(),
         newPassword,
         "email",
+        usesSharedDemoEmail ? accountLoginId.trim().toLowerCase() : "",
       );
       if (!resetResult.success) {
         const message = resetResult.error || "Unable to reset password.";
@@ -139,6 +149,21 @@ export default function RecoverPasswordScreen() {
             editable={false}
             style={{ color: COLORS.textMuted }}
           />
+          {usesSharedDemoEmail && (
+            <TextField
+              label="Demo Account Login ID"
+              value={accountLoginId}
+              onChangeText={(value) => {
+                setAccountLoginId(value);
+                setErrors((previous) => ({ ...previous, accountLoginId: "" }));
+              }}
+              placeholder="admin.cavite or tech.cavite.carl"
+              autoCapitalize="none"
+              editable={phase === "send"}
+              error={errors.accountLoginId}
+              helperText="Required because this demo inbox belongs to five separate accounts."
+            />
+          )}
         </Card>
 
         {phase === "send" && (

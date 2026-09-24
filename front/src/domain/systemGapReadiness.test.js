@@ -5,14 +5,17 @@ import { describe, expect, test } from "vitest";
 const source = (relativePath) => fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 
 describe("cross-surface readiness gaps", () => {
-  test("customer protected routes require authenticator setup", () => {
+  test("customer and staff protected routes require authenticator setup", () => {
     const app = source("src/App.js");
     const login = source("src/components/login/Login.js");
     const setup = source("src/components/security/AuthenticatorSetup.js");
+    const policy = source("src/domain/accountSecurityPolicy.js");
     expect(app).toContain("/security/setup-authenticator");
-    expect(app).toContain("!user?.security?.totpEnabled");
-    expect(app).toContain('isAuthenticated && userRole === "customer"');
-    expect(login).toContain("loggedInUser?.security?.totpEnabled");
+    expect(app).toContain("requiresTotpEnrollment({ role: userRole, security: user?.security })");
+    expect(login).toContain("requiresTotpEnrollment(loggedInUser)");
+    for (const role of ["customer", "technician", "admin", "superadmin"]) {
+      expect(policy).toContain(`\"${role}\"`);
+    }
     expect(setup).toContain("/security/recovery-codes/regenerate");
   });
 

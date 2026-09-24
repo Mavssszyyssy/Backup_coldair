@@ -550,11 +550,6 @@ export function UserProvider({ children }) {
     const normalized = normalizeUser(user);
     const setupRoute = requiredSetupRoute(normalized);
     if (setupRoute) return setupRoute;
-    if (normalized.role !== "technician" && normalized.security?.totpResetRequired) {
-      return normalized.role === "technician"
-        ? "/technician/oobe/reset"
-        : "/customer/oobe/reset";
-    }
     if (String(normalized.status || "active").toLowerCase() !== "active") {
       return "/sign-in";
     }
