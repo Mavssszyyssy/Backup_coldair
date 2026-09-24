@@ -20,13 +20,14 @@ import {
 
 export function LoginScreen() {
   const router = useRouter();
-  const { login, verifyTotpLogin } = useUserContext();
+  const { login, verifyEmailLogin, resendLoginEmail } = useUserContext();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [challengeToken, setChallengeToken] = useState("");
-  const [authenticatorCode, setAuthenticatorCode] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -37,9 +38,9 @@ export function LoginScreen() {
     if (submitting) return;
 
     const nextErrors = challengeToken
-      ? (/^\d{6}$/.test(authenticatorCode)
+      ? (/^\d{6}$/.test(verificationCode)
         ? {}
-        : { authenticatorCode: "Enter the six-digit code from your authenticator app." })
+        : { verificationCode: "Enter the six-digit code sent to your email." })
       : validateLoginForm(form);
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
@@ -47,11 +48,12 @@ export function LoginScreen() {
     setSubmitting(true);
     try {
       const result = challengeToken
-        ? await verifyTotpLogin(challengeToken, authenticatorCode)
+        ? await verifyEmailLogin(challengeToken, verificationCode)
         : await login(normalizeEmail(form.email), form.password);
 
-      if (result.requiresTotp) {
+      if (result.requiresEmailVerification) {
         setChallengeToken(result.challengeToken);
+        setMaskedEmail(result.maskedEmail || "your account email");
         setErrors({});
         return;
       }
@@ -63,7 +65,7 @@ export function LoginScreen() {
       }
 
       setErrors(challengeToken
-        ? { authenticatorCode: result.error || "Incorrect authenticator code." }
+        ? { verificationCode: result.error || "Incorrect or expired email code." }
         : {
           email: result.error || " ",
           password: result.error || "Check your username and password, then try again.",
@@ -87,23 +89,23 @@ export function LoginScreen() {
       >
         <PageHeader
           title="Sign in"
-          subtitle={challengeToken ? "Verify your authenticator code" : "Sign in to your account"}
+          subtitle={challengeToken ? `Enter the code sent to ${maskedEmail}` : "Sign in to your account"}
           color={COLORS.primary}
         />
 
         <Card>
           {challengeToken ? (
             <TextField
-              label="Six-digit authenticator code"
-              value={authenticatorCode}
+              label="Email verification code"
+              value={verificationCode}
               onChangeText={(value) => {
-                setAuthenticatorCode(value.replace(/\D/g, "").slice(0, 6));
+                setVerificationCode(value.replace(/\D/g, "").slice(0, 6));
                 setErrors({});
               }}
               keyboardType="number-pad"
               maxLength={6}
               placeholder="000000"
-              error={errors.authenticatorCode}
+              error={errors.verificationCode}
             />
           ) : (
             <>
@@ -137,7 +139,8 @@ export function LoginScreen() {
           <TouchableOpacity
             onPress={() => {
               setChallengeToken("");
-              setAuthenticatorCode("");
+              setVerificationCode("");
+              setMaskedEmail("");
               setErrors({});
             }}
             style={{ alignItems: "center", marginTop: SPACING.sm }}
@@ -148,14 +151,28 @@ export function LoginScreen() {
           </TouchableOpacity>
         ) : null}
 
+        {challengeToken ? (
+          <TouchableOpacity
+            onPress={async () => {
+              if (submitting) return;
+              setSubmitting(true);
+              const result = await resendLoginEmail(challengeToken);
+              if (result.challengeToken) setChallengeToken(result.challengeToken);
+              setErrors(result.success ? {} : { verificationCode: result.error || "Unable to resend the code." });
+              setSubmitting(false);
+            }}
+            style={{ alignItems: "center", marginTop: SPACING.sm }}
+          >
+            <Text style={{ color: COLORS.primary, fontWeight: "600" }}>Resend code</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <TouchableOpacity
-          onPress={() => challengeToken
-            ? router.push({ pathname: "/recover/factor/2", params: { email: normalizeEmail(form.email) } })
-            : router.push("/recover")}
+          onPress={() => router.push("/recover")}
           style={{ alignItems: "center", marginTop: SPACING.md }}
         >
           <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            {challengeToken ? "I don't have my authenticator" : "Forgot Password?"}
+            Forgot Password?
           </Text>
         </TouchableOpacity>
 

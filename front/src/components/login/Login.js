@@ -10,7 +10,6 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
-import { requiresTotpEnrollment } from "../../domain/accountSecurityPolicy";
 import { getRoleHomePath } from "../../domain/webRoleHome";
 
 const getCustomerLoginDestination = (location) => {
@@ -27,7 +26,7 @@ const getCustomerLoginDestination = (location) => {
 };
 
 function Login() {
-  const { login, verifyLoginTotp } = useUser();
+  const { login, verifyLoginEmail, resendLoginEmail } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -36,7 +35,8 @@ function Login() {
   const [authMessage, setAuthMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [challengeToken, setChallengeToken] = useState("");
-  const [authenticatorCode, setAuthenticatorCode] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
 
   useEffect(() => {
     setAuthMessage("");
@@ -62,20 +62,17 @@ function Login() {
     setLoading(true);
     try {
       const loggedInUser = challengeToken
-        ? await verifyLoginTotp(challengeToken, authenticatorCode)
+        ? await verifyLoginEmail(challengeToken, verificationCode)
         : await login(user.identifier, user.password);
-      if (loggedInUser?.requiresTotp) {
+      if (loggedInUser?.requiresEmailVerification) {
         setChallengeToken(loggedInUser.challengeToken);
-        setAuthenticatorCode("");
+        setVerificationCode("");
+        setMaskedEmail(loggedInUser.maskedEmail || "your account email");
         setErrors({});
         setLoading(false);
         return;
       }
       setLoading(false);
-      if (requiresTotpEnrollment(loggedInUser)) {
-        navigate("/security/setup-authenticator", { replace: true });
-        return;
-      }
       navigate(
         loggedInUser?.role === "customer"
           ? getCustomerLoginDestination(location)
@@ -84,8 +81,22 @@ function Login() {
       );
     } catch (err) {
       setErrors(challengeToken
-        ? { authenticatorCode: err.message }
+        ? { verificationCode: err.message }
         : { password: err.message });
+      setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    setLoading(true);
+    setErrors({});
+    try {
+      const result = await resendLoginEmail(challengeToken);
+      if (result?.challengeToken) setChallengeToken(result.challengeToken);
+      setAuthMessage(result?.message || "A new sign-in code was sent.");
+    } catch (error) {
+      setErrors({ verificationCode: error.message || "Unable to resend the sign-in code." });
+    } finally {
       setLoading(false);
     }
   };
@@ -135,28 +146,32 @@ function Login() {
           onForgotPassword={() => navigate("/forgot-password")}
         /> : (
           <form className="bq-login-step" onSubmit={(event) => { event.preventDefault(); authenticateUser(); }}>
+            <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>
+              Enter the six-digit code sent to {maskedEmail}.
+            </BoutiqueText>
             <BoutiqueInput
-              label="Six-digit authenticator code"
+              label="Email verification code"
               icon={Key}
               inputMode="numeric"
               maxLength="6"
               placeholder="000000"
-              value={authenticatorCode}
+              value={verificationCode}
               onChange={(event) => {
-                setAuthenticatorCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6));
                 setErrors({});
               }}
-              status={errors.authenticatorCode ? "error" : null}
-              errorMessage={errors.authenticatorCode}
+              status={errors.verificationCode ? "error" : null}
+              errorMessage={errors.verificationCode}
               required
             />
-            <button type="submit" className="bq-login-btn bq-login-btn--primary" disabled={loading || authenticatorCode.length !== 6}>
+            <button type="submit" className="bq-login-btn bq-login-btn--primary" disabled={loading || verificationCode.length !== 6}>
               {loading ? "Verifying..." : "Verify and Sign In"}
             </button>
+            <button type="button" className="bq-login-forgot" onClick={resendCode} disabled={loading}>Resend code</button>
             <button
               type="button"
               className="bq-login-forgot"
-              onClick={() => { setChallengeToken(""); setAuthenticatorCode(""); setErrors({}); }}
+              onClick={() => { setChallengeToken(""); setVerificationCode(""); setMaskedEmail(""); setErrors({}); }}
             >
               Use a different account
             </button>

@@ -3,7 +3,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import CustomerSettingsScreen from "../app/customer/settings";
 
 const mockChangePassword = jest.fn();
-const mockResetAuthenticator = jest.fn();
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockCustomer = {
@@ -14,7 +13,6 @@ const mockCustomer = {
   alias: "pat.customer",
   email: "pat@example.com",
   addresses: [],
-  security: { totpEnabled: true },
 };
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }) }));
@@ -24,7 +22,6 @@ jest.mock("../context/UserContext", () => ({
     logout: jest.fn(),
     updateMyAccount: jest.fn(),
     changeMyPassword: mockChangePassword,
-    resetMyAuthenticator: mockResetAuthenticator,
     saveDeliveryAddress: jest.fn(),
     deleteDeliveryAddress: jest.fn(),
   }),
@@ -41,7 +38,6 @@ jest.mock("./philippineAddressService", () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockChangePassword.mockResolvedValue({ success: true });
-  mockResetAuthenticator.mockResolvedValue({ success: true });
 });
 
 test("customer mobile changes a password with current-password verification", async () => {
@@ -55,12 +51,7 @@ test("customer mobile changes a password with current-password verification", as
   expect(await screen.findByText("Password changed successfully.")).toBeTruthy();
 });
 
-test("customer mobile resets only its verified authenticator and continues to existing setup", async () => {
+test("customer mobile explains email sign-in verification without another security setup action", async () => {
   await render(<CustomerSettingsScreen />);
-  await fireEvent.press(screen.getByRole("button", { name: "Authentication Change / Reset" }));
-  await fireEvent.changeText(screen.getByLabelText("Current Password"), "OldPass123!");
-  await fireEvent.changeText(screen.getByLabelText("Current Authenticator Code"), "123456");
-  await fireEvent.press(screen.getByRole("button", { name: "Reset Authenticator" }));
-  await waitFor(() => expect(mockResetAuthenticator).toHaveBeenCalledWith({ currentPassword: "OldPass123!", currentCode: "123456" }));
-  expect(mockReplace).toHaveBeenCalledWith("/customer/oobe/reset");
+  expect(screen.getByText(/verify the code sent to your email/i)).toBeTruthy();
 });

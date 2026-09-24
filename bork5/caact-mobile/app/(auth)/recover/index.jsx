@@ -75,15 +75,6 @@ export default function RecoverScreen() {
         <Button title="Continue" onPress={handleSubmit} variant="primary" />
 
         <TouchableOpacity
-          onPress={() => router.push("/recover/factor/2")}
-          style={{ alignItems: "center", marginTop: SPACING.md }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Use a Recovery Code Instead
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           onPress={() => router.push("/sign-in")}
           style={{ alignItems: "center", marginTop: SPACING.sm }}
         >

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
+import { COMPANY_PROFILE } from "../../../config/company";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
 import { exportHtmlToPdfViaPrint, exportToExcel, formatReportValue } from "../../../utils/exporters";
@@ -8,13 +9,7 @@ import AdminLayout from "../Common/AdminLayout";
 import SuperAdminLayout from "../../SUPERADMIN/Common/SuperAdminLayout";
 import "./AdminReports.css";
 
-const COMPANY = {
-  name: "Cold Air Airconditioning Trading",
-  address: "Block 2 Lot 1, Amaresa Subd., Brgy. Guijo, Francisco Homes, San Jose del Monte City, 3023 Bulacan",
-  proprietor: "Percival III M. Balmores – Proprietor",
-  contact: "(0969) 336 1590",
-  taxRegistration: "TIN 451 318 429",
-};
+const COMPANY = COMPANY_PROFILE;
 
 const TABS = [
   { id: "intelligence", label: "Business Intelligence" },

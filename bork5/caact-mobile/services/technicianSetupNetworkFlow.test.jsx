@@ -17,16 +17,17 @@ jest.mock('../components/technician/TechnicianBottomNav', () => () => null);
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null), setItem: jest.fn().mockResolvedValue(), removeItem: jest.fn().mockResolvedValue() }));
 
 test('real screens, session and API client recover a committed setup after a lost HTTP response', async () => {
-  let user = { id: 'tech-fixture', username: 'tech.cavite.fixture', role: 'technician', isFirstLogin: true, security: { totpEnabled: false } };
+  let user = { id: 'tech-fixture', username: 'tech.cavite.fixture', role: 'technician', isFirstLogin: true };
   const response = (status, data) => ({ ok: status < 400, status, json: async () => data });
   const writes = [];
   apiFetch.mockImplementation(async (path, options) => {
-    if (path === '/auth/login') return response(200, { token: 'fixture-token', user });
+    if (path === '/auth/login') return response(200, { requiresEmailVerification: true, challengeToken: 'email-challenge', maskedEmail: 'la***@gmail.com' });
+    if (path === '/auth/login/verify-email') return response(200, { token: 'fixture-token', user });
     if (path === '/auth/me') return response(200, { user });
     if (path === '/users/password') {
       writes.push(JSON.parse(options.body));
       if (writes.length === 1) return response(409, { message: 'Phone number is already in use.' });
-      user = { ...user, isFirstLogin: false, technicianOnboardedAt: '2026-09-08', security: { totpEnabled: false } };
+      user = { ...user, isFirstLogin: false, technicianOnboardedAt: '2026-09-08' };
       throw new Error('Server committed but response was lost');
     }
     throw new Error(`Unexpected fixture request: ${path}`);
@@ -36,12 +37,13 @@ test('real screens, session and API client recover a committed setup after a los
     _layout: () => <UserProvider><CartProvider><Stack /></CartProvider></UserProvider>,
     '(auth)/_layout': AuthLayout, '(auth)/sign-in': Login,
     'technician/_layout': TechnicianLayout, 'technician/oobe/index': TechnicianOobe,
-    'technician/oobe/reset': () => <Text>Authenticator setup fixture</Text>,
     'technician/home': () => <Text>Technician work home</Text>,
   }, { initialUrl: '/sign-in' });
   await fireEvent.changeText(await screen.findByPlaceholderText('you@example.com or your username'), 'tech.cavite.fixture');
   await fireEvent.changeText(screen.getByLabelText('Password'), 'initial.fixture');
   await fireEvent.press(screen.getByText('Sign In'));
+  await fireEvent.changeText(await screen.findByPlaceholderText('000000'), '123456');
+  await fireEvent.press(screen.getByText('Verify and Sign In'));
   await screen.findByText('Technician Setup');
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '09123456789');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'Abcdef1#');
@@ -51,11 +53,10 @@ test('real screens, session and API client recover a committed setup after a los
   expect(screen.getByLabelText('New Password').props.value).toBe('Abcdef1#');
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '09987654321');
   await fireEvent.press(screen.getByText('Save and Continue'));
-  await screen.findByText('Authenticator setup fixture');
+  await screen.findByText('Technician work home');
   expect(writes).toEqual([
     { phone: '09123456789', newPassword: 'Abcdef1#' },
     { phone: '09987654321', newPassword: 'Abcdef1#' },
   ]);
-  expect(screen.queryByText('Technician work home')).toBeNull();
   alert.mockRestore();
 }, 15000);

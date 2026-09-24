@@ -69,7 +69,6 @@ export default function CustomerLayout() {
         <Stack.Screen name="contact" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="oobe/index" />
-        <Stack.Screen name="oobe/reset" />
       </Stack>
       {showBottomNav ? <BottomNav /> : null}
     </View>

@@ -194,12 +194,15 @@ export async function login(identifier, password) {
     email: identifier,
     password,
   });
-  if (ok && data.requiresTotp) {
+  if (ok && data.requiresEmailVerification) {
     return {
       success: false,
-      requiresTotp: true,
+      requiresEmailVerification: true,
       challengeToken: data.challengeToken,
-      message: data.message || "Enter your authenticator code.",
+      maskedEmail: data.maskedEmail,
+      expiresAt: data.expiresAt,
+      resendAvailableAt: data.resendAvailableAt,
+      message: data.message || "Enter the code sent to your account email.",
     };
   }
   if (ok) return { success: true, token: data.token, user: data.user };
@@ -277,41 +280,6 @@ export async function register({
   };
 }
 
-export async function startRegistration(email) {
-  const { ok, data } = await post("/auth/register/start", { email });
-  if (ok) {
-    return {
-      success: true,
-      email: data.email,
-      secret: data.secret || "",
-      provisioningUri: data.provisioningUri || "",
-      verifiedCode: data.verifiedCode || "",
-    };
-  }
-  return {
-    success: false,
-    error: getErrorMessage(data, "Unable to start email verification."),
-  };
-}
-
-export async function verifyRegistrationCode({ email, code, secret }) {
-  const { ok, data } = await post("/auth/register/verify", {
-    email,
-    code,
-    secret,
-  });
-  if (ok) {
-    return {
-      success: true,
-      registrationProgress: data.registrationProgress,
-    };
-  }
-  return {
-    success: false,
-    error: getErrorMessage(data, "Verification failed. Check your code."),
-  };
-}
-
 export async function checkAliasAvailability(alias) {
   const query = encodeURIComponent(String(alias || "").trim());
   const { ok, data } = await get(`/auth/check-alias?alias=${query}`);
@@ -366,7 +334,12 @@ export async function verifyRegistrationOtp({
     messenger_handle,
     code,
   });
-  if (ok) return { success: true, message: data.message };
+  if (ok) return {
+    success: true,
+    message: data.message,
+    registrationProgress: data.registrationProgress || null,
+    registrationVerificationToken: data.registrationVerificationToken || "",
+  };
   return {
     success: false,
     error: getErrorMessage(data, "Invalid or expired code."),
@@ -406,19 +379,17 @@ export async function forgotPassword(identifier, channel = "email", accountLogin
     channel,
     ...(accountLoginId ? { accountLoginId } : {}),
   });
-  if (ok) return { success: true, message: data.message };
-  return { success: false, error: getErrorMessage(data, "Request failed.") };
-}
-
-export async function verifyOtp(email, code) {
-  const { ok, data } = await post("/auth/verify-otp", {
-    email,
-    code,
-    action: "password_reset",
-    channel: "email",
-  });
-  if (ok) return { success: true };
-  return { success: false, error: getErrorMessage(data, "Invalid OTP.") };
+  if (ok) return {
+    success: true,
+    message: data.message,
+    expiresAt: data.expiresAt || "",
+    resendAvailableAt: data.resendAvailableAt || "",
+  };
+  return {
+    success: false,
+    error: getErrorMessage(data, "Request failed."),
+    retryAfterSeconds: data.retryAfterSeconds,
+  };
 }
 
 export async function resetPassword(identifier, code, newPassword, channel = "email", accountLoginId = "") {
@@ -500,13 +471,19 @@ export async function updateProfile(token, payload) {
   };
 }
 
-export async function verifyLoginTotp(challengeToken, code) {
-  const { ok, data } = await post("/auth/login/totp", { challengeToken, code });
+export async function verifyLoginEmail(challengeToken, code) {
+  const { ok, data } = await post("/auth/login/verify-email", { challengeToken, code });
   if (ok) return { success: true, token: data.token, user: data.user };
   return {
     success: false,
-    error: getErrorMessage(data, "Authenticator verification failed."),
+    error: getErrorMessage(data, "Email verification failed."),
   };
+}
+
+export async function resendLoginEmail(challengeToken) {
+  const { ok, data } = await post("/auth/login/resend-email", { challengeToken });
+  if (ok) return { success: true, ...data };
+  return { success: false, error: getErrorMessage(data, "Unable to resend the sign-in code."), retryAfterSeconds: data.retryAfterSeconds };
 }
 
 export async function changeAccountPassword(token, payload) {
@@ -1132,83 +1109,4 @@ export async function updateAmpRoomSize(token, unitId, roomSizeSqm) {
   const { ok, data } = await patch(`/amp/units/${encodeURIComponent(unitId)}/room-size`, { roomSizeSqm }, token);
   if (ok) return { success: true, unit: data.unit, recommendation: data.recommendation };
   return { success: false, error: getErrorMessage(data, "Unable to update room size.") };
-}
-
-// ---------------------------------------------------------------------------
-// Security and recovery
-// ---------------------------------------------------------------------------
-
-export async function fetchRecoveryCodes(token) {
-  const { ok, data } = await get("/security/recovery-codes", token);
-  if (ok) return { success: true, codes: data.codes || [], security: data.security || {} };
-  return { success: false, error: data.error || "Failed to fetch recovery codes." };
-}
-
-export async function regenerateRecoveryCodes(token) {
-  const { ok, data } = await post("/security/recovery-codes/regenerate", {}, token);
-  if (ok) return { success: true, codes: data.codes || [], security: data.security || {} };
-  return { success: false, error: data.error || "Failed to regenerate recovery codes." };
-}
-
-export async function consumeRecoveryCode(identifier, code) {
-  const { ok, data } = await post("/security/recovery-codes/consume", {
-    identifier,
-    email: identifier,
-    code,
-  });
-  if (ok) return {
-    success: true,
-    token: data.token,
-    user: data.user,
-    requiresTotpReset: Boolean(data.requiresTotpReset),
-    recoveryDestination: data.recoveryDestination,
-  };
-  return { success: false, error: data.error || "Invalid recovery code." };
-}
-
-export async function fetchTotpSecret(token) {
-  const { ok, data } = await post("/security/totp/setup", {}, token);
-  if (ok) return {
-    success: true,
-    secret: data.secret || "",
-    provisioningUri: data.provisioningUri || "",
-    security: data.security || {},
-  };
-  return { success: false, error: data.error || "Failed to fetch TOTP secret." };
-}
-
-export async function regenerateTotpSecret(token) {
-  const { ok, data } = await post("/security/totp/setup", { regenerate: true }, token);
-  if (ok) return {
-    success: true,
-    secret: data.secret || "",
-    provisioningUri: data.provisioningUri || "",
-    security: data.security || {},
-  };
-  return { success: false, error: data.error || "Failed to regenerate TOTP secret." };
-}
-
-export async function fetchSecurityStatus(token) {
-  const { ok, data } = await get("/security/status", token);
-  if (ok) return { success: true, security: data.security || {} };
-  return { success: false, error: getErrorMessage(data, "Unable to load account security.") };
-}
-
-export async function verifyTotpSetup(token, code) {
-  const { ok, data } = await post("/security/totp/verify", { code }, token);
-  if (ok) return { success: true, security: data.security || {}, user: data.user, token: data.token };
-  return { success: false, error: getErrorMessage(data, "Incorrect authenticator code.") };
-}
-
-export async function resetTotpAuthenticator(token, payload) {
-  const { ok, data } = await post("/security/totp/reset", payload, token);
-  if (ok) return {
-    success: true,
-    security: data.security || {},
-    user: data.user,
-    token: data.token,
-    requiresTotpReset: Boolean(data.requiresTotpReset),
-    message: data.message,
-  };
-  return { success: false, error: getErrorMessage(data, "Unable to reset the authenticator.") };
 }

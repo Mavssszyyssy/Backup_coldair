@@ -4,8 +4,8 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
 import { AppContent } from './App';
 
-const enrolledTechnician = { role: 'technician', security: { totpEnabled: true } };
-const session = vi.hoisted(() => ({ isAuthenticated: true, loading: false, userRole: 'technician', user: { role: 'technician', security: { totpEnabled: true } }, logout: vi.fn(), hideAuthRequiredPrompt: vi.fn() }));
+const enrolledTechnician = { role: 'technician' };
+const session = vi.hoisted(() => ({ isAuthenticated: true, loading: false, userRole: 'technician', user: { role: 'technician' }, logout: vi.fn(), hideAuthRequiredPrompt: vi.fn() }));
 vi.mock('./context/UserContext', () => ({ useUser: () => session, UserProvider: ({ children }) => children }));
 vi.mock('./components/login/Login', () => ({ default: () => <p>Website sign-in fixture</p> }));
 function Path() { return <output data-testid="path">{useLocation().pathname}</output>; }

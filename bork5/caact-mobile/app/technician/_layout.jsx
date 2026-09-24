@@ -47,7 +47,6 @@ export default function TechnicianLayout() {
         <Stack.Screen name="index" options={{ title: "Technician" }} />
         <Stack.Screen name="home" options={{ title: "Dashboard" }} />
         <Stack.Screen name="oobe/index" options={{ title: "Technician Setup" }} />
-        <Stack.Screen name="oobe/reset" options={{ title: "Reset Setup" }} />
         <Stack.Screen name="dashboard" options={{ title: "Dashboard" }} />
         <Stack.Screen name="notifications" options={{ title: "Alerts" }} />
         <Stack.Screen name="tasks" options={{ title: "My Work Orders" }} />

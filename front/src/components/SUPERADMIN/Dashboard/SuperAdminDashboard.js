@@ -120,7 +120,6 @@ function SuperAdminDashboard() {
           <section className="commerce-panel">
             <div className="commerce-panel-header"><div><h2>Executive controls</h2><p>Open a business area for the next decision.</p></div></div>
             <div className="commerce-action-grid">
-              <button type="button" onClick={() => navigate("/superadmin/sales")}>Sales operations</button>
               <button type="button" onClick={() => navigate("/superadmin/branches")}>Branch management</button>
               <button type="button" onClick={() => navigate("/superadmin/inventory")}>Inventory risk</button>
               <button type="button" onClick={() => navigate("/superadmin/alerts")}>Operations alerts</button>

@@ -17,12 +17,12 @@ import {
 import { resolveNotificationRoute } from "./notificationRouteService";
 
 describe("mobile customer readiness rules", () => {
-  test("account recovery is backend-authoritative and has no device-local fallback", () => {
-    const source = fs.readFileSync(path.join(__dirname, "customerSecurityService.jsx"), "utf8");
-    expect(source).not.toContain("AsyncStorage");
-    expect(source).not.toContain("Math.random");
-    expect(source).toContain("api.consumeRecoveryCode");
-    expect(source).toContain("api.verifyTotpSetup");
+  test("email verification is backend-authoritative and has no device-local fallback", () => {
+    const apiSource = fs.readFileSync(path.join(__dirname, "api.jsx"), "utf8");
+    const contextSource = fs.readFileSync(path.join(__dirname, "../context/UserContext.jsx"), "utf8");
+    expect(apiSource).toContain("challengeToken");
+    expect(contextSource).toContain("api.verifyLoginEmail(challengeToken, code)");
+    expect(contextSource).toContain("api.resendLoginEmail(challengeToken)");
   });
 
   test("ZIP code is required and must match the selected city", () => {
@@ -146,15 +146,15 @@ describe("mobile customer readiness rules", () => {
     expect(ordersSource).toContain("Model: {formatCartModel(item)}");
   });
 
-  test("authenticator login uses clear recovery wording", () => {
+  test("login uses clear email verification and account recovery wording", () => {
     const loginSource = fs.readFileSync(
       path.join(__dirname, "..", "app", "(auth)", "login.jsx"),
       "utf8",
     );
     expect(loginSource).toContain("I have a different account");
-    expect(loginSource).toContain("I don't have my authenticator");
+    expect(loginSource).toContain("Resend code");
     expect(loginSource).toContain("I don't have an account");
-    expect(loginSource).toContain('pathname: "/recover/factor/2"');
+    expect(loginSource).toContain('router.push("/recover")');
   });
 
   test("pending warranties explain automatic activation without an acceptance action", () => {

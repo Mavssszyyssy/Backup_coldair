@@ -1,5 +1,5 @@
 // app/(auth)/recover/factor/1.jsx
-// Password recovery — send OTP, then enter OTP + new password.
+// Password recovery — send an email code, then enter it with a new password.
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Text, TouchableOpacity } from "react-native";
@@ -34,7 +34,7 @@ export default function RecoverPasswordScreen() {
   const [phase, setPhase] = useState("send"); // "send" | "verify" | "done"
   const [loading, setLoading] = useState(false);
   const [accountLoginId, setAccountLoginId] = useState("");
-  const [otp, setOtp] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
@@ -52,8 +52,8 @@ export default function RecoverPasswordScreen() {
         setPhase("verify");
       } else {
         Alert.alert(
-          "Not Found",
-          result.error || "No account found with this email address.",
+          "Unable to Send Code",
+          result.error || "The email verification code could not be sent. Please try again.",
         );
       }
     } catch {
@@ -65,8 +65,8 @@ export default function RecoverPasswordScreen() {
 
   const handleReset = async () => {
     const nextErrors = {};
-    if (!otp.trim() || !/^\d{6}$/.test(otp.trim())) {
-      nextErrors.otp = "Enter the 6-digit reset code sent to your email.";
+    if (!verificationCode.trim() || !/^\d{6}$/.test(verificationCode.trim())) {
+      nextErrors.verificationCode = "Enter the 6-digit reset code sent to your email.";
     }
     const passwordError = validatePassword(newPassword);
     if (passwordError) {
@@ -85,11 +85,11 @@ export default function RecoverPasswordScreen() {
 
     setLoading(true);
     try {
-      // Reset validates and consumes the OTP in one request. Verifying it in
+      // Reset validates and consumes the email code in one request. Verifying it in
       // a separate request would invalidate a one-time code before reset.
       const resetResult = await resetPassword(
         identifier,
-        otp.trim(),
+        verificationCode.trim(),
         newPassword,
         "email",
         usesSharedDemoEmail ? accountLoginId.trim().toLowerCase() : "",
@@ -100,8 +100,8 @@ export default function RecoverPasswordScreen() {
           ? "newPassword"
           : /match/i.test(message)
             ? "confirmPassword"
-            : /code|otp|verification|expired/i.test(message)
-              ? "otp"
+            : /code|verification|expired/i.test(message)
+              ? "verificationCode"
               : "";
         if (field) setErrors({ [field]: message });
         Alert.alert(
@@ -181,15 +181,15 @@ export default function RecoverPasswordScreen() {
             <Card>
               <TextField
                 label="Reset Code"
-                value={otp}
+                value={verificationCode}
                 onChangeText={(v) => {
-                  setOtp(v.replace(/\D/g, "").slice(0, 6));
-                  setErrors((prev) => ({ ...prev, otp: "" }));
+                  setVerificationCode(v.replace(/\D/g, "").slice(0, 6));
+                  setErrors((prev) => ({ ...prev, verificationCode: "" }));
                 }}
                 placeholder="6-digit code from your email"
                 keyboardType="number-pad"
                 maxLength={6}
-                error={errors.otp}
+                error={errors.verificationCode}
               />
             </Card>
             <Card>
@@ -221,6 +221,13 @@ export default function RecoverPasswordScreen() {
               loading={loading}
               disabled={loading}
             />
+            <TouchableOpacity
+              onPress={handleSendCode}
+              disabled={loading}
+              style={{ alignItems: "center", marginTop: SPACING.sm }}
+            >
+              <Text style={{ color: COLORS.primary, fontWeight: "600" }}>Resend Code</Text>
+            </TouchableOpacity>
           </>
         )}
 

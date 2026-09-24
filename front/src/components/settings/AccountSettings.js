@@ -12,8 +12,6 @@ import AccountSecurityManagement from "../security/AccountSecurityManagement";
 function AccountSettings({
   user,
   onChangePassword,
-  onResetAuthenticator,
-  onBeginAuthenticatorSetup,
   onDeleteAccount,
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -54,8 +52,6 @@ function AccountSettings({
         <AccountSecurityManagement
           user={user}
           onChangePassword={onChangePassword}
-          onResetAuthenticator={onResetAuthenticator}
-          onBeginAuthenticatorSetup={onBeginAuthenticatorSetup}
         />
 
         <BoutiqueStack gap={16}>

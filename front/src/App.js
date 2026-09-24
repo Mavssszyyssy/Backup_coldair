@@ -17,15 +17,12 @@ const AdminSettings = lazyWithReload(() => import("./components/ADMIN/Settings/A
 const ManagerAmpDashboard = lazyWithReload(() => import("./components/AMP/ManagerAmpDashboard"), "ManagerAmpDashboard");
 const OwnerAmpDashboard = lazyWithReload(() => import("./components/AMP/OwnerAmpDashboard"), "OwnerAmpDashboard");
 const LegalPolicyPage = lazyWithReload(() => import("./components/legal/LegalPolicyPage"), "LegalPolicyPage");
-const AuthenticatorSetup = lazyWithReload(() => import("./components/security/AuthenticatorSetup"), "AuthenticatorSetup");
 import TechnicianMobileNotice from "./components/common/TechnicianMobileNotice";
-import { requiresTotpEnrollment, roleRequiresTotp } from "./domain/accountSecurityPolicy";
 import { getRoleHomePath, TECHNICIAN_MOBILE_NOTICE_PATH } from "./domain/webRoleHome";
 const SuperAdminAlerts = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"), "SuperAdminAlerts");
 const SuperAdminBranches = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"), "SuperAdminBranches");
 const SuperAdminDashboard = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminDashboard"), "SuperAdminDashboard");
 const SuperAdminInventory = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminInventory"), "SuperAdminInventory");
-const SuperAdminSales = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSales"), "SuperAdminSales");
 const SuperAdminServices = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminServices"), "SuperAdminServices");
 const SuperAdminSettings = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSettings"), "SuperAdminSettings");
 const SuperAdminProfile = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminProfile"), "SuperAdminProfile");
@@ -45,7 +42,6 @@ import MyUnit from "./components/myunit/MyUnit";
 import MyOrders from "./components/orders/MyOrders";
 import ReceiptView from "./components/receipt/ReceiptView";
 import ForgotPassword from "./components/recover/ForgotPassword";
-import ResetPassword from "./components/recover/ResetPassword";
 import Register from "./components/register/Register";
 import Services from "./components/services/Services";
 import Settings from "./components/settings/Settings";
@@ -55,7 +51,7 @@ import { CartProvider } from "./context/CartContext";
 import { UserProvider, useUser } from "./context/UserContext";
 
 const RoleRoute = ({ allowedRoles, children }) => {
-  const { isAuthenticated, loading, user, userRole } = useUser();
+  const { isAuthenticated, loading, userRole } = useUser();
   const location = useLocation();
 
   if (loading) {
@@ -66,24 +62,11 @@ const RoleRoute = ({ allowedRoles, children }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (requiresTotpEnrollment({ role: userRole, security: user?.security })) {
-    return <Navigate to="/security/setup-authenticator" replace />;
-  }
-
   return allowedRoles.includes(userRole) ? (
     children
   ) : (
     <Navigate to={getRoleHomePath(userRole)} replace />
   );
-};
-
-const AuthenticatedAuthenticatorSetupRoute = ({ children }) => {
-  const { isAuthenticated, loading, userRole } = useUser();
-  const location = useLocation();
-  if (loading) return <div className="loading-screen"><LoadingLogo /></div>;
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (!roleRequiresTotp(userRole)) return <Navigate to={getRoleHomePath(userRole)} replace />;
-  return children;
 };
 
 // Public Route wrapper redirects signed-in customers to the catalogue.
@@ -103,14 +86,10 @@ const PublicRoute = ({ children }) => {
 
 // Home Route - Accessible to both authenticated and unauthenticated users
 const HomeRoute = ({ children }) => {
-  const { isAuthenticated, loading, user, userRole } = useUser();
+  const { loading } = useUser();
 
   if (loading) {
     return <div className="loading-screen"><LoadingLogo /></div>;
-  }
-
-  if (isAuthenticated && requiresTotpEnrollment({ role: userRole, security: user?.security })) {
-    return <Navigate to="/security/setup-authenticator" replace />;
   }
 
   return children;
@@ -133,14 +112,12 @@ export function AppContent() {
   }
 
   const hiddenChatbotRoutes = ["/login", "/register", "/forgot-password", "/privacy"];
-  const isResetPasswordRoute = location.pathname.startsWith("/reset-password/");
   const isTermsRoute = location.pathname.startsWith("/terms");
   const shouldShowCustomerChatbot =
     isAuthenticated &&
     userRole === "customer" &&
     !hiddenChatbotRoutes.includes(location.pathname) &&
-    !isTermsRoute &&
-    !isResetPasswordRoute;
+    !isTermsRoute;
 
   return (
     <>
@@ -166,7 +143,6 @@ export function AppContent() {
           }
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
         {/* Public legal documents used during registration and checkout. */}
         <Route path="/terms" element={<Navigate to="/terms/app" replace />} />
         <Route
@@ -184,10 +160,6 @@ export function AppContent() {
         <Route
           path="/privacy"
           element={<LegalPolicyPage policyId="privacy" />}
-        />
-        <Route
-          path="/security/setup-authenticator"
-          element={<AuthenticatedAuthenticatorSetupRoute><AuthenticatorSetup /></AuthenticatedAuthenticatorSetupRoute>}
         />
         {/* Home route - accessible to both authenticated and unauthenticated users */}
         <Route
@@ -440,14 +412,6 @@ export function AppContent() {
           element={
             <RoleRoute allowedRoles={["superadmin"]}>
               <SuperAdminBranches />
-            </RoleRoute>
-          }
-        />
-        <Route
-          path="/superadmin/sales"
-          element={
-            <RoleRoute allowedRoles={["superadmin"]}>
-              <SuperAdminSales />
             </RoleRoute>
           }
         />

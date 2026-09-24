@@ -53,8 +53,7 @@ navigation:
                           - Score < 65: Weak
                           - Score < 100: Good
                           - Score ≥ 100: Excellent
-                      - TOTP Verification: sent to the user's email
-                        debug: show card above the form displaying TOTP secret in text and QR form # this is what the link sent to the user's email would've contained
+                      - Email Verification: six-digit code sent to the user's email
                 - /sign-up/step/2:
                     details:
                       - Contact Method: # one or the other
@@ -62,34 +61,18 @@ navigation:
                             debug: show card above the form displaying the code sent to the user's mobile number # this is what the code sent to the user's mobile number would've been
                           - Facebook Messenger Handle: # requires them to first message the company's Facebook page
                             debug: show card above the form displaying the code sent to the user's Facebook Messenger handle # this is what the code sent to the user's Facebook Messenger handle would've been
-        - /recover: # [recover sign-in alias, reset password, use recovery code] flow, prompts user to enter email to receive reset code
+        - /recover: # reset password through an account-bound code sent to the registered email
           routes:
-            - /recover/factor: # bottom sheet prompting user between alias recovery, password recovery, and recovery code entry
-                - /recover/factor/0: # alias recovery
+            - /recover/factor/1: # password recovery
                   details:
-                    - Email
-                  debug: show card above the form displaying sign-in alias # this is what would be sent to the user's email
-                - /recover/factor/1: # password recovery
-                  details:
-                    - Email
-                  debug: show card above the form displaying password reset code
-                - /recover/factor/2: # recovery code entry
-                  details:
-                    - Email
-                    - Recovery Code
+                    - Email or unique account login ID
+                    - Email verification code
+                    - New password and confirmation
       method_of_navigation: none # stack-based, programmatic only
 
     - layout: app/customer/_layout.tsx
       desired_url_routes:
-        - /oobe: # onboarding flow for customers
-          displays:
-            - 6 12 alpha-numeric single-use recovery codes
-          special_routes:
-            - /oobe/reset: # when recovery code is used to sign in, goes through the same TOTP onboarding flow as (auth)/sign-up but includes the TOTP secret
-              displays:
-                - TOTP secret in text and QR form
-              details:
-                - TOTP code
+        - /oobe: # onboarding flow for customers after verified registration
         - /home # displays all AC units registered under the account, if none, prompts the user to go buy at "coldair-act.online" ;; keep that link as a constant somewhere
         - /orders: # displays all orders placed by the customer from the website, if none, prompts the user to go buy at "coldair-act.online"
             - has a corresponding service request id
@@ -107,10 +90,6 @@ navigation:
             - Sign-in Alias
             - Contact number
             - Password (+ confirm)
-          displays:
-            - 6 12 alpha-numeric single-use recovery codes
-          special_routes:
-            - /oobe/reset # same as customer/oobe/reset
         - /home # displays current unit(s) being serviced, if none, prompts the user to go to /tasks
         - /tasks # lists all tasks, filtered by unit or status
         - /task/<id>/information # displays general information about the task, including unit details -- unit details include warranty status, history, and other relevant information based on the customer-submitted service request form
@@ -120,7 +99,7 @@ navigation:
             - /task/<id>/unit/log/generate-qr # creates QR codes for newly installed units, only available if type of service is "delivery"
         - /task/<id>/unit/log/update # same as insert, but pre-populated with existing log data for editing; only available while task is active
         - /task/<id>/unit/log/delete # modal prompt, confirms deletion of log entry
-        - /profile # they can change their sign-in alias, contact number, password, refresh their recovery codes
+        - /profile # they can change their sign-in alias, contact number, and password
 
     - layout: app/manager/_layout.tsx # just do a blank screen saying "login working but not implemented" with a log out button
 
@@ -137,6 +116,18 @@ navigation:
     - unauthorized access redirects to LOGIN or role-appropriate home
 
 authentication:
+  verification:
+    method: account-bound email verification code
+    applies_to:
+      - login
+      - registration
+      - password recovery
+    protections:
+      - expiration
+      - resend cooldown
+      - request rate limiting
+      - one-time use
+      - account and purpose binding
   user_context:
     storage_keys:
       users: auth_users

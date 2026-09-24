@@ -50,7 +50,6 @@ function Settings() {
     updateNotifications,
     updateSettings,
     changePassword,
-    resetAuthenticator,
     deleteAccount,
     logout,
   } = useUser();
@@ -136,12 +135,6 @@ function Settings() {
       await deleteAccount(payload);
       navigate("/login", { replace: true });
     }, "Account deleted successfully.");
-
-  const handleResetAuthenticator = async (payload) => {
-    const result = await resetAuthenticator(payload);
-    navigate("/security/setup-authenticator", { replace: true });
-    return result;
-  };
 
   const handleBack = () => {
     if (window.history.length > 2) {
@@ -296,8 +289,6 @@ function Settings() {
               <AccountSettings
                 user={formattedUser}
                 onChangePassword={changePassword}
-                onResetAuthenticator={handleResetAuthenticator}
-                onBeginAuthenticatorSetup={() => navigate("/security/setup-authenticator")}
                 onDeleteAccount={handleDeleteAccount}
               />
             )}

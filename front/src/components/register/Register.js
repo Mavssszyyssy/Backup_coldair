@@ -182,7 +182,7 @@ export default function Register() {
 
       await register(payload);
       removeEncrypted(STORAGE_KEY);
-      navigate("/security/setup-authenticator", { replace: true });
+      navigate("/shop", { replace: true });
     } catch (err) {
       setSubmissionError(err.message || "Registration failed.");
     } finally {

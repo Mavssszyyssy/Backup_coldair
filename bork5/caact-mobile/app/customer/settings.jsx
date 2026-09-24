@@ -103,7 +103,6 @@ export default function CustomerSettingsScreen() {
     logout,
     updateMyAccount,
     changeMyPassword,
-    resetMyAuthenticator,
     saveDeliveryAddress,
     deleteDeliveryAddress,
   } = useUserContext();
@@ -118,7 +117,6 @@ export default function CustomerSettingsScreen() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [currentAuthenticatorCode, setCurrentAuthenticatorCode] = useState("");
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [localities, setLocalities] = useState([]);
@@ -222,7 +220,6 @@ export default function CustomerSettingsScreen() {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    setCurrentAuthenticatorCode("");
     setProfileErrors({});
     setAddressErrors({});
   };
@@ -244,33 +241,6 @@ export default function CustomerSettingsScreen() {
       setNotice("Password changed successfully.");
       closeEditor();
     } finally { setSaving(false); }
-  };
-
-  const resetAuthenticator = async () => {
-    if (!currentPassword) {
-      Alert.alert("Verification required", "Enter your current password.");
-      return;
-    }
-    if (!/^\d{6}$/.test(currentAuthenticatorCode)) {
-      Alert.alert("Verification required", "Enter the six-digit code from your current authenticator.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const result = await resetMyAuthenticator({ currentPassword, currentCode: currentAuthenticatorCode });
-      if (!result.success) return Alert.alert("Authenticator not reset", result.error || "Please try again.");
-      router.replace("/customer/oobe/reset");
-    } finally { setSaving(false); }
-  };
-
-  const openAuthenticatorManagement = () => {
-    if (!current?.security?.totpEnabled) {
-      router.push("/customer/oobe/reset");
-      return;
-    }
-    setAddressForm(null);
-    setEditingProfile(false);
-    setSecurityMode("authenticator");
   };
 
   const selectRegion = (item) => {
@@ -420,9 +390,9 @@ export default function CustomerSettingsScreen() {
     Alert.alert("Sign Out", "Sign out of this customer account?", [{ text: "Cancel", style: "cancel" }, { text: "Sign Out", style: "destructive", onPress: performLogout }]);
   };
 
-  const subtitle = securityMode === "password" ? "Change your password" : securityMode === "authenticator" ? "Change or reset your authenticator" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
-  const saveCurrentEditor = securityMode === "password" ? savePassword : securityMode === "authenticator" ? resetAuthenticator : isEditingAddress ? saveAddress : saveProfile;
-  const saveTitle = securityMode === "password" ? "Change Password" : securityMode === "authenticator" ? "Reset Authenticator" : isEditingAddress ? "Save Address" : "Save Account";
+  const subtitle = securityMode === "password" ? "Change your password" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
+  const saveCurrentEditor = securityMode === "password" ? savePassword : isEditingAddress ? saveAddress : saveProfile;
+  const saveTitle = securityMode === "password" ? "Change Password" : isEditingAddress ? "Save Address" : "Save Account";
   return (
     <CustomerScreen
       title="Account"
@@ -447,7 +417,7 @@ export default function CustomerSettingsScreen() {
         </Section>
         <Section title="Security & Session">
           <CustomerSettingsRow icon="key-sharp" title="Change Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
-          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Authentication Change / Reset" subtitle={current?.security?.totpEnabled ? "Replace the authenticator registered to this account." : "Set up an authenticator app for this account."} onPress={openAuthenticatorManagement} />
+          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Email Sign-in Verification" subtitle="After your password is accepted, verify the code sent to your email." />
           <CustomerSettingsRow icon="log-out-sharp" title="Sign Out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
         <Section title="Help & Support">
@@ -458,10 +428,6 @@ export default function CustomerSettingsScreen() {
         <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
         <PasswordField label="New Password" value={newPassword} onChangeText={setNewPassword} showRequirements editable={!saving} />
         <PasswordField label="Confirm New Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
-      </Section> : securityMode === "authenticator" ? <Section title="Authentication Change / Reset">
-        <Text style={{ color: COLORS.textSecondary, lineHeight: 21, marginBottom: SPACING.sm }}>Verify your current password and authenticator code. Other sessions and old recovery codes will be revoked before you register a new authenticator.</Text>
-        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
-        <TextField label="Current Authenticator Code" value={currentAuthenticatorCode} onChangeText={(value) => setCurrentAuthenticatorCode(value.replace(/\D/g, "").slice(0, 6))} keyboardType="number-pad" maxLength={6} showKeyboardDone editable={!saving} />
       </Section> : isEditingAddress ? <>
         <Section title="Address details">
           <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import SuperAdminProfile from './SuperAdminProfile';
 import SuperAdminBranches from './SuperAdminBranches';
@@ -22,7 +23,7 @@ test('superadmin profile submits the edited contact email and refreshes through 
     updateProfile,
     changePassword: vi.fn(),
   });
-  render(<SuperAdminProfile />);
+  render(<MemoryRouter><SuperAdminProfile /></MemoryRouter>);
   const email = screen.getByLabelText(/Email address/);
   expect(email).not.toHaveAttribute('readonly');
   fireEvent.change(email, { target: { value: 'lanlords2025@gmail.com' } });

@@ -147,7 +147,7 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify({ identifier, password }),
     });
-    if (result.requiresTotp) return result;
+    if (result.requiresEmailVerification) return result;
     const userBranch =
       result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
@@ -160,8 +160,8 @@ export const UserProvider = ({ children }) => {
     return result.user;
   };
 
-  const verifyLoginTotp = async (challengeToken, code) => {
-    const result = await apiRequest("/auth/login/totp", {
+  const verifyLoginEmail = async (challengeToken, code) => {
+    const result = await apiRequest("/auth/login/verify-email", {
       method: "POST",
       body: JSON.stringify({ challengeToken, code }),
     });
@@ -175,20 +175,10 @@ export const UserProvider = ({ children }) => {
     return result.user;
   };
 
-  const completeAuthenticatorSetup = async (code) => {
-    const result = await apiRequest("/security/totp/verify", {
+  const resendLoginEmail = async (challengeToken) => apiRequest("/auth/login/resend-email", {
       method: "POST",
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ challengeToken }),
     });
-    const nextUser = result.user;
-    const userBranch = nextUser?.activeBranch || nextUser?.assignedBranch || "";
-    saveSession(result.token, nextUser, userBranch);
-    setUser(nextUser);
-    setUserRole(nextUser?.role || null);
-    setCurrentSession(nextUser);
-    setIsAuthenticated(true);
-    return nextUser;
-  };
 
   const register = async (userData) => {
     const result = await apiRequest("/auth/register", {
@@ -311,28 +301,6 @@ export const UserProvider = ({ children }) => {
     });
   };
 
-  const resetAuthenticator = async ({ currentPassword = "", currentCode = "" } = {}) => {
-    const result = await apiRequest("/security/totp/reset", {
-      method: "POST",
-      body: JSON.stringify({ currentPassword, currentCode }),
-    });
-    const nextUser = result.user;
-    const userBranch = nextUser?.activeBranch || nextUser?.assignedBranch || "";
-    saveSession(result.token, nextUser, userBranch);
-    setUser(nextUser);
-    setUserRole(nextUser?.role || null);
-    setCurrentSession(nextUser);
-    setIsAuthenticated(true);
-    return result;
-  };
-
-  const requestPasswordChangeEmail = async () => {
-    return apiRequest("/users/password/request-email", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-  };
-
   const deleteAccount = async (payload = {}) => {
     const result = await apiRequest("/users/account", {
       method: "DELETE",
@@ -374,8 +342,8 @@ export const UserProvider = ({ children }) => {
     loginPromptMessage,
     register,
     login,
-    verifyLoginTotp,
-    completeAuthenticatorSetup,
+    verifyLoginEmail,
+    resendLoginEmail,
     logout,
     updateProfile,
     synchronizeAddresses,
@@ -384,8 +352,6 @@ export const UserProvider = ({ children }) => {
     updateNotifications,
     updateSettings,
     changePassword,
-    resetAuthenticator,
-    requestPasswordChangeEmail,
     deleteAccount,
     showAuthRequiredPrompt,
     hideAuthRequiredPrompt,

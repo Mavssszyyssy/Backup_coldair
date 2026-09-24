@@ -10,22 +10,28 @@ import AuthLayout from '../app/(auth)/_layout';
 import Login from '../app/(auth)/login';
 import TechnicianLayout from '../app/technician/_layout';
 import TechnicianOobe from '../app/technician/oobe/index';
-jest.mock('../services/api', () => ({ login: jest.fn().mockResolvedValue({ success: true, token: 'fixture-token', user: { id: 'fixture', username: 'tech.cavite.lebron', role: 'technician', isFirstLogin: true, technicianOnboardedAt: null, security: { totpEnabled: false } } }), completeTechnicianOnboarding: jest.fn().mockResolvedValue({ success: true, user: { id: 'fixture', role: 'technician', isFirstLogin: false, technicianOnboardedAt: '2026-09-08', security: { totpEnabled: false } } }) }));
+jest.mock('../services/api', () => ({
+  login: jest.fn().mockResolvedValue({ success: false, requiresEmailVerification: true, challengeToken: 'email-challenge', maskedEmail: 'la***@gmail.com' }),
+  verifyLoginEmail: jest.fn().mockResolvedValue({ success: true, token: 'fixture-token', user: { id: 'fixture', username: 'tech.cavite.lebron', role: 'technician', isFirstLogin: true, technicianOnboardedAt: null } }),
+  resendLoginEmail: jest.fn().mockResolvedValue({ success: true }),
+  completeTechnicianOnboarding: jest.fn().mockResolvedValue({ success: true, user: { id: 'fixture', role: 'technician', isFirstLogin: false, technicianOnboardedAt: '2026-09-08' } }),
+}));
 jest.mock('../services/sessionCache', () => ({ clearOperationalSessionCache: jest.fn().mockResolvedValue() }));
 jest.mock('../components/technician/TechnicianBottomNav', () => () => null);
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn().mockResolvedValue(null), setItem: jest.fn().mockResolvedValue(), removeItem: jest.fn().mockResolvedValue() }));
 
-test('technician signs in, replaces the initial password, and must continue to authenticator setup', async () => {
+test('technician verifies sign-in by email, replaces the initial password, and reaches work', async () => {
   await renderRouter({ _layout: () => <UserProvider><CartProvider><Stack /></CartProvider></UserProvider>,
     '(auth)/_layout': AuthLayout, '(auth)/sign-in': Login,
     'technician/_layout': TechnicianLayout, 'technician/oobe/index': TechnicianOobe,
-    'technician/oobe/reset': () => <Text>Authenticator setup fixture</Text>,
     'technician/home': () => <Text>Technician home fixture</Text>,
   }, { initialUrl: '/sign-in' });
   await screen.findByPlaceholderText('you@example.com or your username');
   await fireEvent.changeText(screen.getByPlaceholderText('you@example.com or your username'), 'tech.cavite.lebron');
   await fireEvent.changeText(screen.getByDisplayValue(''), 'fixture-password');
   await fireEvent.press(screen.getByText('Sign In'));
+  await fireEvent.changeText(await screen.findByPlaceholderText('000000'), '123456');
+  await fireEvent.press(screen.getByText('Verify and Sign In'));
   await screen.findByText('Technician Setup');
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   expect(screen.queryByText(/Spaces and dashes are accepted/)).toBeNull();
@@ -54,8 +60,7 @@ test('technician signs in, replaces the initial password, and must continue to a
   expect(screen.getByLabelText('New Password').props.value).toBe('Abcdef1#');
   expect(screen.queryByText('Technician home fixture')).toBeNull();
   await fireEvent.press(screen.getByText('Save and Continue'));
-  await screen.findByText('Authenticator setup fixture');
+  await screen.findByText('Technician home fixture');
   expect(api.completeTechnicianOnboarding).toHaveBeenCalledWith('fixture-token', { phone: '09123456789', newPassword: 'Abcdef1#' });
-  expect(screen.queryByText('Technician home fixture')).toBeNull();
   alert.mockRestore();
 }, 15000); // Multiple navigation and failed-save steps need more than the unit-test default.

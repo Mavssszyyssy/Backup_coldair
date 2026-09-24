@@ -219,8 +219,8 @@ export const LEGAL_POLICIES = {
         id: "security",
         title: "3. Account and authentication security",
         bullets: [
-          "Keep your password, verification codes, authenticator codes, and recovery information confidential.",
-          "Use only your own contact information and authenticator unless you are legally authorized to act for another person.",
+          "Keep your password, email verification codes, and recovery information confidential.",
+          "Use only your own contact information unless you are legally authorized to act for another person.",
           "Notify Customer Support promptly if you suspect unauthorized access.",
           "You are responsible for activity performed through your account until Cold Air ACT receives and can reasonably act on a security report, except where the law provides otherwise.",
         ],
@@ -313,7 +313,7 @@ export const LEGAL_POLICIES = {
         title: "1. Personal information controller",
         paragraphs: [
           "Cold Air ACT is the personal information controller for customer and operational information processed through this system. Its main branch is in Plaridel, Bulacan, with configured service branches across Luzon.",
-          "Privacy questions and requests may be sent to coldairairconditioning@yahoo.com or raised through Customer Support. Please do not include passwords, OTPs, or authenticator codes in a request.",
+          "Privacy questions and requests may be sent to coldairairconditioning@yahoo.com or raised through Customer Support. Please do not include passwords or email verification codes in a request.",
         ],
       },
       {
@@ -383,7 +383,7 @@ export const LEGAL_POLICIES = {
         id: "security",
         title: "9. Security measures",
         paragraphs: [
-          "Cold Air ACT uses reasonable organizational, physical, and technical measures appropriate to the data and risk, including authentication controls, role-based access, protected communications, audit or security records, and service-provider safeguards. No online system can guarantee absolute security, so users must also protect their passwords, OTPs, and authenticator codes.",
+          "Cold Air ACT uses reasonable organizational, physical, and technical measures appropriate to the data and risk, including authentication controls, role-based access, protected communications, audit or security records, and service-provider safeguards. No online system can guarantee absolute security, so users must also protect their passwords and email verification codes.",
         ],
       },
       {

@@ -5,18 +5,13 @@ import { describe, expect, test } from "vitest";
 const source = (relativePath) => fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 
 describe("cross-surface readiness gaps", () => {
-  test("customer and staff protected routes require authenticator setup", () => {
-    const app = source("src/App.js");
+  test("web login uses the shared account-bound email verification challenge", () => {
     const login = source("src/components/login/Login.js");
-    const setup = source("src/components/security/AuthenticatorSetup.js");
-    const policy = source("src/domain/accountSecurityPolicy.js");
-    expect(app).toContain("/security/setup-authenticator");
-    expect(app).toContain("requiresTotpEnrollment({ role: userRole, security: user?.security })");
-    expect(login).toContain("requiresTotpEnrollment(loggedInUser)");
-    for (const role of ["customer", "technician", "admin", "superadmin"]) {
-      expect(policy).toContain(`\"${role}\"`);
-    }
-    expect(setup).toContain("/security/recovery-codes/regenerate");
+    const context = source("src/context/UserContext.js");
+    expect(login).toContain("Email verification code");
+    expect(login).toContain("Resend code");
+    expect(context).toContain("const verifyLoginEmail = async (challengeToken, code)");
+    expect(context).toContain("const resendLoginEmail = async (challengeToken)");
   });
 
   test("catalogue and registered units distinguish loading from empty", () => {
@@ -82,13 +77,22 @@ describe("cross-surface readiness gaps", () => {
     expect(source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js")).toContain('{ to: "/manager/amp", label: "AMP Planning"');
   });
 
-  test("superadmin queues translate internal payment codes", () => {
-    for (const component of ["SuperAdminAlerts.js", "SuperAdminSales.js"]) {
-      const contents = source(`src/components/SUPERADMIN/Dashboard/${component}`);
-      expect(contents).toContain("Cash on Delivery");
-      expect(contents).toContain("Payment due on delivery");
-      expect(contents).toContain("paymentSummary(order)");
-    }
+  test("superadmin alerts translate internal payment codes", () => {
+    const contents = source("src/components/SUPERADMIN/Dashboard/SuperAdminAlerts.js");
+    expect(contents).toContain("Cash on Delivery");
+    expect(contents).toContain("Payment due on delivery");
+    expect(contents).toContain("paymentSummary(order)");
+  });
+
+  test("superadmin no longer exposes the Processing Sales module", () => {
+    const app = source("src/App.js");
+    const sidebar = source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js");
+    const dashboard = source("src/components/SUPERADMIN/Dashboard/SuperAdminDashboard.js");
+    expect(app).not.toContain("SuperAdminSales");
+    expect(app).not.toContain('/superadmin/sales');
+    expect(sidebar).not.toContain("Processing Sales");
+    expect(dashboard).not.toContain('/superadmin/sales');
+    expect(dashboard).toContain("SalesTrendChart");
   });
 
   test("branch admins see a fixed QR branch scope while Superadmin keeps the branch filter", () => {

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useUser } from '../../../context/UserContext';
 import AdminLayout from '../Common/AdminLayout';
-import ChangePassword from './ChangePassword';
+import AccountSecurityManagement from '../../security/AccountSecurityManagement';
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import '../adminShared.css';
 import './styles.css';
 
 const AdminProfile = () => {
-  const { user, updateProfile } = useUser();
+  const { user, updateProfile, changePassword } = useUser();
   const roleTitle = user?.role === 'superadmin' ? 'SuperAdmin' : 'Admin';
   const branchName = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
   const branchInfo = loadBranchNetwork().find((branch) => branch.name === branchName);
@@ -56,7 +56,12 @@ const AdminProfile = () => {
             <p><strong>Last Login:</strong> {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : '-'}</p>
             <button type="button" onClick={openEditModal}>Edit Profile</button>
           </div>
-          <ChangePassword />
+          <div className="admin-profile-card">
+            <AccountSecurityManagement
+              user={user}
+              onChangePassword={changePassword}
+            />
+          </div>
         </div>
         {isEditing && (
           <div className="admin-profile-modal-overlay" onClick={() => setIsEditing(false)}>

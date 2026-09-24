@@ -204,7 +204,7 @@ export function UserProvider({ children }) {
   const login = async (email, password) => {
     try {
       const result = await api.login(email, password);
-      if (result.requiresTotp) return result;
+      if (result.requiresEmailVerification) return result;
       if (result.success) {
         const normalized = normalizeUser(result.user);
         await clearOperationalSessionCache();
@@ -219,9 +219,9 @@ export function UserProvider({ children }) {
     }
   };
 
-  const verifyTotpLogin = async (challengeToken, code) => {
+  const verifyEmailLogin = async (challengeToken, code) => {
     try {
-      const result = await api.verifyLoginTotp(challengeToken, code);
+      const result = await api.verifyLoginEmail(challengeToken, code);
       if (!result.success) return result;
       const normalized = normalizeUser(result.user);
       await clearOperationalSessionCache();
@@ -231,40 +231,12 @@ export function UserProvider({ children }) {
     } catch (error) {
       return {
         success: false,
-        error: error?.message || "Unable to verify the authenticator code.",
+        error: error?.message || "Unable to verify the email code.",
       };
     }
   };
 
-  const recoverWithCode = async (identifier, code) => {
-    try {
-      const result = await api.consumeRecoveryCode(identifier, code);
-      if (!result.success) return result;
-      const normalized = normalizeUser(result.user);
-      await clearOperationalSessionCache();
-      await storeToken(result.token);
-      setCurrent(normalized);
-      return { ...result, user: normalized };
-    } catch (error) {
-      return {
-        success: false,
-        error: error?.message || "Unable to verify the recovery code.",
-      };
-    }
-  };
-
-  const verifySecuritySetup = async (code) => {
-    if (!token) return { success: false, error: "Please sign in again." };
-    try {
-      const result = await api.verifyTotpSetup(token, code);
-      if (!result.success) return result;
-      if (result.token) await storeToken(result.token);
-      if (result.user) setCurrent(normalizeUser(result.user));
-      return result;
-    } catch (error) {
-      return { success: false, error: error?.message || "Unable to verify the authenticator code." };
-    }
-  };
+  const resendLoginEmail = async (challengeToken) => api.resendLoginEmail(challengeToken);
 
   /**
    * Register a new customer account.
@@ -459,19 +431,6 @@ export function UserProvider({ children }) {
     }
   };
 
-  const resetMyAuthenticator = async (payload) => {
-    if (!token) return { success: false, error: "Please sign in again." };
-    try {
-      const result = await api.resetTotpAuthenticator(token, payload);
-      if (!result.success) return result;
-      if (result.token) await storeToken(result.token);
-      if (result.user) setCurrent(normalizeUser(result.user));
-      return result;
-    } catch (error) {
-      return { success: false, error: error?.message || "Unable to reset the authenticator." };
-    }
-  };
-
   const completeTechnicianOnboarding = async (payload) => {
     if (!token) return { success: false, error: "Please sign in again." };
     try {
@@ -574,9 +533,8 @@ export function UserProvider({ children }) {
 
       // Auth
       login,
-      verifyTotpLogin,
-      recoverWithCode,
-      verifySecuritySetup,
+      verifyEmailLogin,
+      resendLoginEmail,
       register,
       logout,
 
@@ -589,7 +547,6 @@ export function UserProvider({ children }) {
       updateMyAccount,
       completeTechnicianOnboarding,
       changeMyPassword,
-      resetMyAuthenticator,
       saveDeliveryAddress,
       deleteDeliveryAddress,
       makeDefaultDeliveryAddress,

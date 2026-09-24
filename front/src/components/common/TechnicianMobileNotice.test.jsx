@@ -12,7 +12,6 @@ beforeEach(() => {
     isAuthenticated: true,
     logout: vi.fn(),
     changePassword: vi.fn(),
-    resetAuthenticator: vi.fn(),
     user: {
       name_first: "Carl",
       name_last: "Technician",
@@ -21,7 +20,6 @@ beforeEach(() => {
       phone: "09123456789",
       assignedBranch: "Cavite",
       authProvider: "local",
-      security: { totpEnabled: true },
     },
   });
 });
@@ -31,11 +29,6 @@ test("retired technician web workspace still exposes only account and security m
   expect(screen.getByText("Technician Account Management")).toBeInTheDocument();
   expect(screen.getByText(/tech\.cavite\.carl/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Change Password" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Change / Reset Authenticator" })).toBeInTheDocument();
+  expect(screen.getByText(/one-time code sent to your account email/i)).toBeInTheDocument();
   expect(screen.getByText(/Work orders remain mobile-only/)).toBeInTheDocument();
-});
-
-test("shows a clear completion message after recovery codes are saved", () => {
-  render(<MemoryRouter initialEntries={[{ pathname: "/technician-mobile", state: { authenticatorSetupComplete: true } }]}><TechnicianMobileNotice /></MemoryRouter>);
-  expect(screen.getByRole("status")).toHaveTextContent("Authenticator setup completed. Your account is protected.");
 });

@@ -12,6 +12,7 @@ const apiRequest = vi.fn();
 const logout = vi.fn();
 const updateProfile = vi.fn();
 const changePassword = vi.fn();
+const updateSettings = vi.fn();
 const saveSettings = vi.fn();
 
 vi.mock("../../config/api", () => ({
@@ -27,10 +28,13 @@ vi.mock("../../context/UserContext", () => ({
       role: "admin",
       activeBranch: "Cavite",
       assignedBranch: "Cavite",
+      preferences: { currency: "PHP" },
+      notifications: { email: true, inApp: true, push: true },
     },
     logout,
     updateProfile,
     changePassword,
+    updateSettings,
   }),
 }));
 
