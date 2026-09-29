@@ -2,7 +2,11 @@ export default function HistoryPagination({ currentPage, totalPages, onPageChang
   if (totalPages <= 1) return null;
 
   return (
-    <nav className="history-pagination" aria-label={`${label} pagination`}>
+    <nav
+      className="history-pagination"
+      aria-label={`${label} pagination`}
+      onClick={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
