@@ -119,11 +119,6 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
                   </div>
                 ))}
               </div>
-              <HistoryPagination
-                currentPage={historyPage}
-                totalPages={historyPages}
-                onPageChange={changeHistoryPage}
-              />
             </section>
           )}
         </div>

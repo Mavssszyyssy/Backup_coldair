@@ -35,9 +35,11 @@ it("shows actual history without crashing or inventing a fee when no price exist
   expect(screen.queryByText("Installation")).not.toBeInTheDocument();
   expect(screen.getByText(/Control board failed inspection/)).toHaveTextContent("Replaced control board.");
   expect(screen.getByText(/September 6, 2026/)).toBeVisible();
-  fireEvent.click(screen.getAllByRole("button", { name: "Next service record" })[0]);
+  expect(screen.getAllByText("Service record 1 of 2")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Next service record" }));
   expect(screen.getByText("Installation")).toBeVisible();
   expect(screen.queryByText("Repair")).not.toBeInTheDocument();
+  expect(screen.getAllByText("Service record 2 of 2")).toHaveLength(1);
   expect(screen.queryByText(/₱/)).not.toBeInTheDocument();
 });
 
@@ -92,12 +94,12 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
-  expect(await screen.findByText("Service recommendation")).toBeVisible();
+  expect(await screen.findByText("Suggested service plan")).toBeVisible();
   expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
   expect(screen.getByText("Repair")).toBeVisible();
   expect(screen.getByText("Why this date was suggested")).toBeVisible();
   expect(screen.getAllByText("6-month starting schedule.")[0]).toBeVisible();
-  fireEvent.click(screen.getByText("How this date was calculated"));
+  fireEvent.click(screen.getByText("What was used to choose this date"));
   expect(screen.getAllByText("6-month starting schedule.").length).toBeGreaterThan(1);
 });
 
@@ -113,7 +115,7 @@ it("shows saved plans with technician outcomes as review evidence, never as an A
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
-  expect(await screen.findByText("Saved plan and service outcome review")).toBeVisible();
+  expect(await screen.findByText("Compare past plans with completed service")).toBeVisible();
   expect(screen.getByText("Service outcome ready to review")).toBeVisible();
   expect(screen.getByText(/3 days after the suggested date/)).toBeVisible();
   expect(screen.getByText(/Dust buildup found on the coil/)).toBeVisible();
@@ -138,7 +140,7 @@ it("separates a condition-based AI follow-up from the routine cleaning plan", as
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
   expect(await screen.findByText("Based on the technician report")).toBeVisible();
   expect(screen.getByText("Condition follow-up date")).toBeVisible();
-  expect(screen.getByText("Service recommendation")).toBeVisible();
+  expect(screen.getByText("Suggested service plan")).toBeVisible();
   expect(screen.getByText(/technician found wear affecting the fan motor/)).toBeVisible();
   expect(screen.getByText("Why this date was suggested")).toBeVisible();
   expect(screen.getByText(/urgent concern recorded during the completed visit/)).toBeVisible();

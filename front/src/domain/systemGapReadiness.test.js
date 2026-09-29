@@ -53,7 +53,7 @@ describe("cross-surface readiness gaps", () => {
     expect(reports).toContain("Model and parts history");
     expect(reports).not.toContain('label: "Predictive Maintenance"');
     expect(owner).toContain("These are not confirmed bookings");
-    expect(owner).toContain("Assumed value per service");
+    expect(owner).toContain("Estimated amount for each service");
     expect(owner).toContain("It does not rate a model or predict a breakdown");
     expect(reports).toContain("Suggested servicing date");
     expect(reports).not.toContain("Operating environment");

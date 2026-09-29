@@ -85,11 +85,6 @@ function ServiceHistory({ unit, onClose }) {
                   </div>
                 ))}
               </div>
-              <HistoryPagination
-                currentPage={historyPage}
-                totalPages={historyPages}
-                onPageChange={changeHistoryPage}
-              />
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>

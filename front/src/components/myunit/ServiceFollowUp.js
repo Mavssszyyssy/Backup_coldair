@@ -3,7 +3,7 @@ import AiServicePrescription from './AiServicePrescription';
 
 const labelForProvider = (provider) => provider === 'openai'
   ? 'AI-reviewed follow-up plan'
-  : 'Evidence-based follow-up plan';
+  : 'Follow-up based on your service records';
 
 const recommendationLabel = (value) => serviceLabel(value || 'inspection');
 

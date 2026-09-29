@@ -42,6 +42,20 @@ test("completed reports keep the technician record separate from the AI follow-u
   expect(screen.getByText("The fan should be inspected within 30 days.")).toBeTruthy();
 });
 
+test("completed reports use plain language for service-record guidance", async () => {
+  await render(<CompletedServiceReports records={[{
+    id: "visit-records", findings: "Control panel concern recorded.", date: "2026-09-12", serviceType: "Inspection",
+    aiInterpretation: {
+      provider: "system-fallback",
+      technicianRecorded: "The technician recorded a control-panel concern.",
+      aiAssessment: "The saved report recommends checking the control panel.",
+    },
+  }]} serviceName={v => v} formatDate={v => v} />);
+  await fireEvent.press(screen.getByLabelText("Completed service reports"));
+  expect(screen.getByText("Based on your service records")).toBeTruthy();
+  expect(screen.queryByText(/evidence-based fallback/i)).toBeNull();
+});
+
 test("completed reports show possible causes and ordered diagnostics without treating them as confirmed findings", async () => {
   await render(<CompletedServiceReports records={[{
     id: "visit-prescription", findings: "The control board did not respond during testing.", actionTaken: "Recorded the electrical symptom.", date: "2026-09-12", serviceType: "Inspection",

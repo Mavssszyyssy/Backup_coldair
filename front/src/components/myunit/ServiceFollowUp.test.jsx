@@ -14,13 +14,24 @@ test('shows a component concern separately from normal AC performance', () => {
     whyThisDate: 'The recorded concern should be checked soon.',
     recommendedActions: ['Arrange a qualified technician assessment.'],
   }} />);
-  expect(screen.getByText('Evidence-based follow-up plan')).toBeVisible();
+  expect(screen.getByText('Follow-up based on your service records')).toBeVisible();
   expect(screen.getByText('Overall AC performance')).toBeVisible();
   expect(screen.getByText('Current Issues')).toBeVisible();
   expect(screen.getByText('A recorded button panel concern requires verification; this is not a confirmed mechanical diagnosis.')).toBeVisible();
   expect(screen.getByText('Recommended Part')).toBeVisible();
   expect(screen.getByText('Button panel / affected button')).toBeVisible();
   expect(screen.getByText('Recommended actions', { exact: false })).toBeVisible();
+});
+
+test('uses plain language when a structured plan comes from saved service records', () => {
+  render(<ServiceFollowUp interpretation={{
+    provider: 'system-fallback',
+    technicianRecorded: 'The technician recorded a control-panel concern.',
+    aiAssessment: 'The saved report recommends checking the control panel.',
+  }} />);
+
+  expect(screen.getByText('Based on your service records')).toBeVisible();
+  expect(screen.queryByText(/evidence-based fallback/i)).not.toBeInTheDocument();
 });
 
 test('renders the complete seven-part AI prescription for a completed visit', () => {

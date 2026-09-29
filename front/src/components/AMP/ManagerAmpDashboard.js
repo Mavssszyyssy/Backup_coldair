@@ -170,11 +170,11 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
     const sections = [
       { label: "Unit and customer", value: `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}` },
       unit.currentStatus ? { label: "Current status", value: humanLabel(unit.currentStatus) } : null,
-      unit.assessment ? { label: "Service review", value: unit.assessment } : null,
-      unit.technicianRecorded ? { label: "Technician recorded", value: unit.technicianRecorded } : null,
-      unit.previousVisitHistory?.length ? { label: "Previous visit history", value: unit.previousVisitHistory } : null,
-      unit.currentIssues?.length ? { label: "Current issues", value: unit.currentIssues } : { label: "Current issues", value: unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit." },
-      unit.completedWork?.length ? { label: "Completed work", value: unit.completedWork } : unit.workCompleted ? { label: "Completed work", value: unit.workCompleted } : null,
+      unit.assessment ? { label: "What the records suggest", value: unit.assessment } : null,
+      unit.technicianRecorded ? { label: "Technician notes", value: unit.technicianRecorded } : null,
+      unit.previousVisitHistory?.length ? { label: "Earlier service history", value: unit.previousVisitHistory } : null,
+      unit.currentIssues?.length ? { label: "Issues to follow up", value: unit.currentIssues } : { label: "Issues to follow up", value: unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit." },
+      unit.completedWork?.length ? { label: "Work already completed", value: unit.completedWork } : unit.workCompleted ? { label: "Work already completed", value: unit.workCompleted } : null,
       unit.customerObservation ? { label: "Customer observation", value: unit.customerObservation } : null,
       (unit.affectedComponent || unit.severity) ? { label: "Follow-up details", value: [unit.affectedComponent ? `Part noted: ${humanLabel(unit.affectedComponent)}.` : "", unit.severity ? `Priority: ${humanLabel(unit.severity)}.` : ""].filter(Boolean).join(" ") } : null,
       { label: "Next step", value: unit.recommendedActions?.length ? unit.recommendedActions : ["Open the service plan to review the notes and next steps."] },
@@ -205,7 +205,7 @@ function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranc
           <span className="amp-summary-title-icon"><ClipboardText size={24} weight="duotone" aria-hidden="true" /></span>
           <div>
             <span className="amp-summary-eyebrow">Selected view</span>
-            <h2 id="amp-follow-up-summary-title">Follow-up Summary</h2>
+            <h2 id="amp-follow-up-summary-title">Units needing attention</h2>
             <p>See the units that need attention for the selected branch and date range.</p>
           </div>
         </div>
@@ -301,10 +301,10 @@ function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranc
       {!loading && !error && summary.isReconciled ? (
         <p className="amp-summary-proof">
           <CheckCircle size={19} weight="fill" aria-hidden="true" />
-          <strong>Summary checked</strong>
-          <span>{summary.total} total = {summary.overdue} overdue + {summary.upcoming} upcoming</span>
-          <span>{summary.serviceTotal} service needs</span>
-          <span>{summary.branchTotal} assigned to branches</span>
+          <strong>All totals match</strong>
+          <span>{summary.total} units: {summary.overdue} overdue and {summary.upcoming} upcoming</span>
+          <span>{summary.serviceTotal} units grouped by service type</span>
+          <span>{summary.branchTotal} units assigned to branches</span>
         </p>
       ) : null}
       {!loading && !error && !summary.isReconciled ? (
@@ -350,19 +350,19 @@ function PipelineTable({ units, onSelectPlan }) {
               <td data-label="Reason and next step">
                 <details className="amp-details amp-recommendation-details"><summary>See more</summary><div className="amp-recommendation-sections">
                   <section><h4>Technician notes</h4><p>{unit.technicianRecorded || "No technician note is recorded for the latest visit."}</p></section>
-                  <section><h4>Service review</h4><p>{unit.aiAssessment || "Open the service planner to review this AC's records."}</p><small>Use this as a guide. A technician must confirm the issue.</small></section>
+                  <section><h4>What the records suggest</h4><p>{unit.aiAssessment || "Open the service planner to review this AC's records."}</p><small>Use this as a guide. A technician must confirm the issue.</small></section>
                   {unit.historicalContext ? <section><h4>Past service notes</h4><p>{unit.historicalContext}</p></section> : null}
                   <section><h4>Possible causes</h4>{unit.possibleCauses?.length ? <ul>{unit.possibleCauses.map((cause, index) => <li key={`${cause}-${index}`}>{cause}</li>)}</ul> : <p>No possible cause is listed in the completed report.</p>}</section>
                   <section><h4>What to check</h4>{unit.diagnosticActions?.length ? <ol>{unit.diagnosticActions.map((action, index) => <li key={`${action}-${index}`}>{action}</li>)}</ol> : <p>Review the technician report and inspect the unit before deciding on repairs.</p>}</section>
                   <section><h4>Suggested service</h4><p>{unit.recommendedServiceOrRepair || humanLabel(unit.recommendedService, "Not yet reviewed")}</p></section>
                   <section><h4>Suggested part</h4><p>{unit.partsRecommendation || unit.recommendedPart || "No part is suggested from the available records."}</p></section>
                   <section><h4>Suggested date</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p><small>{unit.whyThisDate || unit.recommendationBasis || "Open the service planner to review the available records."}</small></section>
-                  <section><h4>Current Status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
-                  {unit.previousVisitHistory?.length ? <section><h4>Previous Visit History</h4><ul>{unit.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
+                  <section><h4>Current status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
+                  {unit.previousVisitHistory?.length ? <section><h4>Earlier service history</h4><ul>{unit.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
                   {(unit.condition || unit.capacityAssessment?.summary) ? <section><h4>Current AC condition</h4>{unit.condition ? <p>{humanLabel(unit.condition)}</p> : null}{unit.capacityAssessment?.summary ? <p>{unit.capacityAssessment.summary}</p> : null}</section> : null}
-                  <section><h4>Current Issues</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit."}</p>}</section>
-                  {unit.completedWork?.length ? <section><h4>Completed Work</h4><ul>{unit.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
-                  {unit.recommendedActions?.length ? <section><h4>Follow-up Coordination</h4><ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul></section> : null}
+                  <section><h4>Issues to follow up</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit."}</p>}</section>
+                  {unit.completedWork?.length ? <section><h4>Work already completed</h4><ul>{unit.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
+                  {unit.recommendedActions?.length ? <section><h4>Recommended next steps</h4><ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul></section> : null}
                   <section><p><strong>Before approving work:</strong> A technician must inspect the unit and confirm the issue.</p></section>
                   <section><h4>Other details</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
                 </div></details>
@@ -416,7 +416,7 @@ function ManagerAmpDashboard() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err.message || "Unable to load AMP pipeline.");
+        setError(err.message || "Unable to load the maintenance list. Please try again.");
         setPipeline([]);
         setPipelinePagination({ page: 1, pageSize: PIPELINE_PAGE_SIZE, total: 0, totalPages: 1 });
         setBranchSummary([]);
@@ -568,7 +568,7 @@ function ManagerAmpDashboard() {
         <section className="amp-card amp-branch-overview">
           <div className="amp-card-header">
             <div>
-              <h2>Branch Workload</h2>
+              <h2>Branch service overview</h2>
               <p className="amp-muted">Select a branch to review its upcoming and overdue units. This overview does not reassign or process branch work.</p>
             </div>
             <div className="amp-overview-filters">
@@ -647,7 +647,7 @@ function ManagerAmpDashboard() {
 
         {pipeline.length > 0 && !isCompanyWide ? <PipelineTable units={pipeline} onSelectPlan={selectPlan} /> : null}
         {!loading && !error && pipelinePagination.total > 0 ? (
-          <nav className="amp-pagination" aria-label="Maintenance pipeline pages">
+          <nav className="amp-pagination" aria-label="Maintenance list pages">
             <button type="button" onClick={() => setPipelinePage((value) => Math.max(1, value - 1))} disabled={pipelinePage <= 1}>Previous</button>
             <span>Page {pipelinePagination.page} of {pipelinePagination.totalPages} · {pipelinePagination.total} units</span>
             <button type="button" onClick={() => setPipelinePage((value) => Math.min(pipelinePagination.totalPages, value + 1))} disabled={pipelinePage >= pipelinePagination.totalPages}>Next</button>
@@ -660,10 +660,10 @@ function ManagerAmpDashboard() {
       <details className="amp-card amp-details amp-insight-details"><summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Past service and parts records</strong><small>Completed services and parts used</small></span></summary>
       <div className="amp-report-grid">
         <section className="amp-insight-card">
-          <div className="amp-section-title compact"><span className="amp-section-icon"><ClockCounterClockwise size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Recorded cleaning by model</h2></div></div>
+          <div className="amp-section-title compact"><span className="amp-section-icon"><ClockCounterClockwise size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Completed services by AC model</h2></div></div>
           <p className="amp-muted">Ranked only from completed service records {isCompanyWide && selectedBranch === "all" ? "across all branches" : "in the selected branch"}.</p>
-          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Model</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{aggregate.modelTrends.map((item) => <tr key={item.label}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
-          {!aggregate.modelTrends.length && !loading && !error ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
+          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Model</th><th>Completed services</th><th>Average services per unit</th></tr></thead><tbody>{aggregate.modelTrends.map((item) => <tr key={item.label}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
+          {!aggregate.modelTrends.length && !loading && !error ? <p className="amp-empty">No completed service records are available yet.</p> : null}
         </section>
         <section className="amp-insight-card">
           <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Parts used in past services</h2></div></div>

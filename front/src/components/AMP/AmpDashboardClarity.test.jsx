@@ -96,9 +96,9 @@ it("explains branch admin follow-up without exposing company-wide controls", asy
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("My branch maintenance");
   expect(screen.queryByRole("combobox", { name: "Branch" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "12-month workload plan" })).not.toBeInTheDocument();
-  expect(screen.getByText("Recorded cleaning by model")).not.toBeVisible();
+  expect(screen.getByText("Completed services by AC model")).not.toBeVisible();
   fireEvent.click(screen.getByText("Past service and parts records"));
-  expect(screen.getByText("Recorded cleaning by model")).toBeVisible();
+  expect(screen.getByText("Completed services by AC model")).toBeVisible();
 });
 
 it("keeps Superadmin branch and service-window filters working with clearer labels", async () => {
@@ -130,15 +130,15 @@ it("shows a reconciled, interactive Superadmin follow-up summary", async () => {
 
   show(<ManagerAmpDashboard />);
 
-  expect(await screen.findByRole("heading", { name: "Follow-up Summary" })).toBeVisible();
-  expect(screen.getByText("Summary checked")).toBeVisible();
-  expect(screen.getByText("6 total = 2 overdue + 4 upcoming")).toBeVisible();
-  expect(screen.getByText("6 service needs")).toBeVisible();
-  expect(screen.getByText("6 assigned to branches")).toBeVisible();
+  expect(await screen.findByRole("heading", { name: "Units needing attention" })).toBeVisible();
+  expect(screen.getByText("All totals match")).toBeVisible();
+  expect(screen.getByText("6 units: 2 overdue and 4 upcoming")).toBeVisible();
+  expect(screen.getByText("6 units grouped by service type")).toBeVisible();
+  expect(screen.getByText("6 units assigned to branches")).toBeVisible();
 
   fireEvent.click(screen.getByRole("button", { name: "Filter follow-up units to Cavite" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=1&pageSize=10&branch=Cavite"));
-  expect(await screen.findByText("4 total = 1 overdue + 3 upcoming")).toBeVisible();
+  expect(await screen.findByText("4 units: 1 overdue and 3 upcoming")).toBeVisible();
 });
 
 it.each([ManagerAmpDashboard, OwnerAmpDashboard])("does not present a failed request as zero workload", async (Dashboard) => {
@@ -275,9 +275,9 @@ it("turns maintenance totals into data-backed management recommendations", async
   screen.getAllByText("See more").forEach((control) => fireEvent.click(control));
   expect(screen.getByText(/check the technician's notes/i)).toBeVisible();
   expect(screen.getByText("Review Samsung Windfree 1.5")).toBeVisible();
-  expect(screen.getAllByText("Service review").length).toBeGreaterThanOrEqual(1);
-  expect(screen.getByText("Technician recorded")).toBeVisible();
-  expect(screen.getByText("Completed work")).toBeVisible();
+  expect(screen.getAllByText("What the records suggest").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText("Technician notes").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText("Work already completed")).toBeVisible();
   expect(screen.getByText("Customer observation")).toBeVisible();
   expect(screen.getByText("Follow-up details")).toBeVisible();
   expect(screen.getAllByText("Next step").length).toBeGreaterThanOrEqual(1);

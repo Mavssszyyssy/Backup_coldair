@@ -212,7 +212,7 @@ function OwnerAmpDashboard() {
       </details>
       <details className="amp-card amp-details amp-insight-details">
         <summary><span className="amp-details-summary-icon"><Coins size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Estimated service value</strong><small>Estimated amounts by month</small></span></summary>
-        <p>Potential service value: {loading ? "…" : error ? "Unavailable" : peso.format(summary.totalProjectedRevenue)} · Assumed value per service: {loading ? "…" : error ? "Unavailable" : peso.format(summary.averageServiceRevenue)}</p>
+        <p>Estimated value of suggested services: {loading ? "…" : error ? "Unavailable" : peso.format(summary.totalProjectedRevenue)} · Estimated amount for each service: {loading ? "…" : error ? "Unavailable" : peso.format(summary.averageServiceRevenue)}</p>
         <p className="amp-muted">This is an estimate, not earned revenue.</p>
         <p className="amp-muted">{summary.revenueDisclaimer || "The amount is the number of suggested services multiplied by the estimated value of each service."}</p>
         <div className="amp-table-wrap">
@@ -239,8 +239,8 @@ function OwnerAmpDashboard() {
         <details className="amp-card amp-details amp-insight-details">
           <summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Service records by model and brand</strong><small>Completed services by unit type</small></span></summary>
           <p className="amp-muted">This shows completed service visits only. It does not rate a model or predict a breakdown.</p>
-          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Scope</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} (brand)</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
-          {!modelTrends.length && !brandTrends.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">No recorded service-frequency trend is available yet.</p> : null}
+          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>AC model or brand</th><th>Completed services</th><th>Average services per unit</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} (brand)</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
+          {!modelTrends.length && !brandTrends.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">No completed service records are available for comparison yet.</p> : null}
         </details>
     </AmpDashboardShell>
   );

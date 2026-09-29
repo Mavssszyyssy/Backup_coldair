@@ -45,11 +45,11 @@ test("the AC details modal paginates detailed service records", () => {
 
   expect(screen.getByText("First visit details")).toBeVisible();
   expect(screen.queryByText("Second visit details")).not.toBeInTheDocument();
-  expect(screen.getAllByText("Service record 1 of 2")).toHaveLength(2);
+  expect(screen.getAllByText("Service record 1 of 2")).toHaveLength(1);
 
-  fireEvent.click(screen.getAllByRole("button", { name: "Next service record" })[0]);
+  fireEvent.click(screen.getByRole("button", { name: "Next service record" }));
 
   expect(screen.queryByText("First visit details")).not.toBeInTheDocument();
   expect(screen.getByText("Second visit details")).toBeVisible();
-  expect(screen.getAllByText("Service record 2 of 2")).toHaveLength(2);
+  expect(screen.getAllByText("Service record 2 of 2")).toHaveLength(1);
 });

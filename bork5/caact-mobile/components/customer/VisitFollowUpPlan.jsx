@@ -12,10 +12,10 @@ const body = { color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 20, m
 export default function VisitFollowUpPlan({ interpretation }) {
   if (!interpretation || (!interpretation.customerSummary && !interpretation.currentStatus && !interpretation.technicianRecorded && !interpretation.aiAssessment && !interpretation.possibleCauses?.length)) return null;
   const structured = Boolean(interpretation.aiAssessment || interpretation.overallCondition || interpretation.componentConcern || interpretation.recommendedPart || interpretation.recommendedActions?.length);
-  if (!structured) return <DetailRow label={interpretation.provider === "openai" ? "AI follow-up recommendation" : "Evidence-based follow-up plan"} value={interpretation.customerSummary} multiline />;
+  if (!structured) return <DetailRow label={interpretation.provider === "openai" ? "AI follow-up recommendation" : "Follow-up based on your service records"} value={interpretation.customerSummary} multiline />;
   return <View style={{ backgroundColor: COLORS.primaryLight, borderRadius: 10, padding: 12, marginTop: 10 }}>
     <Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 13 }}>AI-assisted assessment &amp; prescription</Text>
-    <Text style={[body, { marginTop: 3 }]}>{interpretation.provider === "openai" ? "AI-reviewed" : "Evidence-based fallback"}</Text>
+    <Text style={[body, { marginTop: 3 }]}>{interpretation.provider === "openai" ? "AI-reviewed" : "Based on your service records"}</Text>
     <DetailRow label="1. Technician Findings" value={interpretation.technicianRecorded || interpretation.problemsFound || "No detailed technician finding was recorded."} multiline />
     <Text style={[body, { marginTop: 0 }]}>Confirmed recorded evidence from the completed technician report.</Text>
     <DetailRow label="2. AI Assessment" value={interpretation.aiAssessment || interpretation.componentConcern || interpretation.customerSummary || "Not recorded"} multiline />
