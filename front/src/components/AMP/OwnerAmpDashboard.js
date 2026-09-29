@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Buildings,
+  CalendarCheck,
+  ChartBar,
+  ClockCounterClockwise,
+  Coins,
+  Package,
+  TrendUp,
+  Wrench,
+} from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
 import AmpDashboardShell from "./AmpDashboardShell";
 import AmpReportCenter from "./AmpReportCenter";
@@ -142,20 +152,20 @@ function OwnerAmpDashboard() {
       subtitle="Prepare staff and supplies for upcoming maintenance across all branches. These are not confirmed bookings."
     >
       <AmpPurposeGuide planning />
-      <div className="amp-metrics">
-        <article>
-          <span>Units due in this period</span>
-          <strong>{loading ? "…" : error ? "Unavailable" : summary.totalForecastedServices}</strong>
+      <div className="amp-metrics amp-owner-metrics">
+        <article className="amp-owner-metric services">
+          <span className="amp-owner-metric-icon"><CalendarCheck size={24} weight="duotone" aria-hidden="true" /></span>
+          <div><span>Units due in this period</span><strong>{loading ? "…" : error ? "Unavailable" : summary.totalForecastedServices}</strong><small>Suggested services across 12 months</small></div>
         </article>
-        <article>
-          <span>Busiest expected month</span>
-          <strong>{loading ? "…" : error ? "Unavailable" : peakMonth ? peakMonth.label : "No services due"}</strong>
+        <article className="amp-owner-metric peak">
+          <span className="amp-owner-metric-icon"><TrendUp size={24} weight="duotone" aria-hidden="true" /></span>
+          <div><span>Busiest expected month</span><strong>{loading ? "…" : error ? "Unavailable" : peakMonth ? peakMonth.label : "No services due"}</strong><small>{peakMonth ? `${peakMonth.serviceVolume} suggested service${peakMonth.serviceVolume === 1 ? "" : "s"}` : "No workload peak recorded"}</small></div>
         </article>
       </div>
 
-      <section className="amp-card">
-        <div className="amp-card-header">
-          <h2>Suggested services by month</h2>
+      <section className="amp-card amp-owner-section">
+        <div className="amp-card-header amp-owner-section-heading">
+          <div className="amp-section-title"><span className="amp-section-icon"><ChartBar size={23} weight="duotone" aria-hidden="true" /></span><div><span className="amp-section-eyebrow">12-month outlook</span><h2>Suggested services by month</h2></div></div>
           {loading ? <span>Loading...</span> : null}
         </div>
 
@@ -164,20 +174,19 @@ function OwnerAmpDashboard() {
         {forecast.length > 0 ? <ForecastBars forecast={forecast} /> : null}
       </section>
 
-      <section className="amp-card">
-        <h2>Upcoming workload by branch</h2>
-        <p className="amp-muted">Upcoming maintenance from recorded suggested dates. Open Branch maintenance for overdue units and customer follow-up.</p>
-        <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Branch</th><th>Upcoming services</th></tr></thead><tbody>{branchDemand.map((item) => <tr key={item.branch}><td>{item.branch}</td><td>{item.upcomingServices}</td></tr>)}</tbody></table></div>
+      <section className="amp-card amp-owner-section amp-owner-branch-workload">
+        <div className="amp-section-title"><span className="amp-section-icon"><Buildings size={23} weight="duotone" aria-hidden="true" /></span><div><span className="amp-section-eyebrow">Capacity by location</span><h2>Upcoming workload by branch</h2><p className="amp-muted">Upcoming maintenance from recorded suggested dates. Open Branch maintenance for overdue units and customer follow-up.</p></div></div>
+        <div className="amp-owner-branch-grid">{branchDemand.map((item) => <article key={item.branch}><span><Buildings size={19} weight="duotone" aria-hidden="true" />{item.branch}</span><strong>{item.upcomingServices}</strong><small>upcoming service{item.upcomingServices === 1 ? "" : "s"}</small><i aria-hidden="true"><i style={{ width: `${summary.totalForecastedServices ? Math.min(100, Math.round((item.upcomingServices / summary.totalForecastedServices) * 100)) : 0}%` }} /></i></article>)}</div>
         {!branchDemand.length && !loading && !error ? <p className="amp-empty">No upcoming branch workload is recorded.</p> : null}
       </section>
       <div id="amp-service-plan"><AmpReportCenter unitsLoading={reportUnitsLoading} onPlanGenerated={() => setRefreshRevision(value => value + 1)} units={reportUnits} title="Understand a unit’s next service" subtitle="Generate a plan to estimate the next servicing date from verified history. AI estimates and system fallbacks are clearly identified." /></div>
 
-      <details className="amp-card amp-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}><summary>Cleaning recommendations and parts history</summary>
+      <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}><summary><span className="amp-details-summary-icon"><Wrench size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Cleaning recommendations and parts history</strong><small>Service demand and recorded component use</small></span></summary>
       {historyLoading ? <p className="amp-muted" role="status">Loading recorded maintenance history…</p> : null}
       {historyError ? <p className="amp-error" role="alert">{historyError} <button type="button" onClick={loadHistoricalInsights}>Retry</button></p> : null}
       <div className="amp-report-grid">
-        <section className="amp-card">
-          <h2>Current cleaning recommendations</h2>
+        <section className="amp-insight-card">
+          <div className="amp-section-title compact"><span className="amp-section-icon"><Wrench size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Current cleaning recommendations</h2></div></div>
           <p className="amp-muted">All active eligible units, not just those due in the 12-month chart. These are not service requests.</p>
           <div className="amp-table-wrap">
             <table className="amp-table compact">
@@ -187,8 +196,8 @@ function OwnerAmpDashboard() {
           </div>
           {!serviceDemand.length && !loading && !error ? <p className="amp-empty">No maintenance demand is recorded yet.</p> : null}
         </section>
-        <section className="amp-card">
-          <h2>Parts used in past services</h2>
+        <section className="amp-insight-card">
+          <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Parts used in past services</h2></div></div>
           <p className="amp-muted">Aggregate recorded use of compressor/motor and control board for inventory planning. This is not a diagnosis of a specific unit.</p>
           <div className="amp-table-wrap">
             <table className="amp-table compact">
@@ -201,8 +210,8 @@ function OwnerAmpDashboard() {
       </div>
 
       </details>
-      <details className="amp-card amp-details">
-        <summary>How the potential service value is calculated</summary>
+      <details className="amp-card amp-details amp-insight-details">
+        <summary><span className="amp-details-summary-icon"><Coins size={19} weight="duotone" aria-hidden="true" /></span><span><strong>How the potential service value is calculated</strong><small>Transparent scenario assumptions by month</small></span></summary>
         <p>Potential service value: {loading ? "…" : error ? "Unavailable" : peso.format(summary.totalProjectedRevenue)} · Assumed value per service: {loading ? "…" : error ? "Unavailable" : peso.format(summary.averageServiceRevenue)}</p>
         <p className="amp-muted">Estimate only, not earned revenue</p>
         <p className="amp-muted">{summary.revenueDisclaimer || "Scenario revenue equals upcoming recommended services multiplied by the assumed service value; it is not booked revenue."}</p>
@@ -227,8 +236,8 @@ function OwnerAmpDashboard() {
           </table>
         </div>
       </details>
-        <details className="amp-card amp-details">
-          <summary>Recorded cleaning by model and brand</summary>
+        <details className="amp-card amp-details amp-insight-details">
+          <summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Recorded cleaning by model and brand</strong><small>Historical service frequency, not a reliability score</small></span></summary>
           <p className="amp-muted">Frequency is calculated from completed service records. It is not a failure rate, reliability score, or unit diagnosis.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Scope</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} (brand)</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
           {!modelTrends.length && !brandTrends.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">No recorded service-frequency trend is available yet.</p> : null}

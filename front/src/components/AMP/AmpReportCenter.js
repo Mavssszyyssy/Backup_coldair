@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle,
+  DownloadSimple,
+  FileText,
+  Sparkle,
+} from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { customerSystemMessage } from "../../domain/customerLanguage";
@@ -167,19 +173,24 @@ function AmpReportCenter({
   const reportLabel = REPORT_TYPES.find(item => item.value === (report?.reportType || reportType))?.label;
   return (
     <section className="amp-card amp-report-center">
-      <div className="amp-card-header"><div><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>{report ? <button type="button" onClick={exportPdf}>Export PDF</button> : null}</div>
-      <div className="amp-report-controls">
-        <label>Report type<select disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label>Installed AC unit<select disabled={loading || unitsLoading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">{unitsLoading ? "Loading installed AC units…" : "Select a unit"}</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{user?.role !== "customer" ? `${unit.customerName || "Customer name not recorded"} · ` : ""}{unit.modelName || unit.model || "AC Unit"}{unit.capacityHp ? ` · ${unit.capacityHp} HP` : ""} · {unit.serialNumber || value}</option>; })}</select></label>
-        <button type="button" onClick={generate} disabled={loading || unitsLoading || !reportUnits.length}>{loading ? "Generating report…" : "Generate report"}</button>
+      <div className="amp-card-header amp-report-center-header">
+        <div className="amp-section-title">
+          <span className="amp-section-icon"><FileText size={24} weight="duotone" aria-hidden="true" /></span>
+          <div><span className="amp-section-eyebrow">Unit-level decision support</span><h2>{title}</h2><p className="amp-muted">{subtitle}</p></div>
+        </div>
+        {report ? <button type="button" className="amp-export-button" onClick={exportPdf}><DownloadSimple size={18} weight="bold" aria-hidden="true" /> Export PDF</button> : null}
       </div>
-      <p className="amp-muted">{types.find(item => item.value === reportType)?.help}</p>
+      <div className="amp-report-controls" aria-label="Report generator">
+        <label><span><i aria-hidden="true">1</i>Report type</span><select aria-label="Report type" disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        <label><span><i aria-hidden="true">2</i>Installed AC unit</span><select aria-label="Installed AC unit" disabled={loading || unitsLoading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">{unitsLoading ? "Loading installed AC units…" : "Select a unit"}</option>{reportUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{user?.role !== "customer" ? `${unit.customerName || "Customer name not recorded"} · ` : ""}{unit.modelName || unit.model || "AC Unit"}{unit.capacityHp ? ` · ${unit.capacityHp} HP` : ""} · {unit.serialNumber || value}</option>; })}</select></label>
+        <button type="button" className="amp-generate-button" onClick={generate} disabled={loading || unitsLoading || !reportUnits.length}><Sparkle size={18} weight="fill" aria-hidden="true" />{loading ? "Generating report…" : "Generate report"}</button>
+      </div>
+      <p className="amp-report-help"><CheckCircle size={17} weight="fill" aria-hidden="true" />{types.find(item => item.value === reportType)?.help}</p>
       {unitsLoading ? <p className="amp-muted" role="status">Loading installed AC units…</p> : !reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
       {report ? <div className="amp-report-result">
-        <div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{conditionFollowUp ? "AI-reviewed technician follow-up" : maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div>
+        <div className="amp-report-result-heading"><div><span className="amp-section-eyebrow">Generated unit report</span><h3>{reportLabel || report.title}</h3></div><div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{conditionFollowUp ? "AI-reviewed technician follow-up" : maintenance.predictionSource === "openai" ? "AI-estimated servicing date" : provider === "openai" && maintenance.interpretation ? "AI-assisted explanation" : "Based on system records"}</span></div></div>
         {report.explanationWarning ? <p role="status" className="amp-muted">{report.explanationWarning}</p> : null}
-        <h3>{reportLabel || report.title}</h3>
         {!historyFirst ? <div className="amp-metrics"><article><span>{conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"}</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
         <details className="amp-details" open>
           <summary>Predictive Maintenance Assessment</summary>

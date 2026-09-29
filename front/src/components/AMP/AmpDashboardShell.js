@@ -1,4 +1,11 @@
-import { ArrowLeft, SignOut } from "@phosphor-icons/react";
+import {
+  ArrowLeft,
+  Buildings,
+  CalendarDots,
+  Pulse,
+  SignOut,
+  UserCircle,
+} from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import "./styles.css";
@@ -14,9 +21,12 @@ function AmpDashboardShell({ title, subtitle, children }) {
       : null;
 
   return (
-    <div className="amp-shell">
+    <div className={`amp-shell ${isOwner ? "amp-shell-superadmin" : "amp-shell-admin"}`}>
       <aside className="amp-sidebar">
-        <div className="amp-brand">AeroPulse AMP<small>Predictive maintenance</small></div>
+        <div className="amp-brand">
+          <span className="amp-brand-mark"><Pulse size={23} weight="duotone" aria-hidden="true" /></span>
+          <span>AeroPulse AMP<small>Predictive maintenance</small></span>
+        </div>
         <nav>
           {returnDestination ? (
             <NavLink to={returnDestination.to} className="amp-return-link">
@@ -24,11 +34,13 @@ function AmpDashboardShell({ title, subtitle, children }) {
             </NavLink>
           ) : null}
           <NavLink to="/manager/amp" className={({ isActive }) => (isActive ? "active" : "")}>
-            {isOwner ? "Branch maintenance" : "My branch maintenance"}
+            <Buildings size={19} weight="duotone" aria-hidden="true" />
+            <span>{isOwner ? "Branch maintenance" : "My branch maintenance"}</span>
           </NavLink>
           {isOwner ? (
             <NavLink to="/owner/amp" className={({ isActive }) => (isActive ? "active" : "")}>
-              12-month workload plan
+              <CalendarDots size={19} weight="duotone" aria-hidden="true" />
+              <span>12-month workload plan</span>
             </NavLink>
           ) : null}
         </nav>
@@ -44,11 +56,15 @@ function AmpDashboardShell({ title, subtitle, children }) {
       </aside>
       <main className="amp-main">
         <header className="amp-header">
-          <div>
+          <div className="amp-header-copy">
+            <span className="amp-header-eyebrow">Maintenance intelligence workspace</span>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
-          <span>{user?.name || user?.email || "Internal user"}</span>
+          <div className="amp-user-chip">
+            <span className="amp-user-chip-icon"><UserCircle size={24} weight="duotone" aria-hidden="true" /></span>
+            <span><small>{isOwner ? "Company oversight" : "Branch operations"}</small>{user?.name || user?.email || "Internal user"}</span>
+          </div>
         </header>
         {children}
       </main>

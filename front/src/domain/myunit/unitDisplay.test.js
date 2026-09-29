@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { filterCustomerUnits, formatUnitHorsepower, sortCustomerUnits } from "./unitDisplay";
+import { buildUnitPagination } from "../../components/myunit/MyUnit";
 
 describe("customer AC unit display", () => {
   it("shows the recorded horsepower in customer-friendly wording", () => {
@@ -62,5 +63,16 @@ describe("customer AC unit display", () => {
 
     expect(css).toMatch(/\.units-grid\s*\{[^}]*align-items:\s*start/s);
     expect(css).toMatch(/\.unit-card\s*\{[^}]*height:\s*auto[^}]*align-self:\s*start/s);
+  });
+
+  it("keeps the customer AC list to one desktop row and provides compact numbered pagination", () => {
+    const source = fs.readFileSync(
+      path.resolve(process.cwd(), "src", "components", "myunit", "MyUnit.js"),
+      "utf8",
+    );
+
+    expect(source).toContain("const UNITS_PER_PAGE = 3");
+    expect(buildUnitPagination(1, 3)).toEqual([1, 2, 3]);
+    expect(buildUnitPagination(4, 10)).toEqual([1, "gap-3", 3, 4, 5, "gap-10", 10]);
   });
 });

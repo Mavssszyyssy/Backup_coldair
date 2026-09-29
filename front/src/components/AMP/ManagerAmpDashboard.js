@@ -6,7 +6,9 @@ import {
   CalendarCheck,
   CheckCircle,
   ClipboardText,
+  ClockCounterClockwise,
   MagnifyingGlass,
+  Package,
   Sparkle,
   WarningCircle,
   Wrench,
@@ -610,11 +612,15 @@ function ManagerAmpDashboard() {
         </section>
       ) : null}
 
-      <section className="amp-card" id="amp-follow-up-units">
+      <section className="amp-card amp-followup-section" id="amp-follow-up-units">
         <div className="amp-card-header">
-          <div>
-            <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
-            {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
+          <div className="amp-section-title">
+            <span className="amp-section-icon"><CalendarCheck size={23} weight="duotone" aria-hidden="true" /></span>
+            <div>
+              <span className="amp-section-eyebrow">Actionable maintenance queue</span>
+              <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
+              {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
+            </div>
           </div>
           {!isCompanyWide ? <label className="amp-branch-filter">Service window<select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}</select></label> : null}
           {loading ? <span>Loading...</span> : null}
@@ -652,16 +658,16 @@ function ManagerAmpDashboard() {
 
       <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. Accepted AI servicing dates are saved; the report identifies AI estimates and system fallbacks." /></div>
 
-      <details className="amp-card amp-details"><summary>Past cleaning and parts use</summary>
+      <details className="amp-card amp-details amp-insight-details"><summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Past cleaning and parts use</strong><small>Verified service frequency and component records</small></span></summary>
       <div className="amp-report-grid">
-        <section className="amp-card">
-          <h2>Recorded cleaning by model</h2>
+        <section className="amp-insight-card">
+          <div className="amp-section-title compact"><span className="amp-section-icon"><ClockCounterClockwise size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Recorded cleaning by model</h2></div></div>
           <p className="amp-muted">Ranked only from completed service records {isCompanyWide && selectedBranch === "all" ? "across all branches" : "in the selected branch"}.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Model</th><th>Recorded services</th><th>Services / unit</th></tr></thead><tbody>{aggregate.modelTrends.map((item) => <tr key={item.label}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
           {!aggregate.modelTrends.length && !loading && !error ? <p className="amp-empty">No recorded service trend is available yet.</p> : null}
         </section>
-        <section className="amp-card">
-          <h2>Parts used in past services</h2>
+        <section className="amp-insight-card">
+          <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Parts used in past services</h2></div></div>
           <p className="amp-muted">Aggregate recorded use of the two service-trip components: compressor/motor and control board. This is inventory planning, not a unit diagnosis.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Component</th><th>Recorded uses</th></tr></thead><tbody>{aggregate.componentReplacements.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody></table></div>
           {!aggregate.componentReplacements.length && !loading && !error ? <p className="amp-empty">No recorded component use is available yet.</p> : null}

@@ -74,6 +74,21 @@ it("keeps each AMP See more card at its own content height", () => {
   expect(css).toMatch(/\.amp-action-item\s*\{[^}]*align-self:\s*start/s);
 });
 
+it("uses the finished AMP visual system across navigation, reports, history, and owner planning", () => {
+  const css = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "styles.css"), "utf8");
+  const shell = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "AmpDashboardShell.js"), "utf8");
+  const owner = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "OwnerAmpDashboard.js"), "utf8");
+
+  expect(shell).toContain("amp-user-chip");
+  expect(shell).toContain("amp-brand-mark");
+  expect(owner).toContain("amp-owner-branch-grid");
+  expect(owner).toContain("amp-insight-details");
+  expect(css).toMatch(/\.amp-report-controls\s*\{[^}]*grid-template-columns:/s);
+  expect(css).toMatch(/\.amp-report-result\s*\{[^}]*border-radius:/s);
+  expect(css).toContain(".amp-insight-details > summary");
+  expect(css).toContain(".amp-owner-branch-grid");
+});
+
 it("explains branch admin follow-up without exposing company-wide controls", async () => {
   show(<ManagerAmpDashboard />);
   expect(await screen.findByText(/No units are entering/)).toBeVisible();

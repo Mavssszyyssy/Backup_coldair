@@ -175,8 +175,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin: 22px 0 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0 10px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
 }
 
 .unit-list-pagination span {
@@ -197,6 +203,38 @@
   font-weight: 800;
   cursor: pointer;
 }
+
+.unit-page-numbers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.unit-list-pagination .unit-page-number {
+  min-width: 38px;
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-color: transparent;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.unit-list-pagination .unit-page-number[aria-current='page'] {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, .25);
+}
+
+.unit-page-numbers > span {
+  min-width: 20px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.unit-page-status { display: none; }
 
 .unit-list-pagination button:disabled {
   cursor: not-allowed;
@@ -1142,6 +1180,21 @@
       align-items: stretch;
       padding: 16px;
     }
+
+    .unit-list-pagination {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+
+    .unit-page-numbers,
+    .unit-page-status {
+      grid-column: 1 / -1;
+    }
+
+    .unit-page-numbers { grid-row: 1; }
+    .unit-page-status { display: block; text-align: center; }
+    .unit-list-pagination .unit-page-direction { width: 100%; min-width: 0; }
   
   .form-row {
     grid-template-columns: 1fr;
@@ -1362,4 +1415,20 @@
   border-color: #475569;
   background: #172033;
   color: #f8fafc;
+}
+
+:root[data-theme='dark'] .unit-list-pagination {
+  border-color: #334155;
+  background: #0f3460;
+}
+
+:root[data-theme='dark'] .unit-list-pagination .unit-page-number {
+  background: #172033;
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .unit-list-pagination .unit-page-number[aria-current='page'] {
+  border-color: #60a5fa;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
 }

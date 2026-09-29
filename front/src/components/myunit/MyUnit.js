@@ -19,7 +19,18 @@ import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
 import { filterCustomerUnits, sortCustomerUnits } from "../../domain/myunit/unitDisplay";
 
-const UNITS_PER_PAGE = 6;
+const UNITS_PER_PAGE = 3;
+
+export const buildUnitPagination = (currentPage, pageCount) => {
+  if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1);
+  const pages = new Set([1, pageCount, currentPage - 1, currentPage, currentPage + 1]);
+  const ordered = [...pages].filter((page) => page >= 1 && page <= pageCount).sort((a, b) => a - b);
+  return ordered.reduce((items, page, index) => {
+    if (index && page - ordered[index - 1] > 1) items.push(`gap-${page}`);
+    items.push(page);
+    return items;
+  }, []);
+};
 
 const formatCustomerDate = (value = "") => {
   if (!value) return "";
@@ -98,6 +109,10 @@ function MyUnit() {
   const currentUnitPage = Math.min(unitPage, unitPageCount);
   const firstUnitIndex = (currentUnitPage - 1) * UNITS_PER_PAGE;
   const pagedUnits = visibleUnits.slice(firstUnitIndex, firstUnitIndex + UNITS_PER_PAGE);
+  const unitPagination = useMemo(
+    () => buildUnitPagination(currentUnitPage, unitPageCount),
+    [currentUnitPage, unitPageCount],
+  );
 
   useEffect(() => {
     setUnitPage(1);
@@ -266,9 +281,14 @@ function MyUnit() {
             )}
 
             {visibleUnits.length > UNITS_PER_PAGE ? <nav className="unit-list-pagination" aria-label="My AC Units pagination">
-              <button type="button" onClick={() => setUnitPage((page) => Math.max(1, page - 1))} disabled={currentUnitPage === 1}>Previous</button>
-              <span>Page {currentUnitPage} of {unitPageCount}</span>
-              <button type="button" onClick={() => setUnitPage((page) => Math.min(unitPageCount, page + 1))} disabled={currentUnitPage === unitPageCount}>Next</button>
+              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.max(1, page - 1))} disabled={currentUnitPage === 1}>Previous</button>
+              <div className="unit-page-numbers" aria-label={`Page ${currentUnitPage} of ${unitPageCount}`}>
+                {unitPagination.map((page) => typeof page === "number"
+                  ? <button type="button" className="unit-page-number" key={page} aria-current={page === currentUnitPage ? "page" : undefined} aria-label={`Page ${page}`} onClick={() => setUnitPage(page)}>{page}</button>
+                  : <span key={page} aria-hidden="true">…</span>)}
+              </div>
+              <span className="unit-page-status">Page {currentUnitPage} of {unitPageCount}</span>
+              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.min(unitPageCount, page + 1))} disabled={currentUnitPage === unitPageCount}>Next</button>
             </nav> : null}
 
             <div className="customer-amp-report-center">
