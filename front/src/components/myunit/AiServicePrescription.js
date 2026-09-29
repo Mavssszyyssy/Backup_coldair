@@ -70,9 +70,9 @@ function AiServicePrescriptionContent({ interpretation, compact = false }) {
   };
 
   return <section ref={assessmentRef} className={`ai-prescription${compact ? " ai-prescription-compact" : ""}`} aria-label="AI assessment and service prescription">
-    <header>
-      <span>AI-assisted assessment &amp; prescription</span>
-      <small>{interpretation.provider === "openai" ? "AI-reviewed" : "Based on your service records"}</small>
+    <header className="ai-prescription-header">
+      <span className="ai-prescription-title">AI-assisted assessment &amp; prescription</span>
+      <small className="ai-prescription-source">{interpretation.provider === "openai" ? "AI-reviewed" : "Based on your service records"}</small>
     </header>
     {visibleSections}
     <HistoryPagination

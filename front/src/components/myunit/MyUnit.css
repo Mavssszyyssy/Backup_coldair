@@ -1351,9 +1351,12 @@
 
 .ai-prescription {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 10px;
   margin-top: 12px;
   padding: 14px;
+  box-sizing: border-box;
   border: 1px solid #bfdbfe;
   border-radius: 14px;
   background: #f8fbff;
@@ -1361,22 +1364,53 @@
 }
 
 .ai-prescription-compact {
+  width: auto;
   margin: 12px 14px 0;
 }
 
-.ai-prescription > header {
+.ai-prescription > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ai-prescription-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   padding-bottom: 9px;
   border-bottom: 1px solid #dbeafe;
 }
 
-.ai-prescription > header span {
+.ai-prescription-title {
+  flex: 1 1 190px;
+  min-width: 0;
   color: #1d4ed8;
   font-size: 13px;
   font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ai-prescription-source {
+  flex: 0 1 150px;
+  min-width: 0;
+  max-width: 150px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ai-prescription-compact .ai-prescription-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+}
+
+.ai-prescription-compact .ai-prescription-source {
+  max-width: none;
+  text-align: left;
 }
 
 .ai-prescription > header small,
@@ -1389,8 +1423,12 @@
 
 .ai-prescription-block {
   display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   gap: 5px;
   padding: 10px 11px;
+  box-sizing: border-box;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #fff;
@@ -1432,6 +1470,29 @@
 .ai-prescription > footer {
   padding-top: 2px;
   font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ai-prescription > .history-pagination {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-prescription-compact > .history-pagination {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.ai-prescription-compact > .history-pagination span {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.ai-prescription-compact > .history-pagination button {
+  min-width: 0;
+  width: 100%;
 }
 
 :root[data-theme='dark'] .history-ai-follow-up {

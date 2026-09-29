@@ -34,7 +34,7 @@ it("shows the technician evidence separately from the AI prescription", async ()
     recommendedService: "repair",
     predictionSource: "openai",
     latestVisitAnalysis: {
-      provider: "openai",
+      provider: "system-fallback",
       technicianRecorded: "The control board did not respond during testing.",
       aiAssessment: "The symptom may indicate an electrical or control-system problem and does not confirm board failure.",
       possibleCauses: ["Blown or damaged fuse", "Loose wiring or connector"],
@@ -50,6 +50,8 @@ it("shows the technician evidence separately from the AI prescription", async ()
   render(<DynamicServiceSticker unit={{ ampUnitId: "64fa00000000000000000001" }} />);
 
   expect(await screen.findByText("AI-assisted assessment & prescription")).toBeVisible();
+  expect(screen.getByText("Based on your service records")).toHaveClass("ai-prescription-source");
+  expect(screen.getByText("Based on your service records").closest("header")).toHaveClass("ai-prescription-header");
   expect(screen.getByText("1. Technician Findings")).toBeVisible();
   expect(screen.getByText("Assessment page 1 of 4")).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Next assessment page" }));
