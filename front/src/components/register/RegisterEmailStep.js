@@ -7,14 +7,17 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
+import {
+  EMAIL_FORMAT_MESSAGE,
+  isValidEmailFormat,
+  validateEmailForSubmission,
+} from "../../domain/emailPolicy";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-
-const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || "");
 
 export default function RegisterEmailStep({
   formData,
@@ -34,7 +37,7 @@ export default function RegisterEmailStep({
 
   const verified = Boolean(formData.emailVerified);
   const destination = String(formData.email || "").trim().toLowerCase();
-  const destinationIsValid = isEmail(destination);
+  const destinationIsValid = isValidEmailFormat(destination);
   const visibleError = externalErrors?.email || destinationError;
 
   const resetOtp = () => {
@@ -53,9 +56,7 @@ export default function RegisterEmailStep({
 
   const sendCode = async () => {
     if (!destinationIsValid) {
-      setDestinationError(
-        "Enter a valid email address.",
-      );
+      setDestinationError(EMAIL_FORMAT_MESSAGE);
       return;
     }
 
@@ -63,6 +64,11 @@ export default function RegisterEmailStep({
     setDestinationError("");
     setOtpError("");
     try {
+      const emailPolicyError = await validateEmailForSubmission(destination);
+      if (emailPolicyError) {
+        setDestinationError(emailPolicyError);
+        return;
+      }
       await apiRequest("/auth/request-otp", {
         method: "POST",
         body: JSON.stringify({
@@ -140,7 +146,7 @@ export default function RegisterEmailStep({
 
       <BoutiqueBox direction="row" align="center" justify="space-between" margin="auto 0 0"><BoutiqueButton variant="ghost" onClick={onBack} disabled={loading}><ArrowLeft size={18} weight="bold" /> Back</BoutiqueButton><BoutiqueButton onClick={verified ? onNext : otpSent ? verifyCode : sendCode} disabled={loading || (otpSent && otpCode.length !== 6)}>{loading ? <Spinner className="bq-spin" size={18} /> : verified ? <>Continue <ArrowRight size={18} weight="bold" /></> : otpSent ? "Verify code" : "Send email code"}</BoutiqueButton></BoutiqueBox>
 
-      <style dangerouslySetInnerHTML={{ __html: `.bq-reg-inline-btn{padding:8px 16px;background:#e2e8f0;color:${BQ_COLORS.ink};border:0;border-radius:50px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase}.bq-reg-inline-btn.selected{background:${BQ_COLORS.brand};color:#fff}.bq-reg-inline-btn:disabled,.bq-otp-reset:disabled{opacity:.5;cursor:not-allowed}.bq-otp-reset{background:none;border:0;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;color:${BQ_COLORS.ink}}.bq-spin{animation:bq-spin 1s linear infinite}@keyframes bq-spin{to{transform:rotate(360deg)}}` }} />
+      <style dangerouslySetInnerHTML={{ __html: `.bq-reg-inline-btn{padding:8px 16px;background:#e2e8f0;color:${BQ_COLORS.ink};border:0;border-radius:50px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase}.bq-reg-inline-btn.selected{background:${BQ_COLORS.brand};color:#fff}.bq-reg-inline-btn:disabled,.bq-otp-reset:disabled{opacity:.5;cursor:not-allowed}.bq-otp-reset{min-height:42px;padding:9px 16px;background:${BQ_COLORS.surface};border:1px solid #d4d4d8;border-radius:999px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:${BQ_COLORS.ink};transition:background .18s ease,border-color .18s ease,transform .18s ease}.bq-otp-reset:hover:not(:disabled){background:${BQ_COLORS.bgAlt};border-color:${BQ_COLORS.ink};transform:translateY(-1px)}.bq-otp-reset:focus-visible{outline:3px solid rgba(37,99,235,.22);outline-offset:2px}.bq-spin{animation:bq-spin 1s linear infinite}@keyframes bq-spin{to{transform:rotate(360deg)}}` }} />
     </BoutiqueStack>
   );
 }

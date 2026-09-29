@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowRight,
+  Broom,
+  Buildings,
+  CalendarCheck,
+  CheckCircle,
+  ClipboardText,
+  MagnifyingGlass,
+  Sparkle,
+  WarningCircle,
+  Wrench,
+} from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { BRANCHES } from "../../domain/branches/branches";
@@ -11,6 +23,13 @@ import "./styles.css";
 const SERVICE_WINDOWS = [30, 90, 180, 365];
 const UNASSIGNED_BRANCH = "Unassigned";
 const PIPELINE_PAGE_SIZE = 10;
+const SUMMARY_SERVICE_TYPES = ["inspection", "repair", "regular_cleaning", "deep_cleaning"];
+const SUMMARY_SERVICE_ICONS = {
+  inspection: MagnifyingGlass,
+  repair: Wrench,
+  regular_cleaning: Broom,
+  deep_cleaning: Sparkle,
+};
 
 const humanLabel = (value, fallback) => String(value || fallback || "")
   .trim()
@@ -38,6 +57,74 @@ const SERVICE_ACTIONS = {
 };
 
 const unitWord = (count) => `${count} unit${Number(count) === 1 ? "" : "s"}`;
+
+const safeCount = (value) => {
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+};
+
+export const buildFollowUpSummary = ({
+  branchSummary = [],
+  actionSummary = {},
+  pagination = {},
+  pipeline = [],
+  selectedBranch = "all",
+  isCompanyWide = false,
+} = {}) => {
+  const total = safeCount(pagination.total ?? pipeline.length);
+  const hasCompletePage = pipeline.length === total;
+  const scopedBranchSummary = isCompanyWide && selectedBranch !== "all"
+    ? branchSummary.filter((item) => item.branch === selectedBranch)
+    : branchSummary;
+  const branchDistribution = scopedBranchSummary.length
+    ? scopedBranchSummary.map((item) => ({
+      branch: item.branch || UNASSIGNED_BRANCH,
+      total: safeCount(item.total),
+      upcoming: safeCount(item.upcoming),
+      overdue: safeCount(item.overdue),
+    }))
+    : hasCompletePage
+      ? Array.from(pipeline.reduce((counts, unit) => {
+        const branch = unit.serviceBranch || UNASSIGNED_BRANCH;
+        const current = counts.get(branch) || { branch, total: 0, upcoming: 0, overdue: 0 };
+        current.total += 1;
+        current[unit.overdue ? "overdue" : "upcoming"] += 1;
+        counts.set(branch, current);
+        return counts;
+      }, new Map()).values())
+      : [];
+
+  const serviceCounts = new Map(SUMMARY_SERVICE_TYPES.map((serviceType) => [serviceType, 0]));
+  const serviceDemand = actionSummary.serviceDemand?.length
+    ? actionSummary.serviceDemand
+    : hasCompletePage
+      ? pipeline.map((unit) => ({ serviceType: unit.recommendedService, count: 1 }))
+      : [];
+  serviceDemand.forEach((item) => {
+    const serviceType = SUMMARY_SERVICE_TYPES.includes(item.serviceType) ? item.serviceType : "inspection";
+    serviceCounts.set(serviceType, serviceCounts.get(serviceType) + safeCount(item.count));
+  });
+  const services = SUMMARY_SERVICE_TYPES.map((serviceType) => ({
+    serviceType,
+    label: humanLabel(serviceType),
+    count: serviceCounts.get(serviceType),
+  }));
+  const overdue = branchDistribution.reduce((sum, item) => sum + item.overdue, 0);
+  const upcoming = branchDistribution.reduce((sum, item) => sum + item.upcoming, 0);
+  const branchTotal = branchDistribution.reduce((sum, item) => sum + item.total, 0);
+  const serviceTotal = services.reduce((sum, item) => sum + item.count, 0);
+
+  return {
+    total,
+    overdue,
+    upcoming,
+    services,
+    branchDistribution,
+    serviceTotal,
+    branchTotal,
+    isReconciled: overdue + upcoming === total && serviceTotal === total && branchTotal === total,
+  };
+};
 
 export const buildManagementActions = ({ summary = {}, actionSummary = {}, serviceWindow = 30 } = {}) => {
   const total = Number(summary.total || 0);
@@ -102,10 +189,133 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
   return actions;
 };
 
+function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranch, isCompanyWide, onSelectBranch }) {
+  const contextLabel = isCompanyWide && selectedBranch === "all" ? "All branches" : selectedBranch === "all" ? "My branch" : selectedBranch;
+  const value = (count) => loading ? "…" : error ? "Unavailable" : count;
+  const overduePercentage = summary.total ? Math.round((summary.overdue / summary.total) * 100) : 0;
+  const upcomingPercentage = summary.total ? Math.max(0, 100 - overduePercentage) : 0;
+  const maximumBranchTotal = Math.max(1, ...summary.branchDistribution.map((item) => item.total));
+
+  return (
+    <section className="amp-card amp-follow-up-summary" aria-labelledby="amp-follow-up-summary-title">
+      <div className="amp-summary-heading">
+        <div className="amp-summary-title-group">
+          <span className="amp-summary-title-icon"><ClipboardText size={24} weight="duotone" aria-hidden="true" /></span>
+          <div>
+            <span className="amp-summary-eyebrow">Current filtered workload</span>
+            <h2 id="amp-follow-up-summary-title">Follow-up Summary</h2>
+            <p>See exactly how the units in the selected AMP follow-up dataset are distributed.</p>
+          </div>
+        </div>
+        <div className="amp-summary-context" aria-label="Active summary filters">
+          <span><Buildings size={14} weight="bold" aria-hidden="true" />{contextLabel}</span>
+          <span><CalendarCheck size={14} weight="bold" aria-hidden="true" />Next {serviceWindow} days</span>
+        </div>
+      </div>
+
+      <div className="amp-summary-primary" aria-label="Follow-up status">
+        <a className="amp-summary-total-card" href="#amp-follow-up-units">
+          <span className="amp-summary-total-icon"><ClipboardText size={27} weight="duotone" aria-hidden="true" /></span>
+          <div>
+            <span>Total units needing follow-up</span>
+            <strong>{value(summary.total)}</strong>
+            <small>From the current service window and branch scope</small>
+          </div>
+          <ArrowRight className="amp-summary-card-arrow" size={20} weight="bold" aria-hidden="true" />
+        </a>
+        <div className="amp-summary-status-card">
+          <div className="amp-summary-panel-heading">
+            <div><span className="amp-summary-panel-icon"><CalendarCheck size={17} weight="duotone" aria-hidden="true" /></span><h3>Follow-up timing</h3></div>
+            <span>{summary.total} accounted for</span>
+          </div>
+          <div className="amp-summary-status-grid">
+            <a className="amp-summary-status overdue" href="#amp-follow-up-units">
+              <span className="amp-summary-status-icon"><WarningCircle size={20} weight="fill" aria-hidden="true" /></span>
+              <div><span>Overdue</span><strong>{value(summary.overdue)}</strong><small>prioritize first</small></div>
+            </a>
+            <a className="amp-summary-status upcoming" href="#amp-follow-up-units">
+              <span className="amp-summary-status-icon"><CalendarCheck size={20} weight="fill" aria-hidden="true" /></span>
+              <div><span>Upcoming</span><strong>{value(summary.upcoming)}</strong><small>inside this window</small></div>
+            </a>
+          </div>
+          {!loading && !error ? (
+            <div className="amp-summary-status-track" aria-label={`${overduePercentage}% overdue and ${upcomingPercentage}% upcoming`}>
+              <span className="overdue" style={{ width: `${overduePercentage}%` }} />
+              <span className="upcoming" style={{ width: `${upcomingPercentage}%` }} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {!loading && !error && summary.isReconciled ? (
+        <div className="amp-summary-breakdowns">
+          <section className="amp-summary-panel" aria-labelledby="amp-service-breakdown-title">
+            <div className="amp-summary-panel-heading">
+              <div><span className="amp-summary-panel-icon"><Wrench size={17} weight="duotone" aria-hidden="true" /></span><h3 id="amp-service-breakdown-title">Recommended service</h3></div>
+              <span>{summary.serviceTotal} units</span>
+            </div>
+            <div className="amp-service-summary-grid">
+              {summary.services.map((service) => {
+                const ServiceIcon = SUMMARY_SERVICE_ICONS[service.serviceType];
+                const servicePercentage = summary.serviceTotal ? Math.round((service.count / summary.serviceTotal) * 100) : 0;
+                return (
+                  <a className={`amp-service-summary ${service.serviceType}`} href="#amp-follow-up-units" key={service.serviceType}>
+                    <span className="amp-service-summary-icon"><ServiceIcon size={18} weight="duotone" aria-hidden="true" /></span>
+                    <span className="amp-service-summary-copy"><span>{service.label}</span><small>{servicePercentage}% of follow-ups</small></span>
+                    <strong>{service.count}</strong>
+                    <i aria-hidden="true"><i style={{ width: `${servicePercentage}%` }} /></i>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="amp-summary-panel" aria-labelledby="amp-branch-distribution-title">
+            <div className="amp-summary-panel-heading">
+              <div><span className="amp-summary-panel-icon"><Buildings size={17} weight="duotone" aria-hidden="true" /></span><h3 id="amp-branch-distribution-title">Branch distribution</h3></div>
+              <span>{summary.branchTotal} units</span>
+            </div>
+            <div className="amp-branch-distribution">
+              {summary.branchDistribution.map((item) => isCompanyWide ? (
+                <button type="button" key={item.branch} onClick={() => onSelectBranch(item.branch)} aria-label={`Filter follow-up units to ${item.branch}`} style={{ "--amp-branch-load": `${Math.round((item.total / maximumBranchTotal) * 100)}%` }}>
+                  <span><Buildings size={15} weight="duotone" aria-hidden="true" />{item.branch}</span>
+                  <strong>{item.total}</strong>
+                  <small>{item.upcoming} upcoming · {item.overdue} overdue</small>
+                  <i aria-hidden="true"><i /></i>
+                </button>
+              ) : (
+                <div key={item.branch} style={{ "--amp-branch-load": `${Math.round((item.total / maximumBranchTotal) * 100)}%` }}>
+                  <span><Buildings size={15} weight="duotone" aria-hidden="true" />{item.branch}</span>
+                  <strong>{item.total}</strong>
+                  <small>{item.upcoming} upcoming · {item.overdue} overdue</small>
+                  <i aria-hidden="true"><i /></i>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {!loading && !error && summary.isReconciled ? (
+        <p className="amp-summary-proof">
+          <CheckCircle size={19} weight="fill" aria-hidden="true" />
+          <strong>Counts reconciled</strong>
+          <span>{summary.total} total = {summary.overdue} overdue + {summary.upcoming} upcoming</span>
+          <span>{summary.serviceTotal} service recommendations</span>
+          <span>{summary.branchTotal} branch assignments</span>
+        </p>
+      ) : null}
+      {!loading && !error && !summary.isReconciled ? (
+        <p className="amp-summary-warning">The total is available, but its detailed distribution was not returned completely. No inconsistent breakdown is being shown.</p>
+      ) : null}
+    </section>
+  );
+}
+
 function PipelineTable({ units, onSelectPlan }) {
   return (
-    <div className="amp-table-wrap">
-      <table className="amp-table">
+    <div className="amp-table-wrap amp-followup-table-wrap">
+      <table className="amp-table amp-followup-table">
         <thead>
           <tr>
             <th>Unit</th>
@@ -117,37 +327,41 @@ function PipelineTable({ units, onSelectPlan }) {
         </thead>
         <tbody>
           {units.map((unit) => (
-            <tr key={unit.unitId}>
-              <td>
+            <tr className={unit.overdue ? "is-overdue" : "is-upcoming"} key={unit.unitId}>
+              <td data-label="Unit">
                 <strong>{unit.modelName}</strong>
                 <span>{unit.serialNumber}</span>
                 <span>{unit.zipCode}</span>
               </td>
-              <td>
+              <td data-label="Customer">
                 <strong>{unit.customerName}</strong>
                 <span>{unit.addressLine || "Address pending"}</span>
               </td>
-              <td>
+              <td data-label="Suggested servicing date">
                 <strong>{serviceDateLabel(unit.bestServicedBy)}</strong>
-                <span className={unit.overdue ? "amp-due-overdue" : ""}>{unit.daysUntilDue == null ? "Date needs review" : unit.overdue ? `${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? "Due today" : `Due in ${unit.daysUntilDue} days`}</span>
+                <span className={unit.overdue ? "amp-due-status overdue" : "amp-due-status upcoming"}>{unit.daysUntilDue == null ? "Date needs review" : unit.overdue ? `${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? "Due today" : `Due in ${unit.daysUntilDue} days`}</span>
               </td>
-              <td>
-                <strong>{humanLabel(unit.recommendedService, "not yet assessed")}</strong>
+              <td data-label="Recommended service">
+                <strong className={`amp-service-pill ${unit.recommendedService || "inspection"}`}>{humanLabel(unit.recommendedService, "not yet assessed")}</strong>
                 <span>{unit.lastServiceDate ? `Last service ${serviceDateLabel(unit.lastServiceDate)}` : "No completed service recorded"}</span>
               </td>
-              <td>
+              <td data-label="Reason and next step">
                 <details className="amp-details amp-recommendation-details"><summary>See more</summary><div className="amp-recommendation-sections">
-                  <section><h4>Assessment</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p></section>
+                  <section><h4>1. Technician Findings</h4><p>{unit.technicianRecorded || "No technician observation is recorded for the latest visit."}</p><small>Confirmed recorded evidence from the completed technician report.</small></section>
+                  <section><h4>2. AI Assessment</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p><small>Possible interpretation, not a confirmed physical diagnosis.</small></section>
+                  {unit.historicalContext ? <section><h4>Historical Evidence Used</h4><p>{unit.historicalContext}</p></section> : null}
+                  <section><h4>3. Possible Causes</h4>{unit.possibleCauses?.length ? <ul>{unit.possibleCauses.map((cause, index) => <li key={`${cause}-${index}`}>{cause}</li>)}</ul> : <p>No fault cause is indicated by the completed record.</p>}</section>
+                  <section><h4>4. Recommended Diagnostic Actions</h4>{unit.diagnosticActions?.length ? <ol>{unit.diagnosticActions.map((action, index) => <li key={`${action}-${index}`}>{action}</li>)}</ol> : <p>Review the original record and perform the measurements required to isolate the cause.</p>}</section>
+                  <section><h4>5. Recommended Service / Repair</h4><p>{unit.recommendedServiceOrRepair || humanLabel(unit.recommendedService, "Not yet assessed")}</p></section>
+                  <section><h4>6. Parts / Component Recommendation</h4><p>{unit.partsRecommendation || unit.recommendedPart || "No part recommendation is supported by the recorded history."}</p></section>
+                  <section><h4>7. Suggested Servicing Date</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p><small>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</small></section>
                   <section><h4>Current Status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
-                  <section><h4>Technician Recorded</h4><p>{unit.technicianRecorded || "No technician observation is recorded for the latest visit."}</p></section>
                   {unit.previousVisitHistory?.length ? <section><h4>Previous Visit History</h4><ul>{unit.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
                   {(unit.condition || unit.capacityAssessment?.summary) ? <section><h4>Current AC condition</h4>{unit.condition ? <p>{humanLabel(unit.condition)}</p> : null}{unit.capacityAssessment?.summary ? <p>{unit.capacityAssessment.summary}</p> : null}</section> : null}
                   <section><h4>Current Issues</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit assessment."}</p>}</section>
                   {unit.completedWork?.length ? <section><h4>Completed Work</h4><ul>{unit.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
-                  <section><h4>Recommended Action</h4>{unit.recommendedActions?.length ? <ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul> : <p>{`Review the records and arrange ${humanLabel(unit.recommendedService, "the recommended service").toLowerCase()} with the customer.`}</p>}</section>
-                  <section><h4>Recommended Part</h4><p>{unit.recommendedPart || "No part recommendation is supported by the recorded history."}</p></section>
-                  <section><h4>Next Possible Visit</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p></section>
-                  <section><h4>Why This Date</h4><p>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</p></section>
+                  {unit.recommendedActions?.length ? <section><h4>Follow-up Coordination</h4><ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul></section> : null}
+                  <section><p><strong>Confirmation required:</strong> A qualified technician must confirm the physical diagnosis before repair or component replacement is finalized.</p></section>
                   <section><h4>Operational context</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
                 </div></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
@@ -289,6 +503,18 @@ function ManagerAmpDashboard() {
     actionSummary: effectiveActionSummary,
     serviceWindow,
   }), [currentSummary, effectiveActionSummary, serviceWindow]);
+  const followUpSummary = useMemo(() => buildFollowUpSummary({
+    branchSummary,
+    actionSummary: effectiveActionSummary,
+    pagination: pipelinePagination,
+    pipeline,
+    selectedBranch,
+    isCompanyWide,
+  }), [branchSummary, effectiveActionSummary, isCompanyWide, pipeline, pipelinePagination, selectedBranch]);
+  const selectBranch = (branch) => {
+    setPipelinePage(1);
+    setSelectedBranch(branch);
+  };
   const pageTitle = isCompanyWide ? "AMP · Maintenance across branches" : "AMP · My branch maintenance";
   const pageSubtitle = isCompanyWide
     ? "See which branches need attention. Branch admins remain responsible for service processing."
@@ -297,29 +523,15 @@ function ManagerAmpDashboard() {
   return (
     <AmpDashboardShell title={pageTitle} subtitle={pageSubtitle}>
       <AmpPurposeGuide planning={isCompanyWide} />
-      <div className="amp-metrics">
-        <article>
-          <span>Units to follow up</span>
-          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.total}</strong>
-          <small>Review these saved unit-level plans.</small>
-        </article>
-        <article>
-          <span>Due within {serviceWindow} days</span>
-          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.upcoming}</strong>
-          <small>Prepare customer contact and service capacity.</small>
-        </article>
-        <article>
-          <span>Overdue · follow up first</span>
-          <strong>{loading ? "…" : error ? "Unavailable" : currentSummary.overdue}</strong>
-          <small>Prioritize verified overdue plans first.</small>
-        </article>
-        {isCompanyWide ? (
-          <article>
-            <span>Unassigned units</span>
-            <strong>{loading ? "…" : error ? "Unavailable" : unassignedCount}</strong>
-          </article>
-        ) : null}
-      </div>
+      <FollowUpSummary
+        summary={followUpSummary}
+        loading={loading}
+        error={error}
+        serviceWindow={serviceWindow}
+        selectedBranch={selectedBranch}
+        isCompanyWide={isCompanyWide}
+        onSelectBranch={selectBranch}
+      />
 
       {!loading && !error ? (
         <section className="amp-card amp-management-actions" aria-labelledby="amp-management-actions-title">
@@ -380,13 +592,17 @@ function ManagerAmpDashboard() {
                 type="button"
                 className={selectedBranch === item.branch ? "amp-branch-summary active" : "amp-branch-summary"}
                 key={item.branch}
-                onClick={() => { setPipelinePage(1); setSelectedBranch(item.branch); }}
+                onClick={() => selectBranch(item.branch)}
                 aria-pressed={selectedBranch === item.branch}
                 aria-label={`Show ${item.branch} service workload`}
               >
-                <span>{item.branch}</span>
-                <strong>{item.total}</strong>
-                <small>{item.upcoming} upcoming · {item.overdue} overdue</small>
+                <span className="amp-branch-summary-top"><span><Buildings size={15} weight="duotone" aria-hidden="true" />{item.branch}</span><ArrowRight size={15} weight="bold" aria-hidden="true" /></span>
+                <span className="amp-branch-summary-count"><strong>{item.total}</strong><span>units</span></span>
+                <span className="amp-branch-summary-track" aria-hidden="true">
+                  <span className="upcoming" style={{ width: `${item.total ? Math.round((item.upcoming / item.total) * 100) : 0}%` }} />
+                  <span className="overdue" style={{ width: `${item.total ? Math.round((item.overdue / item.total) * 100) : 0}%` }} />
+                </span>
+                <small><span>{item.upcoming} upcoming</span><span>{item.overdue} overdue</span></small>
               </button>
             ))}
           </div>

@@ -58,7 +58,7 @@ function NotificationSettings({
       {
         key: "push",
         label: "Device Notifications",
-        description: "Receive device alerts even when the app is not open.",
+        description: "Receive device notifications even when the app is not open.",
       },
       {
         key: "accountUpdates",
@@ -78,8 +78,8 @@ function NotificationSettings({
       },
       {
         key: "systemAlerts",
-        label: "System Alerts",
-        description: "Operational and branch-level alerts.",
+        label: "System Notifications",
+        description: "Operational and branch-level notifications.",
         visible: showSystemAlerts,
       },
     ];

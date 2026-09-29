@@ -2,7 +2,6 @@
 // Email recovery begins here and is available to every account role.
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../components/ui/Button";
@@ -74,14 +73,13 @@ export default function RecoverScreen() {
 
         <Button title="Continue" onPress={handleSubmit} variant="primary" />
 
-        <TouchableOpacity
+        <Button
+          title="Back to Login"
           onPress={() => router.push("/sign-in")}
-          style={{ alignItems: "center", marginTop: SPACING.sm }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Back to Login
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: SPACING.sm }}
+        />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

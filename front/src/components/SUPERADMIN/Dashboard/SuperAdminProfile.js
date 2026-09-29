@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { useUser } from '../../../context/UserContext';
 import AccountSecurityManagement from '../../security/AccountSecurityManagement';
+import { validateEmailForSubmission } from '../../../domain/emailPolicy';
 import './SuperAdminAccount.css';
 
 const SuperAdminProfile = () => {
@@ -13,8 +14,11 @@ const SuperAdminProfile = () => {
 
   useEffect(() => setProfile({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' }), [user]);
   const saveProfile = async (event) => {
-    event.preventDefault(); setSavingProfile(true); setError(''); setProfileNotice('');
-    try { await updateProfile(profile); setProfileNotice('Profile updated successfully.'); } catch (requestError) { setError(requestError.message || 'Unable to update profile.'); } finally { setSavingProfile(false); }
+    event.preventDefault(); setError(''); setProfileNotice('');
+    const emailError = await validateEmailForSubmission(profile.email);
+    if (emailError) { setError(emailError); return; }
+    setSavingProfile(true);
+    try { await updateProfile({ ...profile, email: String(profile.email || '').trim().toLowerCase() }); setProfileNotice('Profile updated successfully.'); } catch (requestError) { setError(requestError.message || 'Unable to update profile.'); } finally { setSavingProfile(false); }
   };
   return <SuperAdminLayout title="My SuperAdmin Profile" subtitle="Personal account details and security for HQ access">
     <section className="hq-profile-hero"><div className="hq-profile-avatar">{(user?.name || 'S').slice(0, 1).toUpperCase()}</div><div><p>HQ identity</p><h2>{user?.name || 'Super Admin'}</h2><span>{user?.email || 'No email recorded'} · SuperAdmin</span></div><div className="hq-profile-status"><b>Company-wide access</b><small>Last login: {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Not recorded'}</small></div></section>

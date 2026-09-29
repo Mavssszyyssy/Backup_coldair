@@ -1,6 +1,9 @@
 // utils/authValidation.js
 
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import zxcvbn from "zxcvbn";
+
+export const EMAIL_REGEX = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE = "This email domain is not allowed. Please use a valid and supported email provider.";
 export const PASSWORD_MAX_LENGTH = 25;
 
 export function normalizeEmail(value = "") {
@@ -67,15 +70,29 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
   return "";
 }
 
-export function validateEmail(email) {
+export function validateEmail(email, activeDomains = null) {
   const normalized = normalizeEmail(email);
 
   if (!normalized) {
     return "Email is required.";
   }
 
-  if (!EMAIL_REGEX.test(normalized)) {
+  const local = normalized.split("@")[0] || "";
+  if (
+    normalized.length > 254
+    || !EMAIL_REGEX.test(normalized)
+    || local.length > 64
+    || local.startsWith(".")
+    || local.endsWith(".")
+    || local.includes("..")
+  ) {
     return "Enter a valid email address.";
+  }
+
+  if (Array.isArray(activeDomains)) {
+    const domain = normalized.slice(normalized.lastIndexOf("@") + 1);
+    const allowed = activeDomains.some((value) => String(value || "").trim().toLowerCase() === domain);
+    if (!allowed) return EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE;
   }
 
   return "";
@@ -192,26 +209,16 @@ export function hasValidationErrors(errors = {}) {
 }
 
 export function validatePasswordStrength(password) {
-  // Simplified zxcvbn-like strength check
-  // Returns { score: 0-100 } based on length, complexity
   if (!password) return { score: 0 };
+  const result = zxcvbn(String(password));
+  const rawScore = Math.floor(Number(result.guesses_log10 || 0) * 10);
+  return { score: Math.min(100, Math.max(0, rawScore)) };
+}
 
-  let score = 0;
-
-  // Length scoring
-  if (password.length >= 8) score += 20;
-  if (password.length >= 12) score += 10;
-  if (password.length >= 16) score += 10;
-
-  // Character variety
-  if (/[a-z]/.test(password)) score += 15;
-  if (/[A-Z]/.test(password)) score += 15;
-  if (/[0-9]/.test(password)) score += 15;
-  if (/[^a-zA-Z0-9]/.test(password)) score += 15;
-
-  // Common patterns (reduce score)
-  if (/^\d+$/.test(password)) score = Math.min(score, 30); // All digits
-  if (/^(.)\1+$/.test(password)) score = Math.min(score, 20); // Repeated chars
-
-  return { score: Math.min(100, Math.max(0, score)) };
+export function passwordStrengthLabel(score = 0) {
+  const normalized = Math.min(100, Math.max(0, Number(score) || 0));
+  if (normalized < 40) return "Weak";
+  if (normalized < 65) return "Moderate";
+  if (normalized < 100) return "Strong";
+  return "Excellent";
 }

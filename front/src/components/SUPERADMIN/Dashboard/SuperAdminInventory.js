@@ -16,7 +16,7 @@ const TABS = [
   { id: 'catalog', label: 'Shop Catalog' },
   { id: 'checker', label: 'Inventory Checker' },
   { id: 'serial-qr', label: 'Serial / QR Registry' },
-  { id: 'reorders', label: 'Reorder Approvals' },
+  { id: 'reorders', label: 'Reorder Management' },
 ];
 
 const SuperAdminInventory = () => {
@@ -55,7 +55,7 @@ const SuperAdminInventory = () => {
   const selectTab = (tab) => setSearchParams(tab === 'catalog' ? {} : { tab }, { replace: true });
 
   return (
-    <SuperAdminLayout title="Inventory Management" subtitle="Review branch stock, serial / QR records, and replenishment approvals in one executive workspace.">
+    <SuperAdminLayout title="Inventory Management" subtitle="Review branch stock, serial / QR records, and replenishment requests in one executive workspace.">
       <div className="module-tabs" role="tablist" aria-label="Super Admin inventory management sections">
         {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>{tab.label}</button>)}
       </div>
@@ -63,7 +63,7 @@ const SuperAdminInventory = () => {
       {activeTab === 'checker' ? (
         <>
           <div className="super-card" style={{ marginBottom: 18, borderColor: outOfStock.length ? '#fecaca' : undefined }}>
-            <h3>{outOfStock.length ? `${outOfStock.length} out-of-stock alert${outOfStock.length === 1 ? '' : 's'}` : 'Inventory healthy'}</h3>
+            <h3>{outOfStock.length ? `${outOfStock.length} out-of-stock notification${outOfStock.length === 1 ? '' : 's'}` : 'Inventory healthy'}</h3>
             <p className="super-muted">{outOfStock.length ? `These items have exactly 0 stock in ${branch}. Add stock below to make them available again.` : `No items are at zero stock in ${branch}.`}</p>
             {outOfStock.length ? <div className="super-list">{outOfStock.map((product) => <div className="super-list-item" key={product.id}><strong>{product.name}</strong><br /><span>{product.sku} · {branch} · 0 stock</span></div>)}</div> : null}
           </div>

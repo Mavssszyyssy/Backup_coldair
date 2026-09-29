@@ -9,7 +9,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 const ITEMS = [
   { href: "/technician/dashboard", label: "Today", icon: "speedometer-sharp" },
   { href: "/technician/tasks", label: "Work Orders", icon: "clipboard-sharp" },
-  { href: "/technician/notifications", label: "Alerts", icon: "notifications-sharp" },
+  { href: "/technician/notifications", label: "Notifications", icon: "notifications-sharp" },
   { href: "/technician/profile", label: "Profile", icon: "person-sharp" },
 ];
 
@@ -50,7 +50,7 @@ function NavItem({ item }) {
           size={22}
           color={color}
         />
-        {item.label === "Alerts" ? <NotificationBadge /> : null}
+        {item.href === "/technician/notifications" ? <NotificationBadge /> : null}
       </View>
       <Text
         style={{

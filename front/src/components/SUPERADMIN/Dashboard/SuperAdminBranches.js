@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
 import { BRANCHES } from '../../../domain/branches/branches';
+import { validateEmailForSubmission } from '../../../domain/emailPolicy';
 import '../superAdminShared.css';
 import './SuperAdminBranches.css';
 
@@ -93,8 +94,9 @@ const SuperAdminBranches = () => {
     setMessage('');
     setError('');
     const email = String(admin.email || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError(`Enter a valid email address for ${admin.name || 'this administrator'}.`);
+    const emailValidationError = await validateEmailForSubmission(email);
+    if (emailValidationError) {
+      setError(emailValidationError);
       return;
     }
     setSavingEmailId(admin.id);

@@ -492,14 +492,13 @@ export default function SignUpStep0() {
           )}
         </Card>
 
-        <TouchableOpacity
+        <Button
+          title="Already have an account? Sign in"
           onPress={() => router.push("/sign-in")}
-          style={{ alignItems: "center", marginTop: SPACING.md }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Already have an account? Sign in
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: SPACING.md }}
+        />
       </KeyboardAwareScrollView>
       <StickyActionBar>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>

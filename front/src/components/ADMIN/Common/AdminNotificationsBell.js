@@ -205,7 +205,7 @@ function AdminNotificationsBell() {
 
           {items.length === 0 ? (
             <div className="admin-notifications-empty">
-              No alerts right now.
+              No notifications right now.
             </div>
           ) : (
             <div className="admin-notifications-list">

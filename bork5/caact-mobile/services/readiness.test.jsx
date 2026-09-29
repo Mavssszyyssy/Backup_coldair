@@ -155,6 +155,8 @@ describe("mobile customer readiness rules", () => {
     expect(loginSource).toContain("Resend code");
     expect(loginSource).toContain("I don't have an account");
     expect(loginSource).toContain('router.push("/recover")');
+    expect(loginSource).toContain('variant="secondary"');
+    expect(loginSource).toContain('variant="ghost"');
   });
 
   test("pending warranties explain automatic activation without an acceptance action", () => {

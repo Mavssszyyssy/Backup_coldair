@@ -41,3 +41,26 @@ test("completed reports keep the technician record separate from the AI follow-u
   expect(screen.getByText("AI follow-up recommendation")).toBeTruthy();
   expect(screen.getByText("The fan should be inspected within 30 days.")).toBeTruthy();
 });
+
+test("completed reports show possible causes and ordered diagnostics without treating them as confirmed findings", async () => {
+  await render(<CompletedServiceReports records={[{
+    id: "visit-prescription", findings: "The control board did not respond during testing.", actionTaken: "Recorded the electrical symptom.", date: "2026-09-12", serviceType: "Inspection",
+    aiInterpretation: {
+      provider: "openai",
+      technicianRecorded: "The control board did not respond during testing.",
+      aiAssessment: "This may indicate an electrical or control-system issue without confirming board failure.",
+      possibleCauses: ["Blown or damaged fuse", "Loose wiring or connector"],
+      diagnosticActions: ["Verify incoming voltage.", "Inspect the fuse and wiring."],
+      recommendedService: "inspection",
+      recommendedServiceOrRepair: "Arrange a focused electrical and control-board diagnosis.",
+      partsRecommendation: "Replace the board only if testing confirms it is defective.",
+      recommendedFollowUpDate: "2026-10-02T00:00:00.000Z",
+      whyThisDate: "The recorded concern should be checked soon.",
+    },
+  }]} serviceName={v => v} formatDate={v => v} />);
+  await fireEvent.press(screen.getByLabelText("Completed service reports"));
+  expect(screen.getByText("1. Technician Findings")).toBeTruthy();
+  expect(screen.getByText("3. Possible Causes")).toBeTruthy();
+  expect(screen.getByText("4. Recommended Diagnostic Actions")).toBeTruthy();
+  expect(screen.getByText(/must confirm the physical diagnosis/i)).toBeTruthy();
+});

@@ -22,3 +22,25 @@ test('shows a component concern separately from normal AC performance', () => {
   expect(screen.getByText('Button panel / affected button')).toBeVisible();
   expect(screen.getByText('Recommended actions', { exact: false })).toBeVisible();
 });
+
+test('renders the complete seven-part AI prescription for a completed visit', () => {
+  render(<ServiceFollowUp interpretation={{
+    provider: 'openai',
+    technicianRecorded: 'The control board did not respond during testing.',
+    aiAssessment: 'The symptom may indicate an electrical or control-system issue without confirming board failure.',
+    possibleCauses: ['Blown or damaged fuse', 'Loose wiring or connector'],
+    diagnosticActions: ['Verify incoming voltage.', 'Inspect the fuse and wiring.'],
+    recommendedService: 'inspection',
+    recommendedServiceOrRepair: 'Arrange a focused electrical and control-board diagnosis.',
+    partsRecommendation: 'Replace the board only if electrical testing confirms it is defective.',
+    recommendedFollowUpDate: '2026-10-02T00:00:00.000Z',
+    whyThisDate: 'The recorded concern should be checked soon.',
+  }} />);
+  expect(screen.getByText('1. Technician Findings')).toBeVisible();
+  expect(screen.getByText('2. AI Assessment')).toBeVisible();
+  expect(screen.getByText('3. Possible Causes')).toBeVisible();
+  expect(screen.getByText('4. Recommended Diagnostic Actions')).toBeVisible();
+  expect(screen.getByText('5. Recommended Service / Repair')).toBeVisible();
+  expect(screen.getByText('6. Parts / Component Recommendation')).toBeVisible();
+  expect(screen.getByText('7. Suggested Servicing Date')).toBeVisible();
+});

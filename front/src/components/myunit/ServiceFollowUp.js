@@ -1,4 +1,5 @@
 import { serviceDateLabel, serviceLabel } from '../../domain/myunit/serviceHistoryDisplay';
+import AiServicePrescription from './AiServicePrescription';
 
 const labelForProvider = (provider) => provider === 'openai'
   ? 'AI-reviewed follow-up plan'
@@ -17,9 +18,9 @@ function PlanRow({ label, children }) {
 // This keeps the original technician record readable while presenting the
 // interpretation as separate, decision-ready fields rather than one paragraph.
 function ServiceFollowUp({ interpretation }) {
-  if (!interpretation || (!interpretation.customerSummary && !interpretation.currentStatus && !interpretation.technicianRecorded)) return null;
+  if (!interpretation || (!interpretation.customerSummary && !interpretation.currentStatus && !interpretation.technicianRecorded && !interpretation.aiAssessment && !interpretation.possibleCauses?.length)) return null;
   const structured = Boolean(
-    interpretation.overallCondition || interpretation.componentConcern || interpretation.recommendedPart
+    interpretation.aiAssessment || interpretation.overallCondition || interpretation.componentConcern || interpretation.recommendedPart
     || interpretation.recommendedActions?.length || interpretation.whyThisDate,
   );
   if (!structured) {
@@ -27,6 +28,9 @@ function ServiceFollowUp({ interpretation }) {
       <strong>{labelForProvider(interpretation.provider)}</strong>
       <span>{interpretation.customerSummary}</span>
     </div>;
+  }
+  if (interpretation.aiAssessment || interpretation.possibleCauses?.length || interpretation.diagnosticActions?.length) {
+    return <AiServicePrescription interpretation={interpretation} />;
   }
   return <section className="history-ai-follow-up history-follow-up-plan" aria-label="Predictive maintenance follow-up plan">
     <strong>{labelForProvider(interpretation.provider)}</strong>

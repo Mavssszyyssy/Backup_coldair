@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Text,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -21,6 +20,7 @@ import {
   requestVerificationOtp,
   verifyRegistrationOtp,
 } from "../../../../services/api";
+import { validateEmail } from "../../../../utils/authValidation";
 
 const CODE_RESEND_MS = 60 * 1000;
 const CODE_EXPIRES_MS = 5 * 60 * 1000;
@@ -144,7 +144,7 @@ export default function SignUpStep2() {
   const validateContactMethod = () => {
     const nextErrors = {};
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrationPayload.email)) {
+    if (validateEmail(registrationPayload.email)) {
       nextErrors.code = "Go back and enter a valid email address.";
     }
 
@@ -406,14 +406,13 @@ export default function SignUpStep2() {
           </Text>
         </Card>
 
-        <TouchableOpacity
+        <Button
+          title="Back to previous step"
           onPress={() => router.back()}
-          style={{ alignItems: "center", marginTop: SPACING.md }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Back to previous step
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: SPACING.md }}
+        />
       </KeyboardAwareScrollView>
       <StickyActionBar>
         {showLegalErrors && !hasAllLegalConsents(legalConsent) ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, fontSize: 12, marginBottom: 6 }}>Complete the Terms & Privacy acknowledgments above to continue.</Text> : null}

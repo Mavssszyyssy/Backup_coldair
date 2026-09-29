@@ -28,6 +28,7 @@ export default function CustomerAmpReport({ report, provider }) {
   const explanation = customerSystemMessage(String(maintenance.interpretation || "").trim());
   const aiAssessment = maintenance.aiAssessment || visitAnalysis.aiAssessment || explanation || "AEROPULSE needs more completed service details before it can assess this AC.";
   const whyThisDate = maintenance.whyThisDate || visitAnalysis.whyThisDate || customerSystemMessage(maintenance.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested.";
+  const hasVisitPrescription = Boolean(visitAnalysis.technicianRecorded || visitAnalysis.aiAssessment || visitAnalysis.possibleCauses?.length || visitAnalysis.diagnosticActions?.length || visitAnalysis.recommendedServiceOrRepair);
   const aiAssisted = provider === "openai" && Boolean(explanation);
   return <View style={{ marginTop: SPACING.md }}>
     <Text accessibilityRole="header" style={{ color: COLORS.text, fontSize: FONT.lg, fontWeight: FONT.bold }}>{summary ? "Your service history" : "Your next service"}</Text>
@@ -38,13 +39,7 @@ export default function CustomerAmpReport({ report, provider }) {
       <DetailRow label="Recommended service" value={methodLabel(maintenance.recommendedService)} />
     </> : <DetailRow label="Last recorded cleaning" value={dateLabel(maintenance.lastCleaningDate)} />}
     <DetailRow label="Priority" value={assessment.priority || (maintenance.overdue ? "Schedule soon" : "Routine")} />
-    <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || aiAssessment} multiline />
-    <DetailRow label="Current Status" value={assessment.currentStatus || visitAnalysis.currentStatus || "Not recorded"} multiline />
-    <DetailRow label="Technician Recorded" value={assessment.technicianRecorded || visitAnalysis.technicianRecorded || "Not recorded"} multiline />
-    {assessment.previousVisitHistory?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Previous Visit History</Text>{assessment.previousVisitHistory.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : null}
-    {assessment.currentIssues?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Current Issues</Text>{assessment.currentIssues.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : <DetailRow label="Current Issues" value="No unresolved issue is recorded in the latest visit assessment." multiline />}
-    {assessment.completedWork?.length ? <View><Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Completed Work</Text>{assessment.completedWork.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}</View> : null}
-    <DetailRow label="Recommended Part" value={assessment.recommendedPart || visitAnalysis.recommendedPart || "No part recommendation is supported by the recorded history."} multiline />
+    {hasVisitPrescription ? <VisitFollowUpPlan interpretation={visitAnalysis} /> : <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || aiAssessment} multiline />}
     {assessment.factorsConsidered?.length ? <View>
       <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Factors Considered</Text>
       {assessment.factorsConsidered.map((item, index) => <DetailRow key={`${item.label}-${index}`} label={item.label} value={/date/i.test(item.label) ? dateLabel(item.value) : String(item.value)} multiline />)}
@@ -54,8 +49,8 @@ export default function CustomerAmpReport({ report, provider }) {
       {assessment.observationsConsidered.map((item, index) => <DetailRow key={`${item.source}-${index}`} label={item.source} value={item.value} multiline />)}
       <Text style={body}>Customer-reported observations remain unverified until a technician confirms them.</Text>
     </View> : null}
-    <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || whyThisDate} multiline />
-    {assessment.recommendedActions?.length ? <View>
+    {!hasVisitPrescription ? <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || whyThisDate} multiline /> : null}
+    {!hasVisitPrescription && assessment.recommendedActions?.length ? <View>
       <Text accessibilityRole="header" style={[body, { color: COLORS.text, fontWeight: FONT.bold }]}>Recommended Actions</Text>
       {assessment.recommendedActions.map((item, index) => <Text key={`${item}-${index}`} style={body}>{index + 1}. {item}</Text>)}
       <Text style={body}>{assessment.evidenceNotice}</Text>

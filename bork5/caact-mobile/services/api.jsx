@@ -290,6 +290,17 @@ export async function checkAliasAvailability(alias) {
   };
 }
 
+export async function getEmailDomainPolicy() {
+  const { ok, data } = await get("/system-settings/email-domains/public");
+  if (ok && Array.isArray(data.activeDomains) && data.activeDomains.length) {
+    return { success: true, activeDomains: data.activeDomains };
+  }
+  return {
+    success: false,
+    error: getErrorMessage(data, "Unable to load supported email providers."),
+  };
+}
+
 export async function requestVerificationOtp({
   action,
   channel,

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
-import ManagerAmpDashboard from "./ManagerAmpDashboard";
+import ManagerAmpDashboard, { buildFollowUpSummary } from "./ManagerAmpDashboard";
 import OwnerAmpDashboard from "./OwnerAmpDashboard";
 
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
@@ -17,6 +17,55 @@ beforeEach(() => {
   apiRequest.mockResolvedValue({ units: [], forecast: [{ month: "2026-09", label: "Sep 2026", serviceVolume: 0, projectedRevenue: 0 }] });
 });
 const show = (component) => render(<MemoryRouter>{component}</MemoryRouter>);
+
+it("reconciles follow-up totals across status, service, and branch distributions", () => {
+  const summary = buildFollowUpSummary({
+    pagination: { total: 6 },
+    branchSummary: [
+      { branch: "Bulacan", total: 2, upcoming: 1, overdue: 1 },
+      { branch: "Cavite", total: 4, upcoming: 3, overdue: 1 },
+    ],
+    actionSummary: {
+      serviceDemand: [
+        { serviceType: "inspection", count: 3 },
+        { serviceType: "repair", count: 1 },
+        { serviceType: "regular_cleaning", count: 2 },
+      ],
+    },
+    isCompanyWide: true,
+  });
+
+  expect(summary).toMatchObject({
+    total: 6,
+    overdue: 2,
+    upcoming: 4,
+    serviceTotal: 6,
+    branchTotal: 6,
+    isReconciled: true,
+  });
+  expect(summary.services.map(({ serviceType, count }) => [serviceType, count])).toEqual([
+    ["inspection", 3],
+    ["repair", 1],
+    ["regular_cleaning", 2],
+    ["deep_cleaning", 0],
+  ]);
+});
+
+it("scopes the follow-up summary to the selected branch", () => {
+  const summary = buildFollowUpSummary({
+    pagination: { total: 4 },
+    branchSummary: [
+      { branch: "Bulacan", total: 2, upcoming: 1, overdue: 1 },
+      { branch: "Cavite", total: 4, upcoming: 3, overdue: 1 },
+    ],
+    actionSummary: { serviceDemand: [{ serviceType: "inspection", count: 4 }] },
+    selectedBranch: "Cavite",
+    isCompanyWide: true,
+  });
+
+  expect(summary.branchDistribution).toEqual([{ branch: "Cavite", total: 4, upcoming: 3, overdue: 1 }]);
+  expect(summary).toMatchObject({ total: 4, overdue: 1, upcoming: 3, branchTotal: 4, serviceTotal: 4, isReconciled: true });
+});
 
 it("keeps each AMP See more card at its own content height", () => {
   const css = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "styles.css"), "utf8");
@@ -45,6 +94,35 @@ it("keeps Superadmin branch and service-window filters working with clearer labe
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10&branch=Bulacan"));
   expect(screen.getByRole("link", { name: "12-month workload plan" })).toBeVisible();
+});
+
+it("shows a reconciled, interactive Superadmin follow-up summary", async () => {
+  useUser.mockReturnValue({ userRole: "superadmin", user: { role: "superadmin" }, logout: vi.fn() });
+  apiRequest.mockImplementation(async path => path.includes("pipeline") ? {
+    units: [],
+    pagination: { page: 1, pageSize: 10, total: path.includes("branch=Cavite") ? 4 : 6, totalPages: 1 },
+    branchSummary: [
+      { branch: "Bulacan", total: 2, upcoming: 1, overdue: 1 },
+      { branch: "Cavite", total: 4, upcoming: 3, overdue: 1 },
+    ],
+    actionSummary: {
+      serviceDemand: path.includes("branch=Cavite")
+        ? [{ serviceType: "inspection", count: 4 }]
+        : [{ serviceType: "inspection", count: 4 }, { serviceType: "repair", count: 2 }],
+    },
+  } : { units: [] });
+
+  show(<ManagerAmpDashboard />);
+
+  expect(await screen.findByRole("heading", { name: "Follow-up Summary" })).toBeVisible();
+  expect(screen.getByText("Counts reconciled")).toBeVisible();
+  expect(screen.getByText("6 total = 2 overdue + 4 upcoming")).toBeVisible();
+  expect(screen.getByText("6 service recommendations")).toBeVisible();
+  expect(screen.getByText("6 branch assignments")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "Filter follow-up units to Cavite" }));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=1&pageSize=10&branch=Cavite"));
+  expect(await screen.findByText("4 total = 1 overdue + 3 upcoming")).toBeVisible();
 });
 
 it.each([ManagerAmpDashboard, OwnerAmpDashboard])("does not present a failed request as zero workload", async (Dashboard) => {

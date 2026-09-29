@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
+import { validateEmailForSubmission } from "../../domain/emailPolicy";
 
 const CATEGORY_OPTIONS = [
   { value: "general", label: "General question" },
@@ -43,9 +44,14 @@ function ContactForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
     setError("");
     setConfirmation(null);
+    const emailValidationError = await validateEmailForSubmission(formData.email);
+    if (emailValidationError) {
+      setError(emailValidationError);
+      return;
+    }
+    setSubmitting(true);
     try {
       const result = await apiRequest("/contact-messages", {
         method: "POST",

@@ -179,7 +179,7 @@ function AdminSettings() {
               ['accountUpdates', 'Account and security updates'],
               ['orderUpdates', 'Order updates'],
               ['serviceUpdates', 'Service updates'],
-              ['systemAlerts', 'System alerts'],
+              ['systemAlerts', 'System notifications'],
             ].map(([key, label]) => (
               <label key={key} className="admin-settings-toggle">
                 <span>{label}</span>

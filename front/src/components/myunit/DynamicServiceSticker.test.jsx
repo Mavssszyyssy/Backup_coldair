@@ -28,22 +28,30 @@ it("organizes the maintenance recommendation into concise, named sections", asyn
   expect(screen.getByText("Book this service using your Cold Air mobile account.")).toBeVisible();
 });
 
-it("shows the technician-grounded service action plan for a repair assessment", async () => {
+it("shows the technician evidence separately from the AI prescription", async () => {
   apiRequest.mockResolvedValue({ recommendation: {
     bestServicedBy: "2026-10-15T00:00:00.000Z",
     recommendedService: "repair",
     predictionSource: "openai",
     latestVisitAnalysis: {
-      recommendedActions: [
-        "Arrange a qualified technician assessment of the recorded control board concern; confirm the cause before approving repair or replacement work.",
-        "Repair assessment is recommended by 2026-10-15.",
-      ],
+      provider: "openai",
+      technicianRecorded: "The control board did not respond during testing.",
+      aiAssessment: "The symptom may indicate an electrical or control-system problem and does not confirm board failure.",
+      possibleCauses: ["Blown or damaged fuse", "Loose wiring or connector"],
+      diagnosticActions: ["Verify incoming voltage.", "Inspect the fuse and wiring."],
+      recommendedService: "repair",
+      recommendedServiceOrRepair: "Arrange electrical and control-board diagnosis before repair.",
+      partsRecommendation: "Test the board and related components before replacement.",
+      recommendedFollowUpDate: "2026-10-15T00:00:00.000Z",
+      whyThisDate: "The recorded concern should be checked soon.",
     },
   } });
 
   render(<DynamicServiceSticker unit={{ ampUnitId: "64fa00000000000000000001" }} />);
 
-  expect(await screen.findByText("Recommended service action plan")).toBeVisible();
-  expect(screen.getByText(/recorded control board concern/i)).toBeVisible();
-  expect(screen.getByText(/final repair or replacement is confirmed only after inspection/i)).toBeVisible();
+  expect(await screen.findByText("AI-assisted assessment & prescription")).toBeVisible();
+  expect(screen.getByText("1. Technician Findings")).toBeVisible();
+  expect(screen.getByText("3. Possible Causes")).toBeVisible();
+  expect(screen.getByText("4. Recommended Diagnostic Actions")).toBeVisible();
+  expect(screen.getByText(/must confirm the physical diagnosis/i)).toBeVisible();
 });

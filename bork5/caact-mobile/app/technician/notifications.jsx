@@ -65,7 +65,7 @@ export default function TechnicianNotificationsScreen() {
   };
 
   return (
-    <TechnicianScreen title="Alerts" subtitle="Assignments and service updates" icon="notifications-sharp">
+    <TechnicianScreen title="Notifications" subtitle="Assignments and service updates" icon="notifications-sharp">
       {loading ? <ActivityIndicator color={COLORS.tech} /> : notifications.length === 0 ? (
         <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md }}><Text style={{ color: COLORS.textSecondary }}>You are all caught up.</Text></View>
       ) : notifications.map((item) => <NotificationRow key={item.id} item={item} onPress={() => openNotification(item)} />)}

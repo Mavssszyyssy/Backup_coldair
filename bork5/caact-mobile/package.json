@@ -40,7 +40,7 @@
     "react-native-screens": "~4.26.0",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.10.1",
-    "zxcvbn3": "^0.1.1"
+    "zxcvbn": "^4.4.2"
   },
   "private": true,
   "devDependencies": {

@@ -10,11 +10,14 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import zxcvbn from "zxcvbn";
 import { apiRequest } from "../../config/api";
 import { BRANCHES } from "../../domain/branches/branches";
 import { defaultAliasFromEmail } from "../../domain/register/defaultAliasFromEmail";
 import { validateProfileAndSecurityStep } from "../../domain/register/validateRegistrationProfile";
+import {
+  calculatePasswordStrength,
+  passwordStrengthLabel,
+} from "../../domain/passwordStrength";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
@@ -109,14 +112,16 @@ export default function RegisterProfilePasswordStep({
   const passwordStrength = useMemo(() => {
     if (!formData.password)
       return { score: 0, label: "Empty", color: "#94a3b8" };
-    const result = zxcvbn(formData.password);
-    const score = Math.floor(result.guesses_log10 * 10);
-
-    if (score <= 0) return { score, label: "Bad", color: "#ef4444" };
-    if (score < 40) return { score, label: "Poor", color: "#f97316" };
-    if (score < 65) return { score, label: "Weak", color: "#eab308" };
-    if (score < 100) return { score, label: "Good", color: "#22c55e" };
-    return { score, label: "Excellent", color: "#10b981" };
+    const score = calculatePasswordStrength(formData.password);
+    const label = passwordStrengthLabel(score);
+    const color = score < 40
+      ? "#ef4444"
+      : score < 65
+        ? "#eab308"
+        : score < 100
+          ? "#22c55e"
+          : "#10b981";
+    return { score, label, color };
   }, [formData.password]);
 
   const passwordsMatch = useMemo(() => {

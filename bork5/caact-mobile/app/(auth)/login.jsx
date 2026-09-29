@@ -1,7 +1,7 @@
 // app/(auth)/login.jsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../components/ui/Button";
@@ -136,54 +136,51 @@ export function LoginScreen() {
         />
 
         {challengeToken ? (
-          <TouchableOpacity
-            onPress={() => {
-              setChallengeToken("");
-              setVerificationCode("");
-              setMaskedEmail("");
-              setErrors({});
-            }}
-            style={{ alignItems: "center", marginTop: SPACING.sm }}
-          >
-            <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-              I have a different account
-            </Text>
-          </TouchableOpacity>
+          <View style={{ gap: SPACING.xs, marginTop: SPACING.sm }}>
+            <Button
+              title={submitting ? "Resending…" : "Resend code"}
+              onPress={async () => {
+                if (submitting) return;
+                setSubmitting(true);
+                const result = await resendLoginEmail(challengeToken);
+                if (result.challengeToken) setChallengeToken(result.challengeToken);
+                setErrors(result.success ? {} : { verificationCode: result.error || "Unable to resend the code." });
+                setSubmitting(false);
+              }}
+              variant="secondary"
+              size="sm"
+              disabled={submitting}
+            />
+            <Button
+              title="I have a different account"
+              onPress={() => {
+                setChallengeToken("");
+                setVerificationCode("");
+                setMaskedEmail("");
+                setErrors({});
+              }}
+              variant="ghost"
+              size="sm"
+              disabled={submitting}
+            />
+          </View>
         ) : null}
 
-        {challengeToken ? (
-          <TouchableOpacity
-            onPress={async () => {
-              if (submitting) return;
-              setSubmitting(true);
-              const result = await resendLoginEmail(challengeToken);
-              if (result.challengeToken) setChallengeToken(result.challengeToken);
-              setErrors(result.success ? {} : { verificationCode: result.error || "Unable to resend the code." });
-              setSubmitting(false);
-            }}
-            style={{ alignItems: "center", marginTop: SPACING.sm }}
-          >
-            <Text style={{ color: COLORS.primary, fontWeight: "600" }}>Resend code</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <TouchableOpacity
+        <Button
+          title="Forgot Password?"
           onPress={() => router.push("/recover")}
-          style={{ alignItems: "center", marginTop: SPACING.md }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Forgot Password?
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: SPACING.md }}
+        />
 
-        <TouchableOpacity
+        <Button
+          title="I don't have an account"
           onPress={() => router.push("/sign-up")}
-          style={{ alignItems: "center", marginTop: SPACING.sm }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            I don't have an account
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: 0 }}
+        />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

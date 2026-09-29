@@ -5,6 +5,7 @@ import { BRANCHES } from "../../../domain/branches/branches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
+import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import DailyWorkSchedule from "./DailyWorkSchedule";
 import "../adminShared.css";
 import "./styles.css";
@@ -351,6 +352,21 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
     }
   };
 
+  const saveTechnicianEmail = async (technician) => {
+    const email = String(technician.email || "").trim().toLowerCase();
+    const emailValidationError = await validateEmailForSubmission(email);
+    if (emailValidationError) {
+      setNotice("");
+      setError(emailValidationError);
+      return;
+    }
+    await updateTechnician(
+      technician,
+      { email },
+      `${technician.name}'s email was updated successfully.`,
+    );
+  };
+
   return (
     <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized." embedded={embedded}>
       <div className="module-tabs tech-workspace-tabs" role="tablist" aria-label="Technician workspace sections">
@@ -428,7 +444,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
                 </div>
                 <label className="tech-inline-select"><span>Service Quota</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment"}</small></label>
                 <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
-                {isSuperAdmin ? <><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(technician.email || "").trim())} onClick={() => updateTechnician(technician, { email: String(technician.email || "").trim().toLowerCase() }, `${technician.name}'s email was updated successfully.`)}>{changing ? "Saving…" : "Save email"}</button></> : null}
+                {isSuperAdmin ? <><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{changing ? "Saving…" : "Save email"}</button></> : null}
                 {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
                 <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => updateTechnician(technician, { status: technician.accountStatus === "active" ? "disabled" : "active" }, `${technician.name}'s account is now ${technician.accountStatus === "active" ? "disabled" : "active"}.`)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
               </article>;

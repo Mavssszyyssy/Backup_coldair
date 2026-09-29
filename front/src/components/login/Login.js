@@ -167,14 +167,16 @@ function Login() {
             <button type="submit" className="bq-login-btn bq-login-btn--primary" disabled={loading || verificationCode.length !== 6}>
               {loading ? "Verifying..." : "Verify and Sign In"}
             </button>
-            <button type="button" className="bq-login-forgot" onClick={resendCode} disabled={loading}>Resend code</button>
-            <button
-              type="button"
-              className="bq-login-forgot"
-              onClick={() => { setChallengeToken(""); setVerificationCode(""); setMaskedEmail(""); setErrors({}); }}
-            >
-              Use a different account
-            </button>
+            <div className="bq-auth-secondary-actions">
+              <button type="button" className="bq-auth-action bq-auth-action--outline" onClick={resendCode} disabled={loading}>Resend code</button>
+              <button
+                type="button"
+                className="bq-auth-action bq-auth-action--ghost"
+                onClick={() => { setChallengeToken(""); setVerificationCode(""); setMaskedEmail(""); setErrors({}); }}
+              >
+                Use a different account
+              </button>
+            </div>
           </form>
         )}
 
@@ -257,12 +259,28 @@ function Login() {
         .bq-login-btn--primary { background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .bq-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        .bq-auth-secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .bq-auth-action {
+          min-height: 48px; padding: 12px 18px; border-radius: 999px;
+          font-family: inherit; font-size: 14px; font-weight: 800;
+          cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        .bq-auth-action--outline { border: 1.5px solid ${BQ_COLORS.ink}; background: ${BQ_COLORS.surface}; color: ${BQ_COLORS.ink}; }
+        .bq-auth-action--outline:hover:not(:disabled) { transform: translateY(-1px); background: ${BQ_COLORS.bgAlt}; box-shadow: ${BQ_SHADOWS.soft}; }
+        .bq-auth-action--ghost { border: 1.5px solid ${BQ_COLORS.border}; background: ${BQ_COLORS.bgAlt}; color: ${BQ_COLORS.inkMuted}; }
+        .bq-auth-action--ghost:hover:not(:disabled) { transform: translateY(-1px); border-color: #d4d4d8; color: ${BQ_COLORS.ink}; }
+        .bq-auth-action:focus-visible { outline: 3px solid rgba(37, 99, 235, .22); outline-offset: 2px; }
+        .bq-auth-action:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
         .bq-tips-list { list-style: none; padding: 0; margin: 0; }
         .bq-tips-list li { position: relative; padding-left: 18px; }
         .bq-tips-list li::before { content: "•"; position: absolute; left: 0; color: ${BQ_COLORS.accent}; font-weight: 900; }
 
         @media (max-width: 1024px) {
           .bq-login-back-btn { top: 20px; left: 20px; width: 40px; height: 40px; }
+        }
+        @media (max-width: 520px) {
+          .bq-auth-secondary-actions { grid-template-columns: 1fr; gap: 8px; }
         }
       `,
         }}

@@ -1,4 +1,8 @@
-import zxcvbn from "zxcvbn";
+import {
+  MIN_REGISTRATION_PASSWORD_SCORE,
+  calculatePasswordStrength,
+} from "../passwordStrength";
+import { isValidEmailFormat } from "../emailPolicy";
 
 /**
  * Validates profile fields for customer registration (step 1 / combined).
@@ -33,7 +37,7 @@ export function validateRegistrationProfile(
 
   if (!formData.email) {
     errors.email = "Email is required";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+  } else if (!isValidEmailFormat(formData.email)) {
     errors.email = "Please enter a valid email address";
   }
 
@@ -71,11 +75,10 @@ export function validateRegistrationProfile(
   } else if (formData.password.length > 25) {
     errors.password = "Password must not exceed 25 characters";
   } else {
-    const strength = zxcvbn(formData.password);
-    const score = Math.floor(strength.guesses_log10 * 10);
-    if (score < 65) {
+    const score = calculatePasswordStrength(formData.password);
+    if (score < MIN_REGISTRATION_PASSWORD_SCORE) {
       errors.password =
-        "Password is not strong enough. Aim for 'Good' strength.";
+        "Password is not strong enough. Aim for 'Strong' strength.";
     }
   }
 
@@ -170,11 +173,10 @@ export function validateProfileAndSecurityStep(formData) {
   } else if (formData.password.length > 25) {
     errors.password = "Password must not exceed 25 characters";
   } else {
-    const strength = zxcvbn(formData.password);
-    const score = Math.floor(strength.guesses_log10 * 10);
-    if (score < 65) {
+    const score = calculatePasswordStrength(formData.password);
+    if (score < MIN_REGISTRATION_PASSWORD_SCORE) {
       errors.password =
-        "Password is not strong enough. Aim for 'Good' strength.";
+        "Password is not strong enough. Aim for 'Strong' strength.";
     }
   }
 

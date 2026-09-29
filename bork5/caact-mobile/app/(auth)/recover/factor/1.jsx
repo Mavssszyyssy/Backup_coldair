@@ -2,7 +2,7 @@
 // Password recovery — send an email code, then enter it with a new password.
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Text, TouchableOpacity } from "react-native";
+import { Alert, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../../../components/ui/Button";
@@ -221,13 +221,15 @@ export default function RecoverPasswordScreen() {
               loading={loading}
               disabled={loading}
             />
-            <TouchableOpacity
+            <Button
+              title={loading ? "Sending…" : "Resend Code"}
               onPress={handleSendCode}
               disabled={loading}
-              style={{ alignItems: "center", marginTop: SPACING.sm }}
-            >
-              <Text style={{ color: COLORS.primary, fontWeight: "600" }}>Resend Code</Text>
-            </TouchableOpacity>
+              loading={loading}
+              variant="secondary"
+              size="sm"
+              style={{ marginTop: SPACING.sm }}
+            />
           </>
         )}
 
@@ -264,14 +266,13 @@ export default function RecoverPasswordScreen() {
           />
         )}
 
-        <TouchableOpacity
+        <Button
+          title="Back to Login"
           onPress={() => router.push("/sign-in")}
-          style={{ alignItems: "center", marginTop: SPACING.md }}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-            Back to Login
-          </Text>
-        </TouchableOpacity>
+          variant="ghost"
+          size="sm"
+          style={{ marginTop: SPACING.md }}
+        />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

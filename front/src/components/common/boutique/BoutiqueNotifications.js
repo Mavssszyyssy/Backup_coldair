@@ -6,7 +6,7 @@ import { BQ_COLORS } from "./BoutiqueTheme";
 
 /**
  * BOUTIQUE NOTIFICATIONS
- * High-end side drawer for user alerts and activity.
+ * High-end side drawer for user notifications and activity.
  */
 export default function BoutiqueNotifications({
   isOpen,
@@ -24,7 +24,7 @@ export default function BoutiqueNotifications({
       onClose={onClose}
       side="right"
       width="440px"
-      title="Alerts"
+      title="Notifications"
     >
       <BoutiqueBox
         className="bq-notif-wrapper"
@@ -58,7 +58,7 @@ export default function BoutiqueNotifications({
                     textTransform: "uppercase",
                   }}
                 >
-                  YOU HAVE {unreadCount} NEW ALERT{unreadCount > 1 ? "S" : ""}
+                  YOU HAVE {unreadCount} NEW NOTIFICATION{unreadCount > 1 ? "S" : ""}
                 </BoutiqueText>
               ) : (
                 <BoutiqueText
@@ -68,7 +68,7 @@ export default function BoutiqueNotifications({
                   color={BQ_COLORS.inkMuted}
                   style={{ letterSpacing: "0.1em", textTransform: "uppercase" }}
                 >
-                  NO NEW ALERTS
+                  NO NEW NOTIFICATIONS
                 </BoutiqueText>
               )}
             </BoutiqueBox>
@@ -104,7 +104,7 @@ export default function BoutiqueNotifications({
               <button
                 key={notif.id}
                 className={`bq-notif-item ${notif.unread ? "unread" : ""}`}
-                aria-label={`${notif.unread ? "Unread" : "Read"} alert: ${notif.title}`}
+                aria-label={`${notif.unread ? "Unread" : "Read"} notification: ${notif.title}`}
                 onClick={() => onNotificationClick?.(notif)}
               >
                 <div className="bq-notif-dot" />

@@ -6,6 +6,7 @@ import Card from "../ui/Card";
 import DetailRow from "../ui/DetailRow";
 import StatusChip from "../ui/StatusChip";
 import { customerSystemMessage } from "../../services/customerLanguage";
+import VisitFollowUpPlan from "./VisitFollowUpPlan";
 
 const dateLabel = (value) => value
   ? new Date(value).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })
@@ -40,12 +41,13 @@ export function CustomerRecommendationPanel({ recommendation, maintenance }) {
     </View>
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{serviceExplanation(recommendation.recommendedService)}</Text>
     <DetailRow label="Priority" value={assessment.priority || (recommendation.overdue ? "Schedule soon" : "Routine")} />
-    <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline />
-    <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline />
-    {assessment.recommendedActions?.length ? <DetailRow label="Recommended Actions" value={assessment.recommendedActions.map((item, index) => `${index + 1}. ${item}`).join("\n")} multiline /> : null}
+    {!recommendation.latestVisitAnalysis ? <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline /> : null}
+    {!recommendation.latestVisitAnalysis ? <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline /> : null}
+    {!recommendation.latestVisitAnalysis && assessment.recommendedActions?.length ? <DetailRow label="Recommended Actions" value={assessment.recommendedActions.map((item, index) => `${index + 1}. ${item}`).join("\n")} multiline /> : null}
     {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.dataQuality.message)}</Text> : null}
     {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={maintenance.urgency} color={maintenance.color} /></View> : null}
     <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>This is a suggestion. A visit is only booked after you submit a service request.</Text>
+    {recommendation.latestVisitAnalysis ? <VisitFollowUpPlan interpretation={recommendation.latestVisitAnalysis} /> : null}
     {roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment) ? <DetailRow label="Room and AC Size Match" value={roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment)} multiline /> : null}
   </Card>;
 }

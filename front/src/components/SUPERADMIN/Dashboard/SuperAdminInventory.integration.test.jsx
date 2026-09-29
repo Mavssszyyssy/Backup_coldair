@@ -51,3 +51,31 @@ it("renders the real checker, serial registry, and reorder panels", async () => 
   expect(await screen.findByRole("heading", { name: "Reorder queue" })).toBeInTheDocument();
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/reorders"));
 });
+
+it("presents a pending reorder as a structured review card", async () => {
+  apiRequest.mockImplementation(async (path) => {
+    if (path === "/products") return { products: [] };
+    if (path === "/reorders") return {
+      reorders: [{
+        id: "reorder-1",
+        status: "submitted",
+        quantity: 3,
+        branch: "Bulacan",
+        notes: "Please replenish before the next installation.",
+        createdAt: "2026-09-25T00:23:58.000Z",
+        product: { name: "American Home Inverter", specs: "1 HP" },
+        requestedBy: { name: "Bulacan Admin" },
+      }],
+    };
+    if (path.startsWith("/notifications")) return { notifications: [] };
+    return {};
+  });
+
+  renderInventory("/superadmin/inventory?tab=reorders");
+
+  expect(await screen.findByText("American Home Inverter")).toBeInTheDocument();
+  expect(document.querySelector(".reorder-status")).toHaveTextContent("Awaiting review");
+  expect(screen.getByLabelText("Decision note Optional")).toHaveAttribute("placeholder", "Add context for the branch administrator");
+  expect(screen.getByRole("button", { name: "Approve & Add Stock" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Reject request" })).toBeInTheDocument();
+});

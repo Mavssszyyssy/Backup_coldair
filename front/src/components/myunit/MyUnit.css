@@ -1215,6 +1215,91 @@
   font-size: 13px;
 }
 
+.ai-prescription {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #0f172a;
+}
+
+.ai-prescription-compact {
+  margin: 12px 14px 0;
+}
+
+.ai-prescription > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #dbeafe;
+}
+
+.ai-prescription > header span {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ai-prescription > header small,
+.ai-prescription-block small,
+.ai-prescription > footer {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ai-prescription-block {
+  display: grid;
+  gap: 5px;
+  padding: 10px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.ai-prescription-block h5,
+.ai-prescription-block p,
+.ai-prescription-block ul {
+  margin: 0;
+}
+
+.ai-prescription-block h5 {
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ai-prescription-block p,
+.ai-prescription-block li {
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ai-prescription-block ul {
+  padding-left: 19px;
+}
+
+.ai-prescription-block li + li {
+  margin-top: 4px;
+}
+
+.ai-prescription-history {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.ai-prescription > footer {
+  padding-top: 2px;
+  font-weight: 600;
+}
+
 :root[data-theme='dark'] .history-ai-follow-up {
   border-color: #075985;
   background: #0c4a6e;
@@ -1224,6 +1309,39 @@
 :root[data-theme='dark'] .history-follow-up-row strong,
 :root[data-theme='dark'] .history-follow-up-actions strong {
   color: #bae6fd;
+}
+
+:root[data-theme='dark'] .ai-prescription {
+  border-color: #1d4ed8;
+  background: #0f2947;
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .ai-prescription > header,
+:root[data-theme='dark'] .ai-prescription-block {
+  border-color: #334155;
+}
+
+:root[data-theme='dark'] .ai-prescription-block {
+  background: #0f172a;
+}
+
+:root[data-theme='dark'] .ai-prescription-block h5,
+:root[data-theme='dark'] .ai-prescription > header span {
+  color: #93c5fd;
+}
+
+:root[data-theme='dark'] .ai-prescription-block p,
+:root[data-theme='dark'] .ai-prescription-block li,
+:root[data-theme='dark'] .ai-prescription-block small,
+:root[data-theme='dark'] .ai-prescription > footer,
+:root[data-theme='dark'] .ai-prescription > header small {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .ai-prescription-history {
+  background: #422006;
+  border-color: #92400e;
 }
 
 :root[data-theme='dark'] .unit-organizer,

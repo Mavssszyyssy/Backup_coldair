@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,12 +11,13 @@ import StickyActionBar from "../../../../components/ui/StickyActionBar";
 import TextField from "../../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
-import { checkAliasAvailability } from "../../../../services/api";
+import { checkAliasAvailability, getEmailDomainPolicy } from "../../../../services/api";
 import {
   normalizeEmail,
   validateConfirmPassword,
   validateEmail,
   validatePasswordStrength,
+  passwordStrengthLabel,
 } from "../../../../utils/authValidation";
 
 function defaultAliasFromEmail(email) {
@@ -48,6 +49,17 @@ export default function SignUpStep1() {
   const [errors, setErrors] = useState({});
   const [aliasStatus, setAliasStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [activeEmailDomains, setActiveEmailDomains] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    getEmailDomainPolicy()
+      .then((result) => {
+        if (active && result.success) setActiveEmailDomains(result.activeDomains);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   const normalizedEmail = useMemo(() => normalizeEmail(form.email), [form.email]);
   const aliasPlaceholder = useMemo(() => defaultAliasFromEmail(normalizedEmail) || "juan.dc", [normalizedEmail]);
@@ -64,7 +76,7 @@ export default function SignUpStep1() {
 
   const validateDetails = () => {
     const nextErrors = {};
-    const emailError = validateEmail(normalizedEmail);
+    const emailError = validateEmail(normalizedEmail, activeEmailDomains);
     const aliasError = validateAlias(form.alias);
     const confirmPasswordError = validateConfirmPassword(form.password, form.confirmPassword);
     if (emailError) nextErrors.email = emailError;
@@ -72,7 +84,7 @@ export default function SignUpStep1() {
     if (!form.password) nextErrors.password = "Password is required.";
     else if (form.password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     else if (form.password.length > 25) nextErrors.password = "Password must not exceed 25 characters.";
-    else if ((passwordScore ?? 0) < 65) nextErrors.password = "Password is not strong enough. Aim for Good strength.";
+    else if ((passwordScore ?? 0) < 65) nextErrors.password = "Password is not strong enough. Aim for Strong strength.";
     if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -120,7 +132,7 @@ export default function SignUpStep1() {
   };
 
   const scoreColor = passwordScore === null ? COLORS.textMuted : passwordScore < 40 ? COLORS.danger : passwordScore < 65 ? COLORS.warning : COLORS.success;
-  const scoreLabel = passwordScore === null ? "" : passwordScore < 40 ? "Weak" : passwordScore < 65 ? "Fair" : "Good";
+  const scoreLabel = passwordScore === null ? "" : passwordStrengthLabel(passwordScore);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
