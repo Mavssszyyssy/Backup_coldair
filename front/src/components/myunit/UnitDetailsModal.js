@@ -1,10 +1,34 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import DynamicServiceSticker from "./DynamicServiceSticker";
+import HistoryPagination from "./HistoryPagination";
 import ServiceFollowUp from "./ServiceFollowUp";
 import UnitProductVisual from "./UnitProductVisual";
 import { formatUnitHorsepower } from "../../domain/myunit/unitDisplay";
 import { serviceLabel, serviceDateLabel, serviceDetails, servicePriceLabel } from '../../domain/myunit/serviceHistoryDisplay';
 
 function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
+  const [historyPage, setHistoryPage] = useState(1);
+  const historySectionRef = useRef(null);
+  const history = useMemo(
+    () => unit.unitHistory || unit.serviceHistory || [],
+    [unit.unitHistory, unit.serviceHistory],
+  );
+  const historyPages = history.length;
+  const visibleHistory = history.slice(historyPage - 1, historyPage);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [unit.id, unit.serialNumber]);
+
+  useEffect(() => {
+    setHistoryPage((page) => Math.min(Math.max(page, 1), Math.max(historyPages, 1)));
+  }, [historyPages]);
+
+  const changeHistoryPage = (page) => {
+    setHistoryPage(page);
+    historySectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+
   const getStatusClass = () => {
     switch (unit.status) {
       case "Good":
@@ -74,12 +98,17 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
             </div>
           )}
 
-          {(unit.unitHistory || unit.serviceHistory || []).length > 0 && (
-            <div style={{ marginTop: "20px" }}>
+          {history.length > 0 && (
+            <section ref={historySectionRef} className="unit-history-section">
               <h4>Installation &amp; Service History</h4>
+              <HistoryPagination
+                currentPage={historyPage}
+                totalPages={historyPages}
+                onPageChange={changeHistoryPage}
+              />
               <div className="history-list">
-                {(unit.unitHistory || unit.serviceHistory || []).map((service, idx) => (
-                  <div key={idx} className="history-item">
+                {visibleHistory.map((service, idx) => (
+                  <div key={service.id || `${service.date}-${service.serviceType}-${historyPage}-${idx}`} className="history-item">
                     <div className="history-date">{serviceDateLabel(service.date)}</div>
                     <div className="history-service">{serviceLabel(service.serviceType)}</div>
                     {service.technicianStatus ? <div className="history-details">Technician status: {String(service.technicianStatus).replaceAll('_', ' ')}</div> : null}
@@ -90,7 +119,12 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
                   </div>
                 ))}
               </div>
-            </div>
+              <HistoryPagination
+                currentPage={historyPage}
+                totalPages={historyPages}
+                onPageChange={changeHistoryPage}
+              />
+            </section>
           )}
         </div>
         <div className="modal-footer">

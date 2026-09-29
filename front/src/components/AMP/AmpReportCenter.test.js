@@ -32,9 +32,12 @@ it("shows actual history without crashing or inventing a fee when no price exist
     { id: "2", date: "2026-09-01", serviceType: "installation" },
   ] }} onClose={vi.fn()} />);
   expect(screen.getByText("Repair")).toBeVisible();
-  expect(screen.getByText("Installation")).toBeVisible();
+  expect(screen.queryByText("Installation")).not.toBeInTheDocument();
   expect(screen.getByText(/Control board failed inspection/)).toHaveTextContent("Replaced control board.");
   expect(screen.getByText(/September 6, 2026/)).toBeVisible();
+  fireEvent.click(screen.getAllByRole("button", { name: "Next service record" })[0]);
+  expect(screen.getByText("Installation")).toBeVisible();
+  expect(screen.queryByText("Repair")).not.toBeInTheDocument();
   expect(screen.queryByText(/₱/)).not.toBeInTheDocument();
 });
 

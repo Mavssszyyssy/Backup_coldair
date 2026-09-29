@@ -33,3 +33,23 @@ test("the AC details modal shows its model once", () => {
   render(<UnitDetailsModal unit={unit} onClose={vi.fn()} />);
   expect(screen.getAllByText(unit.productSku)).toHaveLength(1);
 });
+
+test("the AC details modal paginates detailed service records", () => {
+  render(<UnitDetailsModal unit={{
+    ...unit,
+    unitHistory: [
+      { id: "history-1", date: "2026-09-24", serviceType: "repair", findings: "First visit details" },
+      { id: "history-2", date: "2026-08-10", serviceType: "installation", findings: "Second visit details" },
+    ],
+  }} onClose={vi.fn()} />);
+
+  expect(screen.getByText("First visit details")).toBeVisible();
+  expect(screen.queryByText("Second visit details")).not.toBeInTheDocument();
+  expect(screen.getAllByText("Service record 1 of 2")).toHaveLength(2);
+
+  fireEvent.click(screen.getAllByRole("button", { name: "Next service record" })[0]);
+
+  expect(screen.queryByText("First visit details")).not.toBeInTheDocument();
+  expect(screen.getByText("Second visit details")).toBeVisible();
+  expect(screen.getAllByText("Service record 2 of 2")).toHaveLength(2);
+});

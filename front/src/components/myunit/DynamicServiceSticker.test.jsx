@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { apiRequest } from "../../config/api";
 import DynamicServiceSticker from "./DynamicServiceSticker";
@@ -51,6 +51,8 @@ it("shows the technician evidence separately from the AI prescription", async ()
 
   expect(await screen.findByText("AI-assisted assessment & prescription")).toBeVisible();
   expect(screen.getByText("1. Technician Findings")).toBeVisible();
+  expect(screen.getByText("Assessment page 1 of 4")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Next assessment page" }));
   expect(screen.getByText("3. Possible Causes")).toBeVisible();
   expect(screen.getByText("4. Recommended Diagnostic Actions")).toBeVisible();
   expect(screen.getByText(/must confirm the physical diagnosis/i)).toBeVisible();

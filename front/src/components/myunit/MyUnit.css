@@ -727,8 +727,8 @@
 
 /* Service History */
 .history-list {
-  max-height: 400px;
-  overflow-y: auto;
+  display: grid;
+  gap: 12px;
 }
 
 .history-item {
@@ -757,6 +757,87 @@
   color: #1E88E5;
   font-weight: bold;
   margin-top: 5px;
+}
+
+.unit-history-section {
+  margin-top: 20px;
+}
+
+.unit-history-section > h4 {
+  margin: 0 0 12px;
+}
+
+.history-pagination {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr minmax(88px, auto);
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 10px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.history-pagination span {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.history-pagination button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #fff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-pagination button:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.history-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+@media (max-width: 520px) {
+  .history-pagination {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-pagination span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+:root[data-theme='dark'] .history-pagination {
+  border-color: #334155;
+  background: #111827;
+}
+
+:root[data-theme='dark'] .history-pagination span {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .history-pagination button {
+  border-color: #1e3a8a;
+  background: #172554;
+  color: #bfdbfe;
+}
+
+:root[data-theme='dark'] .history-pagination button:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background: #1e3a8a;
 }
 
 @keyframes slideUp {

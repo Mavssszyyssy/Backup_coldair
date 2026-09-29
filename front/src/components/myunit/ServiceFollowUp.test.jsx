@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ServiceFollowUp from './ServiceFollowUp';
 
 test('shows a component concern separately from normal AC performance', () => {
@@ -38,9 +38,13 @@ test('renders the complete seven-part AI prescription for a completed visit', ()
   }} />);
   expect(screen.getByText('1. Technician Findings')).toBeVisible();
   expect(screen.getByText('2. AI Assessment')).toBeVisible();
+  expect(screen.getByText('Assessment page 1 of 4')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Next assessment page' }));
   expect(screen.getByText('3. Possible Causes')).toBeVisible();
   expect(screen.getByText('4. Recommended Diagnostic Actions')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Next assessment page' }));
   expect(screen.getByText('5. Recommended Service / Repair')).toBeVisible();
   expect(screen.getByText('6. Parts / Component Recommendation')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Next assessment page' }));
   expect(screen.getByText('7. Suggested Servicing Date')).toBeVisible();
 });
