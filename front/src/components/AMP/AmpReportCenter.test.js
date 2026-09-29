@@ -19,8 +19,8 @@ it("labels a persisted AI date even when the latest provider attempt fell back, 
   } });
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  expect(await screen.findByText("AI-estimated servicing date")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
+  expect(await screen.findByText("Suggested from service history")).toBeVisible();
   expect(screen.getByRole("status")).toHaveTextContent("We could not get a new AI estimate right now");
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   expect(exportHtmlToPdfViaPrint.mock.calls[0][0].html).toContain("AI-estimated servicing interval: 120 days.");
@@ -59,7 +59,7 @@ it("retains evidence warnings in the report/PDF and clears the previous unit's e
   render(<AmpReportCenter units={[{ id: "unit-1", model: "CA-1" }, { id: "unit-2", model: "CA-2" }]} />);
   expect(screen.queryByRole("option", { name: "Model and parts history" })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
   await screen.findByRole("button", { name: "Export PDF" });
   fireEvent.click(screen.getByText("Recorded service history"));
   expect(screen.getByText("Inspection")).toBeVisible();
@@ -88,13 +88,13 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  expect(await screen.findByText("Predictive Maintenance Assessment")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
+  expect(await screen.findByText("Service recommendation")).toBeVisible();
   expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
   expect(screen.getByText("Repair")).toBeVisible();
-  expect(screen.getByText("Why This Date")).toBeVisible();
+  expect(screen.getByText("Why this date was suggested")).toBeVisible();
   expect(screen.getAllByText("6-month starting schedule.")[0]).toBeVisible();
-  fireEvent.click(screen.getByText("How was this worked out?"));
+  fireEvent.click(screen.getByText("How this date was calculated"));
   expect(screen.getAllByText("6-month starting schedule.").length).toBeGreaterThan(1);
 });
 
@@ -109,7 +109,7 @@ it("shows saved plans with technician outcomes as review evidence, never as an A
   } });
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
   expect(await screen.findByText("Saved plan and service outcome review")).toBeVisible();
   expect(screen.getByText("Service outcome ready to review")).toBeVisible();
   expect(screen.getByText(/3 days after the suggested date/)).toBeVisible();
@@ -132,12 +132,12 @@ it("separates a condition-based AI follow-up from the routine cleaning plan", as
   } });
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  expect(await screen.findByText("AI-reviewed technician follow-up")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
+  expect(await screen.findByText("Based on the technician report")).toBeVisible();
   expect(screen.getByText("Condition follow-up date")).toBeVisible();
-  expect(screen.getByText("Predictive Maintenance Assessment")).toBeVisible();
+  expect(screen.getByText("Service recommendation")).toBeVisible();
   expect(screen.getByText(/technician found wear affecting the fan motor/)).toBeVisible();
-  expect(screen.getByText("Why This Date")).toBeVisible();
+  expect(screen.getByText("Why this date was suggested")).toBeVisible();
   expect(screen.getByText(/urgent concern recorded during the completed visit/)).toBeVisible();
   expect(screen.getByText("Separate routine cleaning plan")).toBeVisible();
   expect(screen.getByText("March 13, 2027")).toBeVisible();

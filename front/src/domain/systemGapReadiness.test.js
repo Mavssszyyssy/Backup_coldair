@@ -54,17 +54,17 @@ describe("cross-surface readiness gaps", () => {
     expect(reports).not.toContain('label: "Predictive Maintenance"');
     expect(owner).toContain("These are not confirmed bookings");
     expect(owner).toContain("Assumed value per service");
-    expect(owner).toContain("It is not a failure rate, reliability score, or unit diagnosis");
+    expect(owner).toContain("It does not rate a model or predict a breakdown");
     expect(reports).toContain("Suggested servicing date");
     expect(reports).not.toContain("Operating environment");
     expect(reports).not.toContain("Technician preparation");
-    expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain("compressor/motor and control board");
+    expect(source("src/components/AMP/ManagerAmpDashboard.js")).toContain("compressor, motor, and control-board parts");
   });
 
   test("Superadmin AMP is a filtered all-branch oversight view instead of a duplicate branch workspace", () => {
     const manager = source("src/components/AMP/ManagerAmpDashboard.js");
     const shell = source("src/components/AMP/AmpDashboardShell.js");
-    expect(manager).toContain('"AMP · Maintenance across branches"');
+    expect(manager).toContain('"Branch maintenance"');
     expect(manager).toContain('<option value="all">All branches</option>');
     expect(manager).toContain("branch=${encodeURIComponent(selectedBranch)}");
     expect(manager).toContain("const SERVICE_WINDOWS = [30, 90, 180, 365]");

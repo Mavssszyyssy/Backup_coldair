@@ -25,7 +25,7 @@ function AmpDashboardShell({ title, subtitle, children }) {
       <aside className="amp-sidebar">
         <div className="amp-brand">
           <span className="amp-brand-mark"><Pulse size={23} weight="duotone" aria-hidden="true" /></span>
-          <span>AeroPulse AMP<small>Predictive maintenance</small></span>
+          <span>AeroPulse AMP<small>Maintenance planning</small></span>
         </div>
         <nav>
           {returnDestination ? (
@@ -57,13 +57,12 @@ function AmpDashboardShell({ title, subtitle, children }) {
       <main className="amp-main">
         <header className="amp-header">
           <div className="amp-header-copy">
-            <span className="amp-header-eyebrow">Maintenance intelligence workspace</span>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
           <div className="amp-user-chip">
             <span className="amp-user-chip-icon"><UserCircle size={24} weight="duotone" aria-hidden="true" /></span>
-            <span><small>{isOwner ? "Company oversight" : "Branch operations"}</small>{user?.name || user?.email || "Internal user"}</span>
+            <span><small>{isOwner ? "Superadmin" : "Admin"}</small>{user?.name || user?.email || "Staff user"}</span>
           </div>
         </header>
         {children}

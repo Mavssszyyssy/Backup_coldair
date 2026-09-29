@@ -41,20 +41,20 @@ const humanLabel = (value, fallback) => String(value || fallback || "")
 
 const SERVICE_ACTIONS = {
   repair: {
-    title: "Review repair assessments",
-    action: "Verify the recorded technician findings, then arrange a qualified inspection before approving repair or replacement work.",
+    title: "Review units marked for repair",
+    action: "Check the technician's notes, then arrange an inspection before approving repair or replacement work.",
   },
   inspection: {
     title: "Arrange unit inspections",
-    action: "Review the recorded concern and schedule a technician assessment before deciding on repair or replacement.",
+    action: "Review the reported concern and schedule an inspection before deciding on repair or replacement.",
   },
   deep_cleaning: {
-    title: "Prepare deep-cleaning capacity",
-    action: "Confirm customer availability and assign sufficient technician time for the recorded deep-cleaning recommendations.",
+    title: "Prepare deep-cleaning appointments",
+    action: "Confirm customer availability and allow enough technician time for each deep cleaning.",
   },
   regular_cleaning: {
-    title: "Prepare routine-cleaning capacity",
-    action: "Contact the affected customers and plan routine-cleaning slots within the selected service window.",
+    title: "Prepare regular-cleaning appointments",
+    action: "Contact the customers and plan regular-cleaning appointments within the selected date range.",
   },
 };
 
@@ -134,18 +134,18 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
   const upcoming = Number(summary.upcoming || 0);
   if (total === 0) return [{
     level: "monitor",
-    title: "Continue monitoring",
-    sections: [{ label: "Current workload", value: `No units have a saved servicing date inside the selected ${serviceWindow}-day window. No customer follow-up is indicated by the current AMP records.` }],
+    title: "No follow-up needed right now",
+    sections: [{ label: "Current list", value: `No units have a suggested service date within the next ${serviceWindow} days.` }],
   }];
 
   const actions = [overdue > 0 ? {
     level: "urgent",
     title: "Contact overdue customers first",
-    sections: [{ label: "Required follow-up", value: `${unitWord(overdue)} passed the saved suggested servicing date. Review each unit's evidence and service plan before contacting the customer to arrange the appropriate follow-up.` }],
+    sections: [{ label: "What to do", value: `${unitWord(overdue)} passed the suggested service date. Review each unit's notes, then contact the customer to arrange the next step.` }],
   } : {
     level: "upcoming",
     title: "Prepare upcoming customer follow-ups",
-    sections: [{ label: "Required follow-up", value: `${unitWord(upcoming)} ${upcoming === 1 ? "is" : "are"} due within the selected ${serviceWindow}-day window, with no overdue unit recorded. Review the saved plans before arranging service.` }],
+    sections: [{ label: "What to do", value: `${unitWord(upcoming)} ${upcoming === 1 ? "is" : "are"} due within the next ${serviceWindow} days. Review the unit notes before arranging service.` }],
   }];
 
   (actionSummary.serviceDemand || []).forEach((demand) => {
@@ -156,8 +156,8 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
       level: demand.overdue > 0 ? "urgent" : "service",
       title: definition.title,
       sections: [
-        { label: "Saved recommendation", value: `${unitWord(count)} ${count === 1 ? "has" : "have"} a saved ${humanLabel(demand.serviceType)} recommendation${demand.overdue > 0 ? `; ${unitWord(demand.overdue)} ${Number(demand.overdue) === 1 ? "is" : "are"} overdue` : ""}.` },
-        { label: "Manager action", value: definition.action },
+        { label: "Units", value: `${unitWord(count)} ${count === 1 ? "is" : "are"} marked for ${humanLabel(demand.serviceType).toLowerCase()}${demand.overdue > 0 ? `; ${unitWord(demand.overdue)} ${Number(demand.overdue) === 1 ? "is" : "are"} overdue` : ""}.` },
+        { label: "Next step", value: definition.action },
       ],
     });
   });
@@ -170,21 +170,21 @@ export const buildManagementActions = ({ summary = {}, actionSummary = {}, servi
     const sections = [
       { label: "Unit and customer", value: `${unit.customerName || "Recorded customer"} · ${unit.serialNumber || "Serial number not recorded"}` },
       unit.currentStatus ? { label: "Current status", value: humanLabel(unit.currentStatus) } : null,
-      unit.assessment ? { label: "Assessment", value: unit.assessment } : null,
+      unit.assessment ? { label: "Service review", value: unit.assessment } : null,
       unit.technicianRecorded ? { label: "Technician recorded", value: unit.technicianRecorded } : null,
       unit.previousVisitHistory?.length ? { label: "Previous visit history", value: unit.previousVisitHistory } : null,
-      unit.currentIssues?.length ? { label: "Current issues", value: unit.currentIssues } : { label: "Current issues", value: unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit assessment." },
+      unit.currentIssues?.length ? { label: "Current issues", value: unit.currentIssues } : { label: "Current issues", value: unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit." },
       unit.completedWork?.length ? { label: "Completed work", value: unit.completedWork } : unit.workCompleted ? { label: "Completed work", value: unit.workCompleted } : null,
       unit.customerObservation ? { label: "Customer observation", value: unit.customerObservation } : null,
-      (unit.affectedComponent || unit.severity) ? { label: "Follow-up priority", value: [unit.affectedComponent ? `Recorded component: ${humanLabel(unit.affectedComponent)}.` : "", unit.severity ? `Priority: ${humanLabel(unit.severity)}.` : ""].filter(Boolean).join(" ") } : null,
-      { label: "Recommended action", value: unit.recommendedActions?.length ? unit.recommendedActions : ["Open the service plan to verify the recorded basis and next steps."] },
+      (unit.affectedComponent || unit.severity) ? { label: "Follow-up details", value: [unit.affectedComponent ? `Part noted: ${humanLabel(unit.affectedComponent)}.` : "", unit.severity ? `Priority: ${humanLabel(unit.severity)}.` : ""].filter(Boolean).join(" ") } : null,
+      { label: "Next step", value: unit.recommendedActions?.length ? unit.recommendedActions : ["Open the service plan to review the notes and next steps."] },
       unit.recommendedPart ? { label: "Recommended part", value: unit.recommendedPart } : null,
       { label: "Next possible visit", value: `${humanLabel(unit.recommendedService, "inspection")} by ${serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}.` },
       unit.reason ? { label: "Why this date", value: unit.reason } : null,
     ].filter(Boolean);
     actions.push({
       level: unit.severity && ["urgent", "critical"].includes(unit.severity) ? "urgent" : "next",
-      title: `Unit action · ${unit.modelName || "AC Unit"}`,
+      title: `Review ${unit.modelName || "AC Unit"}`,
       sections,
     });
   });
@@ -204,9 +204,9 @@ function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranc
         <div className="amp-summary-title-group">
           <span className="amp-summary-title-icon"><ClipboardText size={24} weight="duotone" aria-hidden="true" /></span>
           <div>
-            <span className="amp-summary-eyebrow">Current filtered workload</span>
+            <span className="amp-summary-eyebrow">Selected view</span>
             <h2 id="amp-follow-up-summary-title">Follow-up Summary</h2>
-            <p>See exactly how the units in the selected AMP follow-up dataset are distributed.</p>
+            <p>See the units that need attention for the selected branch and date range.</p>
           </div>
         </div>
         <div className="amp-summary-context" aria-label="Active summary filters">
@@ -221,7 +221,7 @@ function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranc
           <div>
             <span>Total units needing follow-up</span>
             <strong>{value(summary.total)}</strong>
-            <small>From the current service window and branch scope</small>
+            <small>For the selected branch and date range</small>
           </div>
           <ArrowRight className="amp-summary-card-arrow" size={20} weight="bold" aria-hidden="true" />
         </a>
@@ -301,14 +301,14 @@ function FollowUpSummary({ summary, loading, error, serviceWindow, selectedBranc
       {!loading && !error && summary.isReconciled ? (
         <p className="amp-summary-proof">
           <CheckCircle size={19} weight="fill" aria-hidden="true" />
-          <strong>Counts reconciled</strong>
+          <strong>Summary checked</strong>
           <span>{summary.total} total = {summary.overdue} overdue + {summary.upcoming} upcoming</span>
-          <span>{summary.serviceTotal} service recommendations</span>
-          <span>{summary.branchTotal} branch assignments</span>
+          <span>{summary.serviceTotal} service needs</span>
+          <span>{summary.branchTotal} assigned to branches</span>
         </p>
       ) : null}
       {!loading && !error && !summary.isReconciled ? (
-        <p className="amp-summary-warning">The total is available, but its detailed distribution was not returned completely. No inconsistent breakdown is being shown.</p>
+        <p className="amp-summary-warning">The total is available, but the full breakdown could not be loaded.</p>
       ) : null}
     </section>
   );
@@ -349,22 +349,22 @@ function PipelineTable({ units, onSelectPlan }) {
               </td>
               <td data-label="Reason and next step">
                 <details className="amp-details amp-recommendation-details"><summary>See more</summary><div className="amp-recommendation-sections">
-                  <section><h4>1. Technician Findings</h4><p>{unit.technicianRecorded || "No technician observation is recorded for the latest visit."}</p><small>Confirmed recorded evidence from the completed technician report.</small></section>
-                  <section><h4>2. AI Assessment</h4><p>{unit.aiAssessment || "Generate a service plan to review this AC's completed records."}</p><small>Possible interpretation, not a confirmed physical diagnosis.</small></section>
-                  {unit.historicalContext ? <section><h4>Historical Evidence Used</h4><p>{unit.historicalContext}</p></section> : null}
-                  <section><h4>3. Possible Causes</h4>{unit.possibleCauses?.length ? <ul>{unit.possibleCauses.map((cause, index) => <li key={`${cause}-${index}`}>{cause}</li>)}</ul> : <p>No fault cause is indicated by the completed record.</p>}</section>
-                  <section><h4>4. Recommended Diagnostic Actions</h4>{unit.diagnosticActions?.length ? <ol>{unit.diagnosticActions.map((action, index) => <li key={`${action}-${index}`}>{action}</li>)}</ol> : <p>Review the original record and perform the measurements required to isolate the cause.</p>}</section>
-                  <section><h4>5. Recommended Service / Repair</h4><p>{unit.recommendedServiceOrRepair || humanLabel(unit.recommendedService, "Not yet assessed")}</p></section>
-                  <section><h4>6. Parts / Component Recommendation</h4><p>{unit.partsRecommendation || unit.recommendedPart || "No part recommendation is supported by the recorded history."}</p></section>
-                  <section><h4>7. Suggested Servicing Date</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p><small>{unit.whyThisDate || unit.recommendationBasis || "Generate a service plan to review the available records."}</small></section>
+                  <section><h4>Technician notes</h4><p>{unit.technicianRecorded || "No technician note is recorded for the latest visit."}</p></section>
+                  <section><h4>Service review</h4><p>{unit.aiAssessment || "Open the service planner to review this AC's records."}</p><small>Use this as a guide. A technician must confirm the issue.</small></section>
+                  {unit.historicalContext ? <section><h4>Past service notes</h4><p>{unit.historicalContext}</p></section> : null}
+                  <section><h4>Possible causes</h4>{unit.possibleCauses?.length ? <ul>{unit.possibleCauses.map((cause, index) => <li key={`${cause}-${index}`}>{cause}</li>)}</ul> : <p>No possible cause is listed in the completed report.</p>}</section>
+                  <section><h4>What to check</h4>{unit.diagnosticActions?.length ? <ol>{unit.diagnosticActions.map((action, index) => <li key={`${action}-${index}`}>{action}</li>)}</ol> : <p>Review the technician report and inspect the unit before deciding on repairs.</p>}</section>
+                  <section><h4>Suggested service</h4><p>{unit.recommendedServiceOrRepair || humanLabel(unit.recommendedService, "Not yet reviewed")}</p></section>
+                  <section><h4>Suggested part</h4><p>{unit.partsRecommendation || unit.recommendedPart || "No part is suggested from the available records."}</p></section>
+                  <section><h4>Suggested date</h4><p>{serviceDateLabel(unit.nextPossibleVisit || unit.bestServicedBy)}{unit.daysUntilDue == null ? "" : unit.overdue ? ` · ${Math.abs(unit.daysUntilDue)} days overdue` : Number(unit.daysUntilDue) === 0 ? " · Due today" : ` · Due in ${unit.daysUntilDue} days`}</p><small>{unit.whyThisDate || unit.recommendationBasis || "Open the service planner to review the available records."}</small></section>
                   <section><h4>Current Status</h4><p>{humanLabel(unit.currentStatus, "Not recorded")}</p></section>
                   {unit.previousVisitHistory?.length ? <section><h4>Previous Visit History</h4><ul>{unit.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
                   {(unit.condition || unit.capacityAssessment?.summary) ? <section><h4>Current AC condition</h4>{unit.condition ? <p>{humanLabel(unit.condition)}</p> : null}{unit.capacityAssessment?.summary ? <p>{unit.capacityAssessment.summary}</p> : null}</section> : null}
-                  <section><h4>Current Issues</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit assessment."}</p>}</section>
+                  <section><h4>Current Issues</h4>{unit.currentIssues?.length ? <ul>{unit.currentIssues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul> : <p>{unit.affectedComponent ? `The recorded ${humanLabel(unit.affectedComponent).toLowerCase()} concern requires follow-up.` : "No unresolved issue is recorded in the latest visit."}</p>}</section>
                   {unit.completedWork?.length ? <section><h4>Completed Work</h4><ul>{unit.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></section> : null}
                   {unit.recommendedActions?.length ? <section><h4>Follow-up Coordination</h4><ul>{unit.recommendedActions.map((action) => <li key={action}>{action}</li>)}</ul></section> : null}
-                  <section><p><strong>Confirmation required:</strong> A qualified technician must confirm the physical diagnosis before repair or component replacement is finalized.</p></section>
-                  <section><h4>Operational context</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
+                  <section><p><strong>Before approving work:</strong> A technician must inspect the unit and confirm the issue.</p></section>
+                  <section><h4>Other details</h4><p>Warranty: {humanLabel(unit.warrantyStatus, "pending activation")} · Branch: {unit.serviceBranch || "Not assigned"}</p></section>
                 </div></details>
                 <a className="amp-plan-link" href="#amp-service-plan" onClick={() => onSelectPlan(String(unit.unitId))}>Review service plan</a>
               </td>
@@ -517,7 +517,7 @@ function ManagerAmpDashboard() {
     setPipelinePage(1);
     setSelectedBranch(branch);
   };
-  const pageTitle = isCompanyWide ? "AMP · Maintenance across branches" : "AMP · My branch maintenance";
+  const pageTitle = isCompanyWide ? "Branch maintenance" : "My branch maintenance";
   const pageSubtitle = isCompanyWide
     ? "See which branches need attention. Branch admins remain responsible for service processing."
     : "Review upcoming and overdue AC maintenance for your branch. These are suggestions, not confirmed bookings.";
@@ -539,9 +539,9 @@ function ManagerAmpDashboard() {
         <section className="amp-card amp-management-actions" aria-labelledby="amp-management-actions-title">
           <div className="amp-action-heading">
             <div>
-              <span className="amp-action-eyebrow">Decision support</span>
-              <h2 id="amp-management-actions-title">What the branch should do next</h2>
-              <p>These actions come from the saved servicing dates and service recommendations for the selected branch and service window.</p>
+              <span className="amp-action-eyebrow">Next steps</span>
+              <h2 id="amp-management-actions-title">Recommended follow-up</h2>
+              <p>These steps are based on the suggested dates and service needs shown on this page.</p>
             </div>
             {currentSummary.total > 0 ? <a href="#amp-follow-up-units">Review affected units</a> : null}
           </div>
@@ -560,7 +560,7 @@ function ManagerAmpDashboard() {
               </article>
             ))}
           </div>
-          <p className="amp-action-disclaimer">Recommendations guide follow-up and staffing. Confirm each unit’s original technician evidence before scheduling or approving repair work.</p>
+          <p className="amp-action-disclaimer">Review the technician's notes before scheduling service or approving repairs.</p>
         </section>
       ) : null}
 
@@ -617,9 +617,8 @@ function ManagerAmpDashboard() {
           <div className="amp-section-title">
             <span className="amp-section-icon"><CalendarCheck size={23} weight="duotone" aria-hidden="true" /></span>
             <div>
-              <span className="amp-section-eyebrow">Actionable maintenance queue</span>
               <h2>{isCompanyWide ? "Units needing branch follow-up" : "Units to follow up"}</h2>
-              {isCompanyWide ? <p className="amp-muted">Read-only company oversight, grouped by the branch responsible for follow-up.</p> : null}
+              {isCompanyWide ? <p className="amp-muted">View only. Units are grouped by the branch responsible for follow-up.</p> : null}
             </div>
           </div>
           {!isCompanyWide ? <label className="amp-branch-filter">Service window<select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>Next {days} days</option>)}</select></label> : null}
@@ -656,9 +655,9 @@ function ManagerAmpDashboard() {
         ) : null}
       </section>
 
-      <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Understand a unit’s next service" subtitle="Choose a unit and generate its plan. Accepted AI servicing dates are saved; the report identifies AI estimates and system fallbacks." /></div>
+      <div id="amp-service-plan"><AmpReportCenter onPlanGenerated={() => setRefreshRevision(value => value + 1)} key={`${selectedBranch}:${planSelection.revision}`} initialUnitId={planSelection.unitId} units={visibleReportUnits} title="Service planner" subtitle="Choose a unit to review its suggested date, service history, and next steps." /></div>
 
-      <details className="amp-card amp-details amp-insight-details"><summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Past cleaning and parts use</strong><small>Verified service frequency and component records</small></span></summary>
+      <details className="amp-card amp-details amp-insight-details"><summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Past service and parts records</strong><small>Completed services and parts used</small></span></summary>
       <div className="amp-report-grid">
         <section className="amp-insight-card">
           <div className="amp-section-title compact"><span className="amp-section-icon"><ClockCounterClockwise size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Recorded cleaning by model</h2></div></div>
@@ -668,7 +667,7 @@ function ManagerAmpDashboard() {
         </section>
         <section className="amp-insight-card">
           <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Parts used in past services</h2></div></div>
-          <p className="amp-muted">Aggregate recorded use of the two service-trip components: compressor/motor and control board. This is inventory planning, not a unit diagnosis.</p>
+          <p className="amp-muted">Shows how often compressor, motor, and control-board parts were recorded in completed services.</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Component</th><th>Recorded uses</th></tr></thead><tbody>{aggregate.componentReplacements.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody></table></div>
           {!aggregate.componentReplacements.length && !loading && !error ? <p className="amp-empty">No recorded component use is available yet.</p> : null}
         </section>
