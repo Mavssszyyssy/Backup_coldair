@@ -1,152 +1,201 @@
-import { Info, WarningDiamond } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_GEOMETRY,
-  BQ_SHADOWS,
-} from "./boutique/BoutiqueTheme";
+import { Info, WarningDiamond, X } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import "./GlobalDialog.css";
 
 function GlobalDialog() {
   const [dialog, setDialog] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const dialogRef = useRef(null);
+  const cancelRef = useRef(null);
+  const previousFocusRef = useRef(null);
+  const busyRef = useRef(false);
+  const queuedDialogRef = useRef(null);
+
+  busyRef.current = busy;
 
   useEffect(() => {
     const originalAlert = window.alert;
     window.alert = (message) => {
       window.dispatchEvent(
         new CustomEvent("app:dialog", {
-          detail: {
-            type: "alert",
-            title: "Notice",
-            message: String(message || ""),
-          },
+          detail: { type: "alert", title: "Notice", message: String(message || "") },
         }),
       );
     };
 
     const handleDialogEvent = (event) => {
-      setDialog(event.detail);
+      if (busyRef.current) {
+        if (typeof queuedDialogRef.current?.resolve === "function") queuedDialogRef.current.resolve(false);
+        queuedDialogRef.current = event.detail;
+        return;
+      }
+      setDialog((current) => {
+        if (typeof current?.resolve === "function") current.resolve(false);
+        return event.detail;
+      });
+      busyRef.current = false;
+      setBusy(false);
+      setError("");
     };
 
     window.addEventListener("app:dialog", handleDialogEvent);
-
     return () => {
+      if (typeof queuedDialogRef.current?.resolve === "function") queuedDialogRef.current.resolve(false);
+      queuedDialogRef.current = null;
       window.alert = originalAlert;
       window.removeEventListener("app:dialog", handleDialogEvent);
     };
   }, []);
 
+  useEffect(() => {
+    if (!dialog) return undefined;
+    previousFocusRef.current = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.requestAnimationFrame(() => cancelRef.current?.focus());
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !busyRef.current) {
+        event.preventDefault();
+        if (typeof dialog.resolve === "function") dialog.resolve(false);
+        setDialog(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus?.();
+    };
+  }, [dialog]);
+
   if (!dialog) return null;
 
-  const closeAlert = () => {
-    setDialog(null);
-  };
+  const isConfirm = dialog.type === "confirm";
+  const destructive = Boolean(dialog.destructive);
 
-  const resolveConfirm = (value) => {
+  const close = (value) => {
+    if (busyRef.current) return;
     if (typeof dialog.resolve === "function") dialog.resolve(value);
     setDialog(null);
   };
 
-  const isConfirm = dialog.type === "confirm";
+  const confirm = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await Promise.resolve(dialog.onConfirm?.());
+      if (typeof dialog.resolve === "function") dialog.resolve(true);
+      const nextDialog = queuedDialogRef.current;
+      queuedDialogRef.current = null;
+      busyRef.current = false;
+      setBusy(false);
+      setDialog(nextDialog || null);
+    } catch (requestError) {
+      const nextDialog = queuedDialogRef.current;
+      queuedDialogRef.current = null;
+      if (nextDialog) {
+        if (typeof dialog.resolve === "function") dialog.resolve(false);
+        busyRef.current = false;
+        setBusy(false);
+        setDialog(nextDialog);
+        return;
+      }
+      setError(requestError?.message || dialog.errorMessage || "Unable to complete this action. Please try again.");
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const title = dialog.title || (isConfirm ? "Please Confirm" : "Notice");
 
   return (
-    <>
+    <div className="app-dialog-layer">
       <div
-        className="bq-dialog-overlay"
-        onClick={() => (isConfirm ? resolveConfirm(false) : closeAlert())}
+        className="app-dialog-overlay"
+        onMouseDown={() => {
+          if (!isConfirm && !busy) close(true);
+        }}
+        role="presentation"
       />
-      <div className="bq-dialog">
-        <div className="bq-dialog-icon">
-          {isConfirm ? (
-            <WarningDiamond
-              size={48}
-              weight="duotone"
-              color={BQ_COLORS.warning}
-            />
-          ) : (
-            <Info size={48} weight="duotone" color={BQ_COLORS.brand} />
-          )}
-        </div>
-        <h3 className="bq-dialog-title">
-          {dialog.title || (isConfirm ? "Please Confirm" : "Notice")}
-        </h3>
-        <p className="bq-dialog-msg">{dialog.message}</p>
+      <section
+        ref={dialogRef}
+        className={`app-dialog${destructive ? " app-dialog--destructive" : ""}`}
+        role={isConfirm ? "alertdialog" : "dialog"}
+        aria-modal="true"
+        aria-labelledby="app-dialog-title"
+        aria-describedby="app-dialog-message"
+      >
+        <button
+          ref={!isConfirm ? cancelRef : undefined}
+          type="button"
+          className="app-dialog-close"
+          onClick={() => close(false)}
+          disabled={busy}
+          aria-label="Close dialog"
+        >
+          <X size={20} weight="bold" />
+        </button>
 
-        <div className="bq-dialog-actions">
+        <div className="app-dialog-icon" aria-hidden="true">
+          {isConfirm ? <WarningDiamond size={42} weight="duotone" /> : <Info size={42} weight="duotone" />}
+        </div>
+        <h2 id="app-dialog-title" className="app-dialog-title">{title}</h2>
+        <p id="app-dialog-message" className="app-dialog-message">{dialog.message}</p>
+        {error ? <p className="app-dialog-error" role="alert">{error}</p> : null}
+
+        <div className="app-dialog-actions">
           {isConfirm ? (
             <>
               <button
+                ref={cancelRef}
                 type="button"
-                className="bq-dialog-btn bq-dialog-btn--ghost"
-                onClick={() => resolveConfirm(false)}
+                className="app-dialog-button app-dialog-button--cancel"
+                onClick={() => close(false)}
+                disabled={busy}
               >
-                Cancel
+                {dialog.cancelText || "Cancel"}
               </button>
               <button
                 type="button"
-                className="bq-dialog-btn bq-dialog-btn--primary"
-                onClick={() => resolveConfirm(true)}
+                className={`app-dialog-button ${destructive ? "app-dialog-button--danger" : "app-dialog-button--confirm"}`}
+                onClick={confirm}
+                disabled={busy}
               >
-                Confirm
+                {busy ? (dialog.pendingText || "Processing...") : (dialog.confirmText || "Confirm")}
               </button>
             </>
           ) : (
             <button
               type="button"
-              className="bq-dialog-btn bq-dialog-btn--primary"
-              onClick={closeAlert}
+              className="app-dialog-button app-dialog-button--confirm"
+              onClick={() => close(true)}
             >
-              Dismiss
+              {dialog.confirmText || "Dismiss"}
             </button>
           )}
         </div>
-      </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-dialog-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-          z-index: 4000; animation: fadeIn 0.3s ease;
-        }
-
-        .bq-dialog {
-          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-          width: 100%; max-width: 400px; background: white; border-radius: ${BQ_GEOMETRY.radiusCard};
-          padding: 40px; z-index: 4001; display: flex; flex-direction: column; align-items: center;
-          text-align: center; box-shadow: ${BQ_SHADOWS.float}; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .bq-dialog-icon { margin-bottom: 24px; }
-
-        .bq-dialog-title {
-          font-family: ${BQ_FONTS.heading}; font-size: 24px; font-weight: 800;
-          color: ${BQ_COLORS.ink}; margin: 0 0 12px;
-        }
-
-        .bq-dialog-msg { font-size: 16px; color: ${BQ_COLORS.inkMuted}; line-height: 1.5; margin: 0 0 32px; }
-
-        .bq-dialog-actions { display: flex; gap: 12px; width: 100%; }
-
-        .bq-dialog-btn {
-          flex: 1; padding: 14px; border-radius: ${BQ_GEOMETRY.radiusPill};
-          font-family: ${BQ_FONTS.heading}; font-weight: 800; font-size: 14px;
-          text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer;
-          transition: all 0.3s; border: none;
-        }
-
-        .bq-dialog-btn--primary { background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .bq-dialog-btn--primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
-
-        .bq-dialog-btn--ghost { background: transparent; color: ${BQ_COLORS.inkMuted}; }
-        .bq-dialog-btn--ghost:hover { background: ${BQ_COLORS.bgAlt}; color: ${BQ_COLORS.ink}; }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, -40%); } to { opacity: 1; transform: translate(-50%, -50%); } }
-      `,
-        }}
-      />
-    </>
+      </section>
+    </div>
   );
 }
 

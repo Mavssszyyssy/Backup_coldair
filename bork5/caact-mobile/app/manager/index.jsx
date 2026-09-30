@@ -7,17 +7,31 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
+import { confirmAction } from "../../utils/confirmAction";
 
 export default function ManagerIndexScreen() {
   const { current, logout } = useUserContext();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (loggingOut) return;
-    setLoggingOut(true);
-    await logout();
-    router.replace("/sign-in");
+    return confirmAction({
+      title: "Confirm Logout",
+      message: "Are you sure you want to log out of your account?",
+      confirmText: "Logout",
+      pendingText: "Logging out...",
+      destructive: true,
+      onConfirm: async () => {
+        setLoggingOut(true);
+        try {
+          await logout();
+          router.replace("/sign-in");
+        } finally {
+          setLoggingOut(false);
+        }
+      },
+    });
   };
 
   return (

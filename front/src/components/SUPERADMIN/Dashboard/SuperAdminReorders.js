@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import { confirmDialog } from '../../../utils/dialog';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
 import '../../ADMIN/Reorder/styles.css';
@@ -42,7 +43,13 @@ export default function SuperAdminReorders({ embedded = false }) {
     const message = approval
       ? `Approve ${reorder.quantity} unit(s) of ${reorder.product?.name || 'this product'} for ${reorder.branch}? Stock will be added immediately.`
       : 'Reject this reorder request?';
-    if (!window.confirm(message)) return;
+    const confirmed = await confirmDialog({
+      title: approval ? 'Approve Reorder Request?' : 'Reject Reorder Request?',
+      message,
+      confirmText: approval ? 'Approve & Add Stock' : 'Reject Request',
+      destructive: !approval,
+    });
+    if (!confirmed) return;
     setProcessingId(reorder.id);
     setError('');
     try {

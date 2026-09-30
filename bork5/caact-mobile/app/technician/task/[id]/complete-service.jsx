@@ -23,6 +23,7 @@ import { getDisplayName } from "../../../../services/profileService";
 import { getTaskById, TASK_STATUS, updateTaskStatus } from "../../../../services/taskStorage";
 import { getTaskSerialNumbers, isInstallationWorkOrder, suggestedServiceType } from "../../../../services/technicianTaskLogic";
 import { serviceReportError } from "../../../../services/serviceReportValidation";
+import { confirmAction } from "../../../../utils/confirmAction";
 
 const MAX_PROOF_DATA_URI_LENGTH = 3_200_000;
 const SERVICE_TYPES = [
@@ -209,7 +210,14 @@ export default function CompleteServiceScreen() {
     if (nextType === serviceType) return;
     const change = () => { setServiceType(nextType); setFindings(""); setResolution(""); setChoiceError(""); setReportSaved(false); };
     if (findings.trim() || resolution.trim()) {
-      Alert.alert("Change service method?", "This clears the current findings and work selections so you can record the correct method. Your photo and additional notes will stay.", [{ text: "Keep current", style: "cancel" }, { text: "Change method", onPress: change }]);
+      confirmAction({
+        title: "Change service method?",
+        message: "This clears the current findings and work selections so you can record the correct method. Your photo and additional notes will stay.",
+        cancelText: "Keep current",
+        confirmText: "Change method",
+        destructive: true,
+        onConfirm: change,
+      });
     } else change();
   };
 
@@ -262,7 +270,13 @@ export default function CompleteServiceScreen() {
   const submit = async () => {
     if (isAlreadyComplete) return router.replace("/technician/tasks");
     if (formError) return Alert.alert(installationTask ? "Cannot complete installation" : "Service report incomplete", formError);
-    const confirmed = await new Promise((resolve) => Alert.alert(installationTask ? "Complete installation?" : "Complete service visit?", installationTask ? "This sends the verified QR record and installed-unit photo to the customer order." : "This saves the report to the AC service history and closes the maintenance work order.", [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) }, { text: "Complete", onPress: () => resolve(true) }]));
+    const confirmed = await confirmAction({
+      title: installationTask ? "Complete Installation?" : "Complete Service Visit?",
+      message: installationTask
+        ? "This sends the verified QR record and installed-unit photo to the customer order."
+        : "This saves the report to the AC service history and closes the maintenance work order.",
+      confirmText: "Complete",
+    });
     if (!confirmed) return;
     const submittedAt = new Date().toISOString();
     const technicianName = getDisplayName(current) || task?.assignedTechnicianName || "Technician";

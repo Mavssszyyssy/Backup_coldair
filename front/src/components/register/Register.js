@@ -11,6 +11,7 @@ import {
   removeEncrypted,
   saveEncrypted,
 } from "../../utils/secureStorage";
+import { confirmDialog } from "../../utils/dialog";
 import BoutiqueAuthHeader from "../common/boutique/BoutiqueAuthHeader";
 import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -124,9 +125,12 @@ export default function Register() {
       formData.emailVerified;
 
     if (hasVerifiedData) {
-      const confirmed = window.confirm(
-        "You have successfully verified your email. Are you sure you want to cancel? All progress will be lost.",
-      );
+      const confirmed = await confirmDialog({
+        title: "Cancel Registration?",
+        message: "Your verified registration progress will be removed. This cannot be undone.",
+        confirmText: "Discard Progress",
+        destructive: true,
+      });
       if (!confirmed) return;
     }
 

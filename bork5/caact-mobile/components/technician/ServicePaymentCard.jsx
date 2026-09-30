@@ -4,6 +4,7 @@ import Card from "../ui/Card";
 import TechButton from "./TechButton";
 import { collectServicePayment } from "../../services/taskStorage";
 import { formatPeso } from "../../services/ecommerceService";
+import { confirmAction } from "../../utils/confirmAction";
 
 export default function ServicePaymentCard({ task, onUpdated, readOnly = false }) {
   const [busy, setBusy] = useState(false);
@@ -12,16 +13,20 @@ export default function ServicePaymentCard({ task, onUpdated, readOnly = false }
   const closed = ["completed", "cancelled"].includes(String(task.status || "").toLowerCase());
   const serviceNoteSaved = Array.isArray(task?.serviceLogs) && task.serviceLogs.length > 0;
   const checkedIn = Boolean(task?.checkIn?.checkedInAt);
-  const confirm = () => Alert.alert("Confirm service cash received", `Payment summary\nBase service: ${formatPeso(payment.baseAmount || 0)}\nLabor: ${formatPeso(payment.laborCost || 0)}\nParts: ${formatPeso(payment.partsCost || 0)}\nFinal service price: ${formatPeso(payment.amount)}\n\nOnly confirm after collecting the full updated amount.`, [
-    { text: "Not yet", style: "cancel" },
-    { text: "Cash received", onPress: async () => {
+  const confirm = () => confirmAction({
+    title: "Confirm Service Cash Received",
+    message: `Payment summary\nBase service: ${formatPeso(payment.baseAmount || 0)}\nLabor: ${formatPeso(payment.laborCost || 0)}\nParts: ${formatPeso(payment.partsCost || 0)}\nFinal service price: ${formatPeso(payment.amount)}\n\nOnly confirm after collecting the full updated amount.`,
+    cancelText: "Not yet",
+    confirmText: "Cash received",
+    pendingText: "Recording...",
+    onConfirm: async () => {
       if (busy) return;
       setBusy(true);
       try { onUpdated(await collectServicePayment(task.id, payment)); Alert.alert("Service payment recorded", "The customer and branch team can now see the collection."); }
       catch (error) { Alert.alert("Payment not recorded", error.message); }
       finally { setBusy(false); }
-    } },
-  ]);
+    },
+  });
   return <Card>
     <Text style={{ fontWeight: "700", fontSize: 18 }}>Service payment</Text>
     <Text style={{ marginVertical: 8 }}>{payment.status === "warranty_covered" ? "Covered by approved warranty — no cash due" : payment.status === "quote_required" ? closed ? "Payment amount not recorded for this closed visit" : "Awaiting Admin quote — amount not yet set" : `${formatPeso(payment.amount)} · ${payment.status === "paid" ? "Cash collected" : payment.status === "no_charge" ? "No charge" : closed ? "No collection recorded" : "Cash due"}`}</Text>

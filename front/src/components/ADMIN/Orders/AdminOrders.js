@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
+import { confirmDialog } from '../../../utils/dialog';
 import { formatBusinessDateKey } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
@@ -360,7 +361,12 @@ const AdminOrders = ({ embedded = false }) => {
     }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
     if (config.action === 'cancel' && !form.cancellationReason.trim()) {
-      const ok = window.confirm('Cancel this order without a cancellation note?');
+      const ok = await confirmDialog({
+        title: 'Cancel Without a Note?',
+        message: 'Cancel this order without recording a cancellation reason?',
+        confirmText: 'Cancel Order',
+        destructive: true,
+      });
       if (!ok) return;
     }
     setProcessingId(processingKey);
@@ -414,7 +420,11 @@ const AdminOrders = ({ embedded = false }) => {
       sync_installed_units: 'sync installed customer units',
     };
     const label = actionLabels[action] || 'run recovery';
-    const ok = window.confirm(`Run ${label} for ${order.orderCode || order.id}?`);
+    const ok = await confirmDialog({
+      title: 'Run Recovery Action?',
+      message: `Run ${label} for ${order.orderCode || order.id}?`,
+      confirmText: 'Run Recovery',
+    });
     if (!ok) return;
 
     const processingKey = `${order.id}:recovery-${action}`;
@@ -459,7 +469,12 @@ const AdminOrders = ({ embedded = false }) => {
     if (!order?.id) return;
     const processingKey = `${order.id}:refund-${status}`;
     const label = refundStatusLabel(status).toLowerCase();
-    const ok = window.confirm(`Mark ${order.orderCode || order.id} as ${label}?`);
+    const ok = await confirmDialog({
+      title: 'Update Refund Review?',
+      message: `Mark ${order.orderCode || order.id} as ${label}?`,
+      confirmText: 'Update Status',
+      destructive: status === 'rejected',
+    });
     if (!ok) return;
 
     setProcessingId(processingKey);

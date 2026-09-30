@@ -10,7 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
-import { confirmDialog } from "../../../utils/dialog";
+import { confirmLogout } from "../../../utils/dialog";
 import logo from "../../common/images/Cold Air Logo.jpg";
 import "./styles.css";
 
@@ -28,15 +28,10 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   const { logout } = useUser();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    const confirmed = await confirmDialog(
-      "Are you sure you want to log out?",
-      "Logout",
-    );
-    if (!confirmed) return;
+  const handleLogout = () => confirmLogout(() => {
     logout();
     navigate("/home");
-  };
+  });
 
   const handleLinkClick = () => {
     if (window.innerWidth < 768) onClose?.();

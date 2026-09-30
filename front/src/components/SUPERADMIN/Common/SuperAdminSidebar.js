@@ -12,7 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
-import { confirmDialog } from "../../../utils/dialog";
+import { confirmLogout } from "../../../utils/dialog";
 import logo from "../../common/images/Cold Air Logo.jpg";
 
 const links = [
@@ -31,15 +31,10 @@ const SuperAdminSidebar = () => {
   const navigate = useNavigate();
   const { logout } = useUser();
 
-  const handleLogout = async () => {
-    const confirmed = await confirmDialog(
-      "Are you sure you want to log out?",
-      "Logout",
-    );
-    if (!confirmed) return;
+  const handleLogout = () => confirmLogout(() => {
     logout();
     navigate("/home");
-  };
+  });
 
   return (
     <aside className="super-sidebar open">

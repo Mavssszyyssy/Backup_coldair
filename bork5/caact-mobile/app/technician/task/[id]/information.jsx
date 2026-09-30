@@ -16,6 +16,7 @@ import { checkInTask, confirmCodCollection, confirmInstallationArrival, getTaskB
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
 import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
 import { formatWarrantyStatus, getInstallationWorkflowState, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
+import { confirmAction } from "../../../../utils/confirmAction";
 
 function money(value) {
   return `PHP ${Number(value || 0).toFixed(2)}`;
@@ -360,10 +361,13 @@ export default function TaskInformationScreen() {
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   };
 
-  const confirmCash = () => Alert.alert(
-    "Confirm cash received",
-    `Have you received the full ${money(task?.codPayment?.amount)} from the customer? Only confirm after collecting the cash.`,
-    [{ text: "Not yet", style: "cancel" }, { text: "Cash received", onPress: async () => {
+  const confirmCash = () => confirmAction({
+    title: "Confirm Cash Received",
+    message: `Have you received the full ${money(task?.codPayment?.amount)} from the customer? Only confirm after collecting the cash.`,
+    cancelText: "Not yet",
+    confirmText: "Cash Received",
+    pendingText: "Recording...",
+    onConfirm: async () => {
       if (actionBusy) return;
       setActionBusy(true);
       try {
@@ -373,8 +377,8 @@ export default function TaskInformationScreen() {
       } catch (error) {
         Alert.alert("Unable to confirm payment", error?.message || "Please try again.");
       } finally { setActionBusy(false); }
-    } }],
-  );
+    },
+  });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>

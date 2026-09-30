@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
+import { confirmLogout } from '../../utils/dialog';
 import BoutiqueAuthLayout from './boutique/BoutiqueAuthLayout';
 import BoutiqueAuthHeader from './boutique/BoutiqueAuthHeader';
 import BoutiqueCard from './boutique/BoutiqueCard';
@@ -8,10 +9,10 @@ import AccountSecurityManagement from '../security/AccountSecurityManagement';
 export default function TechnicianMobileNotice() {
   const { user, isAuthenticated, logout, changePassword } = useUser();
   const navigate = useNavigate();
-  const returnToLogin = () => {
+  const returnToLogin = () => confirmLogout(() => {
     if (isAuthenticated) logout();
     navigate('/login', { replace: true });
-  };
+  });
   return <BoutiqueAuthLayout>
     <main style={{ width: '100%', maxWidth: 720, margin: 'auto', padding: 24 }}>
       <BoutiqueAuthHeader title="Technician Account Management" subtitle="Work orders remain mobile-only. You can review and secure your account here." />

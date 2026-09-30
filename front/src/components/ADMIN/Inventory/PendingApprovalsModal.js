@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
+import { confirmDialog } from '../../../utils/dialog';
 import './PendingApprovalsModal.css';
 
 const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
@@ -30,7 +31,12 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
   };
 
   const handleApprove = async (requestId) => {
-    if (!window.confirm('Approve this inventory change request?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Approve Inventory Change?',
+      message: 'Approve this request and apply the inventory change?',
+      confirmText: 'Approve Request',
+    });
+    if (!confirmed) return;
 
     setActionInProgress(requestId);
     try {
@@ -54,7 +60,13 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
       return;
     }
 
-    if (!window.confirm('Reject this inventory change request?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Reject Inventory Change?',
+      message: 'Reject this request using the reason you entered?',
+      confirmText: 'Reject Request',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setActionInProgress(requestId);
     try {

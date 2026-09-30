@@ -12,6 +12,7 @@ import { COLORS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { requiredSetupRoute } from "../../../services/accountSetupRoute";
 import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../../utils/authValidation";
+import { confirmAction } from "../../../utils/confirmAction";
 
 export default function TechnicianOobe() {
   const router = useRouter();
@@ -26,7 +27,20 @@ export default function TechnicianOobe() {
     return <Redirect href={requiredSetupRoute(current) || "/technician/home"} />;
   }
 
-  const switchAccount = async () => { if (saving) return; await logout(); router.replace("/sign-in"); };
+  const switchAccount = () => {
+    if (saving) return false;
+    return confirmAction({
+      title: "Confirm Logout",
+      message: "Are you sure you want to log out of your account?",
+      confirmText: "Logout",
+      pendingText: "Logging out...",
+      destructive: true,
+      onConfirm: async () => {
+        await logout();
+        router.replace("/sign-in");
+      },
+    });
+  };
   const handleSubmit = async () => {
     if (saving) return;
     setSubmitted(true);

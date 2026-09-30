@@ -1,6 +1,7 @@
 import { MapPin, Phone, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
+import { confirmDialog } from "../../utils/dialog";
 import AddAddressModal from "../checkout/AddAddressModal";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -65,7 +66,13 @@ function MyAddressesSettings({ onAddressesChanged }) {
   };
 
   const handleDeleteAddress = async (addressId) => {
-    if (!window.confirm("Delete this address?")) return;
+    const confirmed = await confirmDialog({
+      title: "Delete Address?",
+      message: "This delivery address will be removed from your account.",
+      confirmText: "Delete Address",
+      destructive: true,
+    });
+    if (!confirmed) return;
     setAddressSaving(true);
     try {
       await apiRequest(`/users/addresses/${addressId}`, { method: "DELETE" });

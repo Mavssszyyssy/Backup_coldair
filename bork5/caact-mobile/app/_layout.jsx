@@ -8,6 +8,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { requiredSetupRoute } from "../services/accountSetupRoute";
 import { CartProvider } from "../context/CartContext";
 import BackendConnectionStatus from "../components/BackendConnectionStatus";
+import ConfirmationProvider from "../components/ui/ConfirmationProvider";
 import { UserProvider } from "../context/UserContext";
 import { useUserContext } from "../context/UserContext";
 import {
@@ -48,23 +49,25 @@ function PushNotificationSetup() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <UserProvider>
-        <CartProvider>
-          <PushNotificationSetup />
-          <NetworkRecoverySetup />
-          <BackendConnectionStatus />
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            // Android uses windowSoftInputMode=resize from app.json. Applying
-            // a second height adjustment there caused fields and action bars
-            // to jump under the keyboard on some APK devices.
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={0}
-          >
-            <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
-          </KeyboardAvoidingView>
-        </CartProvider>
-      </UserProvider>
+      <ConfirmationProvider>
+        <UserProvider>
+          <CartProvider>
+            <PushNotificationSetup />
+            <NetworkRecoverySetup />
+            <BackendConnectionStatus />
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              // Android uses windowSoftInputMode=resize from app.json. Applying
+              // a second height adjustment there caused fields and action bars
+              // to jump under the keyboard on some APK devices.
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              keyboardVerticalOffset={0}
+            >
+              <Stack screenOptions={{ headerShown: false, animation: "fade" }} />
+            </KeyboardAvoidingView>
+          </CartProvider>
+        </UserProvider>
+      </ConfirmationProvider>
     </SafeAreaProvider>
   );
 }

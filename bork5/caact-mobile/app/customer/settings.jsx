@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Keyboard, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSettingsRow, { CustomerEditAction } from "../../components/customer/CustomerSettingsRow";
@@ -33,6 +33,7 @@ import {
   validatePhone,
   validateRequired,
 } from "../../utils/authValidation";
+import { confirmAction } from "../../utils/confirmAction";
 
 const toText = (value) => String(value || "").trim();
 const addressId = (address) => String(address?._id || address?.id || "");
@@ -371,24 +372,25 @@ export default function CustomerSettingsScreen() {
         setAddressForm(null);
       } finally { setSaving(false); }
     };
-    if (Platform.OS === "web") {
-      if (typeof window === "undefined" || window.confirm("Delete this delivery address?")) void remove();
-      return;
-    }
-    Alert.alert("Delete address", "This address will no longer be available at checkout.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void remove() },
-    ]);
+    return confirmAction({
+      title: "Delete Address?",
+      message: "This address will no longer be available at checkout.",
+      confirmText: "Delete Address",
+      pendingText: "Deleting...",
+      destructive: true,
+      onConfirm: remove,
+    });
   };
 
   const performLogout = async () => { await logout(); router.replace("/sign-in"); };
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      if (typeof window === "undefined" || window.confirm("Sign out of your customer account?")) void performLogout();
-      return;
-    }
-    Alert.alert("Sign Out", "Sign out of this customer account?", [{ text: "Cancel", style: "cancel" }, { text: "Sign Out", style: "destructive", onPress: performLogout }]);
-  };
+  const handleLogout = () => confirmAction({
+    title: "Confirm Logout",
+    message: "Are you sure you want to log out of your account?",
+    confirmText: "Logout",
+    pendingText: "Logging out...",
+    destructive: true,
+    onConfirm: performLogout,
+  });
 
   const subtitle = securityMode === "password" ? "Change your password" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
   const saveCurrentEditor = securityMode === "password" ? savePassword : isEditingAddress ? saveAddress : saveProfile;

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
 import { AppContent } from './App';
+import GlobalDialog from './components/common/GlobalDialog';
 
 const enrolledTechnician = { role: 'technician' };
 const session = vi.hoisted(() => ({ isAuthenticated: true, loading: false, userRole: 'technician', user: { role: 'technician' }, logout: vi.fn(), hideAuthRequiredPrompt: vi.fn() }));
@@ -28,8 +29,9 @@ test('technician can leave the guidance screen and return to website sign-in', a
   session.userRole = 'technician';
   session.user = enrolledTechnician;
   session.logout.mockImplementation(() => { session.isAuthenticated = false; session.userRole = null; session.user = null; });
-  render(<MemoryRouter initialEntries={['/technician-mobile']}><AppContent /><Path /></MemoryRouter>);
+  render(<MemoryRouter initialEntries={['/technician-mobile']}><GlobalDialog /><AppContent /><Path /></MemoryRouter>);
   fireEvent.click(screen.getByText('Sign out and use another account'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
   expect(session.logout).toHaveBeenCalled();
   expect(await screen.findByText('Website sign-in fixture')).toBeInTheDocument();
   expect(screen.getByTestId('path')).toHaveTextContent('/login');

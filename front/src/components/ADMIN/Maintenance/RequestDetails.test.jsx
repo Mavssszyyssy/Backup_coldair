@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import RequestDetails from './RequestDetails';
+import GlobalDialog from '../../common/GlobalDialog';
 import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
 
@@ -94,7 +95,6 @@ describe('maintenance request controls', () => {
   });
 
   it('verifies a saved cancellation when a weak connection loses the PATCH response', async () => {
-    const confirmed = vi.spyOn(window, 'confirm').mockReturnValue(true);
     apiRequest.mockImplementation(async (path, options) => {
       if (path.startsWith('/users')) return { users: [] };
       if (options?.method === 'PATCH') {
@@ -108,12 +108,12 @@ describe('maintenance request controls', () => {
       return { task: null };
     });
 
-    render(<RequestDetails request={request} />);
+    render(<><GlobalDialog /><RequestDetails request={request} /></>);
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel request' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel Request' }));
 
     expect(await screen.findByText(/Connection restored and the saved result was verified/)).toBeTruthy();
     expect(screen.getByText('Cancelled')).toBeTruthy();
     expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'PATCH')).toHaveLength(1);
-    confirmed.mockRestore();
   });
 });

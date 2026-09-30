@@ -8,6 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
+import { confirmLogout } from "../../utils/dialog";
 import "./styles.css";
 
 function AmpDashboardShell({ title, subtitle, children }) {
@@ -46,10 +47,10 @@ function AmpDashboardShell({ title, subtitle, children }) {
         </nav>
         <button
           type="button"
-          onClick={() => {
+          onClick={() => confirmLogout(() => {
             logout();
             navigate("/home");
-          }}
+          })}
         >
           <SignOut size={18} weight="bold" /> Logout
         </button>

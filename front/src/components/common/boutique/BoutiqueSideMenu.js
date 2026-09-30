@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { confirmLogout } from "../../../utils/dialog";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueStack from "./BoutiqueStack";
@@ -135,12 +136,10 @@ export default function BoutiqueSideMenu({
           {isAuthenticated ? (
             <button
               className="bq-nav-item bq-logout-btn"
-              onClick={() => {
-                if (window.confirm("Are you sure you want to sign out?")) {
+              onClick={() => confirmLogout(() => {
                   onLogout();
                   onClose();
-                }
-              }}
+              })}
             >
               <SignOut size={24} weight="bold" />
               <span>Sign Out</span>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
+import { confirmDialog } from '../../../utils/dialog';
 import './IncomingRestockModal.css';
 
 const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
@@ -36,7 +37,12 @@ const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
   };
 
   const handleMarkReceived = async (restockId) => {
-    if (!window.confirm('Mark this restock as received?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Confirm Restock Receipt',
+      message: 'Mark this delivery as received using the quantities shown?',
+      confirmText: 'Mark Received',
+    });
+    if (!confirmed) return;
 
     const receivedProducts = restocks
       .find((r) => r.id === restockId)

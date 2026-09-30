@@ -11,6 +11,7 @@ import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/pos
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
 import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
 import { DEFAULT_SERVICE_AREA_ID } from "../../domain/purchase/serviceAreas";
+import { confirmDialog } from "../../utils/dialog";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -367,7 +368,13 @@ function Checkout() {
   const handleDeleteAddress = useCallback(
     async (address) => {
       if (!address?.id) return;
-      if (!window.confirm("Delete this saved address?")) return;
+      const confirmed = await confirmDialog({
+        title: "Delete Address?",
+        message: "This saved address will no longer be available during checkout.",
+        confirmText: "Delete Address",
+        destructive: true,
+      });
+      if (!confirmed) return;
       setAddressBusy(true);
       try {
         const response = await apiRequest(`/users/addresses/${address.id}`, {

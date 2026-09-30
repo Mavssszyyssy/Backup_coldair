@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
+import { confirmLogout } from '../../utils/dialog';
 import icons from '../common/icons';
 
 function SideMenu({ isOpen, onClose, activePage, onLogout }) {
@@ -8,7 +9,6 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const location = useLocation();
   const { user, isAuthenticated } = useUser();
   const [avatarBroken, setAvatarBroken] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState(activePage);
   const [showLoginGreeting] = useState(() => {
     try {
@@ -78,22 +78,13 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
     onClose();
   };
 
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true);
-  };
-
-  const handleConfirmLogout = () => {
+  const handleLogoutClick = () => confirmLogout(() => {
     if (onLogout) {
       onLogout();
     }
-    setShowLogoutModal(false);
     onClose();
     navigate('/shop', { replace: true });
-  };
-
-  const handleCancelLogout = () => {
-    setShowLogoutModal(false);
-  };
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -242,37 +233,6 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
 
       </div>
 
-      {showLogoutModal && (
-        <div className="logout-modal-overlay" onClick={handleCancelLogout} role="presentation">
-          <div className="logout-modal" onClick={(e) => e.stopPropagation()} role="dialog">
-            <div className="logout-modal-header">
-              <div className="logout-icon-wrapper">
-                <div className="logout-icon">
-                  <img src={icons.signOutAlt} alt="" className="inline-icon inline-icon--xl" />
-                </div>
-              </div>
-              <h3>Logout Confirmation</h3>
-              <p>Are you sure you want to log out?</p>
-            </div>
-            <div className="logout-modal-body">
-              <div className="warning-message">
-                <span className="warning-icon">
-                  <img src={icons.diamondExclamation} alt="" className="inline-icon" />
-                </span>
-                <span>You will need to login again to access your account.</span>
-              </div>
-            </div>
-            <div className="logout-modal-footer">
-              <button type="button" className="logout-cancel-btn" onClick={handleCancelLogout}>
-                Cancel
-              </button>
-              <button type="button" className="logout-confirm-btn" onClick={handleConfirmLogout}>
-                Yes, Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

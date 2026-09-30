@@ -1,31 +1,43 @@
-// utils/confirmAction.jsx
-import { Alert, Platform } from "react-native";
+import { Alert } from "react-native";
+
+let presentConfirmation = null;
+
+export function registerConfirmationPresenter(presenter) {
+  presentConfirmation = presenter;
+  return () => {
+    if (presentConfirmation === presenter) presentConfirmation = null;
+  };
+}
 
 export async function confirmAction({
   title = "Confirm Action",
   message = "Are you sure?",
   confirmText = "Confirm",
+  cancelText = "Cancel",
+  pendingText = "Processing...",
   destructive = false,
   onConfirm,
+  errorMessage = "Unable to complete this action. Please try again.",
 }) {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const confirmed = window.confirm(`${title}\n\n${message}`);
-    if (!confirmed) return false;
+  const options = {
+    title,
+    message,
+    confirmText,
+    cancelText,
+    pendingText,
+    destructive,
+    onConfirm,
+    errorMessage,
+  };
 
-    await Promise.resolve(onConfirm?.());
-    return true;
-  }
+  if (presentConfirmation) return presentConfirmation(options);
 
   return new Promise((resolve) => {
     Alert.alert(
       title,
       message,
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => resolve(false),
-        },
+        { text: cancelText, style: "cancel", onPress: () => resolve(false) },
         {
           text: confirmText,
           style: destructive ? "destructive" : "default",
@@ -39,7 +51,7 @@ export async function confirmAction({
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true, onDismiss: () => resolve(false) },
     );
   });
 }

@@ -1,0 +1,144 @@
+.app-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.app-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .56);
+  backdrop-filter: blur(5px);
+  animation: app-dialog-fade-in .18s ease-out;
+}
+
+.app-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 34px;
+  border: 1px solid #dbe5f2;
+  border-radius: 20px;
+  background: #fff;
+  color: #0f172a;
+  text-align: center;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, .28);
+  animation: app-dialog-enter .22s cubic-bezier(.2, .8, .2, 1);
+}
+
+.app-dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.app-dialog-close:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; }
+.app-dialog-close:disabled { cursor: wait; opacity: .5; }
+
+.app-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.app-dialog--destructive .app-dialog-icon { background: #fff1f2; color: #dc2626; }
+
+.app-dialog-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 23px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.app-dialog-message {
+  margin: 12px 0 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.app-dialog-error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.app-dialog-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.app-dialog-actions:has(> :only-child) { grid-template-columns: 1fr; }
+
+.app-dialog-button {
+  min-width: 0;
+  min-height: 46px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.app-dialog-button:hover:not(:disabled) { transform: translateY(-1px); }
+.app-dialog-button:disabled { cursor: wait; opacity: .65; transform: none; }
+.app-dialog-button--cancel { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.app-dialog-button--cancel:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
+.app-dialog-button--confirm { border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; }
+.app-dialog-button--confirm:hover:not(:disabled) { background: #1e40af; }
+.app-dialog-button--danger { border: 1px solid #dc2626; background: #dc2626; color: #fff; }
+.app-dialog-button--danger:hover:not(:disabled) { background: #b91c1c; }
+
+:root[data-theme='dark'] .app-dialog { border-color: #334155; background: #111827; color: #f8fafc; }
+:root[data-theme='dark'] .app-dialog-title { color: #f8fafc; }
+:root[data-theme='dark'] .app-dialog-message { color: #cbd5e1; }
+:root[data-theme='dark'] .app-dialog-close,
+:root[data-theme='dark'] .app-dialog-button--cancel { border-color: #475569; background: #1f2937; color: #e2e8f0; }
+
+@media (max-width: 480px) {
+  .app-dialog-layer { padding: 14px; align-items: end; }
+  .app-dialog { width: 100%; max-height: calc(100vh - 28px); padding: 30px 20px 20px; border-radius: 20px 20px 14px 14px; }
+  .app-dialog-actions { grid-template-columns: 1fr; }
+  .app-dialog-button--cancel { order: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog-overlay,
+  .app-dialog { animation: none; }
+}
+
+@keyframes app-dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes app-dialog-enter { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }

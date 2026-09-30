@@ -36,6 +36,7 @@ import { formatUnitHorsepower } from "../../../services/unitDisplayService";
 import {
   getUnitByCode,
 } from "../../../services/unitStorage";
+import { confirmAction } from "../../../utils/confirmAction";
 
 const careGuideReportFromUnit = (loadedUnit = {}, reportType = "predictive_maintenance") => {
   const amp = loadedUnit.amp || {};
@@ -228,48 +229,45 @@ export default function CustomerUnitDetailsScreen() {
       return;
     }
 
-    Alert.alert(
-      "Cancel this service request?",
-      "The branch and assigned technician will be notified. You can book another visit afterward.",
-      [
-        { text: "Keep Request", style: "cancel" },
-        {
-          text: "Cancel Request",
-          style: "destructive",
-          onPress: async () => {
-            setCancellingRequestId(String(request.id));
-            try {
-              const updatedRequest = await cancelServiceRequest(
-                request.id,
-                current?.name || current?.email || "Customer",
-                "Service request cancelled by the customer before work began.",
-              );
-              try {
-                const refreshedHistory = await getCustomerServiceHistory(current?.id);
-                setHistory(serviceRequestHistoryForUnit(unit, refreshedHistory));
-              } catch {
-                setHistory((previous) => ({
-                  ...previous,
-                  requests: previous.requests.map((item) =>
-                    String(item.id) === String(updatedRequest.id) ? updatedRequest : item,
-                  ),
-                  linkedTasks: previous.linkedTasks.map((task) =>
-                    String(task.id || "") === String(updatedRequest.linkedTaskId || "")
-                      ? { ...task, status: "cancelled" }
-                      : task,
-                  ),
-                }));
-              }
-              Alert.alert("Request cancelled", "The service request and any scheduled work have been cancelled.");
-            } catch (error) {
-              Alert.alert("Unable to cancel request", error?.message || "Please try again.");
-            } finally {
-              setCancellingRequestId("");
-            }
-          },
-        },
-      ],
-    );
+    return confirmAction({
+      title: "Cancel Service Request?",
+      message: "The branch and assigned technician will be notified. You can book another visit afterward.",
+      cancelText: "Keep Request",
+      confirmText: "Cancel Request",
+      pendingText: "Cancelling...",
+      destructive: true,
+      onConfirm: async () => {
+        setCancellingRequestId(String(request.id));
+        try {
+          const updatedRequest = await cancelServiceRequest(
+            request.id,
+            current?.name || current?.email || "Customer",
+            "Service request cancelled by the customer before work began.",
+          );
+          try {
+            const refreshedHistory = await getCustomerServiceHistory(current?.id);
+            setHistory(serviceRequestHistoryForUnit(unit, refreshedHistory));
+          } catch {
+            setHistory((previous) => ({
+              ...previous,
+              requests: previous.requests.map((item) =>
+                String(item.id) === String(updatedRequest.id) ? updatedRequest : item,
+              ),
+              linkedTasks: previous.linkedTasks.map((task) =>
+                String(task.id || "") === String(updatedRequest.linkedTaskId || "")
+                  ? { ...task, status: "cancelled" }
+                  : task,
+              ),
+            }));
+          }
+          Alert.alert("Request cancelled", "The service request and any scheduled work have been cancelled.");
+        } catch (error) {
+          Alert.alert("Unable to cancel request", error?.message || "Please try again.");
+        } finally {
+          setCancellingRequestId("");
+        }
+      },
+    });
   };
 
   useFocusEffect(

@@ -18,6 +18,7 @@ import { useUserContext } from "../../context/UserContext";
 import { formatCartModel } from "../../services/cartDisplayService";
 import { formatPeso } from "../../services/ecommerceService";
 import { getOrdersByUser, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
+import { confirmAction } from "../../utils/confirmAction";
 
 function statusVariant(status = "") {
   const value = status.toLowerCase();
@@ -293,18 +294,16 @@ export default function CustomerOrdersScreen() {
     }, [current]),
   );
 
-  const handleCancelRequest = (order) => {
-    Alert.alert(
-      "Cancel order?",
-      order.paymentProvider === "paymongo" && order.paymentStatus === "paid"
+  const handleCancelRequest = (order) => confirmAction({
+      title: "Cancel Order?",
+      message: order.paymentProvider === "paymongo" && order.paymentStatus === "paid"
         ? "This paid order will be cancelled and sent to admin for refund review."
         : "This order will be cancelled if it is still before dispatch.",
-      [
-        { text: "Keep Order", style: "cancel" },
-        {
-          text: "Request Cancel",
-          style: "destructive",
-          onPress: async () => {
+      cancelText: "Keep Order",
+      confirmText: "Request Cancellation",
+      pendingText: "Submitting...",
+      destructive: true,
+      onConfirm: async () => {
             setCancellingId(String(order.id));
             try {
               const result = await requestOrderCancellation(
@@ -320,11 +319,8 @@ export default function CustomerOrdersScreen() {
             } finally {
               setCancellingId("");
             }
-          },
-        },
-      ],
-    );
-  };
+      },
+    });
 
   const handlePayNow = async (order) => {
     setPayingId(String(order.id));

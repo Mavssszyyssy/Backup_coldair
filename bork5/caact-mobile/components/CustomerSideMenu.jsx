@@ -47,9 +47,10 @@ export default function CustomerSideMenu({ navigation }) {
 
   const handleLogout = () =>
     confirmAction({
-      title: "Sign Out",
-      message: "Are you sure you want to sign out?",
-      confirmText: "Sign Out",
+      title: "Confirm Logout",
+      message: "Are you sure you want to log out of your account?",
+      confirmText: "Logout",
+      pendingText: "Logging out...",
       destructive: true,
       onConfirm: async () => {
         await logout();

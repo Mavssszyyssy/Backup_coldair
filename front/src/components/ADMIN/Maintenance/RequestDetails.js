@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
 import { technicianHasConflict } from '../../../domain/scheduleConflicts';
+import { confirmDialog } from '../../../utils/dialog';
 import './styles.css';
 import ServicePaymentPanel from './ServicePaymentPanel';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
@@ -157,9 +158,15 @@ const RequestDetails = ({ request, onUpdated }) => {
     );
   };
 
-  const cancelRequest = () => {
-    if (!window.confirm('Cancel this service request? This does not delete its history.')) return;
-    updateRequest({ status: 'Cancelled', description: 'Cancelled by an administrator.' }, 'Service request cancelled.');
+  const cancelRequest = async () => {
+    const confirmed = await confirmDialog({
+      title: 'Cancel Service Request?',
+      message: 'The request will be cancelled, but its service history will be kept.',
+      confirmText: 'Cancel Request',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await updateRequest({ status: 'Cancelled', description: 'Cancelled by an administrator.' }, 'Service request cancelled.');
   };
 
   if (!current) return <aside className="maintenance-details maintenance-details--empty"><div className="maintenance-empty-icon">⌁</div><h2>Select a request</h2><p>Choose an item from the service queue to review the customer details and manage its assignment.</p></aside>;

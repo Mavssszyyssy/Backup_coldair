@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
+import { confirmLogout } from "../../utils/dialog";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -144,12 +145,10 @@ function Settings() {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to sign out?")) {
+  const handleLogout = () => confirmLogout(() => {
       logout();
       navigate("/home", { replace: true });
-    }
-  };
+  });
 
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
