@@ -9,7 +9,19 @@
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
-      "bundleIdentifier": "com.maviitootie.coldair"
+      "bundleIdentifier": "com.maviitootie.coldair",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
+      }
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -19,6 +31,12 @@
       },
       "permissions": [
         "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       "package": "com.maviitootie.Coldair"
     },
@@ -32,10 +50,31 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Coldair to scan unit QR codes and capture proof of installation photos."
+          "cameraPermission": "Allow Cold Air ACT to scan AC unit QR codes and capture service or installation photos.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
-      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "locationWhenInUsePermission": "Allow Cold Air ACT to use your location for service addresses and technician check-ins.",
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false,
+          "isAndroidMotionActivityEnabled": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "mode": "production",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
       "expo-font",
       "expo-status-bar",
       [
@@ -45,6 +84,13 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false,
+          "configureAndroidBackup": true
         }
       ]
     ],

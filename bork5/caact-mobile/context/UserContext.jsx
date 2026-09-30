@@ -1,5 +1,4 @@
 // context/UserContext.jsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 
@@ -7,8 +6,12 @@ import * as api from "../services/api";
 import { clearOperationalSessionCache } from "../services/sessionCache";
 import { requiredSetupRoute } from "../services/accountSetupRoute";
 import { subscribeBackendRecovery } from "../services/backendConnectionState";
+import {
+  clearAuthToken,
+  readAuthToken,
+  writeAuthToken,
+} from "../services/tokenStorage";
 
-const TOKEN_KEY = "auth_token";
 const MOBILE_ACCOUNT_ROLES = ["customer", "technician"];
 // Session restoration calls /auth/me, which is a database-backed read. It must
 // outlive the mobile client's cold database reconnect window so Expo Go does
@@ -136,7 +139,7 @@ export function UserProvider({ children }) {
 
   const hydrate = useCallback(async () => {
     try {
-      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+      const storedToken = await readAuthToken();
       if (storedToken) {
         const result = await withTimeout(
           api.me(storedToken),
@@ -150,7 +153,7 @@ export function UserProvider({ children }) {
           // Only an authoritative authentication rejection invalidates the
           // stored session. A sleeping backend or temporary mobile connection
           // must not sign the user out.
-          await AsyncStorage.removeItem(TOKEN_KEY);
+          await clearAuthToken();
           setToken(null);
           setCurrent(null);
         } else {
@@ -186,12 +189,12 @@ export function UserProvider({ children }) {
 
   // ── Persist token helper ──────────────────────────────────────────────────
   const storeToken = async (newToken) => {
-    setToken(newToken);
     if (newToken) {
-      await AsyncStorage.setItem(TOKEN_KEY, newToken);
+      await writeAuthToken(newToken);
     } else {
-      await AsyncStorage.removeItem(TOKEN_KEY);
+      await clearAuthToken();
     }
+    setToken(newToken);
   };
 
   // ── Auth ──────────────────────────────────────────────────────────────────

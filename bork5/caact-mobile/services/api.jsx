@@ -8,11 +8,11 @@
 //   - Override with EXPO_PUBLIC_API_BASE_URL or EXPO_PUBLIC_API_BASE.
 
 import { API_BASE, apiFetch } from "../constants/config";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   confirmBackendRecovery,
   failBackendConnection,
 } from "./backendConnectionState";
+import { readAuthToken } from "./tokenStorage";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -100,8 +100,6 @@ const get = (path, token) => request("GET", path, { token });
 const post = (path, body, token) => request("POST", path, { token, body });
 const patch = (path, body, token) => request("PATCH", path, { token, body });
 const del = (path, token) => request("DELETE", path, { token });
-const TOKEN_KEY = "auth_token";
-
 const mutationId = (scope = "write") =>
   `${scope}-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 
@@ -146,7 +144,7 @@ async function fetchMyRequestsForReconciliation(token) {
 }
 
 export async function getStoredToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  return readAuthToken();
 }
 
 export async function checkBackendConnection() {

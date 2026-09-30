@@ -1,7 +1,6 @@
 import React from "react";
 import { Text } from "react-native";
 import { act, render, waitFor } from "@testing-library/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { UserProvider, useUserContext } from "../context/UserContext";
 import * as api from "./api";
@@ -10,12 +9,20 @@ import {
   confirmBackendRecovery,
   failBackendConnection,
 } from "./backendConnectionState";
+import { clearAuthToken, readAuthToken } from "./tokenStorage";
 
 jest.mock("./api", () => ({ me: jest.fn() }));
+jest.mock("./tokenStorage", () => ({
+  readAuthToken: jest.fn().mockResolvedValue("saved-session-token"),
+  writeAuthToken: jest.fn().mockResolvedValue(),
+  clearAuthToken: jest.fn().mockResolvedValue(),
+}));
 jest.mock("@react-native-async-storage/async-storage", () => ({
-  getItem: jest.fn().mockResolvedValue("saved-session-token"),
+  getItem: jest.fn().mockResolvedValue(null),
   setItem: jest.fn().mockResolvedValue(),
   removeItem: jest.fn().mockResolvedValue(),
+  getAllKeys: jest.fn().mockResolvedValue([]),
+  multiRemove: jest.fn().mockResolvedValue(),
 }));
 
 function SessionProbe() {
@@ -30,7 +37,7 @@ function SessionProbe() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  AsyncStorage.getItem.mockResolvedValue("saved-session-token");
+  readAuthToken.mockResolvedValue("saved-session-token");
 });
 
 test("keeps a saved session during a temporary backend failure and restores it after recovery", async () => {
@@ -48,7 +55,7 @@ test("keeps a saved session during a temporary backend failure and restores it a
   );
 
   await view.findByText("ready|saved-session-token|no-user");
-  expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
+  expect(clearAuthToken).not.toHaveBeenCalled();
 
   await act(async () => {
     beginBackendConnection("/orders");
@@ -70,7 +77,7 @@ test("clears a saved session only when the backend rejects its authentication", 
     </UserProvider>,
   );
 
-  await waitFor(() => expect(AsyncStorage.removeItem).toHaveBeenCalledWith("auth_token"));
+  await waitFor(() => expect(clearAuthToken).toHaveBeenCalledTimes(1));
   expect(view.getByText("ready|no-token|no-user")).toBeTruthy();
   view.unmount();
 });

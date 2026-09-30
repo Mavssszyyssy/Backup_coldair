@@ -6,6 +6,8 @@ import { registerPushToken } from "./api";
 import { resolveNotificationRoute } from "./notificationRouteService";
 import { notifyNotificationsChanged } from "./notificationEvents";
 
+export const ANDROID_NOTIFICATION_CHANNEL_ID = "default";
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -33,21 +35,36 @@ function getResponseRoute(response, role) {
 export async function enablePushNotifications(token) {
   if (!token || Platform.OS === "web") return { success: false, skipped: true };
 
-  const currentPermissions = await Notifications.getPermissionsAsync();
-  let status = currentPermissions.status;
-  if (status !== "granted") {
-    const requestedPermissions = await Notifications.requestPermissionsAsync();
-    status = requestedPermissions.status;
-  }
-  if (status !== "granted") {
-    return { success: false, error: "Notification permission was not granted." };
-  }
-
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
-  if (!projectId) return { success: false, error: "Push notification project is not configured." };
-
   try {
+    // Android 13+ will not show its notification permission prompt until the
+    // application has created at least one channel.
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync(
+        ANDROID_NOTIFICATION_CHANNEL_ID,
+        {
+          name: "AEROPULSE notifications",
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: "default",
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#1594B8",
+        },
+      );
+    }
+
+    const currentPermissions = await Notifications.getPermissionsAsync();
+    let status = currentPermissions.status;
+    if (status !== "granted") {
+      const requestedPermissions = await Notifications.requestPermissionsAsync();
+      status = requestedPermissions.status;
+    }
+    if (status !== "granted") {
+      return { success: false, error: "Notification permission was not granted." };
+    }
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+    if (!projectId) return { success: false, error: "Push notification project is not configured." };
+
     const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     return await registerPushToken(token, expoPushToken);
   } catch (error) {
