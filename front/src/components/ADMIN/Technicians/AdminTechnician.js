@@ -12,6 +12,7 @@ import "../adminShared.css";
 import "./styles.css";
 
 const PAGE_SIZE = 8;
+const WORK_ASSIGNMENT_PAGE_SIZE = 4;
 const CUSTOM_ADDRESS_ID = "__custom__";
 const INSTALLATION_SERVICE = {
   id: "installation",
@@ -210,6 +211,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const [workloadFilter, setWorkloadFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState(isSuperAdmin ? "all" : homeBranch || "all");
   const [page, setPage] = useState(1);
+  const [workPage, setWorkPage] = useState(1);
   const [draft, setDraft] = useState(() => initialDraft(homeBranch));
   const [customerQuery, setCustomerQuery] = useState("");
   const [staffDraft, setStaffDraft] = useState(() => initialStaffDraft(homeBranch));
@@ -268,6 +270,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [search, accountFilter, workloadFilter, branchFilter]);
+  useEffect(() => { setWorkPage(1); }, [tasks.length]);
   useEffect(() => {
     if (!isSuperAdmin) {
       setBranchFilter(homeBranch || "all");
@@ -325,6 +328,8 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
   const totalPages = Math.max(1, Math.ceil(filteredTechnicians.length / PAGE_SIZE));
   const pageTechnicians = filteredTechnicians.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const workTotalPages = Math.max(1, Math.ceil(tasks.length / WORK_ASSIGNMENT_PAGE_SIZE));
+  const pageWorkAssignments = tasks.slice((workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE, workPage * WORK_ASSIGNMENT_PAGE_SIZE);
   const intendedBranch = draft.branch || homeBranch;
   const availableCustomers = customers.filter((customer) => customer.accountStatus === "active"
     && (!intendedBranch || !customer.branch || customer.branch === intendedBranch));
@@ -733,7 +738,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
         <section className="admin-card tech-work-orders">
           <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Reassign open work and review GPS arrival history for active and completed jobs.</p></div></div>
-          {tasks.slice(0, 12).length === 0 ? <p className="tech-empty">There are no work orders yet.</p> : <div className="tech-work-list">{tasks.slice(0, 12).map((task) => {
+          {pageWorkAssignments.length === 0 ? <p className="tech-empty">There are no work orders yet.</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
             return <article key={task.id} className="tech-work-item">
@@ -758,6 +763,10 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
               </div>
             </article>;
           })}</div>}
+          {tasks.length > WORK_ASSIGNMENT_PAGE_SIZE ? <nav className="tech-pagination" aria-label="Recent work assignments pagination">
+            <span>Showing {(workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE + 1}–{Math.min(workPage * WORK_ASSIGNMENT_PAGE_SIZE, tasks.length)} of {tasks.length}</span>
+            <div><button type="button" onClick={() => setWorkPage((current) => Math.max(1, current - 1))} disabled={workPage === 1}>Previous</button><span>Page {workPage} of {workTotalPages}</span><button type="button" onClick={() => setWorkPage((current) => Math.min(workTotalPages, current + 1))} disabled={workPage === workTotalPages}>Next</button></div>
+          </nav> : null}
         </section>
       </section>}
     </AdminLayout>

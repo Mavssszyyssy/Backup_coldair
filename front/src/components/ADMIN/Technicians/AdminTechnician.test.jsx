@@ -99,3 +99,33 @@ test('creates a work order from linked customer, address, unit, service, and tec
     branch: 'Cavite',
   });
 });
+
+test('paginates recent work assignments instead of rendering an unbounded card list', async () => {
+  const tasks = Array.from({ length: 5 }, (_, index) => ({
+    id: `task-${index + 1}`,
+    taskCode: `TSK-${index + 1}`,
+    title: `Work item ${index + 1}`,
+    customerName: 'Patrick Cruz',
+    branch: 'Cavite',
+    scheduledDate: '2026-10-01',
+    timeSlot: '8:00 AM - 10:00 AM',
+    assignedTechnicianName: 'Carl Ramos',
+    status: 'completed',
+  }));
+  apiRequest.mockImplementation(async (path) => {
+    if (path.startsWith('/users')) return { users: [] };
+    if (path === '/tasks') return { tasks };
+    if (path === '/service-requests/catalog') return { offerings: [] };
+    if (path === '/amp/report-units') return { units: [] };
+    return {};
+  });
+
+  render(<AdminTechnician />);
+  expect(await screen.findByText('Work item 1')).toBeInTheDocument();
+  expect(screen.queryByText('Work item 5')).not.toBeInTheDocument();
+  expect(screen.getByText('Showing 1–4 of 5')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(await screen.findByText('Work item 5')).toBeInTheDocument();
+  expect(screen.queryByText('Work item 1')).not.toBeInTheDocument();
+  expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+});

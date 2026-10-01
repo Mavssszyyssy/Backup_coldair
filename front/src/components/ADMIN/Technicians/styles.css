@@ -72,7 +72,8 @@
 .tech-message--temporary { background: #fff7ed; color: #9a3412; }
 .tech-empty { margin: 0; padding: 22px 8px; color: #64748b; text-align: center; }
 .tech-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #64748b; font-size: 13px; font-weight: 700; }
-.tech-pagination > div { display: flex; gap: 8px; }
+.tech-pagination > div { display: flex; align-items: center; gap: 8px; }
+.tech-pagination > div > span { color: #475569; white-space: nowrap; }
 .tech-work-orders { display: grid; gap: 14px; }
 .tech-work-item { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .035); }
 .tech-work-heading { display: flex; align-items: flex-start; gap: 10px; }

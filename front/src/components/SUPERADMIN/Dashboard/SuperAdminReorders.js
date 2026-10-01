@@ -8,10 +8,12 @@ import '../../ADMIN/Reorder/styles.css';
 const displayName = (user) => user?.name || [user?.name_first, user?.name_last].filter(Boolean).join(' ') || user?.email || 'Admin';
 const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
 const statusLabel = (status) => ({ submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' }[status] || status);
+const REORDER_PAGE_SIZE = 4;
 
 export default function SuperAdminReorders({ embedded = false }) {
   const [reorders, setReorders] = useState([]);
   const [filter, setFilter] = useState('submitted');
+  const [page, setPage] = useState(1);
   const [notes, setNotes] = useState({});
   const [processingId, setProcessingId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,8 +38,12 @@ export default function SuperAdminReorders({ embedded = false }) {
     }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [filter]);
 
   const visible = useMemo(() => filter === 'all' ? reorders : reorders.filter((item) => item.status === filter), [filter, reorders]);
+  const totalPages = Math.max(1, Math.ceil(visible.length / REORDER_PAGE_SIZE));
+  const pageReorders = visible.slice((page - 1) * REORDER_PAGE_SIZE, page * REORDER_PAGE_SIZE);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const decide = async (reorder, status) => {
     const approval = status === 'approved';
     const message = approval
@@ -85,7 +91,7 @@ export default function SuperAdminReorders({ embedded = false }) {
         </div>
         {loading ? <div className="reorder-empty">Loading reorder requests…</div> : visible.length === 0 ? <div className="reorder-empty">No reorder requests match this filter.</div> : (
           <div className="reorder-history-list">
-            {visible.map((reorder) => (
+            {pageReorders.map((reorder) => (
               <article className="reorder-history-item reorder-request-card" key={reorder.id}>
                 <div className="reorder-request-content">
                   <div className="reorder-request-header">
@@ -126,6 +132,10 @@ export default function SuperAdminReorders({ embedded = false }) {
             ))}
           </div>
         )}
+        {visible.length > REORDER_PAGE_SIZE ? <nav className="reorder-pagination" aria-label="Reorder queue pagination">
+          <span>Showing {(page - 1) * REORDER_PAGE_SIZE + 1}–{Math.min(page * REORDER_PAGE_SIZE, visible.length)} of {visible.length}</span>
+          <div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button><span>Page {page} of {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button></div>
+        </nav> : null}
       </section>
     </SuperAdminLayout>
   );

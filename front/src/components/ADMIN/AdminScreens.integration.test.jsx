@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import AdminDashboard from "./Dashboard/AdminDashboard";
@@ -102,4 +102,28 @@ it.each([
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
   }
   await waitFor(() => expect(apiRequest).toHaveBeenCalled());
+});
+
+it("paginates branch reorder history and low-stock cards", async () => {
+  const products = Array.from({ length: 7 }, (_, index) => ({ id: `product-${index + 1}`, name: `Low Stock ${index + 1}`, stock: index, threshold: 10, specs: "1 HP" }));
+  const reorders = Array.from({ length: 7 }, (_, index) => ({ id: `reorder-${index + 1}`, status: "approved", quantity: 2, branch: "Cavite", createdAt: "2026-10-01T00:00:00.000Z", product: { name: `History Product ${index + 1}`, specs: "1 HP" } }));
+  apiRequest.mockImplementation(async (path) => {
+    if (path === "/products/low-stock") return { products };
+    if (path === "/reorders/mine") return { reorders };
+    if (path.startsWith("/notifications")) return { notifications: [] };
+    return {};
+  });
+
+  renderScreen(AdminInventory, "/admin/inventory?tab=reorder");
+  expect(await screen.findByText("Low Stock 1")).toBeInTheDocument();
+  expect(screen.queryByText("Low Stock 7")).not.toBeInTheDocument();
+  const lowStockPagination = screen.getByRole("navigation", { name: "Low stock items pagination" });
+  fireEvent.click(within(lowStockPagination).getByRole("button", { name: "Next" }));
+  expect(await screen.findByText("Low Stock 7")).toBeInTheDocument();
+
+  expect(screen.getByText("History Product 1")).toBeInTheDocument();
+  expect(screen.queryByText("History Product 7")).not.toBeInTheDocument();
+  const historyPagination = screen.getByRole("navigation", { name: "Reorder request history pagination" });
+  fireEvent.click(within(historyPagination).getByRole("button", { name: "Next" }));
+  expect(await screen.findByText("History Product 7")).toBeInTheDocument();
 });

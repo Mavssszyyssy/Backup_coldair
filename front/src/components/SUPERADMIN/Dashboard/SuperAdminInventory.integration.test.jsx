@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import SuperAdminInventory from "./SuperAdminInventory";
@@ -78,4 +78,30 @@ it("presents a pending reorder as a structured review card", async () => {
   expect(screen.getByLabelText("Decision note Optional")).toHaveAttribute("placeholder", "Add context for the branch administrator");
   expect(screen.getByRole("button", { name: "Approve & Add Stock" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Reject request" })).toBeInTheDocument();
+});
+
+it("paginates the reorder queue when large review cards would create a long page", async () => {
+  const reorders = Array.from({ length: 5 }, (_, index) => ({
+    id: `reorder-${index + 1}`,
+    status: "submitted",
+    quantity: index + 1,
+    branch: "Cavite",
+    createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
+    product: { name: `Reorder Product ${index + 1}`, specs: "1 HP" },
+    requestedBy: { name: "Cavite Admin" },
+  }));
+  apiRequest.mockImplementation(async (path) => {
+    if (path === "/products") return { products: [] };
+    if (path === "/reorders") return { reorders };
+    if (path.startsWith("/notifications")) return { notifications: [] };
+    return {};
+  });
+
+  renderInventory("/superadmin/inventory?tab=reorders");
+  expect(await screen.findByText("Reorder Product 1")).toBeInTheDocument();
+  expect(screen.queryByText("Reorder Product 5")).not.toBeInTheDocument();
+  expect(screen.getByText("Showing 1–4 of 5")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(await screen.findByText("Reorder Product 5")).toBeInTheDocument();
+  expect(screen.queryByText("Reorder Product 1")).not.toBeInTheDocument();
 });
