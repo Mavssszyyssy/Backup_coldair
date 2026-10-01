@@ -12,17 +12,18 @@ export default function BoutiqueBadge({
   pill = false,
   size = "md", // "xs", "sm", "md", "lg"
   icon: Icon,
+  className = "",
 }) {
   const variantStyles = {
-    brand: { bg: BQ_COLORS.brand, text: "white" },
-    accent: { bg: BQ_COLORS.accent, text: "white" },
-    accentSoft: { bg: "rgba(37, 99, 235, 0.05)", text: BQ_COLORS.accent },
-    success: { bg: "#d1fae5", text: "#065f46" },
-    danger: { bg: "#fee2e2", text: "#991b1b" },
+    brand: { bg: BQ_COLORS.brand, text: "var(--ap-color-primary-foreground)" },
+    accent: { bg: BQ_COLORS.accent, text: "var(--ap-color-secondary-foreground)" },
+    accentSoft: { bg: "var(--ap-color-information-soft)", text: BQ_COLORS.accent },
+    success: { bg: "var(--ap-color-success-soft)", text: BQ_COLORS.success },
+    danger: { bg: "var(--ap-color-error-soft)", text: BQ_COLORS.danger },
     muted: { bg: BQ_COLORS.bg, text: BQ_COLORS.inkMuted },
-    ink: { bg: BQ_COLORS.brand, text: "white" },
+    ink: { bg: BQ_COLORS.brand, text: "var(--ap-color-primary-foreground)" },
     outline: {
-      bg: "white",
+      bg: BQ_COLORS.surface,
       text: BQ_COLORS.ink,
       border: `1px solid ${BQ_COLORS.border}`,
     },
@@ -39,7 +40,7 @@ export default function BoutiqueBadge({
 
   return (
     <div
-      className={`bq-badge ${pill ? "bq-badge--pill" : ""}`}
+      className={`ap-badge bq-badge ${pill ? "bq-badge--pill" : ""} ${className}`.trim()}
       style={{
         backgroundColor: style.bg,
         color: style.text,

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "./styles/aeropulse-theme.css";
 import "./components/common/boutique/Boutique.css";
 import "./index.css";
 

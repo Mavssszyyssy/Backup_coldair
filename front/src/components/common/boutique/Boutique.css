@@ -3,50 +3,33 @@
   Central source of truth for the Boutique theme.
 */
 
-:root {
-    --bq-font-heading: "Outfit", sans-serif;
-    --bq-font-body: "Outfit", sans-serif;
-
-    --bq-color-brand: #000000;
-    --bq-color-accent: #2563eb;
-    --bq-color-bg: #f4f5f7;
-    --bq-color-surface: #ffffff;
-    --bq-color-ink: #09090b;
-    --bq-color-border: rgba(0, 0, 0, 0.05);
-
-    --bq-shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-    --bq-shadow-float: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
-}
-
 /* BOUTIQUE BUTTON */
 .bq-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    border-radius: 999px;
+    border-radius: var(--ap-radius-control);
     font-family: var(--bq-font-heading);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
     border: none;
     white-space: nowrap;
 }
 
 .bq-btn--primary {
     background: var(--bq-color-brand);
-    color: white;
+    color: var(--ap-color-primary-foreground);
     box-shadow: var(--bq-shadow-soft);
 }
 .bq-btn--primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: var(--bq-shadow-float);
+    background: var(--ap-color-primary-hover);
+    box-shadow: var(--ap-shadow-card);
 }
 
 .bq-btn--outline {
-    background: white;
+    background: var(--ap-color-surface);
     color: var(--bq-color-ink);
     border: 1px solid var(--bq-color-border);
 }
@@ -56,7 +39,7 @@
 
 .bq-btn--ghost {
     background: transparent;
-    color: #71717a;
+    color: var(--ap-color-muted-foreground);
 }
 .bq-btn--ghost:hover:not(:disabled) {
     background: var(--bq-color-bg);
@@ -65,36 +48,39 @@
 
 .bq-btn--cancel {
     background: transparent;
-    color: #71717a;
+    color: var(--ap-color-muted-foreground);
 }
 .bq-btn--cancel:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.05);
-    color: #ef4444;
+    background: var(--ap-color-error-soft);
+    color: var(--ap-color-error);
 }
 
 .bq-btn--sm {
-    height: 44px;
-    padding: 0 20px;
+    height: 38px;
+    padding: 0 14px;
     font-size: 12px;
 }
 .bq-btn--md {
-    height: 56px;
-    padding: 0 28px;
+    height: var(--ap-button-height);
+    padding: 0 18px;
     font-size: 14px;
 }
 .bq-btn--lg {
-    height: 64px;
-    padding: 0 32px;
+    height: 50px;
+    padding: 0 22px;
     font-size: 15px;
 }
 
 .bq-btn:disabled {
-    background: #71717a !important;
-    color: rgba(255, 255, 255, 0.6) !important;
+    background: var(--ap-color-muted) !important;
+    color: var(--ap-color-muted-foreground) !important;
     cursor: not-allowed;
     box-shadow: none !important;
-    transform: none !important;
-    border-color: #71717a !important;
+    border-color: var(--ap-color-border) !important;
+}
+
+.bq-btn.full-width {
+    width: 100%;
 }
 
 /* BOUTIQUE TECHNICAL CARD */
@@ -105,8 +91,7 @@
     border-radius: 8px;
     font-family: var(--bq-font-heading);
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.01em;
     white-space: nowrap;
     border-width: 1px;
     border-style: solid;
@@ -123,8 +108,7 @@
 }
 
 .bq-tech-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--bq-shadow-soft);
+    border-color: var(--ap-color-input);
 }
 
 /* BOUTIQUE BADGE */
@@ -134,9 +118,8 @@
     gap: 6px;
     border-radius: 6px;
     font-family: var(--bq-font-heading);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     white-space: nowrap;
 }
 
@@ -147,10 +130,17 @@
 /* BOUTIQUE INPUTS */
 .bq-input-field {
     width: 100%;
-    border-radius: 16px;
+    border-radius: var(--ap-radius-control);
     font-family: var(--bq-font-body);
-    transition: all 0.3s ease;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
     outline: none;
+}
+
+.bq-input-label {
+    font-family: var(--bq-font-body);
+    font-size: var(--ap-text-label);
+    font-weight: 600;
+    line-height: var(--ap-leading-label);
 }
 
 /* BOUTIQUE DRAWER */
@@ -158,7 +148,7 @@
     position: fixed;
     top: 0;
     height: 100%;
-    background: white;
+    background: var(--ap-color-surface);
     z-index: 2000;
     display: flex;
     flex-direction: column;

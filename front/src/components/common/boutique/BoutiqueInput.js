@@ -3,7 +3,7 @@ import { useState } from "react";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
-import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
+import { BQ_COLORS, BQ_GEOMETRY } from "./BoutiqueTheme";
 
 /**
  * BOUTIQUE INPUT
@@ -19,6 +19,7 @@ export default function BoutiqueInput({
   options = [], // For select type
   inlineAction, // For buttons inside the field (e.g., Verify)
   children, // For block content below the field (e.g., Strength Meter)
+  className = "",
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -60,8 +61,8 @@ export default function BoutiqueInput({
 
         {type === "select" ? (
           <select
-            className={`bq-input-field bq-input-select ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""}`}
             {...props}
+            className={`ap-select bq-input-field bq-input-select ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""} ${className}`.trim()}
           >
             {props.placeholder && <option value="">{props.placeholder}</option>}
             {options.map((opt) => (
@@ -73,8 +74,8 @@ export default function BoutiqueInput({
         ) : (
           <input
             type={actualType}
-            className={`bq-input-field ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""}`}
             {...props}
+            className={`ap-field bq-input-field ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""} ${className}`.trim()}
           />
         )}
 
@@ -148,13 +149,13 @@ export default function BoutiqueInput({
           padding: 16px 20px;
           padding-left: ${Icon ? "48px" : "20px"};
           padding-right: 20px;
-          background: ${BQ_COLORS.surfaceAlt};
-          border: 1.5px solid var(--field-accent);
+          background: ${BQ_COLORS.surface};
+          border: 1px solid var(--field-accent);
           border-radius: ${BQ_GEOMETRY.radiusMd};
           font-family: inherit;
           font-size: 15px;
           color: ${BQ_COLORS.ink};
-          transition: all 0.3s ease;
+          transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
           outline: none;
         }
 
@@ -163,15 +164,15 @@ export default function BoutiqueInput({
         .bq-input-field.has-action { padding-right: 88px; }
         .bq-input-field.has-pass.has-action { padding-right: 120px; }
 
-        .bq-input-field:focus { background: white; box-shadow: ${BQ_SHADOWS.soft}; }
+        .bq-input-field:focus { background: ${BQ_COLORS.surface}; box-shadow: var(--ap-focus-ring); }
 
         .bq-input-icon {
           position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
           color: var(--field-accent); z-index: 5; transition: color 0.3s ease;
         }
 
-        .bq-input--error .bq-input-field { background: #fffafb; }
-        .bq-input--success .bq-input-field { background: #fafffb; }
+        .bq-input--error .bq-input-field { background: var(--ap-color-error-soft); }
+        .bq-input--success .bq-input-field { background: var(--ap-color-success-soft); }
 
         .bq-input-pass-toggle {
           background: transparent; border: none; cursor: pointer;

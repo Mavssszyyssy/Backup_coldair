@@ -1,0 +1,320 @@
+/*
+ * AEROPULSE DESIGN SYSTEM FOUNDATION
+ *
+ * Tailwind is intentionally loaded without Preflight while the existing UI is
+ * migrated incrementally. Legacy styles remain authoritative until each screen
+ * is moved to the shared design system.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw);
+
+:root {
+  color-scheme: light;
+
+  /* Semantic color tokens */
+  --ap-color-background: #f4f5f7;
+  --ap-color-foreground: #172033;
+  --ap-color-surface: #ffffff;
+  --ap-color-surface-secondary: #f8fafc;
+  --ap-color-primary: #111827;
+  --ap-color-primary-hover: #263244;
+  --ap-color-primary-foreground: #ffffff;
+  --ap-color-secondary: #2563eb;
+  --ap-color-secondary-hover: #1d4ed8;
+  --ap-color-secondary-foreground: #ffffff;
+  --ap-color-accent: #e8f1ff;
+  --ap-color-accent-foreground: #1d4ed8;
+  --ap-color-muted: #f1f5f9;
+  --ap-color-muted-foreground: #64748b;
+  --ap-color-border: #dbe2ea;
+  --ap-color-input: #cbd5e1;
+  --ap-color-success: #059669;
+  --ap-color-success-soft: #ecfdf5;
+  --ap-color-warning: #d97706;
+  --ap-color-warning-soft: #fffbeb;
+  --ap-color-error: #dc2626;
+  --ap-color-error-soft: #fef2f2;
+  --ap-color-information: #2563eb;
+  --ap-color-information-soft: #eff6ff;
+  --ap-color-overlay: rgb(15 23 42 / 0.52);
+
+  /* Typography */
+  --ap-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ap-font-weight-regular: 400;
+  --ap-font-weight-medium: 500;
+  --ap-font-weight-semibold: 600;
+  --ap-font-weight-bold: 700;
+  --ap-font-weight-heading: 700;
+  --ap-text-page-title: 2rem;
+  --ap-leading-page-title: 1.2;
+  --ap-text-section-title: 1.5rem;
+  --ap-leading-section-title: 1.3;
+  --ap-text-card-title: 1.125rem;
+  --ap-leading-card-title: 1.4;
+  --ap-text-body: 0.9375rem;
+  --ap-leading-body: 1.6;
+  --ap-text-label: 0.8125rem;
+  --ap-leading-label: 1.4;
+  --ap-text-metadata: 0.8125rem;
+  --ap-leading-metadata: 1.45;
+  --ap-text-caption: 0.75rem;
+  --ap-leading-caption: 1.4;
+
+  /* Geometry and elevation */
+  --ap-radius-sm: 0.375rem;
+  --ap-radius-control: 0.625rem;
+  --ap-radius-card: 0.75rem;
+  --ap-radius-dialog: 1rem;
+  --ap-radius-full: 9999px;
+  --ap-shadow-soft: 0 1px 2px rgb(15 23 42 / 0.06);
+  --ap-shadow-card: 0 4px 14px rgb(15 23 42 / 0.07);
+  --ap-shadow-raised: 0 10px 28px rgb(15 23 42 / 0.12);
+  --ap-focus-ring: 0 0 0 3px rgb(37 99 235 / 0.2);
+
+  /* Layout and control sizing */
+  --ap-page-padding-inline: clamp(1rem, 3vw, 2rem);
+  --ap-page-padding-block: clamp(1.5rem, 3vw, 2.5rem);
+  --ap-section-gap: 2rem;
+  --ap-component-gap: 1rem;
+  --ap-compact-gap: 0.5rem;
+  --ap-input-height: 2.75rem;
+  --ap-button-height: 2.75rem;
+  --ap-content-width: 90rem;
+
+  /* Transitional Boutique aliases. Semantic AEROPULSE tokens are authoritative. */
+  --bq-font-heading: var(--ap-font-family);
+  --bq-font-body: var(--ap-font-family);
+  --bq-color-brand: var(--ap-color-primary);
+  --bq-color-accent: var(--ap-color-secondary);
+  --bq-color-bg: var(--ap-color-background);
+  --bq-color-surface: var(--ap-color-surface);
+  --bq-color-ink: var(--ap-color-foreground);
+  --bq-color-border: var(--ap-color-border);
+  --bq-shadow-soft: var(--ap-shadow-soft);
+  --bq-shadow-float: var(--ap-shadow-raised);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ap-color-background: #0f172a;
+  --ap-color-foreground: #e5edf7;
+  --ap-color-surface: #111c2e;
+  --ap-color-surface-secondary: #172337;
+  --ap-color-primary: #f8fafc;
+  --ap-color-primary-hover: #e2e8f0;
+  --ap-color-primary-foreground: #111827;
+  --ap-color-accent: #172c4f;
+  --ap-color-accent-foreground: #bfdbfe;
+  --ap-color-muted: #1e293b;
+  --ap-color-muted-foreground: #a8b6ca;
+  --ap-color-border: #334155;
+  --ap-color-input: #475569;
+  --ap-color-overlay: rgb(2 6 23 / 0.7);
+}
+
+@theme inline {
+  --font-sans: var(--ap-font-family);
+
+  --color-background: var(--ap-color-background);
+  --color-foreground: var(--ap-color-foreground);
+  --color-surface: var(--ap-color-surface);
+  --color-surface-secondary: var(--ap-color-surface-secondary);
+  --color-primary: var(--ap-color-primary);
+  --color-primary-foreground: var(--ap-color-primary-foreground);
+  --color-secondary: var(--ap-color-secondary);
+  --color-secondary-foreground: var(--ap-color-secondary-foreground);
+  --color-accent: var(--ap-color-accent);
+  --color-accent-foreground: var(--ap-color-accent-foreground);
+  --color-muted: var(--ap-color-muted);
+  --color-muted-foreground: var(--ap-color-muted-foreground);
+  --color-border: var(--ap-color-border);
+  --color-input: var(--ap-color-input);
+  --color-success: var(--ap-color-success);
+  --color-warning: var(--ap-color-warning);
+  --color-error: var(--ap-color-error);
+  --color-information: var(--ap-color-information);
+
+  --radius-sm: var(--ap-radius-sm);
+  --radius-control: var(--ap-radius-control);
+  --radius-card: var(--ap-radius-card);
+  --radius-dialog: var(--ap-radius-dialog);
+
+  --shadow-soft: var(--ap-shadow-soft);
+  --shadow-card: var(--ap-shadow-card);
+  --shadow-raised: var(--ap-shadow-raised);
+
+  --text-page-title: var(--ap-text-page-title);
+  --text-page-title--line-height: var(--ap-leading-page-title);
+  --text-section-title: var(--ap-text-section-title);
+  --text-section-title--line-height: var(--ap-leading-section-title);
+  --text-card-title: var(--ap-text-card-title);
+  --text-card-title--line-height: var(--ap-leading-card-title);
+  --text-body: var(--ap-text-body);
+  --text-body--line-height: var(--ap-leading-body);
+  --text-label: var(--ap-text-label);
+  --text-label--line-height: var(--ap-leading-label);
+  --text-metadata: var(--ap-text-metadata);
+  --text-metadata--line-height: var(--ap-leading-metadata);
+  --text-caption: var(--ap-text-caption);
+  --text-caption--line-height: var(--ap-leading-caption);
+}
+
+@layer components {
+  .ap-button {
+    display: inline-flex;
+    min-height: var(--ap-button-height);
+    align-items: center;
+    justify-content: center;
+    gap: var(--ap-compact-gap);
+    padding: 0.625rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--ap-radius-control);
+    font-family: var(--ap-font-family);
+    font-size: var(--ap-text-body);
+    font-weight: var(--ap-font-weight-semibold);
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .ap-button:focus-visible,
+  .ap-field:focus-visible,
+  .ap-select:focus-visible,
+  .ap-textarea:focus-visible {
+    outline: none;
+    box-shadow: var(--ap-focus-ring);
+  }
+
+  .ap-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
+  .ap-button--primary {
+    background: var(--ap-color-primary);
+    color: var(--ap-color-primary-foreground);
+  }
+
+  .ap-button--primary:hover:not(:disabled) { background: var(--ap-color-primary-hover); }
+
+  .ap-button--secondary {
+    background: var(--ap-color-secondary);
+    color: var(--ap-color-secondary-foreground);
+  }
+
+  .ap-button--secondary:hover:not(:disabled) { background: var(--ap-color-secondary-hover); }
+
+  .ap-button--outline {
+    border-color: var(--ap-color-border);
+    background: var(--ap-color-surface);
+    color: var(--ap-color-foreground);
+  }
+
+  .ap-button--outline:hover:not(:disabled),
+  .ap-button--ghost:hover:not(:disabled) { background: var(--ap-color-muted); }
+
+  .ap-button--ghost {
+    background: transparent;
+    color: var(--ap-color-foreground);
+  }
+
+  .ap-button--danger {
+    background: var(--ap-color-error);
+    color: #ffffff;
+  }
+
+  .ap-field,
+  .ap-select,
+  .ap-textarea {
+    width: 100%;
+    border: 1px solid var(--ap-color-input);
+    border-radius: var(--ap-radius-control);
+    background: var(--ap-color-surface);
+    color: var(--ap-color-foreground);
+    font-family: var(--ap-font-family);
+    font-size: var(--ap-text-body);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  .ap-field,
+  .ap-select {
+    min-height: var(--ap-input-height);
+    padding: 0.625rem 0.875rem;
+  }
+
+  .ap-textarea {
+    min-height: 7rem;
+    padding: 0.75rem 0.875rem;
+    line-height: var(--ap-leading-body);
+    resize: vertical;
+  }
+
+  .ap-field::placeholder,
+  .ap-textarea::placeholder { color: var(--ap-color-muted-foreground); }
+
+  .ap-field:hover,
+  .ap-select:hover,
+  .ap-textarea:hover { border-color: #94a3b8; }
+
+  .ap-field:focus,
+  .ap-select:focus,
+  .ap-textarea:focus { border-color: var(--ap-color-information); }
+
+  .ap-card {
+    border: 1px solid var(--ap-color-border);
+    border-radius: var(--ap-radius-card);
+    background: var(--ap-color-surface);
+    color: var(--ap-color-foreground);
+    box-shadow: var(--ap-shadow-soft);
+  }
+
+  .ap-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    width: fit-content;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--ap-radius-sm);
+    font-size: var(--ap-text-caption);
+    font-weight: var(--ap-font-weight-semibold);
+    line-height: var(--ap-leading-caption);
+  }
+
+  .ap-dialog-panel {
+    width: min(100%, 30rem);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    border: 1px solid var(--ap-color-border);
+    border-radius: var(--ap-radius-dialog);
+    background: var(--ap-color-surface);
+    color: var(--ap-color-foreground);
+    box-shadow: var(--ap-shadow-raised);
+  }
+
+  .ap-page-container {
+    width: min(100%, var(--ap-content-width));
+    margin-inline: auto;
+    padding: var(--ap-page-padding-block) var(--ap-page-padding-inline);
+  }
+
+  .ap-section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--ap-component-gap);
+    margin-bottom: var(--ap-component-gap);
+  }
+}
+
+@media (max-width: 40rem) {
+  .ap-section-header { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ap-button,
+  .ap-field,
+  .ap-select,
+  .ap-textarea { transition: none; }
+}

@@ -12,11 +12,12 @@ export default function BoutiqueScreen({
   scrollable = true,
   withHeader = false,
   padding = 0,
+  className = "",
   ...props
 }) {
   return (
     <BoutiqueBox
-      className="bq-screen"
+      className={`bq-screen ${className}`.trim()}
       width="100%"
       height={scrollable ? "auto" : "100vh"}
       background={background}

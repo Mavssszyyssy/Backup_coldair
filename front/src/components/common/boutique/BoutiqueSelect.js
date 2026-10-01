@@ -18,15 +18,16 @@ export default function BoutiqueSelect({
   value,
   onChange,
   placeholder,
+  className = "",
   ...props
 }) {
   return (
     <div className="bq-select-container">
       <select
-        className="bq-select-field"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         {...props}
+        className={`ap-select bq-select-field ${className}`.trim()}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => (
@@ -52,23 +53,22 @@ export default function BoutiqueSelect({
         .bq-select-field {
           appearance: none;
           padding: 12px 40px 12px 20px;
-          border-radius: ${BQ_GEOMETRY.radiusPill};
+          border-radius: ${BQ_GEOMETRY.radiusMd};
           border: 1px solid ${BQ_COLORS.border};
           font-family: ${BQ_FONTS.heading};
           font-size: 13px;
           font-weight: ${BQ_WEIGHTS.semibold};
-          background: white;
+          background: ${BQ_COLORS.surface};
           box-shadow: ${BQ_SHADOWS.soft};
           cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: border-color 0.16s ease, box-shadow 0.16s ease;
           outline: none;
           color: ${BQ_COLORS.ink};
         }
 
         .bq-select-field:hover {
-          box-shadow: ${BQ_SHADOWS.float};
-          transform: translateY(-2px);
-          border-color: ${BQ_COLORS.ink};
+          box-shadow: var(--ap-focus-ring);
+          border-color: ${BQ_COLORS.accent};
         }
 
         .bq-select-icon {

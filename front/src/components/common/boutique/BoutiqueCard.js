@@ -11,13 +11,14 @@ export default function BoutiqueCard({
   radius = BQ_GEOMETRY.radiusCard,
   shadow = BQ_SHADOWS.soft,
   border = `1px solid ${BQ_COLORS.border}`,
-  background = "white",
+  background = BQ_COLORS.surface,
+  className = "",
   style = {},
   ...props
 }) {
   return (
     <BoutiqueBox
-      className="bq-card-primitive"
+      className={`ap-card bq-card-primitive ${className}`.trim()}
       padding={padding}
       background={background}
       style={{

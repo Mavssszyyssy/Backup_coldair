@@ -139,7 +139,7 @@ function GlobalDialog() {
       />
       <section
         ref={dialogRef}
-        className={`app-dialog${destructive ? " app-dialog--destructive" : ""}`}
+        className={`ap-dialog-panel app-dialog${destructive ? " app-dialog--destructive" : ""}`}
         role={isConfirm ? "alertdialog" : "dialog"}
         aria-modal="true"
         aria-labelledby="app-dialog-title"

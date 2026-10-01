@@ -1,4 +1,4 @@
-import { BQ_FONTS, BQ_WEIGHTS } from "./BoutiqueTheme";
+import { BQ_FONTS, BQ_TYPOGRAPHY, BQ_WEIGHTS } from "./BoutiqueTheme";
 
 /**
  * BOUTIQUE TEXT
@@ -11,49 +11,63 @@ export default function BoutiqueText({
   weight,
   align,
   size,
+  margin = 0,
   style = {},
   className = "",
   ...props
 }) {
   const getVariantStyles = () => {
     switch (variant) {
+      case "pageTitle":
       case "h1":
-        return { fontSize: "32px", fontWeight: BQ_WEIGHTS.header };
+        return { ...BQ_TYPOGRAPHY.pageTitle, fontWeight: BQ_WEIGHTS.header };
+      case "sectionTitle":
       case "h2":
-        return { fontSize: "24px", fontWeight: BQ_WEIGHTS.bold };
+        return { ...BQ_TYPOGRAPHY.sectionTitle, fontWeight: BQ_WEIGHTS.bold };
+      case "cardTitle":
       case "h3":
-        return { fontSize: "18px", fontWeight: BQ_WEIGHTS.bold };
+        return { ...BQ_TYPOGRAPHY.cardTitle, fontWeight: BQ_WEIGHTS.bold };
       case "label":
         return {
-          fontSize: "12px",
-          fontWeight: BQ_WEIGHTS.bold,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
+          ...BQ_TYPOGRAPHY.label,
+          fontWeight: BQ_WEIGHTS.semibold,
+        };
+      case "metadata":
+        return {
+          ...BQ_TYPOGRAPHY.metadata,
+          color: "var(--ap-color-muted-foreground)",
         };
       case "caption":
-        return { fontSize: "12px", opacity: 0.8 };
+        return {
+          ...BQ_TYPOGRAPHY.caption,
+          color: "var(--ap-color-muted-foreground)",
+        };
       default:
-        return { fontSize: "15px" };
+        return BQ_TYPOGRAPHY.body;
     }
   };
 
+  const variantStyle = getVariantStyles();
   const finalStyle = {
     fontFamily: BQ_FONTS.body,
-    color: color,
+    margin,
+    ...variantStyle,
+    color:
+      color === "inherit" && variantStyle.color
+        ? variantStyle.color
+        : color,
     textAlign: align,
-    fontWeight: weight,
-    fontSize: size,
-    margin: 0,
-    ...getVariantStyles(),
+    ...(weight !== undefined ? { fontWeight: weight } : {}),
+    ...(size !== undefined ? { fontSize: size } : {}),
     ...style,
   };
 
   const Tag =
-    variant === "h1"
+    variant === "h1" || variant === "pageTitle"
       ? "h1"
-      : variant === "h2"
+      : variant === "h2" || variant === "sectionTitle"
         ? "h2"
-        : variant === "h3"
+        : variant === "h3" || variant === "cardTitle"
           ? "h3"
           : "p";
 

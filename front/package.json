@@ -44,8 +44,10 @@
     ]
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.0.4",
     "jsdom": "latest",
+    "tailwindcss": "^4.3.3",
     "vite": "^7.1.7",
     "vitest": "latest",
     "yaml": "^2.9.0"

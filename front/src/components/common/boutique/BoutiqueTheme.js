@@ -4,47 +4,47 @@
  */
 
 export const BQ_COLORS = {
-  brand: "#000000",
-  brandHover: "#333333",
-  accent: "#2563eb",
+  brand: "var(--ap-color-primary)",
+  brandHover: "var(--ap-color-primary-hover)",
+  accent: "var(--ap-color-secondary)",
 
-  bg: "#f4f5f7",
-  bgAlt: "#f9fafb",
-  surface: "#ffffff",
-  surfaceAlt: "#fcfcfc",
+  bg: "var(--ap-color-background)",
+  bgAlt: "var(--ap-color-surface-secondary)",
+  surface: "var(--ap-color-surface)",
+  surfaceAlt: "var(--ap-color-surface-secondary)",
 
-  ink: "#09090b",
-  inkMuted: "#71717a",
-  inkFaint: "#a1a1aa",
+  ink: "var(--ap-color-foreground)",
+  inkMuted: "var(--ap-color-muted-foreground)",
+  inkFaint: "var(--ap-color-input)",
 
-  success: "#10b981",
-  danger: "#ef4444",
-  warning: "#f59e0b",
+  success: "var(--ap-color-success)",
+  danger: "var(--ap-color-error)",
+  warning: "var(--ap-color-warning)",
+  information: "var(--ap-color-information)",
 
-  border: "rgba(0,0,0,0.05)",
+  border: "var(--ap-color-border)",
+  input: "var(--ap-color-input)",
 };
 
 export const BQ_SHADOWS = {
-  soft: "0 10px 25px -5px rgba(0,0,0,0.05)",
-  float:
-    "0 20px 40px -10px rgba(0,0,0,0.08), 0 10px 20px -5px rgba(0,0,0,0.04)",
-  hover:
-    "0 30px 60px -15px rgba(0,0,0,0.12), 0 15px 25px -5px rgba(0,0,0,0.05)",
-  glass: "0 4px 30px rgba(0,0,0,0.03)",
+  soft: "var(--ap-shadow-soft)",
+  float: "var(--ap-shadow-card)",
+  hover: "var(--ap-shadow-raised)",
+  glass: "var(--ap-shadow-soft)",
 };
 
 export const BQ_GEOMETRY = {
-  radiusCard: "24px",
-  radiusMd: "16px",
-  radiusPill: "999px",
+  radiusCard: "var(--ap-radius-card)",
+  radiusMd: "var(--ap-radius-control)",
+  radiusPill: "var(--ap-radius-full)",
   headerHeight: "80px",
   sidebarWidth: "320px",
   cartWidth: "440px",
 };
 
 export const BQ_FONTS = {
-  heading: "'Outfit', sans-serif",
-  body: "'Outfit', sans-serif",
+  heading: "var(--ap-font-family)",
+  body: "var(--ap-font-family)",
 };
 
 export const BQ_WEIGHTS = {
@@ -52,5 +52,36 @@ export const BQ_WEIGHTS = {
   medium: 500,
   semibold: 600,
   bold: 700,
-  header: 800, // Special case for primary page headers only
+  header: 700,
+};
+
+export const BQ_TYPOGRAPHY = {
+  pageTitle: {
+    fontSize: "var(--ap-text-page-title)",
+    lineHeight: "var(--ap-leading-page-title)",
+  },
+  sectionTitle: {
+    fontSize: "var(--ap-text-section-title)",
+    lineHeight: "var(--ap-leading-section-title)",
+  },
+  cardTitle: {
+    fontSize: "var(--ap-text-card-title)",
+    lineHeight: "var(--ap-leading-card-title)",
+  },
+  body: {
+    fontSize: "var(--ap-text-body)",
+    lineHeight: "var(--ap-leading-body)",
+  },
+  label: {
+    fontSize: "var(--ap-text-label)",
+    lineHeight: "var(--ap-leading-label)",
+  },
+  metadata: {
+    fontSize: "var(--ap-text-metadata)",
+    lineHeight: "var(--ap-leading-metadata)",
+  },
+  caption: {
+    fontSize: "var(--ap-text-caption)",
+    lineHeight: "var(--ap-leading-caption)",
+  },
 };
