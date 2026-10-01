@@ -81,7 +81,9 @@ function MyOrders() {
 
     const loadOrders = async () => {
       try {
-        const response = await apiRequest(`/orders/me?ts=${Date.now()}`);
+        // apiRequest already sends read requests with cache disabled. Keeping a
+        // stable URL lets simultaneous focus/poll refreshes share one request.
+        const response = await apiRequest("/orders/me");
         if (!mounted) return;
         const normalized = (response.orders || []).map(normalizeCustomerOrder);
         setOrders(normalized);

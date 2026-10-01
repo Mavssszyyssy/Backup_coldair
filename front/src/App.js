@@ -17,7 +17,7 @@ const AdminSettings = lazyWithReload(() => import("./components/ADMIN/Settings/A
 const ManagerAmpDashboard = lazyWithReload(() => import("./components/AMP/ManagerAmpDashboard"), "ManagerAmpDashboard");
 const OwnerAmpDashboard = lazyWithReload(() => import("./components/AMP/OwnerAmpDashboard"), "OwnerAmpDashboard");
 const LegalPolicyPage = lazyWithReload(() => import("./components/legal/LegalPolicyPage"), "LegalPolicyPage");
-import TechnicianMobileNotice from "./components/common/TechnicianMobileNotice";
+const TechnicianMobileNotice = lazyWithReload(() => import("./components/common/TechnicianMobileNotice"), "TechnicianMobileNotice");
 import { getRoleHomePath, TECHNICIAN_MOBILE_NOTICE_PATH } from "./domain/webRoleHome";
 const SuperAdminAlerts = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminAlerts"), "SuperAdminAlerts");
 const SuperAdminBranches = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminBranches"), "SuperAdminBranches");
@@ -26,26 +26,26 @@ const SuperAdminInventory = lazyWithReload(() => import("./components/SUPERADMIN
 const SuperAdminServices = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminServices"), "SuperAdminServices");
 const SuperAdminSettings = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminSettings"), "SuperAdminSettings");
 const SuperAdminProfile = lazyWithReload(() => import("./components/SUPERADMIN/Dashboard/SuperAdminProfile"), "SuperAdminProfile");
-import CustomerChatbot from "./components/chatbot/CustomerChatbot";
-import Checkout from "./components/checkout/Checkout";
-import OrderConfirmation from "./components/checkout/OrderConfirmation";
+const CustomerChatbot = lazyWithReload(() => import("./components/chatbot/CustomerChatbot"), "CustomerChatbot");
+const Checkout = lazyWithReload(() => import("./components/checkout/Checkout"), "Checkout");
+const OrderConfirmation = lazyWithReload(() => import("./components/checkout/OrderConfirmation"), "OrderConfirmation");
 import GlobalDialog from "./components/common/GlobalDialog";
 import ApplicationErrorBoundary from "./components/common/ApplicationErrorBoundary";
 import BackendConnectionBanner from "./components/common/BackendConnectionBanner";
 import LoadingLogo from "./components/common/LoadingLogo";
 import LoginPromptModal from "./components/common/LoginPromptModal";
-import Contact from "./components/contact/Contact";
-import FaqPage from "./components/faq/FaqPage";
-import Home from "./components/home/Home";
-import Login from "./components/login/Login";
-import MyUnit from "./components/myunit/MyUnit";
-import MyOrders from "./components/orders/MyOrders";
-import ReceiptView from "./components/receipt/ReceiptView";
-import ForgotPassword from "./components/recover/ForgotPassword";
-import Register from "./components/register/Register";
-import Services from "./components/services/Services";
-import Settings from "./components/settings/Settings";
-import Shop from "./components/shop/Shop";
+const Contact = lazyWithReload(() => import("./components/contact/Contact"), "Contact");
+const FaqPage = lazyWithReload(() => import("./components/faq/FaqPage"), "FaqPage");
+const Home = lazyWithReload(() => import("./components/home/Home"), "Home");
+const Login = lazyWithReload(() => import("./components/login/Login"), "Login");
+const MyUnit = lazyWithReload(() => import("./components/myunit/MyUnit"), "MyUnit");
+const MyOrders = lazyWithReload(() => import("./components/orders/MyOrders"), "MyOrders");
+const ReceiptView = lazyWithReload(() => import("./components/receipt/ReceiptView"), "ReceiptView");
+const ForgotPassword = lazyWithReload(() => import("./components/recover/ForgotPassword"), "ForgotPassword");
+const Register = lazyWithReload(() => import("./components/register/Register"), "Register");
+const Services = lazyWithReload(() => import("./components/services/Services"), "Services");
+const Settings = lazyWithReload(() => import("./components/settings/Settings"), "Settings");
+const Shop = lazyWithReload(() => import("./components/shop/Shop"), "Shop");
 import { AdminSettingsProvider } from "./context/AdminSettingsContext";
 import { CartProvider } from "./context/CartContext";
 import { UserProvider, useUser } from "./context/UserContext";
@@ -515,7 +515,11 @@ export function AppContent() {
         <Route path="*" element={<Navigate to="/shop" replace />} />
       </Routes>
       </Suspense>
-      {shouldShowCustomerChatbot && <CustomerChatbot />}
+      {shouldShowCustomerChatbot && (
+        <Suspense fallback={null}>
+          <CustomerChatbot />
+        </Suspense>
+      )}
       <LoginPromptModal
         isOpen={showLoginPrompt}
         onClose={hideAuthRequiredPrompt}

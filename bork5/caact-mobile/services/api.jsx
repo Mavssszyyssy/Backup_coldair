@@ -28,8 +28,9 @@ export const READ_REQUEST_TIMEOUT_MS = 15000;
 const PROOF_UPLOAD_TIMEOUT_MS = 45000;
 const AMP_REPORT_TIMEOUT_MS = 30000;
 const CUSTOMER_CHAT_TIMEOUT_MS = 15000;
+const inFlightReadRequests = new Map();
 
-async function request(method, path, { token, body, timeoutMs, maxAttempts } = {}) {
+async function performRequest(method, path, { token, body, timeoutMs, maxAttempts } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -91,6 +92,33 @@ async function request(method, path, { token, body, timeoutMs, maxAttempts } = {
   }
 
   return { status: res.status, ok: res.ok, data };
+}
+
+function request(method, path, options = {}) {
+  const normalizedMethod = String(method || "GET").toUpperCase();
+  if (!["GET", "HEAD"].includes(normalizedMethod)) {
+    return performRequest(method, path, options);
+  }
+
+  const requestKey = [
+    normalizedMethod,
+    path,
+    options.token || "",
+    options.timeoutMs || "",
+    options.maxAttempts || "",
+  ].join("|");
+  const existing = inFlightReadRequests.get(requestKey);
+  if (existing) return existing;
+
+  const pending = performRequest(method, path, options);
+  inFlightReadRequests.set(requestKey, pending);
+  const clear = () => {
+    if (inFlightReadRequests.get(requestKey) === pending) {
+      inFlightReadRequests.delete(requestKey);
+    }
+  };
+  pending.then(clear, clear);
+  return pending;
 }
 
 const getErrorMessage = (data, fallback) =>
