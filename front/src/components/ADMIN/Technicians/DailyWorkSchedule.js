@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
@@ -45,7 +44,6 @@ const scheduleDraft = (task = {}) => ({
 
 const DailyWorkSchedule = () => {
   const { user } = useUser();
-  const navigate = useNavigate();
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
   const [date, setDate] = useState(today());
@@ -187,7 +185,7 @@ const DailyWorkSchedule = () => {
   return <section className="daily-schedule" aria-label="Daily work schedule">
     <header className="daily-schedule__header">
       <div><p className="daily-schedule__eyebrow">Field operations</p><h2>Daily work schedule</h2><p>One live view of existing orders and service work. Changes here update the same technician work order.</p></div>
-      <div className="daily-schedule__actions"><button type="button" className="tech-secondary-button" onClick={() => load()} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button><button type="button" className="tech-primary-button" onClick={() => navigate(isSuperAdmin ? "/superadmin/services?tab=technicians" : "/admin/services?tab=technicians")}>Create work order</button></div>
+      <div className="daily-schedule__actions"><button type="button" className="tech-secondary-button" onClick={() => load()} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
     </header>
 
     <div className="daily-schedule__filters">
@@ -203,7 +201,7 @@ const DailyWorkSchedule = () => {
     {error ? <p className="tech-message tech-message--error">{error}</p> : null}
     {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
     {loading ? <p className="daily-schedule__empty">Loading the schedule…</p> : null}
-    {!loading && groups.length === 0 ? <div className="daily-schedule__empty"><strong>No jobs scheduled for this date.</strong><span>Choose another day or create a work order.</span></div> : null}
+    {!loading && groups.length === 0 ? <div className="daily-schedule__empty"><strong>No jobs scheduled for this date.</strong><span>Choose another day, or use the Technicians tab to create a work order.</span></div> : null}
 
     {!loading ? groups.map(([groupBranch, groupTasks]) => <section className="daily-schedule__branch-group" key={groupBranch}>
       <div className="daily-schedule__branch-title"><h3>{groupBranch}</h3><span>{groupTasks.length} scheduled job{groupTasks.length === 1 ? "" : "s"}</span></div>

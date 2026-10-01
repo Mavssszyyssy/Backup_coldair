@@ -59,3 +59,43 @@ test('superadmin can update a technician contact email without changing the logi
   expect(await screen.findByText(/email was updated successfully/i)).toBeInTheDocument();
   expect(screen.getByText('tech.cavite.carl')).toBeInTheDocument();
 });
+
+test('creates a work order from linked customer, address, unit, service, and technician records', async () => {
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=technician') return { users: [{ id: 'tech-1', name: 'Carl Ramos', assignedBranch: 'Cavite', accountStatus: 'active' }] };
+    if (path === '/users?role=customer') return { users: [{
+      id: 'customer-1', name: 'Patrick Cruz', email: 'patrick@example.com', phone: '09123456789',
+      assignedBranch: 'Cavite', accountStatus: 'active',
+      addresses: [{ _id: 'address-1', label: 'Home', street: '591 Street', city: 'Bacoor', province: 'Cavite', isDefault: true }],
+    }] };
+    if (path === '/service-requests/catalog') return { offerings: [{ id: 'repair', title: 'Repair', defaultIssueType: 'Repair' }] };
+    if (path === '/amp/report-units') return { units: [{ unitId: 'unit-1', customerId: 'customer-1', modelName: 'TCL Window 1.5HP', serialNumber: 'CAACT-001', branch: 'Cavite', installationAddress: '591 Street, Bacoor, Cavite' }] };
+    if (path === '/tasks' && options?.method === 'POST') return { task: { id: 'task-new' } };
+    if (path === '/tasks') return { tasks: [] };
+    return {};
+  });
+
+  render(<AdminTechnician />);
+  const customerSearch = await screen.findByLabelText('Customer / site');
+  fireEvent.change(customerSearch, { target: { value: 'Patrick' } });
+  fireEvent.click(await screen.findByRole('option', { name: /Patrick Cruz/ }));
+  fireEvent.change(screen.getByLabelText(/Registered AC unit/), { target: { value: 'unit-1' } });
+  fireEvent.change(screen.getByLabelText('Work type'), { target: { value: 'repair' } });
+  fireEvent.change(screen.getByLabelText('Assign technician'), { target: { value: 'tech-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Assign work order' }));
+
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/tasks', expect.objectContaining({ method: 'POST' })));
+  const request = apiRequest.mock.calls.find(([path, options]) => path === '/tasks' && options?.method === 'POST');
+  expect(JSON.parse(request[1].body)).toMatchObject({
+    title: 'Repair - TCL Window 1.5HP',
+    issueType: 'Repair',
+    serviceId: 'repair',
+    customerId: 'customer-1',
+    customerName: 'Patrick Cruz',
+    addressId: 'address-1',
+    address: '591 Street, Bacoor, Cavite',
+    unitId: 'unit-1',
+    assignedTechnicianId: 'tech-1',
+    branch: 'Cavite',
+  });
+});

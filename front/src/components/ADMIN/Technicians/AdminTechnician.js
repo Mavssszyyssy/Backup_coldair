@@ -3,6 +3,7 @@ import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
 import { BRANCHES } from "../../../domain/branches/branches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
+import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
@@ -11,6 +12,12 @@ import "../adminShared.css";
 import "./styles.css";
 
 const PAGE_SIZE = 8;
+const CUSTOM_ADDRESS_ID = "__custom__";
+const INSTALLATION_SERVICE = {
+  id: "installation",
+  title: "Installation",
+  defaultIssueType: "Installation",
+};
 const today = () => formatBusinessDateKey();
 const displayName = (person = {}) =>
   person.name || [person.name_first, person.name_last].filter(Boolean).join(" ").trim() || person.username || person.alias || person.email || "Technician";
@@ -67,11 +74,110 @@ const formatCheckInCoordinates = (checkIn = {}) => {
   return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}${accuracy > 0 ? ` · ±${Math.round(accuracy)} m` : ""}`;
 };
 
+const formatAddress = (address = {}) => [
+  address.street || address.thoroughfare,
+  address.barangay || address.submunicipality,
+  address.city || address.municipality,
+  address.province,
+  address.region,
+  address.postalCode || address.zipCode,
+]
+  .map((part) => String(part || "").trim())
+  .filter(Boolean)
+  .join(", ");
+
+const customerAddressOptions = (customer = {}, units = []) => {
+  const options = (Array.isArray(customer.addresses) ? customer.addresses : [])
+    .map((address, index) => ({
+      id: String(address.id || address._id || `saved-${index}`),
+      label: String(address.label || address.type || "Saved address").trim(),
+      address: formatAddress(address),
+      isDefault: Boolean(address.isDefault),
+    }))
+    .filter((item) => item.address);
+
+  const legacyAddress = String(customer.address || "").trim() || formatAddress({
+    street: customer.thoroughfare,
+    barangay: customer.submunicipality,
+    city: customer.municipality,
+    province: customer.billingAddress?.province,
+    region: customer.billingAddress?.region,
+  });
+  if (legacyAddress && !options.some((item) => item.address.toLowerCase() === legacyAddress.toLowerCase())) {
+    options.push({ id: "profile-address", label: "Profile address", address: legacyAddress, isDefault: options.length === 0 });
+  }
+
+  units.forEach((unit) => {
+    const installationAddress = String(unit.installationAddress || "").trim();
+    if (installationAddress && !options.some((item) => item.address.toLowerCase() === installationAddress.toLowerCase())) {
+      options.push({ id: `unit-${unit.unitId}`, label: `${unit.modelName || "AC unit"} location`, address: installationAddress, isDefault: false });
+    }
+  });
+  return options;
+};
+
+const assignmentTitle = (task = {}) => {
+  const service = String(task.issueType || task.payload?.serviceType || task.title || "Work order").trim();
+  const unit = String(task.unitName || task.payload?.unitName || "").trim();
+  return unit && !service.toLowerCase().includes(unit.toLowerCase()) ? `${service} — ${unit}` : service;
+};
+
+const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, disabled }) => {
+  const [open, setOpen] = useState(false);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleCustomers = customers
+    .filter((customer) => !normalizedQuery || [customer.name, customer.email, customer.phone, customer.addressSummary]
+      .filter(Boolean)
+      .some((field) => String(field).toLowerCase().includes(normalizedQuery)))
+    .slice(0, 12);
+
+  return <div className="tech-customer-combobox" onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }}>
+    <label>
+      <span>Customer / site</span>
+      <input
+        type="search"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="tech-customer-options"
+        aria-autocomplete="list"
+        autoComplete="off"
+        value={query}
+        disabled={disabled}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => { onQueryChange(event.target.value); setOpen(true); }}
+        placeholder="Search customer name, email, phone, or address"
+      />
+    </label>
+    {open ? <div className="tech-customer-options" id="tech-customer-options" role="listbox">
+      {visibleCustomers.length ? visibleCustomers.map((customer) => <button
+        key={customer.id}
+        type="button"
+        role="option"
+        aria-selected={String(value) === String(customer.id)}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => { onSelect(customer); setOpen(false); }}
+      >
+        <strong>{customer.name}</strong>
+        <span>{customer.addressSummary || customer.email || customer.phone || "No saved site information"}</span>
+      </button>) : <p>No customers match this search.</p>}
+    </div> : null}
+  </div>;
+};
+
 const initialDraft = (branch = "") => ({
   technicianId: "",
-  title: "",
+  serviceTypeId: "",
+  customerId: "",
   customerName: "",
+  customerEmail: "",
+  customerPhone: "",
+  addressId: "",
   address: "",
+  customAddress: false,
+  unitId: "",
+  unitName: "",
   description: "",
   scheduledDate: today(),
   timeSlot: TIME_SLOTS[0],
@@ -92,6 +198,9 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
   const [technicians, setTechnicians] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [serviceOfferings, setServiceOfferings] = useState([INSTALLATION_SERVICE]);
+  const [units, setUnits] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,6 +211,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const [branchFilter, setBranchFilter] = useState(isSuperAdmin ? "all" : homeBranch || "all");
   const [page, setPage] = useState(1);
   const [draft, setDraft] = useState(() => initialDraft(homeBranch));
+  const [customerQuery, setCustomerQuery] = useState("");
   const [staffDraft, setStaffDraft] = useState(() => initialStaffDraft(homeBranch));
   const [savingTask, setSavingTask] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
@@ -120,9 +230,12 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
     setLoading(true);
     setError("");
     try {
-      const [usersResult, tasksResult] = await Promise.all([
+      const [usersResult, customerResult, tasksResult, catalogResult, unitResult] = await Promise.all([
         apiRequest("/users?role=technician"),
+        apiRequest("/users?role=customer"),
         apiRequest("/tasks"),
+        apiRequest("/service-requests/catalog"),
+        apiRequest("/amp/report-units"),
       ]);
       setTechnicians((usersResult.users || []).map((item) => ({
         ...item,
@@ -130,6 +243,21 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
         branch: item.assignedBranch || item.activeBranch || "",
         accountStatus: item.accountStatus || "active",
       })));
+      setCustomers((customerResult.users || []).map((item) => {
+        const addresses = customerAddressOptions(item);
+        const preferredAddress = addresses.find((address) => address.isDefault) || addresses[0];
+        return {
+          ...item,
+          id: String(item.id || item._id || ""),
+          name: displayName(item),
+          branch: item.assignedBranch || item.activeBranch || "",
+          accountStatus: item.accountStatus || "active",
+          addressSummary: preferredAddress?.address || "",
+        };
+      }));
+      const configuredOfferings = (catalogResult.offerings || []).filter((item) => item?.id && item?.title);
+      setServiceOfferings([INSTALLATION_SERVICE, ...configuredOfferings.filter((item) => item.id !== INSTALLATION_SERVICE.id)]);
+      setUnits(unitResult.units || []);
       setTasks(tasksResult.tasks || []);
     } catch (requestError) {
       setError(requestError.message || "Unable to load technician management.");
@@ -197,9 +325,15 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
   const totalPages = Math.max(1, Math.ceil(filteredTechnicians.length / PAGE_SIZE));
   const pageTechnicians = filteredTechnicians.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const intendedBranch = draft.branch || homeBranch;
+  const availableCustomers = customers.filter((customer) => customer.accountStatus === "active"
+    && (!intendedBranch || !customer.branch || customer.branch === intendedBranch));
+  const selectedCustomer = customers.find((customer) => String(customer.id) === String(draft.customerId));
+  const customerUnits = units.filter((unit) => String(unit.customerId || "") === String(draft.customerId || "")
+    && (!intendedBranch || !unit.branch || unit.branch === intendedBranch));
+  const addressOptions = customerAddressOptions(selectedCustomer, customerUnits);
   const availableForAssignment = technicians.filter((technician) => {
     if (technician.accountStatus !== "active") return false;
-    const intendedBranch = draft.branch || homeBranch;
     return !intendedBranch || !technician.branch || technician.branch === intendedBranch;
   });
   const activeCount = technicians.filter((technician) => technician.accountStatus === "active").length;
@@ -215,6 +349,91 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
   const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
   const updateStaffDraft = (field, value) => setStaffDraft((current) => ({ ...current, [field]: value }));
+
+  const selectCustomer = (customer) => {
+    const relatedUnits = units.filter((unit) => String(unit.customerId || "") === String(customer.id));
+    const addresses = customerAddressOptions(customer, relatedUnits);
+    const preferredAddress = addresses.find((address) => address.isDefault) || (addresses.length === 1 ? addresses[0] : null);
+    setCustomerQuery(customer.name);
+    setDraft((current) => ({
+      ...current,
+      customerId: customer.id,
+      customerName: customer.name,
+      customerEmail: customer.email || "",
+      customerPhone: customer.phone || "",
+      addressId: preferredAddress?.id || "",
+      address: preferredAddress?.address || "",
+      customAddress: false,
+      unitId: "",
+      unitName: "",
+    }));
+  };
+
+  const updateCustomerQuery = (value) => {
+    setCustomerQuery(value);
+    if (selectedCustomer && value !== selectedCustomer.name) {
+      setDraft((current) => ({
+        ...current,
+        customerId: "",
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        addressId: "",
+        address: "",
+        customAddress: false,
+        unitId: "",
+        unitName: "",
+        technicianId: "",
+      }));
+    }
+  };
+
+  const selectAddress = (addressId) => {
+    if (addressId === CUSTOM_ADDRESS_ID) {
+      setDraft((current) => ({ ...current, addressId, address: "", customAddress: true }));
+      return;
+    }
+    const selected = addressOptions.find((address) => address.id === addressId);
+    setDraft((current) => ({
+      ...current,
+      addressId,
+      address: selected?.address || "",
+      customAddress: false,
+    }));
+  };
+
+  const selectUnit = (unitId) => {
+    const selected = customerUnits.find((unit) => String(unit.unitId) === String(unitId));
+    const matchingAddress = selected?.installationAddress
+      ? addressOptions.find((address) => address.address.toLowerCase() === selected.installationAddress.toLowerCase())
+      : null;
+    setDraft((current) => ({
+      ...current,
+      unitId,
+      unitName: selected?.modelName || "",
+      addressId: selected?.installationAddress ? matchingAddress?.id || `unit-${selected.unitId}` : current.addressId,
+      address: selected?.installationAddress || current.address,
+      customAddress: false,
+    }));
+  };
+
+  const changeWorkOrderBranch = (branch) => {
+    setCustomerQuery("");
+    setDraft((current) => ({
+      ...current,
+      branch,
+      technicianId: "",
+      customerId: "",
+      customerName: "",
+      customerEmail: "",
+      customerPhone: "",
+      addressId: "",
+      address: "",
+      customAddress: false,
+      unitId: "",
+      unitName: "",
+    }));
+  };
 
   const createTechnician = async (event) => {
     event.preventDefault();
@@ -274,9 +493,22 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const createTask = async (event) => {
     event.preventDefault();
     const technician = technicians.find((item) => String(item.id) === String(draft.technicianId));
+    const customer = customers.find((item) => String(item.id) === String(draft.customerId));
+    const service = serviceOfferings.find((item) => String(item.id) === String(draft.serviceTypeId));
+    if (!customer) { setError("Choose a customer from the search results."); return; }
+    if (!service) { setError("Choose the type of work to be completed."); return; }
+    if (!draft.address.trim()) { setError("Choose or enter the service address."); return; }
     if (!technician) { setError("Choose a technician from the assignment dropdown."); return; }
-    if (!draft.title.trim()) { setError("Enter a work order title."); return; }
     if (draft.scheduledDate < today()) { setError("Choose today or a future date."); return; }
+    if (technicianHasConflict(tasks, {
+      technicianId: technician.id,
+      scheduledDate: draft.scheduledDate,
+      timeSlot: draft.timeSlot,
+    })) {
+      setError(`${technician.name} already has an overlapping work order on this date and time.`);
+      return;
+    }
+    const workTitle = draft.unitName ? `${service.title} - ${draft.unitName}` : service.title;
     setSavingTask(true);
     setError("");
     setNotice("");
@@ -284,9 +516,18 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
       await apiRequest("/tasks", {
         method: "POST",
         body: JSON.stringify({
-          title: draft.title.trim(),
-          customerName: draft.customerName.trim() || "Customer",
-          address: draft.address.trim() || "TBD",
+          title: workTitle,
+          issueType: service.defaultIssueType || service.title,
+          serviceId: service.id,
+          serviceType: service.title,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerEmail: customer.email || "",
+          customerPhone: customer.phone || "",
+          addressId: draft.customAddress ? "" : draft.addressId,
+          address: draft.address.trim(),
+          unitId: draft.unitId || "",
+          unitName: draft.unitName || "",
           description: draft.description.trim(),
           scheduledDate: draft.scheduledDate,
           timeSlot: draft.timeSlot,
@@ -299,6 +540,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
       });
       setNotice(`Work order assigned to ${technician.name}.`);
       setDraft(initialDraft(isSuperAdmin ? draft.branch : homeBranch));
+      setCustomerQuery("");
       await load();
     } catch (requestError) {
       setError(requestError.message || "Unable to assign the work order.");
@@ -454,13 +696,37 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
 
           <form className="admin-card tech-assignment-form" onSubmit={createTask}>
             <div className="tech-section-heading"><div><h2>Create work order</h2><p>Assignment is saved directly to the selected technician’s My Work list.</p></div></div>
-            {isSuperAdmin ? <label><span>Branch</span><select value={draft.branch} onChange={(event) => updateDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <p className="tech-branch-note">Branch: <strong>{homeBranch || "Your active branch"}</strong></p>}
-            <label><span>Assign technician</span><select value={draft.technicianId} onChange={(event) => updateDraft("technicianId", event.target.value)} required><option value="">Select an active technician</option>{availableForAssignment.map((technician) => <option key={technician.id} value={technician.id}>{technician.name} · {openTasksByTechnician[String(technician.id)] || 0} open</option>)}</select></label>
-            <label><span>Work order title</span><input value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} placeholder="Example: Split-type installation" required /></label>
-            <div className="tech-form-row"><label><span>Customer / site</span><input value={draft.customerName} onChange={(event) => updateDraft("customerName", event.target.value)} placeholder="Customer name" /></label><label><span>Priority</span><select value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label></div>
-            <label><span>Service address</span><input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder="Installation or service location" /></label>
-            <div className="tech-form-row"><label><span>Scheduled date</span><input type="date" min={today()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} required /></label><label><span>Time slot</span><select value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label></div>
-            <label><span>Work details</span><textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder="Describe the work to be completed" /></label>
+            <fieldset className="tech-form-section">
+              <legend>Customer and service location</legend>
+              {isSuperAdmin ? <label><span>Branch</span><select value={draft.branch} onChange={(event) => changeWorkOrderBranch(event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <p className="tech-branch-note">Branch: <strong>{homeBranch || "Your active branch"}</strong></p>}
+              <CustomerCombobox
+                customers={availableCustomers}
+                value={draft.customerId}
+                query={customerQuery}
+                onQueryChange={updateCustomerQuery}
+                onSelect={selectCustomer}
+                disabled={isSuperAdmin && !draft.branch}
+              />
+              <label><span>Service address</span><select value={draft.addressId} onChange={(event) => selectAddress(event.target.value)} disabled={!draft.customerId} required><option value="">Select a saved address</option>{addressOptions.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.address}</option>)}<option value={CUSTOM_ADDRESS_ID}>+ Use another address</option></select></label>
+              {draft.customAddress ? <label><span>Custom service address</span><input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder="Enter the complete service address" required /></label> : null}
+              <label><span>Registered AC unit <small>(optional)</small></span><select value={draft.unitId} onChange={(event) => selectUnit(event.target.value)} disabled={!draft.customerId || customerUnits.length === 0}><option value="">{customerUnits.length ? "No specific unit" : "No registered units for this customer"}</option>{customerUnits.map((unit) => <option key={unit.unitId} value={unit.unitId}>{unit.modelName}{unit.serialNumber ? ` · ${unit.serialNumber}` : ""}</option>)}</select></label>
+            </fieldset>
+
+            <fieldset className="tech-form-section">
+              <legend>Work details</legend>
+              <label><span>Work type</span><select value={draft.serviceTypeId} onChange={(event) => updateDraft("serviceTypeId", event.target.value)} required><option value="">Select work type</option>{serviceOfferings.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}</select></label>
+              <label><span>Instructions <small>(optional)</small></span><textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder="Add access notes or a short description of the work" /></label>
+            </fieldset>
+
+            <fieldset className="tech-form-section">
+              <legend>Schedule and assignment</legend>
+              <label><span>Assign technician</span><select value={draft.technicianId} onChange={(event) => updateDraft("technicianId", event.target.value)} disabled={!draft.customerId} required><option value="">Select an active technician</option>{availableForAssignment.map((technician) => {
+                const conflict = technicianHasConflict(tasks, { technicianId: technician.id, scheduledDate: draft.scheduledDate, timeSlot: draft.timeSlot });
+                return <option key={technician.id} value={technician.id} disabled={conflict}>{technician.name} · {openTasksByTechnician[String(technician.id)] || 0} open{conflict ? " · Schedule conflict" : ""}</option>;
+              })}</select></label>
+              <div className="tech-form-row"><label><span>Scheduled date</span><input type="date" min={today()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} required /></label><label><span>Time slot</span><select value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label></div>
+              <label><span>Priority</span><select value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+            </fieldset>
             <button className="tech-primary-button" type="submit" disabled={savingTask}>{savingTask ? "Creating work order…" : "Assign work order"}</button>
           </form>
         </div>
@@ -471,19 +737,25 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
             return <article key={task.id} className="tech-work-item">
-              <div>
+              <div className="tech-work-heading">
                 <span className={`tech-task-status is-${String(task.status || "pending").replace(/\s+/g, "-")}`}>{task.status || "pending"}</span>
-                <h3>{task.title}</h3>
-                <p>{task.customerName || task.customer || "Customer"} · {task.branch || "No branch"}</p>
-                <small>{formatScheduledDate(task.scheduledDate)} · {task.timeSlot || "Time not set"}</small>
+                <div><h3>{assignmentTitle(task)}</h3><small>{task.taskCode || "Work order"}</small></div>
+              </div>
+              <dl className="tech-work-meta">
+                <div><dt>Customer</dt><dd>{task.customerName || task.customer || "Customer"}{task.unitName ? <small>{task.unitName}</small> : null}</dd></div>
+                <div><dt>Branch</dt><dd>{task.branch || "No branch"}</dd></div>
+                <div><dt>Schedule</dt><dd>{formatScheduledDate(task.scheduledDate)}<small>{task.timeSlot || "Time not set"}</small></dd></div>
+                <div><dt>Technician</dt><dd>{task.assignedTechnicianName || "Not assigned"}</dd></div>
+              </dl>
+              <div className="tech-work-footer">
                 {checkIn?.checkedInAt ? <div className="tech-check-in is-verified">
                   <strong>GPS check-in verified</strong>
                   <span>{formatCheckInTime(checkIn.checkedInAt)}</span>
                   <span>{formatCheckInCoordinates(checkIn)}</span>
                   {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer">Open check-in map</a> : null}
                 </div> : <div className="tech-check-in"><strong>Not checked in</strong><span>The technician’s GPS arrival has not been recorded.</span></div>}
+                {openTask(task) ? <label><span>Assigned technician</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">Select technician</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <p className="tech-completed-by"><span>Completed by</span><strong>{task.assignedTechnicianName || "Technician"}</strong></p>}
               </div>
-              {openTask(task) ? <label><span>Assigned technician</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">Select technician</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <div className="tech-completed-assignee"><span>Completed by</span><strong>{task.assignedTechnicianName || "Technician"}</strong></div>}
             </article>;
           })}</div>}
         </section>

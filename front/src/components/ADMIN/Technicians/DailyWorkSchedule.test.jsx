@@ -35,6 +35,7 @@ test("shows linked operational data and saves schedule changes on the existing t
   expect(await screen.findByText("ORD-1")).toBeVisible();
   expect(screen.getByText("GCash")).toBeVisible();
   expect(screen.getByText("Driver One")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Create work order" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Edit schedule" }));
   expect(screen.getByText("The assigned team leader is also the scheduled driver.")).toBeVisible();
   fireEvent.click(screen.getByLabelText("Tech Two"));
