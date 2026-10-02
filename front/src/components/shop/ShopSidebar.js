@@ -2,24 +2,17 @@ import {
   Cards,
   ComputerTower,
   DeviceMobile,
+  FunnelSimple,
   Gear,
+  MagnifyingGlass,
   Snowflake,
   SquareSplitHorizontal,
   SquaresFour,
   Wrench,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import BoutiqueBox from "../common/boutique/BoutiqueBox";
-import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
-import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
-import BoutiqueSearchInput from "../common/boutique/BoutiqueSearchInput";
-import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueText from "../common/boutique/BoutiqueText";
-import {
-  BQ_COLORS,
-  BQ_GEOMETRY,
-  BQ_SHADOWS,
-} from "../common/boutique/BoutiqueTheme";
 
 const CATEGORY_ICONS = {
   split: Cards,
@@ -47,262 +40,132 @@ export default function ShopSidebar({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   return (
-    <BoutiqueBox
-      tag="aside"
-      className="bq-sidebar"
-      width={BQ_GEOMETRY.sidebarWidth}
-      background={BQ_COLORS.bg}
-      padding="24px 20px"
-      style={{
-        height: `calc(100vh - ${BQ_GEOMETRY.headerHeight})`,
-        position: "sticky",
-        top: BQ_GEOMETRY.headerHeight,
-        flexShrink: 0,
-        overflowY: "auto",
-      }}
-    >
+    <aside aria-label="Catalogue filters" className="tw:min-w-0">
       <button
         type="button"
-        className="bq-mobile-filter-toggle"
+        className="tw:flex tw:w-full tw:items-center tw:justify-between tw:rounded-control tw:border tw:border-border tw:bg-surface tw:px-4! tw:py-3! tw:text-left tw:text-body tw:font-semibold tw:text-foreground tw:shadow-soft tw:lg:hidden"
         aria-expanded={mobileFiltersOpen}
+        aria-controls="catalogue-filters"
         onClick={() => setMobileFiltersOpen((open) => !open)}
       >
-        <span>Search &amp; filters</span>
-        <span aria-hidden="true">{mobileFiltersOpen ? "−" : "+"}</span>
+        <span className="tw:flex tw:items-center tw:gap-2">
+          <FunnelSimple size={19} weight="bold" aria-hidden="true" />
+          Search and filters
+        </span>
+        <span aria-hidden="true" className="tw:text-xl tw:font-medium tw:leading-none">
+          {mobileFiltersOpen ? "−" : "+"}
+        </span>
       </button>
 
-      <BoutiqueStack
-        gap={32}
-        className={`bq-sidebar-content ${mobileFiltersOpen ? "is-open" : ""}`}
+      <div
+        id="catalogue-filters"
+        className={`${mobileFiltersOpen ? "tw:block" : "tw:hidden"} tw:mt-3! tw:rounded-card tw:border tw:border-border tw:bg-surface tw:p-4! tw:shadow-soft tw:lg:sticky tw:lg:top-24 tw:lg:mt-0! tw:lg:block tw:lg:max-h-[calc(100vh-7rem)] tw:lg:overflow-y-auto tw:lg:p-5!`}
       >
-        <BoutiqueStack gap={16} className="bq-sidebar-section">
-          <BoutiqueText
-            variant="label"
-            className="bq-sidebar-title"
-            color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
-          >
-            Search
-          </BoutiqueText>
-          <BoutiqueSearchInput
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={onSearchChange}
-          />
-        </BoutiqueStack>
+        <div>
+          <label htmlFor="catalogue-search" className="tw:block tw:text-label tw:font-semibold tw:text-foreground">
+            Search products
+          </label>
+          <div className="tw:relative tw:mt-2!">
+            <MagnifyingGlass
+              size={18}
+              weight="bold"
+              aria-hidden="true"
+              className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:-translate-y-1/2 tw:text-muted-foreground"
+            />
+            <input
+              id="catalogue-search"
+              type="search"
+              className="ap-field tw:h-11 tw:rounded-control! tw:border-input! tw:bg-surface! tw:py-2! tw:pr-3! tw:pl-10! tw:shadow-none!"
+              placeholder="Name, brand, or model"
+              value={searchTerm}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+          </div>
+        </div>
 
-        <BoutiqueStack gap={16} className="bq-sidebar-section">
-          <BoutiqueText
-            variant="label"
-            className="bq-sidebar-title"
-            color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
-          >
-            Categories
-          </BoutiqueText>
-          <BoutiqueStack
-            gap={4}
-            tag="ul"
-            className="bq-cat-list"
-            padding={0}
-            margin={0}
-            style={{ listStyle: "none" }}
-          >
+        <fieldset className="tw:mt-5! tw:border-0 tw:border-t tw:border-border tw:pt-5!">
+          <legend className="tw:text-label tw:font-semibold tw:text-foreground">Category</legend>
+          <div className="tw:mt-2! tw:grid tw:gap-1">
             {categories.map((category) => {
               const IconComp = CATEGORY_ICONS[category.id] || Snowflake;
               const isActive = selectedCategory === category.id;
+
               return (
-                <BoutiqueBox
-                  tag="li"
+                <button
+                  type="button"
                   key={category.id}
-                  direction="row"
-                  align="center"
-                  justify="space-between"
-                  padding="10px 16px"
-                  className={`bq-cat-item ${isActive ? "active" : ""}`}
+                  aria-pressed={isActive}
                   onClick={() => onSelectCategory(category.id)}
-                  style={{
-                    borderRadius: BQ_GEOMETRY.radiusPill,
-                    cursor: "pointer",
-                    transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                  }}
+                  className={`tw:flex tw:w-full tw:items-center tw:gap-3 tw:rounded-control tw:border tw:px-3! tw:py-2.5! tw:text-left tw:text-body tw:font-medium tw:transition-colors ${isActive ? "tw:border-secondary tw:bg-accent tw:text-accent-foreground" : "tw:border-transparent tw:bg-transparent tw:text-muted-foreground hover:tw:border-border hover:tw:bg-muted hover:tw:text-foreground"}`}
                 >
-                  <BoutiqueBox
-                    direction="row"
-                    align="center"
-                    gap={14}
-                    className="bq-cat-content"
-                  >
-                    <IconComp size={20} weight={isActive ? "fill" : "bold"} />
-                    <BoutiqueText size="14px" weight={700}>
-                      {category.name}
-                    </BoutiqueText>
-                  </BoutiqueBox>
-                  <BoutiqueBox className="bq-cat-right">
-                    <BoutiqueText
-                      className="bq-cat-count"
-                      size="10px"
-                      weight={700}
-                      padding="2px 8px"
-                      style={{
-                        background: isActive
-                          ? "rgba(255,255,255,0.2)"
-                          : "rgba(0,0,0,0.05)",
-                        borderRadius: BQ_GEOMETRY.radiusPill,
-                        color: isActive ? "white" : "inherit",
-                      }}
-                    >
-                      {category.count}
-                    </BoutiqueText>
-                  </BoutiqueBox>
-                </BoutiqueBox>
+                  <IconComp size={18} weight={isActive ? "fill" : "bold"} aria-hidden="true" />
+                  <span className="tw:min-w-0 tw:flex-1 tw:truncate">{category.name}</span>
+                  <span className="tw:min-w-7 tw:text-right tw:text-caption tw:font-semibold">{category.count}</span>
+                </button>
               );
             })}
-          </BoutiqueStack>
-        </BoutiqueStack>
+          </div>
+        </fieldset>
 
-        <BoutiqueStack gap={16} className="bq-sidebar-section">
-          <BoutiqueText
-            variant="label"
-            className="bq-sidebar-title"
-            color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
+        <div className="tw:mt-5! tw:border-t tw:border-border tw:pt-5!">
+          <label htmlFor="catalogue-brand" className="tw:block tw:text-label tw:font-semibold tw:text-foreground">
+            Brand
+          </label>
+          <select
+            id="catalogue-brand"
+            className="ap-select tw:mt-2! tw:h-11 tw:rounded-control! tw:border-input! tw:bg-surface! tw:px-3! tw:py-2! tw:shadow-none!"
+            value={selectedBrand}
+            onChange={(event) => onSelectBrand(event.target.value)}
           >
-            Brands
-          </BoutiqueText>
-          <BoutiqueStack gap={4} className="bq-brand-list">
             {brands.map((brand) => (
-              <BoutiqueCheckbox
-                key={brand}
-                type="radio"
-                label={brand === "all" ? "All Brands" : brand}
-                checked={selectedBrand === brand}
-                onChange={() => onSelectBrand(brand)}
-              />
+              <option key={brand} value={brand}>
+                {brand === "all" ? "All brands" : brand}
+              </option>
             ))}
-          </BoutiqueStack>
-        </BoutiqueStack>
+          </select>
+        </div>
 
-        <BoutiqueStack gap={16} className="bq-sidebar-section">
-          <BoutiqueText
-            variant="label"
-            className="bq-sidebar-title"
-            color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
-          >
-            Price Range
-          </BoutiqueText>
-          <BoutiqueStack gap={16} className="bq-price-inputs">
-            <BoutiqueBox
-              direction="row"
-              align="center"
-              gap={16}
-              className="bq-price-field-group"
-            >
-              <BoutiqueText
-                variant="label"
-                size="9px"
-                weight={700}
-                color={BQ_COLORS.inkFaint}
-                style={{ letterSpacing: "0.1em", minWidth: "54px" }}
-              >
-                Maximum
-              </BoutiqueText>
-              <BoutiqueNumberInput
-                size="sm"
-                placeholder="Max Price"
-                value={priceRange.max}
-                onChange={(val) => onPriceChange("max", val)}
-                min={0}
-                step={1000}
-                width="100%"
-              />
-            </BoutiqueBox>
-            <BoutiqueBox
-              direction="row"
-              align="center"
-              gap={16}
-              className="bq-price-field-group"
-            >
-              <BoutiqueText
-                variant="label"
-                size="9px"
-                weight={700}
-                color={BQ_COLORS.inkFaint}
-                style={{ letterSpacing: "0.1em", minWidth: "54px" }}
-              >
-                Minimum
-              </BoutiqueText>
-              <BoutiqueNumberInput
-                size="sm"
-                placeholder="Min Price"
+        <fieldset className="tw:mt-5! tw:border-0 tw:border-t tw:border-border tw:pt-5!">
+          <legend className="tw:text-label tw:font-semibold tw:text-foreground">Price range</legend>
+          <div className="tw:mt-2! tw:grid tw:grid-cols-2 tw:gap-3 tw:lg:grid-cols-1">
+            <label className="tw:min-w-0">
+              <BoutiqueText variant="caption">Minimum</BoutiqueText>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                inputMode="numeric"
+                className="ap-field tw:mt-1! tw:h-10 tw:min-w-0 tw:rounded-control! tw:border-input! tw:bg-surface! tw:px-3! tw:py-2! tw:shadow-none!"
                 value={priceRange.min}
-                onChange={(val) => onPriceChange("min", val)}
-                min={0}
-                step={1000}
-                width="100%"
+                onChange={(event) => onPriceChange("min", event.target.value)}
               />
-            </BoutiqueBox>
-          </BoutiqueStack>
-        </BoutiqueStack>
+            </label>
+            <label className="tw:min-w-0">
+              <BoutiqueText variant="caption">Maximum</BoutiqueText>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                inputMode="numeric"
+                className="ap-field tw:mt-1! tw:h-10 tw:min-w-0 tw:rounded-control! tw:border-input! tw:bg-surface! tw:px-3! tw:py-2! tw:shadow-none!"
+                value={priceRange.max}
+                onChange={(event) => onPriceChange("max", event.target.value)}
+              />
+            </label>
+          </div>
+        </fieldset>
 
-        <button className="bq-clear-btn" onClick={onClearFilters}>
-          Clear All Filters
-        </button>
-      </BoutiqueStack>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-sidebar::-webkit-scrollbar { display: none; }
-        .bq-sidebar { scrollbar-width: none; }
-
-        .bq-mobile-filter-toggle {
-          display: none;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          border: 1px solid ${BQ_COLORS.border};
-          border-radius: ${BQ_GEOMETRY.radiusPill};
-          background: white;
-          color: ${BQ_COLORS.ink};
-          padding: 14px 18px;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 800;
-          cursor: pointer;
-        }
-
-        .bq-cat-item { color: ${BQ_COLORS.inkMuted}; }
-        .bq-cat-item:hover { background: white; color: ${BQ_COLORS.ink}; box-shadow: ${BQ_SHADOWS.soft}; transform: translateX(4px); }
-        .bq-cat-item.active { background: ${BQ_COLORS.brand}; color: white; box-shadow: ${BQ_SHADOWS.float}; transform: translateX(0); }
-
-        .bq-clear-btn {
-          width: 100%; padding: 16px; background: transparent;
-          border: 1px solid ${BQ_COLORS.border}; border-radius: ${BQ_GEOMETRY.radiusPill};
-          font-family: inherit; font-weight: 700; font-size: 12px;
-          color: ${BQ_COLORS.inkMuted}; text-transform: uppercase; letter-spacing: 0.1em;
-          cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); margin-top: 16px;
-        }
-        .bq-clear-btn:hover { border-color: ${BQ_COLORS.ink}; color: ${BQ_COLORS.ink}; background: white; box-shadow: ${BQ_SHADOWS.soft}; transform: translateY(-2px); }
-
-        @media (max-width: 900px) {
-          .bq-sidebar {
-            width: 100% !important;
-            height: auto !important;
-            position: relative !important;
-            top: auto !important;
-            padding: 14px 16px !important;
-            overflow: visible !important;
-            border-bottom: 1px solid ${BQ_COLORS.border};
-          }
-          .bq-mobile-filter-toggle { display: flex; }
-          .bq-sidebar-content { display: none !important; padding-top: 18px; }
-          .bq-sidebar-content.is-open { display: flex !important; }
-        }
-      `,
-        }}
-      />
-    </BoutiqueBox>
+        <BoutiqueButton
+          type="button"
+          variant="outline"
+          size="sm"
+          fullWidth
+          className="tw:mt-5!"
+          onClick={onClearFilters}
+        >
+          Clear filters
+        </BoutiqueButton>
+      </div>
+    </aside>
   );
 }

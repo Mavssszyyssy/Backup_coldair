@@ -5,14 +5,12 @@ import {
   Wrench,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
-import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
-import BoutiqueCard from "../common/boutique/BoutiqueCard";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
-import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
+import BoutiquePageContainer from "../common/boutique/BoutiquePageContainer";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
-import BoutiqueStack from "../common/boutique/BoutiqueStack";
+import BoutiqueSectionHeader from "../common/boutique/BoutiqueSectionHeader";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
@@ -38,95 +36,129 @@ function Services() {
   const navigate = useNavigate();
 
   return (
-    <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
+    <BoutiqueScreen
+      withHeader={false}
+      background={BQ_COLORS.bg}
+      className="tw:bg-background tw:text-foreground"
+    >
       <BoutiqueHeader
-        title="Mobile Services"
+        title="Services"
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
 
-      <BoutiqueBox
-        width="100%"
-        padding="40px 24px"
-        style={{ maxWidth: 980, margin: "0 auto" }}
+      <BoutiquePageContainer
+        as="main"
+        className="tw:mx-auto! tw:max-w-7xl tw:px-4! tw:py-6! tw:sm:px-6! tw:sm:py-8! tw:lg:px-8! tw:lg:py-10!"
       >
-        <BoutiqueStack gap={24}>
-          <BoutiqueCard
-            padding={40}
-            background={BQ_COLORS.brand}
-            style={{ color: "white", overflow: "hidden", position: "relative" }}
+        <div className="tw:flex tw:flex-col tw:gap-10">
+          <section
+            aria-labelledby="mobile-services-title"
+            className="tw:grid tw:gap-6 tw:rounded-card tw:border tw:border-border tw:border-l-4 tw:border-l-secondary tw:bg-surface tw:px-5! tw:py-4! tw:shadow-soft tw:sm:px-6! tw:sm:py-5! tw:lg:grid-cols-[minmax(0,1fr)_15rem] tw:lg:items-center tw:lg:px-8! tw:lg:py-6!"
           >
-            <BoutiqueStack gap={18} align="flex-start">
-              <BoutiqueBox
-                direction="row"
-                align="center"
-                gap={8}
-                padding="8px 12px"
-                background="rgba(255,255,255,0.14)"
-                style={{ borderRadius: 999 }}
+            <div className="tw:min-w-0">
+              <span className="ap-badge tw:mb-4! tw:bg-accent tw:text-accent-foreground">
+                <DeviceMobile size={15} weight="bold" aria-hidden="true" />
+                MOBILE APP ONLY
+              </span>
+
+              <BoutiqueText
+                id="mobile-services-title"
+                variant="pageTitle"
+                className="tw:max-w-3xl tw:text-foreground"
               >
-                <DeviceMobile size={18} weight="bold" />
-                <BoutiqueText size="12px" weight={900} color="white">
-                  MOBILE APP ONLY
-                </BoutiqueText>
-              </BoutiqueBox>
-              <BoutiqueText variant="h1" color="white">
                 Manage AC services in the AeroPulse Mobile App
               </BoutiqueText>
+
               <BoutiqueText
-                color="rgba(255,255,255,0.82)"
-                style={{ maxWidth: 720, lineHeight: 1.65 }}
+                color={BQ_COLORS.inkMuted}
+                className="tw:mt-3! tw:max-w-3xl"
               >
                 Maintenance, cleaning, repair, installation support, and warranty requests are created only in the mobile app. Sign in on your phone using the same Cold Air account as this website.
               </BoutiqueText>
-            </BoutiqueStack>
-          </BoutiqueCard>
+            </div>
 
-          <BoutiqueGrid columns="repeat(3, minmax(0, 1fr))" gap={18} className="mobile-services-grid">
-            {MOBILE_SERVICE_FEATURES.map((feature) => (
-              <BoutiqueCard key={feature.title} padding={24}>
-                <BoutiqueStack gap={12}>
-                  <BoutiqueBox
-                    width={46}
-                    height={46}
-                    align="center"
-                    justify="center"
-                    background={BQ_COLORS.bgAlt}
-                    style={{ borderRadius: 14, color: BQ_COLORS.brand }}
-                  >
-                    <feature.icon size={24} weight="bold" />
-                  </BoutiqueBox>
-                  <BoutiqueText variant="h3">{feature.title}</BoutiqueText>
-                  <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 1.55 }}>
-                    {feature.description}
-                  </BoutiqueText>
-                </BoutiqueStack>
-              </BoutiqueCard>
-            ))}
-          </BoutiqueGrid>
+            <div className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-border tw:pt-5! tw:lg:border-l tw:lg:border-t-0 tw:lg:pl-6! tw:lg:pt-0!">
+              <span className="tw:flex tw:size-11 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-control tw:bg-accent tw:text-accent-foreground">
+                <DeviceMobile size={23} weight="bold" aria-hidden="true" />
+              </span>
+              <div className="tw:min-w-0">
+                <BoutiqueText variant="label" className="tw:text-foreground">
+                  Service requests
+                </BoutiqueText>
+                <BoutiqueText variant="metadata" className="tw:mt-0.5">
+                  Available in the mobile app
+                </BoutiqueText>
+              </div>
+            </div>
+          </section>
 
-          <BoutiqueCard padding={28} background={BQ_COLORS.bgAlt}>
-            <BoutiqueStack gap={12}>
-              <BoutiqueText variant="h2">What remains available on the website?</BoutiqueText>
-              <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 1.65 }}>
+          <section aria-label="Services available in the mobile app">
+            <BoutiqueSectionHeader
+              title="Services available in the mobile app"
+              description="Use your registered AC details to request support and follow each service from start to finish."
+              className="tw:mb-4! tw:items-start"
+            />
+
+            <div className="tw:grid tw:overflow-hidden tw:rounded-card tw:border tw:border-border tw:bg-surface tw:shadow-soft tw:divide-y tw:divide-border tw:md:grid-cols-3 tw:md:divide-x tw:md:divide-y-0">
+              {MOBILE_SERVICE_FEATURES.map((feature) => (
+                <article
+                  key={feature.title}
+                  className="tw:flex tw:min-w-0 tw:items-start tw:gap-4 tw:p-5! tw:sm:p-6! tw:md:flex-col"
+                >
+                  <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-control tw:bg-accent tw:text-accent-foreground">
+                    <feature.icon size={21} weight="bold" aria-hidden="true" />
+                  </span>
+                  <div className="tw:min-w-0">
+                    <BoutiqueText variant="cardTitle" className="tw:text-foreground">
+                      {feature.title}
+                    </BoutiqueText>
+                    <BoutiqueText color={BQ_COLORS.inkMuted} className="tw:mt-1!">
+                      {feature.description}
+                    </BoutiqueText>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="website-services-title"
+            className="tw:grid tw:gap-5 tw:border-y tw:border-border tw:bg-surface-secondary tw:px-5! tw:py-6! tw:sm:px-6! tw:lg:grid-cols-[minmax(0,1fr)_auto] tw:lg:items-center"
+          >
+            <div className="tw:min-w-0">
+              <BoutiqueText
+                id="website-services-title"
+                variant="sectionTitle"
+                className="tw:text-foreground"
+              >
+                What remains available on the website?
+              </BoutiqueText>
+              <BoutiqueText color={BQ_COLORS.inkMuted} className="tw:mt-2! tw:max-w-3xl">
                 You can shop for AC units, track orders, view registered-unit details, review warranty coverage, and read completed service history here. The website does not create service or warranty requests.
               </BoutiqueText>
-              <BoutiqueBox direction="row" gap={12} wrap="wrap" margin="8px 0 0">
-                <BoutiqueButton onClick={() => navigate("/myunit")}>View My AC Units</BoutiqueButton>
-                <BoutiqueButton variant="outline" onClick={() => navigate("/contact")}>Contact Support</BoutiqueButton>
-              </BoutiqueBox>
-            </BoutiqueStack>
-          </BoutiqueCard>
-        </BoutiqueStack>
-      </BoutiqueBox>
+            </div>
+
+            <div className="tw:flex tw:flex-col tw:gap-3 tw:sm:flex-row tw:lg:justify-end">
+              <BoutiqueButton
+                className="tw:w-full tw:sm:w-auto"
+                onClick={() => navigate("/myunit")}
+              >
+                View My AC Units
+              </BoutiqueButton>
+              <BoutiqueButton
+                variant="outline"
+                className="tw:w-full tw:sm:w-auto"
+                onClick={() => navigate("/contact")}
+              >
+                Contact Support
+              </BoutiqueButton>
+            </div>
+          </section>
+        </div>
+      </BoutiquePageContainer>
 
       <BoutiqueFooter />
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media (max-width: 760px) {
-          .mobile-services-grid { grid-template-columns: 1fr !important; }
-        }
-      ` }} />
     </BoutiqueScreen>
   );
 }

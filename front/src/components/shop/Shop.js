@@ -4,7 +4,7 @@ import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import { deduplicateProducts } from "../../utils/productDeduplication";
-import BoutiqueBox from "../common/boutique/BoutiqueBox";
+import BoutiquePageContainer from "../common/boutique/BoutiquePageContainer";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import ProductModal from "./ProductModal";
 
@@ -696,7 +696,11 @@ const Shop = () => {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <BoutiqueScreen withHeader={false} padding={0}>
+    <BoutiqueScreen
+      withHeader={false}
+      padding={0}
+      className="tw:bg-background tw:text-foreground"
+    >
       <BoutiqueHeader
         title="Shop AC Units"
         subtitle="Available stock across all branches"
@@ -713,27 +717,17 @@ const Shop = () => {
         <div
           role="status"
           aria-live="polite"
-          className="bq-cart-success-toast"
-          style={{
-            position: "fixed",
-            top: "94px",
-            right: "20px",
-            zIndex: 1500,
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            maxWidth: "min(360px, calc(100vw - 32px))",
-            padding: "12px 15px",
-            borderRadius: "14px",
-            background: "#111827",
-            color: "#ffffff",
-            boxShadow: "0 14px 35px rgba(15, 23, 42, 0.25)",
-          }}
+          className="bq-cart-success-toast tw:fixed tw:right-4 tw:top-24 tw:z-[1500] tw:flex tw:max-w-[calc(100vw-2rem)] tw:items-center tw:gap-3 tw:rounded-control tw:bg-primary tw:px-4! tw:py-3! tw:text-primary-foreground tw:shadow-raised tw:sm:right-5 tw:sm:max-w-sm"
         >
-          <span aria-hidden="true" style={{ display: "grid", width: "24px", height: "24px", placeItems: "center", borderRadius: "50%", background: "#22c55e", fontWeight: 900 }}>✓</span>
-          <span style={{ display: "grid", lineHeight: 1.25 }}>
-            <strong style={{ fontSize: "13px" }}>Added to cart</strong>
-            <span style={{ color: "#d1d5db", fontSize: "12px" }}>{cartNotice.name}</span>
+          <span
+            aria-hidden="true"
+            className="tw:grid tw:size-6 tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-success tw:text-xs tw:font-bold tw:text-white"
+          >
+            ✓
+          </span>
+          <span className="tw:grid tw:min-w-0 tw:leading-tight">
+            <strong className="tw:text-label">Added to cart</strong>
+            <span className="tw:truncate tw:text-caption tw:text-slate-300">{cartNotice.name}</span>
           </span>
         </div>
       ) : null}
@@ -746,44 +740,44 @@ const Shop = () => {
         onMarkAllAsRead={handleMarkAllAsRead}
       />
 
-      <BoutiqueBox
-        direction="row"
-        flex={1}
-        width="100%"
-        className="bq-shop-main"
+      <BoutiquePageContainer
+        as="main"
+        className="tw:mx-auto! tw:max-w-7xl tw:px-4! tw:py-6! tw:sm:px-6! tw:sm:py-8! tw:lg:px-8!"
       >
-        <ShopSidebar
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          brands={brands}
-          selectedBrand={selectedBrand}
-          onSelectBrand={setSelectedBrand}
-          priceRange={priceRange}
-          onPriceChange={(key, val) =>
-            setPriceRange((prev) => ({ ...prev, [key]: parseInt(val) || 0 }))
-          }
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onClearFilters={() => {
-            setSelectedCategory("all");
-            setSelectedBrand("all");
-            setPriceRange({ min: 0, max: 100000 });
-            setSearchTerm("");
-          }}
-        />
+        <div className="tw:grid tw:min-w-0 tw:items-start tw:gap-6 tw:lg:grid-cols-[16rem_minmax(0,1fr)] tw:lg:gap-8">
+          <ShopSidebar
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            brands={brands}
+            selectedBrand={selectedBrand}
+            onSelectBrand={setSelectedBrand}
+            priceRange={priceRange}
+            onPriceChange={(key, val) =>
+              setPriceRange((prev) => ({ ...prev, [key]: parseInt(val) || 0 }))
+            }
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onClearFilters={() => {
+              setSelectedCategory("all");
+              setSelectedBrand("all");
+              setPriceRange({ min: 0, max: 100000 });
+              setSearchTerm("");
+            }}
+          />
 
-        <ShopCatalogue
-          products={filteredProducts}
-          loading={catalogLoading}
-          error={catalogError}
-          onRetry={fetchProducts}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onProductClick={setSelectedProduct}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-        />
+          <ShopCatalogue
+            products={filteredProducts}
+            loading={catalogLoading}
+            error={catalogError}
+            onRetry={fetchProducts}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onProductClick={setSelectedProduct}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
+        </div>
 
         <BoutiqueCart
           isOpen={isCartOpen}
@@ -794,7 +788,7 @@ const Shop = () => {
           onCheckout={handleCheckout}
           getCartTotal={getCartTotal}
         />
-      </BoutiqueBox>
+      </BoutiquePageContainer>
 
       <BoutiqueFooter />
 

@@ -2,6 +2,8 @@ import {
   Cards,
   ComputerTower,
   Lightning,
+  Minus,
+  Plus,
   ShieldCheck,
   Snowflake,
   SquareSplitHorizontal,
@@ -10,14 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { getBrandLogo } from "../../config/brandLogos";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
-import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
-import BoutiqueTechnicalCard from "../common/boutique/BoutiqueTechnicalCard";
-import {
-  BQ_COLORS,
-  BQ_FONTS,
-  BQ_SHADOWS,
-  BQ_WEIGHTS,
-} from "../common/boutique/BoutiqueTheme";
+import BoutiqueText from "../common/boutique/BoutiqueText";
 
 const DEFAULT_CATALOG_IMAGE_URL = "/catalog/ac/generic-ac.jpg";
 
@@ -32,24 +27,23 @@ function ModalProductImage({ product }) {
   const [imgBroken, setBroken] = useState(false);
   const IconComp = productPlaceholderIcon(product);
   const imageUrl = product?.imageUrl || DEFAULT_CATALOG_IMAGE_URL;
-  const hasImage = imageUrl.trim() !== "";
 
-  if (hasImage && !imgBroken) {
+  if (imageUrl.trim() && !imgBroken) {
     return (
       <img
         src={imageUrl}
         alt={product.name}
         decoding="async"
         onError={() => setBroken(true)}
-        className="bq-modal-img"
+        className="tw:h-full tw:w-full tw:object-contain"
       />
     );
   }
 
   return (
-    <div className="bq-modal-fallback">
-      <IconComp size={120} weight="bold" />
-    </div>
+    <span className="tw:grid tw:h-full tw:w-full tw:place-items-center tw:text-input">
+      <IconComp size={88} weight="bold" aria-hidden="true" />
+    </span>
   );
 }
 
@@ -60,323 +54,173 @@ function ProductModal({ product, onClose, onAddToCart }) {
     setQuantity(1);
   }, [product?.id]);
 
-  const availableStock = product?.stock;
-  const maxQuantity = product?.stock || 0;
-  const isOutOfStock = maxQuantity <= 0;
+  if (!product) return null;
+
+  const availableStock = Number(product.stock) || 0;
+  const isOutOfStock = availableStock <= 0;
+  const currentQty = Math.min(Math.max(parseInt(quantity) || 1, 1), Math.max(availableStock, 1));
+  const productBrand = product.brand || "Generic";
+  const nameBase = (product.name || "")
+    .toLowerCase()
+    .startsWith(productBrand.toLowerCase())
+    ? product.name.slice(productBrand.length).trim()
+    : product.name;
+  const displayName = (nameBase || product.name || "Air conditioner").replace(/\s*AC\s*$/gi, "").trim();
+  const horsepower = product.specs || product.capacity || "";
+  const brandLogoUrl = getBrandLogo(productBrand);
+  const totalPrice = product.price * currentQty;
+
+  const setSafeQuantity = (value) => {
+    const next = parseInt(value) || 1;
+    setQuantity(Math.min(Math.max(next, 1), Math.max(availableStock, 1)));
+  };
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    const finalQty = parseInt(quantity) || 1;
-    onAddToCart(product, finalQty);
+    onAddToCart(product, currentQty);
     onClose();
   };
 
   const handleBuyNow = () => {
     if (isOutOfStock) return;
-    const finalQty = parseInt(quantity) || 1;
-    onAddToCart(product, finalQty);
+    onAddToCart(product, currentQty);
     onClose();
     window.dispatchEvent(new CustomEvent("bq:buy-now"));
   };
 
-  if (!product) return null;
-
-  // Strip brand and AC from title
-  const nameBase = product.name
-    .toLowerCase()
-    .startsWith(product.brand.toLowerCase())
-    ? product.name.slice(product.brand.length).trim()
-    : product.name;
-
-  const displayName = nameBase.replace(/\s*AC\s*$/gi, "").trim();
-
-  const horsepower = product.specs || product.capacity || "";
-  const brandLogoUrl = getBrandLogo(product.brand);
-  const currentQty = parseInt(quantity) || 1;
-  const totalPrice = product.price * currentQty;
-
   return (
-    <div className="bq-modal-overlay" onClick={onClose}>
-      <div className="bq-modal-container" onClick={(e) => e.stopPropagation()}>
-        {/* Floating Close Button outside modal boundary */}
-        <button className="bq-modal-floating-close" onClick={onClose}>
-          <X size={24} weight="bold" />
+    <div
+      className="tw:fixed tw:inset-0 tw:z-[3000] tw:flex tw:items-center tw:justify-center tw:bg-[var(--ap-color-overlay)] tw:p-4! tw:sm:p-6!"
+      onClick={onClose}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="catalogue-product-title"
+        className="tw:relative tw:grid tw:max-h-[calc(100vh-2rem)] tw:w-full tw:max-w-5xl tw:overflow-y-auto tw:rounded-dialog tw:border tw:border-border tw:bg-surface tw:shadow-raised tw:lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] tw:lg:overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="tw:absolute tw:top-3 tw:right-3 tw:z-10 tw:grid tw:size-10 tw:place-items-center tw:rounded-control tw:border tw:border-border tw:bg-surface tw:text-foreground tw:shadow-soft hover:tw:bg-muted"
+          onClick={onClose}
+          aria-label="Close product details"
+        >
+          <X size={20} weight="bold" aria-hidden="true" />
         </button>
 
-        <div className="bq-modal-grid">
-          <div className="bq-modal-visual">
-            <ModalProductImage product={product} />
+        <div className="tw:flex tw:min-h-64 tw:items-center tw:justify-center tw:border-b tw:border-border tw:bg-surface-secondary tw:p-6! tw:sm:min-h-80 tw:sm:p-8! tw:lg:min-h-[34rem] tw:lg:border-r tw:lg:border-b-0">
+          <ModalProductImage product={product} />
+        </div>
+
+        <div className="tw:flex tw:min-w-0 tw:flex-col tw:p-5! tw:sm:p-6! tw:lg:max-h-[34rem] tw:lg:overflow-y-auto tw:lg:p-8!">
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:pr-10!">
+            <span className="tw:grid tw:size-10 tw:shrink-0 tw:place-items-center tw:rounded-sm tw:border tw:border-border tw:bg-surface-secondary tw:p-1.5!">
+              <img src={brandLogoUrl} alt="" decoding="async" className="tw:h-full tw:w-full tw:object-contain" />
+            </span>
+            <div className="tw:min-w-0">
+              <BoutiqueText variant="label" className="tw:text-foreground">{productBrand}</BoutiqueText>
+              <BoutiqueText variant="caption" className="tw:truncate">{product.model || "Model not specified"}</BoutiqueText>
+            </div>
           </div>
 
-          <div className="bq-modal-body">
-            <div className="bq-modal-header">
-              <div className="bq-header-top-row">
-                <div className="bq-modal-brand-line">
-                  <div className="bq-modal-logo">
-                    <img
-                      src={brandLogoUrl}
-                      alt={product.brand}
-                      decoding="async"
-                    />
-                  </div>
-                  <div className="bq-modal-title-stack">
-                    <span className="bq-modal-model-label">
-                      {product.model || "MODEL"}
-                    </span>
-                    <h2 className="bq-modal-title">{displayName}</h2>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <BoutiqueText
+            id="catalogue-product-title"
+            variant="pageTitle"
+            className="tw:mt-4! tw:text-foreground"
+          >
+            {displayName}
+          </BoutiqueText>
 
-            <div className="bq-modal-main">
-              <p className="bq-modal-desc">{product.description}</p>
+          {product.description ? (
+            <BoutiqueText className="tw:mt-3! tw:text-muted-foreground">
+              {product.description}
+            </BoutiqueText>
+          ) : null}
 
-              <div className="bq-modal-specs-scroll-area">
-                <div className="bq-modal-specs-row">
-                  <BoutiqueTechnicalCard variant="blue" size="md">
-                    {horsepower}
-                  </BoutiqueTechnicalCard>
-                  <BoutiqueTechnicalCard variant="neutral" size="md">
-                    {product.brand}
-                  </BoutiqueTechnicalCard>
-                  <BoutiqueTechnicalCard variant="neutral" size="md">
-                    {product.model || "N/A"}
-                  </BoutiqueTechnicalCard>
-                </div>
-              </div>
+          <div className="tw:mt-5! tw:flex tw:flex-wrap tw:gap-2">
+            {horsepower ? <span className="ap-badge tw:bg-accent tw:px-2.5! tw:py-1! tw:text-accent-foreground">{horsepower}</span> : null}
+            <span className="ap-badge tw:bg-muted tw:px-2.5! tw:py-1! tw:text-muted-foreground">{productBrand}</span>
+            {product.model ? <span className="ap-badge tw:bg-muted tw:px-2.5! tw:py-1! tw:text-muted-foreground">{product.model}</span> : null}
+          </div>
 
-              <div className="bq-modal-warranty-row">
-                <ShieldCheck size={18} weight="bold" /> {product.warranty}
-              </div>
-            </div>
+          <div className="tw:mt-4! tw:flex tw:items-start tw:gap-2 tw:text-muted-foreground">
+            <ShieldCheck size={18} weight="bold" className="tw:mt-0.5! tw:shrink-0" aria-hidden="true" />
+            <BoutiqueText variant="metadata">{product.warranty}</BoutiqueText>
+          </div>
 
-            <div className="bq-transaction-hub">
-              <div className="bq-interactive-footer">
-                <div className="bq-selection-column">
-                  <div className="bq-misc-badges">
-                    <BoutiqueTechnicalCard
-                      variant={isOutOfStock ? "danger" : "success"}
-                      size="sm"
-                    >
-                      {isOutOfStock
-                        ? "Temporarily Unavailable"
-                        : (product.stockLabel || `${availableStock} units available`)}
-                    </BoutiqueTechnicalCard>
-                  </div>
-                  <BoutiqueNumberInput
-                    value={quantity}
-                    onChange={setQuantity}
-                    max={maxQuantity}
-                    width="180px"
+          <div className="tw:mt-6! tw:border-t tw:border-border tw:pt-5!">
+            <div className="tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4">
+              <div>
+                <BoutiqueText variant="label" className="tw:text-foreground">Quantity</BoutiqueText>
+                <div className="tw:mt-2! tw:flex tw:h-11 tw:w-36 tw:items-center tw:rounded-control tw:border tw:border-input tw:bg-surface">
+                  <button
+                    type="button"
+                    className="tw:grid tw:h-full tw:w-10 tw:shrink-0 tw:place-items-center tw:border-0 tw:border-r tw:border-border tw:bg-transparent tw:text-foreground disabled:tw:text-input"
+                    onClick={() => setSafeQuantity(currentQty - 1)}
+                    disabled={currentQty <= 1 || isOutOfStock}
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={15} weight="bold" aria-hidden="true" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={Math.max(availableStock, 1)}
+                    value={currentQty}
+                    onChange={(event) => setSafeQuantity(event.target.value)}
+                    className="tw:h-full tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:px-1! tw:text-center tw:text-body tw:font-semibold tw:text-foreground tw:outline-none"
+                    aria-label="Quantity"
+                    disabled={isOutOfStock}
                   />
-                </div>
-
-                <div className="bq-modal-reveal-container">
-                  <div className="bq-modal-reveal-group">
-                    <div className="bq-modal-price-row">
-                      <div className="bq-price-main">
-                        <span className="bq-price-symbol">₱</span>
-                        <span className="bq-price-num">
-                          {totalPrice.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bq-modal-buy-row">
-                      <BoutiqueButton
-                        variant="outline"
-                        fullWidth
-                        onClick={handleBuyNow}
-                        disabled={isOutOfStock}
-                      >
-                        Buy Now <Lightning size={18} weight="fill" />
-                      </BoutiqueButton>
-                    </div>
-                  </div>
-
-                  <div className="bq-modal-add-row">
-                    <BoutiqueButton
-                      variant="primary"
-                      fullWidth
-                      onClick={handleAddToCart}
-                      disabled={isOutOfStock}
-                    >
-                      {isOutOfStock ? "Unavailable" : "Add to Cart"}
-                    </BoutiqueButton>
-                  </div>
+                  <button
+                    type="button"
+                    className="tw:grid tw:h-full tw:w-10 tw:shrink-0 tw:place-items-center tw:border-0 tw:border-l tw:border-border tw:bg-transparent tw:text-foreground disabled:tw:text-input"
+                    onClick={() => setSafeQuantity(currentQty + 1)}
+                    disabled={currentQty >= availableStock || isOutOfStock}
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={15} weight="bold" aria-hidden="true" />
+                  </button>
                 </div>
               </div>
+
+              <div className="tw:text-right">
+                <BoutiqueText variant="caption">Total price</BoutiqueText>
+                <BoutiqueText variant="sectionTitle" className="tw:mt-1! tw:text-foreground">
+                  ₱{totalPrice.toLocaleString()}
+                </BoutiqueText>
+              </div>
+            </div>
+
+            <div className={`tw:mt-4! tw:flex tw:items-center tw:gap-2 tw:text-metadata tw:font-medium ${isOutOfStock ? "tw:text-error" : "tw:text-success"}`}>
+              <span className="tw:size-2 tw:rounded-full tw:bg-current" aria-hidden="true" />
+              <span>{isOutOfStock ? "Temporarily unavailable" : (product.stockLabel || `${availableStock} units available`)}</span>
+            </div>
+
+            <div className="tw:mt-5! tw:grid tw:gap-2 tw:sm:grid-cols-2">
+              <BoutiqueButton
+                type="button"
+                variant="primary"
+                fullWidth
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+              >
+                {isOutOfStock ? "Unavailable" : "Add to Cart"}
+              </BoutiqueButton>
+              <BoutiqueButton
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+              >
+                Buy Now <Lightning size={18} weight="fill" aria-hidden="true" />
+              </BoutiqueButton>
             </div>
           </div>
         </div>
-      </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-modal-overlay {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.5); backdrop-filter: blur(20px);
-          z-index: 3000; display: flex; align-items: center; justify-content: center;
-          padding: 24px; animation: bq-fade-in 0.3s ease;
-        }
-
-        .bq-modal-floating-close {
-          position: absolute;
-          top: -20px;
-          right: -20px;
-          background: white; border: 1.5px solid ${BQ_COLORS.border}; color: ${BQ_COLORS.ink};
-          width: 48px; height: 48px; border-radius: 50%;
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          z-index: 3001; box-shadow: ${BQ_SHADOWS.soft};
-        }
-        .bq-modal-floating-close:hover { transform: scale(1.1) rotate(90deg); box-shadow: ${BQ_SHADOWS.hover}; background: ${BQ_COLORS.bg}; }
-
-        .bq-modal-container {
-          background: white;
-          width: 1120px;
-          height: 560px;
-          border-radius: 40px; overflow: visible; position: relative;
-          box-shadow: ${BQ_SHADOWS.hover};
-          animation: bq-modal-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-          font-family: ${BQ_FONTS.body};
-        }
-
-        @keyframes bq-fade-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes bq-modal-up { from { opacity: 0; transform: translateY(40px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
-        .bq-modal-grid { display: grid; grid-template-columns: 1fr 1fr; height: 100%; border-radius: 40px; overflow: hidden; }
-
-        .bq-modal-visual {
-          background: ${BQ_COLORS.bg}; display: flex; align-items: center; justify-content: center;
-          padding: 60px; position: relative;
-          border-right: 1px solid ${BQ_COLORS.border};
-        }
-        .bq-modal-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.05)); }
-        .bq-modal-fallback { opacity: 0.1; color: ${BQ_COLORS.ink}; }
-
-        .bq-modal-body { padding: 48px 60px; display: flex; flex-direction: column; background: white; overflow: hidden; }
-
-        .bq-modal-header { margin-bottom: 24px; flex-shrink: 0; }
-        .bq-header-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; width: 100%; }
-
-        .bq-modal-logo {
-          width: 56px; height: 56px; background: ${BQ_COLORS.bg};
-          border-radius: 14px; display: flex; align-items: center; justify-content: center;
-          padding: 8px; flex-shrink: 0; border: 1px solid ${BQ_COLORS.border};
-        }
-        .bq-modal-logo img { width: 100%; height: 100%; object-fit: contain; }
-
-        .bq-modal-title-stack { display: flex; flex-direction: column; flex: 1; }
-        .bq-modal-model-label {
-          font-family: ${BQ_FONTS.heading}; font-size: 13px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.inkMuted}; text-transform: uppercase;
-          letter-spacing: 0.25em; margin-bottom: 4px; display: block; opacity: 0.9;
-        }
-        .bq-modal-title {
-          font-family: ${BQ_FONTS.heading}; font-size: 42px; font-weight: ${BQ_WEIGHTS.bold};
-          color: ${BQ_COLORS.ink}; margin: 0; line-height: 0.95; letter-spacing: -0.05em;
-        }
-
-        .bq-modal-main { flex: 1; overflow-y: auto; padding-right: 12px; margin-bottom: 24px; scrollbar-width: thin; }
-        .bq-modal-main::-webkit-scrollbar { width: 4px; }
-        .bq-modal-main::-webkit-scrollbar-thumb { background: ${BQ_COLORS.border}; border-radius: 10px; }
-
-        .bq-modal-desc { font-size: 15px; color: ${BQ_COLORS.inkMuted}; line-height: 1.6; margin-bottom: 24px; font-weight: ${BQ_WEIGHTS.medium}; }
-
-        .bq-modal-warranty-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: ${BQ_COLORS.inkMuted}; font-weight: ${BQ_WEIGHTS.semibold}; opacity: 0.8; }
-
-        .bq-modal-specs-scroll-area { width: 100%; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
-        .bq-modal-specs-scroll-area::-webkit-scrollbar { display: none; }
-
-        .bq-modal-specs-row { display: flex; gap: 16px; min-width: max-content; padding-bottom: 4px; }
-
-        .bq-transaction-hub { margin-top: auto; padding-top: 32px; border-top: 1px solid ${BQ_COLORS.border}; display: flex; flex-direction: column; gap: 24px; }
-
-        .bq-hub-status { display: flex; align-items: center; }
-
-        .bq-interactive-footer {
-          display: flex;
-          gap: 16px;
-          align-items: flex-end;
-          flex-shrink: 0;
-          height: 124px;
-        }
-
-        .bq-selection-column { display: flex; flex-direction: column; gap: 12px; }
-        .bq-misc-badges { display: flex; flex-direction: column; gap: 6px; }
-
-        .bq-modal-reveal-container {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-
-        .bq-modal-reveal-group {
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateY(68px);
-            position: relative;
-            z-index: 1;
-        }
-
-        .bq-modal-reveal-group:has(+ .bq-modal-add-row:hover, .bq-modal-buy-row:hover) {
-            transform: translateY(28px);
-        }
-
-        .bq-modal-reveal-group, .bq-modal-add-row, .bq-modal-buy-row {
-            width: fit-content;
-            margin-left: auto;
-        }
-
-        .bq-modal-price-row { display: flex; justify-content: space-between; align-items: center; height: 52px; width: 100%; }
-
-        .bq-total-badge {
-            font-family: ${BQ_FONTS.heading}; font-size: 11px; font-weight: ${BQ_WEIGHTS.bold};
-            color: white; background: ${BQ_COLORS.brand}; padding: 4px 10px; border-radius: 6px;
-            text-transform: uppercase; letter-spacing: 0.1em;
-        }
-        .bq-price-main { display: flex; align-items: baseline; gap: 4px; color: ${BQ_COLORS.ink}; }
-        .bq-price-symbol { font-family: ${BQ_FONTS.heading}; font-size: 24px; font-weight: ${BQ_WEIGHTS.bold}; }
-        .bq-price-num { font-family: ${BQ_FONTS.heading}; font-size: 42px; font-weight: ${BQ_WEIGHTS.bold}; letter-spacing: -0.04em; line-height: 1; }
-
-        .bq-modal-buy-row { height: 56px; display: flex; }
-        .bq-modal-add-row {
-            margin-top: 12px;
-            position: relative;
-            z-index: 2;
-            height: 56px;
-            display: flex;
-        }
-
-        .bq-modal-brand-line {
-            flex-direction: row;
-            display: flex;
-            gap: 16px;
-        }
-
-        .bq-tech-card {
-            width: fit-content;
-        }
-
-        @media (max-width: 1200px) {
-          .bq-modal-container { width: 90vw; height: auto; max-height: 95vh; overflow-y: auto; }
-          .bq-modal-grid { grid-template-columns: 1fr; border-radius: 40px; }
-          .bq-modal-visual { height: 320px; }
-          .bq-modal-body { padding: 24px; }
-          .bq-interactive-footer { height: auto; flex-direction: column; align-items: stretch; }
-          .bq-modal-reveal-container { height: auto; overflow: visible; }
-          .bq-modal-reveal-group { transform: none; }
-          .bq-modal-floating-close { top: 20px; right: 20px; width: 44px; height: 44px; position: fixed; }
-        }
-      `,
-        }}
-      />
+      </section>
     </div>
   );
 }
