@@ -19,7 +19,7 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   fireEvent.change(screen.getByLabelText(/^Login name/), { target: { value: 'j.' } });
   expect(screen.getByLabelText(/^Login name/)).toHaveValue('j.');
   fireEvent.click(screen.getByText('Create technician account'));
-  expect(screen.getByText(/at least 2 letters or numbers/)).toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent(/at least 2 letters or numbers/);
   expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
   fireEvent.change(screen.getByLabelText(/^Login name/), { target: { value: 'j.delacruz' } });
   fireEvent.change(screen.getByLabelText(/^Service Quota/), { target: { value: '3' } });

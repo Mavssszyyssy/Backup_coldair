@@ -68,6 +68,7 @@ function AddAddressModal({
   const barangays = getBarangaysByCity(address.region, address.province, address.city);
 
   const setAddressField = (field, value) => {
+    if (serverMessage) setServerMessage('');
     setAddress((prev) => {
       if (field === 'region') {
         return { ...prev, region: value, province: '', city: '', barangay: '', postalCode: '' };
@@ -129,19 +130,33 @@ function AddAddressModal({
             ×
           </button>
         </header>
-        <div className="address-editor-body">
+        <div className={`address-editor-alert-region${serverMessage ? ' address-editor-alert-region--visible' : ''}`}>
           {serverMessage && (
             <div className="address-editor-error" role="alert">
-              {serverMessage}
+              <span className="address-editor-error-icon" aria-hidden="true">!</span>
+              <div className="address-editor-error-copy">
+                <strong>Please check this address</strong>
+                <span>{serverMessage}</span>
+              </div>
+              <button
+                type="button"
+                className="address-editor-error-dismiss"
+                onClick={() => setServerMessage('')}
+                aria-label="Dismiss address error"
+              >
+                ×
+              </button>
             </div>
           )}
+        </div>
+        <div className="address-editor-body">
           <div className="address-editor-field">
             <label>Label</label>
             <input
               type="text"
               placeholder="Home, Office, Condo"
               value={address.label}
-              onChange={(e) => setAddress({ ...address, label: e.target.value })}
+              onChange={(e) => setAddressField('label', e.target.value)}
             />
           </div>
           <div className="address-editor-field">

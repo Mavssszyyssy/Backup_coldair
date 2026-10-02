@@ -12,7 +12,7 @@
   width: min(640px, 100%);
   max-height: min(88vh, 780px);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   color: #172033;
   background: #ffffff;
@@ -83,15 +83,80 @@
   scrollbar-gutter: stable;
 }
 
+.address-editor-alert-region {
+  min-height: 0;
+  padding: 0 24px;
+  background: #ffffff;
+}
+
+.address-editor-alert-region--visible {
+  padding-top: 14px;
+}
+
 .address-editor-error {
-  margin-bottom: 18px;
-  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 11px;
+  padding: 12px 13px;
   color: #a52323;
   background: #fff3f3;
   border: 1px solid #f1b9b9;
   border-radius: 8px;
   font-size: 0.875rem;
   line-height: 1.45;
+  box-shadow: 0 8px 20px rgba(129, 29, 29, 0.1);
+  animation: addressEditorAlertEnter 160ms ease-out;
+}
+
+.address-editor-error-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  color: #ffffff;
+  background: #b42323;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.address-editor-error-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.address-editor-error-copy strong,
+.address-editor-error-copy span {
+  display: block;
+}
+
+.address-editor-error-copy strong {
+  color: #8f1d1d;
+  font-size: 0.82rem;
+}
+
+.address-editor-error-dismiss {
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  margin: -2px -3px 0 0;
+  padding: 0;
+  color: #9e2a2a;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.address-editor-error-dismiss:hover {
+  background: rgba(180, 35, 35, 0.09);
 }
 
 .address-editor-grid {
@@ -225,6 +290,7 @@
 
 .address-editor-button:focus-visible,
 .address-editor-close:focus-visible,
+.address-editor-error-dismiss:focus-visible,
 .address-editor-default input:focus-visible {
   outline: 3px solid rgba(40, 120, 189, 0.25);
   outline-offset: 2px;
@@ -248,6 +314,17 @@
   }
 }
 
+@keyframes addressEditorAlertEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 640px) {
   .address-editor-overlay {
     align-items: end;
@@ -261,6 +338,7 @@
   }
 
   .address-editor-header,
+  .address-editor-alert-region,
   .address-editor-body,
   .address-editor-footer {
     padding-left: 18px;
@@ -295,6 +373,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .address-editor-dialog {
+    animation: none;
+  }
+
+  .address-editor-error {
     animation: none;
   }
 }

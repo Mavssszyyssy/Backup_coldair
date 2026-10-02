@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import { BRANCHES } from '../../../domain/branches/branches';
+import PersistentErrorNotice from '../../common/PersistentErrorNotice';
 import './RestockOrderModal.css';
 
 const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
@@ -135,6 +136,11 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
+      <PersistentErrorNotice
+        title="Please check the restock order"
+        message={error}
+        onDismiss={() => setError('')}
+      />
       <div className="modal-content restock-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Create Restock Order</h2>
@@ -143,8 +149,6 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
 
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
-            {error && <p className="error-message">{error}</p>}
-
             {/* Supplier Info */}
             <div className="form-section">
               <h4>Supplier Information</h4>

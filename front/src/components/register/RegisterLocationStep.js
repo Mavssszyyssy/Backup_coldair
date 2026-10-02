@@ -19,6 +19,7 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
+import PersistentErrorNotice from "../common/PersistentErrorNotice";
 
 const INITIAL_ADDRESS = {
   region: "",
@@ -66,6 +67,7 @@ export default function RegisterLocationStep({
   );
 
   const updateField = (field, value) => {
+    if (error) setError("");
     const updated = {
       ...currentLoc,
       address: { ...currentLoc.address, [field]: value },
@@ -203,7 +205,11 @@ export default function RegisterLocationStep({
             border: `1.5px solid ${BQ_COLORS.border}`,
           }}
         >
-          {error && <p role="alert" style={{ color: BQ_COLORS.danger }}>{error}</p>}
+          <PersistentErrorNotice
+            title="Please check the address"
+            message={error}
+            onDismiss={() => setError("")}
+          />
           <BoutiqueGrid columns="1fr 1fr" gap={20} className="bq-address-grid">
             <BoutiqueInput
               label="Region"

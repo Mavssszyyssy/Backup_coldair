@@ -23,6 +23,21 @@ test('keeps address validation in the redesigned dialog', () => {
   render(<AddAddressModal onClose={vi.fn()} onSave={onSave} />);
   fireEvent.click(screen.getByRole('button', { name: 'Save Address' }));
 
-  expect(screen.getByRole('alert')).toHaveTextContent('Recipient name is required.');
+  const alert = screen.getByRole('alert');
+  expect(alert).toHaveTextContent('Please check this address');
+  expect(alert).toHaveTextContent('Recipient name is required.');
+  expect(alert.closest('.address-editor-body')).toBeNull();
   expect(onSave).not.toHaveBeenCalled();
+});
+
+test('allows a visible address error to be dismissed or cleared by editing', () => {
+  render(<AddAddressModal onClose={vi.fn()} onSave={vi.fn()} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save Address' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss address error' }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save Address' }));
+  fireEvent.change(screen.getByPlaceholderText('Home, Office, Condo'), { target: { value: 'Home' } });
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

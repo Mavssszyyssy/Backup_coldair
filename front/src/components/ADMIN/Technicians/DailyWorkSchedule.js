@@ -5,6 +5,7 @@ import { BRANCHES } from "../../../domain/branches/branches";
 import { TECHNICIAN_TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
+import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import "./dailySchedule.css";
 
 const today = () => formatBusinessDateKey();
@@ -198,7 +199,11 @@ const DailyWorkSchedule = () => {
       {isSuperAdmin ? <label><span>Branch</span><select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : <div className="daily-schedule__branch"><span>Branch</span><strong>{homeBranch || "Assigned branch"}</strong></div>}
     </div>
     <p className="daily-schedule__date">{formatDate(date)} · {tasks.length} job{tasks.length === 1 ? "" : "s"}</p>
-    {error ? <p className="tech-message tech-message--error">{error}</p> : null}
+    <PersistentErrorNotice
+      title="Please check the schedule"
+      message={error}
+      onDismiss={() => setError("")}
+    />
     {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
     {loading ? <p className="daily-schedule__empty">Loading the schedule…</p> : null}
     {!loading && groups.length === 0 ? <div className="daily-schedule__empty"><strong>No jobs scheduled for this date.</strong><span>Choose another day, or use the Technicians tab to create a work order.</span></div> : null}

@@ -7,6 +7,7 @@ import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
+import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import DailyWorkSchedule from "./DailyWorkSchedule";
 import "../adminShared.css";
 import "./styles.css";
@@ -657,7 +658,11 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
           </form> : null}
         </section> : null}
 
-        {error ? <p className="tech-message tech-message--error">{error}</p> : null}
+        <PersistentErrorNotice
+          title="Please check this action"
+          message={error}
+          onDismiss={() => setError("")}
+        />
         {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
         {temporaryPassword ? <p className="tech-message tech-message--temporary">Login ID: <strong>{createdLoginIdentifier}</strong><br />Default password: <strong>{temporaryPassword}</strong><br />Give both to the technician securely; the password is not shown again.</p> : null}
 

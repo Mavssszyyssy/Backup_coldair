@@ -22,10 +22,13 @@ it('validates and saves a manually entered location', () => {
   const onFieldChange = vi.fn();
   render(<RegisterLocationStep formData={{ locations: [] }} onFieldChange={onFieldChange} onNext={vi.fn()} onBack={vi.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: /^save location$/i }));
-  expect(screen.getByRole('alert')).toHaveTextContent('City and Street Address are required.');
+  const alert = screen.getByRole('alert');
+  expect(alert).toHaveClass('persistent-error-notice');
+  expect(alert).toHaveTextContent('City and Street Address are required.');
   const selects = screen.getAllByRole('combobox');
   ['NCR', 'Metro Manila', 'Pasay City', 'Barangay 142'].forEach((value, i) =>
     fireEvent.change(selects[i], { target: { value } }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   fireEvent.change(screen.getByPlaceholderText('House No., Building, Street'), { target: { value: '539 Test Street' } });
   fireEvent.click(screen.getByRole('button', { name: /^save location$/i }));
   expect(onFieldChange).toHaveBeenCalledWith('locations', [expect.objectContaining({
