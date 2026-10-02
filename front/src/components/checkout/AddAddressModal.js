@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   getRegions,
   getProvincesByRegion,
@@ -9,6 +9,7 @@ import {
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from '../../domain/location/postalCodeValidation';
+import './AddAddressModal.css';
 
 const PHONE_MAX_DIGITS = 11;
 
@@ -44,6 +45,7 @@ function AddAddressModal({
   isSaving = false,
   backendErrors = {}
 }) {
+  const titleId = useId();
   const [address, setAddress] = useState({
     type: initialAddress?.type || 'home',
     label: initialAddress?.label || '',
@@ -104,19 +106,36 @@ function AddAddressModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="address-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{title}</h3>
-          <button className="close-modal" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
+    <div className="address-editor-overlay" onClick={onClose}>
+      <section
+        className="address-editor-dialog"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <header className="address-editor-header">
+          <div>
+            <span className="address-editor-eyebrow">Delivery address</span>
+            <h2 id={titleId}>{title}</h2>
+          </div>
+          <button
+            type="button"
+            className="address-editor-close"
+            onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close address form"
+          >
+            ×
+          </button>
+        </header>
+        <div className="address-editor-body">
           {serverMessage && (
-            <div className="form-error-message" style={{ marginBottom: '16px', color: '#d32f2f', fontSize: '14px' }}>
+            <div className="address-editor-error" role="alert">
               {serverMessage}
             </div>
           )}
-          <div className="form-group">
+          <div className="address-editor-field">
             <label>Label</label>
             <input
               type="text"
@@ -125,7 +144,7 @@ function AddAddressModal({
               onChange={(e) => setAddress({ ...address, label: e.target.value })}
             />
           </div>
-          <div className="form-group">
+          <div className="address-editor-field">
             <label>Address Type</label>
             <select value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
               <option value="home">Home</option>
@@ -133,7 +152,7 @@ function AddAddressModal({
               <option value="other">Other</option>
             </select>
           </div>
-          <div className="form-group">
+          <div className="address-editor-field">
             <label>Recipient Name *</label>
             <input
               type="text"
@@ -142,8 +161,8 @@ function AddAddressModal({
               onChange={(e) => setAddressField('name', e.target.value)}
             />
           </div>
-          <div className="form-row">
-            <div className="form-group">
+          <div className="address-editor-grid">
+            <div className="address-editor-field">
               <label>Region *</label>
               <select value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
                 <option value="">Select Region</option>
@@ -152,7 +171,7 @@ function AddAddressModal({
                 ))}
               </select>
             </div>
-            <div className="form-group">
+            <div className="address-editor-field">
               <label>Province *</label>
               <select value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
                 <option value="">Select Province</option>
@@ -163,8 +182,8 @@ function AddAddressModal({
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
+          <div className="address-editor-grid">
+            <div className="address-editor-field">
               <label>City / Municipality *</label>
               <select value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
                 <option value="">Select City / Municipality</option>
@@ -173,7 +192,7 @@ function AddAddressModal({
                 ))}
               </select>
             </div>
-            <div className="form-group">
+            <div className="address-editor-field">
               <label>Barangay *</label>
               <select value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
                 <option value="">Select Barangay</option>
@@ -184,7 +203,7 @@ function AddAddressModal({
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="address-editor-field">
             <label>Street Address *</label>
             <input
               type="text"
@@ -193,8 +212,8 @@ function AddAddressModal({
               onChange={(e) => setAddressField('street', e.target.value)}
             />
           </div>
-          <div className="form-row">
-            <div className="form-group">
+          <div className="address-editor-grid">
+            <div className="address-editor-field">
               <label>ZIP Code *</label>
               <input
                 type="text"
@@ -206,7 +225,7 @@ function AddAddressModal({
                 onChange={(e) => setAddressField('postalCode', e.target.value.replace(/\D/g, '').slice(0, 4))}
               />
             </div>
-            <div className="form-group">
+            <div className="address-editor-field">
               <label>Phone Number *</label>
               <input
                 type="tel"
@@ -218,8 +237,8 @@ function AddAddressModal({
               />
             </div>
           </div>
-          <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 0 }}>
+          <div className="address-editor-default">
+            <label>
               <input
                 type="checkbox"
                 checked={address.isDefault}
@@ -229,11 +248,25 @@ function AddAddressModal({
             </label>
           </div>
         </div>
-        <div className="modal-footer">
-          <button className="cancel-btn" onClick={onClose} disabled={isSaving}>Cancel</button>
-          <button className="confirm-btn" onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Saving...' : saveLabel}</button>
-        </div>
-      </div>
+        <footer className="address-editor-footer">
+          <button
+            type="button"
+            className="address-editor-button address-editor-button--secondary"
+            onClick={onClose}
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="address-editor-button address-editor-button--primary"
+            onClick={handleSubmit}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : saveLabel}
+          </button>
+        </footer>
+      </section>
     </div>
   );
 }

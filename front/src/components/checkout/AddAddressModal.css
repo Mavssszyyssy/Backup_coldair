@@ -1,0 +1,300 @@
+.address-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.address-editor-dialog {
+  width: min(640px, 100%);
+  max-height: min(88vh, 780px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  color: #172033;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  animation: addressEditorEnter 180ms ease-out;
+}
+
+.address-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5eaf1;
+  background: #ffffff;
+}
+
+.address-editor-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: #5d6b82;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.address-editor-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.address-editor-close {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  color: #526078;
+  background: #f5f7fa;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 1.55rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.address-editor-close:hover:not(:disabled) {
+  color: #172033;
+  background: #eaf0f7;
+  border-color: #c8d3e1;
+}
+
+.address-editor-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 24px 24px;
+  scrollbar-gutter: stable;
+}
+
+.address-editor-error {
+  margin-bottom: 18px;
+  padding: 11px 13px;
+  color: #a52323;
+  background: #fff3f3;
+  border: 1px solid #f1b9b9;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.address-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.address-editor-field {
+  min-width: 0;
+  margin-bottom: 18px;
+}
+
+.address-editor-field label {
+  display: block;
+  margin-bottom: 7px;
+  color: #172033;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.address-editor-field input,
+.address-editor-field select,
+.address-editor-field textarea {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cfd8e5;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.address-editor-field input::placeholder,
+.address-editor-field textarea::placeholder {
+  color: #8a96a8;
+}
+
+.address-editor-field input:focus,
+.address-editor-field select:focus,
+.address-editor-field textarea:focus {
+  border-color: #2878bd;
+  box-shadow: 0 0 0 3px rgba(40, 120, 189, 0.14);
+}
+
+.address-editor-field input:disabled,
+.address-editor-field select:disabled,
+.address-editor-field textarea:disabled {
+  color: #8995a7;
+  background: #f4f6f9;
+  cursor: not-allowed;
+}
+
+.address-editor-default {
+  margin-top: 2px;
+}
+
+.address-editor-default label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #273349;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.address-editor-default input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 18px;
+  accent-color: #155e9c;
+}
+
+.address-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid #e5eaf1;
+}
+
+.address-editor-button {
+  min-width: 124px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.address-editor-button--secondary {
+  color: #273349;
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.address-editor-button--secondary:hover:not(:disabled) {
+  background: #f5f7fa;
+  border-color: #aebdce;
+}
+
+.address-editor-button--primary {
+  color: #ffffff;
+  background: #155e9c;
+  border-color: #155e9c;
+  box-shadow: 0 4px 12px rgba(21, 94, 156, 0.18);
+}
+
+.address-editor-button--primary:hover:not(:disabled) {
+  background: #104f85;
+  border-color: #104f85;
+}
+
+.address-editor-button:focus-visible,
+.address-editor-close:focus-visible,
+.address-editor-default input:focus-visible {
+  outline: 3px solid rgba(40, 120, 189, 0.25);
+  outline-offset: 2px;
+}
+
+.address-editor-button:disabled,
+.address-editor-close:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@keyframes addressEditorEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .address-editor-overlay {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .address-editor-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    border-radius: 14px;
+  }
+
+  .address-editor-header,
+  .address-editor-body,
+  .address-editor-footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .address-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .address-editor-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .address-editor-button {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .address-editor-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .address-editor-button--primary {
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .address-editor-dialog {
+    animation: none;
+  }
+}
