@@ -1006,7 +1006,7 @@ export async function fetchNotifications(token) {
   if (ok) return { success: true, notifications: data.notifications || [] };
   return {
     success: false,
-    error: getErrorMessage(data, "Failed to fetch notifications."),
+    error: getErrorMessage(data, "Failed to fetch alerts."),
     notifications: [],
   };
 }
@@ -1020,7 +1020,7 @@ export async function markNotificationRead(token, notificationId) {
   if (ok) return { success: true, notification: data.notification };
   return {
     success: false,
-    error: getErrorMessage(data, "Failed to mark notification read."),
+    error: getErrorMessage(data, "Failed to mark alert read."),
   };
 }
 
@@ -1029,7 +1029,7 @@ export async function markAllNotificationsRead(token) {
   if (ok) return { success: true, modifiedCount: data.modifiedCount || 0 };
   return {
     success: false,
-    error: getErrorMessage(data, "Failed to mark notifications read."),
+    error: getErrorMessage(data, "Failed to mark alerts read."),
   };
 }
 
@@ -1059,7 +1059,7 @@ export async function registerPushToken(token, expoPushToken) {
   };
   return {
     success: false,
-    error: getErrorMessage(data, "Unable to enable push notifications."),
+    error: getErrorMessage(data, "Unable to enable push alerts."),
   };
 }
 

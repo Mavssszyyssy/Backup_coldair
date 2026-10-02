@@ -56,7 +56,7 @@ const FILIPINO = {
   "Account Settings": "Mga Setting ng Account",
   "Preferences": "Mga Kagustuhan",
   "Privacy": "Pagkapribado",
-  "Notifications": "Mga Notification",
+  "Alerts": "Mga Alerto",
   "Security": "Seguridad",
   "Theme": "Tema",
   "Language": "Wika",

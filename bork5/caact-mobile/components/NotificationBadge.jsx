@@ -26,5 +26,5 @@ export default function NotificationBadge() {
   }, [id, role]));
   const count = id && snapshot.owner === id ? snapshot.count : 0;
   if (!count) return null;
-  return <View accessibilityLabel={`${count} unread notifications`} pointerEvents="none" style={{ position: "absolute", right: -9, top: -7, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: "#DC2626", alignItems: "center", justifyContent: "center", zIndex: 2 }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{count > 99 ? "99+" : count}</Text></View>;
+  return <View accessibilityLabel={`${count} unread alerts`} pointerEvents="none" style={{ position: "absolute", right: -9, top: -7, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: "#DC2626", alignItems: "center", justifyContent: "center", zIndex: 2 }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{count > 99 ? "99+" : count}</Text></View>;
 }

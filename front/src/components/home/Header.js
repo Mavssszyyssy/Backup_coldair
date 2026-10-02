@@ -41,7 +41,7 @@ function Header({ onMenuToggle, onNotificationClick, onCartClick, notificationCo
         <div className="header-center-spacer" aria-hidden="true" />
 
         <div className="header-right" aria-label="Header actions">
-          <button type="button" className="icon-btn header-action-btn" onClick={onNotificationClick} aria-label="Notifications">
+          <button type="button" className="icon-btn header-action-btn" onClick={onNotificationClick} aria-label="Alerts">
             <img src={icons.visit} alt="" className="inline-icon inline-icon--md" />
             {notificationBadge && (
               <span className="badge" aria-live="polite">{notificationBadge}</span>

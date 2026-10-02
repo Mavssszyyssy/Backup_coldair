@@ -28,7 +28,7 @@ export default function CustomerHeaderActions() {
         onPress={() => router.push("/customer/notifications")}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Notifications"
+        accessibilityLabel="Alerts"
         style={actionStyle}
       >
         <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />

@@ -37,7 +37,7 @@ const SETTINGS_TABS = [
   { id: "preferences", title: "Preferences", icon: Globe },
   { id: "addresses", title: "My Addresses", icon: MapPin },
   { id: "privacy", title: "Privacy", icon: ShieldCheck },
-  { id: "notifications", title: "Notifications", icon: Bell },
+  { id: "notifications", title: "Alerts", icon: Bell },
   { id: "security", title: "Security", icon: Fingerprint },
 ];
 
@@ -125,7 +125,7 @@ function Settings() {
   const handleUpdateNotifications = (payload) =>
     callWithToast(
       () => updateNotifications(payload),
-      "Notification settings saved.",
+      "Alert settings saved.",
     );
 
   const handleBulkUpdateSettings = (payload) =>

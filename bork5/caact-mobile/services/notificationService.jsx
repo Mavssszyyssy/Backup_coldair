@@ -47,7 +47,7 @@ function normalizeNotification(item = {}) {
     id: item.id || item._id || `notification_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
     userId: item.userId || item.user || null,
     role: item.role || "",
-    title: item.title || "Notification",
+    title: item.title || "Alert",
     message: item.message || "",
     type: item.type || "info",
     category: item.category || "",
@@ -99,7 +99,7 @@ export async function getNotificationsForUser(user = {}, { strict = false } = {}
     } catch (error) {
       if (strict) throw error;
     }
-    if (strict) throw new Error("Unable to refresh notifications.");
+    if (strict) throw new Error("Unable to refresh alerts.");
   }
 
   const items = await getAllNotifications();
@@ -121,9 +121,9 @@ export async function markNotificationRead(notificationId) {
   if (token && notificationId) {
     try {
       const result = await markRemoteNotificationRead(token, notificationId);
-      if (!result.success) throw new Error(result.error || "Unable to mark notification read.");
+      if (!result.success) throw new Error(result.error || "Unable to mark alert read.");
     } catch (error) {
-      throw new Error(error.message || "Unable to mark notification read. Please retry.");
+      throw new Error(error.message || "Unable to mark alert read. Please retry.");
     }
   }
 
@@ -142,9 +142,9 @@ export async function markNotificationsReadForUser(user = {}) {
   if (token) {
     try {
       const result = await markAllNotificationsRead(token);
-      if (!result.success) throw new Error(result.error || "Unable to mark notifications read.");
+      if (!result.success) throw new Error(result.error || "Unable to mark alerts read.");
     } catch (error) {
-      throw new Error(error.message || "Unable to mark notifications read. Please retry.");
+      throw new Error(error.message || "Unable to mark alerts read. Please retry.");
     }
   }
 

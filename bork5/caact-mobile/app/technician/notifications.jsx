@@ -17,7 +17,7 @@ function NotificationRow({ item, onPress }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}. Open notification`}
+      accessibilityLabel={`${item.title}. Open alert`}
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, marginBottom: SPACING.sm })}
     >
@@ -61,11 +61,11 @@ export default function TechnicianNotificationsScreen() {
     await markNotificationRead(item.id);
     setNotifications((items) => items.map((entry) => entry.id === item.id ? { ...entry, read: true, unread: false } : entry));
     if (item.route) router.push(item.route);
-    } catch (error) { Alert.alert("Notification not updated", error?.message || "Please try again."); }
+    } catch (error) { Alert.alert("Alert not updated", error?.message || "Please try again."); }
   };
 
   return (
-    <TechnicianScreen title="Notifications" subtitle="Assignments and service updates" icon="notifications-sharp">
+    <TechnicianScreen title="Alerts" subtitle="Assignments and service updates" icon="notifications-sharp">
       {loading ? <ActivityIndicator color={COLORS.tech} /> : notifications.length === 0 ? (
         <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md }}><Text style={{ color: COLORS.textSecondary }}>You are all caught up.</Text></View>
       ) : notifications.map((item) => <NotificationRow key={item.id} item={item} onPress={() => openNotification(item)} />)}

@@ -61,7 +61,7 @@ test("creates the Android channel before requesting notification permission", as
 
   expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
     ANDROID_NOTIFICATION_CHANNEL_ID,
-    expect.objectContaining({ name: "AEROPULSE notifications", importance: 4 }),
+    expect.objectContaining({ name: "AEROPULSE alerts", importance: 4 }),
   );
   expect(
     Notifications.setNotificationChannelAsync.mock.invocationCallOrder[0],

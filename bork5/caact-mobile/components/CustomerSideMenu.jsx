@@ -12,7 +12,7 @@ import { confirmAction } from "../utils/confirmAction";
 
 const MENU_ITEMS = [
   { label: "Home", href: "/customer/home", icon: "home-sharp" },
-  { label: "Notifications", href: "/customer/notifications", icon: "notifications-sharp" },
+  { label: "Alerts", href: "/customer/notifications", icon: "notifications-sharp" },
   { label: "Orders", href: "/customer/orders", icon: "receipt-sharp" },
   { label: "Services", href: "/customer/services", icon: "calendar-sharp" },
   { label: "Help & FAQ", href: "/customer/faq", icon: "help-buoy-sharp" },
@@ -140,7 +140,7 @@ export default function CustomerSideMenu({ navigation }) {
                   size={21}
                   color={active ? COLORS.surface : COLORS.primary}
                 />
-                {item.label === "Notifications" ? <NotificationBadge /> : null}
+                {item.href === "/customer/notifications" ? <NotificationBadge /> : null}
               </View>
               <Text
                 style={{

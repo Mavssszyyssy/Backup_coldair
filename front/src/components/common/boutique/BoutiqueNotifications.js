@@ -24,7 +24,7 @@ export default function BoutiqueNotifications({
       onClose={onClose}
       side="right"
       width="440px"
-      title="Notifications"
+      title="Alerts"
     >
       <BoutiqueBox
         className="bq-notif-wrapper"
@@ -58,7 +58,7 @@ export default function BoutiqueNotifications({
                     textTransform: "uppercase",
                   }}
                 >
-                  YOU HAVE {unreadCount} NEW NOTIFICATION{unreadCount > 1 ? "S" : ""}
+                  YOU HAVE {unreadCount} NEW ALERT{unreadCount > 1 ? "S" : ""}
                 </BoutiqueText>
               ) : (
                 <BoutiqueText
@@ -68,7 +68,7 @@ export default function BoutiqueNotifications({
                   color={BQ_COLORS.inkMuted}
                   style={{ letterSpacing: "0.1em", textTransform: "uppercase" }}
                 >
-                  NO NEW NOTIFICATIONS
+                  NO NEW ALERTS
                 </BoutiqueText>
               )}
             </BoutiqueBox>
@@ -104,7 +104,7 @@ export default function BoutiqueNotifications({
               <button
                 key={notif.id}
                 className={`bq-notif-item ${notif.unread ? "unread" : ""}`}
-                aria-label={`${notif.unread ? "Unread" : "Read"} notification: ${notif.title}`}
+                aria-label={`${notif.unread ? "Unread" : "Read"} alert: ${notif.title}`}
                 onClick={() => onNotificationClick?.(notif)}
               >
                 <div className="bq-notif-dot" />

@@ -63,7 +63,7 @@ const SuperAdminInventory = () => {
       {activeTab === 'checker' ? (
         <>
           <div className="super-card" style={{ marginBottom: 18, borderColor: outOfStock.length ? '#fecaca' : undefined }}>
-            <h3>{outOfStock.length ? `${outOfStock.length} out-of-stock notification${outOfStock.length === 1 ? '' : 's'}` : 'Inventory healthy'}</h3>
+            <h3>{outOfStock.length ? `${outOfStock.length} out-of-stock alert${outOfStock.length === 1 ? '' : 's'}` : 'Inventory healthy'}</h3>
             <p className="super-muted">{outOfStock.length ? `These items have exactly 0 stock in ${branch}. Add stock below to make them available again.` : `No items are at zero stock in ${branch}.`}</p>
             {outOfStock.length ? <div className="super-list">{outOfStock.map((product) => <div className="super-list-item" key={product.id}><strong>{product.name}</strong><br /><span>{product.sku} · {branch} · 0 stock</span></div>)}</div> : null}
           </div>

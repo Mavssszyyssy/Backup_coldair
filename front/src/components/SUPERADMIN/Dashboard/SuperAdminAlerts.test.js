@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 import SuperAdminAlerts from './SuperAdminAlerts';
 import { apiRequest } from '../../../config/api';
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
-vi.mock('../Common/SuperAdminLayout', () => ({ default: ({ children }) => <div>{children}</div> }));
+vi.mock('../Common/SuperAdminLayout', () => ({ default: ({ title, children }) => <div><h1>{title}</h1>{children}</div> }));
 it('shows transaction, request and maintenance alerts even when order lookup fails', async () => {
   apiRequest.mockImplementation(async (path) => {
     if (path === '/orders') throw new Error('Order lookup unavailable');
@@ -15,6 +15,7 @@ it('shows transaction, request and maintenance alerts even when order lookup fai
     ] };
   });
   render(<MemoryRouter><SuperAdminAlerts /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'Operations Reports' })).toBeInTheDocument();
   await screen.findByText('Payment received');
   expect(screen.getByText('New service request')).toBeInTheDocument();
   expect(screen.getByText('Maintenance completed')).toBeInTheDocument();

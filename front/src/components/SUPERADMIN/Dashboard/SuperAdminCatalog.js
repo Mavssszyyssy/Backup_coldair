@@ -64,7 +64,7 @@ export default function SuperAdminCatalog({ onCreated }) {
       return;
     }
     if (!Number.isFinite(price) || price < 0 || !Number.isFinite(threshold) || threshold < 0) {
-      setError("Enter a valid non-negative price and low-stock notification level.");
+      setError("Enter a valid non-negative price and low-stock alert level.");
       return;
     }
 
@@ -118,7 +118,7 @@ export default function SuperAdminCatalog({ onCreated }) {
             <label>AC type<select value={form.category} onChange={(event) => updateField("category", event.target.value)}><option value="split">Split type</option><option value="window">Window type</option><option value="floor">Floor mounted</option></select></label>
             <label>AC specification<input value={form.specs} onChange={(event) => updateField("specs", event.target.value)} placeholder="Example: 1.5 HP" required /></label>
             <label>Price (PHP)<input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField("price", event.target.value)} required /></label>
-            <label>Low-stock notification level<input type="number" min="0" step="1" value={form.threshold} onChange={(event) => updateField("threshold", event.target.value)} placeholder="Optional" /></label>
+            <label>Low-stock alert level<input type="number" min="0" step="1" value={form.threshold} onChange={(event) => updateField("threshold", event.target.value)} placeholder="Optional" /></label>
             <label>Image URL <span>(optional)</span><input type="url" value={form.image} onChange={(event) => updateField("image", event.target.value)} placeholder="https://…" /></label>
             <label className="super-catalog-wide">Customer description <span>(optional)</span><textarea rows="3" value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder="Describe this AC unit in customer-friendly language" /></label>
             <label className="super-catalog-wide">Features <span>(optional, separated by commas)</span><input value={form.features} onChange={(event) => updateField("features", event.target.value)} placeholder="Inverter, quiet operation, energy saving" /></label>

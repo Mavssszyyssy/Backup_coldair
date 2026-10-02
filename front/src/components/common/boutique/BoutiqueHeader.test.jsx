@@ -15,7 +15,7 @@ test("customer header preserves the functional cart action", () => {
   expect(screen.getByText("2")).toBeInTheDocument();
 });
 
-test("customer header names its menu and notification controls", () => {
+test("customer header names its menu and alert controls", () => {
   render(
     <BoutiqueHeader
       title="Home"
@@ -26,5 +26,5 @@ test("customer header names its menu and notification controls", () => {
     />,
   );
   expect(screen.getByRole("button", { name: "Open menu" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Open notifications" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Open alerts" })).toBeInTheDocument();
 });

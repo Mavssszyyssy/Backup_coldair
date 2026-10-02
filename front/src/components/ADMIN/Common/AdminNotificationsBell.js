@@ -163,7 +163,7 @@ function AdminNotificationsBell() {
         type="button"
         className="admin-notifications-btn"
         onClick={() => setOpen((prev) => !prev)}
-        aria-label="Open notifications"
+        aria-label="Open alerts"
       >
         <Bell size={20} weight="bold" />
         {unreadCount > 0 ? (
@@ -176,10 +176,10 @@ function AdminNotificationsBell() {
           className="admin-notifications-panel"
           ref={panelRef}
           role="dialog"
-          aria-label="Notifications"
+          aria-label="Alerts"
         >
           <div className="admin-notifications-head">
-            <div className="admin-notifications-title">Notifications</div>
+            <div className="admin-notifications-title">Alerts</div>
             <div className="admin-notifications-actions">
               <button
                 type="button"
@@ -199,13 +199,13 @@ function AdminNotificationsBell() {
               </button>
             </div>
           </div>
-          <div className="admin-notifications-tabs" role="tablist" aria-label="Notification folders">
+          <div className="admin-notifications-tabs" role="tablist" aria-label="Alert folders">
             {[["active", "Current"], ["archived", "Archive"]].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? "active" : ""} onClick={() => setView(key)}>{label}</button>)}
           </div>
 
           {items.length === 0 ? (
             <div className="admin-notifications-empty">
-              No notifications right now.
+              No alerts right now.
             </div>
           ) : (
             <div className="admin-notifications-list">

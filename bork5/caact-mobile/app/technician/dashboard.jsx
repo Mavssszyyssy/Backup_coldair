@@ -129,7 +129,7 @@ export default function TechDashboard() {
           </View>
         </Card>
       )) : <Card><Text style={{ color: COLORS.textSecondary }}>No work orders have been assigned to you yet.</Text></Card>}
-      <DashboardLink title="Notifications" subtitle="Review new assignments and service updates." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
+      <DashboardLink title="Alerts" subtitle="Review new assignments and service updates." icon="notifications-sharp" accent={COLORS.warning} onPress={() => router.push("/technician/notifications")} />
     </TechnicianScreen>
   );
 }

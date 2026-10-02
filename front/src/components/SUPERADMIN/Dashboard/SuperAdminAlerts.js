@@ -64,7 +64,7 @@ const SuperAdminAlerts = () => {
       setAlerts(Array.isArray(notificationResult.notifications) ? notificationResult.notifications : []);
       setOrders(Array.isArray(orderResult.orders) ? orderResult.orders : []);
     } catch (requestError) {
-      setError(requestError.message || 'Unable to load operational alerts.');
+      setError(requestError.message || 'Unable to load operations reports.');
     } finally {
       setLoading(false);
       loadInFlightRef.current = false;
@@ -112,9 +112,9 @@ const SuperAdminAlerts = () => {
   const visibleAlerts = useMemo(() => detailedAlerts.filter((alert) => (branchFilter === 'all' || alert.branch === branchFilter) && (severityFilter === 'all' || alert.severity === severityFilter) && (categoryFilter === 'all' || alert.alertCategory === categoryFilter)), [branchFilter, detailedAlerts, severityFilter, categoryFilter]);
 
   return (
-    <SuperAdminLayout title="Operations Alerts" subtitle="Transactions, service requests, warranty claims, and maintenance across all branches">
+    <SuperAdminLayout title="Operations Reports" subtitle="Transactions, service requests, warranty claims, and maintenance across all branches">
       <section className="alert-summary-grid">
-        <div><strong>{detailedAlerts.length}</strong><span>Operational alerts</span></div>
+        <div><strong>{detailedAlerts.length}</strong><span>Operations reports</span></div>
         <div><strong>{detailedAlerts.filter((alert) => alert.severity === 'high').length}</strong><span>High priority</span></div>
         <div><strong>{new Set(detailedAlerts.map((alert) => alert.branch).filter((branch) => branch !== 'Not recorded')).size}</strong><span>Branches involved</span></div>
         <button type="button" onClick={() => load({ showLoading: true })} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
@@ -127,9 +127,9 @@ const SuperAdminAlerts = () => {
           <label>Priority<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}><option value="all">All priorities</option><option value="high">High priority</option><option value="medium">Medium priority</option><option value="low">Low priority</option></select></label>
           <button type="button" className="alert-reset" onClick={() => { setBranchFilter('all'); setSeverityFilter('all'); setCategoryFilter('all'); }} disabled={branchFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all'}>Clear filters</button>
         </div>
-        {loading ? <div className="alert-empty">Loading operational alerts…</div> : null}
+        {loading ? <div className="alert-empty">Loading operations reports…</div> : null}
         {error ? <div className="alert-error">{error}</div> : null}
-        {!loading && !error && visibleAlerts.length === 0 ? <div className="alert-empty">No operational alerts match these filters.</div> : null}
+        {!loading && !error && visibleAlerts.length === 0 ? <div className="alert-empty">No operations reports match these filters.</div> : null}
         <div className="alert-list">
           {visibleAlerts.map((alert) => {
             const order = alert.order;

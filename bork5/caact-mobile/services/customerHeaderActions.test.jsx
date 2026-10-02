@@ -8,13 +8,13 @@ jest.mock("../components/NotificationBadge", () => () => null);
 
 beforeEach(() => jest.clearAllMocks());
 
-test("Chat Support is beside Notifications and each opens its existing route", async () => {
+test("Chat Support is beside Alerts and each opens its existing route", async () => {
   const view = await render(<CustomerHeaderActions />);
   const chat = view.getByRole("button", { name: "Chat Support" });
-  const notifications = view.getByRole("button", { name: "Notifications" });
-  expect(chat.parent).toBe(notifications.parent);
+  const alerts = view.getByRole("button", { name: "Alerts" });
+  expect(chat.parent).toBe(alerts.parent);
   await fireEvent.press(chat);
   expect(mockPush).toHaveBeenCalledWith("/customer/chat");
-  await fireEvent.press(notifications);
+  await fireEvent.press(alerts);
   expect(mockPush).toHaveBeenCalledWith("/customer/notifications");
 });

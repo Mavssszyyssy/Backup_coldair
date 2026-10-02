@@ -122,7 +122,7 @@ export default function BoutiqueHeader({
               type="button"
               className="bq-action-btn bq-notif-btn"
               onClick={onNotificationClick}
-              aria-label="Open notifications"
+              aria-label="Open alerts"
             >
               <Bell size={22} weight="bold" />
               {notificationCount > 0 && (

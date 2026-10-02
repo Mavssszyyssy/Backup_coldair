@@ -171,15 +171,15 @@ function AdminSettings() {
           </div>
 
           <div className="admin-card-section admin-settings-notifications">
-            <h3>Notifications</h3>
+            <h3>Alerts</h3>
             {[
-              ['inApp', 'In-app notifications'],
-              ['push', 'Push notifications'],
-              ['email', 'Email notifications'],
+              ['inApp', 'In-app alerts'],
+              ['push', 'Push alerts'],
+              ['email', 'Email alerts'],
               ['accountUpdates', 'Account and security updates'],
               ['orderUpdates', 'Order updates'],
               ['serviceUpdates', 'Service updates'],
-              ['systemAlerts', 'System notifications'],
+              ['systemAlerts', 'System alerts'],
             ].map(([key, label]) => (
               <label key={key} className="admin-settings-toggle">
                 <span>{label}</span>

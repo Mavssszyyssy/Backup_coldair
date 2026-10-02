@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import BoutiqueNotifications from "./BoutiqueNotifications";
 
 describe("BoutiqueNotifications", () => {
-  it("renders unread notification content visibly before it is marked read", () => {
+  it("renders unread alert content visibly before it is marked read", () => {
     render(<BoutiqueNotifications
       isOpen
       onClose={vi.fn()}
@@ -20,8 +20,8 @@ describe("BoutiqueNotifications", () => {
       }]}
     />);
 
-    expect(screen.getByRole("button", { name: /Unread notification: AC maintenance is due soon/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Unread alert: AC maintenance is due soon/i })).toBeVisible();
     expect(screen.getByText("Open My AC Units to plan your visit.")).toBeVisible();
-    expect(screen.getByText("YOU HAVE 1 NEW NOTIFICATION")).toHaveStyle({ backgroundColor: "#ef4444", color: "white" });
+    expect(screen.getByText("YOU HAVE 1 NEW ALERT")).toHaveStyle({ backgroundColor: "#ef4444", color: "white" });
   });
 });

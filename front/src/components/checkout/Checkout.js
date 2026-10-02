@@ -619,7 +619,7 @@ function Checkout() {
               <div className="checkout-address-notice" role="status">
                 <CheckCircle size={20} weight="fill" aria-hidden="true" />
                 <span>{addressNotice}</span>
-                <button type="button" onClick={() => setAddressNotice("")} aria-label="Dismiss address notification">×</button>
+                <button type="button" onClick={() => setAddressNotice("")} aria-label="Dismiss address alert">×</button>
               </div>
             ) : null}
             <DeliveryAddress

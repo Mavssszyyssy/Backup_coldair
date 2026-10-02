@@ -26,7 +26,7 @@ function NotificationRow({ item, onPress }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}. Open notification`}
+      accessibilityLabel={`${item.title}. Open alert`}
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.82 : 1 })}
     >
@@ -79,12 +79,12 @@ export default function CustomerNotificationsScreen() {
     await markNotificationRead(item.id);
     setNotifications((items) => items.map((entry) => entry.id === item.id ? { ...entry, read: true, unread: false } : entry));
     if (item.route) router.push(item.route);
-    } catch (error) { Alert.alert("Notification not updated", error?.message || "Please try again."); }
+    } catch (error) { Alert.alert("Alert not updated", error?.message || "Please try again."); }
   };
 
   return (
     <>
-      <BoutiqueHeader title="Notifications" subtitle="Tap an update to continue" onBack={() => router.back()} />
+      <BoutiqueHeader title="Alerts" subtitle="Tap an update to continue" onBack={() => router.back()} />
       <BoutiqueScreen>
         {loading ? <ActivityIndicator color={BQ_COLORS.brand} /> : notifications.length === 0 ? (
           <BoutiqueCard><BoutiqueText color={BQ_COLORS.inkMuted}>You are all caught up.</BoutiqueText></BoutiqueCard>

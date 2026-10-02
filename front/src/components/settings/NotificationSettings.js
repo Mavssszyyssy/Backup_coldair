@@ -47,18 +47,18 @@ function NotificationSettings({
     const all = [
       {
         key: "email",
-        label: "Email Notifications",
+        label: "Email Alerts",
         description: "Receive updates through email.",
       },
       {
         key: "inApp",
-        label: "In-app Notifications",
-        description: "Show account notifications inside the app.",
+        label: "In-app Alerts",
+        description: "Show account alerts inside the app.",
       },
       {
         key: "push",
-        label: "Device Notifications",
-        description: "Receive device notifications even when the app is not open.",
+        label: "Device Alerts",
+        description: "Receive device alerts even when the app is not open.",
       },
       {
         key: "accountUpdates",
@@ -78,8 +78,8 @@ function NotificationSettings({
       },
       {
         key: "systemAlerts",
-        label: "System Notifications",
-        description: "Operational and branch-level notifications.",
+        label: "System Alerts",
+        description: "Operational and branch-level alerts.",
         visible: showSystemAlerts,
       },
     ];
@@ -118,7 +118,7 @@ function NotificationSettings({
           >
             <Bell size={20} weight="bold" />
           </BoutiqueBox>
-          <BoutiqueText variant="h2">Notification Settings</BoutiqueText>
+          <BoutiqueText variant="h2">Alert Settings</BoutiqueText>
         </BoutiqueBox>
 
         <BoutiqueStack gap={12}>
@@ -155,7 +155,7 @@ function NotificationSettings({
             loading={saving}
             style={{ width: "auto", minWidth: "250px" }}
           >
-            Save Notification Settings
+            Save Alert Settings
           </BoutiqueButton>
         </BoutiqueBox>
       </BoutiqueStack>

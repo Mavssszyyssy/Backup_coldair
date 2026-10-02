@@ -56,11 +56,11 @@ it('shows company, assigned-branch address and authority as non-editable informa
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 });
 
-it('saves only database-backed preferences and notification settings', async () => {
+it('saves only database-backed preferences and alert settings', async () => {
   render(<AdminSettings />);
 
   fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
-  fireEvent.click(screen.getByLabelText('Push notifications'));
+  fireEvent.click(screen.getByLabelText('Push alerts'));
   fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
 
   await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));

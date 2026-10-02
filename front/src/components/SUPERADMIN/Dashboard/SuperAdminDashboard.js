@@ -122,7 +122,7 @@ function SuperAdminDashboard() {
             <div className="commerce-action-grid">
               <button type="button" onClick={() => navigate("/superadmin/branches")}>Branch management</button>
               <button type="button" onClick={() => navigate("/superadmin/inventory")}>Inventory risk</button>
-              <button type="button" onClick={() => navigate("/superadmin/alerts")}>Operations alerts</button>
+              <button type="button" onClick={() => navigate("/superadmin/alerts")}>Operations reports</button>
             </div>
             <button className="super-profile-button" type="button" onClick={openEdit}>Edit executive profile</button>
           </section>

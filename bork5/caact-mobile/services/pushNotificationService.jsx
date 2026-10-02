@@ -42,7 +42,7 @@ export async function enablePushNotifications(token) {
       await Notifications.setNotificationChannelAsync(
         ANDROID_NOTIFICATION_CHANNEL_ID,
         {
-          name: "AEROPULSE notifications",
+          name: "AEROPULSE alerts",
           importance: Notifications.AndroidImportance.HIGH,
           sound: "default",
           vibrationPattern: [0, 250, 250, 250],
@@ -58,12 +58,12 @@ export async function enablePushNotifications(token) {
       status = requestedPermissions.status;
     }
     if (status !== "granted") {
-      return { success: false, error: "Notification permission was not granted." };
+      return { success: false, error: "Permission to receive alerts was not granted." };
     }
 
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
-    if (!projectId) return { success: false, error: "Push notification project is not configured." };
+    if (!projectId) return { success: false, error: "Push alerts are not configured." };
 
     const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     return await registerPushToken(token, expoPushToken);
