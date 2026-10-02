@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
+import { resolveReorderCartProduct } from "../../domain/cart/catalogCartProduct";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -64,6 +65,7 @@ function MyOrders() {
   const [cancellingOrderId, setCancellingOrderId] = useState("");
   const [cancelOrder, setCancelOrder] = useState(null);
   const [payingOrderId, setPayingOrderId] = useState("");
+  const [reorderingOrderId, setReorderingOrderId] = useState("");
 
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
@@ -117,21 +119,26 @@ function MyOrders() {
     setShowTrackModal(true);
   };
 
-  const handleReorder = (order) => {
+  const handleReorder = async (order) => {
+    if (reorderingOrderId) return;
+    setReorderingOrderId(String(order.id));
+
+    let catalogProducts = [];
+    try {
+      const response = await apiRequest("/products/public", { silentConnection: true });
+      catalogProducts = response.products || [];
+    } catch (error) {
+      console.warn("Could not refresh catalogue details for reorder", error);
+    }
+
     order.items.forEach((item) => {
       addToCart(
-        {
-          id: item.productId || item.id,
-          name: item.name,
-          icon: item.icon,
-          price: item.price,
-          specs: item.specs,
-          category: item.category || "product",
-        },
+        resolveReorderCartProduct(item, catalogProducts),
         item.quantity,
       );
     });
     alert("Items added to cart!");
+    setReorderingOrderId("");
     navigate("/shop");
   };
 
@@ -311,6 +318,7 @@ function MyOrders() {
                 onCancelRequest={setCancelOrder}
                 cancelling={cancellingOrderId === String(order.id)}
                 paying={payingOrderId === String(order.id)}
+                reordering={reorderingOrderId === String(order.id)}
                 onPayAgain={handlePayAgain}
               />
             ))

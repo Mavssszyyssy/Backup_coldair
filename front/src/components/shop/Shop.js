@@ -3,6 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
+import {
+  getCatalogProductImageUrl,
+  mapCatalogProductToCartProduct,
+} from "../../domain/cart/catalogCartProduct";
 import { deduplicateProducts } from "../../utils/productDeduplication";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
@@ -392,38 +396,6 @@ export const fallbackProducts = [
   },
 ];
 
-const getModelImageUrl = (product = {}) => {
-  const sku = String(product.sku || product.model || "").toUpperCase();
-  if (sku.startsWith("AHAC-MINV")) {
-    return "/catalog/ac/american-home-ahac-minv.jpg";
-  }
-  if (sku.includes("CWI")) {
-    return "/catalog/ac/tcl-uje-window.jpg";
-  }
-  if (sku.startsWith("TAC-")) {
-    return "/catalog/ac/tcl-breezein-kei2.jpg";
-  }
-  if (sku.startsWith("MSCE-")) {
-    return "/catalog/ac/midea-celest-msce.jpg";
-  }
-  if (/^AR(?:09|12|18|24)TY/.test(sku)) {
-    return "/catalog/ac/samsung-ar9500t.png";
-  }
-  if (sku.startsWith("HSN30")) {
-    return "/catalog/ac/lg-hsn30ipc.jpg";
-  }
-  if (sku.startsWith("HSN")) {
-    return "/catalog/ac/lg-hsn-ipx.jpg";
-  }
-  if (sku.startsWith("53CNV")) {
-    return "/catalog/ac/carrier-opus-53cnv.jpg";
-  }
-  if (sku.startsWith("53CLV")) {
-    return "/catalog/ac/carrier-slim-53clv.jpg";
-  }
-  return "";
-};
-
 // Helper to parse HP numeric value for sorting
 const parseHP = (hpStr) => {
   if (!hpStr) return 0;
@@ -530,41 +502,7 @@ const Shop = () => {
   const fetchProducts = useCallback(async () => {
     try {
       const response = await apiRequest("/products/public", { silentConnection: true });
-      const mapped = (response.products || []).map((product) => {
-          // Strip redundant "AC" from name and description
-          const cleanName = (product.name || "")
-            .replace(/\s*AC\s*$/gi, "")
-            .trim();
-          const rawDesc =
-            Array.isArray(product.features) && product.features.length > 0
-              ? product.features.join(", ")
-              : product.description || "";
-          const cleanDesc =
-            rawDesc.replace(/\s*AC\s*$/gi, "").trim() ||
-            "Energy efficient unit.";
-
-          return {
-            id: product.id,
-            name: cleanName,
-            brand: product.brand || "Generic",
-            category: product.category || "split",
-            price: Number(product.price) || 0,
-            specs: product.specs || "",
-            horsepower: Number(product.horsepower || parseHP(String(product.specs || ""))) || 0,
-            description: cleanDesc,
-            inStock: Number(product.stock) > 0,
-            stock: Number(product.stock) || 0,
-            stockLabel: `${Number(product.totalStock ?? product.stock) || 0} Units available`,
-            model: product.sku || "",
-            warranty: product.warranty || "1 year parts, 5 years compressor",
-            imageUrl:
-              getModelImageUrl(product) ||
-              product.image ||
-              "/catalog/ac/generic-ac.jpg",
-            discount: product.discount || 0,
-            featured: product.featured || false,
-          };
-      });
+      const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
       setBackendProducts(mapped);
       setCatalogError("");
     } catch (error) {
@@ -607,7 +545,7 @@ const Shop = () => {
   const products = useMemo(() => {
     return deduplicateProducts(backendProducts, { verbose: false }).map((product) => ({
       ...product,
-      imageUrl: product.imageUrl || getModelImageUrl(product),
+      imageUrl: product.imageUrl || getCatalogProductImageUrl(product),
     }));
   }, [backendProducts]);
 

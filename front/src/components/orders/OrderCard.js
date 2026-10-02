@@ -28,7 +28,7 @@ const cancellationStatusLabel = (order = {}) => {
   return "";
 };
 
-function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPayAgain, cancelling = false, paying = false }) {
+function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPayAgain, cancelling = false, paying = false, reordering = false }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case "to_pay":
@@ -348,9 +348,10 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                 variant="ghost"
                 size="sm"
                 onClick={() => onReorder(order)}
+                disabled={reordering}
                 style={{ width: "auto" }}
               >
-                Reorder
+                {reordering ? "Adding..." : "Reorder"}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueBox>
