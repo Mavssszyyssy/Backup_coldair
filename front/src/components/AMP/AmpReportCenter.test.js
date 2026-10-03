@@ -66,13 +66,17 @@ it("retains evidence warnings in the report/PDF and clears the previous unit's e
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
   await screen.findByRole("button", { name: "Export PDF" });
-  fireEvent.click(screen.getByText("Recorded service history"));
-  expect(screen.getByText("Inspection")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByRole("status")).toHaveTextContent("incomplete service record");
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(screen.getByText("Inspection")).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   const exported = exportHtmlToPdfViaPrint.mock.calls[0][0];
   expect(exported.html).toContain("Actual technician findings are missing.");
   expect(exported.html).toContain("June 2, 2027");
+  expect(exported.html).toContain('class="report-section report-section--accent"');
+  expect(exported.html).toContain('class="history-list"');
+  expect(exported.metadata).toMatchObject({ pageOrientation: "portrait", documentStyle: "narrative" });
   expect(exported.metadata.representative).toBe("");
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-2" } });
   expect(screen.queryByRole("button", { name: "Export PDF" })).not.toBeInTheDocument();
@@ -94,13 +98,18 @@ it("shows AI explanation, keeps the system basis available, and opens history fi
   fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
-  expect(await screen.findByText("Suggested service plan")).toBeVisible();
+  expect(await screen.findByText("Repair")).toBeVisible();
+  expect(screen.getByText("Service records")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+  fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+  expect(screen.getByText("Suggested service plan")).toBeVisible();
   expect(screen.getByText("Your recorded visits help explain this plan.")).toBeVisible();
-  expect(screen.getByText("Repair")).toBeVisible();
   expect(screen.getByText("Why this date was suggested")).toBeVisible();
   expect(screen.getAllByText("6-month starting schedule.")[0]).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByText("What was used to choose this date"));
-  expect(screen.getAllByText("6-month starting schedule.").length).toBeGreaterThan(1);
+  expect(screen.getByText("6-month starting schedule.")).toBeVisible();
 });
 
 it("shows saved plans with technician outcomes as review evidence, never as an AI accuracy score", async () => {
@@ -115,6 +124,8 @@ it("shows saved plans with technician outcomes as review evidence, never as an A
   render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
   fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
   fireEvent.click(screen.getByRole("button", { name: "View report" }));
+  await screen.findByText("Suggested service plan");
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
   expect(await screen.findByText("Compare past plans with completed service")).toBeVisible();
   expect(screen.getByText("Service outcome ready to review")).toBeVisible();
   expect(screen.getByText(/3 days after the suggested date/)).toBeVisible();
@@ -146,4 +157,27 @@ it("separates a condition-based AI follow-up from the routine cleaning plan", as
   expect(screen.getByText(/urgent concern recorded during the completed visit/)).toBeVisible();
   expect(screen.getByText("Separate routine cleaning plan")).toBeVisible();
   expect(screen.getByText("March 13, 2027")).toBeVisible();
+});
+
+it("paginates long service history inside the report records page", async () => {
+  apiRequest.mockResolvedValue({ provider: "rules", report: {
+    reportId: "HISTORY-PAGES", reportType: "maintenance_summary", branch: "Cavite",
+    maintenance: { recommendationBasis: "Based on completed service records." },
+    serviceHistory: Array.from({ length: 6 }, (_, index) => ({
+      date: `2026-09-${String(index + 1).padStart(2, "0")}`,
+      type: "inspection",
+      findings: `Finding ${index + 1}`,
+      actionTaken: `Action ${index + 1}`,
+    })),
+  } });
+  render(<AmpReportCenter units={[{ id: "unit-1", model: "AC" }]} />);
+  fireEvent.change(screen.getByLabelText("Report type"), { target: { value: "maintenance_summary" } });
+  fireEvent.change(screen.getByLabelText("Installed AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "View report" }));
+  expect(await screen.findByText("Records 1-5 of 6")).toBeVisible();
+  expect(screen.getByText(/Finding 1/)).toBeVisible();
+  expect(screen.queryByText(/Finding 6/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Next records" }));
+  expect(screen.getByText("Records 6-6 of 6")).toBeVisible();
+  expect(screen.getByText(/Finding 6/)).toBeVisible();
 });

@@ -4,7 +4,6 @@ import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
-import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
@@ -34,9 +33,7 @@ function Contact() {
         direction="column"
         flex={1}
         width="100%"
-        padding="40px 24px"
         className="contact-page"
-        style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <BoutiqueStack gap={40}>
           {/* HERO SECTION */}
@@ -120,10 +117,10 @@ function Contact() {
           </BoutiqueCard>
 
           {/* CONTACT GRID */}
-          <BoutiqueGrid columns="1.5fr 1fr" gap={32}>
+          <div className="contact-content-grid">
             <ContactForm />
             <ContactInfo />
-          </BoutiqueGrid>
+          </div>
 
           <ServicesSupport />
         </BoutiqueStack>
@@ -131,16 +128,6 @@ function Contact() {
 
       <BoutiqueFooter />
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @media (max-width: 900px) {
-          .cta-flex { flex-direction: column !important; align-items: flex-start !important; gap: 32px !important; }
-          .bq-grid-primitive { grid-template-columns: 1fr !important; }
-        }
-      `,
-        }}
-      />
     </BoutiqueScreen>
   );
 }

@@ -69,9 +69,12 @@ function ContactForm() {
   };
 
   return (
-    <div className="form-section" id="contact-message-form">
-      <h2>Send Us a Message</h2>
-      <p>Your message will be sent to the correct branch team and can also be reviewed by SuperAdmin.</p>
+    <section className="form-section" id="contact-message-form" aria-labelledby="contact-form-heading">
+      <div className="contact-section-heading">
+        <span className="contact-section-eyebrow">Customer support</span>
+        <h2 id="contact-form-heading">Send Us a Message</h2>
+        <p>Your message will be routed to the correct branch team and can also be reviewed by SuperAdmin.</p>
+      </div>
       <div className="contact-mobile-service-note">
         Maintenance, repair, cleaning, installation-support, and warranty requests must be submitted in the AeroPulse Mobile App. Messages sent here do not create service appointments.
         <a href="/services"> View mobile service instructions.</a>
@@ -117,7 +120,7 @@ function ContactForm() {
         </div>
         <button type="submit" className="submit-btn" disabled={submitting}>{submitting ? "Sending…" : "Send to Support"}</button>
       </form>
-    </div>
+    </section>
   );
 }
 

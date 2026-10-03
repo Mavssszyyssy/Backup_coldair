@@ -32,11 +32,14 @@ describe("mobile-only customer service workflow", () => {
     expect(mobileServices).toContain("Submit Warranty Claim");
   });
 
-  it("constrains customer-support icons so they cannot cover the page", () => {
+  it("keeps customer-support contact details static and icons constrained", () => {
     const css = readWeb("contact", "Contact.css");
+    const contactInfo = readWeb("contact", "ContactInfo.js");
 
-    expect(css).toContain(".contact-page .contact-icon .contact-info-icon");
-    expect(css).toContain("width: 24px !important");
+    expect(contactInfo).toContain('<dl className="contact-detail-list">');
+    expect(contactInfo).not.toContain("<button");
+    expect(css).toContain(".contact-page .contact-detail-icon svg");
+    expect(css).toContain("width: 25px");
     expect(css).toContain(".contact-page .support-team-icon");
   });
 });

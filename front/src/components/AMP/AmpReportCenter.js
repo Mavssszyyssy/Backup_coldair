@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle,
   DownloadSimple,
@@ -15,6 +15,8 @@ const REPORT_TYPES = [
   { value: "maintenance_summary", label: "Service history", help: "Review the installation, cleaning and repair work recorded for this AC." },
   { value: "inventory_reliability_analysis", label: "Model and parts history", help: "Review recorded services and parts used for the selected brand at its branch. These are historical counts, not failure predictions.", internalOnly: true },
 ];
+const REPORT_PAGE_LABELS = ["Service plan", "Planning details", "Service records"];
+const HISTORY_PAGE_SIZE = 5;
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 const capacityAssessmentLabel = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -69,14 +71,17 @@ function AmpReportCenter({
   const [provider, setProvider] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => { setReport(null); setProvider(""); setError(""); }, [unitId, reportType]);
+  const [reportPage, setReportPage] = useState(0);
+  const [historyPage, setHistoryPage] = useState(0);
+  const reportResultRef = useRef(null);
+  useEffect(() => { setReport(null); setProvider(""); setError(""); setReportPage(0); setHistoryPage(0); }, [unitId, reportType]);
   useEffect(() => {
     if (unitId && !reportUnits.some((unit) => String(unit.unitId || unit.id) === unitId)) setUnitId("");
   }, [reportUnits, unitId]);
 
   const generate = async () => {
     if (!unitId) return setError("Select an installed AC unit first.");
-    setLoading(true); setError(""); setReport(null);
+    setLoading(true); setError(""); setReport(null); setHistoryPage(0);
     try {
       const result = await apiRequest("/ai/amp-report", { method: "POST", body: JSON.stringify({ reportType, unitId }) });
       const next = result.report;
@@ -95,6 +100,7 @@ function AmpReportCenter({
           evidence: item.evidence ? { ...item.evidence, reason: customerCopy(item.evidence.reason) } : item.evidence,
         })),
       } : next || null); setProvider(result.provider || "");
+      setReportPage(["maintenance_summary", "inventory_reliability_analysis"].includes(reportType) ? 2 : 0);
       if (reportType === "predictive_maintenance" && result.report) onPlanGenerated?.(result.report);
     } catch (requestError) { setReport(null); setError(requestError.message || "We could not prepare your report. Please try again."); }
     finally { setLoading(false); }
@@ -109,7 +115,7 @@ function AmpReportCenter({
     const routine = m.routineMaintenance || {};
     const assessment = m.predictiveAssessment || {};
     const contextItems = maintenanceContextItems(m.maintenanceSignals);
-    const historyRows = (report.serviceHistory || []).map((item) => `<tr><td>${escapeHtml(dateLabel(item.date))}</td><td>${escapeHtml(item.serviceLabel || serviceLabel(item.type))}</td><td>${escapeHtml(item.findings || "Not recorded")}${item.evidence?.eligible === false ? `<p>${escapeHtml(item.evidence.reason)}</p>` : ""}${item.aiInterpretation?.customerSummary ? `<p><strong>Follow-up recommendation:</strong> ${escapeHtml(item.aiInterpretation.customerSummary)}</p>` : ""}</td><td>${escapeHtml(item.actionTaken || "Not recorded")}</td><td>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</td></tr>`).join("") || '<tr><td colspan="5">No service history has been recorded.</td></tr>';
+    const historyEntries = (report.serviceHistory || []).map((item) => `<article class="history-entry"><div class="history-entry-header"><strong>${escapeHtml(dateLabel(item.date))}</strong><span>${escapeHtml(item.serviceLabel || serviceLabel(item.type))}</span></div><div class="report-grid"><div class="report-field"><span>Technician findings</span><strong>${escapeHtml(item.findings || "Not recorded")}</strong></div><div class="report-field"><span>Work completed</span><strong>${escapeHtml(item.actionTaken || "Not recorded")}</strong></div><div class="report-field"><span>Parts used</span><strong>${escapeHtml((item.partsUsed || []).join(", ") || "None recorded")}</strong></div></div>${item.evidence?.eligible === false ? `<p class="report-callout">${escapeHtml(item.evidence.reason)}</p>` : ""}${item.aiInterpretation?.customerSummary ? `<p class="report-callout"><strong>Follow-up recommendation:</strong> ${escapeHtml(item.aiInterpretation.customerSummary)}</p>` : ""}</article>`).join("") || '<p>No service history has been recorded.</p>';
     const modelRows = (report.aggregateReliability?.modelsByRecordedService || []).map((item) => `<tr><td>${escapeHtml(item.model)}</td><td>${escapeHtml(item.count)}</td></tr>`).join("");
     const html = `
       <div class="summary">
@@ -117,45 +123,71 @@ function AmpReportCenter({
         <div class="summary-item"><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong><span>Recommended service</span></div>
         <div class="summary-item"><strong>${escapeHtml(capacityAssessmentLabel(m.capacityAssessment?.status))}</strong><span>Room size vs HP</span></div>
       </div>
-      <h2>Suggested Service Plan</h2><p><strong>Priority:</strong> ${escapeHtml(assessment.priority || "Routine")}</p>
-      <h2>Summary</h2><p>${escapeHtml(assessment.assessmentSummary || m.aiAssessment || visit.aiAssessment || "More completed service details are needed before a recommendation can be shown.")}</p>
-      <h2>Current Status</h2><p>${escapeHtml(assessment.currentStatus || "Not recorded")}</p>
-      <h2>Technician Notes</h2><p>${escapeHtml(assessment.technicianRecorded || "Not recorded")}</p>
-      ${assessment.previousVisitHistory?.length ? `<h2>Earlier Service History</h2><ul>${assessment.previousVisitHistory.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-      <h2>Issues to Follow Up</h2>${assessment.currentIssues?.length ? `<ul>${assessment.currentIssues.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No unresolved issue is recorded in the latest visit.</p>"}
-      ${assessment.completedWork?.length ? `<h2>Work Already Completed</h2><ul>${assessment.completedWork.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-      <h2>Part to Check</h2><p>${escapeHtml(assessment.recommendedPart || "No part is suggested from the available records.")}</p>
-      ${assessment.factorsConsidered?.length ? `<h2>What Was Reviewed</h2><ul>${assessment.factorsConsidered.map(item => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
-      ${assessment.observationsConsidered?.length ? `<h2>Technician and Customer Notes</h2><ul>${assessment.observationsConsidered.map(item => `<li><strong>${escapeHtml(item.source)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
-      <h2>Why This Date Was Suggested</h2><p>${escapeHtml(m.whyThisDate || visit.whyThisDate || m.recommendationBasis || "A completed cleaning or installation date is needed.")}</p>
-      ${assessment.recommendedActions?.length ? `<h2>Next Steps</h2><ul>${assessment.recommendedActions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-      ${condition ? `<h2>Separate routine cleaning plan</h2><p><strong>${escapeHtml(dateLabel(routine.bestServicedBy))} · ${escapeHtml(serviceLabel(routine.recommendedService))}</strong></p><p>${escapeHtml(routine.recommendationBasis || "")}</p><p>The earlier condition follow-up is shown first and does not erase the routine cleaning plan.</p>` : ""}
-      <h2>Maintenance recommendation</h2><p>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</p>
-      <h2>Information Used to Choose This Date</h2><p><strong>Based on:</strong> ${escapeHtml(basisLabel(pattern.source || m.historicalBasis?.level))} · <strong>Completed cleaning intervals:</strong> ${escapeHtml(pattern.intervalCount ?? m.historicalBasis?.sampleSize ?? 0)} · <strong>Typical time between cleanings:</strong> ${escapeHtml(pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month starting schedule")}</p>
-      ${pattern.intervalsDays?.length ? `<p><strong>Time between completed cleanings:</strong> ${escapeHtml(pattern.intervalsDays.join(", "))} days</p>` : ""}
-      ${contextItems.length ? `<ul>${contextItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-      ${m.dataQuality?.message ? `<p><strong>Record review needed:</strong> ${escapeHtml(m.dataQuality.message)}</p>` : ""}
-      <table><tbody>
-        <tr><th>AC Unit ID</th><td>${escapeHtml(report.unit?.unitId || "Not recorded")}</td><th>Serial Number</th><td>${escapeHtml(report.unit?.serialNumber || "Not recorded")}</td></tr>
-        <tr><th>Brand</th><td>${escapeHtml(report.unit?.brand || "Not recorded")}</td><th>Model</th><td>${escapeHtml(report.unit?.model || "Not recorded")}</td></tr>
-        <tr><th>Last Service</th><td>${escapeHtml(dateLabel(m.lastServiceDate))}</td><th>Last Cleaning</th><td>${escapeHtml(dateLabel(m.lastCleaningDate))}</td></tr>
-        <tr><th>Room Size</th><td>${escapeHtml(report.unit?.roomSizeSqm ? `${report.unit.roomSizeSqm} m²` : "Not recorded")}</td><th>AC Horsepower</th><td>${escapeHtml(report.unit?.capacityHp ? `${report.unit.capacityHp} HP` : "Not recorded")}</td></tr>
-        <tr><th>Warranty Status</th><td>${escapeHtml(String(report.unit?.warrantyStatus || "Not recorded").replaceAll("_", " "))}</td><th>Responsible Branch</th><td>${escapeHtml(report.branch || "Not recorded")}</td></tr>
-      </tbody></table>
-      <p><strong>Why this date was suggested:</strong> ${escapeHtml(m.recommendationBasis || "")}</p>
-      <p><strong>Room and AC size:</strong> ${escapeHtml(m.capacityAssessment?.summary || "Room size has not been supplied.")}</p>
-      <h2>Recorded service history</h2><table><thead><tr><th>Date</th><th>Service</th><th>Findings</th><th>Action</th><th>Parts</th></tr></thead><tbody>${historyRows}</tbody></table>
-      ${report.aggregateReliability ? `<h2>Model and Parts History</h2><p>${escapeHtml(report.aggregateReliability.note)}</p><p><strong>Group:</strong> ${escapeHtml(report.aggregateReliability.scope)} · <strong>Units:</strong> ${escapeHtml(report.aggregateReliability.unitCount)} · <strong>Completed services:</strong> ${escapeHtml(report.aggregateReliability.recordedServiceCount)}</p><table><thead><tr><th>Model</th><th>Completed services</th></tr></thead><tbody>${modelRows}</tbody></table><h3>Parts used in past services</h3><ul>${(report.aggregateReliability.partsByRecordedUse || []).map((item) => `<li>${escapeHtml(item.component)} — ${escapeHtml(item.count)} recorded use(s)</li>`).join("") || "<li>No recorded major-part use.</li>"}</ul>` : ""}
+      <section class="report-section report-section--accent">
+        <div class="report-section-heading">Recommended service plan</div>
+        <div class="report-grid">
+          <div class="report-field"><span>Priority</span><strong>${escapeHtml(assessment.priority || "Routine")}</strong></div>
+          <div class="report-field"><span>Current status</span><strong>${escapeHtml(assessment.currentStatus || "Not recorded")}</strong></div>
+        </div>
+        <h3>Summary</h3><p>${escapeHtml(assessment.assessmentSummary || m.aiAssessment || visit.aiAssessment || "More completed service details are needed before a recommendation can be shown.")}</p>
+        <h3>Why this date was suggested</h3><p>${escapeHtml(m.whyThisDate || visit.whyThisDate || m.recommendationBasis || "A completed cleaning or installation date is needed.")}</p>
+      </section>
+      <section class="report-section">
+        <div class="report-section-heading">Technician record and follow-up</div>
+        <div class="report-subsection"><h2>Technician notes</h2><p>${escapeHtml(assessment.technicianRecorded || "Not recorded")}</p></div>
+        ${assessment.previousVisitHistory?.length ? `<div class="report-subsection"><h3>Earlier service history</h3><ul>${assessment.previousVisitHistory.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+        <div class="report-subsection"><h3>Issues to follow up</h3>${assessment.currentIssues?.length ? `<ul>${assessment.currentIssues.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>No unresolved issue is recorded in the latest visit.</p>"}</div>
+        ${assessment.completedWork?.length ? `<div class="report-subsection"><h3>Work already completed</h3><ul>${assessment.completedWork.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+        <div class="report-subsection"><h3>Part to check</h3><p>${escapeHtml(assessment.recommendedPart || "No part is suggested from the available records.")}</p></div>
+        ${assessment.recommendedActions?.length ? `<div class="report-subsection"><h3>Next steps</h3><ol>${assessment.recommendedActions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol></div>` : ""}
+      </section>
+      ${condition ? `<section class="report-section report-section--muted"><div class="report-section-heading">Separate routine cleaning plan</div><div class="report-grid"><div class="report-field"><span>Routine cleaning date</span><strong>${escapeHtml(dateLabel(routine.bestServicedBy))}</strong></div><div class="report-field"><span>Routine service</span><strong>${escapeHtml(serviceLabel(routine.recommendedService))}</strong></div></div><p>${escapeHtml(routine.recommendationBasis || "")}</p><p class="meta">The earlier condition follow-up is shown first and does not erase the routine cleaning plan.</p></section>` : ""}
+      <section class="report-section">
+        <div class="report-section-heading">Information reviewed</div>
+        ${assessment.factorsConsidered?.length ? `<div class="report-subsection"><h2>Service and unit factors</h2><ul>${assessment.factorsConsidered.map(item => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul></div>` : ""}
+        ${assessment.observationsConsidered?.length ? `<div class="report-subsection"><h3>Technician and customer notes</h3><ul>${assessment.observationsConsidered.map(item => `<li><strong>${escapeHtml(item.source)}:</strong> ${escapeHtml(item.value)}</li>`).join("")}</ul></div>` : ""}
+        <div class="report-grid">
+          <div class="report-field"><span>Based on</span><strong>${escapeHtml(basisLabel(pattern.source || m.historicalBasis?.level))}</strong></div>
+          <div class="report-field"><span>Completed cleaning intervals</span><strong>${escapeHtml(pattern.intervalCount ?? m.historicalBasis?.sampleSize ?? 0)}</strong></div>
+          <div class="report-field"><span>Typical time between cleanings</span><strong>${escapeHtml(pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month starting schedule")}</strong></div>
+          <div class="report-field"><span>Maintenance recommendation</span><strong>${escapeHtml(m.recommendedServiceLabel || serviceLabel(m.recommendedService))}</strong></div>
+        </div>
+        ${pattern.intervalsDays?.length ? `<p><strong>Time between completed cleanings:</strong> ${escapeHtml(pattern.intervalsDays.join(", "))} days</p>` : ""}
+        ${contextItems.length ? `<ul>${contextItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+        ${m.dataQuality?.message ? `<p class="report-callout"><strong>Record review needed:</strong> ${escapeHtml(m.dataQuality.message)}</p>` : ""}
+      </section>
+      <section class="report-section report-section--muted">
+        <div class="report-section-heading">AC and coverage details</div>
+        <div class="report-grid">
+          <div class="report-field"><span>AC unit ID</span><strong>${escapeHtml(report.unit?.unitId || "Not recorded")}</strong></div>
+          <div class="report-field"><span>Serial number</span><strong>${escapeHtml(report.unit?.serialNumber || "Not recorded")}</strong></div>
+          <div class="report-field"><span>Brand</span><strong>${escapeHtml(report.unit?.brand || "Not recorded")}</strong></div>
+          <div class="report-field"><span>Model</span><strong>${escapeHtml(report.unit?.model || "Not recorded")}</strong></div>
+          <div class="report-field"><span>Last service</span><strong>${escapeHtml(dateLabel(m.lastServiceDate))}</strong></div>
+          <div class="report-field"><span>Last cleaning</span><strong>${escapeHtml(dateLabel(m.lastCleaningDate))}</strong></div>
+          <div class="report-field"><span>Room size</span><strong>${escapeHtml(report.unit?.roomSizeSqm ? `${report.unit.roomSizeSqm} sq m` : "Not recorded")}</strong></div>
+          <div class="report-field"><span>AC horsepower</span><strong>${escapeHtml(report.unit?.capacityHp ? `${report.unit.capacityHp} HP` : "Not recorded")}</strong></div>
+          <div class="report-field"><span>Warranty status</span><strong>${escapeHtml(String(report.unit?.warrantyStatus || "Not recorded").replaceAll("_", " "))}</strong></div>
+          <div class="report-field"><span>Responsible branch</span><strong>${escapeHtml(report.branch || "Not recorded")}</strong></div>
+        </div>
+        <p class="report-callout"><strong>Room and AC size:</strong> ${escapeHtml(m.capacityAssessment?.summary || "Room size has not been supplied.")}</p>
+      </section>
+      <section class="report-section report-section--splittable">
+        <div class="report-section-heading">Recorded service history</div>
+        <div class="history-list">${historyEntries}</div>
+      </section>
+      ${report.aggregateReliability ? `<section class="report-section report-section--splittable"><div class="report-section-heading">Model and parts history</div><p>${escapeHtml(report.aggregateReliability.note)}</p><div class="report-grid"><div class="report-field"><span>Group</span><strong>${escapeHtml(report.aggregateReliability.scope)}</strong></div><div class="report-field"><span>Units</span><strong>${escapeHtml(report.aggregateReliability.unitCount)}</strong></div><div class="report-field"><span>Completed services</span><strong>${escapeHtml(report.aggregateReliability.recordedServiceCount)}</strong></div></div><table><thead><tr><th>Model</th><th>Completed services</th></tr></thead><tbody>${modelRows}</tbody></table><h3>Parts used in past services</h3><ul>${(report.aggregateReliability.partsByRecordedUse || []).map((item) => `<li>${escapeHtml(item.component)}: ${escapeHtml(item.count)} recorded use(s)</li>`).join("") || "<li>No recorded major-part use.</li>"}</ul></section>` : ""}
       <p class="meta">${escapeHtml(report.note || "")}</p>`;
     exportHtmlToPdfViaPrint({
       title: report.reportLabel || report.title,
-      subtitle: `AC: ${report.unit?.brand || ""} ${report.unit?.model || ""} · Serial: ${report.unit?.serialNumber || "Not recorded"}`,
+      subtitle: `AC: ${report.unit?.brand || ""} ${report.unit?.model || ""} - Serial: ${report.unit?.serialNumber || "Not recorded"}`,
       fileName: report.fileNameBase, html,
       metadata: {
         reportId: report.reportId, branch: report.branch, reportType: report.reportLabel,
         generatedAt: new Date(report.generatedAt).toLocaleString(), systemName: report.systemName, watermark: report.watermark,
+        pageOrientation: "portrait", documentStyle: "narrative",
         representative: user?.role === "customer" ? "" : user?.name || "AEROPULSE Staff",
-        representativeRole: user?.role === "superadmin" ? "Super Admin · Authorized Representative" : "Branch Representative",
+        representativeRole: user?.role === "superadmin" ? "Super Admin - Authorized Representative" : "Branch Representative",
       },
     });
   };
@@ -170,6 +202,15 @@ function AmpReportCenter({
   const contextItems = maintenanceContextItems(signals);
   const historyFirst = ["maintenance_summary", "summary_report"].includes(report?.reportType || reportType);
   const reportLabel = REPORT_TYPES.find(item => item.value === (report?.reportType || reportType))?.label;
+  const serviceHistory = report?.serviceHistory || [];
+  const historyPageCount = Math.max(1, Math.ceil(serviceHistory.length / HISTORY_PAGE_SIZE));
+  const visibleServiceHistory = serviceHistory.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE);
+  const selectReportPage = (nextPage) => {
+    setReportPage(nextPage);
+    const scrollToReport = () => reportResultRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(scrollToReport);
+    else scrollToReport();
+  };
   return (
     <section className="amp-card amp-report-center">
       <div className="amp-card-header amp-report-center-header">
@@ -187,68 +228,48 @@ function AmpReportCenter({
       <p className="amp-report-help"><CheckCircle size={17} weight="fill" aria-hidden="true" />{types.find(item => item.value === reportType)?.help}</p>
       {unitsLoading ? <p className="amp-muted" role="status">Loading installed AC units…</p> : !reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
-      {report ? <div className="amp-report-result">
+      {report ? <div className="amp-report-result" ref={reportResultRef}>
         <div className="amp-report-result-heading"><div><h3>{reportLabel || report.title}</h3></div><div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{conditionFollowUp ? "Based on the technician report" : maintenance.predictionSource === "openai" ? "Suggested from service history" : provider === "openai" && maintenance.interpretation ? "Based on service records" : "Based on service records"}</span></div></div>
-        {report.explanationWarning ? <p role="status" className="amp-muted">{report.explanationWarning}</p> : null}
-        {!historyFirst ? <div className="amp-metrics"><article><span>{conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"}</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
-        <details className="amp-details" open>
-          <summary>Suggested service plan</summary>
-          <div className="amp-metrics"><article><span>Priority</span><strong>{assessment.priority || "Routine"}</strong></article><article><span>Recommended schedule</span><strong>{dateLabel(assessment.recommendedServicingDate || maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(assessment.recommendedService || maintenance.recommendedService)}</strong></article></div>
-          <h4>Summary</h4>
-          <p>{assessment.assessmentSummary || maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before a recommendation can be shown."}</p>
-          <dl className="amp-factor-list">
-            <div><dt>Current status</dt><dd>{assessment.currentStatus || "Not recorded"}</dd></div>
-            <div><dt>Technician notes</dt><dd>{assessment.technicianRecorded || "Not recorded"}</dd></div>
-          </dl>
-          {assessment.previousVisitHistory?.length ? <><h4>Earlier service history</h4><ul>{assessment.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
-          <h4>Issues to follow up</h4>{assessment.currentIssues?.length ? <ul>{assessment.currentIssues.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <p>No unresolved issue is recorded in the latest visit.</p>}
-          {assessment.completedWork?.length ? <><h4>Work already completed</h4><ul>{assessment.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
-          <h4>Part to check</h4><p>{assessment.recommendedPart || "No part is suggested from the available records."}</p>
-          <p className="amp-muted">This uses only the technician’s submitted findings and the AC records available in AEROPULSE. The original technician report remains unchanged below.</p>
-        </details>
-        {assessment.factorsConsidered?.length ? <details className="amp-details" open><summary>What was reviewed</summary><dl className="amp-factor-list">{assessment.factorsConsidered.map((item) => <div key={`${item.label}-${item.value}`}><dt>{item.label}</dt><dd>{/date/i.test(item.label) ? dateLabel(item.value) : item.value}</dd></div>)}</dl></details> : null}
-        {assessment.observationsConsidered?.length ? <details className="amp-details" open><summary>Technician and customer notes</summary><ul>{assessment.observationsConsidered.map((item, index) => <li key={`${item.source}-${index}`}><strong>{item.source}:</strong> {item.value}</li>)}</ul><p className="amp-muted">A technician must confirm issues reported by the customer.</p></details> : null}
-        <details className="amp-details" open>
-          <summary>Why this date was suggested</summary>
-          <p>{assessment.reasonForRecommendation || maintenance.whyThisDate || visitAnalysis.whyThisDate || maintenance.recommendationBasis || "A completed cleaning or installation date is needed."}</p>
-        </details>
-        {assessment.recommendedActions?.length ? <details className="amp-details" open><summary>Next steps</summary><ol>{assessment.recommendedActions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ol><p className="amp-muted">{assessment.evidenceNotice}</p></details> : null}
-        {conditionFollowUp ? <details className="amp-details" open>
-          <summary>Separate routine cleaning plan</summary>
-          <div className="amp-metrics"><article><span>Routine cleaning date</span><strong>{dateLabel(routineMaintenance.bestServicedBy)}</strong></article><article><span>Routine service</span><strong>{serviceLabel(routineMaintenance.recommendedService)}</strong></article><article><span>Routine interval</span><strong>{routineMaintenance.intervalDays ? `${routineMaintenance.intervalDays} days` : "Not available"}</strong></article></div>
-          <p>{routineMaintenance.recommendationBasis}</p>
-          <p className="amp-muted">The earlier condition follow-up is shown first. It does not erase this routine cleaning plan.</p>
-        </details> : null}
-        {maintenance.dataQuality?.message ? <p role="status" className="amp-error">Record review needed: {maintenance.dataQuality.message}</p> : null}
-        <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last recorded cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
-        <details className="amp-details" key={`history-${report.reportId}-${reportType}`} open={historyFirst}>
-        <summary>Recorded service history</summary>
-        <div className="amp-table-wrap"><table className="amp-table amp-history-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{(report.serviceHistory || []).map((item, index) => <tr key={`${item.date}-${index}`}><td data-label="Date">{dateLabel(item.date)}</td><td data-label="Service performed">{item.serviceLabel || serviceLabel(item.type)}</td><td data-label="Findings and actions">{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}{item.aiInterpretation?.customerSummary ? <p><strong>Follow-up recommendation:</strong> {item.aiInterpretation.customerSummary}</p> : null}</td></tr>)}</tbody></table></div>
-        {!report.serviceHistory?.length ? <p className="amp-empty">No service history has been recorded.</p> : null}
-        </details>
-        {report.aggregateReliability ? <details className="amp-details" open><summary>Model and parts history</summary><p>{report.aggregateReliability.scope} · {report.aggregateReliability.unitCount} units · {report.aggregateReliability.recordedServiceCount} recorded services</p><p>{report.aggregateReliability.note}</p><ul>{(report.aggregateReliability.modelsByRecordedService || []).map(item => <li key={item.model}>{item.model}: {item.count} recorded services</li>)}</ul><ul>{(report.aggregateReliability.partsByRecordedUse || []).map(item => <li key={item.component}>{item.component}: {item.count} recorded uses</li>)}</ul></details> : null}
-        {report.predictionReview ? <details className="amp-details amp-prediction-review" open={report.predictionReview.entries?.some((entry) => entry.status === "ready_for_review")}>
-          <summary>Compare past plans with completed service</summary>
-          <p>{report.predictionReview.note}</p>
-          {report.predictionReview.entries?.length ? <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Saved plan</th><th>Information used</th><th>Completed service</th></tr></thead><tbody>{report.predictionReview.entries.map((entry) => <tr key={entry.id}><td><strong>{dateLabel(entry.suggestedDate)}</strong><span>{serviceLabel(entry.recommendedService)}</span><span className="amp-review-status">{reviewStatusLabel(entry.status)}</span></td><td><strong>{basisLabel(entry.basisLevel)}</strong><span>{entry.sampleSize} completed cleaning interval{entry.sampleSize === 1 ? "" : "s"} · {entry.comparableUnitCount} similar unit{entry.comparableUnitCount === 1 ? "" : "s"}</span>{entry.excludedRecordCount ? <span>{entry.excludedRecordCount} incomplete record{entry.excludedRecordCount === 1 ? "" : "s"} not used</span> : null}</td><td>{entry.outcome ? <><strong>{dateLabel(entry.outcome.serviceDate)} · {entry.outcome.serviceLabel}</strong><span>{entry.outcome.daysFromSuggestedDate === 0 ? "Completed on the suggested date" : `${Math.abs(entry.outcome.daysFromSuggestedDate)} day${Math.abs(entry.outcome.daysFromSuggestedDate) === 1 ? "" : "s"} ${entry.outcome.daysFromSuggestedDate > 0 ? "after" : "before"} the suggested date`}</span><span>Findings: {entry.outcome.findings || "Not recorded"}</span><span>Work: {entry.outcome.actionTaken || "Not recorded"}</span></> : <span>No completed cleaning has been matched to this saved plan.</span>}</td></tr>)}</tbody></table></div> : <p className="amp-empty">No saved plan is available for this unit yet. View a Next service plan before the visit to save one.</p>}
-        </details> : null}
-        {report.predictionReviewWarning ? <p role="status" className="amp-error">{report.predictionReviewWarning}</p> : null}
-        <details className="amp-details"><summary>What was used to choose this date</summary>
-          <p>{conditionFollowUp ? visitAnalysis.customerSummary : maintenance.recommendationBasis}</p>
-          {conditionFollowUp ? <p><strong>Routine cleaning basis:</strong> {routineMaintenance.recommendationBasis}</p> : null}
-          {historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}
-          <div className="amp-metrics">
-            <article><span>Based on</span><strong>{basisLabel(pattern.source || maintenance.historicalBasis?.level)}</strong></article>
-            <article><span>Completed cleaning intervals</span><strong>{pattern.intervalCount ?? maintenance.historicalBasis?.sampleSize ?? 0}</strong></article>
-            <article><span>Typical time between cleanings</span><strong>{pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month starting schedule"}</strong></article>
-          </div>
-          {pattern.intervalsDays?.length ? <p>Time between completed cleanings: {pattern.intervalsDays.join(", ")} days. Repair visits are not included.</p> : null}
-          {contextItems.length ? <ul>{contextItems.map(item => <li key={item}>{item}</li>)}</ul> : <p>No recurring cleaning-related issue has been recorded for this AC.</p>}
-          <p>{maintenance.capacityAssessment?.summary}</p>
-          <p>The suggested date uses the technician's report and the unit's completed service history. If the unit does not have enough cleaning history, records from similar units or the standard 6-month schedule are used. This is a guide only; it is not a booking and does not change warranty coverage.</p>
-          <p className="amp-muted">Report reference: {report.reportId}</p>
-        </details>
-        <p className="amp-muted">{report.note}</p>
+        {report.explanationWarning ? <p role="status" className="amp-muted amp-report-notice">{report.explanationWarning}</p> : null}
+        <div className="amp-report-page-heading" aria-live="polite"><div><span>Report section</span><strong>{REPORT_PAGE_LABELS[reportPage]}</strong></div><span>Page {reportPage + 1} of {REPORT_PAGE_LABELS.length}</span></div>
+        <div className="amp-report-page-content">
+          {reportPage === 0 ? <>
+            {!historyFirst ? <div className="amp-metrics"><article><span>{conditionFollowUp ? "Condition follow-up date" : "Suggested servicing date"}</span><strong>{dateLabel(maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(maintenance.recommendedService)}</strong></article><article><span>Room and AC size match</span><strong>{capacityAssessmentLabel(maintenance.capacityAssessment?.status)}</strong></article></div> : null}
+            <details className="amp-details" open>
+              <summary>Suggested service plan</summary>
+              <div className="amp-metrics"><article><span>Priority</span><strong>{assessment.priority || "Routine"}</strong></article><article><span>Recommended schedule</span><strong>{dateLabel(assessment.recommendedServicingDate || maintenance.bestServicedBy)}</strong></article><article><span>Recommended service</span><strong>{maintenance.recommendedServiceLabel || serviceLabel(assessment.recommendedService || maintenance.recommendedService)}</strong></article></div>
+              <h4>Summary</h4><p>{assessment.assessmentSummary || maintenance.aiAssessment || visitAnalysis.aiAssessment || "More completed service details are needed before a recommendation can be shown."}</p>
+              <dl className="amp-factor-list"><div><dt>Current status</dt><dd>{assessment.currentStatus || "Not recorded"}</dd></div><div><dt>Technician notes</dt><dd>{assessment.technicianRecorded || "Not recorded"}</dd></div></dl>
+              {assessment.previousVisitHistory?.length ? <><h4>Earlier service history</h4><ul>{assessment.previousVisitHistory.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
+              <h4>Issues to follow up</h4>{assessment.currentIssues?.length ? <ul>{assessment.currentIssues.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <p>No unresolved issue is recorded in the latest visit.</p>}
+              {assessment.completedWork?.length ? <><h4>Work already completed</h4><ul>{assessment.completedWork.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></> : null}
+              <h4>Part to check</h4><p>{assessment.recommendedPart || "No part is suggested from the available records."}</p>
+              <p className="amp-muted">This uses only the technician’s submitted findings and the AC records available in AEROPULSE. The original technician report remains unchanged in Service records.</p>
+            </details>
+            <details className="amp-details" open><summary>Why this date was suggested</summary><p>{assessment.reasonForRecommendation || maintenance.whyThisDate || visitAnalysis.whyThisDate || maintenance.recommendationBasis || "A completed cleaning or installation date is needed."}</p></details>
+            {conditionFollowUp ? <details className="amp-details" open><summary>Separate routine cleaning plan</summary><div className="amp-metrics"><article><span>Routine cleaning date</span><strong>{dateLabel(routineMaintenance.bestServicedBy)}</strong></article><article><span>Routine service</span><strong>{serviceLabel(routineMaintenance.recommendedService)}</strong></article><article><span>Routine interval</span><strong>{routineMaintenance.intervalDays ? `${routineMaintenance.intervalDays} days` : "Not available"}</strong></article></div><p>{routineMaintenance.recommendationBasis}</p><p className="amp-muted">The earlier condition follow-up is shown first. It does not erase this routine cleaning plan.</p></details> : null}
+          </> : null}
+          {reportPage === 1 ? <>
+            {assessment.factorsConsidered?.length ? <details className="amp-details" open><summary>What was reviewed</summary><dl className="amp-factor-list">{assessment.factorsConsidered.map((item) => <div key={`${item.label}-${item.value}`}><dt>{item.label}</dt><dd>{/date/i.test(item.label) ? dateLabel(item.value) : item.value}</dd></div>)}</dl></details> : null}
+            {assessment.observationsConsidered?.length ? <details className="amp-details" open><summary>Technician and customer notes</summary><ul>{assessment.observationsConsidered.map((item, index) => <li key={`${item.source}-${index}`}><strong>{item.source}:</strong> {item.value}</li>)}</ul><p className="amp-muted">A technician must confirm issues reported by the customer.</p></details> : null}
+            {assessment.recommendedActions?.length ? <details className="amp-details" open><summary>Next steps</summary><ol>{assessment.recommendedActions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ol><p className="amp-muted">{assessment.evidenceNotice}</p></details> : null}
+            {maintenance.dataQuality?.message ? <p role="status" className="amp-error">Record review needed: {maintenance.dataQuality.message}</p> : null}
+            <p className="amp-muted">Last completed service: {dateLabel(maintenance.lastServiceDate)} · Last recorded cleaning: {dateLabel(maintenance.lastCleaningDate)}</p>
+            {report.predictionReview ? <details className="amp-details amp-prediction-review" open={report.predictionReview.entries?.some((entry) => entry.status === "ready_for_review")}><summary>Compare past plans with completed service</summary><p>{report.predictionReview.note}</p>{report.predictionReview.entries?.length ? <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>Saved plan</th><th>Information used</th><th>Completed service</th></tr></thead><tbody>{report.predictionReview.entries.map((entry) => <tr key={entry.id}><td><strong>{dateLabel(entry.suggestedDate)}</strong><span>{serviceLabel(entry.recommendedService)}</span><span className="amp-review-status">{reviewStatusLabel(entry.status)}</span></td><td><strong>{basisLabel(entry.basisLevel)}</strong><span>{entry.sampleSize} completed cleaning interval{entry.sampleSize === 1 ? "" : "s"} · {entry.comparableUnitCount} similar unit{entry.comparableUnitCount === 1 ? "" : "s"}</span>{entry.excludedRecordCount ? <span>{entry.excludedRecordCount} incomplete record{entry.excludedRecordCount === 1 ? "" : "s"} not used</span> : null}</td><td>{entry.outcome ? <><strong>{dateLabel(entry.outcome.serviceDate)} · {entry.outcome.serviceLabel}</strong><span>{entry.outcome.daysFromSuggestedDate === 0 ? "Completed on the suggested date" : `${Math.abs(entry.outcome.daysFromSuggestedDate)} day${Math.abs(entry.outcome.daysFromSuggestedDate) === 1 ? "" : "s"} ${entry.outcome.daysFromSuggestedDate > 0 ? "after" : "before"} the suggested date`}</span><span>Findings: {entry.outcome.findings || "Not recorded"}</span><span>Work: {entry.outcome.actionTaken || "Not recorded"}</span></> : <span>No completed cleaning has been matched to this saved plan.</span>}</td></tr>)}</tbody></table></div> : <p className="amp-empty">No saved plan is available for this unit yet. View a Next service plan before the visit to save one.</p>}</details> : null}
+            {report.predictionReviewWarning ? <p role="status" className="amp-error">{report.predictionReviewWarning}</p> : null}
+            {!assessment.factorsConsidered?.length && !assessment.observationsConsidered?.length && !assessment.recommendedActions?.length && !report.predictionReview ? <p className="amp-empty">No additional planning details are available for this report.</p> : null}
+          </> : null}
+          {reportPage === 2 ? <>
+            <details className="amp-details" key={`history-${report.reportId}-${reportType}`} open><summary>Recorded service history</summary>
+              {visibleServiceHistory.length ? <div className="amp-table-wrap"><table className="amp-table amp-history-table"><thead><tr><th>Date</th><th>Service performed</th><th>Findings and actions</th></tr></thead><tbody>{visibleServiceHistory.map((item, index) => <tr key={`${item.date}-${historyPage * HISTORY_PAGE_SIZE + index}`}><td data-label="Date">{dateLabel(item.date)}</td><td data-label="Service performed">{item.serviceLabel || serviceLabel(item.type)}</td><td data-label="Findings and actions">{item.findings || "Findings not recorded"}<br />{item.actionTaken || "Actions not recorded"}{item.evidence?.eligible === false ? <p className="amp-error">{item.evidence.reason}</p> : null}{item.aiInterpretation?.customerSummary ? <p><strong>Follow-up recommendation:</strong> {item.aiInterpretation.customerSummary}</p> : null}</td></tr>)}</tbody></table></div> : <p className="amp-empty">No service history has been recorded.</p>}
+              {historyPageCount > 1 ? <nav className="amp-history-pagination" aria-label="Service history pages"><button type="button" onClick={() => setHistoryPage((page) => Math.max(0, page - 1))} disabled={historyPage === 0}>Previous records</button><span>Records {historyPage * HISTORY_PAGE_SIZE + 1}-{Math.min((historyPage + 1) * HISTORY_PAGE_SIZE, serviceHistory.length)} of {serviceHistory.length}</span><button type="button" onClick={() => setHistoryPage((page) => Math.min(historyPageCount - 1, page + 1))} disabled={historyPage === historyPageCount - 1}>Next records</button></nav> : null}
+            </details>
+            {report.aggregateReliability ? <details className="amp-details" open><summary>Model and parts history</summary><p>{report.aggregateReliability.scope} · {report.aggregateReliability.unitCount} units · {report.aggregateReliability.recordedServiceCount} recorded services</p><p>{report.aggregateReliability.note}</p><ul>{(report.aggregateReliability.modelsByRecordedService || []).map(item => <li key={item.model}>{item.model}: {item.count} recorded services</li>)}</ul><ul>{(report.aggregateReliability.partsByRecordedUse || []).map(item => <li key={item.component}>{item.component}: {item.count} recorded uses</li>)}</ul></details> : null}
+            <details className="amp-details"><summary>What was used to choose this date</summary><p>{conditionFollowUp ? visitAnalysis.customerSummary : maintenance.recommendationBasis}</p>{conditionFollowUp ? <p><strong>Routine cleaning basis:</strong> {routineMaintenance.recommendationBasis}</p> : null}{historyFirst ? <p>Suggested servicing date: {dateLabel(maintenance.bestServicedBy)}</p> : null}<div className="amp-metrics"><article><span>Based on</span><strong>{basisLabel(pattern.source || maintenance.historicalBasis?.level)}</strong></article><article><span>Completed cleaning intervals</span><strong>{pattern.intervalCount ?? maintenance.historicalBasis?.sampleSize ?? 0}</strong></article><article><span>Typical time between cleanings</span><strong>{pattern.averageIntervalDays ? `${pattern.averageIntervalDays} days` : "6-month starting schedule"}</strong></article></div>{pattern.intervalsDays?.length ? <p>Time between completed cleanings: {pattern.intervalsDays.join(", ")} days. Repair visits are not included.</p> : null}{contextItems.length ? <ul>{contextItems.map(item => <li key={item}>{item}</li>)}</ul> : <p>No recurring cleaning-related issue has been recorded for this AC.</p>}<p>{maintenance.capacityAssessment?.summary}</p><p>The suggested date uses the technician's report and the unit's completed service history. If the unit does not have enough cleaning history, records from similar units or the standard 6-month schedule are used. This is a guide only; it is not a booking and does not change warranty coverage.</p><p className="amp-muted">Report reference: {report.reportId}</p></details>
+            <p className="amp-muted">{report.note}</p>
+          </> : null}
+        </div>
+        <nav className="amp-report-page-navigation" aria-label="Report pages"><button type="button" onClick={() => selectReportPage(Math.max(0, reportPage - 1))} disabled={reportPage === 0}>Previous</button><span>Page {reportPage + 1} of {REPORT_PAGE_LABELS.length}</span><button type="button" onClick={() => selectReportPage(Math.min(REPORT_PAGE_LABELS.length - 1, reportPage + 1))} disabled={reportPage === REPORT_PAGE_LABELS.length - 1}>Next</button></nav>
       </div> : null}
     </section>
   );
