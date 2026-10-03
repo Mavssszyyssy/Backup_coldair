@@ -2453,6 +2453,15 @@
   backdrop-filter: blur(2px);
 }
 
+/* Keep My Unit dialogs above the sticky page header and floating chat control. */
+.unit-details-overlay,
+.warranty-overlay,
+.service-history-overlay {
+  z-index: 3000;
+  isolation: isolate;
+  overscroll-behavior: contain;
+}
+
 .service-history-dialog {
   display: flex;
   flex-direction: column;
