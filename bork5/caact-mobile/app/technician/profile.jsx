@@ -199,7 +199,7 @@ export default function TechProfile() {
       }
     >
       <TechHero
-        eyebrow="Account Settings"
+        eyebrow="System Settings"
         title={displayName}
         subtitle="Manage your contact details, password, and sign-in session."
         icon="id-card-sharp"

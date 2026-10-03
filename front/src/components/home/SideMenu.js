@@ -24,7 +24,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
     { id: 'myunit', label: 'My Unit', iconSrc: icons.temperatureFrigid, path: '/myunit', description: 'Manage your AC units' },
     { id: 'services', label: 'Get the App', iconSrc: icons.tools, path: '/services', description: 'Manage services on Mobile' },
     { id: 'contact', label: 'Contact', iconSrc: icons.phoneCall, path: '/contact', description: 'Get in touch with us' },
-    { id: 'settings', label: 'Settings', iconSrc: icons.customize, path: '/settings', description: 'Profile and account preferences' },
+    { id: 'settings', label: 'System Settings', iconSrc: icons.customize, path: '/settings', description: 'Profile and account preferences' },
   ]), []);
 
   useEffect(() => {

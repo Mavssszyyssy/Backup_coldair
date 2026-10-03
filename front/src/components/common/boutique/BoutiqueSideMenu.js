@@ -33,7 +33,7 @@ export default function BoutiqueSideMenu({
     { id: "myunit", label: "My Unit", icon: Wind, path: "/myunit" },
     { id: "services", label: "Get the App", icon: Wrench, path: "/services" },
     { id: "contact", label: "Contact", icon: Phone, path: "/contact" },
-    { id: "settings", label: "Settings", icon: Gear, path: "/settings" },
+    { id: "settings", label: "System Settings", icon: Gear, path: "/settings" },
   ];
 
   const handleNavigation = (path) => {

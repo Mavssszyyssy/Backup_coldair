@@ -397,7 +397,7 @@ export default function CustomerSettingsScreen() {
   const saveTitle = securityMode === "password" ? "Change Password" : isEditingAddress ? "Save Address" : "Save Account";
   return (
     <CustomerScreen
-      title="Account"
+      title="System Settings"
       subtitle={subtitle}
       contentContainerStyle={{ paddingBottom: isEditing ? 176 : 96 }}
       stickyAction={isEditing ? <StickyActionBar><Button title={saving ? "Saving..." : saveTitle} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title="Cancel" variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}

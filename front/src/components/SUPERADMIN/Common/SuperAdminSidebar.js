@@ -24,7 +24,7 @@ const links = [
   { to: "/superadmin/reports", label: "Analytics & Reports", icon: ChartBar },
   { to: "/superadmin/alerts", label: "Operations Reports", icon: WarningCircle },
   { to: "/superadmin/profile", label: "My Profile", icon: Users },
-  { to: "/superadmin/settings", label: "Settings", icon: Gear },
+  { to: "/superadmin/settings", label: "System Settings", icon: Gear },
 ];
 
 const SuperAdminSidebar = () => {

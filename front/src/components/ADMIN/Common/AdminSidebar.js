@@ -21,7 +21,7 @@ const navItems = [
   { to: "/manager/amp", label: "AMP Dashboard", icon: Pulse },
   { to: "/admin/reports", label: "Analytics & Reports", icon: ChartBar },
   { to: "/admin/profile", label: "Profile", icon: Users },
-  { to: "/admin/settings", label: "Settings", icon: Gear },
+  { to: "/admin/settings", label: "System Settings", icon: Gear },
 ];
 
 const AdminSidebar = ({ isOpen, onClose }) => {

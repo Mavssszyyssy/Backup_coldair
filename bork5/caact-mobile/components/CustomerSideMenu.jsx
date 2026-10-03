@@ -17,7 +17,7 @@ const MENU_ITEMS = [
   { label: "Services", href: "/customer/services", icon: "calendar-sharp" },
   { label: "Help & FAQ", href: "/customer/faq", icon: "help-buoy-sharp" },
   { label: "Contact", href: "/customer/contact", icon: "call-sharp" },
-  { label: "Settings", href: "/customer/settings", icon: "settings-sharp" },
+  { label: "System Settings", href: "/customer/settings", icon: "settings-sharp" },
   { label: "Account Security", href: "/customer/oobe", icon: "shield-checkmark-sharp" },
 ];
 

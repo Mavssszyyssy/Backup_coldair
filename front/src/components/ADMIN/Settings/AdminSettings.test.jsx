@@ -61,7 +61,7 @@ it('saves only database-backed preferences and alert settings', async () => {
 
   fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
   fireEvent.click(screen.getByLabelText('Push alerts'));
-  fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save System Settings' }));
 
   await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
   const payload = updateSettings.mock.calls[0][0];
@@ -70,5 +70,5 @@ it('saves only database-backed preferences and alert settings', async () => {
   expect(payload).not.toHaveProperty('general');
   expect(payload).not.toHaveProperty('roles');
   expect(payload).not.toHaveProperty('assignedBranch');
-  expect(screen.getByRole('status')).toHaveTextContent('Settings saved successfully.');
+  expect(screen.getByRole('status')).toHaveTextContent('System settings saved successfully.');
 });

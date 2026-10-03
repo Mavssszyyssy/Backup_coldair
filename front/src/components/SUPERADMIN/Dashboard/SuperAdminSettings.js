@@ -108,13 +108,13 @@ const SuperAdminSettings = () => {
     setSaving(true); setNotice(''); setError('');
     try {
       await updateSettings({ preferences, notifications });
-      setNotice('SuperAdmin settings saved.');
+      setNotice('System settings saved.');
     } catch (requestError) {
-      setError(requestError.message || 'Unable to save settings.');
+      setError(requestError.message || 'Unable to save system settings.');
     } finally { setSaving(false); }
   };
 
-  return <SuperAdminLayout title="SuperAdmin Settings" subtitle="Manage your HQ workspace, alerts, and executive preferences">
+  return <SuperAdminLayout title="System Settings" subtitle="Manage your HQ workspace, alerts, and executive preferences">
     <section className="hq-settings-intro"><div><p>HQ account controls</p><h2>Executive workspace settings</h2><span>These settings apply to your SuperAdmin account and the alerts delivered to you.</span></div><button type="button" onClick={() => navigate('/superadmin/profile')}>Open my profile</button></section>
     <form className="hq-account-grid" onSubmit={save}>
       <section className="hq-account-card"><div className="hq-card-heading"><p>Workspace</p><h3>Display preferences</h3></div><label>Language<select value={preferences.language} onChange={(event) => setPreferences((current) => ({ ...current, language: event.target.value }))}><option value="English">English</option><option value="Filipino">Filipino</option></select></label><label>Currency<select value={preferences.currency} onChange={(event) => setPreferences((current) => ({ ...current, currency: event.target.value }))}><option value="PHP">PHP — Philippine Peso</option><option value="USD">USD — US Dollar</option></select></label><label>Time zone<select value={preferences.timezone} onChange={(event) => setPreferences((current) => ({ ...current, timezone: event.target.value }))}><option value="Asia/Manila">Asia/Manila (PHT)</option><option value="UTC">UTC</option></select></label></section>
@@ -151,7 +151,7 @@ const SuperAdminSettings = () => {
         {policyError ? <span className="hq-error" role="alert">{policyError}</span> : null}
       </section>
       <section className="hq-account-card hq-authority-card"><div className="hq-card-heading"><p>Authority</p><h3>SuperAdmin access</h3></div><p>You have company-wide visibility and can manage branch ownership, inventory, staff, transactions, and reorders.</p><div className="hq-quick-links"><button type="button" onClick={() => navigate('/superadmin/branches')}>Manage branches</button><button type="button" onClick={() => navigate('/superadmin/inventory?tab=reorders')}>Review reorders</button><button type="button" onClick={() => navigate('/superadmin/alerts')}>View operations reports</button></div></section>
-      <section className="hq-save-row">{notice ? <span className="hq-success">{notice}</span> : null}{error ? <span className="hq-error">{error}</span> : null}<button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button></section>
+      <section className="hq-save-row">{notice ? <span className="hq-success">{notice}</span> : null}{error ? <span className="hq-error">{error}</span> : null}<button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save System Settings'}</button></section>
     </form>
   </SuperAdminLayout>;
 };

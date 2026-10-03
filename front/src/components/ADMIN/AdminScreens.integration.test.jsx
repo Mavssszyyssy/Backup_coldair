@@ -79,7 +79,7 @@ it.each([
   ["inventory", AdminInventory, "/admin/inventory", "Inventory Management"],
   ["services", AdminServices, "/admin/services", "Services"],
   ["reports", AdminReports, "/admin/reports", "Analytics & Reports"],
-  ["settings", AdminSettings, "/admin/settings", "Settings"],
+  ["settings", AdminSettings, "/admin/settings", "System Settings"],
   ["profile", AdminProfile, "/admin/profile", "Admin Profile"],
 ])("renders the real Admin %s screen", (_name, Component, entry, heading) => {
   renderScreen(Component, entry);

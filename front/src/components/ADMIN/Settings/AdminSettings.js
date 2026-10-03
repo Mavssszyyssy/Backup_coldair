@@ -96,16 +96,16 @@ function AdminSettings() {
         action: 'update_settings',
         details: `Updated authorized account preferences (currency=${currency})`,
       });
-      setNotice('Settings saved successfully.');
+      setNotice('System settings saved successfully.');
     } catch (requestError) {
-      setError(requestError?.message || 'Unable to save settings.');
+      setError(requestError?.message || 'Unable to save system settings.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <AdminLayout title="Settings" subtitle={subtitle}>
+    <AdminLayout title="System Settings" subtitle={subtitle}>
       <div className="admin-settings-grid">
         <section className="admin-card admin-settings-company" aria-labelledby="company-information-heading">
           <div className="admin-settings-heading">
@@ -156,7 +156,7 @@ function AdminSettings() {
           <div className="admin-settings-heading">
             <div>
               <p>Your saved account preferences</p>
-              <h3 id="configurable-settings-heading">Configurable Settings</h3>
+              <h3 id="configurable-settings-heading">Configurable System Settings</h3>
             </div>
           </div>
 
@@ -193,7 +193,7 @@ function AdminSettings() {
           </div>
 
           <div className="admin-settings-save-row">
-            <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</button>
+            <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save System Settings'}</button>
             {notice ? <p className="admin-settings-success" role="status">{notice}</p> : null}
             {error ? <p className="admin-settings-error" role="alert">{error}</p> : null}
           </div>

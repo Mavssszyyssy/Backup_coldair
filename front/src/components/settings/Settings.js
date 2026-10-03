@@ -129,7 +129,7 @@ function Settings() {
     );
 
   const handleBulkUpdateSettings = (payload) =>
-    callWithToast(() => updateSettings(payload), "Settings saved.");
+    callWithToast(() => updateSettings(payload), "System settings saved.");
 
   const handleDeleteAccount = (payload) =>
     callWithToast(async () => {
@@ -153,7 +153,7 @@ function Settings() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title={t("Account Settings")}
+        title={t("System Settings")}
         leftAction="back"
         onLeftAction={handleBack}
       />
