@@ -42,4 +42,14 @@ describe("mobile-only customer service workflow", () => {
     expect(css).toContain("width: 25px");
     expect(css).toContain(".contact-page .support-team-icon");
   });
+
+  it("keeps the customer-support content centered with responsive page padding", () => {
+    const contact = readWeb("contact", "Contact.js");
+    const css = readWeb("contact", "Contact.css");
+
+    expect(contact).toContain('<main className="contact-page">');
+    expect(css).toContain("max-width: 1280px");
+    expect(css).toContain("margin: 0 auto");
+    expect(css).toContain("padding: 36px 28px 48px");
+  });
 });

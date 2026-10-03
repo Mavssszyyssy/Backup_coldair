@@ -210,6 +210,14 @@ it("paginates the sales transaction register", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Sales report page 2" }));
   expect(screen.getByText("ORD-11")).toBeInTheDocument();
   expect(screen.queryByText("ORD-01")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const exported = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
+  expect((exported.html.match(/class="report-page report-page--sales"/g) || []).length).toBe(3);
+  expect(exported.html).toContain('class="report-table report-table--operations"');
+  expect(exported.html).toContain('class="report-table report-table--financial"');
+  expect(exported.html).toContain("Page 3 of 3");
+  expect(exported.metadata).toMatchObject({ pageOrientation: "landscape", documentStyle: "tabular" });
 });
 
 it("blocks a reversed reporting range before requesting data", () => {

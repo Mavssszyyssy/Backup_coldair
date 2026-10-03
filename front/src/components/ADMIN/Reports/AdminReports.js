@@ -50,7 +50,12 @@ const INVENTORY_CATEGORY_OPTIONS = [
   ["floor", "Floor Type"],
 ];
 const REPORT_PAGE_SIZE = 10;
+const SALES_PDF_FIRST_PAGE_SIZE = 4;
+const SALES_PDF_PAGE_SIZE = 6;
 const BUSINESS_INTELLIGENCE_PAGES = ["Sales intelligence", "Service intelligence", "Inventory intelligence", "AMP intelligence"];
+const SALES_FINANCIAL_FIELDS = new Set([
+  "unitPrice", "subtotal", "vat", "deliveryFee", "discount", "total", "amountCollected",
+]);
 
 const SUMMARY_LABELS = {
   transactionCount: "Transactions",
@@ -120,10 +125,43 @@ const displayValue = (value, key) => {
 };
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-const reportTableHtml = (rows, { title = "Report details" } = {}) => {
+const reportTableHtml = (rows, { title = "Report details", className = "" } = {}) => {
   if (!rows.length) return '<div class="meta">No matching records.</div>';
   const headers = Object.keys(rows[0]);
-  return `<h2 class="table-title">${escapeHtml(title)}</h2><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(humanize(header))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  const tableClass = ["report-table", className].filter(Boolean).join(" ");
+  return `<h2 class="table-title">${escapeHtml(title)}</h2><table class="${tableClass}"><thead><tr>${headers.map((header) => `<th>${escapeHtml(humanize(header))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+};
+
+const salesReportHtml = (rows, summaryHtml, secondaryRows = []) => {
+  const transactionPagesData = [];
+  if (!rows.length) {
+    transactionPagesData.push([]);
+  } else {
+    transactionPagesData.push(rows.slice(0, SALES_PDF_FIRST_PAGE_SIZE));
+    const remainingRows = rows.slice(SALES_PDF_FIRST_PAGE_SIZE);
+    const remainingPageCount = Math.ceil(remainingRows.length / SALES_PDF_PAGE_SIZE);
+    const balancedPageSize = remainingPageCount ? Math.ceil(remainingRows.length / remainingPageCount) : 0;
+    for (let offset = 0; offset < remainingRows.length; offset += balancedPageSize) {
+      transactionPagesData.push(remainingRows.slice(offset, offset + balancedPageSize));
+    }
+  }
+  const transactionPageCount = transactionPagesData.length;
+  const hasProductSummary = secondaryRows.length > 0;
+  const totalPageCount = transactionPageCount + (hasProductSummary ? 1 : 0);
+  const transactionPages = transactionPagesData.map((pageRows, index) => {
+    const operationalRows = pageRows.map((row) => Object.fromEntries(
+      Object.entries(row || {}).filter(([key]) => !SALES_FINANCIAL_FIELDS.has(key)),
+    ));
+    const financialRows = pageRows.map((row) => Object.fromEntries(
+      Object.entries(row || {}).filter(([key]) => key === "orderCode" || SALES_FINANCIAL_FIELDS.has(key)),
+    ));
+
+    return `<section class="report-page report-page--sales">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>Transaction register</strong><span>Page ${index + 1} of ${totalPageCount}</span></div>${reportTableHtml(operationalRows, { title: "Order and payment details", className: "report-table--operations" })}${reportTableHtml(financialRows, { title: "Transaction amounts", className: "report-table--financial" })}</section>`;
+  }).join("");
+
+  if (!hasProductSummary) return transactionPages;
+
+  return `${transactionPages}<section class="report-page report-page--sales"><div class="report-page-heading"><strong>Product sales summary</strong><span>Page ${totalPageCount} of ${totalPageCount}</span></div>${reportTableHtml(secondaryRows, { title: "Product sales summary", className: "report-table--products" })}</section>`;
 };
 
 const inventoryReportHtml = (rows, summaryHtml) => {
@@ -403,11 +441,11 @@ function AdminReports() {
     const reportHtml = activeTab === "inventory"
       ? inventoryReportHtml(data.rows, summaryHtml)
       : activeTab === "sales"
-        ? paginatedReportHtml(data.rows, { summaryHtml, title: primaryTitle, secondaryHtml: secondary })
+        ? salesReportHtml(data.rows, summaryHtml, data.secondaryRows)
         : activeTab === "intelligence"
           ? businessIntelligenceReportHtml(data.intelligence, summaryHtml)
           : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
-    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} · Branch: ${reportMetadata.branch} · Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR" } });
+    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} - Branch: ${reportMetadata.branch} - Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR", pageOrientation: "landscape", documentStyle: "tabular" } });
   };
 
   return <Layout title="Analytics & Reports" subtitle="AI-prioritized business intelligence and company-formatted operational records">

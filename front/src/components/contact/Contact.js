@@ -29,12 +29,7 @@ function Contact() {
         onLeftAction={handleBack}
       />
 
-      <BoutiqueBox
-        direction="column"
-        flex={1}
-        width="100%"
-        className="contact-page"
-      >
+      <main className="contact-page">
         <BoutiqueStack gap={40}>
           {/* HERO SECTION */}
           <BoutiqueBox align="center" margin="0 0 16px">
@@ -124,7 +119,7 @@ function Contact() {
 
           <ServicesSupport />
         </BoutiqueStack>
-      </BoutiqueBox>
+      </main>
 
       <BoutiqueFooter />
 

@@ -124,7 +124,9 @@ export const exportToCsv = ({ filename, rows }) => {
 
 export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName = '', metadata = {} }) => {
   const pageOrientation = metadata.pageOrientation === 'portrait' ? 'portrait' : 'landscape';
-  const documentStyle = metadata.documentStyle === 'narrative' ? ' report-document--narrative' : '';
+  const documentStyle = metadata.documentStyle === 'narrative'
+    ? ' report-document--narrative'
+    : metadata.documentStyle === 'tabular' ? ' report-document--tabular' : '';
   const w = window.open('', '_blank');
   if (!w) {
     window.alert('Your browser blocked the PDF window. Please allow pop-ups for this site and try again.');
@@ -183,11 +185,22 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       .history-entry p:last-child { margin-bottom: 0; }
       table { width: 100%; border-collapse: collapse; margin-top: 9px; font-size: 9px; }
       thead { display: table-header-group; }
-      th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+      th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; overflow-wrap: break-word; word-break: normal; }
       th { background: #0f4c81; color: #fff; font-size: 8px; letter-spacing: .035em; text-transform: uppercase; }
       .table-title { color: #0f172a; font-size: 14px; margin: 16px 0 6px; }
       tbody tr:nth-child(even) { background: #f8fafc; }
       tr { break-inside: avoid; page-break-inside: avoid; }
+      .report-document--tabular .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .report-document--tabular .summary-item { padding: 8px 9px; }
+      .report-page--sales .table-title { margin: 9px 0 5px; font-size: 11px; }
+      .report-page--sales .report-table { margin-top: 0; }
+      .report-table--operations, .report-table--financial { table-layout: fixed; font-size: 8px; }
+      .report-table--operations th, .report-table--operations td,
+      .report-table--financial th, .report-table--financial td { padding: 4px 5px; line-height: 1.3; }
+      .report-table--operations td { overflow-wrap: anywhere; }
+      .report-table--financial th, .report-table--financial td { text-align: right; white-space: nowrap; }
+      .report-table--financial th:first-child, .report-table--financial td:first-child { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+      .report-table--products { font-size: 8.5px; }
       .report-page { break-after: page; page-break-after: always; }
       .report-page:last-child { break-after: auto; page-break-after: auto; }
       .report-page-heading { display: flex; justify-content: space-between; gap: 14px; margin: 14px 0 4px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
@@ -210,7 +223,8 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
         html, body { background: #fff; }
         body { padding: 0; font-size: 10px; }
         .report-document, .report-document--narrative { width: auto; max-width: none; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
-        .report-footer { position: fixed; right: 0; bottom: -12mm; left: 0; margin: 0; }
+        .report-document--tabular { width: auto; max-width: none; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+        .report-footer { position: static; margin: 18px 0 0; break-inside: avoid; page-break-inside: avoid; }
       }
     </style>
   </head>
