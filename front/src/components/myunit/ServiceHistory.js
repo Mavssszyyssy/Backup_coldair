@@ -31,6 +31,10 @@ function ServiceHistory({ unit, onClose }) {
 
   const historyPages = filteredSorted.length;
   const visibleHistory = filteredSorted.slice(historyPage - 1, historyPage);
+  const modelName = unit?.model || unit?.productSku || 'AC unit';
+  const unitName = unit?.brand && !modelName.toLowerCase().startsWith(unit.brand.toLowerCase())
+    ? `${unit.brand} ${modelName}`
+    : modelName;
 
   useEffect(() => {
     setHistoryPage(1);
@@ -46,24 +50,49 @@ function ServiceHistory({ unit, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="unit-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Complete AC unit history — {unit.brand} {unit.model}</h3>
-          <button type="button" className="close-modal" onClick={onClose}>
+    <div className="modal-overlay service-history-overlay" onClick={onClose}>
+      <section
+        className="unit-modal service-history-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="service-history-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="modal-header service-history-header">
+          <div>
+            <span className="service-history-eyebrow">Complete AC unit history</span>
+            <h3 id="service-history-title">Service history</h3>
+            <p>{unitName}</p>
+          </div>
+          <button
+            type="button"
+            className="close-modal service-history-close"
+            onClick={onClose}
+            aria-label="Close service history"
+          >
             ×
           </button>
-        </div>
-        <div className="modal-body">
-          <ServiceHistoryFilters
-            sortBy={sortBy}
-            onSortBy={setSortBy}
-            filterType={filterType}
-            onFilterType={setFilterType}
-            serviceTypes={serviceTypes}
-          />
+        </header>
+        <div className="modal-body service-history-body">
+          <section className="service-history-toolbar" aria-label="Service history filters">
+            <div className="service-history-toolbar-heading">
+              <div>
+                <h4>Service records</h4>
+                <p>Review completed visits and technician findings for this unit.</p>
+              </div>
+              <span>{filteredSorted.length} {filteredSorted.length === 1 ? 'record' : 'records'}</span>
+            </div>
+            <ServiceHistoryFilters
+              sortBy={sortBy}
+              onSortBy={setSortBy}
+              filterType={filterType}
+              onFilterType={setFilterType}
+              serviceTypes={serviceTypes}
+            />
+          </section>
+
           {filteredSorted.length > 0 ? (
-            <>
+            <section className="service-history-results" aria-label="Filtered service records">
               <HistoryPagination
                 currentPage={historyPage}
                 totalPages={historyPages}
@@ -71,33 +100,47 @@ function ServiceHistory({ unit, onClose }) {
               />
               <div ref={historyListRef} className="history-list">
                 {visibleHistory.map((service) => (
-                  <div key={service.id || `${service.date}-${service.serviceType}`} className="history-item">
-                    <div className="history-date">{serviceDateLabel(service.date)}</div>
-                    <div className="history-service">{serviceLabel(service.serviceType)}</div>
-                    {service.technicianStatus ? <div className="history-details">Technician status: {String(service.technicianStatus).replaceAll('_', ' ')}</div> : null}
-                    <div className="history-details">{serviceDetails(service)}</div>
-                    <ServiceFollowUp interpretation={service.aiInterpretation} />
-                    {servicePriceLabel(service) ? <div className="history-price">{servicePriceLabel(service)}</div> : null}
-                    {service.evidence?.eligible === false ? <div className="history-details">{service.evidence.reason}</div> : null}
-                    {service.technician && (
-                      <div className="history-details">Technician: {service.technician}</div>
-                    )}
-                  </div>
+                  <article key={service.id || `${service.date}-${service.serviceType}`} className="history-item service-history-record">
+                    <header className="service-history-record-header">
+                      <div>
+                        <time className="history-date" dateTime={service.date}>{serviceDateLabel(service.date)}</time>
+                        <h4 className="history-service">{serviceLabel(service.serviceType)}</h4>
+                      </div>
+                      {service.technicianStatus ? (
+                        <span className="service-history-status">
+                          {String(service.technicianStatus).replaceAll('_', ' ')}
+                        </span>
+                      ) : null}
+                    </header>
+
+                    <div className="service-history-record-content">
+                      <p className="history-details service-history-description">{serviceDetails(service)}</p>
+                      <ServiceFollowUp interpretation={service.aiInterpretation} />
+                      {(servicePriceLabel(service) || service.evidence?.eligible === false || service.technician) && (
+                        <footer className="service-history-record-meta">
+                          {servicePriceLabel(service) ? <strong className="history-price">{servicePriceLabel(service)}</strong> : null}
+                          {service.technician && <span>Technician: {service.technician}</span>}
+                          {service.evidence?.eligible === false ? <p>{service.evidence.reason}</p> : null}
+                        </footer>
+                      )}
+                    </div>
+                  </article>
                 ))}
               </div>
-            </>
+            </section>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            <div className="service-history-empty">
+              <strong>No matching service records</strong>
               No service history matches these filters.
             </div>
           )}
         </div>
-        <div className="modal-footer">
-          <button type="button" className="confirm-btn" onClick={onClose}>
+        <footer className="modal-footer service-history-footer">
+          <button type="button" className="confirm-btn service-history-done" onClick={onClose}>
             Close
           </button>
-        </div>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 }

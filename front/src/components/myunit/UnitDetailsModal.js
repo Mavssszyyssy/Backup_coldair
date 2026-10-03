@@ -31,6 +31,7 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
 
   const getStatusClass = () => {
     switch (unit.status) {
+      case "Active":
       case "Good":
         return "status-good";
       case "Needs Service":
@@ -43,59 +44,91 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="unit-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>AC Details</h3>
-          <button className="close-modal" onClick={onClose}>
+    <div className="modal-overlay unit-details-overlay" onClick={onClose}>
+      <section
+        className="unit-modal unit-details-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="unit-details-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="modal-header unit-details-header">
+          <div>
+            <span className="unit-details-eyebrow">Registered AC unit</span>
+            <h3 id="unit-details-title">AC Details</h3>
+          </div>
+          <button
+            type="button"
+            className="close-modal unit-details-close"
+            onClick={onClose}
+            aria-label="Close AC details"
+          >
             ×
           </button>
-        </div>
-        <div className="modal-body">
-          <div className="unit-modal-product">
-            <UnitProductVisual unit={unit} size="modal" />
-            <h2>
-              {unit.brand}
-            </h2>
-            <p>{unit.productSku || unit.model || "Model not recorded"}</p>
-          </div>
+        </header>
+        <div className="modal-body unit-details-body">
+          <section className="unit-details-summary" aria-label="AC unit overview">
+            <div className="unit-details-visual">
+              <UnitProductVisual unit={unit} size="modal" />
+            </div>
 
-          <div className="info-row">
-            <span className="info-label">Horsepower</span>
-            <span className="info-value">{formatUnitHorsepower(unit)}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Serial Number</span>
-            <span className="info-value">{unit.serialNumber}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Installation Date</span>
-            <span className="info-value">{unit.installationDate}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Status</span>
-            <span className={`unit-status ${getStatusClass()}`}>
-              {unit.status}
-            </span>
-          </div>
+            <div className="unit-details-overview">
+              <div className="unit-modal-product unit-details-identity">
+                <h2>{unit.brand || "Brand not recorded"}</h2>
+                <p>{unit.productSku || unit.model || "Model not recorded"}</p>
+              </div>
+
+              <dl className="unit-details-facts">
+                <div className="unit-details-fact">
+                  <dt>Horsepower</dt>
+                  <dd>{formatUnitHorsepower(unit)}</dd>
+                </div>
+                <div className="unit-details-fact">
+                  <dt>Serial Number</dt>
+                  <dd>{unit.serialNumber || "Not recorded"}</dd>
+                </div>
+                <div className="unit-details-fact">
+                  <dt>Installation Date</dt>
+                  <dd>{unit.installationDate || "Not recorded"}</dd>
+                </div>
+                <div className="unit-details-fact">
+                  <dt>Status</dt>
+                  <dd>
+                    <span className={`unit-status ${getStatusClass()}`}>
+                      {unit.status || "Not recorded"}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
           <DynamicServiceSticker unit={unit} />
-          {unit.technicianReportSummary && (
-            <div className="info-row">
-              <span className="info-label">Installation</span>
-              <span className="info-value">{unit.technicianReportSummary}</span>
-            </div>
-          )}
-          {unit.installEnvironmentNotes && (
-            <div className="info-row">
-              <span className="info-label">Installed At</span>
-              <span className="info-value">{unit.installEnvironmentNotes}</span>
-            </div>
-          )}
-          {unit.notes && (
-            <div className="info-row">
-              <span className="info-label">Registration</span>
-              <span className="info-value">{unit.notes}</span>
-            </div>
+
+          {(unit.technicianReportSummary || unit.installEnvironmentNotes || unit.notes) && (
+            <section className="unit-details-records" aria-labelledby="unit-details-records-title">
+              <h4 id="unit-details-records-title">Unit information</h4>
+              <dl>
+                {unit.technicianReportSummary && (
+                  <div>
+                    <dt>Installation</dt>
+                    <dd>{unit.technicianReportSummary}</dd>
+                  </div>
+                )}
+                {unit.installEnvironmentNotes && (
+                  <div>
+                    <dt>Installed At</dt>
+                    <dd>{unit.installEnvironmentNotes}</dd>
+                  </div>
+                )}
+                {unit.notes && (
+                  <div>
+                    <dt>Registration</dt>
+                    <dd>{unit.notes}</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
           )}
 
           {history.length > 0 && (
@@ -122,12 +155,12 @@ function UnitDetailsModal({ unit, onClose, onEdit, onDelete }) {
             </section>
           )}
         </div>
-        <div className="modal-footer">
-          <button className="cancel-btn" onClick={onClose}>
+        <footer className="modal-footer unit-details-footer">
+          <button type="button" className="cancel-btn unit-details-done" onClick={onClose}>
             Close
           </button>
-        </div>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 }
