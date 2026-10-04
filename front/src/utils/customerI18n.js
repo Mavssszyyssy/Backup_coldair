@@ -5,7 +5,6 @@ const FILIPINO = {
   "Services": "Mga Serbisyo",
   "Shop": "Tindahan",
   "Settings": "Mga Setting",
-  "System Settings": "Mga Setting ng Sistema",
   "Contact": "Makipag-ugnayan",
   "Logout": "Mag-logout",
   "Welcome Back,": "Maligayang pagbabalik,",

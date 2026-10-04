@@ -7,7 +7,7 @@ import './CustomerChatbot.css';
 const defaultBotMessage = {
   id: 'welcome',
   from: 'bot',
-  text: 'Hi! I am AeroPulse Assistant. Ask me about Shop, Services, My Unit, Orders, System Settings, or Contact support.'
+  text: 'Hi! I am AeroPulse Assistant. Ask me about Shop, Services, My Unit, Orders, Settings, or Contact support.'
 };
 
 const CustomerChatbot = () => {

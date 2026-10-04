@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import { alertDialog } from '../../../utils/dialog';
 export default function ServicePaymentPanel({ request, onUpdated }) {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
@@ -13,6 +14,15 @@ export default function ServicePaymentPanel({ request, onUpdated }) {
     try {
       const result = await apiRequest(`/service-requests/${request.id}/quote`, { method: 'PATCH', body: JSON.stringify({ amount }) });
       onUpdated({ ...request, servicePayment: result.servicePayment });
+      const savedAmount = Number(result.servicePayment?.baseAmount ?? result.servicePayment?.amount ?? amount);
+      const savedAmountLabel = Number.isFinite(savedAmount)
+        ? savedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : String(amount);
+      void alertDialog({
+        title: 'Service quote saved',
+        message: `The service quote of PHP ${savedAmountLabel} was saved successfully.`,
+        confirmText: 'Done',
+      });
     } catch (err) { setError(err.message || 'Unable to save quote.'); }
     finally { setBusy(false); }
   };

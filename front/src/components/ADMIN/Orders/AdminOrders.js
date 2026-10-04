@@ -10,7 +10,7 @@ import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
 
-import { getOrderAction } from '../../../domain/orderActions';
+import { canCancelOrder, getOrderAction } from '../../../domain/orderActions';
 
 const ORDER_PAGE_SIZE = 10;
 const TIME_SLOT_OPTIONS = [
@@ -533,7 +533,7 @@ const AdminOrders = ({ embedded = false }) => {
         <div className="admin-orders-list">
           {paginatedOrders.map((order) => {
             const actionConfig = getOrderAction(order);
-            const canCancel = ['to_pay', 'to_deliver', 'to_dispatch', 'for_rescheduling'].includes(order.workflowStatus);
+            const canCancel = canCancelOrder(order);
             const isPaymongoPending =
               String(order.paymentProvider || '').toLowerCase() === 'paymongo' &&
               String(order.paymentStatus || '').toLowerCase() !== 'paid' &&
