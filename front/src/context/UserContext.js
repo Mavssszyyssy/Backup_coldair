@@ -64,8 +64,11 @@ export const UserProvider = ({ children }) => {
     setIsAuthenticated(false);
   }, []);
 
-  // Theme is strictly light-mode-only
-  const currentTheme = "light";
+  const currentTheme = useMemo(() => {
+    const savedTheme = String(user?.preferences?.theme || "").toLowerCase();
+    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+    return user?.preferences?.darkMode ? "dark" : "light";
+  }, [user?.preferences?.darkMode, user?.preferences?.theme]);
 
   // Language derived from browser locale or user preference
   const currentLanguage = useMemo(() => {
@@ -131,10 +134,11 @@ export const UserProvider = ({ children }) => {
   }, [forceLogout]);
 
   useEffect(() => {
-    // Enforce light theme attributes
-    document.body.classList.remove("dark-mode");
-    document.documentElement.setAttribute("data-theme", "light");
-  }, []);
+    const darkModeEnabled = currentTheme === "dark";
+    document.body.classList.toggle("dark-mode", darkModeEnabled);
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    document.documentElement.style.colorScheme = currentTheme;
+  }, [currentTheme]);
 
   useEffect(() => {
     document.documentElement.lang =

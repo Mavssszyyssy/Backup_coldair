@@ -44,7 +44,8 @@
 .tech-secondary-button, .tech-pagination button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
 .tech-danger-button { background: #fff1f2; color: #be123c; }
 .tech-primary-button:disabled, .tech-secondary-button:disabled, .tech-danger-button:disabled, .tech-pagination button:disabled { cursor: not-allowed; opacity: .55; }
-.tech-assignment-form { display: grid; gap: 14px; position: sticky; top: 16px; }
+.tech-assignment-form { display: grid; gap: 14px; position: static; }
+.super-services-layout-main > .super-header { position: relative; top: auto; }
 .tech-assignment-form > .tech-primary-button { width: 100%; min-height: 46px; }
 .tech-form-section { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid #dbeafe; border-radius: 12px; background: #f8fbff; }
 .tech-form-section legend { padding: 0 7px; color: #1e3a8a; font-size: 12px; font-weight: 900; letter-spacing: .025em; text-transform: uppercase; }

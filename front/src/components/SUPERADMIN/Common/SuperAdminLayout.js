@@ -4,14 +4,14 @@ import SuperAdminSidebar from './SuperAdminSidebar';
 import '../../common/operationsDesignSystem.css';
 import '../superAdminShared.css';
 
-const SuperAdminLayout = ({ title, subtitle, children, embedded = false }) => {
+const SuperAdminLayout = ({ title, subtitle, children, embedded = false, mainClassName = '' }) => {
   if (embedded) return children;
 
   return (
     <div className="super-layout">
       <a className="ops-skip-link" href="#superadmin-main-content">Skip to main content</a>
       <SuperAdminSidebar />
-      <main className="super-layout-main" id="superadmin-main-content">
+      <main className={`super-layout-main${mainClassName ? ` ${mainClassName}` : ''}`} id="superadmin-main-content">
         <SuperAdminHeader title={title} subtitle={subtitle} />
         {children}
       </main>

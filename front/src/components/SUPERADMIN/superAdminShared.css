@@ -21,6 +21,16 @@
   --super-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
+:root[data-theme='dark'] .super-layout {
+  --super-bg: #0b1220;
+  --super-card: #111c2e;
+  --super-text: #e5edf7;
+  --super-muted: #a8b7c9;
+  --super-border: #2a3a50;
+  --super-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  background: #0b1220;
+}
+
 .super-layout {
   min-height: 100vh;
   background: radial-gradient(circle at 20% 0%, #eef2ff 0%, var(--super-bg) 38%, #f9fafb 100%);
@@ -619,4 +629,47 @@
 .no-scroll {
   overflow: hidden;
   height: 100vh;
+}
+
+/* Dark workspace surfaces shared by Superadmin pages. */
+:root[data-theme='dark'] .super-notifications-panel,
+:root[data-theme='dark'] .super-notifications-list > .super-notifications-row > button:first-child {
+  border-color: #2a3a50;
+  background: #111c2e;
+  color: #b9c6d8;
+}
+:root[data-theme='dark'] .super-notifications-list > .super-notifications-row > button:first-child.unread,
+:root[data-theme='dark'] .super-notifications-tabs button,
+:root[data-theme='dark'] .super-notifications-archive {
+  background: #162236;
+  color: #c7d2fe;
+}
+:root[data-theme='dark'] .super-notifications-list > .super-notifications-row > button:first-child strong {
+  color: #e5edf7;
+}
+:root[data-theme='dark'] .super-notifications-row {
+  border-bottom-color: #26364c;
+}
+:root[data-theme='dark'] .super-layout :is(.branch-summary > div, .branch-workspace, .branch-directory, .alert-summary-grid > div, .alert-workspace, .alert-card) {
+  border-color: #2a3a50;
+  background: #111c2e;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+:root[data-theme='dark'] .super-layout :is(.branch-workspace-heading h2, .branch-directory h2, .branch-directory article strong, .branch-admin-detail b, .alert-heading h2, .alert-card h3, .alert-detail-grid dd) {
+  color: #e5edf7;
+}
+:root[data-theme='dark'] .super-layout :is(.branch-summary span, .branch-workspace-heading span, .branch-coverage-help, .branch-directory article p, .branch-admin-detail small, .branch-coverage-list, .branch-email-directory header span, .branch-empty, .alert-summary-grid span, .alert-heading p, .alert-concern, .alert-detail-grid dt, .alert-empty) {
+  color: #a8b7c9;
+}
+:root[data-theme='dark'] .super-layout :is(.branch-assignment-form label, .branch-email-directory article label, .alert-filters label) {
+  color: #b9c6d8;
+}
+:root[data-theme='dark'] .super-layout :is(.branch-assignment-form select, .branch-assignment-form input, .branch-email-directory article input, .alert-filters select, .alert-reset) {
+  border-color: #3a4d66;
+  background: #0f1a2b;
+  color: #e5edf7;
+}
+:root[data-theme='dark'] .super-layout :is(.branch-directory article, .alert-detail-grid > div) {
+  border-color: #2a3a50;
+  background: #162236;
 }

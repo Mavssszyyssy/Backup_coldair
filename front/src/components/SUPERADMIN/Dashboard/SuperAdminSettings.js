@@ -10,14 +10,17 @@ import {
 } from '../../../domain/emailPolicy';
 import './SuperAdminAccount.css';
 
-const DEFAULT_PREFERENCES = { language: 'English', currency: 'PHP', timezone: 'Asia/Manila' };
+const DEFAULT_PREFERENCES = { theme: 'light', language: 'English', currency: 'PHP', timezone: 'Asia/Manila' };
 const DEFAULT_NOTIFICATIONS = { email: true, inApp: true, push: true, sms: false, accountUpdates: true, orderUpdates: true, serviceUpdates: true, systemAlerts: true };
 
 const SuperAdminSettings = () => {
   const navigate = useNavigate();
-  const { user, updateSettings } = useUser();
+  const { user, updatePreferences, updateSettings } = useUser();
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [preferencesNotice, setPreferencesNotice] = useState('');
+  const [preferencesError, setPreferencesError] = useState('');
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +33,12 @@ const SuperAdminSettings = () => {
   const [policyError, setPolicyError] = useState('');
 
   useEffect(() => {
-    setPreferences({ ...DEFAULT_PREFERENCES, ...(user?.preferences || {}) });
+    const savedPreferences = user?.preferences || {};
+    setPreferences({
+      ...DEFAULT_PREFERENCES,
+      ...savedPreferences,
+      theme: savedPreferences.theme || (savedPreferences.darkMode ? 'dark' : 'light'),
+    });
     setNotifications({ ...DEFAULT_NOTIFICATIONS, ...(user?.notifications || {}), sms: false });
   }, [user]);
 
@@ -114,10 +122,40 @@ const SuperAdminSettings = () => {
     } finally { setSaving(false); }
   };
 
+  const updateDisplayPreference = (key, value) => {
+    setPreferences((current) => ({ ...current, [key]: value }));
+    setPreferencesNotice('');
+    setPreferencesError('');
+  };
+
+  const saveDisplayPreferences = async () => {
+    setSavingPreferences(true);
+    setPreferencesNotice('');
+    setPreferencesError('');
+    try {
+      await updatePreferences({ ...preferences, darkMode: preferences.theme === 'dark' });
+      setPreferencesNotice('Display preferences saved to your account.');
+    } catch (requestError) {
+      setPreferencesError(requestError.message || 'Unable to save display preferences.');
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
+
   return <SuperAdminLayout title="System Settings" subtitle="Manage your HQ workspace, alerts, and executive preferences">
     <section className="hq-settings-intro"><div><p>HQ account controls</p><h2>Executive workspace settings</h2><span>These settings apply to your SuperAdmin account and the alerts delivered to you.</span></div><button type="button" onClick={() => navigate('/superadmin/profile')}>Open my profile</button></section>
     <form className="hq-account-grid" onSubmit={save}>
-      <section className="hq-account-card"><div className="hq-card-heading"><p>Workspace</p><h3>Display preferences</h3></div><label>Language<select value={preferences.language} onChange={(event) => setPreferences((current) => ({ ...current, language: event.target.value }))}><option value="English">English</option><option value="Filipino">Filipino</option></select></label><label>Currency<select value={preferences.currency} onChange={(event) => setPreferences((current) => ({ ...current, currency: event.target.value }))}><option value="PHP">PHP — Philippine Peso</option><option value="USD">USD — US Dollar</option></select></label><label>Time zone<select value={preferences.timezone} onChange={(event) => setPreferences((current) => ({ ...current, timezone: event.target.value }))}><option value="Asia/Manila">Asia/Manila (PHT)</option><option value="UTC">UTC</option></select></label></section>
+      <section className="hq-account-card">
+        <div className="hq-card-heading"><p>Workspace</p><h3>Display preferences</h3></div>
+        <p>Choose your account display options, then save them here.</p>
+        <label>Theme<select value={preferences.theme} onChange={(event) => updateDisplayPreference('theme', event.target.value)}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <label>Language<select value={preferences.language} onChange={(event) => updateDisplayPreference('language', event.target.value)}><option value="English">English</option><option value="Filipino">Filipino</option></select></label>
+        <label>Currency<select value={preferences.currency} onChange={(event) => updateDisplayPreference('currency', event.target.value)}><option value="PHP">PHP — Philippine Peso</option><option value="USD">USD — US Dollar</option></select></label>
+        <label>Time zone<select value={preferences.timezone} onChange={(event) => updateDisplayPreference('timezone', event.target.value)}><option value="Asia/Manila">Asia/Manila (PHT)</option><option value="UTC">UTC</option></select></label>
+        <button type="button" onClick={saveDisplayPreferences} disabled={savingPreferences}>{savingPreferences ? 'Saving display preferences…' : 'Save display preferences'}</button>
+        {preferencesNotice ? <span className="hq-success" role="status">{preferencesNotice}</span> : null}
+        {preferencesError ? <span className="hq-error" role="alert">{preferencesError}</span> : null}
+      </section>
       <section className="hq-account-card"><div className="hq-card-heading"><p>Alert delivery</p><h3>Alert preferences</h3></div>{[
         ['inApp', 'In-app alerts', 'Show transactions, requests, maintenance, and inventory alerts in the alert bell.'],
         ['push', 'Push alerts', 'Receive important HQ alerts on registered devices.'],

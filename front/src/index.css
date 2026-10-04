@@ -17,3 +17,8 @@ body {
     -moz-osx-font-smoothing: grayscale;
     background-color: #f4f5f7;
 }
+
+body.dark-mode {
+    background-color: #0b1220;
+    color: #e5edf7;
+}

@@ -21,3 +21,6 @@
 }
 
 .super-profile-button:hover { background: #e0e7ff; }
+
+:root[data-theme='dark'] .super-layout .super-profile-button{border-color:#3c4b73;background:#1b2b4b;color:#c7d2fe}
+:root[data-theme='dark'] .super-layout .super-profile-button:hover{background:#24375d}

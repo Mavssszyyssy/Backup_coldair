@@ -134,6 +134,50 @@ test('creates a work order from linked customer, address, unit, service, and tec
   });
 });
 
+test('shows an immediate success popup after a work order is reassigned', async () => {
+  const technicians = [
+    { id: 'tech-carl', name: 'Carl Ramos', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 },
+    { id: 'tech-lebron', name: 'Lebron James', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 },
+  ];
+  const task = {
+    id: 'task-1',
+    taskCode: 'TSK-1',
+    title: 'Repair',
+    customerName: 'Patrick Cruz',
+    branch: 'Cavite',
+    scheduledDate: '2026-10-05',
+    timeSlot: '8:00 AM - 10:00 AM',
+    assignedTechnicianId: 'tech-carl',
+    assignedTechnicianName: 'Carl Ramos',
+    status: 'pending',
+  };
+
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=technician') return { users: technicians };
+    if (path === '/users?role=customer') return { users: [] };
+    if (path === '/tasks/task-1' && options?.method === 'PATCH') {
+      return { task: { ...task, assignedTechnicianId: 'tech-lebron', assignedTechnicianName: 'Lebron James' } };
+    }
+    if (path === '/tasks') return { tasks: [task] };
+    if (path === '/service-requests/catalog') return { offerings: [] };
+    if (path === '/amp/report-units') return { units: [] };
+    return {};
+  });
+
+  render(<><GlobalDialog /><AdminTechnician /></>);
+  fireEvent.change(await screen.findByLabelText('Assigned technician'), { target: { value: 'tech-lebron' } });
+
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/tasks/task-1', expect.objectContaining({
+    method: 'PATCH',
+    body: JSON.stringify({ assignedTechnicianId: 'tech-lebron', assignedTechnicianName: 'Lebron James' }),
+  })));
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByRole('heading', { name: 'Work order reassigned' })).toBeInTheDocument();
+  expect(within(dialog).getByText('Work order reassigned to Lebron James.')).toBeInTheDocument();
+  expect(within(dialog).getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  expect(screen.getAllByText('Work order reassigned to Lebron James.')).toHaveLength(2);
+});
+
 test('paginates recent work assignments instead of rendering an unbounded card list', async () => {
   const tasks = Array.from({ length: 5 }, (_, index) => ({
     id: `task-${index + 1}`,

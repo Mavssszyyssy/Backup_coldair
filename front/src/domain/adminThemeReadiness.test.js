@@ -24,6 +24,17 @@ describe("Admin and SuperAdmin theme isolation", () => {
     expect(superShared).toContain("--role-primary: #4f46e5");
   });
 
+  it("provides readable dark surfaces for the shared operations shell", () => {
+    const operations = source("common", "operationsDesignSystem.css");
+    const superShared = source("SUPERADMIN", "superAdminShared.css");
+    const superAccount = source("SUPERADMIN", "Dashboard", "SuperAdminAccount.css");
+
+    expect(operations).toContain(':root[data-theme="dark"] :is(.admin-layout, .super-layout)');
+    expect(operations).toContain("--ops-canvas: #0b1220");
+    expect(superShared).toContain(":root[data-theme='dark'] .super-layout");
+    expect(superAccount).toContain(":root[data-theme='dark'] .hq-account-card");
+  });
+
   it("keeps dashboard styles from overriding the shared Admin sidebar", () => {
     const adminDashboard = source("ADMIN", "Dashboard", "styles.css");
 

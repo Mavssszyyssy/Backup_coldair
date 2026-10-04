@@ -10,9 +10,36 @@ vi.mock('../Common/SuperAdminLayout', () => ({ default: ({ children }) => <div>{
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 vi.mock('../../../context/UserContext', () => ({ useUser: vi.fn() }));
 
+let updatePreferences;
+
 beforeEach(() => {
   apiRequest.mockReset();
-  useUser.mockReturnValue({ user: {}, updateSettings: vi.fn().mockResolvedValue({}) });
+  updatePreferences = vi.fn().mockResolvedValue({});
+  useUser.mockReturnValue({
+    user: {},
+    updatePreferences,
+    updateSettings: vi.fn().mockResolvedValue({}),
+  });
+});
+
+test('saves display preferences directly from their card without changing alert settings', async () => {
+  apiRequest.mockResolvedValue({ domains: [] });
+  render(<MemoryRouter><SuperAdminSettings /></MemoryRouter>);
+
+  fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
+  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'Filipino' } });
+  fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
+  fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'UTC' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save display preferences' }));
+
+  await waitFor(() => expect(updatePreferences).toHaveBeenCalledWith({
+    theme: 'dark',
+    darkMode: true,
+    language: 'Filipino',
+    currency: 'USD',
+    timezone: 'UTC',
+  }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Display preferences saved to your account.');
 });
 
 test('Superadmin manages the system-wide email whitelist through a multi-select dropdown', async () => {

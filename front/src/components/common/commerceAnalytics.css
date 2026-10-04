@@ -63,3 +63,14 @@
 @media (max-width:900px) { .commerce-analytics-grid { grid-template-columns:1fr; } }
 @media (max-width:1024px) { .commerce-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.commerce-action-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:520px) { .commerce-panel { padding:16px; } .commerce-panel-header { flex-direction:column; } .commerce-trend { gap:7px; } .commerce-trend-scale { display:none; } .commerce-bars { gap:5px; } .commerce-bar-column { min-width:14px; } .commerce-bar-column span { font-size:9px; } .commerce-donut-layout { flex-direction:column; align-items:flex-start; } .commerce-legend { width:100%; } .commerce-dashboard-intro { align-items:flex-start; flex-direction:column; } .commerce-kpi-grid,.commerce-action-grid { grid-template-columns:1fr; } }
+
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel,.commerce-kpi){border-color:#2a3a50;background:#111c2e;box-shadow:0 8px 22px rgba(0,0,0,.24)}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel-header h2,.commerce-dashboard-intro h2,.commerce-donut-center strong,.commerce-legend-item strong,.commerce-ranked-title strong,.commerce-table td:first-child,.commerce-tech-name,.commerce-tech-row strong){color:#e5edf7}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel-header p,.commerce-dashboard-intro p:not(.commerce-eyebrow),.commerce-kpi span,.commerce-kpi small,.commerce-donut-center span,.commerce-legend-item,.commerce-ranked-title,.commerce-ranked-detail small,.commerce-table td,.commerce-tech-row,.commerce-tech-row small){color:#a8b7c9}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-donut-center{background:#111c2e}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-bars{border-bottom-color:#3a4d66;background:repeating-linear-gradient(to bottom,transparent 0,transparent 59px,#26364c 60px)}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-tabs button,.commerce-action-grid button){border-color:#3a4d66;background:#162236;color:#bfdbfe}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-tabs button.active{border-color:#2563eb;background:#2563eb;color:#fff}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table th{border-bottom-color:#2a3a50;background:#162236;color:#b9c6d8}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table td{border-bottom-color:#26364c}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-empty{border-color:#3a4d66;background:#162236;color:#a8b7c9}

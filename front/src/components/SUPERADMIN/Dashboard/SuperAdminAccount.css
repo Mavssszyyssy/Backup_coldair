@@ -6,3 +6,29 @@
 .hq-profile-hero{align-items:center}.hq-profile-avatar{width:54px;height:54px;display:grid;place-items:center;border-radius:18px;background:#4338ca;color:#fff;font-size:22px;font-weight:900}.hq-profile-hero>div:nth-child(2){margin-right:auto}.hq-profile-status{display:grid;gap:3px;text-align:right}.hq-profile-status b{color:#166534;font-size:13px}.hq-profile-status small{color:#64748b;font-size:11px}.hq-profile-grid{margin-top:16px}.hq-page-error{margin-top:16px}
 .hq-domain-policy-card{grid-column:span 2}.hq-domain-selector{position:relative}.hq-domain-selector-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;padding:11px 12px;color:#0f172a;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.hq-domain-selector-button:disabled{cursor:wait;opacity:.7}.hq-domain-menu{display:grid;gap:3px;max-height:290px;overflow-y:auto;margin-top:7px;padding:7px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;box-shadow:0 12px 28px rgba(15,23,42,.12)}.hq-domain-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px;border-radius:8px}.hq-domain-option:hover{background:#f8fafc}.hq-domain-option label{display:flex!important;align-items:center;gap:9px;min-width:0;text-transform:none!important;cursor:pointer}.hq-domain-option label input{width:18px;height:18px;flex:0 0 auto}.hq-domain-option label span{display:grid;gap:2px;min-width:0}.hq-domain-option label b{overflow-wrap:anywhere;color:#1e293b;font-size:13px}.hq-domain-option label small{color:#64748b;font-size:11px;font-weight:500}.hq-domain-option>button{border:0;background:transparent;color:#b91c1c;font:inherit;font-size:11px;font-weight:800;cursor:pointer}.hq-domain-empty{padding:10px;color:#64748b;text-align:center}.hq-domain-add-row{display:grid;grid-template-columns:1fr auto;align-items:end;gap:9px}.hq-domain-add-row>button,.hq-domain-save-button{height:40px;border:0;border-radius:9px;background:#eef2ff;color:#4338ca;padding:0 13px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.hq-domain-save-button{background:#4338ca;color:#fff}.hq-domain-save-button:disabled{cursor:wait;opacity:.65}
 @media(max-width:760px){.hq-settings-intro,.hq-profile-hero{align-items:flex-start;flex-direction:column}.hq-settings-intro>button{width:100%}.hq-account-grid{grid-template-columns:1fr}.hq-authority-card,.hq-save-row,.hq-domain-policy-card{grid-column:auto}.hq-save-row{align-items:stretch;flex-direction:column}.hq-save-row>button{width:100%}.hq-profile-status{text-align:left}.hq-profile-hero>div:nth-child(2){margin-right:0}.hq-domain-add-row{grid-template-columns:1fr}.hq-domain-add-row>button{width:100%}}
+
+:root[data-theme='dark'] .hq-settings-intro,
+:root[data-theme='dark'] .hq-profile-hero{border-color:#2a3a50;background:linear-gradient(115deg,#111c2e 0%,#17213a 100%);box-shadow:0 8px 20px rgba(0,0,0,.24)}
+:root[data-theme='dark'] .hq-settings-intro h2,
+:root[data-theme='dark'] .hq-profile-hero h2,
+:root[data-theme='dark'] .hq-card-heading h3{color:#e5edf7}
+:root[data-theme='dark'] .hq-settings-intro span,
+:root[data-theme='dark'] .hq-profile-hero span,
+:root[data-theme='dark'] .hq-account-card>p,
+:root[data-theme='dark'] .hq-toggle-row small,
+:root[data-theme='dark'] .hq-profile-status small{color:#a8b7c9}
+:root[data-theme='dark'] .hq-account-card{border-color:#2a3a50;background:#111c2e;box-shadow:0 8px 20px rgba(0,0,0,.24)}
+:root[data-theme='dark'] .hq-account-card label{color:#b9c6d8}
+:root[data-theme='dark'] .hq-account-card input,
+:root[data-theme='dark'] .hq-account-card select,
+:root[data-theme='dark'] .hq-domain-selector-button,
+:root[data-theme='dark'] .hq-domain-menu{border-color:#3a4d66;background:#0f1a2b;color:#e5edf7}
+:root[data-theme='dark'] .hq-account-card input[readonly]{background:#162236;color:#a8b7c9}
+:root[data-theme='dark'] .hq-toggle-row{border-bottom-color:#26364c}
+:root[data-theme='dark'] .hq-toggle-row b,
+:root[data-theme='dark'] .hq-domain-option label b{color:#e5edf7}
+:root[data-theme='dark'] .hq-domain-option:hover{background:#162236}
+:root[data-theme='dark'] .hq-quick-links button,
+:root[data-theme='dark'] .hq-domain-add-row>button{border-color:#3c4b73;background:#1b2b4b;color:#c7d2fe}
+:root[data-theme='dark'] .hq-success{background:#123527;color:#86efac}
+:root[data-theme='dark'] .hq-error{background:#3b1820;color:#fca5a5}

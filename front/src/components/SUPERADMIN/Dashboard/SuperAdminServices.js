@@ -29,6 +29,7 @@ const SuperAdminServices = () => {
     <SuperAdminLayout
       title="Services"
       subtitle="Monitor customer orders, service requests, customer messages, and technician operations in one executive workspace."
+      mainClassName="super-services-layout-main"
     >
       <div className="module-tabs" role="tablist" aria-label="Super Admin service management sections">
         {TABS.map((tab) => (

@@ -37,6 +37,20 @@
   font-family: "Outfit", "Segoe UI", sans-serif;
 }
 
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) {
+  --ops-text: #e5edf7;
+  --ops-muted: #a8b7c9;
+  --ops-canvas: #0b1220;
+  --ops-surface: #111c2e;
+  --ops-surface-subtle: #162236;
+  --ops-border: #2a3a50;
+  --ops-border-strong: #3a4d66;
+  --ops-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --ops-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.34);
+  background: var(--ops-canvas);
+  color: var(--ops-text);
+}
+
 :is(.admin-layout, .super-layout) *,
 :is(.admin-layout, .super-layout) *::before,
 :is(.admin-layout, .super-layout) *::after {
@@ -93,6 +107,11 @@
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--ops-shadow-sm);
   backdrop-filter: blur(14px);
+}
+
+:root[data-theme="dark"] :is(.admin-header, .super-header) {
+  border-color: rgba(58, 77, 102, 0.92);
+  background: rgba(17, 28, 46, 0.96);
 }
 
 :is(.admin-header, .super-header) h1 {
@@ -308,6 +327,15 @@
   font: inherit;
 }
 
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+  background: #0f1a2b;
+  color: var(--ops-text);
+}
+
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea)::placeholder {
+  color: #8292a8;
+}
+
 :is(.admin-layout, .super-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea)::placeholder { color: #8a98aa; }
 :is(.admin-layout, .super-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea):focus {
   border-color: var(--ops-brand);
@@ -324,6 +352,10 @@
   border: 1px solid var(--ops-border);
   border-radius: 12px;
   background: #fff;
+}
+
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table-wrap, .super-table-wrap) {
+  background: var(--ops-surface);
 }
 
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) {
@@ -346,6 +378,11 @@
   text-transform: uppercase;
 }
 
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) th {
+  background: #162236;
+  color: #b9c6d8;
+}
+
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) td {
   padding: 13px 14px;
   border-bottom: 1px solid #e8eef5;
@@ -354,8 +391,13 @@
   line-height: 1.45;
 }
 
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) td {
+  border-bottom-color: #233249;
+}
+
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:last-child td { border-bottom: 0; }
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:hover { background: #f7fbfe; }
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:hover { background: #152238; }
 
 :is(.admin-layout, .super-layout) :is(.admin-empty-state, .super-notifications-empty) {
   min-height: 120px;
@@ -383,6 +425,11 @@
   background: #fff;
   color: var(--ops-text);
   font-weight: 750;
+}
+
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.pagination, .admin-pagination, .report-pagination) button {
+  background: var(--ops-surface);
+  color: var(--ops-text);
 }
 
 :is(.admin-layout, .super-layout) :is(.pagination, .admin-pagination, .report-pagination) button.active {

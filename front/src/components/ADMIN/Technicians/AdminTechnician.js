@@ -6,7 +6,7 @@ import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianT
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
-import { confirmDialog } from "../../../utils/dialog";
+import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import DailyWorkSchedule from "./DailyWorkSchedule";
@@ -569,8 +569,14 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
           assignedTechnicianName: technician.name,
         }),
       });
+      const successMessage = `Work order reassigned to ${technician.name}.`;
       setTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
-      setNotice(`Work order reassigned to ${technician.name}.`);
+      setNotice(successMessage);
+      void alertDialog({
+        title: "Work order reassigned",
+        message: successMessage,
+        confirmText: "Done",
+      });
     } catch (requestError) {
       setError(requestError.message || "Unable to reassign this work order.");
     } finally {
