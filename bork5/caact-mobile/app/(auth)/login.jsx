@@ -167,7 +167,7 @@ export function LoginScreen() {
         ) : null}
 
         <Button
-          title="Forgot Password?"
+          title="Reset Password"
           onPress={() => router.push("/recover")}
           variant="ghost"
           size="sm"

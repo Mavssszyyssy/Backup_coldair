@@ -101,7 +101,7 @@ export default function SuperAdminCatalog({ onCreated }) {
     <section className="super-catalog" aria-labelledby="shop-catalog-title">
       <div className="super-catalog-intro">
         <div>
-          <span className="super-catalog-eyebrow">Shop catalog</span>
+          <span className="super-catalog-eyebrow">Catalog Management</span>
           <h2 id="shop-catalog-title">Add a product and its first stock</h2>
           <p>Each unit in the starting stock receives its own generated inventory serial number and permanent QR Unit ID for the chosen branch.</p>
         </div>
@@ -140,7 +140,7 @@ export default function SuperAdminCatalog({ onCreated }) {
 
       {createdProduct ? (
         <section className="super-catalog-success" aria-live="polite">
-          <div className="super-catalog-success-heading"><CheckCircle size={24} weight="fill" /><div><h3>{createdProduct.name} is in the shop catalog</h3><p>{serials.length} generated serial{serials.length === 1 ? "" : "s"} assigned to {form.branch || "the selected branch"}.</p></div></div>
+          <div className="super-catalog-success-heading"><CheckCircle size={24} weight="fill" /><div><h3>{createdProduct.name} was added to Catalog Management</h3><p>{serials.length} generated serial{serials.length === 1 ? "" : "s"} assigned to {form.branch || "the selected branch"}.</p></div></div>
           {serials.length ? <div className="super-catalog-serial-list">{serials.map((unit) => <article key={unit.qrUnitId || unit.serialNumber}><div><span>Inventory serial</span><strong>{unit.serialNumber}</strong><small>QR Unit ID: {unit.qrUnitId || "Creating QR Unit ID"}</small></div><button type="button" onClick={() => void copySerial(unit.serialNumber)} aria-label={`Copy serial ${unit.serialNumber}`}><Copy size={17} weight="bold" />{copied === unit.serialNumber ? "Copied" : "Copy"}</button></article>)}</div> : <p className="super-catalog-error">The product was created but no serials were returned. Refresh the Serial / QR Registry before assigning this product.</p>}
         </section>
       ) : null}

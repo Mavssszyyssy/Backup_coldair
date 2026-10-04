@@ -41,7 +41,7 @@ export default function LoginForm({
             onClick={onForgotPassword}
             tabIndex="-1"
           >
-            Forgot?
+            Reset Password
           </button>
         </div>
 

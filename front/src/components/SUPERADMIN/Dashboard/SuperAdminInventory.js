@@ -13,7 +13,7 @@ import '../superAdminShared.css';
 const getBranchStock = (product, branch) => Number(product?.branchStock?.[branch] ?? 0);
 
 const TABS = [
-  { id: 'catalog', label: 'Shop Catalog' },
+  { id: 'catalog', label: 'Catalog Management' },
   { id: 'checker', label: 'Inventory Checker' },
   { id: 'reorders', label: 'Reorder Management' },
   { id: 'serial-qr', label: 'Serial / QR Registry' },

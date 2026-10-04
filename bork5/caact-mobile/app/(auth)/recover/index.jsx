@@ -51,7 +51,7 @@ export default function RecoverScreen() {
         minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
-          title="Recover Account"
+          title="Reset Password"
           subtitle="Use your registered email or unique account login ID"
           color={COLORS.primary}
           onBack={() => router.push("/sign-in")}

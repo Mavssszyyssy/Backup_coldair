@@ -9,6 +9,7 @@ beforeEach(() => apiRequest.mockReset());
 it('uses the same account identifier for recovery-code request and password reset', async () => {
   apiRequest.mockResolvedValue({ message: 'Success' });
   render(<MemoryRouter><ForgotPassword /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'Reset Password' })).toBeInTheDocument();
   expect(screen.queryByText(/SMS verification/i)).not.toBeInTheDocument();
   fireEvent.change(screen.getByPlaceholderText('you@example.com or account.login'), { target: { value: 'tech.cavite.carl' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send verification code' }));

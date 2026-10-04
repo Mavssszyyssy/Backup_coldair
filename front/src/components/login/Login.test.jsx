@@ -25,6 +25,7 @@ beforeEach(() => {
 it("keeps polished secondary actions when the login form switches to email verification", async () => {
   render(<MemoryRouter><Login /></MemoryRouter>);
 
+  expect(screen.getByRole("button", { name: "Reset Password" })).toBeInTheDocument();
   fireEvent.change(screen.getByPlaceholderText("juan.dc"), { target: { value: "admin.cavite" } });
   fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "StrongPass1." } });
   fireEvent.click(screen.getByRole("button", { name: "Sign In" }));

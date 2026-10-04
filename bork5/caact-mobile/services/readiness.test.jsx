@@ -151,9 +151,17 @@ describe("mobile customer readiness rules", () => {
       path.join(__dirname, "..", "app", "(auth)", "login.jsx"),
       "utf8",
     );
+    const recoverSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "(auth)", "recover", "index.jsx"),
+      "utf8",
+    );
     expect(loginSource).toContain("I have a different account");
     expect(loginSource).toContain("Resend code");
     expect(loginSource).toContain("I don't have an account");
+    expect(loginSource).toContain('title="Reset Password"');
+    expect(loginSource).not.toContain('title="Forgot Password?"');
+    expect(recoverSource).toContain('title="Reset Password"');
+    expect(recoverSource).not.toContain('title="Recover Account"');
     expect(loginSource).toContain('router.push("/recover")');
     expect(loginSource).toContain('variant="secondary"');
     expect(loginSource).toContain('variant="ghost"');

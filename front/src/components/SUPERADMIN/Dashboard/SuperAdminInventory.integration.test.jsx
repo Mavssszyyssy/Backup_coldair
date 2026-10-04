@@ -35,7 +35,7 @@ it("renders the real Superadmin layout and product catalog", () => {
 
   expect(screen.getByRole("heading", { name: "Inventory Management" })).toBeInTheDocument();
   expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
-    "Shop Catalog",
+    "Catalog Management",
     "Inventory Checker",
     "Reorder Management",
     "Serial / QR Registry",
