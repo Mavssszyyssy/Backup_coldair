@@ -11,6 +11,7 @@ import {
 } from "../../common/CommerceAnalytics";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
+import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from "../../../utils/phMobileValidation";
 import SuperAdminLayout from "../Common/SuperAdminLayout";
 import "../superAdminShared.css";
 import "./SuperAdminDashboard.css";
@@ -43,6 +44,7 @@ function SuperAdminDashboard() {
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
   const [form, setForm] = useState({ name: user?.name || "", phone: user?.phone || "", address: user?.address || "" });
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -59,16 +61,22 @@ function SuperAdminDashboard() {
 
   const openEdit = () => {
     setForm({ name: user?.name || "", phone: user?.phone || "", address: user?.address || "" });
+    setFormError("");
     setIsEditing(true);
   };
   const onSave = async (event) => {
     event.preventDefault();
+    const phoneError = validateLocalPhMobile(form.phone);
+    if (phoneError) {
+      setFormError(phoneError);
+      return;
+    }
     setSaving(true);
     try {
       await updateProfile(form);
       setIsEditing(false);
     } catch (saveError) {
-      setError(saveError?.message || "Unable to update the profile.");
+      setFormError(saveError?.message || "Unable to update the profile.");
     } finally {
       setSaving(false);
     }
@@ -134,7 +142,20 @@ function SuperAdminDashboard() {
           <form className="app-modal-card" onSubmit={onSave} onClick={(event) => event.stopPropagation()}>
             <h3>Edit Super Admin Profile</h3>
             <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Name" />
-            <input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Phone" />
+            <input
+              aria-label="Phone number"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              maxLength={11}
+              value={form.phone}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, phone: sanitizeLocalPhMobileInput(event.target.value) }));
+                setFormError("");
+              }}
+              placeholder="09XXXXXXXXX"
+            />
+            {formError ? <p className="app-modal-error" role="alert">{formError}</p> : <small className="app-modal-help">Use exactly 11 digits (09XXXXXXXXX).</small>}
             <input value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} placeholder="Address" />
             <div className="app-modal-actions"><button type="button" onClick={() => setIsEditing(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</button></div>
           </form>

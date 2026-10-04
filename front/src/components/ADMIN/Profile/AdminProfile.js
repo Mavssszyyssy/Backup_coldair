@@ -4,6 +4,7 @@ import AdminLayout from '../Common/AdminLayout';
 import AccountSecurityManagement from '../../security/AccountSecurityManagement';
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
 import { getSessionActiveBranch } from '../../../utils/authSession';
+import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
 import '../adminShared.css';
 import './styles.css';
 
@@ -15,6 +16,7 @@ const AdminProfile = () => {
   const adminLocation = branchInfo?.location || branchName || '-';
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -25,11 +27,17 @@ const AdminProfile = () => {
       name: user?.name || '',
       phone: user?.phone || '',
     });
+    setPhoneError('');
     setIsEditing(true);
   };
 
   const saveProfile = async (event) => {
     event.preventDefault();
+    const validationError = validateLocalPhMobile(form.phone);
+    if (validationError) {
+      setPhoneError(validationError);
+      return;
+    }
     try {
       setSaving(true);
       await updateProfile(form);
@@ -68,7 +76,20 @@ const AdminProfile = () => {
             <form className="admin-profile-modal-card" onSubmit={saveProfile} onClick={(event) => event.stopPropagation()}>
               <h3>Edit Admin Profile</h3>
               <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" />
-              <input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone" />
+              <input
+                aria-label="Phone number"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                maxLength={11}
+                value={form.phone}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, phone: sanitizeLocalPhMobileInput(event.target.value) }));
+                  setPhoneError('');
+                }}
+                placeholder="09XXXXXXXXX"
+              />
+              {phoneError ? <p className="admin-profile-phone-error" role="alert">{phoneError}</p> : <small className="admin-profile-phone-help">Use exactly 11 digits (09XXXXXXXXX).</small>}
               <input value={adminLocation} readOnly disabled placeholder="Location" />
               <div className="admin-profile-modal-actions">
                 <button type="button" onClick={() => setIsEditing(false)}>Cancel</button>

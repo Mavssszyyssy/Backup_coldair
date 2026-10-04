@@ -14,6 +14,12 @@ test("signed-in password change uses current password, confirmation, and the exi
   render(<AccountSecurityManagement user={{ authProvider: "local" }} onChangePassword={changePassword} />);
   expect(screen.queryByLabelText("Current Password")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Change Password" }));
+  const passwordToggles = screen.getAllByRole("button", { name: "Show password" });
+  expect(passwordToggles).toHaveLength(3);
+  expect(screen.getByLabelText("Current Password")).toHaveAttribute("type", "password");
+  fireEvent.click(passwordToggles[0]);
+  expect(screen.getByLabelText("Current Password")).toHaveAttribute("type", "text");
+  expect(screen.getByRole("button", { name: "Hide password" })).toBeVisible();
   fireEvent.change(screen.getByLabelText("Current Password"), { target: { value: "OldPass123!" } });
   fireEvent.change(screen.getByLabelText("New Password"), { target: { value: "NewPass123!" } });
   fireEvent.change(screen.getByLabelText("Confirm New Password"), { target: { value: "NewPass123!" } });

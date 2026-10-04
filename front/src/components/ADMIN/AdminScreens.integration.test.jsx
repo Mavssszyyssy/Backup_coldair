@@ -25,6 +25,7 @@ vi.mock("../../context/UserContext", () => ({
       id: "admin-test",
       name: "Cavite Admin",
       email: "admin@test.local",
+      phone: "09123456789",
       role: "admin",
       activeBranch: "Cavite",
       assignedBranch: "Cavite",
@@ -50,6 +51,8 @@ vi.mock("../../context/AdminSettingsContext", () => ({
 }));
 
 beforeEach(() => {
+  updateProfile.mockReset();
+  updateProfile.mockResolvedValue({});
   apiRequest.mockImplementation(async (path) => {
     if (path === "/dashboard/me") return { stats: {}, analytics: {} };
     if (path.startsWith("/products/low-stock")) return { products: [] };
@@ -64,6 +67,23 @@ beforeEach(() => {
     if (path === "/reorders/mine") return { reorders: [] };
     return {};
   });
+});
+
+it("limits the Admin profile phone field to 11 digits before saving", async () => {
+  const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+  renderScreen(AdminProfile, "/admin/profile");
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit Profile" }));
+  const phoneInput = screen.getByRole("textbox", { name: "Phone number" });
+  expect(phoneInput).toHaveAttribute("maxlength", "11");
+
+  fireEvent.change(phoneInput, { target: { value: "09789654322888" } });
+  expect(phoneInput).toHaveValue("09789654322");
+
+  fireEvent.change(phoneInput, { target: { value: "09123456789" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  await waitFor(() => expect(updateProfile).toHaveBeenCalledWith(expect.objectContaining({ phone: "09123456789" })));
+  alertSpy.mockRestore();
 });
 
 afterEach(() => {

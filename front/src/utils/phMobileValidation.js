@@ -19,6 +19,18 @@ const VALID_PH_PREFIXES = new Set([
   '0991', '0992', '0993', '0994', '0895', '0896', '0897', '0898'
 ]);
 
+export function sanitizeLocalPhMobileInput(value = "") {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 11);
+}
+
+export function validateLocalPhMobile(value = "") {
+  if (!String(value).trim()) return "Phone number is required.";
+  if (!/^09\d{9}$/.test(String(value))) {
+    return "Enter exactly 11 digits in the format 09XXXXXXXXX.";
+  }
+  return "";
+}
+
 /**
  * Checks if a phone number string is likely to be a fake or placeholder.
  * @param {string} phone 11-digit string

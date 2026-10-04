@@ -19,7 +19,7 @@ beforeEach(() => {
 test('superadmin profile submits the edited contact email and refreshes through context', async () => {
   const updateProfile = vi.fn().mockResolvedValue({});
   useUser.mockReturnValue({
-    user: { id: 'superadmin-id', name: 'Super Admin', email: 'old@example.com', role: 'superadmin' },
+    user: { id: 'superadmin-id', name: 'Super Admin', email: 'old@example.com', phone: '09123456789', role: 'superadmin' },
     updateProfile,
     changePassword: vi.fn(),
   });
@@ -30,6 +30,19 @@ test('superadmin profile submits the edited contact email and refreshes through 
   fireEvent.click(screen.getByText('Save profile'));
   await waitFor(() => expect(updateProfile).toHaveBeenCalledWith(expect.objectContaining({ email: 'lanlords2025@gmail.com' })));
   expect(await screen.findByText('Profile updated successfully.')).toBeInTheDocument();
+});
+
+test('superadmin profile limits the mobile number to 11 digits', () => {
+  useUser.mockReturnValue({
+    user: { id: 'superadmin-id', name: 'Super Admin', email: 'old@example.com', phone: '09123456789', role: 'superadmin' },
+    updateProfile: vi.fn(),
+    changePassword: vi.fn(),
+  });
+  render(<MemoryRouter><SuperAdminProfile /></MemoryRouter>);
+  const phone = screen.getByLabelText(/Mobile number/);
+  expect(phone).toHaveAttribute('maxlength', '11');
+  fireEvent.change(phone, { target: { value: '09789654322888' } });
+  expect(phone).toHaveValue('09789654322');
 });
 
 describe('administrator email management', () => {

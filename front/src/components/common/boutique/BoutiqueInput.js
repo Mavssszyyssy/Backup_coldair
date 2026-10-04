@@ -97,9 +97,10 @@ export default function BoutiqueInput({
               type="button"
               className="bq-input-pass-toggle"
               onClick={() => setShowPassword(!showPassword)}
-              tabIndex="-1"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
             >
-              {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeSlash size={20} weight="bold" aria-hidden="true" /> : <Eye size={20} weight="bold" aria-hidden="true" />}
             </button>
           )}
           {inlineAction}
@@ -173,12 +174,18 @@ export default function BoutiqueInput({
         .bq-input--error .bq-input-field { background: #fffafb; }
         .bq-input--success .bq-input-field { background: #fafffb; }
 
-        .bq-input-pass-toggle {
-          background: transparent; border: none; cursor: pointer;
-          color: var(--field-accent); display: flex; align-items: center; justify-content: center;
-          transition: all 0.2s; width: 32px; height: 32px;
+        .bq-input-field-area .bq-input-pass-toggle {
+          appearance: none; background: transparent; border: none; cursor: pointer;
+          color: ${BQ_COLORS.inkMuted}; display: flex; align-items: center; justify-content: center;
+          transition: color 0.2s ease, background 0.2s ease; width: 34px; height: 34px;
+          min-width: 34px; padding: 0; margin: 0; border-radius: 8px; box-shadow: none;
         }
-        .bq-input-pass-toggle:hover { filter: brightness(0.8); transform: scale(1.1); }
+        .bq-input-field-area .bq-input-pass-toggle:hover {
+          background: ${BQ_COLORS.bg}; color: ${BQ_COLORS.brand}; filter: none; transform: none; box-shadow: none;
+        }
+        .bq-input-field-area .bq-input-pass-toggle:focus-visible {
+          outline: 2px solid ${BQ_COLORS.brand}; outline-offset: 2px;
+        }
 
         /* Unified status badge styles used by VerifyInput and Steps */
         .bq-verified-badge {

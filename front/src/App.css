@@ -70,6 +70,22 @@ body {
     margin-bottom: 10px;
 }
 
+.app-modal-help,
+.app-modal-error {
+    display: block;
+    margin: -4px 0 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.app-modal-help {
+    color: #64748b;
+}
+
+.app-modal-error {
+    color: #b91c1c;
+}
+
 .app-modal-actions {
     display: flex;
     justify-content: flex-end;
