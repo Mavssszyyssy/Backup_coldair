@@ -2,6 +2,7 @@ import React from 'react';
 import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
+import { alertDialog } from '../../../utils/dialog';
 import InventorySerialQrPreview from './InventorySerialQrPreview';
 import './styles.css';
 
@@ -60,6 +61,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
     const { quantity } = getRowState(productId);
     const qty = Number(quantity);
     if (!qty || qty <= 0) return;
+    const product = products.find((item) => item.id === productId || item._id === productId);
     try {
       setPendingId(productId);
       await apiRequest(`/products/${productId}/stock`, {
@@ -77,6 +79,11 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
       });
       setRowValue(productId, { quantity: '' });
       onRefresh?.();
+      void alertDialog({
+        title: 'Stock added successfully',
+        message: `${qty} ${qty === 1 ? 'unit' : 'units'} of ${product?.name || 'the selected product'} ${qty === 1 ? 'was' : 'were'} added to the ${branch} inventory.`,
+        confirmText: 'Done',
+      });
     } catch (error) {
       alert(error.message || 'Unable to update stock');
     } finally {

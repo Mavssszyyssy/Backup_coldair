@@ -15,8 +15,8 @@ const getBranchStock = (product, branch) => Number(product?.branchStock?.[branch
 const TABS = [
   { id: 'catalog', label: 'Shop Catalog' },
   { id: 'checker', label: 'Inventory Checker' },
-  { id: 'serial-qr', label: 'Serial / QR Registry' },
   { id: 'reorders', label: 'Reorder Management' },
+  { id: 'serial-qr', label: 'Serial / QR Registry' },
 ];
 
 const SuperAdminInventory = () => {

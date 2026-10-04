@@ -34,6 +34,12 @@ it("renders the real Superadmin layout and product catalog", () => {
   renderInventory("/superadmin/inventory");
 
   expect(screen.getByRole("heading", { name: "Inventory Management" })).toBeInTheDocument();
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+    "Shop Catalog",
+    "Inventory Checker",
+    "Reorder Management",
+    "Serial / QR Registry",
+  ]);
   expect(screen.getByRole("heading", { name: "Add a product and its first stock" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add product and generate serials" })).toBeInTheDocument();
 });
