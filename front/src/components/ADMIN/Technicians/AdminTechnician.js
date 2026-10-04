@@ -6,6 +6,7 @@ import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianT
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
+import { confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import DailyWorkSchedule from "./DailyWorkSchedule";
@@ -615,6 +616,26 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
     );
   };
 
+  const changeTechnicianAccountStatus = async (technician) => {
+    const isDisabling = technician.accountStatus === "active";
+    if (isDisabling) {
+      const confirmed = await confirmDialog({
+        title: "Disable technician account?",
+        message: `Disable ${technician.name}'s account? The account will remain disabled until an administrator enables it again.`,
+        confirmText: "Disable account",
+        cancelText: "Keep account active",
+        destructive: true,
+      });
+      if (!confirmed) return;
+    }
+
+    await updateTechnician(
+      technician,
+      { status: isDisabling ? "disabled" : "active" },
+      `${technician.name}'s account is now ${isDisabling ? "disabled" : "active"}.`,
+    );
+  };
+
   return (
     <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized." embedded={embedded}>
       <div className="module-tabs tech-workspace-tabs" role="tablist" aria-label="Technician workspace sections">
@@ -698,7 +719,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
                 <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
                 {isSuperAdmin ? <><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{changing ? "Saving…" : "Save email"}</button></> : null}
                 {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
-                <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => updateTechnician(technician, { status: technician.accountStatus === "active" ? "disabled" : "active" }, `${technician.name}'s account is now ${technician.accountStatus === "active" ? "disabled" : "active"}.`)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
+                <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
               </article>;
             })}</div>}
             {filteredTechnicians.length > PAGE_SIZE ? <div className="tech-pagination"><span>Page {page} of {totalPages}</span><div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button></div></div> : null}

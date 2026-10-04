@@ -1,7 +1,8 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { vi, test, expect, beforeEach } from 'vitest';
 import AdminTechnician from './AdminTechnician';
+import GlobalDialog from '../../common/GlobalDialog';
 import { apiRequest } from '../../../config/api';
 vi.mock('../Common/AdminLayout', () => ({ default: ({ children }) => <div>{children}</div> }));
 vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ user: { role: 'superadmin', assignedBranch: 'Cavite' } }) }));
@@ -58,6 +59,39 @@ test('superadmin can update a technician contact email without changing the logi
   })));
   expect(await screen.findByText(/email was updated successfully/i)).toBeInTheDocument();
   expect(screen.getByText('tech.cavite.carl')).toBeInTheDocument();
+});
+
+test('requires confirmation before disabling a technician account', async () => {
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=technician') return { users: [{ id: 'tech-carl', name: 'Carl Ramos', alias: 'tech.cavite.carl', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 }] };
+    if (path === '/tasks') return { tasks: [] };
+    if (path === '/users/tech-carl/status' && options?.method === 'PATCH') {
+      return { user: { id: 'tech-carl', name: 'Carl Ramos', alias: 'tech.cavite.carl', assignedBranch: 'Cavite', accountStatus: 'disabled', serviceQuota: 3 } };
+    }
+    return {};
+  });
+
+  render(<><GlobalDialog /><AdminTechnician /></>);
+  const disableButton = await screen.findByRole('button', { name: 'Disable account' });
+  fireEvent.click(disableButton);
+
+  let dialog = await screen.findByRole('alertdialog');
+  expect(within(dialog).getByRole('heading', { name: 'Disable technician account?' })).toBeInTheDocument();
+  expect(apiRequest).not.toHaveBeenCalledWith('/users/tech-carl/status', expect.anything());
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Keep account active' }));
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+  expect(apiRequest).not.toHaveBeenCalledWith('/users/tech-carl/status', expect.anything());
+
+  fireEvent.click(disableButton);
+  dialog = await screen.findByRole('alertdialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Disable account' }));
+
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/users/tech-carl/status', expect.objectContaining({
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'disabled' }),
+  })));
+  expect(await screen.findByText("Carl Ramos's account is now disabled.")).toBeInTheDocument();
 });
 
 test('creates a work order from linked customer, address, unit, service, and technician records', async () => {

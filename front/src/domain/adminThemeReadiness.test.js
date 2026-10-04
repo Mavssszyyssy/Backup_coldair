@@ -56,7 +56,7 @@ describe("Admin and SuperAdmin theme isolation", () => {
     const superadminSidebar = source("SUPERADMIN", "Common", "SuperAdminSidebar.js");
     const ampShell = source("AMP", "AmpDashboardShell.js");
 
-    expect(adminSidebar).toContain('{ to: "/manager/amp", label: "AMP Dashboard"');
+    expect(adminSidebar).toContain('{ to: "/manager/amp", label: "AMP Planning"');
     expect(adminSidebar).toContain('{ to: "/admin/reports", label: "Analytics & Reports"');
     expect(superadminSidebar).toContain('{ to: "/manager/amp", label: "AMP Planning"');
     expect(superadminSidebar).toContain('{ to: "/superadmin/reports", label: "Analytics & Reports"');

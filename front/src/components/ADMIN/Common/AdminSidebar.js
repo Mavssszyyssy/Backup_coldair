@@ -18,7 +18,7 @@ const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: ClipboardText },
   { to: "/admin/inventory", label: "Inventory", icon: Package },
   { to: "/admin/services", label: "Services", icon: Wrench },
-  { to: "/manager/amp", label: "AMP Dashboard", icon: Pulse },
+  { to: "/manager/amp", label: "AMP Planning", icon: Pulse },
   { to: "/admin/reports", label: "Analytics & Reports", icon: ChartBar },
   { to: "/admin/profile", label: "Profile", icon: Users },
   { to: "/admin/settings", label: "System Settings", icon: Gear },
