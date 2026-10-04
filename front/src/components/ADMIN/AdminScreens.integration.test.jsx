@@ -66,7 +66,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.sessionStorage.removeItem("activeBranch");
+});
 
 const renderScreen = (Component, entry) => render(
   <MemoryRouter initialEntries={[entry]}>
@@ -84,6 +87,20 @@ it.each([
 ])("renders the real Admin %s screen", (_name, Component, entry, heading) => {
   renderScreen(Component, entry);
   expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+});
+
+it("defaults inventory stock to the signed-in Admin branch and keeps cross-branch viewing", async () => {
+  window.sessionStorage.setItem("activeBranch", "Bulacan");
+  renderScreen(AdminInventory, "/admin/inventory");
+
+  const branchSelect = screen.getByLabelText("View stock for branch");
+  expect(branchSelect).toHaveValue("Cavite");
+  expect(branchSelect).not.toBeDisabled();
+  expect(within(branchSelect).getAllByRole("option")[0]).toHaveTextContent("Cavite");
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite"));
+
+  fireEvent.change(branchSelect, { target: { value: "Bulacan" } });
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Bulacan"));
 });
 
 it.each([

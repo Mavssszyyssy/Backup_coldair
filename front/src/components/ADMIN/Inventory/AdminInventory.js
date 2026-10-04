@@ -5,11 +5,10 @@ import AdminReoder from '../Reorder/AdminReoder';
 import AdminSerialQr from '../SerialQr/AdminSerialQr';
 import InventoryList from './InventoryList';
 import { apiRequest } from '../../../config/api';
-import { ACTIVE_BRANCH_KEY } from '../../../domain/branches/branches';
+import { useUser } from '../../../context/UserContext';
+import { BRANCHES } from '../../../domain/branches/branches';
 import '../adminShared.css';
 import './styles.css';
-
-const BRANCHES = ['Bulacan', 'Cavite', 'Laguna', 'Bataan', 'Pangasinan', 'Ilocos'];
 
 const getBranchStock = (product, branch) => {
   const branchStock = product?.branchStock;
@@ -26,6 +25,7 @@ const InventoryTabs = ({ activeTab, onSelect }) => (
 );
 
 const AdminInventory = () => {
+  const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') === 'reorder'
     ? 'reorder'
@@ -35,16 +35,33 @@ const AdminInventory = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [branch, setBranch] = useState(() => {
-    const storedBranch = localStorage.getItem(ACTIVE_BRANCH_KEY) || '';
-    return BRANCHES.includes(storedBranch) ? storedBranch : BRANCHES[0];
-  });
+  const assignedBranch = useMemo(() => {
+    const currentBranch = user?.activeBranch || user?.assignedBranch || '';
+    return BRANCHES.includes(currentBranch) ? currentBranch : '';
+  }, [user?.activeBranch, user?.assignedBranch]);
+  const [branch, setBranch] = useState(assignedBranch);
+  const branchOptions = useMemo(
+    () => assignedBranch
+      ? [assignedBranch, ...BRANCHES.filter((item) => item !== assignedBranch)]
+      : BRANCHES,
+    [assignedBranch],
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
+
+  useEffect(() => {
+    setBranch(assignedBranch);
+  }, [assignedBranch]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    if (!branch) {
+      setProducts([]);
+      setError('This Admin account does not have a valid branch assignment.');
+      setLoading(false);
+      return;
+    }
     try {
       const result = await apiRequest(`/products?branch=${encodeURIComponent(branch)}`);
       setProducts(result.products || []);
@@ -91,7 +108,7 @@ const AdminInventory = () => {
           <div className="branch-filter-section">
             <label htmlFor="admin-inventory-branch">View stock for branch</label>
             <select id="admin-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
-              {BRANCHES.map((item) => <option key={item} value={item}>{item}</option>)}
+              {branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
             <input className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search name, SKU, brand, category…" aria-label="Search inventory" />
             <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label="Filter by stock status">
