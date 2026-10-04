@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
@@ -8,15 +7,38 @@ import { notifyNotificationsChanged } from "./notificationEvents";
 
 export const ANDROID_NOTIFICATION_CHANNEL_ID = "default";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Expo Go no longer includes Android remote-notification support. Importing
+// expo-notifications there throws while the root layout is loading, which also
+// makes Expo Router report a misleading "missing default export" error. Keep
+// the module lazy so Expo Go can run the rest of the app; development and
+// release builds still load the complete notification implementation.
+const isExpoGo =
+  Constants.executionEnvironment === "storeClient" ||
+  Constants.appOwnership === "expo";
+
+let Notifications = null;
+if (!isExpoGo && Platform.OS !== "web") {
+  try {
+    Notifications = require("expo-notifications");
+  } catch (error) {
+    console.warn(
+      "Push notifications are unavailable in this build.",
+      error?.message || error,
+    );
+  }
+}
+
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 function getResponseRoute(response, role) {
   if (!response?.notification?.request) return null;
@@ -34,6 +56,9 @@ function getResponseRoute(response, role) {
 
 export async function enablePushNotifications(token) {
   if (!token || Platform.OS === "web") return { success: false, skipped: true };
+  if (!Notifications) {
+    return { success: false, skipped: true, reason: isExpoGo ? "expo-go" : "unavailable" };
+  }
 
   try {
     // Android 13+ will not show its notification permission prompt until the
@@ -73,6 +98,8 @@ export async function enablePushNotifications(token) {
 }
 
 export function listenForNotificationNavigation(router, role) {
+  if (!Notifications) return () => {};
+
   const received = Notifications.addNotificationReceivedListener(() => notifyNotificationsChanged());
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     notifyNotificationsChanged();
@@ -84,6 +111,8 @@ export function listenForNotificationNavigation(router, role) {
 }
 
 export async function openInitialNotification(router, role) {
+  if (!Notifications) return null;
+
   const response = await Notifications.getLastNotificationResponseAsync();
   const route = getResponseRoute(response, role);
   if (route) {
