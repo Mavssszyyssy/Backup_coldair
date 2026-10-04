@@ -17,6 +17,7 @@ import BoutiqueCart from "../common/boutique/BoutiqueCart";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
+import { getNotificationId } from "../../domain/notifications/notificationIdentity";
 import { resolveCustomerNotificationRoute } from "../../domain/notifications/resolveCustomerNotificationRoute";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import ShopCatalogue from "./ShopCatalogue";
@@ -434,14 +435,18 @@ const Shop = () => {
 
   // Mark single notification as read
   const handleNotificationClick = async (notification) => {
-    const id = notification?.id;
-    try {
-      await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, unread: false } : n)),
-      );
-    } catch (err) {
-      console.error("Failed to mark notification as read", err);
+    const id = getNotificationId(notification);
+    if (notification?.unread && id) {
+      try {
+        await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
+        setNotifications((prev) =>
+          prev.map((n) => (
+            getNotificationId(n) === id ? { ...n, unread: false } : n
+          )),
+        );
+      } catch (err) {
+        console.error("Failed to mark notification as read", err);
+      }
     }
     const route = resolveCustomerNotificationRoute(notification);
     setShowNotifications(false);
@@ -471,6 +476,7 @@ const Shop = () => {
         const response = await apiRequest("/notifications/me", { silentConnection: true });
         const normalized = (response.notifications || []).map((item) => ({
           ...item,
+          id: getNotificationId(item),
           unread: Boolean(item.unread),
           time: new Date(item.createdAt).toLocaleString(),
         }));

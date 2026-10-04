@@ -17,6 +17,14 @@ test('badge refresh cannot substitute an empty local list after an API failure',
  api.fetchNotifications.mockResolvedValue({success:false});
  await expect(getNotificationsForUser({id:'tech1',role:'technician'},{strict:true})).rejects.toThrow();
 });
+test('customer alerts returned with a legacy _id keep a usable read identifier',async()=>{
+ api.fetchNotifications.mockResolvedValue({success:true,notifications:[{
+  _id:'customer-alert-1', title:'Your message was received', unread:true,
+ }]});
+ await expect(getNotificationsForUser({id:'customer1',role:'customer'},{strict:true})).resolves.toMatchObject([
+  {id:'customer-alert-1',unread:true},
+ ]);
+});
 test('simultaneous notification surfaces share one backend read',async()=>{
  let release;
  api.fetchNotifications.mockImplementation(() => new Promise(resolve => { release = resolve; }));
