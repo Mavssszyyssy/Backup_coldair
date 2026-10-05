@@ -1,7 +1,7 @@
 import { MapPin, Phone, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
-import { confirmDialog } from "../../utils/dialog";
+import { alertDialog, confirmDialog } from "../../utils/dialog";
 import AddAddressModal from "../checkout/AddAddressModal";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -37,9 +37,10 @@ function MyAddressesSettings({ onAddressesChanged }) {
   }, [loadAddresses]);
 
   const handleSaveAddress = async (payload) => {
+    const isEditingAddress = Boolean(editingAddress?.id || editingAddress?._id);
     setAddressSaving(true);
     try {
-      if (editingAddress?.id || editingAddress?._id) {
+      if (isEditingAddress) {
         const id = editingAddress.id || editingAddress._id;
         await apiRequest(`/users/addresses/${id}`, {
           method: "PATCH",
@@ -55,9 +56,13 @@ function MyAddressesSettings({ onAddressesChanged }) {
       await loadAddresses();
       setAddressModalOpen(false);
       setEditingAddress(null);
-      if (!editingAddress) {
-        window.alert("Delivery address added successfully.");
-      }
+      void alertDialog({
+        title: isEditingAddress ? "Delivery address updated" : "Delivery address added",
+        message: isEditingAddress
+          ? "Your delivery address was updated successfully."
+          : "Your delivery address was added successfully.",
+        confirmText: "Done",
+      });
     } catch (error) {
       alert(error.message || "Unable to save address.");
     } finally {
@@ -132,7 +137,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
               <MapPin size={20} weight="bold" />
             </BoutiqueBox>
             <BoutiqueStack gap={2}>
-              <BoutiqueText variant="h2">My Addresses</BoutiqueText>
+              <BoutiqueText variant="h2">Delivery Addresses</BoutiqueText>
               <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
                 Manage your saved delivery locations.
               </BoutiqueText>

@@ -28,7 +28,7 @@ test("retired technician web workspace still exposes only account and security m
   render(<MemoryRouter><TechnicianMobileNotice /></MemoryRouter>);
   expect(screen.getByText("Technician Account Management")).toBeInTheDocument();
   expect(screen.getByText(/tech\.cavite\.carl/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Change Password" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Reset Password" })).toBeInTheDocument();
   expect(screen.getByText(/one-time code sent to your account email/i)).toBeInTheDocument();
   expect(screen.getByText(/Work orders remain mobile-only/)).toBeInTheDocument();
 });

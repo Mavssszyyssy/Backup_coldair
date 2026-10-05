@@ -430,7 +430,7 @@ export function UserProvider({ children }) {
       if (result.success && result.user) setCurrent(normalizeUser(result.user));
       return result;
     } catch (error) {
-      return { success: false, error: error?.message || "Unable to change your password." };
+      return { success: false, error: error?.message || "Unable to reset your password." };
     }
   };
 

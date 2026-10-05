@@ -392,9 +392,9 @@ export default function CustomerSettingsScreen() {
     onConfirm: performLogout,
   });
 
-  const subtitle = securityMode === "password" ? "Change your password" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
+  const subtitle = securityMode === "password" ? "Reset your password" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
   const saveCurrentEditor = securityMode === "password" ? savePassword : isEditingAddress ? saveAddress : saveProfile;
-  const saveTitle = securityMode === "password" ? "Change Password" : isEditingAddress ? "Save Address" : "Save Account";
+  const saveTitle = securityMode === "password" ? "Reset Password" : isEditingAddress ? "Save Address" : "Save Account";
   return (
     <CustomerScreen
       title="System Settings"
@@ -418,7 +418,7 @@ export default function CustomerSettingsScreen() {
           <Button title={addresses.length ? "Add another address" : "Add delivery address"} variant="secondary" onPress={() => openAddressEditor()} />
         </Section>
         <Section title="Security & Session">
-          <CustomerSettingsRow icon="key-sharp" title="Change Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
+          <CustomerSettingsRow icon="key-sharp" title="Reset Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
           <CustomerSettingsRow icon="shield-checkmark-sharp" title="Email Sign-in Verification" subtitle="After your password is accepted, verify the code sent to your email." />
           <CustomerSettingsRow icon="log-out-sharp" title="Sign Out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
@@ -426,7 +426,7 @@ export default function CustomerSettingsScreen() {
           <CustomerSettingsRow icon="help-buoy-sharp" title="Frequently Asked Questions" subtitle="Orders, payments, delivery, warranty, and AC care" onPress={() => router.push("/customer/faq")} />
           <CustomerSettingsRow icon="chatbubble-ellipses-sharp" title="Contact Customer Support" subtitle="Get help with an order or service request" onPress={() => router.push("/customer/contact")} />
         </Section>
-      </> : securityMode === "password" ? <Section title="Change Password">
+      </> : securityMode === "password" ? <Section title="Reset Password">
         <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
         <PasswordField label="New Password" value={newPassword} onChangeText={setNewPassword} showRequirements editable={!saving} />
         <PasswordField label="Confirm New Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />

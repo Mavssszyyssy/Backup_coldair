@@ -188,7 +188,7 @@ const SuperAdminSettings = () => {
         {policyNotice ? <span className="hq-success" role="status">{policyNotice}</span> : null}
         {policyError ? <span className="hq-error" role="alert">{policyError}</span> : null}
       </section>
-      <section className="hq-account-card hq-authority-card"><div className="hq-card-heading"><p>Authority</p><h3>SuperAdmin access</h3></div><p>You have company-wide visibility and can manage branch ownership, inventory, staff, transactions, and reorders.</p><div className="hq-quick-links"><button type="button" onClick={() => navigate('/superadmin/branches')}>Manage branches</button><button type="button" onClick={() => navigate('/superadmin/inventory?tab=reorders')}>Review reorders</button><button type="button" onClick={() => navigate('/superadmin/alerts')}>View operations reports</button></div></section>
+      <section className="hq-account-card hq-authority-card"><div className="hq-card-heading"><p>Authority</p><h3>SuperAdmin access</h3></div><p>You have company-wide visibility and can manage branch ownership, inventory, staff, transactions, and reorders.</p><div className="hq-quick-links"><button type="button" onClick={() => navigate('/superadmin/branches')}>Manage branches</button><button type="button" onClick={() => navigate('/superadmin/inventory?tab=reorders')}>Review reorders</button><button type="button" onClick={() => navigate('/superadmin/alerts')}>View operations alerts</button></div></section>
       <section className="hq-save-row">{notice ? <span className="hq-success">{notice}</span> : null}{error ? <span className="hq-error">{error}</span> : null}<button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save System Settings'}</button></section>
     </form>
   </SuperAdminLayout>;

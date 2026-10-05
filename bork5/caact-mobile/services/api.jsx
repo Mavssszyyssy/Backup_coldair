@@ -526,7 +526,7 @@ export async function resendLoginEmail(challengeToken) {
 export async function changeAccountPassword(token, payload) {
   const { ok, data } = await patch("/users/password", payload, token);
   return ok ? { success: true, user: data.user, message: data.message }
-    : { success: false, error: getErrorMessage(data, "Unable to change your password.") };
+    : { success: false, error: getErrorMessage(data, "Unable to reset your password.") };
 }
 
 export async function completeTechnicianOnboarding(token, payload) {

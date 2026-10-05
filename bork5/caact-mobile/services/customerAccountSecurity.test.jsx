@@ -42,11 +42,11 @@ beforeEach(() => {
 
 test("customer mobile changes a password with current-password verification", async () => {
   await render(<CustomerSettingsScreen />);
-  await fireEvent.press(screen.getByRole("button", { name: "Change Password" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Reset Password" }));
   await fireEvent.changeText(screen.getByLabelText("Current Password"), "OldPass123!");
   await fireEvent.changeText(screen.getByLabelText("New Password"), "NewPass123!");
   await fireEvent.changeText(screen.getByLabelText("Confirm New Password"), "NewPass123!");
-  await fireEvent.press(screen.getByRole("button", { name: "Change Password" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Reset Password" }));
   await waitFor(() => expect(mockChangePassword).toHaveBeenCalledWith({ currentPassword: "OldPass123!", newPassword: "NewPass123!" }));
   expect(await screen.findByText("Password changed successfully.")).toBeTruthy();
 });

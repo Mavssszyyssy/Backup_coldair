@@ -15,7 +15,7 @@ it('shows transaction, request and maintenance alerts even when order lookup fai
     ] };
   });
   render(<MemoryRouter><SuperAdminAlerts /></MemoryRouter>);
-  expect(screen.getByRole('heading', { name: 'Operations Reports' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Operations Alerts' })).toBeInTheDocument();
   await screen.findByText('Payment received');
   expect(screen.getByText('New service request')).toBeInTheDocument();
   expect(screen.getByText('Maintenance completed')).toBeInTheDocument();

@@ -40,7 +40,7 @@ export default function AccountSecurityManagement({ user, onChangePassword }) {
       setMessage({ type: "success", text: result?.message || "Password changed successfully." });
       setEditing(false);
     } catch (error) {
-      setMessage({ type: "error", text: error.message || "Unable to change your password." });
+      setMessage({ type: "error", text: error.message || "Unable to reset your password." });
     } finally {
       setSaving(false);
     }
@@ -64,11 +64,11 @@ export default function AccountSecurityManagement({ user, onChangePassword }) {
             <BoutiqueBox direction="row" align="center" gap={10}>
               <Key size={20} weight="bold" color={BQ_COLORS.brand} />
               <BoutiqueStack gap={4}>
-                <BoutiqueText weight={800}>Change Password</BoutiqueText>
+                <BoutiqueText weight={800}>Reset Password</BoutiqueText>
                 <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>{usesLocalPassword ? "Update the password for this account." : "This account signs in through Google, so its password is managed by Google."}</BoutiqueText>
               </BoutiqueStack>
             </BoutiqueBox>
-            {usesLocalPassword && !editing ? <BoutiqueButton type="button" variant="outline" onClick={() => { setEditing(true); setMessage(null); }}>Change Password</BoutiqueButton> : null}
+            {usesLocalPassword && !editing ? <BoutiqueButton type="button" variant="outline" onClick={() => { setEditing(true); setMessage(null); }}>Reset Password</BoutiqueButton> : null}
           </BoutiqueBox>
           {message ? <BoutiqueText role="status" color={message.type === "error" ? BQ_COLORS.danger : BQ_COLORS.success} weight={700}>{message.text}</BoutiqueText> : null}
           {usesLocalPassword && editing ? (

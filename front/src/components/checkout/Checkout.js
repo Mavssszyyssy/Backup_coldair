@@ -11,7 +11,7 @@ import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/pos
 import { buildCustomerOrder } from "../../domain/purchase/buildCustomerOrder";
 import { computePurchaseTotals } from "../../domain/purchase/computePurchaseTotals";
 import { DEFAULT_SERVICE_AREA_ID } from "../../domain/purchase/serviceAreas";
-import { confirmDialog } from "../../utils/dialog";
+import { alertDialog, confirmDialog } from "../../utils/dialog";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -324,9 +324,10 @@ function Checkout() {
 
   const handleSaveAddress = useCallback(
     async (payload) => {
+      const isEditingAddress = Boolean(editingAddress?.id);
       setAddressBusy(true);
       try {
-        if (editingAddress?.id) {
+        if (isEditingAddress) {
           const response = await apiRequest(
             `/users/addresses/${editingAddress.id}`,
             {
@@ -347,9 +348,13 @@ function Checkout() {
           setAddressNotice("Delivery address saved and ready for checkout.");
         }
         closeAddressModal();
-        if (!editingAddress?.id) {
-          window.alert("Delivery address added. It is now available for this checkout.");
-        }
+        void alertDialog({
+          title: isEditingAddress ? "Delivery address updated" : "Delivery address added",
+          message: isEditingAddress
+            ? "Your delivery address was updated successfully."
+            : "Your delivery address was added successfully and is ready for checkout.",
+          confirmText: "Done",
+        });
       } catch (error) {
         if (error?.fieldErrors) {
           // Backend validation error with field-level details

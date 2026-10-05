@@ -174,7 +174,7 @@ export default function TechProfile() {
   return (
     <TechnicianScreen
       title="Profile"
-      subtitle={isChangingPassword ? "Change your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
+      subtitle={isChangingPassword ? "Reset your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
       icon="person-sharp"
       contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : 96 }}
       stickyAction={
@@ -252,7 +252,7 @@ export default function TechProfile() {
             />
             <SettingsRow
               icon="refresh-sharp"
-              title="Change Password"
+              title="Reset Password"
               subtitle="Verify your current password and choose a new one."
               onPress={() => setIsChangingPassword(true)}
               right={

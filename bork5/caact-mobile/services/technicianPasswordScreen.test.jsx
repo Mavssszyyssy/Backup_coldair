@@ -39,7 +39,7 @@ test('technician password UI sends current and new password to the dedicated act
   mockChange.mockResolvedValue({ success: true });
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
   expect(screen.getByText(/verify the code sent to your email/i)).toBeTruthy();
-  await fireEvent.press(screen.getByText('Change Password'));
+  await fireEvent.press(screen.getByText('Reset Password'));
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'NewPass123!');
   await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'NewPass123!');
@@ -65,7 +65,7 @@ test('password fields preserve input, allow visibility checks, and report failed
   mockChange.mockReset().mockRejectedValueOnce(new Error('Connection interrupted'));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
-  await fireEvent.press(screen.getByText('Change Password'));
+  await fireEvent.press(screen.getByText('Reset Password'));
   const next = screen.getByLabelText('New Password');
   expect(next.props.autoCapitalize).toBe('none');
   expect(next.props.autoCorrect).toBe(false);
@@ -90,7 +90,7 @@ test('a pending password save cannot be cancelled while the server may still app
   mockChange.mockReset().mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
-  await fireEvent.press(screen.getByText('Change Password'));
+  await fireEvent.press(screen.getByText('Reset Password'));
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'NewPass123!');
   await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'NewPass123!');

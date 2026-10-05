@@ -22,7 +22,7 @@ const links = [
   { to: "/superadmin/services", label: "Services", icon: Wrench },
   { to: "/manager/amp", label: "AMP Planning", icon: Pulse },
   { to: "/superadmin/reports", label: "Analytics & Reports", icon: ChartBar },
-  { to: "/superadmin/alerts", label: "Operations Reports", icon: WarningCircle },
+  { to: "/superadmin/alerts", label: "Operations Alerts", icon: WarningCircle },
   { to: "/superadmin/profile", label: "My Profile", icon: Users },
   { to: "/superadmin/settings", label: "System Settings", icon: Gear },
 ];

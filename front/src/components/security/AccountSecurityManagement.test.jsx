@@ -13,7 +13,7 @@ beforeEach(() => {
 test("signed-in password change uses current password, confirmation, and the existing action", async () => {
   render(<AccountSecurityManagement user={{ authProvider: "local" }} onChangePassword={changePassword} />);
   expect(screen.queryByLabelText("Current Password")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Change Password" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reset Password" }));
   const passwordToggles = screen.getAllByRole("button", { name: "Show password" });
   expect(passwordToggles).toHaveLength(3);
   expect(screen.getByLabelText("Current Password")).toHaveAttribute("type", "password");

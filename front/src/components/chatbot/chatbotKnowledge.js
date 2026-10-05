@@ -60,7 +60,7 @@ const customerFaqEntries = [
     question: 'How can I update my settings?',
     keywords: ['settings', 'profile', 'password', 'notification', 'privacy', 'dark mode'],
     answer:
-      'In Settings, you can edit profile info, change password, adjust alerts, privacy, preferences, and toggle dark mode.',
+      'In Settings, you can edit profile info, reset your password, adjust alerts, privacy, preferences, and toggle dark mode.',
     route: '/settings'
   },
   {

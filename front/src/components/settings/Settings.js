@@ -35,7 +35,7 @@ import "./Settings.css";
 const SETTINGS_TABS = [
   { id: "profile", title: "Profile", icon: UserCircle },
   { id: "preferences", title: "Preferences", icon: Globe },
-  { id: "addresses", title: "My Addresses", icon: MapPin },
+  { id: "addresses", title: "Delivery Addresses", icon: MapPin },
   { id: "privacy", title: "Privacy", icon: ShieldCheck },
   { id: "notifications", title: "Alerts", icon: Bell },
   { id: "security", title: "Security", icon: Fingerprint },

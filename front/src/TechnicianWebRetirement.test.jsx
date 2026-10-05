@@ -19,7 +19,7 @@ test.each(['/tech/dashboard', '/tech/tasks', '/tech/tasks/TSK-1', '/tech/field-r
   render(<MemoryRouter initialEntries={[url]}><AppContent /><Path /></MemoryRouter>);
   expect(await screen.findByText('Technician Account Management')).toBeInTheDocument();
   expect(screen.getByText('Profile / Account Information')).toBeInTheDocument();
-  expect(screen.getAllByText('Change Password').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Reset Password').length).toBeGreaterThan(0);
   expect(screen.getByTestId('path')).toHaveTextContent('/technician-mobile');
   expect(screen.queryByText('Task Board')).toBeNull();
 });
