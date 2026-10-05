@@ -2,10 +2,12 @@ function TrackOrderModal({ order, onClose }) {
   const timeline = Array.isArray(order.tracking?.timeline) ? order.tracking.timeline : [];
   const currentStage = order.tracking?.currentStage || "placed";
   const steps = timeline.map((step) => ({
+    stage: step.stage,
     label: step.label,
     detail: step.detail,
     date: step.timestamp,
-    status: step.stage === currentStage ? "processing" : "completed",
+    // Completed is a terminal success milestone, not an in-progress state.
+    status: step.stage === currentStage && step.stage !== "completed" ? "processing" : "completed",
   }));
 
   const stepInner = (step) => {
@@ -201,6 +203,8 @@ function TrackOrderModal({ order, onClose }) {
               {steps.map((step, idx) => (
                 <div
                   key={idx}
+                  data-tracking-stage={step.stage}
+                  data-tracking-status={step.status}
                   style={{
                     display: "flex",
                     marginBottom: "16px",

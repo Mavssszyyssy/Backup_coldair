@@ -21,7 +21,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const menuItems = useMemo(() => ([
     { id: 'shop', label: 'Shop Catalog', iconSrc: icons.cartShoppingFast, path: '/shop', description: 'Browse AC products' },
     { id: 'orders', label: 'My Orders', iconSrc: icons.receipt || icons.cartShoppingFast, path: '/my-orders', description: 'Track orders, payments and delivery' },
-    { id: 'myunit', label: 'My Unit', iconSrc: icons.temperatureFrigid, path: '/myunit', description: 'Manage your AC units' },
+    { id: 'myunit', label: 'My Units', iconSrc: icons.temperatureFrigid, path: '/myunit', description: 'Manage your AC units' },
     { id: 'services', label: 'Get the App', iconSrc: icons.tools, path: '/services', description: 'Manage services on Mobile' },
     { id: 'contact', label: 'Contact', iconSrc: icons.phoneCall, path: '/contact', description: 'Get in touch with us' },
     { id: 'settings', label: 'Settings', iconSrc: icons.customize, path: '/settings', description: 'Profile and account preferences' },

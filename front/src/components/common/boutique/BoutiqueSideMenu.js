@@ -30,7 +30,7 @@ export default function BoutiqueSideMenu({
   const menuItems = [
     { id: "shop", label: "Shop Catalog", icon: ShoppingBag, path: "/shop" },
     { id: "orders", label: "My Orders", icon: ShoppingBag, path: "/my-orders" },
-    { id: "myunit", label: "My Unit", icon: Wind, path: "/myunit" },
+    { id: "myunit", label: "My Units", icon: Wind, path: "/myunit" },
     { id: "services", label: "Get the App", icon: Wrench, path: "/services" },
     { id: "contact", label: "Contact", icon: Phone, path: "/contact" },
     { id: "settings", label: "Settings", icon: Gear, path: "/settings" },

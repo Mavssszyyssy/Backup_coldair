@@ -13,6 +13,7 @@ test("customer chatbot keeps its UI and renders a contextual AI reply", async ()
   render(<MemoryRouter initialEntries={["/shop"]}><CustomerChatbot /></MemoryRouter>);
 
   fireEvent.click(screen.getByRole("button", { name: "Open chatbot" }));
+  expect(screen.getByText(/My Units/)).toBeInTheDocument();
   fireEvent.change(screen.getByRole("textbox", { name: "Chatbot input" }), {
     target: { value: "How do I retry GCash?" },
   });

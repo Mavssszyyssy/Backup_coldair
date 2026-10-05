@@ -36,7 +36,7 @@ const customerFaqEntries = [
     question: 'How do I add or register my AC unit?',
     keywords: ['my unit', 'add unit', 'register unit', 'qr', 'warranty'],
     answer:
-      'In My Unit, click Add New Unit to register your AC details. You can also register through the QR unit flow and then track warranty and service history.',
+      'In My Units, click Add New Unit to register your AC details. You can also register through the QR unit flow and then track warranty and service history.',
     route: '/myunit'
   },
   {
@@ -44,7 +44,7 @@ const customerFaqEntries = [
     question: 'Where can I view service history and warranty?',
     keywords: ['history', 'service history', 'warranty', 'unit details', 'status'],
     answer:
-      'Open My Unit and select your unit to view details, service history, and warranty status. Service requests are managed in the AeroPulse Mobile App.',
+      'Open My Units and select your unit to view details, service history, and warranty status. Service requests are managed in the AeroPulse Mobile App.',
     route: '/myunit'
   },
   {

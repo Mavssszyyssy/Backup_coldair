@@ -1,7 +1,7 @@
 const FILIPINO = {
   "Home": "Bahay",
   "Profile": "Profile",
-  "My Unit": "Aking Unit",
+  "My Units": "Aking Mga Unit",
   "Services": "Mga Serbisyo",
   "Shop": "Tindahan",
   "Settings": "Mga Setting",
