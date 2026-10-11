@@ -182,7 +182,7 @@ function CartModal({ visible, onClose }) {
           {cart.length === 0 ? (
             <View style={{ paddingVertical: BQ_SPACING.xl, alignItems: "center", gap: BQ_SPACING.sm }}>
               <Ionicons name="cart-outline" size={48} color={BQ_COLORS.inkFaint} />
-              <BoutiqueText variant="h3">Your cart is empty</BoutiqueText>
+              <BoutiqueText variant="h3" align="center" style={{ alignSelf: "stretch", flexShrink: 0, minHeight: 28 }}>Your cart is empty</BoutiqueText>
             </View>
           ) : (
             <View style={{ gap: BQ_SPACING.md }}>

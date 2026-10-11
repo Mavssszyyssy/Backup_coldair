@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useState } from "react";
 import { Alert, Linking, View } from "react-native";
@@ -14,10 +14,10 @@ import {
   BQ_COLORS,
   BQ_SPACING,
 } from "../../components/boutique";
-import { useUserContext } from "../../context/UserContext";
 import { formatCartModel } from "../../services/cartDisplayService";
 import { formatPeso } from "../../services/ecommerceService";
-import { getOrdersByUser, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
+import { getOrderById, getOrderPage, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
+import { resolveOrderTimelineEndState } from "../../services/orderStatusService";
 import { confirmAction } from "../../utils/confirmAction";
 
 function statusVariant(status = "") {
@@ -188,17 +188,19 @@ function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
   );
 }
 
-function OrderStepTimeline({ tracking = {}, activeStep = 0 }) {
+function OrderStepTimeline({ tracking = {}, activeStep = 0, workflowStatus = "" }) {
   const steps = Array.isArray(tracking.timeline) && tracking.timeline.length
     ? tracking.timeline
     : ["Submitted", "Approved", "Installation", "Completed"].slice(0, Math.max(activeStep + 1, 1)).map((label) => ({ label }));
+  const endState = resolveOrderTimelineEndState(workflowStatus, steps);
   return (
     <View style={{ padding: BQ_SPACING.md, borderRadius: 14, backgroundColor: BQ_COLORS.bgAlt }}>
       <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
         ORDER PROGRESS
       </BoutiqueText>
       {steps.map((step, index) => {
-        const isCurrent = index === steps.length - 1;
+        const isLast = index === steps.length - 1;
+        const isCurrent = isLast && endState === "current";
         return (
           <View
             key={step.stage || step.label}
@@ -210,14 +212,14 @@ function OrderStepTimeline({ tracking = {}, activeStep = 0 }) {
           >
             <View style={{ width: 30, alignItems: "center" }}>
               <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.brand }}>
-                <Ionicons name={isCurrent ? "location-sharp" : "checkmark-sharp"} size={15} color="#fff" />
+                <Ionicons name={isCurrent ? "location-sharp" : endState === "cancelled" && isLast ? "close-sharp" : "checkmark-sharp"} size={15} color="#fff" />
               </View>
               {index < steps.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: BQ_COLORS.brand, opacity: 0.35 }} /> : null}
             </View>
             <View style={{ flex: 1, paddingLeft: BQ_SPACING.sm, paddingBottom: index < steps.length - 1 ? BQ_SPACING.md : 0 }}>
               <BoutiqueText variant="h3">{step.label}</BoutiqueText>
               <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-                {isCurrent ? "Current order stage" : step.timestamp ? formatDate(step.timestamp) : "Completed"}
+                {isCurrent ? "Current order stage" : step.timestamp ? formatDate(step.timestamp) : endState === "cancelled" && isLast ? "Cancelled" : "Completed"}
               </BoutiqueText>
             </View>
           </View>
@@ -262,28 +264,43 @@ function OrderItemSummary({ item }) {
 
 export default function CustomerOrdersScreen() {
   const router = useRouter();
-  const { current } = useUserContext();
+  const { orderId } = useLocalSearchParams();
+  const selectedOrderId = String(Array.isArray(orderId) ? orderId[0] || "" : orderId || "");
   const [orders, setOrders] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadError, setLoadError] = useState("");
   const [expandedOrderId, setExpandedOrderId] = useState("");
   const [cancellingId, setCancellingId] = useState("");
   const [payingId, setPayingId] = useState("");
 
   const refreshOrders = useCallback(async () => {
-    const items = await getOrdersByUser(current);
-    setOrders(items);
-  }, [current]);
+    const result = await getOrderPage(page);
+    const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
+    setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
+    if (selected) setExpandedOrderId(String(selected.id));
+    setTotal(result.pagination.total);
+    setTotalPages(result.pagination.totalPages);
+    setLoadError("");
+  }, [page, selectedOrderId]);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      getOrdersByUser(current, { sync: false }).then((items) => {
-        if (active) setOrders(items);
-      });
       const load = () => {
-        return getOrdersByUser(current).then((items) => {
+        return getOrderPage(page).then(async (result) => {
           if (active) {
-            setOrders(items);
+            const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
+            if (!active) return;
+            setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
+            if (selected) setExpandedOrderId(String(selected.id));
+            setTotal(result.pagination.total);
+            setTotalPages(result.pagination.totalPages);
+            setLoadError("");
           }
+        }).catch((error) => {
+          if (active) setLoadError(error?.message || "Unable to load orders.");
         });
       };
       const stop = startLiveRefresh(load);
@@ -291,7 +308,7 @@ export default function CustomerOrdersScreen() {
         active = false;
         stop();
       };
-    }, [current]),
+    }, [page, selectedOrderId]),
   );
 
   const handleCancelRequest = (order) => confirmAction({
@@ -347,14 +364,15 @@ export default function CustomerOrdersScreen() {
             Order Center
           </BoutiqueText>
           <BoutiqueText variant="h1" color="#fff">
-            {orders.length} order{orders.length === 1 ? "" : "s"}
+            {total} order{total === 1 ? "" : "s"}
           </BoutiqueText>
           <BoutiqueText color="rgba(255,255,255,0.76)">
             Track your payment, delivery, and installation in one place.
           </BoutiqueText>
         </BoutiqueCard>
 
-        {orders.length === 0 ? (
+        {loadError ? <BoutiqueCard><BoutiqueText color={BQ_COLORS.danger}>{loadError}</BoutiqueText><BoutiqueButton title="Try again" onPress={refreshOrders} /></BoutiqueCard> : null}
+        {orders.length === 0 && !loadError ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={52} color={BQ_COLORS.inkFaint} />
             <BoutiqueText variant="h2" align="center">
@@ -408,7 +426,7 @@ export default function CustomerOrdersScreen() {
                 {isExpanded ? (
                   <>
 
-                <OrderStepTimeline tracking={order.tracking} activeStep={progress.activeStep} />
+                <OrderStepTimeline tracking={order.tracking} activeStep={progress.activeStep} workflowStatus={order.workflowStatus} />
 
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
                   {progress.body}
@@ -510,6 +528,13 @@ export default function CustomerOrdersScreen() {
             );
           })
         )}
+        {totalPages > 1 ? (
+          <BoutiqueCard style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
+            <BoutiqueButton title="Previous" variant="outline" disabled={page <= 1} onPress={() => { setExpandedOrderId(""); setPage((value) => Math.max(1, value - 1)); }} />
+            <BoutiqueText variant="caption" align="center">Page {page} of {totalPages}</BoutiqueText>
+            <BoutiqueButton title="Next" variant="outline" disabled={page >= totalPages} onPress={() => { setExpandedOrderId(""); setPage((value) => value + 1); }} />
+          </BoutiqueCard>
+        ) : null}
       </BoutiqueScreen>
     </>
   );

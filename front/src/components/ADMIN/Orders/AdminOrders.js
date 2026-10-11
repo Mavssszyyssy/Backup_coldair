@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
@@ -181,6 +181,8 @@ const getPaymentMethodLabel = (order = {}) => {
 const AdminOrders = ({ embedded = false }) => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
+  const recordId = new URLSearchParams(location.search).get('recordId');
   const [orders, setOrders] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -273,6 +275,15 @@ const AdminOrders = ({ embedded = false }) => {
     () => pendingOrders.slice((orderPage - 1) * ORDER_PAGE_SIZE, orderPage * ORDER_PAGE_SIZE),
     [orderPage, pendingOrders],
   );
+
+  useEffect(() => {
+    if (!recordId || loading) return;
+    const index = orders.findIndex((order) => String(order.id || order._id) === recordId || String(order.orderCode) === recordId);
+    if (index < 0) { setError('This order is no longer available in your authorized order list.'); return; }
+    setOrderViewFilter('all');
+    setOrderPage(Math.floor(index / ORDER_PAGE_SIZE) + 1);
+    window.setTimeout(() => document.getElementById(`admin-order-${recordId}`)?.scrollIntoView({ block: 'center' }), 0);
+  }, [recordId, orders, loading]);
 
   useEffect(() => {
     setOrderPage(1);
@@ -575,7 +586,7 @@ const AdminOrders = ({ embedded = false }) => {
             const deliveryStatus = getDeliveryStatus(order);
             const installationStatus = getInstallationStatus(order, linkedTask);
             return (
-              <article key={order.id} className="admin-order-card">
+              <article key={order.id} id={`admin-order-${order.id}`} className="admin-order-card">
                 <div className="admin-order-row">
                   <h3>{order.orderCode}</h3>
                   <span className={`admin-order-status status-${order.workflowStatus}`}>{order.workflowLabel}</span>

@@ -11,4 +11,9 @@ describe('operational alert destinations', () => {
     expect(operationalAlertRoute({ type: 'technician', targetType: 'task' }, role)).toBe(route('technicians'));
     expect(operationalAlertRoute({ type: 'service', targetType: 'maintenance_pipeline' }, role)).toBe('/manager/amp');
   });
+  it('includes stable record IDs for staff order, task, and ticket alerts', () => {
+    expect(operationalAlertRoute({ type: 'order', targetType: 'order', targetId: 'order-1' }, 'admin')).toBe('/admin/services/orders?recordId=order-1');
+    expect(operationalAlertRoute({ type: 'technician', targetType: 'task', targetId: 'task-1' }, 'superadmin')).toBe('/superadmin/services?tab=technicians&recordId=task-1');
+    expect(operationalAlertRoute({ type: 'service', targetType: 'contact_message', targetId: 'ticket-1' }, 'superadmin')).toBe('/superadmin/services?tab=customer-messages&recordId=ticket-1');
+  });
 });

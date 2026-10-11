@@ -9,9 +9,10 @@ export function alertCategory(item = {}) {
 export function operationalAlertRoute(item = {}, role = 'admin') {
   const target = item.targetType || item.category;
   const superadmin = role === 'superadmin';
-  const serviceRoute = (tab) => superadmin ? `/superadmin/services?tab=${tab}` : `/admin/services/${tab}`;
+  const withRecord = (route) => item.targetId ? `${route}${route.includes('?') ? '&' : '?'}recordId=${encodeURIComponent(item.targetId)}` : route;
+  const serviceRoute = (tab) => withRecord(superadmin ? `/superadmin/services?tab=${tab}` : `/admin/services/${tab}`);
   if (['maintenance_pipeline', 'amp_pipeline'].includes(target)) return '/manager/amp';
-  if (['contact', 'contact_message'].includes(target)) return superadmin ? '/superadmin/services?tab=customer-messages' : '/admin/services?tab=customer-messages';
+  if (['contact', 'contact_message'].includes(target)) return withRecord(superadmin ? '/superadmin/services?tab=customer-messages' : '/admin/services?tab=customer-messages');
   if (['task', 'technician'].includes(target) || item.type === 'technician') return serviceRoute('technicians');
   if (['warranty', 'claim', 'service', 'service_request', 'parts_request'].includes(target) || ['service', 'warranty'].includes(item.type)) return serviceRoute('service-requests');
   if (['order', 'payment', 'delivery'].includes(item.type) || target === 'order') return serviceRoute('orders');

@@ -79,6 +79,23 @@ function MyOrders() {
   }, [location.search]);
 
   useEffect(() => {
+    const orderId = new URLSearchParams(location.search).get("orderId");
+    if (!orderId) return undefined;
+    let active = true;
+    apiRequest(`/orders/me/${encodeURIComponent(orderId)}`)
+      .then((response) => {
+        if (!active || !response.order) return;
+        const order = normalizeCustomerOrder(response.order);
+        setSelectedOrder(order);
+        setShowTrackModal(true);
+      })
+      .catch(() => {
+        if (active) setShowTrackModal(false);
+      });
+    return () => { active = false; };
+  }, [location.search]);
+
+  useEffect(() => {
     let mounted = true;
 
     const loadOrders = async () => {

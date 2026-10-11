@@ -15,13 +15,14 @@ export function resolveNotificationRoute(item = {}, role = "") {
     return item.targetType === "task" || /task|work order|warranty|service|part/.test(text) ? "/technician/tasks?schedule=all" : "/technician/dashboard";
   }
 
-  if (["service_request", "service"].includes(item.targetType) || route === "/customer/service-requests") return "/customer/services";
+  if (item.targetType === "contact_message") return item.targetId ? `/customer/contact?messageId=${encodeURIComponent(item.targetId)}` : "/customer/contact";
+  if (["service_request", "service"].includes(item.targetType) || route === "/customer/service-requests") return item.targetId ? `/customer/services?requestId=${encodeURIComponent(item.targetId)}` : "/customer/services";
 
   // Route from authoritative notification metadata before inspecting message
   // wording. Installation-complete order notices mention that the warranty is
   // now active; that word must not turn the order ID into an AC-unit ID.
   if (item.targetType === "order" || ["order", "payment", "delivery"].includes(item.type)) {
-    return "/customer/orders";
+    return item.targetId ? `/customer/orders?orderId=${encodeURIComponent(item.targetId)}` : "/customer/orders";
   }
 
   if (item.type === "warranty" || item.targetType === "warranty") {

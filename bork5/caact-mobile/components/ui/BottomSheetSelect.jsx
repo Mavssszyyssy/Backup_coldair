@@ -4,7 +4,9 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   Text,
   TouchableOpacity,
@@ -117,6 +119,10 @@ export default function BottomSheetSelect({
         onRequestClose={closeSheet}
         onDismiss={dismissKeyboard}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <Pressable
           onPress={closeSheet}
           style={{
@@ -179,6 +185,7 @@ export default function BottomSheetSelect({
                 data={filteredItems}
                 keyExtractor={getKey}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
                 ListEmptyComponent={
                   <Text
                     style={{
@@ -223,6 +230,7 @@ export default function BottomSheetSelect({
             )}
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

@@ -1,6 +1,21 @@
 // services/taskStorage.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
+
+export async function fetchTaskDecisionSupport(taskId) {
+  const token = await api.getStoredToken();
+  return api.fetchTaskDecisionSupport(token, taskId);
+}
+
+export async function generateTaskDecisionSupport(taskId, phase) {
+  const token = await api.getStoredToken();
+  return api.generateTaskDecisionSupport(token, taskId, phase);
+}
+
+export async function reviewTaskDecisionSupport(taskId, phase, decision) {
+  const token = await api.getStoredToken();
+  return api.reviewTaskDecisionSupport(token, taskId, phase, decision);
+}
 import {
   SERVICE_REQUEST_STATUS,
   assignTechnicianToServiceRequest,

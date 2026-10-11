@@ -17,6 +17,7 @@ const TABS = [
 const SuperAdminServices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
+  const recordId = searchParams.get('recordId') || '';
   const activeTab = requestedTab === 'daily-schedule'
     ? 'technicians'
     : TABS.some((tab) => tab.id === requestedTab) ? requestedTab : 'orders';
@@ -46,11 +47,11 @@ const SuperAdminServices = () => {
         ))}
       </div>
       {activeTab === 'orders' ? <AdminOrders embedded /> : null}
-      {activeTab === 'service-requests' ? <AdminMaintenance embedded /> : null}
+      {activeTab === 'service-requests' ? <AdminMaintenance embedded recordId={recordId} /> : null}
       {activeTab === 'technicians' ? (
-        <AdminTechnician embedded initialView={requestedTab === 'daily-schedule' ? 'schedule' : 'technicians'} />
+        <AdminTechnician embedded recordId={recordId} initialView={requestedTab === 'daily-schedule' ? 'schedule' : 'technicians'} />
       ) : null}
-      {activeTab === 'customer-messages' ? <AdminContactMessages /> : null}
+      {activeTab === 'customer-messages' ? <AdminContactMessages recordId={recordId} /> : null}
     </SuperAdminLayout>
   );
 };

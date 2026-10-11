@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Linking, Pressable, Text, TextInput, View } from "react-native";
+import { Linking, Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import Button from "../../components/ui/Button";
@@ -116,6 +116,7 @@ function openLink(url) {
 
 export default function CustomerFaqScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState(null);
 
@@ -176,14 +177,14 @@ export default function CustomerFaqScreen() {
                 <View style={{ width: 30, height: 30, borderRadius: RADIUS.full, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primaryLight, marginRight: SPACING.sm }}>
                   <Ionicons name="help-sharp" size={16} color={COLORS.primary} />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.black, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{item.category}</Text>
                   <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold, lineHeight: 20 }}>{item.question}</Text>
                 </View>
                 <Ionicons name={expanded ? "chevron-up-sharp" : "chevron-down-sharp"} size={20} color={COLORS.primary} style={{ marginLeft: SPACING.sm }} />
               </Pressable>
               {expanded ? (
-                <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingHorizontal: SPACING.md, paddingLeft: 54, paddingTop: SPACING.sm, paddingBottom: SPACING.md }}>
+                <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.md }}>
                   <Text style={{ color: COLORS.textSecondary, fontSize: FONT.base, lineHeight: 21 }}>{item.answer}</Text>
                 </View>
               ) : null}
@@ -204,16 +205,16 @@ export default function CustomerFaqScreen() {
         <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Still have questions?</Text>
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4, marginBottom: SPACING.sm }}>Our customer-service team is ready to assist you.</Text>
         <Button title="Contact Support" onPress={() => router.push("/customer/contact")} leftIcon={<Ionicons name="chatbubble-ellipses-sharp" size={18} color="#FFFFFF" />} />
-        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-          <Pressable onPress={() => openLink(`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`)} accessibilityRole="button" accessibilityLabel="Call customer support" style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+        <View style={{ flexDirection: width < 380 ? "column" : "row", gap: SPACING.sm, marginTop: SPACING.md }}>
+          <Pressable onPress={() => openLink(`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`)} accessibilityRole="button" accessibilityLabel="Call customer support" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="call-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Call</Text>
           </Pressable>
-          <Pressable onPress={() => openLink(`mailto:${COMPANY_CONTACT.supportEmail}`)} accessibilityRole="button" accessibilityLabel="Email customer support" style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => openLink(`mailto:${COMPANY_CONTACT.supportEmail}`)} accessibilityRole="button" accessibilityLabel="Email customer support" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="mail-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Email</Text>
           </Pressable>
-          <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel="Open AEROPULSE assistant" style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel="Open AEROPULSE assistant" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="chatbubbles-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Chat</Text>
           </Pressable>

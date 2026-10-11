@@ -218,6 +218,22 @@ export async function getOrderById(orderId) {
   }
 }
 
+export async function getOrderPage(page = 1, limit = 10) {
+  const token = await getStoredToken();
+  if (!token) throw new Error("Please sign in again to view your orders.");
+  const safePage = Math.max(1, Math.floor(Number(page) || 1));
+  const safeLimit = Math.min(25, Math.max(1, Math.floor(Number(limit) || 10)));
+  const response = await apiFetch(`/orders/me?page=${safePage}&limit=${safeLimit}&sort=updated`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Unable to load orders. Please try again.");
+  const data = await response.json();
+  return {
+    orders: Array.isArray(data.orders) ? data.orders.map(normalizeOrder) : [],
+    pagination: data.pagination || { page: safePage, limit: safeLimit, total: 0, totalPages: 1 },
+  };
+}
+
 export async function getOrdersByUser(user = {}, { sync = true } = {}) {
   const orders = await getAllOrders({ sync });
   return orders

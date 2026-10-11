@@ -7,6 +7,7 @@ import { Alert, ActivityIndicator, Pressable, View } from "react-native";
 
 import {
   BoutiqueCard,
+  BoutiqueButton,
   BoutiqueHeader,
   BoutiqueScreen,
   BoutiqueText,
@@ -16,6 +17,7 @@ import {
 import { useUserContext } from "../../context/UserContext";
 import {
   getNotificationsForUser,
+  markNotificationsReadForUser,
   markNotificationRead,
 } from "../../services/notificationService";
 
@@ -61,6 +63,7 @@ export default function CustomerNotificationsScreen() {
   const { current } = useUserContext();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const loadNotifications = useCallback(async ({ background, isCurrent }) => {
     if (!background) setLoading(true);
@@ -82,10 +85,21 @@ export default function CustomerNotificationsScreen() {
     } catch (error) { Alert.alert("Alert not updated", error?.message || "Please try again."); }
   };
 
+  const markAllRead = async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
+    try {
+      await markNotificationsReadForUser(current);
+      setNotifications((items) => items.map((item) => ({ ...item, read: true, unread: false })));
+    } catch (error) { Alert.alert("Alerts not updated", error?.message || "Please try again."); }
+    finally { setMarkingAll(false); }
+  };
+
   return (
     <>
       <BoutiqueHeader title="Alerts" subtitle="Tap an update to continue" onBack={() => router.back()} />
       <BoutiqueScreen>
+        {notifications.some((item) => item.unread && !item.read) ? <BoutiqueButton title={markingAll ? "Updating…" : "Mark all as read"} variant="outline" disabled={markingAll} onPress={markAllRead} /> : null}
         {loading ? <ActivityIndicator color={BQ_COLORS.brand} /> : notifications.length === 0 ? (
           <BoutiqueCard><BoutiqueText color={BQ_COLORS.inkMuted}>You are all caught up.</BoutiqueText></BoutiqueCard>
         ) : notifications.map((item) => <NotificationRow key={item.id} item={item} onPress={() => openNotification(item)} />)}

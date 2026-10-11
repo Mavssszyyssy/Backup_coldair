@@ -969,6 +969,12 @@ export async function createContactMessage(token, payload) {
   };
 }
 
+export async function getMyContactMessages(token) {
+  const { ok, data } = await get("/contact-messages/me", token);
+  if (ok) return { success: true, messages: Array.isArray(data.messages) ? data.messages : [] };
+  return { success: false, error: getErrorMessage(data, "Unable to load your support messages.") };
+}
+
 export async function patchServiceRequestStatus(token, requestId, payload) {
   const path = `/service-requests/${encodeURIComponent(requestId)}/status`;
   let response;
@@ -1066,6 +1072,22 @@ export async function registerPushToken(token, expoPushToken) {
 // ---------------------------------------------------------------------------
 // AMP technician service completion
 // ---------------------------------------------------------------------------
+
+export async function fetchTaskDecisionSupport(token, taskId) {
+  const { ok, data } = await get(`/amp/tasks/${encodeURIComponent(taskId)}/decision-support`, token);
+  return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "Unable to load AI maintenance assistance.") };
+}
+
+export async function generateTaskDecisionSupport(token, taskId, phase) {
+  const endpoint = phase === "post" ? "future-prediction" : "pre-assessment";
+  const { ok, data } = await post(`/amp/tasks/${encodeURIComponent(taskId)}/${endpoint}`, {}, token);
+  return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "AI assessment is unavailable."), ...data };
+}
+
+export async function reviewTaskDecisionSupport(token, taskId, phase, decision) {
+  const { ok, data } = await patch(`/amp/tasks/${encodeURIComponent(taskId)}/${phase}/review`, { decision }, token);
+  return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "Unable to save technician review.") };
+}
 
 export async function fetchRecordedPartsPreparation(token, unitId) {
   const { ok, data } = await get(

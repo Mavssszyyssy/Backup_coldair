@@ -30,10 +30,10 @@ export default function TechnicianOobe() {
   const switchAccount = () => {
     if (saving) return false;
     return confirmAction({
-      title: "Confirm Logout",
-      message: "Are you sure you want to log out of your account?",
-      confirmText: "Logout",
-      pendingText: "Logging out...",
+      title: "Sign out?",
+      message: "Are you sure you want to sign out of your account?",
+      confirmText: "Sign out",
+      pendingText: "Signing out...",
       destructive: true,
       onConfirm: async () => {
         await logout();

@@ -8,6 +8,7 @@ describe("customer notification routing", () => {
 
   it("keeps order and supported explicit web routes", () => {
     expect(resolveCustomerNotificationRoute({ type: "order" })).toBe("/my-orders");
+    expect(resolveCustomerNotificationRoute({ type: "order", targetType: "order", targetId: "order-1" })).toBe("/my-orders?orderId=order-1");
     expect(resolveCustomerNotificationRoute({ route: "/contact" })).toBe("/contact");
   });
 

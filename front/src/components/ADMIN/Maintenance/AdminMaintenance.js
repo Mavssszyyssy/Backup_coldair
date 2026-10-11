@@ -9,7 +9,7 @@ import './styles.css';
 
 const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'Completed', 'Cancelled'];
 
-const AdminMaintenance = ({ embedded = false }) => {
+const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [selected, setSelected] = useState(null);
   const [requests, setRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -30,13 +30,14 @@ const AdminMaintenance = ({ embedded = false }) => {
         apiRequest('/warranties/claims'),
       ]);
       setRequests(Array.isArray(result.requests) ? result.requests : []);
+      if (recordId) setSelected((result.requests || []).find((item) => String(item.id || item._id) === recordId) || null);
       setWarrantyClaims(Array.isArray(claimResult.claims) ? claimResult.claims : []);
     } catch (requestError) {
       setError(requestError.message || 'Unable to load service requests.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [recordId]);
 
   useEffect(() => {
     load();

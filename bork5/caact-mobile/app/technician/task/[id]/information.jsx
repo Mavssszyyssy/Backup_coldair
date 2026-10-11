@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
 import ServiceCostSummary from "../../../../components/technician/ServiceCostSummary";
+import MaintenanceDecisionCard from "../../../../components/technician/MaintenanceDecisionCard";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../../services/liveRefresh";
 import React, { useState } from "react";
@@ -202,6 +203,7 @@ export default function TaskInformationScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const scrollRef = React.useRef(null);
+  const openingVisitAttempt = React.useRef(false);
   const [task, setTask] = useState(null);
   const [unit, setUnit] = useState(null);
   const [requests, setRequests] = useState([]);
@@ -217,6 +219,7 @@ export default function TaskInformationScreen() {
   // the tab that happened to be open for the previous task.
   React.useEffect(() => {
     setDetailPage(0);
+    openingVisitAttempt.current = false;
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [id]);
 
@@ -340,7 +343,11 @@ export default function TaskInformationScreen() {
     "Is the customer present?",
     "Installation can begin only after confirming that someone is available at the address.",
     [
-      { text: "Nobody is present", style: "destructive", onPress: () => router.push(`/technician/task/${id}/visit-attempt`) },
+      { text: "Nobody is present", style: "destructive", onPress: () => {
+        if (openingVisitAttempt.current) return;
+        openingVisitAttempt.current = true;
+        router.replace(`/technician/task/${id}/visit-attempt`);
+      } },
       { text: "Customer is present", onPress: async () => {
         if (actionBusy) return;
         setActionBusy(true);
@@ -543,6 +550,7 @@ export default function TaskInformationScreen() {
           </>) : null}
 
           {activePage.key === "service" ? <>
+            {!installationTask ? <MaintenanceDecisionCard taskId={task.id} requestId={task.requestId} completed={task.status === TASK_STATUS.COMPLETED} /> : null}
             <Card>
               <SectionHeading icon="document-text-sharp" title="Service Report" subtitle="Recorded findings and resolution" />
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />

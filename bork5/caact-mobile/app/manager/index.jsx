@@ -17,10 +17,10 @@ export default function ManagerIndexScreen() {
   const handleLogout = () => {
     if (loggingOut) return;
     return confirmAction({
-      title: "Confirm Logout",
-      message: "Are you sure you want to log out of your account?",
-      confirmText: "Logout",
-      pendingText: "Logging out...",
+      title: "Sign out?",
+      message: "Are you sure you want to sign out of your account?",
+      confirmText: "Sign out",
+      pendingText: "Signing out...",
       destructive: true,
       onConfirm: async () => {
         setLoggingOut(true);
@@ -68,7 +68,7 @@ export default function ManagerIndexScreen() {
             {current?.email ? ` Signed in as ${current.email}.` : ""}
           </Text>
           <Button
-            title={loggingOut ? "Logging out..." : "Logout"}
+            title={loggingOut ? "Signing out..." : "Sign out"}
             onPress={handleLogout}
             variant="danger"
             loading={loggingOut}

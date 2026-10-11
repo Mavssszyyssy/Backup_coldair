@@ -47,6 +47,9 @@ function getResponseRoute(response, role) {
     {
       route: data.route,
       type: data.type,
+      targetId: data.targetId,
+      targetType: data.targetType,
+      category: data.category,
       title: response?.notification?.request?.content?.title,
       message: response?.notification?.request?.content?.body,
     },

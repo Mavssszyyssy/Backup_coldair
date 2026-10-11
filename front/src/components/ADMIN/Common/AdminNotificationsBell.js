@@ -14,7 +14,7 @@ const adminRouteAliases = {
 
 const resolveNotificationRoute = (item = {}) => {
   if (String(item.route || "").startsWith("/admin/")) {
-    return adminRouteAliases[item.route] || item.route;
+    return operationalAlertRoute(item, "admin") || adminRouteAliases[item.route] || item.route;
   }
   if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "admin");
   const targetType = String(item.targetType || item.category || "").toLowerCase();

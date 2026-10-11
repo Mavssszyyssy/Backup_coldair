@@ -3,7 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TechnicianScreen, {
   TechHero,
 } from "../../components/technician/TechnicianScreen";
@@ -121,6 +121,10 @@ function FilterSheet({
   onSearchChange,
   tasks,
 }) {
+  const closeSheet = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
   const clearFilters = () => {
     onStatusChange("all");
     onPriorityChange("all");
@@ -128,15 +132,17 @@ function FilterSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={closeSheet}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <Pressable
-        onPress={onClose}
+        onPress={closeSheet}
         style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.44)" }}
       >
         <Pressable
           onPress={() => {}}
-          style={{ backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, padding: SPACING.md }}
+          style={{ maxHeight: "88%", backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl }}
         >
+          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} contentContainerStyle={{ padding: SPACING.md }}>
           <View style={{ width: 42, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderInput, alignSelf: "center", marginBottom: SPACING.sm }} />
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
             <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
@@ -146,7 +152,7 @@ function FilterSheet({
               <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Filter work orders</Text>
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Find work by status, priority, customer, or reference</Text>
             </View>
-            <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close filters">
+            <TouchableOpacity onPress={closeSheet} hitSlop={12} accessibilityLabel="Close filters">
               <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -160,6 +166,8 @@ function FilterSheet({
               placeholderTextColor={COLORS.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={Keyboard.dismiss}
               style={{ flex: 1, color: COLORS.textPrimary, marginLeft: SPACING.xs, paddingVertical: SPACING.xs, fontSize: FONT.md }}
               accessibilityLabel="Search work orders"
             />
@@ -212,10 +220,12 @@ function FilterSheet({
 
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             <TechButton title="Clear" onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
-            <TechButton title="Show results" onPress={onClose} style={{ flex: 1 }} />
+            <TechButton title="Show results" onPress={closeSheet} style={{ flex: 1 }} />
           </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

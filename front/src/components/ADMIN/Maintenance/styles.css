@@ -25,3 +25,14 @@
 .maintenance-assignment-lock strong { color: #166534; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .maintenance-assignment-lock span { color: #172033; font-size: 15px; font-weight: 850; }
 .maintenance-assignment-lock small, .maintenance-conflict-note { color: #64748b; font-size: 11px; line-height: 1.45; }
+.maintenance-ai-card { margin-top: 16px; padding: 18px; border: 1px solid #d8e4f2; border-radius: 16px; background: #f8fbff; }
+.maintenance-ai-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.maintenance-ai-heading h4 { margin: 0 0 4px; color: #17233d; }
+.maintenance-ai-heading small, .maintenance-ai-meta { color: #61718b; }
+.maintenance-ai-meta { font-size: 13px; margin: 12px 0; }
+.maintenance-ai-row { display: grid; grid-template-columns: minmax(130px, 28%) 1fr; gap: 12px; border-top: 1px solid #e3eaf4; margin: 0; padding: 10px 0; overflow-wrap: anywhere; }
+.maintenance-ai-row strong, .maintenance-ai-group strong { color: #263b58; }
+.maintenance-ai-group { border-top: 1px solid #e3eaf4; padding-top: 10px; margin-top: 8px; }
+.maintenance-ai-group ul, .maintenance-ai-evidence ul { padding-left: 20px; margin: 8px 0; line-height: 1.55; overflow-wrap: anywhere; }
+.maintenance-ai-evidence { margin-top: 12px; color: #475b75; }
+@media (max-width: 640px) { .maintenance-ai-row { grid-template-columns: 1fr; gap: 4px; } }

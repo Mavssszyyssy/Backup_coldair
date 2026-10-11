@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Linking, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
@@ -15,7 +15,7 @@ import {
 } from "../../constants/company";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
-import { createContactMessage } from "../../services/api";
+import { createContactMessage, getMyContactMessages } from "../../services/api";
 
 const CONTACT_CATEGORIES = [
   { id: "general", name: "General question" },
@@ -64,7 +64,19 @@ function ContactRow({ label, value, href }) {
 
 export default function CustomerContactScreen() {
   const router = useRouter();
+  const { messageId } = useLocalSearchParams();
   const { current, token } = useUserContext();
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState("");
+
+  const loadHistory = useCallback(async () => {
+    if (!token) return;
+    const result = await getMyContactMessages(token);
+    if (result.success) { setHistory(result.messages); setHistoryError(""); }
+    else setHistoryError(result.error);
+  }, [token]);
+
+  useFocusEffect(useCallback(() => { void loadHistory(); }, [loadHistory]));
   const [category, setCategory] = useState(CONTACT_CATEGORIES[0]);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -97,6 +109,7 @@ export default function CustomerContactScreen() {
       });
       if (!result.success) return setError(result.error);
       setConfirmation(result.message);
+      await loadHistory();
       setSubject("");
       setMessage("");
       setCategory(CONTACT_CATEGORIES[0]);
@@ -160,6 +173,21 @@ export default function CustomerContactScreen() {
         <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, lineHeight: 18, marginTop: SPACING.sm }}>For your privacy, contact our support team if you need to send a message to your technician.</Text>
         <View style={{ height: SPACING.sm }} />
         <Button title="View My Orders" variant="ghost" onPress={() => router.push("/customer/orders")} />
+      </Card>
+
+      <Card>
+        <CustomerSectionHeader title="My Support Messages" />
+        <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>Track each reference and read replies from your support team.</Text>
+        {historyError ? <Text style={{ color: COLORS.danger }}>{historyError}</Text> : null}
+        {history.length === 0 && !historyError ? <Text style={{ color: COLORS.textMuted }}>No messages sent yet.</Text> : null}
+        {history.map((item) => (
+          <View key={item.id || item._id} style={{ paddingVertical: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, borderLeftWidth: String(messageId || "") === String(item.id || item._id) ? 3 : 0, borderLeftColor: COLORS.primary, paddingLeft: String(messageId || "") === String(item.id || item._id) ? SPACING.sm : 0 }}>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{item.subject}</Text>
+            <Text style={{ color: COLORS.primary, marginTop: 3 }}>Reference {item.ticketCode} · {String(item.status || "new").replace(/_/g, " ")}</Text>
+            <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.message}</Text>
+            {item.adminReply ? <View style={{ marginTop: SPACING.sm, padding: SPACING.sm, backgroundColor: COLORS.primaryLight, borderRadius: 10 }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>Support reply</Text><Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.adminReply}</Text></View> : null}
+          </View>
+        ))}
       </Card>
 
       <Card>

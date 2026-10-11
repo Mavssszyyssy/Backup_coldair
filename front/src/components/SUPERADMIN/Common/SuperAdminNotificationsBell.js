@@ -6,7 +6,7 @@ import { apiRequest } from '../../../config/api';
 import { announceNotificationUpdate, subscribeToNotificationUpdates } from '../../../utils/notificationSync';
 
 const routeForNotification = (item = {}) => {
-  if (String(item.route || '').startsWith('/superadmin/')) return item.route;
+  if (String(item.route || '').startsWith('/superadmin/')) return operationalAlertRoute(item, 'superadmin');
   if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "superadmin");
   const targetType = String(item.targetType || item.category || '').toLowerCase();
   if (['amp_pipeline', 'maintenance_pipeline'].includes(targetType)) return '/manager/amp';

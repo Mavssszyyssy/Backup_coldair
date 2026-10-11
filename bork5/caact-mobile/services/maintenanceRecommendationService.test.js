@@ -34,11 +34,11 @@ test("installation-complete order notifications never treat an order ID as an AC
     title: "Installation completed",
     message: "Your warranty and active unit record are now available.",
   };
-  expect(resolveNotificationRoute(notification, "customer")).toBe("/customer/orders");
+  expect(resolveNotificationRoute(notification, "customer")).toBe("/customer/orders?orderId=order-id");
   expect(resolveNotificationRoute({
     ...notification,
     route: "/customer/units/order-id?page=warranty",
-  }, "customer")).toBe("/customer/orders");
+  }, "customer")).toBe("/customer/orders?orderId=order-id");
 });
 test("technician task-list alerts open all schedule dates while task alerts open the exact task", () => {
   expect(resolveNotificationRoute({

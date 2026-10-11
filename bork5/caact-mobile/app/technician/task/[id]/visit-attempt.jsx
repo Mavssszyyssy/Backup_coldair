@@ -57,6 +57,11 @@ export default function VisitAttemptScreen() {
     } catch (err) { setError(err.message || 'Unable to save. Please retry.'); }
     finally { submitting.current = false; setSaving(false); }
   };
+  if (!task && !error) {
+    return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg, padding: SPACING.md }}>
+      <PageHeader title="Loading visit" subtitle="Checking the work order" color={COLORS.tech} onBack={() => router.back()} />
+    </SafeAreaView>;
+  }
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <KeyboardAwareScrollView style={{ flex: 1 }} minBottomPadding={24} contentContainerStyle={{ padding: SPACING.md }}>
       <PageHeader title={installationTask ? "Failed to Install" : "No one available"} subtitle={task?.taskCode || (installationTask ? 'Record an unattended installation' : 'Record an unattended visit')} color={COLORS.tech} onBack={() => !saving && router.back()} />

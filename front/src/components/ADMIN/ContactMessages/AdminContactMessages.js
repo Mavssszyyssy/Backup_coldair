@@ -27,7 +27,7 @@ const dateTime = (value) => {
   });
 };
 
-export default function AdminContactMessages() {
+export default function AdminContactMessages({ recordId = "" }) {
   const [messages, setMessages] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
@@ -44,13 +44,15 @@ export default function AdminContactMessages() {
       const result = await apiRequest("/contact-messages");
       const next = Array.isArray(result.messages) ? result.messages : [];
       setMessages(next);
-      setSelectedId((current) => current && next.some((item) => item.id === current) ? current : next[0]?.id || "");
+      setSelectedId((current) => recordId && next.some((item) => item.id === recordId)
+        ? recordId
+        : current && next.some((item) => item.id === current) ? current : next[0]?.id || "");
     } catch (requestError) {
       setError(requestError.message || "Unable to load customer messages.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [recordId]);
 
   useEffect(() => { load(); }, [load]);
 

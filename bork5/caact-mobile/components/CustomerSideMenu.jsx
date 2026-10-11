@@ -47,10 +47,10 @@ export default function CustomerSideMenu({ navigation }) {
 
   const handleLogout = () =>
     confirmAction({
-      title: "Confirm Logout",
-      message: "Are you sure you want to log out of your account?",
-      confirmText: "Logout",
-      pendingText: "Logging out...",
+      title: "Sign out?",
+      message: "Are you sure you want to sign out of your account?",
+      confirmText: "Sign out",
+      pendingText: "Signing out...",
       destructive: true,
       onConfirm: async () => {
         await logout();
@@ -184,7 +184,7 @@ export default function CustomerSideMenu({ navigation }) {
             <Ionicons name="log-out-sharp" size={21} color={COLORS.danger} />
           </View>
           <Text style={{ fontSize: FONT.base, fontWeight: FONT.black, color: COLORS.danger }}>
-            Sign Out
+            Sign out
           </Text>
         </TouchableOpacity>
       </View>

@@ -196,7 +196,7 @@ const initialStaffDraft = (branch = "") => ({
   serviceQuota: "",
 });
 
-const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
+const AdminTechnician = ({ embedded = false, initialView = "technicians", recordId = "" }) => {
   const { user } = useUser();
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
@@ -332,6 +332,14 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
   const pageTechnicians = filteredTechnicians.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const workTotalPages = Math.max(1, Math.ceil(tasks.length / WORK_ASSIGNMENT_PAGE_SIZE));
   const pageWorkAssignments = tasks.slice((workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE, workPage * WORK_ASSIGNMENT_PAGE_SIZE);
+  useEffect(() => {
+    if (!recordId || !tasks.length) return;
+    const index = tasks.findIndex((task) => String(task.id || task._id) === recordId || String(task.taskCode) === recordId);
+    if (index < 0) { setError("This work order is no longer available in your authorized list."); return; }
+    setWorkspaceView("technicians");
+    setWorkPage(Math.floor(index / WORK_ASSIGNMENT_PAGE_SIZE) + 1);
+    window.setTimeout(() => document.getElementById(`tech-work-${recordId}`)?.scrollIntoView({ block: "center" }), 0);
+  }, [recordId, tasks]);
   const intendedBranch = draft.branch || homeBranch;
   const availableCustomers = customers.filter((customer) => customer.accountStatus === "active"
     && (!intendedBranch || !customer.branch || customer.branch === intendedBranch));
@@ -622,6 +630,23 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
     );
   };
 
+  const activateTask = async (task) => {
+    setUpdatingId(`task-${task.id}`);
+    setError("");
+    try {
+      const result = await apiRequest(`/tasks/${task.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "in-progress" }),
+      });
+      setTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
+      setNotice(`${task.taskCode || "Work order"} is active. The technician can now begin the visit.`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to activate this work order.");
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
   const changeTechnicianAccountStatus = async (technician) => {
     const isDisabling = technician.accountStatus === "active";
     if (isDisabling) {
@@ -773,7 +798,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
           {pageWorkAssignments.length === 0 ? <p className="tech-empty">There are no work orders yet.</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
-            return <article key={task.id} className="tech-work-item">
+            return <article key={task.id} id={`tech-work-${task.id}`} className="tech-work-item">
               <div className="tech-work-heading">
                 <span className={`tech-task-status is-${String(task.status || "pending").replace(/\s+/g, "-")}`}>{task.status || "pending"}</span>
                 <div><h3>{assignmentTitle(task)}</h3><small>{task.taskCode || "Work order"}</small></div>
@@ -785,6 +810,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians" }) => {
                 <div><dt>Technician</dt><dd>{task.assignedTechnicianName || "Not assigned"}</dd></div>
               </dl>
               <div className="tech-work-footer">
+                {String(task.status || "").toLowerCase() === "pending" && !(task.orderId || task.orderCode || task.payload?.orderId || task.payload?.orderCode) ? <button type="button" className="tech-primary-button" disabled={updatingId === `task-${task.id}`} onClick={() => activateTask(task)}>{updatingId === `task-${task.id}` ? "Activating…" : "Activate work order"}</button> : null}
                 {checkIn?.checkedInAt ? <div className="tech-check-in is-verified">
                   <strong>GPS check-in verified</strong>
                   <span>{formatCheckInTime(checkIn.checkedInAt)}</span>

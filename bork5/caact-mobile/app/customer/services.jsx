@@ -73,7 +73,9 @@ export default function CustomerServicesScreen() {
   const [loadingUnits, setLoadingUnits] = useState(true);
   const appliedUnitParam = useRef("");
   const appliedTypeParam = useRef("");
+  const openedRequestParam = useRef("");
   const requestedUnitId = String(Array.isArray(params.unitId) ? params.unitId[0] || "" : params.unitId || "");
+  const requestedRequestId = String(Array.isArray(params.requestId) ? params.requestId[0] || "" : params.requestId || "");
 
   const loadServiceCatalog = useCallback(async () => {
     const token = await getStoredToken();
@@ -121,6 +123,13 @@ export default function CustomerServicesScreen() {
   }, [current?.id, loadServiceCatalog, requestedUnitId]));
 
   const selectedService = useMemo(() => serviceOfferings.find((item) => item.id === selectedServiceId) || null, [serviceOfferings, selectedServiceId]);
+  useEffect(() => {
+    if (!requestedRequestId || openedRequestParam.current === requestedRequestId) return;
+    const request = requests.find((item) => String(item.id || item._id) === requestedRequestId);
+    if (!request?.unitId) return;
+    openedRequestParam.current = requestedRequestId;
+    router.replace({ pathname: "/customer/units/[id]", params: { id: String(request.unitId), page: "service" } });
+  }, [requestedRequestId, requests, router]);
   const selectedUnit = useMemo(() => units.find((item) => String(item.id) === String(selectedUnitId)) || null, [units, selectedUnitId]);
   const hasRequestedUnit = Boolean(requestedUnitId && selectedUnit && String(selectedUnit.id) === requestedUnitId);
   const selectedActiveRequest = useMemo(() => requests.find((request) =>

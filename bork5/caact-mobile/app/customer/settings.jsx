@@ -304,7 +304,7 @@ export default function CustomerSettingsScreen() {
     const firstNameError = validatePersonName(profileForm.name_first, "First name");
     const lastNameError = validatePersonName(profileForm.name_last, "Last name");
     const aliasError = validateRequired(profileForm.alias, "Alias");
-    const phoneError = toText(profileForm.phone) ? validatePhone(profileForm.phone) : "";
+    const phoneError = validatePhone(profileForm.phone);
     if (firstNameError) errors.name_first = firstNameError;
     if (lastNameError) errors.name_last = lastNameError;
     if (aliasError) errors.alias = aliasError;
@@ -320,7 +320,7 @@ export default function CustomerSettingsScreen() {
         suffix: toText(profileForm.suffix),
         alias: toText(profileForm.alias),
       };
-      if (toText(profileForm.phone)) profilePayload.phone = canonicalizePhMobile(profileForm.phone);
+      profilePayload.phone = canonicalizePhMobile(profileForm.phone);
       const result = await updateMyAccount(profilePayload);
       if (!result.success) return Alert.alert("Save failed", result.error || "Unable to update your account.");
       setNotice("Account details updated.");
@@ -384,10 +384,10 @@ export default function CustomerSettingsScreen() {
 
   const performLogout = async () => { await logout(); router.replace("/sign-in"); };
   const handleLogout = () => confirmAction({
-    title: "Confirm Logout",
-    message: "Are you sure you want to log out of your account?",
-    confirmText: "Logout",
-    pendingText: "Logging out...",
+    title: "Sign out?",
+    message: "Are you sure you want to sign out of your account?",
+    confirmText: "Sign out",
+    pendingText: "Signing out...",
     destructive: true,
     onConfirm: performLogout,
   });
@@ -420,7 +420,7 @@ export default function CustomerSettingsScreen() {
         <Section title="Security & Session">
           <CustomerSettingsRow icon="key-sharp" title="Reset Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
           <CustomerSettingsRow icon="shield-checkmark-sharp" title="Email Sign-in Verification" subtitle="After your password is accepted, verify the code sent to your email." />
-          <CustomerSettingsRow icon="log-out-sharp" title="Sign Out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
+          <CustomerSettingsRow icon="log-out-sharp" title="Sign out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
         <Section title="Help & Support">
           <CustomerSettingsRow icon="help-buoy-sharp" title="Frequently Asked Questions" subtitle="Orders, payments, delivery, warranty, and AC care" onPress={() => router.push("/customer/faq")} />

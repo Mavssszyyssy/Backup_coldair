@@ -14,7 +14,7 @@ export function getDisplayName(user) {
     .join(" ")
     .trim();
 
-  return user.name || fullName || user.alias || user.email || "User";
+  return fullName || user.name || user.alias || user.email || "User";
 }
 
 export function getRoleLabel(user) {

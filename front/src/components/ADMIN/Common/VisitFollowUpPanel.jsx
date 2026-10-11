@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
+import { formatBusinessDateKey } from '../../../utils/dateTime';
 import './VisitFollowUpPanel.css';
 
 export default function VisitFollowUpPanel({ task, onUpdated }) {
@@ -25,6 +26,10 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
   const save = async event => {
     event.preventDefault();
     if (busy) return;
+    if (!date || date < formatBusinessDateKey()) {
+      setMessage('Choose today or a future visit date.');
+      return;
+    }
     setBusy(true); setMessage('');
     try {
       await apiRequest(`/tasks/${encodeURIComponent(taskId)}/next-visit`, { method: 'PATCH', body: JSON.stringify({ attemptId: summary.id, scheduledDate: date, timeSlot: time }) });
@@ -47,7 +52,7 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
     {attempt?.photo?.uri ? <a href={attempt.photo.uri} target="_blank" rel="noreferrer"><img className="visit-follow-up-photo" src={attempt.photo.uri} alt="Technician proof of unattended visit" /></a> : <button type="button" onClick={() => setReload(value => value + 1)}>Reload proof photo</button>}
     {summary.awaitingAdmin && !confirmed && !['completed', 'cancelled'].includes(task.status) ? <form onSubmit={save}>
       <p>Contact the customer, then confirm the next date and time. This requires a fresh GPS arrival.</p>
-      <div className="visit-follow-up-fields"><label>Next visit date<input required type="date" value={date} onChange={e => setDate(e.target.value)} disabled={busy} /></label>
+      <div className="visit-follow-up-fields"><label>Next visit date<input required type="date" min={formatBusinessDateKey()} value={date} onChange={e => setDate(e.target.value)} disabled={busy} /></label>
         <label>Time slot<select required value={time} onChange={e => setTime(e.target.value)} disabled={busy}><option value="">Choose time slot</option>{TECHNICIAN_TIME_SLOTS.map(slot => <option key={slot}>{slot}</option>)}</select></label></div>
       <button className="visit-follow-up-confirm" disabled={busy || !date || !time}>{busy ? 'Confirming…' : 'Confirm next visit'}</button>
     </form> : null}

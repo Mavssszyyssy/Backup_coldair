@@ -9,3 +9,11 @@ export function resolveOrderDeliveryStatus(workflowStatus = "", fallback = "") {
   if (workflow === "to_install") return "OUT_FOR_DELIVERY";
   return "NOT_STARTED";
 }
+
+export function resolveOrderTimelineEndState(workflowStatus = "", steps = []) {
+  const workflow = String(workflowStatus || "").toLowerCase();
+  const finalStage = String(steps[steps.length - 1]?.stage || "").toLowerCase();
+  if (workflow === "complete" && (!finalStage || finalStage === "completed")) return "completed";
+  if (workflow === "cancelled" && finalStage === "cancelled") return "cancelled";
+  return "current";
+}

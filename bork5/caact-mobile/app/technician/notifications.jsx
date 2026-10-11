@@ -9,6 +9,7 @@ import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import {
   getNotificationsForUser,
+  markNotificationsReadForUser,
   markNotificationRead,
 } from "../../services/notificationService";
 
@@ -43,6 +44,7 @@ export default function TechnicianNotificationsScreen() {
   const { current } = useUserContext();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const loadNotifications = useCallback(async ({ background, isCurrent }) => {
     if (!background) setLoading(true);
@@ -64,8 +66,19 @@ export default function TechnicianNotificationsScreen() {
     } catch (error) { Alert.alert("Alert not updated", error?.message || "Please try again."); }
   };
 
+  const markAllRead = async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
+    try {
+      await markNotificationsReadForUser(current);
+      setNotifications((items) => items.map((item) => ({ ...item, read: true, unread: false })));
+    } catch (error) { Alert.alert("Alerts not updated", error?.message || "Please try again."); }
+    finally { setMarkingAll(false); }
+  };
+
   return (
     <TechnicianScreen title="Alerts" subtitle="Assignments and service updates" icon="notifications-sharp">
+      {notifications.some((item) => item.unread && !item.read) ? <Pressable accessibilityRole="button" disabled={markingAll} onPress={markAllRead} style={{ alignSelf: "flex-end", padding: SPACING.sm, marginBottom: SPACING.sm }}><Text style={{ color: COLORS.tech, fontWeight: FONT.bold }}>{markingAll ? "Updating…" : "Mark all as read"}</Text></Pressable> : null}
       {loading ? <ActivityIndicator color={COLORS.tech} /> : notifications.length === 0 ? (
         <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md }}><Text style={{ color: COLORS.textSecondary }}>You are all caught up.</Text></View>
       ) : notifications.map((item) => <NotificationRow key={item.id} item={item} onPress={() => openNotification(item)} />)}
