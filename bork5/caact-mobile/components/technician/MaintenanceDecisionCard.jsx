@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Card from "../ui/Card";
 import TechButton from "./TechButton";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
@@ -13,6 +13,7 @@ const Items = ({ label, values, format = item => item }) => Array.isArray(values
 
 export default function MaintenanceDecisionCard({ taskId, completed, requestId }) {
   const [record, setRecord] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -47,19 +48,24 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
   const a = pre?.assessment;
   const p = post?.assessment;
   return <Card>
-    <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>AI maintenance assistance</Text>
-    <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4 }}>Suggestions support your inspection. They do not confirm a fault, replace your findings, or change inventory.</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="AI parts and future-issue assessment" accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
+      <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>AI parts and future-issue assessment</Text>
+      <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4 }}>{expanded ? "Hide assessment details" : (completed ? "Check what may need monitoring after this visit" : "Check suggested parts to prepare before this visit")}  {expanded ? "▲" : "▼"}</Text>
+    </Pressable>
+    {expanded && <>
+    <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>Suggestions can interpret Tagalog and Taglish notes, but your original findings stay unchanged. Confirm faults and part compatibility before replacement.</Text>
     {!!error && <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginTop: SPACING.sm }}>{error}</Text>}
     {!!requestId && <View style={{ marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderColor: COLORS.border }}>
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Before maintenance</Text>
       {pre?.status === "completed" ? <>
+        <Items label="Bring for inspection" values={a?.parts_to_bring} format={part => `${part.name}: ${part.reason}`} />
+        <Items label="Use only after confirmed diagnosis" values={a?.replace_only_after_diagnosis} format={part => `${part.name}: ${part.only_if}`} />
         <Detail label="Original reported issue" value={pre?.evidence?.find(entry => entry.id === "reported_issue")?.text} />
+        <Items label="Original technician observations" values={pre?.evidence?.filter(entry => entry.id.startsWith("in_progress_"))} format={entry => `${entry.label}: ${entry.text}`} />
         <Detail label="English interpretation" value={a?.english_interpretation} />
         <Detail label="Possible problem" value={a?.possible_problem} />
         <Detail label="Reason" value={a?.reason_for_recommendation} />
         <Detail label="Priority / confidence" value={`${a?.priority} · ${a?.confidence}`} />
-        <Items label="Bring for inspection" values={a?.parts_to_bring} format={part => `${part.name}: ${part.reason}`} />
-        <Items label="Replace only after diagnosis" values={a?.replace_only_after_diagnosis} format={part => `${part.name}: ${part.only_if}`} />
         <Items label="Tools and materials" values={a?.tools_and_materials} format={tool => `${tool.name}: ${tool.reason}`} />
         <Items label="Diagnostic actions" values={a?.diagnostic_actions} />
         <Items label="Safety flags" values={a?.safety_flags} />
@@ -75,10 +81,10 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
     {completed && <View style={{ marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderColor: COLORS.border }}>
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>After maintenance</Text>
       {post?.status === "completed" ? <>
+        <Detail label="Possible next issue" value={p?.possible_future_issue} />
+        <Detail label="Part to monitor" value={p?.component_to_monitor} />
         <Detail label="Original technician findings" value={post?.evidence?.find(entry => entry.id === "current_findings")?.text} />
         <Detail label="English interpretation" value={p?.english_interpretation} />
-        <Detail label="Possible future issue" value={p?.possible_future_issue} />
-        <Detail label="Component to monitor" value={p?.component_to_monitor} />
         <Detail label="Risk / confidence" value={`${p?.risk_level} · ${p?.confidence}`} />
         <Items label="Supporting findings" values={p?.supporting_findings} />
         <Items label="Preventive actions" values={p?.preventive_actions} />
@@ -93,5 +99,6 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
       </> : <Text style={{ color: COLORS.textSecondary, marginVertical: SPACING.sm }}>{post?.error || "Generate after the final technician report is saved."}</Text>}
       <TechButton title={post ? "Regenerate future-issue assessment" : "Generate future-issue assessment"} onPress={() => run("post")} loading={busy === "post"} variant="secondary" style={{ marginTop: SPACING.sm }} />
     </View>}
+    </>}
   </Card>;
 }

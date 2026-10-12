@@ -89,8 +89,11 @@ function DynamicServiceSticker({ unit }) {
       <p>These steps are based on the recorded technician findings. Final repair or replacement is confirmed only after inspection.</p>
     </section> : null}
 
-    {visitPrescription ? <AiServicePrescription interpretation={visitPrescription} compact /> : recommendation.aiAssessment ? <details className="service-sticker-reason" open onClick={(event) => event.stopPropagation()}>
-      <summary>AI Assessment</summary>
+    {visitPrescription ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
+      <summary>Review service assessment</summary>
+      <AiServicePrescription interpretation={visitPrescription} compact />
+    </details> : recommendation.aiAssessment ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
+      <summary>Review service assessment</summary>
       <p>{recommendation.aiAssessment}</p>
     </details> : null}
 

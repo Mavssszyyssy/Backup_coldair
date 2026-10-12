@@ -49,6 +49,7 @@ it("shows the technician evidence separately from the AI prescription", async ()
 
   render(<DynamicServiceSticker unit={{ ampUnitId: "64fa00000000000000000001" }} />);
 
+  fireEvent.click(await screen.findByText("Review service assessment"));
   expect(await screen.findByText("AI-assisted assessment & prescription")).toBeVisible();
   expect(screen.getByText("Based on your service records")).toHaveClass("ai-prescription-source");
   expect(screen.getByText("Based on your service records").closest("header")).toHaveClass("ai-prescription-header");

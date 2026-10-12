@@ -9,6 +9,7 @@ import { useUser } from "../../context/UserContext";
 import { customerSystemMessage } from "../../domain/customerLanguage";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 import { serviceLabel, serviceDateLabel as dateLabel } from "../../domain/myunit/serviceHistoryDisplay";
+import AmpDecisionPanel from "./AmpDecisionPanel";
 
 const REPORT_TYPES = [
   { value: "predictive_maintenance", label: "Next service plan", help: "See when service is suggested and why. This does not book a visit." },
@@ -228,6 +229,7 @@ function AmpReportCenter({
       <p className="amp-report-help"><CheckCircle size={17} weight="fill" aria-hidden="true" />{types.find(item => item.value === reportType)?.help}</p>
       {unitsLoading ? <p className="amp-muted" role="status">Loading installed AC units…</p> : !reportUnits.length ? <p className="amp-empty">No installed AC units are available here yet.</p> : null}
       {error ? <p className="amp-error">{error}</p> : null}
+      {unitId && ["admin", "superadmin"].includes(user?.role) ? <AmpDecisionPanel key={unitId} unitId={unitId} /> : null}
       {report ? <div className="amp-report-result" ref={reportResultRef}>
         <div className="amp-report-result-heading"><div><h3>{reportLabel || report.title}</h3></div><div className="amp-report-meta"><span>Branch: {report.branch}</span><span>{conditionFollowUp ? "Based on the technician report" : maintenance.predictionSource === "openai" ? "Suggested from service history" : provider === "openai" && maintenance.interpretation ? "Based on service records" : "Based on service records"}</span></div></div>
         {report.explanationWarning ? <p role="status" className="amp-muted amp-report-notice">{report.explanationWarning}</p> : null}

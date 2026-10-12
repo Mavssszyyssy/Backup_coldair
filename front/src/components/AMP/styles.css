@@ -1394,6 +1394,11 @@
 }
 
 .amp-report-center-header { align-items: flex-start; margin-bottom: 16px; }
+.amp-decision-panel { padding: 0 16px 8px; border: 1px solid #dbe4ef; border-radius: 13px; background: #f8fbff; }
+.amp-decision-panel > summary { margin: 0 -16px; padding: 15px 16px; color: #1e3a8a; }
+.amp-decision-panel[open] > summary { border-bottom: 1px solid #dbe4ef; }
+.amp-decision-panel .maintenance-detail-section { border-bottom: 0; }
+.amp-decision-panel .maintenance-ai-card { background: #fff; }
 .amp-export-button,
 .amp-generate-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .amp-export-button { flex: 0 0 auto; background: #eef2ff !important; color: #4338ca !important; border: 1px solid #c7d2fe !important; }

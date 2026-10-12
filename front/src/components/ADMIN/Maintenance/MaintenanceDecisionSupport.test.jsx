@@ -29,3 +29,18 @@ it('shows an AI failure clearly and never fabricates a saved prediction', async 
   expect(await screen.findByRole('alert')).toHaveTextContent('AI assessment is unavailable right now.');
   expect(screen.queryByText('Possible future issue')).toBeNull();
 });
+
+it('shows the possible next issue from a completed visit without an open request', async () => {
+  const futurePrediction = { status: 'completed', generatedAt: '2026-10-12T00:00:00.000Z',
+    evidence: [{ id: 'current_findings', label: 'Original findings', text: 'Okay na ang lamig, pero may ingay sa fan.' }],
+    assessment: { english_interpretation: 'Cooling is restored, but the fan remains noisy.',
+      possible_future_issue: 'The fan noise may need further inspection.', component_to_monitor: 'Fan assembly',
+      risk_level: 'medium', confidence: 'limited' } };
+  apiRequest.mockResolvedValue({ futurePrediction });
+  render(<MaintenanceDecisionSupport request={null} task={{ id: 'task-1', status: 'completed' }} initialPost={futurePrediction} />);
+  expect(screen.queryByText('Before maintenance · parts to prepare')).toBeNull();
+  expect(screen.getByText('The fan noise may need further inspection.')).toBeVisible();
+  fireEvent.click(screen.getByText('Interpretation and supporting details'));
+  expect(screen.getAllByText('Okay na ang lamig, pero may ingay sa fan.')[0]).toBeVisible();
+  expect(screen.getByText('Cooling is restored, but the fan remains noisy.')).toBeVisible();
+});
