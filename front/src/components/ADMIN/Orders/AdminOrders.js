@@ -11,6 +11,14 @@ import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
 
 import { canCancelOrder, getOrderAction } from '../../../domain/orderActions';
+import {
+  ORDER_DATE_OPTIONS,
+  ORDER_PAYMENT_OPTIONS,
+  ORDER_WORKFLOW_OPTIONS,
+  collectOrderBranches,
+  countActiveOrderFilters,
+  filterCustomerOrders,
+} from './orderFilters';
 
 const ORDER_PAGE_SIZE = 10;
 const TIME_SLOT_OPTIONS = [
@@ -193,9 +201,15 @@ const AdminOrders = ({ embedded = false }) => {
   const [taskDetailsById, setTaskDetailsById] = useState({});
   const [proofLoadingId, setProofLoadingId] = useState('');
   const [orderViewFilter, setOrderViewFilter] = useState('all');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [workflowFilter, setWorkflowFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [orderPage, setOrderPage] = useState(1);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const orderLoadInFlightRef = useRef(false);
+  const skipNextFilterPageResetRef = useRef(false);
 
   const loadOrders = useCallback(async (options = {}) => {
     const background = Boolean(options?.background);
@@ -253,7 +267,7 @@ const AdminOrders = ({ embedded = false }) => {
     };
   }, [loadOrders]);
 
-  const pendingOrders = useMemo(() => {
+  const queueOrders = useMemo(() => {
     if (orderViewFilter === 'refund_review') {
       return orders.filter((order) => order.refundReview?.required && order.refundReview.status !== 'completed');
     }
@@ -262,6 +276,25 @@ const AdminOrders = ({ embedded = false }) => {
     }
     return orders;
   }, [orders, orderViewFilter]);
+  const branchOptions = useMemo(() => collectOrderBranches(orders), [orders]);
+  const pendingOrders = useMemo(
+    () => filterCustomerOrders(queueOrders, {
+      search: orderSearch,
+      workflow: workflowFilter,
+      payment: paymentFilter,
+      branch: branchFilter,
+      dateRange: dateFilter,
+    }),
+    [branchFilter, dateFilter, orderSearch, paymentFilter, queueOrders, workflowFilter],
+  );
+  const activeFilterCount = countActiveOrderFilters({
+    search: orderSearch,
+    workflow: workflowFilter,
+    payment: paymentFilter,
+    branch: branchFilter,
+    dateRange: dateFilter,
+    queue: orderViewFilter,
+  });
   const refundReviewCount = useMemo(
     () => orders.filter((order) => order.refundReview?.required && order.refundReview.status !== 'completed').length,
     [orders],
@@ -280,18 +313,32 @@ const AdminOrders = ({ embedded = false }) => {
     if (!recordId || loading) return;
     const index = orders.findIndex((order) => String(order.id || order._id) === recordId || String(order.orderCode) === recordId);
     if (index < 0) { setError('This order is no longer available in your authorized order list.'); return; }
+    skipNextFilterPageResetRef.current = activeFilterCount > 0;
     setOrderViewFilter('all');
+    setOrderSearch('');
+    setWorkflowFilter('all');
+    setPaymentFilter('all');
+    setBranchFilter('all');
+    setDateFilter('all');
     setOrderPage(Math.floor(index / ORDER_PAGE_SIZE) + 1);
     window.setTimeout(() => document.getElementById(`admin-order-${recordId}`)?.scrollIntoView({ block: 'center' }), 0);
   }, [recordId, orders, loading]);
 
   useEffect(() => {
+    if (skipNextFilterPageResetRef.current) {
+      skipNextFilterPageResetRef.current = false;
+      return;
+    }
     setOrderPage(1);
-  }, [orderViewFilter]);
+  }, [branchFilter, dateFilter, orderSearch, orderViewFilter, paymentFilter, workflowFilter]);
 
   useEffect(() => {
     if (orderPage > totalOrderPages) setOrderPage(totalOrderPages);
   }, [orderPage, totalOrderPages]);
+
+  useEffect(() => {
+    if (branchFilter !== 'all' && !branchOptions.includes(branchFilter)) setBranchFilter('all');
+  }, [branchFilter, branchOptions]);
 
   const tasksByOrder = useMemo(() => {
     const map = {};
@@ -507,40 +554,106 @@ const AdminOrders = ({ embedded = false }) => {
     }
   };
 
+  const clearOrderFilters = () => {
+    setOrderViewFilter('all');
+    setOrderSearch('');
+    setWorkflowFilter('all');
+    setPaymentFilter('all');
+    setBranchFilter('all');
+    setDateFilter('all');
+  };
+
   return (
     <AdminLayout title="Customer Orders" subtitle="Review and process customer checkout requests" embedded={embedded}>
       <div className="admin-orders-page">
         {loading ? <p>Loading orders...</p> : null}
         {error ? <p className="admin-orders-error">{error}</p> : null}
         {!loading ? (
-          <div className="admin-orders-filterbar">
-            <button type="button" onClick={loadOrders} className="admin-orders-refresh">
-              Refresh{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
-            </button>
-            <button
-              type="button"
-              className={orderViewFilter === 'all' ? 'active' : ''}
-              onClick={() => setOrderViewFilter('all')}
-            >
-              All Orders <span>{orders.length}</span>
-            </button>
-            <button
-              type="button"
-              className={orderViewFilter === 'refund_review' ? 'active' : ''}
-              onClick={() => setOrderViewFilter('refund_review')}
-            >
-              Refund Review <span>{refundReviewCount}</span>
-            </button>
-            <button
-              type="button"
-              className={orderViewFilter === 'cancel_requests' ? 'active' : ''}
-              onClick={() => setOrderViewFilter('cancel_requests')}
-            >
-              Cancel Requests <span>{cancelRequestCount}</span>
-            </button>
+          <div className="admin-orders-filter-panel">
+            <div className="admin-orders-filter-heading">
+              <div>
+                <strong>Find customer orders</strong>
+                <span>Search and narrow the list before processing an order.</span>
+              </div>
+              <button type="button" onClick={loadOrders} className="admin-orders-refresh">
+                Refresh{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
+              </button>
+            </div>
+
+            <div className="admin-orders-filter-grid">
+              <label className="admin-orders-search-field">
+                <span>Search orders</span>
+                <input
+                  type="search"
+                  value={orderSearch}
+                  onChange={(event) => setOrderSearch(event.target.value)}
+                  placeholder="Order code, customer, phone, product, or serial"
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                <span>Order stage</span>
+                <select value={workflowFilter} onChange={(event) => setWorkflowFilter(event.target.value)}>
+                  {ORDER_WORKFLOW_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Payment</span>
+                <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+                  {ORDER_PAYMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Order date</span>
+                <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                  {ORDER_DATE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              {branchOptions.length > 1 ? (
+                <label>
+                  <span>Stock branch</span>
+                  <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
+                    <option value="all">All branches</option>
+                    {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+
+            <div className="admin-orders-filterbar" role="group" aria-label="Order work queues">
+              <b>Quick views</b>
+              <button
+                type="button"
+                className={orderViewFilter === 'all' ? 'active' : ''}
+                onClick={() => setOrderViewFilter('all')}
+              >
+                All Orders <span>{orders.length}</span>
+              </button>
+              <button
+                type="button"
+                className={orderViewFilter === 'refund_review' ? 'active' : ''}
+                onClick={() => setOrderViewFilter('refund_review')}
+              >
+                Refund Review <span>{refundReviewCount}</span>
+              </button>
+              <button
+                type="button"
+                className={orderViewFilter === 'cancel_requests' ? 'active' : ''}
+                onClick={() => setOrderViewFilter('cancel_requests')}
+              >
+                Cancel Requests <span>{cancelRequestCount}</span>
+              </button>
+            </div>
+
+            <div className="admin-orders-filter-summary" aria-live="polite">
+              <span>{pendingOrders.length} matching {pendingOrders.length === 1 ? 'order' : 'orders'}{activeFilterCount ? ` · ${activeFilterCount} active ${activeFilterCount === 1 ? 'filter' : 'filters'}` : ''}</span>
+              <button type="button" onClick={clearOrderFilters} disabled={activeFilterCount === 0}>Clear filters</button>
+            </div>
           </div>
         ) : null}
-        {!loading && pendingOrders.length === 0 ? <p>No customer orders.</p> : null}
+        {!loading && pendingOrders.length === 0 ? (
+          <p className="admin-orders-empty">{activeFilterCount ? 'No orders match the selected filters.' : 'No customer orders.'}</p>
+        ) : null}
         <div className="admin-orders-list">
           {paginatedOrders.map((order) => {
             const actionConfig = getOrderAction(order);
@@ -594,6 +707,7 @@ const AdminOrders = ({ embedded = false }) => {
                 <p className="admin-order-meta">
                   Customer: {order.customerName || 'N/A'} | Branch: {order.customerBranch || order.stockSourceBranch || 'N/A'}
                 </p>
+                <p className="admin-order-meta">Placed: {formatDateTime(order.createdAt)}</p>
                 <p className="admin-order-meta">
                   Delivery: {formatDeliveryAddress(order.address) || 'No delivery address'}
                 </p>
