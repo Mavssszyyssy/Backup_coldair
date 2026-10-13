@@ -15,7 +15,7 @@ const task = {
   id: "task-1", taskCode: "TSK-1", title: "Fulfill ORD-1", customerName: "Customer One",
   customerPhone: "09123456789", address: "Bacoor, Cavite", branch: "Cavite", scheduledDate: "2026-09-16",
   timeSlot: "9:00 AM - 12:00 PM", assignedTechnicianId: "tech-1", assignedTechnicianName: "Tech One",
-  status: "in-progress", schedule: { driverName: "Driver One", teamMemberIds: [], teamMemberNames: [], notes: "Bring ladder" },
+  status: "in-progress", schedule: { driverName: "Driver One", notes: "Bring ladder" },
   scheduleDetails: { reference: "ORD-1", category: "installation", workDescription: "Split AC", paymentMethod: "GCash", paymentStatus: "paid", otherExpenses: null, sellerPersonnel: "" },
 };
 
@@ -34,16 +34,17 @@ test("shows linked operational data and saves schedule changes on the existing t
   render(<DailyWorkSchedule />);
   expect(await screen.findByText("ORD-1")).toBeVisible();
   expect(screen.getByText("GCash")).toBeVisible();
-  expect(screen.getByText("Driver One")).toBeVisible();
+  expect(screen.getByText("Tech One")).toBeVisible();
   expect(screen.queryByRole("button", { name: "Create work order" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Edit schedule" }));
-  expect(screen.getByText("The assigned team leader is also the scheduled driver.")).toBeVisible();
-  fireEvent.click(screen.getByLabelText("Tech Two"));
+  expect(screen.getByText("The assigned technician is also the scheduled driver.")).toBeVisible();
+  fireEvent.change(screen.getByLabelText("Assigned technician"), { target: { value: "tech-2" } });
   fireEvent.click(screen.getByRole("button", { name: "Save schedule" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/tasks/task-1", expect.objectContaining({ method: "PATCH" })));
   const call = apiRequest.mock.calls.find(([path, options]) => path === "/tasks/task-1" && options?.method === "PATCH");
   expect(JSON.parse(call[1].body)).toMatchObject({
-    assignedTechnicianId: "tech-1",
-    schedule: { driverName: "Tech One", teamMemberIds: ["tech-2"], notes: "Bring ladder" },
+    assignedTechnicianId: "tech-2",
+    schedule: { driverName: "Tech Two", notes: "Bring ladder" },
   });
+  expect(JSON.parse(call[1].body).schedule).not.toHaveProperty("teamMemberIds");
 });

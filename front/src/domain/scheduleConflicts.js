@@ -28,10 +28,7 @@ const activeScheduleTask = (task = {}) => !["completed", "cancelled", "failed", 
 
 export const taskIncludesTechnician = (task = {}, technicianId = "") => {
   const id = String(technicianId || "");
-  return Boolean(id) && (
-    String(task.assignedTechnicianId || "") === id
-    || (task.schedule?.teamMemberIds || []).map(String).includes(id)
-  );
+  return Boolean(id) && String(task.assignedTechnicianId || "") === id;
 };
 
 export const technicianHasConflict = (tasks = [], {

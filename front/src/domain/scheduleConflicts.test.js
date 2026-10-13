@@ -15,10 +15,11 @@ const tasks = [{
 }];
 
 describe("technician schedule conflict checks", () => {
-  test("overlapping slots block both the leader and support team", () => {
+  test("overlapping slots block only the assigned technician", () => {
     expect(taskIncludesTechnician(tasks[0], "leader")).toBe(true);
-    expect(taskIncludesTechnician(tasks[0], "support")).toBe(true);
-    expect(technicianHasConflict(tasks, { technicianId: "support", scheduledDate: "2026-09-20", timeSlot: "10:00 AM - 12:00 PM" })).toBe(true);
+    expect(taskIncludesTechnician(tasks[0], "support")).toBe(false);
+    expect(technicianHasConflict(tasks, { technicianId: "support", scheduledDate: "2026-09-20", timeSlot: "10:00 AM - 12:00 PM" })).toBe(false);
+    expect(technicianHasConflict(tasks, { technicianId: "leader", scheduledDate: "2026-09-20", timeSlot: "10:00 AM - 12:00 PM" })).toBe(true);
   });
 
   test("adjacent, different-day, terminal, and current work remain available", () => {

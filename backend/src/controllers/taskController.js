@@ -83,13 +83,26 @@ const findTaskForRequest = async (taskId, req) => {
   const scopes = [{ $or: conditions }, branchScopeQuery(req)];
   if (req.authUser.role === "technician") {
     const technicianId = String(req.authUser._id || "");
-    scopes.push({ $or: [
-      { assignedTechnicianId: technicianId },
-      { "schedule.teamMemberIds": technicianId },
-    ] });
+    scopes.push({ assignedTechnicianId: technicianId });
   }
   return Task.findOne({ $and: scopes });
 };
+
+const withoutObsoleteTeamAssignment = (input = {}) => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const sanitized = { ...input };
+  delete sanitized.technicianAccessRole;
+  if (sanitized.schedule && typeof sanitized.schedule === "object" && !Array.isArray(sanitized.schedule)) {
+    const { teamMemberIds: _teamMemberIds, teamMemberNames: _teamMemberNames, ...schedule } = sanitized.schedule;
+    sanitized.schedule = schedule;
+  }
+  return sanitized;
+};
+
+const singleTechnicianSchedule = (task = {}) => normalizeTaskSchedule({
+  ...(task.schedule?.toObject ? task.schedule.toObject() : task.schedule || {}),
+  driverName: task.schedule?.driverName || task.assignedTechnicianName || "",
+});
 
 const getTaskSerialNumbers = (task) => {
   const payload = task?.payload || {};
@@ -940,7 +953,7 @@ const canTechnicianAcceptTask = (task, technician) => {
 
 const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
   const payload = task.payload && Object.keys(task.payload).length
-    ? withoutEmbeddedProofMedia(task.payload)
+    ? withoutObsoleteTeamAssignment(withoutEmbeddedProofMedia(task.payload))
     : null;
   const progress = getRegistrationProgress(task);
   const base = typeof task.toJSON === "function"
@@ -954,10 +967,7 @@ const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
     return {
       ...base,
       ...serviceCosts(base),
-      schedule: {
-        ...(base.schedule || {}),
-        driverName: base.schedule?.driverName || base.assignedTechnicianName || "",
-      },
+      schedule: singleTechnicianSchedule(base),
       proof,
       registrationProgress: progress,
     };
@@ -989,10 +999,7 @@ const hydrateTaskResponse = (task, { includeProofMedia = true } = {}) => {
     priority: task.priority,
     assignedTechnicianId: task.assignedTechnicianId,
     assignedTechnicianName: task.assignedTechnicianName,
-    schedule: {
-      ...(task.schedule?.toObject ? task.schedule.toObject() : task.schedule || {}),
-      driverName: task.schedule?.driverName || task.assignedTechnicianName || "",
-    },
+    schedule: singleTechnicianSchedule(task),
     proof,
     registrationProgress: progress,
     status: task.status,
@@ -1046,12 +1053,7 @@ const listTasks = async (req, res) => {
       query = {
         $and: [
           scopeQuery,
-          {
-            $or: [
-              { assignedTechnicianId: String(req.authUser._id || "") },
-              { "schedule.teamMemberIds": String(req.authUser._id || "") },
-            ],
-          },
+          { assignedTechnicianId: String(req.authUser._id || "") },
         ],
       };
     } else if (technicianId) {
@@ -1116,38 +1118,13 @@ const resolveTaskTechnician = async (id, branch) => {
   if (branch && assignedBranch !== branch) { const error = new Error("Choose a technician assigned to this work order's branch."); error.status = 409; throw error; }
   return technician;
 };
-const resolveTaskTeam = async (ids = [], branch = "", primaryTechnicianId = "") => {
-  const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : [])
-    .map((value) => String(value || "").trim())
-    .filter((value) => value && value !== String(primaryTechnicianId || ""))));
-  if (uniqueIds.length === 0) return [];
-  if (uniqueIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
-    const error = new Error("Choose valid active technicians for the support team."); error.status = 400; throw error;
-  }
-  const users = await User.find({ _id: { $in: uniqueIds } });
-  const byId = new Map(users.map((user) => [String(user._id), user]));
-  return uniqueIds.map((id) => {
-    const technician = byId.get(id);
-    if (!technician || technician.role !== "technician" || technician.isDeleted || ["disabled", "deleted"].includes(technician.accountStatus)) {
-      const error = new Error("Choose active technician accounts for the support team."); error.status = 400; throw error;
-    }
-    const assignedBranch = technician.activeBranch || technician.assignedBranch || "";
-    if (branch && assignedBranch !== branch) {
-      const error = new Error("Every support-team member must belong to this work order's branch."); error.status = 409; throw error;
-    }
-    return { id: String(technician._id), name: getTechnicianDisplayName(technician) };
-  });
-};
 const notifyTaskAssignment = async (task) => {
   if (!task.assignedTechnicianId) return;
   await createDedupedNotification({ user: task.assignedTechnicianId, type: "technician", category: "task", title: "Work order assigned", message: `${task.title} is assigned to you. Open My Work for details.`, targetId: String(task._id), targetType: "task", route: "/technician/tasks", dedupeKey: `work-assignment:${task._id}:${task.assignedTechnicianId}` });
   await notifyOperationalStaff({ branch: task.branch, type: "technician", category: "task", title: "Work order assigned", message: `${task.title} is assigned to ${task.assignedTechnicianName}.`, targetId: String(task._id), targetType: "task", route: "/admin/services/technicians", dedupeKey: `work-assignment:${task._id}:${task.assignedTechnicianId}` });
 };
 const notifyTaskScheduleUpdate = async (task) => {
-  const recipients = Array.from(new Set([
-    String(task.assignedTechnicianId || "").trim(),
-    ...(task.schedule?.teamMemberIds || []).map((value) => String(value || "").trim()),
-  ].filter(Boolean)));
+  const recipients = [String(task.assignedTechnicianId || "").trim()].filter(Boolean);
   const scheduleKey = crypto.createHash("sha256").update(JSON.stringify({
     scheduledDate: task.scheduledDate,
     timeSlot: task.timeSlot,
@@ -1168,10 +1145,7 @@ const notifyTaskScheduleUpdate = async (task) => {
 };
 
 const notifyTechnicianTaskCompletion = async (task) => {
-  const recipients = Array.from(new Set([
-    String(task.assignedTechnicianId || "").trim(),
-    ...(task.schedule?.teamMemberIds || []).map((value) => String(value || "").trim()),
-  ].filter(Boolean)));
+  const recipients = [String(task.assignedTechnicianId || "").trim()].filter(Boolean);
   if (!recipients.length) return [];
   const installation = isOrderInstallationTask(task);
   const taskId = String(task._id || task.id || "");
@@ -1234,7 +1208,7 @@ const createTask = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const payload = req.body || {};
+    const payload = withoutObsoleteTeamAssignment(req.body || {});
     const dateError = getScheduledDateError(payload.scheduledDate || payload.preferredDate, "Scheduled date");
     if (dateError) return res.status(400).json({ message: dateError });
     const nowIso = new Date().toISOString();
@@ -1244,8 +1218,9 @@ const createTask = async (req, res) => {
     const address = String(payload.address || "TBD").trim();
     if (["completed", "cancelled"].includes(normalizeStatus(payload.status))) return res.status(400).json({ message: "Create the work order first, then complete it through the verified technician workflow." });
     const taskBranch = req.authUser.role === "superadmin" ? String(payload.branch || "") : req.activeBranch;
-    const technician = await resolveTaskTechnician(String(payload.assignedTechnicianId || ""), taskBranch);
-    const team = await resolveTaskTeam(payload.schedule?.teamMemberIds, taskBranch, payload.assignedTechnicianId);
+    const requestedTechnicianId = String(payload.assignedTechnicianId || "").trim();
+    if (!requestedTechnicianId) return res.status(400).json({ message: "Select one technician before creating this work order." });
+    const technician = await resolveTaskTechnician(requestedTechnicianId, taskBranch);
 
     const task = new Task({
       taskCode,
@@ -1260,7 +1235,7 @@ const createTask = async (req, res) => {
       unitType: String(payload.unitType || ""),
       issueType: String(payload.issueType || ""),
       description: String(payload.description || payload.concern || ""),
-      assignedTechnicianId: String(payload.assignedTechnicianId || ""),
+      assignedTechnicianId: requestedTechnicianId,
       assignedTechnicianName: technician ? getTechnicianDisplayName(technician) : "",
       status: normalizeStatus(payload.status),
       priority: String(payload.priority || "medium").toLowerCase(),
@@ -1271,7 +1246,7 @@ const createTask = async (req, res) => {
       schedule: normalizeTaskSchedule({
         ...(payload.schedule || {}),
         driverName: technician ? getTechnicianDisplayName(technician) : "",
-      }, team),
+      }),
       completedAt: normalizeStatus(payload.status) === "completed" ? new Date() : null,
       payload: { ...payload, createdAt: payload.createdAt || nowIso, updatedAt: payload.updatedAt || nowIso },
     });
@@ -1279,12 +1254,11 @@ const createTask = async (req, res) => {
     await assertNoTaskScheduleConflict({
       scheduledDate: task.scheduledDate,
       timeSlot: task.timeSlot,
-      participantIds: [task.assignedTechnicianId, ...(task.schedule?.teamMemberIds || [])],
+      participantIds: [task.assignedTechnicianId],
     });
     await task.save();
 
     await notifyTaskAssignment(task);
-    if (team.length) await notifyTaskScheduleUpdate(task);
     return res.status(201).json({ task: hydrateTaskResponse(task) });
   } catch (error) {
     console.error("Failed to create task:", error);
@@ -1299,7 +1273,7 @@ const updateTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    const payload = req.body || {};
+    const payload = withoutObsoleteTeamAssignment(req.body || {});
     const dateError = getScheduledDateError(payload.scheduledDate || payload.preferredDate, "Scheduled date");
     if (dateError) return res.status(400).json({ message: dateError });
     const requestedStatus = parseTaskStatus(payload.status);
@@ -1325,7 +1299,7 @@ const updateTask = async (req, res) => {
 
     const reassigned = req.authUser.role !== "technician" && payload.assignedTechnicianId && String(payload.assignedTechnicianId) !== String(task.assignedTechnicianId);
     if (reassigned && String(task.payload?.requestId || task.requestId || "").trim()) {
-      return res.status(409).json({ message: "This service request already has a permanently assigned technician. Update the team or schedule without replacing the primary technician." });
+      return res.status(409).json({ message: "This service request already has a permanently assigned technician. Update the schedule without replacing the assigned technician." });
     }
     if (reassigned) {
       const technician = await resolveTaskTechnician(String(payload.assignedTechnicianId), task.branch);
@@ -1337,13 +1311,12 @@ const updateTask = async (req, res) => {
     }
     let normalizedSchedule = null;
     if (req.authUser.role !== "technician" && payload.schedule && typeof payload.schedule === "object") {
-      const primaryTechnicianId = String(payload.assignedTechnicianId || task.assignedTechnicianId || "");
-      const team = await resolveTaskTeam(payload.schedule.teamMemberIds, task.branch, primaryTechnicianId);
-      const primaryTechnician = await resolveTaskTechnician(primaryTechnicianId, task.branch);
+      const assignedTechnicianId = String(payload.assignedTechnicianId || task.assignedTechnicianId || "");
+      const assignedTechnician = await resolveTaskTechnician(assignedTechnicianId, task.branch);
       normalizedSchedule = normalizeTaskSchedule({
         ...payload.schedule,
-        driverName: primaryTechnician ? getTechnicianDisplayName(primaryTechnician) : task.assignedTechnicianName,
-      }, team);
+        driverName: assignedTechnician ? getTechnicianDisplayName(assignedTechnician) : task.assignedTechnicianName,
+      });
     }
 
     if (req.authUser.role === "technician") {
@@ -1424,7 +1397,7 @@ const updateTask = async (req, res) => {
       await assertNoTaskScheduleConflict({
         scheduledDate: task.scheduledDate,
         timeSlot: task.timeSlot,
-        participantIds: [task.assignedTechnicianId, ...(task.schedule?.teamMemberIds || [])],
+        participantIds: [task.assignedTechnicianId],
         excludeTaskId: task._id,
       });
     }
@@ -1512,10 +1485,6 @@ const getTaskById = async (req, res) => {
       servicePayment: servicePaymentSummary(serviceRequest),
       completionSynchronized,
       scheduleDetails: buildTaskScheduleDetails(task, { order, serviceRequest }),
-      technicianAccessRole: req.authUser.role === "technician"
-        && String(task.assignedTechnicianId || "") !== String(req.authUser._id || "")
-        ? "support"
-        : "primary",
     } });
   } catch (error) {
     console.error("Failed to fetch task:", error);
@@ -2145,6 +2114,7 @@ const updateTaskStatus = async (req, res) => {
 module.exports = {
   ensureInstalledCustomerUnitsForTask,
   buildCustomerTaskScopeQuery,
+  findTaskForRequest,
   technicianReportPayload,
   listTasks,
   createTask,

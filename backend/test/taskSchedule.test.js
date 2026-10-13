@@ -6,14 +6,12 @@ const {
   serviceCategory,
 } = require("../src/domain/taskSchedule");
 
-test("normalizes optional driver, support team and schedule notes", () => {
+test("normalizes a single assigned technician schedule and ignores obsolete team input", () => {
   assert.deepEqual(normalizeTaskSchedule(
-    { driverName: "  Driver A  ", notes: "  Bring ladder.  " },
+    { driverName: "  Driver A  ", notes: "  Bring ladder.  ", teamMemberIds: ["legacy-tech"] },
     [{ id: "tech-2", name: "Tech Two" }, { id: "tech-2", name: "Tech Two" }],
   ), {
     driverName: "Driver A",
-    teamMemberIds: ["tech-2"],
-    teamMemberNames: ["Tech Two"],
     notes: "Bring ladder.",
   });
 });

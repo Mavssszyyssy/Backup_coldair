@@ -78,7 +78,6 @@ const taskMatchesQuery = (task = {}, query = "") => {
     task.timeSlot,
     task.schedule?.driverName,
     task.schedule?.notes,
-    ...(task.schedule?.teamMemberNames || []),
     ...getTaskSerials(task),
   ]
     .filter(Boolean)
@@ -351,9 +350,9 @@ export default function TasksScreen() {
         style={{ paddingVertical: SPACING.xs }}
       /> : null}
       <IconRow
-        icon="people-sharp"
-        title={String(item.assignedTechnicianId) === String(current?.id) ? "Primary technician" : "Support team"}
-        subtitle={[item.assignedTechnicianName, ...(item.schedule?.teamMemberNames || [])].filter(Boolean).join(", ") || "Team not recorded"}
+        icon="person-sharp"
+        title="Assigned technician"
+        subtitle={item.assignedTechnicianName || "Technician not recorded"}
         color={COLORS.tech}
         style={{ paddingVertical: SPACING.xs }}
       />

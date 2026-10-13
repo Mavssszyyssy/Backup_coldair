@@ -39,7 +39,6 @@ const scheduleDraft = (task = {}) => ({
   scheduledDate: task.scheduledDate || today(),
   timeSlot: task.timeSlot || TECHNICIAN_TIME_SLOTS[0],
   driverName: task.schedule?.driverName || task.assignedTechnicianName || "",
-  teamMemberIds: Array.isArray(task.schedule?.teamMemberIds) ? task.schedule.teamMemberIds.map(String) : [],
   notes: task.schedule?.notes || "",
 });
 
@@ -125,12 +124,6 @@ const DailyWorkSchedule = () => {
     setNotice("");
   };
   const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
-  const toggleTeamMember = (id) => setDraft((current) => ({
-    ...current,
-    teamMemberIds: current.teamMemberIds.includes(id)
-      ? current.teamMemberIds.filter((value) => value !== id)
-      : [...current.teamMemberIds, id],
-  }));
   const techniciansFor = (task) => technicians.filter((technician) => !task.branch || technician.branch === task.branch);
   const isServiceAssignmentLocked = (task) => Boolean(task.requestId && task.assignedTechnicianId);
   const technicianBusy = (task, technicianId) => technicianHasConflict(conflictTasks, {
@@ -141,15 +134,10 @@ const DailyWorkSchedule = () => {
   });
 
   const saveSchedule = async (task) => {
-    if (!draft?.assignedTechnicianId) return setError("Choose the primary technician for this work order.");
-    const participantIds = [draft.assignedTechnicianId, ...draft.teamMemberIds]
-      .map(String)
-      .filter((id, index, values) => id && values.indexOf(id) === index);
-    const unavailable = participantIds
-      .map((id) => technicians.find((item) => item.id === id))
-      .filter((person) => person && technicianBusy(task, person.id));
-    if (unavailable.length) {
-      return setError(`${unavailable.map((person) => person.name).join(", ")} already ${unavailable.length === 1 ? "has" : "have"} an overlapping work order on this date and time.`);
+    if (!draft?.assignedTechnicianId) return setError("Choose the assigned technician for this work order.");
+    const assignedTechnician = technicians.find((item) => item.id === draft.assignedTechnicianId);
+    if (assignedTechnician && technicianBusy(task, assignedTechnician.id)) {
+      return setError(`${assignedTechnician.name} already has an overlapping work order on this date and time.`);
     }
     setSaving(true);
     setError("");
@@ -165,7 +153,6 @@ const DailyWorkSchedule = () => {
           timeSlot: draft.timeSlot,
           schedule: {
             driverName: primary?.name || task.assignedTechnicianName || "",
-            teamMemberIds: draft.teamMemberIds.filter((id) => id !== draft.assignedTechnicianId),
             notes: draft.notes,
           },
         }),
@@ -211,13 +198,12 @@ const DailyWorkSchedule = () => {
     {!loading ? groups.map(([groupBranch, groupTasks]) => <section className="daily-schedule__branch-group" key={groupBranch}>
       <div className="daily-schedule__branch-title"><h3>{groupBranch}</h3><span>{groupTasks.length} scheduled job{groupTasks.length === 1 ? "" : "s"}</span></div>
       <div className="daily-schedule__table-wrap"><table className="daily-schedule__table">
-        <thead><tr><th>Time &amp; work order</th><th>Driver &amp; team</th><th>Customer &amp; location</th><th>Payment</th><th>Work scope</th><th>Notes</th><th>Costs &amp; personnel</th><th>Status</th></tr></thead>
+        <thead><tr><th>Time &amp; work order</th><th>Assigned technician</th><th>Customer &amp; location</th><th>Payment</th><th>Work scope</th><th>Notes</th><th>Costs &amp; personnel</th><th>Status</th></tr></thead>
         <tbody>{groupTasks.map((task) => {
           const details = task.scheduleDetails || {};
-          const team = [task.assignedTechnicianName, ...(task.schedule?.teamMemberNames || [])].filter(Boolean);
           return <React.Fragment key={task.id}><tr>
             <td data-label="Time & work order"><strong>{task.timeSlot || "Time not set"}</strong><span>{details.reference || task.taskCode}</span><small>{task.taskCode}</small></td>
-            <td data-label="Driver & team"><strong>{task.schedule?.driverName || task.assignedTechnicianName || "Driver not assigned"}</strong><span>{team.join(", ") || "Team not assigned"}</span></td>
+            <td data-label="Assigned technician"><strong>{task.assignedTechnicianName || "Technician not assigned"}</strong><span>{task.schedule?.driverName ? "Scheduled driver" : "Driver not recorded"}</span></td>
             <td data-label="Customer & location"><strong>{task.customerName || task.customer || "Customer"}</strong><span>{task.address || "Location not recorded"}</span><small>{task.customerPhone || "Contact not recorded"}</small></td>
             <td data-label="Payment"><strong>{details.paymentMethod || "Not recorded"}</strong><span>{details.paymentStatus ? statusLabel(details.paymentStatus) : "Status not recorded"}</span></td>
             <td data-label="Work scope"><strong>{categoryLabel(details.category)}</strong><span>{details.workDescription || task.title}</span></td>
@@ -227,9 +213,8 @@ const DailyWorkSchedule = () => {
           </tr>{editingId === task.id && draft ? <tr className="daily-schedule__editor-row"><td colSpan="8"><div className="daily-schedule__editor">
             <label><span>Scheduled date</span><input type="date" min={today()} value={draft.scheduledDate} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("scheduledDate", event.target.value)} />{task.requestId ? <small>Customer-confirmed service dates stay locked. Use the service request or visit follow-up workflow to reschedule.</small> : null}</label>
             <label><span>Time</span><select value={draft.timeSlot} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{!TECHNICIAN_TIME_SLOTS.includes(draft.timeSlot) ? <option value={draft.timeSlot}>{draft.timeSlot}</option> : null}{TECHNICIAN_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label>
-            <label><span>Team leader / primary technician</span><select value={draft.assignedTechnicianId} disabled={isServiceAssignmentLocked(task)} onChange={(event) => updateDraft("assignedTechnicianId", event.target.value)}><option value="">Select technician</option>{techniciansFor(task).map((technician) => { const busy = technicianBusy(task, technician.id); return <option key={technician.id} value={technician.id} disabled={busy}>{technician.name}{busy ? " · Schedule conflict" : ""}</option>; })}</select>{isServiceAssignmentLocked(task) ? <small>This service-request assignment is permanently locked.</small> : null}</label>
-            <div className="daily-schedule__readonly-field"><span>Driver</span><strong>{technicians.find((item) => item.id === draft.assignedTechnicianId)?.name || task.assignedTechnicianName || "Choose a team leader"}</strong><small>The assigned team leader is also the scheduled driver.</small></div>
-            <fieldset><legend>Support team (optional)</legend><div>{techniciansFor(task).filter((technician) => technician.id !== draft.assignedTechnicianId).map((technician) => { const busy = technicianBusy(task, technician.id); return <label key={technician.id} className={busy ? "is-unavailable" : ""}><input type="checkbox" checked={draft.teamMemberIds.includes(technician.id)} disabled={busy} onChange={() => toggleTeamMember(technician.id)} />{technician.name}{busy ? " · Schedule conflict" : ""}</label>; })}</div></fieldset>
+            <label><span>Assigned technician</span><select value={draft.assignedTechnicianId} disabled={isServiceAssignmentLocked(task)} onChange={(event) => updateDraft("assignedTechnicianId", event.target.value)}><option value="">Select technician</option>{techniciansFor(task).map((technician) => { const busy = technicianBusy(task, technician.id); return <option key={technician.id} value={technician.id} disabled={busy}>{technician.name}{busy ? " · Schedule conflict" : ""}</option>; })}</select>{isServiceAssignmentLocked(task) ? <small>This service-request assignment is permanently locked.</small> : null}</label>
+            <div className="daily-schedule__readonly-field"><span>Driver</span><strong>{technicians.find((item) => item.id === draft.assignedTechnicianId)?.name || task.assignedTechnicianName || "Choose a technician"}</strong><small>The assigned technician is also the scheduled driver.</small></div>
             <label className="daily-schedule__note-field"><span>Schedule note</span><textarea rows="3" value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} placeholder="Access instructions, delivery note, equipment, or other operational detail" /></label>
             <div className="daily-schedule__editor-actions"><button type="button" className="tech-secondary-button" onClick={() => { setEditingId(""); setDraft(null); }} disabled={saving}>Cancel</button><button type="button" className="tech-primary-button" onClick={() => saveSchedule(task)} disabled={saving}>{saving ? "Saving…" : "Save schedule"}</button></div>
           </div></td></tr> : null}</React.Fragment>;

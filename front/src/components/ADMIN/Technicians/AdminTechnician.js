@@ -682,7 +682,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         </div>
 
         <section className="tech-filter-card admin-card" aria-label="Technician filters">
-          <div className="tech-filter-heading"><div><h2>Find a technician</h2><p>Use the filters to match the right field team member to each job.</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
+          <div className="tech-filter-heading"><div><h2>Find a technician</h2><p>Use the filters to match one assigned technician to each job.</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
           <div className="tech-filter-grid">
             <label className="tech-search-field"><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, login ID, skill, or branch" /></label>
             <label><span>Account status</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">All accounts</option><option value="active">Active</option><option value="disabled">Disabled</option></select></label>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SignUpStep2 from '../app/(auth)/sign-up/step/2';
 import { LEGAL_DOCUMENTS, LEGAL_VERSION } from './legalConsent';
 const mockRequest = jest.fn();
@@ -11,11 +12,20 @@ jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ register: 
 jest.mock('./api', () => ({ requestVerificationOtp: (...args) => mockRequest(...args), verifyRegistrationOtp: (...args) => mockVerify(...args) }));
 beforeEach(() => jest.clearAllMocks());
 
+const renderSignup = () => render(
+  <SafeAreaProvider initialMetrics={{
+    frame: { x: 0, y: 0, width: 390, height: 844 },
+    insets: { top: 47, left: 0, right: 0, bottom: 34 },
+  }}>
+    <SignUpStep2 />
+  </SafeAreaProvider>,
+);
+
 test('signup verifies email and completes registration after skipping the address', async () => {
   mockRequest.mockResolvedValue({ success: true });
   mockVerify.mockResolvedValue({ success: true, registrationVerificationToken: 'email-proof' });
   mockRegister.mockResolvedValue({ success: true });
-  await render(<SignUpStep2 />);
+  await renderSignup();
   expect(screen.queryByText(/SMS/)).toBeNull();
   for (const doc of LEGAL_DOCUMENTS) await fireEvent.press(screen.getByLabelText(doc.action));
   await fireEvent.press(screen.getByText('Send Verification Code'));
@@ -31,7 +41,7 @@ test('signup verifies email and completes registration after skipping the addres
 });
 test('missing acceptance blocks sending and registration; revoking acceptance blocks completion', async () => {
   mockRequest.mockResolvedValue({ success: true });
-  await render(<SignUpStep2 />);
+  await renderSignup();
   await fireEvent.press(screen.getByText('Send Verification Code'));
   expect(mockRequest).not.toHaveBeenCalled();
   expect(screen.getByText(/4 remaining required/)).toBeTruthy();

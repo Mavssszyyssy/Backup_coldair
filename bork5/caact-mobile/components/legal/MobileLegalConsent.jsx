@@ -1,18 +1,19 @@
 import React, { useState } from "react";
 import { Alert, Image, Linking, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/theme";
 import legal from "../../constants/legalPolicies.json";
 import { LEGAL_DOCUMENTS } from "../../services/legalConsent";
 
 export function LegalDocument({ policy, onClose }) {
-  return <SafeAreaView style={{ flex: 1, width: "100%", maxWidth: 680, alignSelf: "center", backgroundColor: COLORS.surface }}>
-    <View style={{ padding: 16, borderBottomWidth: 1, borderColor: COLORS.border, flexDirection: "row", gap: 12, alignItems: "center" }}>
+  const insets = useSafeAreaInsets();
+  return <View style={{ flex: 1, width: "100%", maxWidth: 680, alignSelf: "center", backgroundColor: COLORS.surface }}>
+    <View testID="legal-document-header" style={{ paddingHorizontal: 16, paddingTop: Math.max(insets.top + 10, 22), paddingBottom: 14, minHeight: 72, borderBottomWidth: 1, borderColor: COLORS.border, flexDirection: "row", gap: 12, alignItems: "center" }}>
       <Image source={require("../../assets/coldair-app-icon.png")} accessibilityLabel="Cold Air logo" style={{ width: 40, height: 40, borderRadius: 10 }} />
       <View style={{ flex: 1 }}><Text style={{ color: COLORS.textPrimary, fontWeight: "700" }}>Cold Air ACT</Text><Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>Terms & Privacy</Text></View>
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to signup" onPress={onClose} style={{ padding: 12 }}><Text style={{ color: COLORS.primary, fontWeight: "700" }}>Close</Text></TouchableOpacity>
     </View>
-    <ScrollView key={policy.id} contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+    <ScrollView key={policy.id} contentContainerStyle={{ padding: 20, paddingBottom: Math.max(insets.bottom + 24, 32) }}>
       <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: "700", marginBottom: 8 }}>{policy.category}</Text>
       <Text accessibilityRole="header" style={{ color: COLORS.textPrimary, fontSize: 25, fontWeight: "700", lineHeight: 32 }}>{policy.title}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginVertical: 12 }}>Last updated: {legal.lastUpdated}</Text>
@@ -26,7 +27,7 @@ export function LegalDocument({ policy, onClose }) {
       </View>)}
       <TouchableOpacity accessibilityRole="button" onPress={onClose} style={{ backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: "center", marginTop: 28 }}><Text style={{ color: COLORS.surface, fontWeight: "700" }}>Return to signup</Text></TouchableOpacity>
     </ScrollView>
-  </SafeAreaView>;
+  </View>;
 }
 
 export default function MobileLegalConsent({ value, onChange, showErrors = false, disabled = false }) {
@@ -47,6 +48,6 @@ export default function MobileLegalConsent({ value, onChange, showErrors = false
         <Text style={{ flex: 1, color: COLORS.textSecondary, fontSize: 13, lineHeight: 19 }}>{doc.action}</Text>
       </TouchableOpacity>
     </View>)}
-    {policyId ? <Modal visible animationType="slide" onRequestClose={completePolicyReview}><LegalDocument policy={legal.policies[policyId]} onClose={completePolicyReview} /></Modal> : null}
+    {policyId ? <Modal visible animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={false} navigationBarTranslucent={false} onRequestClose={completePolicyReview}><LegalDocument policy={legal.policies[policyId]} onClose={completePolicyReview} /></Modal> : null}
   </View>;
 }

@@ -130,6 +130,13 @@ export function normalizeTask(item = {}) {
   const completionNotes =
     item.completionNotes ||
     [item.findings, item.resolution, item.notes].filter(Boolean).join(" | ");
+  const scheduleValue = value("schedule", {});
+  const schedule = scheduleValue && typeof scheduleValue === "object" && !Array.isArray(scheduleValue)
+    ? {
+        driverName: scheduleValue.driverName || value("assignedTechnicianName") || "",
+        notes: scheduleValue.notes || "",
+      }
+    : { driverName: value("assignedTechnicianName") || "", notes: "" };
 
   return {
     id: value("id") || `task_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
@@ -166,9 +173,8 @@ export function normalizeTask(item = {}) {
     assignedTechnicianName: value("assignedTechnicianName"),
     branch: value("branch"),
     timeSlot: value("timeSlot"),
-    schedule: value("schedule", { driverName: "", teamMemberIds: [], teamMemberNames: [], notes: "" }),
+    schedule,
     scheduleDetails: value("scheduleDetails", null),
-    technicianAccessRole: value("technicianAccessRole", "primary"),
     priority: value("priority") || "Normal",
     scheduledDate:
       value("scheduledDate") || value("preferredDate") || value("preferredSchedule"),
@@ -479,8 +485,7 @@ export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
       if (result.success) {
         const saved = await saveAllTasks(result.tasks);
         return saved.filter(
-          (item) => String(item.assignedTechnicianId) === String(technicianId)
-            || (item.schedule?.teamMemberIds || []).some((id) => String(id) === String(technicianId)),
+          (item) => String(item.assignedTechnicianId) === String(technicianId),
         );
       }
     }
@@ -495,7 +500,6 @@ export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
   const tasks = normalizeTaskCollection(cachedTasks);
   return tasks.filter(
     (item) => String(item.assignedTechnicianId) === String(technicianId)
-      || (item.schedule?.teamMemberIds || []).some((id) => String(id) === String(technicianId))
   );
 }
 
