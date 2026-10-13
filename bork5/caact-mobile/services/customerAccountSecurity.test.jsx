@@ -55,3 +55,9 @@ test("customer mobile explains email sign-in verification without another securi
   await render(<CustomerSettingsScreen />);
   expect(screen.getByText(/verify the code sent to your email/i)).toBeTruthy();
 });
+
+test("customer Account menu opens the existing AEROPULSE Assistant", async () => {
+  await render(<CustomerSettingsScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "AEROPULSE Assistant" }));
+  expect(mockPush).toHaveBeenCalledWith("/customer/chat");
+});

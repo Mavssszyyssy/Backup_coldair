@@ -300,10 +300,10 @@ export default function CheckoutScreen() {
       setCheckoutMessage("");
       return Alert.alert(
         "Complete delivery address",
-        phoneError || postalCodeError || "Choose Region, Province, City/Municipality, Barangay, and Street in System Settings before checking out.",
+        phoneError || postalCodeError || "Choose Region, Province, City/Municipality, Barangay, and Street in Account before checking out.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Open System Settings", onPress: () => router.push("/customer/settings") },
+          { text: "Open Account", onPress: () => router.push("/customer/settings") },
         ],
       );
     }

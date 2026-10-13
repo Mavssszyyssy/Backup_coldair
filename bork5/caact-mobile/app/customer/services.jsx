@@ -234,7 +234,7 @@ export default function CustomerServicesScreen() {
         `${contactError} Add or update your delivery address before requesting service.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Open System Settings", onPress: () => router.push("/customer/settings") },
+          { text: "Open Account", onPress: () => router.push("/customer/settings") },
         ],
       );
     }
