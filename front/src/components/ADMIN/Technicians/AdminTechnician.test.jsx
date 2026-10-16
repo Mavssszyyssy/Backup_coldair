@@ -49,6 +49,7 @@ test('superadmin can update a technician contact email without changing the logi
     return {};
   });
   render(<AdminTechnician />);
+  fireEvent.click(await screen.findByRole('button', { name: 'See more details for Carl Demo' }));
   const email = await screen.findByLabelText(/Email address/);
   expect(screen.getByText('tech.cavite.carl')).toBeInTheDocument();
   fireEvent.change(email, { target: { value: 'lanlords2025@gmail.com' } });
@@ -72,6 +73,7 @@ test('requires confirmation before disabling a technician account', async () => 
   });
 
   render(<><GlobalDialog /><AdminTechnician /></>);
+  fireEvent.click(await screen.findByRole('button', { name: 'See more details for Carl Ramos' }));
   const disableButton = await screen.findByRole('button', { name: 'Disable account' });
   fireEvent.click(disableButton);
 
@@ -206,4 +208,61 @@ test('paginates recent work assignments instead of rendering an unbounded card l
   expect(await screen.findByText('Work item 5')).toBeInTheDocument();
   expect(screen.queryByText('Work item 1')).not.toBeInTheDocument();
   expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+});
+
+test('keeps technician management controls collapsed until See More is selected', async () => {
+  apiRequest.mockImplementation(async (path) => {
+    if (path === '/users?role=technician') return { users: [{ id: 'tech-carl', name: 'Carl Ramos', alias: 'tech.cavite.carl', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3, email: 'carl@example.com' }] };
+    if (path === '/tasks') return { tasks: [] };
+    return {};
+  });
+
+  render(<AdminTechnician />);
+  const seeMore = await screen.findByRole('button', { name: 'See more details for Carl Ramos' });
+  expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Disable account' })).not.toBeInTheDocument();
+
+  fireEvent.click(seeMore);
+  expect(screen.getByLabelText(/Email address/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Disable account' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Show less details for Carl Ramos' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Show less details for Carl Ramos' }));
+  expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+});
+
+test('filters recent work assignments by search, status, type, and technician', async () => {
+  const technicians = [
+    { id: 'tech-carl', name: 'Carl Ramos', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 },
+    { id: 'tech-lebron', name: 'Lebron James', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 },
+  ];
+  const tasks = [
+    { id: 'task-service', taskCode: 'TSK-SERVICE', title: 'Repair', customerName: 'Patrick Cruz', branch: 'Cavite', assignedTechnicianId: 'tech-carl', assignedTechnicianName: 'Carl Ramos', status: 'pending' },
+    { id: 'task-install', taskCode: 'TSK-INSTALL', orderId: 'order-1', title: 'Installation', customerName: 'Maria Santos', branch: 'Cavite', assignedTechnicianId: 'tech-lebron', assignedTechnicianName: 'Lebron James', status: 'in-progress' },
+    { id: 'task-complete', taskCode: 'TSK-DONE', title: 'Cleaning', customerName: 'John Reyes', branch: 'Cavite', assignedTechnicianId: 'tech-carl', assignedTechnicianName: 'Carl Ramos', status: 'completed' },
+  ];
+  apiRequest.mockImplementation(async (path) => {
+    if (path === '/users?role=technician') return { users: technicians };
+    if (path === '/users?role=customer') return { users: [] };
+    if (path === '/tasks') return { tasks };
+    return {};
+  });
+
+  render(<AdminTechnician />);
+  await screen.findByText('TSK-SERVICE');
+  fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'pending' } });
+  expect(screen.getByText('TSK-SERVICE')).toBeInTheDocument();
+  expect(screen.queryByText('TSK-INSTALL')).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'all' } });
+  fireEvent.change(screen.getByLabelText('Assignment type'), { target: { value: 'installation' } });
+  expect(screen.getByText('TSK-INSTALL')).toBeInTheDocument();
+  expect(screen.queryByText('TSK-SERVICE')).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Assignment type'), { target: { value: 'all' } });
+  fireEvent.change(screen.getByLabelText('Technician'), { target: { value: 'tech-carl' } });
+  fireEvent.change(screen.getByLabelText('Search assignments'), { target: { value: 'John Reyes' } });
+  expect(screen.getByText('TSK-DONE')).toBeInTheDocument();
+  expect(screen.queryByText('TSK-INSTALL')).not.toBeInTheDocument();
+  expect(screen.getByText('1 of 3 shown')).toBeInTheDocument();
 });

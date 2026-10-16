@@ -33,7 +33,7 @@ const credentialPart = (value = "") => String(value)
   .replace(/\.{2,}/g, ".");
 const openTask = (task) => !["completed"].includes(String(task.status || "").toLowerCase());
 const taskStatusLabel = (status = "") =>
-  String(status || "pending").replace(/-/g, " ");
+  String(status || "pending").replace(/[-_]/g, " ");
 const isServiceTask = (task = {}) =>
   task?.payload?.source === "service_request" ||
   Boolean(task?.payload?.requestId);
@@ -214,6 +214,11 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
   const [branchFilter, setBranchFilter] = useState(isSuperAdmin ? "all" : homeBranch || "all");
   const [page, setPage] = useState(1);
   const [workPage, setWorkPage] = useState(1);
+  const [workSearch, setWorkSearch] = useState("");
+  const [workStatusFilter, setWorkStatusFilter] = useState("all");
+  const [workTypeFilter, setWorkTypeFilter] = useState("all");
+  const [workTechnicianFilter, setWorkTechnicianFilter] = useState("all");
+  const [expandedTechnicianIds, setExpandedTechnicianIds] = useState([]);
   const [draft, setDraft] = useState(() => initialDraft(homeBranch));
   const [customerQuery, setCustomerQuery] = useState("");
   const [staffDraft, setStaffDraft] = useState(() => initialStaffDraft(homeBranch));
@@ -272,7 +277,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [search, accountFilter, workloadFilter, branchFilter]);
-  useEffect(() => { setWorkPage(1); }, [tasks.length]);
+  useEffect(() => { setWorkPage(1); }, [tasks.length, workSearch, workStatusFilter, workTypeFilter, workTechnicianFilter]);
   useEffect(() => {
     if (!isSuperAdmin) {
       setBranchFilter(homeBranch || "all");
@@ -330,8 +335,32 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
 
   const totalPages = Math.max(1, Math.ceil(filteredTechnicians.length / PAGE_SIZE));
   const pageTechnicians = filteredTechnicians.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const workTotalPages = Math.max(1, Math.ceil(tasks.length / WORK_ASSIGNMENT_PAGE_SIZE));
-  const pageWorkAssignments = tasks.slice((workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE, workPage * WORK_ASSIGNMENT_PAGE_SIZE);
+  const filteredWorkAssignments = useMemo(() => {
+    const needle = workSearch.trim().toLowerCase();
+    return tasks.filter((task) => {
+      const status = String(task.status || "pending").toLowerCase().replace(/_/g, "-");
+      const type = isInstallationTask(task) ? "installation" : "service";
+      const searchable = [
+        task.taskCode,
+        task.orderCode,
+        task.title,
+        task.issueType,
+        task.customerName,
+        task.customer,
+        task.unitName,
+        task.branch,
+        task.assignedTechnicianName,
+      ].filter(Boolean).join(" ").toLowerCase();
+      const searchMatches = !needle || searchable.includes(needle);
+      const statusMatches = workStatusFilter === "all" || status === workStatusFilter;
+      const typeMatches = workTypeFilter === "all" || type === workTypeFilter;
+      const technicianMatches = workTechnicianFilter === "all" || String(task.assignedTechnicianId || "") === workTechnicianFilter;
+      return searchMatches && statusMatches && typeMatches && technicianMatches;
+    });
+  }, [tasks, workSearch, workStatusFilter, workTechnicianFilter, workTypeFilter]);
+  const workTotalPages = Math.max(1, Math.ceil(filteredWorkAssignments.length / WORK_ASSIGNMENT_PAGE_SIZE));
+  const pageWorkAssignments = filteredWorkAssignments.slice((workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE, workPage * WORK_ASSIGNMENT_PAGE_SIZE);
+  const hasWorkFilters = Boolean(workSearch.trim()) || workStatusFilter !== "all" || workTypeFilter !== "all" || workTechnicianFilter !== "all";
   useEffect(() => {
     if (!recordId || !tasks.length) return;
     const index = tasks.findIndex((task) => String(task.id || task._id) === recordId || String(task.taskCode) === recordId);
@@ -364,6 +393,10 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
 
   const updateDraft = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
   const updateStaffDraft = (field, value) => setStaffDraft((current) => ({ ...current, [field]: value }));
+  const toggleTechnicianDetails = (technicianId) => setExpandedTechnicianIds((current) => {
+    const key = String(technicianId);
+    return current.includes(key) ? current.filter((id) => id !== key) : [...current, key];
+  });
 
   const selectCustomer = (customer) => {
     const relatedUnits = units.filter((unit) => String(unit.customerId || "") === String(customer.id));
@@ -737,20 +770,37 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
                   ? "Busy"
                   : "Available";
               const changing = updatingId === `tech-${technician.id}`;
+              const detailsExpanded = expandedTechnicianIds.includes(String(technician.id));
               return <article className="tech-person-card" key={technician.id}>
-                <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.username || technician.alias || technician.email || "No login ID recorded"}</small></div></div>
-                <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{availability}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} assigned task{openCount === 1 ? "" : "s"}</strong></div>
+                <div className="tech-person-summary">
+                  <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.username || technician.alias || technician.email || "No login ID recorded"}</small></div></div>
+                  <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{availability}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} assigned task{openCount === 1 ? "" : "s"}</strong></div>
+                  <button
+                    type="button"
+                    className="tech-details-toggle"
+                    aria-expanded={detailsExpanded}
+                    aria-controls={`technician-details-${technician.id}`}
+                    aria-label={`${detailsExpanded ? "Show less" : "See more"} details for ${technician.name}`}
+                    onClick={() => toggleTechnicianDetails(technician.id)}
+                  >{detailsExpanded ? "Show Less" : "See More"}</button>
+                </div>
                 <div className="tech-person-workflow" aria-label={`${technician.name} work summary`}>
                   <span>Current work: <strong>{taskStats.currentStatus || "No active task"}</strong></span>
                   <span>Active service: <strong>{taskStats.activeServices}</strong></span>
                   <span>Installations: <strong>{taskStats.activeInstallations}</strong></span>
                   <span>Completed jobs: <strong>{taskStats.completed}</strong></span>
                 </div>
-                <label className="tech-inline-select"><span>Service Quota</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment"}</small></label>
-                <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
-                {isSuperAdmin ? <><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{changing ? "Saving…" : "Save email"}</button></> : null}
-                {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
-                <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
+                {detailsExpanded ? <div className="tech-person-details" id={`technician-details-${technician.id}`}>
+                  <div className="tech-person-control-row">
+                    <label className="tech-inline-select"><span>Service Quota</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment"}</small></label>
+                    <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
+                  </div>
+                  {isSuperAdmin ? <div className="tech-person-control-row"><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{changing ? "Saving…" : "Save email"}</button></div> : null}
+                  <div className="tech-person-control-row">
+                    {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <span />}
+                    <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
+                  </div>
+                </div> : null}
               </article>;
             })}</div>}
             {filteredTechnicians.length > PAGE_SIZE ? <div className="tech-pagination"><span>Page {page} of {totalPages}</span><div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button></div></div> : null}
@@ -794,14 +844,22 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         </div>
 
         <section className="admin-card tech-work-orders">
-          <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Reassign open work and review GPS arrival history for active and completed jobs.</p></div></div>
-          {pageWorkAssignments.length === 0 ? <p className="tech-empty">There are no work orders yet.</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
+          <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Search, filter, activate, or reassign work without scanning the entire history.</p></div><span className="tech-result-count">{filteredWorkAssignments.length} of {tasks.length} shown</span></div>
+          <div className="tech-work-filters" aria-label="Work assignment filters">
+            <label className="tech-work-search"><span>Search assignments</span><input type="search" value={workSearch} onChange={(event) => setWorkSearch(event.target.value)} placeholder="Work order, customer, unit, branch…" /></label>
+            <label><span>Status</span><select value={workStatusFilter} onChange={(event) => setWorkStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Awaiting Admin</option><option value="in-progress">In progress</option><option value="installing">Installing</option><option value="on-hold">On hold</option><option value="completed">Completed</option></select></label>
+            <label><span>Assignment type</span><select value={workTypeFilter} onChange={(event) => setWorkTypeFilter(event.target.value)}><option value="all">All work types</option><option value="service">Service</option><option value="installation">Installation</option></select></label>
+            <label><span>Technician</span><select value={workTechnicianFilter} onChange={(event) => setWorkTechnicianFilter(event.target.value)}><option value="all">All technicians</option>{technicians.map((technician) => <option key={technician.id} value={String(technician.id)}>{technician.name}</option>)}</select></label>
+            {hasWorkFilters ? <button type="button" className="tech-clear-filters" onClick={() => { setWorkSearch(""); setWorkStatusFilter("all"); setWorkTypeFilter("all"); setWorkTechnicianFilter("all"); }}>Clear filters</button> : null}
+          </div>
+          {pageWorkAssignments.length === 0 ? <p className="tech-empty">{tasks.length ? "No work assignments match these filters." : "There are no work orders yet."}</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
+            const installation = isInstallationTask(task);
             return <article key={task.id} id={`tech-work-${task.id}`} className="tech-work-item">
               <div className="tech-work-heading">
-                <span className={`tech-task-status is-${String(task.status || "pending").replace(/\s+/g, "-")}`}>{task.status || "pending"}</span>
                 <div><h3>{assignmentTitle(task)}</h3><small>{task.taskCode || "Work order"}</small></div>
+                <div className="tech-work-badges"><span className={`tech-task-status is-${String(task.status || "pending").replace(/[\s_]+/g, "-")}`}>{taskStatusLabel(task.status)}</span><span className={`tech-work-kind is-${installation ? "installation" : "service"}`}>{installation ? "Installation" : "Service"}</span></div>
               </div>
               <dl className="tech-work-meta">
                 <div><dt>Customer</dt><dd>{task.customerName || task.customer || "Customer"}{task.unitName ? <small>{task.unitName}</small> : null}</dd></div>
@@ -821,8 +879,8 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
               </div>
             </article>;
           })}</div>}
-          {tasks.length > WORK_ASSIGNMENT_PAGE_SIZE ? <nav className="tech-pagination" aria-label="Recent work assignments pagination">
-            <span>Showing {(workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE + 1}–{Math.min(workPage * WORK_ASSIGNMENT_PAGE_SIZE, tasks.length)} of {tasks.length}</span>
+          {filteredWorkAssignments.length > WORK_ASSIGNMENT_PAGE_SIZE ? <nav className="tech-pagination" aria-label="Recent work assignments pagination">
+            <span>Showing {(workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE + 1}–{Math.min(workPage * WORK_ASSIGNMENT_PAGE_SIZE, filteredWorkAssignments.length)} of {filteredWorkAssignments.length}</span>
             <div><button type="button" onClick={() => setWorkPage((current) => Math.max(1, current - 1))} disabled={workPage === 1}>Previous</button><span>Page {workPage} of {workTotalPages}</span><button type="button" onClick={() => setWorkPage((current) => Math.min(workTotalPages, current + 1))} disabled={workPage === workTotalPages}>Next</button></div>
           </nav> : null}
         </section>

@@ -38,15 +38,15 @@
 }
 
 :root[data-theme="dark"] :is(.admin-layout, .super-layout) {
-  --ops-text: #e5edf7;
-  --ops-muted: #a8b7c9;
-  --ops-canvas: #0b1220;
-  --ops-surface: #111c2e;
-  --ops-surface-subtle: #162236;
-  --ops-border: #2a3a50;
-  --ops-border-strong: #3a4d66;
-  --ops-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --ops-shadow-md: 0 12px 30px rgba(0, 0, 0, 0.34);
+  --ops-text: #e8edf5;
+  --ops-muted: #b5c0cf;
+  --ops-canvas: #151d2a;
+  --ops-surface: #1d2939;
+  --ops-surface-subtle: #243347;
+  --ops-border: #344459;
+  --ops-border-strong: #4a5b72;
+  --ops-shadow-sm: 0 1px 2px rgba(6, 12, 20, 0.2);
+  --ops-shadow-md: 0 12px 30px rgba(6, 12, 20, 0.26);
   background: var(--ops-canvas);
   color: var(--ops-text);
 }
@@ -110,8 +110,8 @@
 }
 
 :root[data-theme="dark"] :is(.admin-header, .super-header) {
-  border-color: rgba(58, 77, 102, 0.92);
-  background: rgba(17, 28, 46, 0.96);
+  border-color: rgba(74, 91, 114, 0.9);
+  background: rgba(29, 41, 57, 0.96);
 }
 
 :is(.admin-header, .super-header) h1 {
@@ -328,7 +328,7 @@
 }
 
 :root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
-  background: #0f1a2b;
+  background: #202d3d;
   color: var(--ops-text);
 }
 
@@ -379,8 +379,8 @@
 }
 
 :root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) th {
-  background: #162236;
-  color: #b9c6d8;
+  background: #243347;
+  color: #c2ccd9;
 }
 
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) td {
@@ -392,12 +392,12 @@
 }
 
 :root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) td {
-  border-bottom-color: #233249;
+  border-bottom-color: #344459;
 }
 
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:last-child td { border-bottom: 0; }
 :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:hover { background: #f7fbfe; }
-:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:hover { background: #152238; }
+:root[data-theme="dark"] :is(.admin-layout, .super-layout) :is(.admin-table, .super-table) tbody tr:hover { background: #26364a; }
 
 :is(.admin-layout, .super-layout) :is(.admin-empty-state, .super-notifications-empty) {
   min-height: 120px;
@@ -474,6 +474,15 @@
     box-shadow: var(--ops-shadow-md);
   }
   :is(.burger-button, .super-burger-button) span { background: var(--ops-navy); }
+}
+
+:root[data-theme="dark"] :is(.burger-button, .super-burger-button) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface);
+}
+
+:root[data-theme="dark"] :is(.burger-button, .super-burger-button) span {
+  background: #d6deea;
 }
 
 @media (max-width: 640px) {

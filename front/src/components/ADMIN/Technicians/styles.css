@@ -8,16 +8,17 @@
 .tech-filter-heading h2, .tech-section-heading h2 { margin: 0; color: #0f172a; font-size: 18px; }
 .tech-filter-heading p, .tech-section-heading p { margin: 4px 0 0; color: #64748b; font-size: 13px; line-height: 1.45; }
 .tech-filter-grid { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(145px, 1fr)); gap: 12px; margin-top: 16px; }
-.tech-filter-grid label, .tech-add-staff-form label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
-.tech-filter-grid input, .tech-filter-grid select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select input, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 11px; background: #fff; color: #0f172a; font: inherit; transition: border-color .16s ease, box-shadow .16s ease; }
-.tech-filter-grid input, .tech-filter-grid select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-inline-select input, .tech-inline-select select, .tech-work-item select { min-height: 44px; }
-.tech-filter-grid input:focus, .tech-filter-grid select:focus, .tech-add-staff-form input:focus, .tech-add-staff-form select:focus, .tech-assignment-form input:focus, .tech-assignment-form select:focus, .tech-assignment-form textarea:focus, .tech-inline-select input:focus, .tech-inline-select select:focus, .tech-work-item select:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+.tech-filter-grid label, .tech-work-filters label, .tech-add-staff-form label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label { display: grid; gap: 6px; min-width: 0; color: #334155; font-size: 12px; font-weight: 800; }
+.tech-filter-grid input, .tech-filter-grid select, .tech-work-filters input, .tech-work-filters select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-assignment-form textarea, .tech-inline-select input, .tech-inline-select select, .tech-work-item select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 11px; background: #fff; color: #0f172a; font: inherit; transition: border-color .16s ease, box-shadow .16s ease; }
+.tech-filter-grid input, .tech-filter-grid select, .tech-work-filters input, .tech-work-filters select, .tech-add-staff-form input, .tech-add-staff-form select, .tech-assignment-form input, .tech-assignment-form select, .tech-inline-select input, .tech-inline-select select, .tech-work-item select { min-height: 44px; }
+.tech-filter-grid input:focus, .tech-filter-grid select:focus, .tech-work-filters input:focus, .tech-work-filters select:focus, .tech-add-staff-form input:focus, .tech-add-staff-form select:focus, .tech-assignment-form input:focus, .tech-assignment-form select:focus, .tech-assignment-form textarea:focus, .tech-inline-select input:focus, .tech-inline-select select:focus, .tech-work-item select:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
 .tech-filter-grid select:disabled, .tech-assignment-form input:disabled, .tech-assignment-form select:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
 .tech-inline-select small, .tech-assignment-form label small { color: #64748b; font-weight: 600; line-height: 1.35; }
 .tech-management-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(390px, .95fr); gap: 18px; align-items: start; }
 .tech-roster-card { display: grid; gap: 14px; }
 .tech-roster-list, .tech-work-list { display: grid; gap: 10px; }
-.tech-person-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.tech-person-card { display: grid; gap: 10px; padding: 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.tech-person-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
 .tech-person-main { display: flex; min-width: 0; gap: 10px; align-items: center; }
 .tech-avatar { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: #dbeafe; color: #1d4ed8; font-weight: 900; }
 .tech-person-main h3, .tech-work-item h3 { margin: 0; color: #0f172a; font-size: 14px; overflow-wrap: anywhere; }
@@ -34,10 +35,14 @@
 .tech-task-status.is-in-progress, .tech-task-status.is-in_progress { background: #dbeafe; color: #1d4ed8; }
 .tech-task-status.is-on-hold, .tech-task-status.is-on_hold { background: #f3e8ff; color: #7e22ce; }
 .tech-inline-select { min-width: 155px; }
-.tech-email-field { grid-column: 1 / -2; }
-.tech-person-workflow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; color: #64748b; font-size: 11px; }
+.tech-person-workflow { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; color: #64748b; font-size: 11px; }
 .tech-person-workflow span { white-space: nowrap; }
 .tech-person-workflow strong { color: #334155; text-transform: capitalize; }
+.tech-details-toggle { min-height: 38px; padding: 8px 12px; border: 1px solid #bfdbfe; border-radius: 9px; background: #eff6ff; color: #1d4ed8; font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+.tech-details-toggle:hover { border-color: #93c5fd; background: #dbeafe; }
+.tech-person-details { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+.tech-person-control-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.tech-person-control-row > button { min-width: 145px; }
 .tech-primary-button, .tech-secondary-button, .tech-danger-button, .tech-pagination button { border: 0; border-radius: 9px; min-height: 40px; padding: 9px 14px; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .tech-primary-button { background: #1d4ed8; color: #fff; }
 .tech-primary-button:hover:not(:disabled) { background: #1e40af; }
@@ -76,10 +81,18 @@
 .tech-pagination > div { display: flex; align-items: center; gap: 8px; }
 .tech-pagination > div > span { color: #475569; white-space: nowrap; }
 .tech-work-orders { display: grid; gap: 14px; }
+.tech-result-count { flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 900; }
+.tech-work-filters { display: grid; grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(150px, 1fr)) auto; gap: 12px; align-items: end; padding: 14px; border: 1px solid #dbeafe; border-radius: 12px; background: #f8fbff; }
+.tech-clear-filters { min-height: 44px; padding: 9px 13px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+.tech-clear-filters:hover { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
 .tech-work-item { display: grid; gap: 12px; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .035); }
-.tech-work-heading { display: flex; align-items: flex-start; gap: 10px; }
+.tech-work-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .tech-work-heading .tech-task-status { flex: 0 0 auto; justify-self: start; }
 .tech-work-heading > div { min-width: 0; }
+.tech-work-badges { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.tech-work-kind { width: fit-content; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 900; }
+.tech-work-kind.is-service { background: #ecfeff; color: #0e7490; }
+.tech-work-kind.is-installation { background: #eef2ff; color: #4338ca; }
 .tech-work-meta { display: grid; grid-template-columns: 1.15fr .65fr 1fr 1fr; gap: 10px 18px; margin: 0; padding: 12px 0; border-top: 1px solid #eef2f7; border-bottom: 1px solid #eef2f7; }
 .tech-work-meta div { min-width: 0; }
 .tech-work-meta dt { margin-bottom: 4px; color: #64748b; font-size: 10px; font-weight: 900; letter-spacing: .045em; text-transform: uppercase; }
@@ -104,18 +117,23 @@
 @media (max-width: 1120px) {
   .tech-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tech-work-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tech-work-search { grid-column: 1 / -1; }
+  .tech-clear-filters { width: 100%; }
 }
 @media (max-width: 760px) {
-  .tech-summary-grid, .tech-filter-grid, .tech-form-row, .tech-add-staff-form { grid-template-columns: 1fr; }
+  .tech-summary-grid, .tech-filter-grid, .tech-work-filters, .tech-form-row, .tech-add-staff-form { grid-template-columns: 1fr; }
   .tech-filter-heading, .tech-section-heading { align-items: stretch; flex-direction: column; }
+  .tech-result-count { align-self: flex-start; }
+  .tech-work-search { grid-column: auto; }
   .tech-filter-heading .tech-secondary-button, .tech-add-staff-form > button { width: 100%; }
   .tech-add-staff-form .tech-form-row, .tech-add-staff-form > button, .tech-credential-preview { grid-column: auto; }
   .tech-credential-preview { grid-template-columns: 1fr; }
-  .tech-person-card { grid-template-columns: 1fr; }
+  .tech-person-summary { grid-template-columns: 1fr; }
   .tech-person-meta { text-align: left; }
   .tech-account-status, .tech-availability { justify-self: start; }
-  .tech-inline-select, .tech-person-card > button { width: 100%; }
-  .tech-email-field { grid-column: auto; }
+  .tech-details-toggle, .tech-inline-select, .tech-person-control-row > button { width: 100%; }
+  .tech-person-control-row { grid-template-columns: 1fr; }
   .tech-pagination { align-items: flex-start; flex-direction: column; }
   .tech-work-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-work-footer { align-items: stretch; flex-direction: column; }
@@ -126,4 +144,66 @@
   .tech-summary-grid, .tech-work-meta { grid-template-columns: 1fr; }
   .tech-work-heading { flex-direction: column; }
   .tech-form-section { padding: 12px; }
+}
+
+/* Technician Management is shared by Admin and SuperAdmin. Keep its nested
+   cards and utility controls on the same low-glare palette as the dark shell. */
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-summary-grid article, .tech-person-card, .tech-work-item) {
+  border-color: #3b4b61;
+  background: #1d2939;
+  box-shadow: 0 5px 16px rgba(6, 12, 20, .18);
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-form-section, .tech-work-filters, .tech-check-in, .tech-credential-preview) {
+  border-color: #3b4b61;
+  background: #243347;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-summary-grid strong, .tech-filter-heading h2, .tech-section-heading h2, .tech-person-main h3, .tech-work-item h3, .tech-work-meta dd, .tech-completed-by strong) {
+  color: #e8edf5;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-summary-grid span, .tech-summary-grid small, .tech-filter-heading p, .tech-section-heading p, .tech-person-main p, .tech-person-main small, .tech-person-meta, .tech-person-workflow, .tech-work-item small, .tech-work-meta dt, .tech-empty, .tech-pagination) {
+  color: #b5c0cf;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-person-workflow, .tech-person-details, .tech-work-meta) {
+  border-color: #344459;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-person-workflow strong, .tech-filter-grid label, .tech-work-filters label, .tech-add-staff-form label, .tech-assignment-form label, .tech-inline-select, .tech-work-item label) {
+  color: #c3ccd8;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-secondary-button, .tech-pagination button, .tech-clear-filters) {
+  border-color: #4a5b72;
+  background: #243347;
+  color: #d7e0eb;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-secondary-button, .tech-pagination button, .tech-clear-filters):hover:not(:disabled) {
+  border-color: #64748b;
+  background: #2b3b52;
+  color: #f1f5f9;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .tech-details-toggle {
+  border-color: #526187;
+  background: #2d3a5a;
+  color: #d2d8ff;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .tech-details-toggle:hover {
+  border-color: #6576a7;
+  background: #35466a;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .tech-check-in.is-verified {
+  border-color: #3d725f;
+  background: #203c34;
+  color: #9adbbd;
+}
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .tech-check-in.is-verified strong {
+  color: #b4e7ce;
 }

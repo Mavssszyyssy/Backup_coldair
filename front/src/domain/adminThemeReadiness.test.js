@@ -30,9 +30,21 @@ describe("Admin and SuperAdmin theme isolation", () => {
     const superAccount = source("SUPERADMIN", "Dashboard", "SuperAdminAccount.css");
 
     expect(operations).toContain(':root[data-theme="dark"] :is(.admin-layout, .super-layout)');
-    expect(operations).toContain("--ops-canvas: #0b1220");
+    expect(operations).toContain("--ops-canvas: #151d2a");
+    expect(operations).toContain("--ops-surface: #1d2939");
     expect(superShared).toContain(":root[data-theme='dark'] .super-layout");
+    expect(superShared).toContain(":root[data-theme='dark'] .super-sidebar");
+    expect(superShared).toContain(":root[data-theme='dark'] .super-nav-link.active");
+    expect(superShared).toContain(":root[data-theme='dark'] .super-notifications-button");
     expect(superAccount).toContain(":root[data-theme='dark'] .hq-account-card");
+    expect(superAccount).toContain(":root[data-theme='dark'] .hq-toggle-row input");
+  });
+
+  it("covers shared Technician Management surfaces in dark mode", () => {
+    const technicianStyles = source("ADMIN", "Technicians", "styles.css");
+
+    expect(technicianStyles).toContain(":root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-summary-grid article, .tech-person-card, .tech-work-item)");
+    expect(technicianStyles).toContain(":root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.tech-form-section, .tech-work-filters, .tech-check-in, .tech-credential-preview)");
   });
 
   it("keeps dashboard styles from overriding the shared Admin sidebar", () => {

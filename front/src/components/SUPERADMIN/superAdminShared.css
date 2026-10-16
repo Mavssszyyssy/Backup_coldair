@@ -22,13 +22,21 @@
 }
 
 :root[data-theme='dark'] .super-layout {
-  --super-bg: #0b1220;
-  --super-card: #111c2e;
-  --super-text: #e5edf7;
-  --super-muted: #a8b7c9;
-  --super-border: #2a3a50;
-  --super-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
-  background: #0b1220;
+  --super-primary: #7583e8;
+  --super-primary-dark: #5d68c7;
+  --super-primary-soft: rgba(117, 131, 232, 0.16);
+  --role-primary: #7583e8;
+  --role-primary-dark: #5d68c7;
+  --role-primary-soft: #2b3855;
+  --role-primary-border: #4b5b82;
+  --role-primary-text: #cbd3ff;
+  --super-bg: #151d2a;
+  --super-card: #1d2939;
+  --super-text: #e8edf5;
+  --super-muted: #b5c0cf;
+  --super-border: #344459;
+  --super-shadow: 0 10px 28px rgba(6, 12, 20, 0.26);
+  background: #151d2a;
 }
 
 .super-layout {
@@ -672,4 +680,146 @@
 :root[data-theme='dark'] .super-layout :is(.branch-directory article, .alert-detail-grid > div) {
   border-color: #2a3a50;
   background: #162236;
+}
+
+/* Complete, low-glare SuperAdmin shell for dark mode. These rules intentionally
+   follow the legacy light shell so navigation and shared controls cannot remain white. */
+:root[data-theme='dark'] .super-layout {
+  background: radial-gradient(circle at 20% 0%, #202c40 0%, #151d2a 42%, #121a26 100%);
+}
+
+:root[data-theme='dark'] .super-layout-main {
+  background: transparent;
+}
+
+:root[data-theme='dark'] .super-sidebar {
+  border-right-color: #3b4b61;
+  background: linear-gradient(180deg, #1d2939 0%, #182331 100%);
+  box-shadow: 6px 0 24px rgba(6, 12, 20, 0.22);
+  color: #d4dce8;
+}
+
+:root[data-theme='dark'] .super-sidebar-top {
+  border-bottom-color: #344459;
+}
+
+:root[data-theme='dark'] .super-sidebar-brand {
+  color: #eef2f7;
+}
+
+:root[data-theme='dark'] .super-sidebar-brand-copy small {
+  color: #9eafc3;
+}
+
+:root[data-theme='dark'] .super-nav {
+  scrollbar-color: #53647a transparent;
+}
+
+:root[data-theme='dark'] .super-nav-link,
+:root[data-theme='dark'] .super-nav-sublink {
+  color: #bec9d7;
+}
+
+:root[data-theme='dark'] .super-nav-link:hover,
+:root[data-theme='dark'] .super-nav-link.active,
+:root[data-theme='dark'] .super-nav-sublink:hover,
+:root[data-theme='dark'] .super-nav-sublink.active {
+  background: #2a3950;
+  color: #f1f5f9;
+}
+
+:root[data-theme='dark'] .super-nav-icon-wrap {
+  background: #26354a;
+  color: #aebaf8;
+}
+
+:root[data-theme='dark'] .super-nav-link.active .super-nav-icon-wrap,
+:root[data-theme='dark'] .super-nav-link:hover .super-nav-icon-wrap {
+  background: #35466a;
+  color: #d5dbff;
+}
+
+:root[data-theme='dark'] .super-nav-subnav {
+  border-left-color: #465771;
+}
+
+:root[data-theme='dark'] .super-logout {
+  border-color: #6f4650;
+  background: #352831;
+  color: #f2b8c0;
+}
+
+:root[data-theme='dark'] .super-logout:hover {
+  border-color: #a85764;
+  background: #713743;
+  color: #fff;
+}
+
+:root[data-theme='dark'] .super-close,
+:root[data-theme='dark'] .super-burger-button {
+  border-color: #4a5b72;
+  background: #243347;
+  color: #d7e0eb;
+}
+
+:root[data-theme='dark'] .super-header,
+:root[data-theme='dark'] .super-card {
+  border-color: #344459;
+  background: #1d2939;
+  box-shadow: 0 10px 28px rgba(6, 12, 20, 0.22);
+}
+
+:root[data-theme='dark'] .super-header strong {
+  background: #2d3a5a;
+  color: #d2d8ff;
+}
+
+:root[data-theme='dark'] .super-header-avatar {
+  background: #263b55;
+  color: #f1f5f9;
+}
+
+:root[data-theme='dark'] .super-notifications-button {
+  border-color: #4a5b72;
+  background: #243347;
+  color: #c7d2fe;
+}
+
+:root[data-theme='dark'] .super-notifications-button:hover {
+  background: #2b3b52;
+}
+
+:root[data-theme='dark'] .super-notifications-button > span {
+  border-color: #1d2939;
+}
+
+:root[data-theme='dark'] .super-card :is(ul li, .super-card-section),
+:root[data-theme='dark'] .super-table th {
+  border-color: #344459;
+  background: #243347;
+}
+
+:root[data-theme='dark'] .super-table td {
+  border-bottom-color: #344459;
+}
+
+:root[data-theme='dark'] .super-table tbody tr:hover {
+  background: #26364a;
+}
+
+:root[data-theme='dark'] .super-notifications-panel,
+:root[data-theme='dark'] .super-notifications-panel header,
+:root[data-theme='dark'] .super-notifications-tabs {
+  border-color: #344459;
+  background: #1d2939;
+}
+
+:root[data-theme='dark'] .super-notifications-panel header strong {
+  color: #e8edf5;
+}
+
+:root[data-theme='dark'] .super-notifications-panel header small,
+:root[data-theme='dark'] .super-notifications-list > .super-notifications-row > button:first-child,
+:root[data-theme='dark'] .super-notifications-list > .super-notifications-row > button:first-child small {
+  color: #b5c0cf;
 }
