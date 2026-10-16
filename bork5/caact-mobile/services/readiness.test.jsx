@@ -41,6 +41,16 @@ describe("mobile customer readiness rules", () => {
     };
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "1300" })).toBe("");
     expect(validatePostalCodeForAddress({ ...pasayAddress, postalCode: "4102" })).toMatch(/does not match/i);
+
+    const muntinlupaAddress = {
+      region: "National Capital Region (NCR)",
+      province: "Metro Manila",
+      city: "City of Muntinlupa",
+      barangay: "Alabang",
+    };
+    expect(validatePostalCodeForAddress({ ...muntinlupaAddress, postalCode: "1770" })).toBe("");
+    expect(validatePostalCodeForAddress({ ...muntinlupaAddress, postalCode: "1780" })).toBe("");
+    expect(validatePostalCodeForAddress({ ...muntinlupaAddress, postalCode: "1300" })).toMatch(/does not match/i);
   });
 
   test("customer product filters preserve real inventory records", () => {
