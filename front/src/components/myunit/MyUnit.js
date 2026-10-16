@@ -1,6 +1,6 @@
 import { Snowflake } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import AmpReportCenter from "../AMP/AmpReportCenter";
 import "../AMP/styles.css";
@@ -85,6 +85,8 @@ const buildUnitFromBackend = (unit = {}) => ({
 
 function MyUnit() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const openedTargetRef = useRef("");
   const [units, setUnits] = useState([]);
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [unitLoadError, setUnitLoadError] = useState("");
@@ -96,6 +98,8 @@ function MyUnit() {
   const [unitSearch, setUnitSearch] = useState("");
   const [unitSort, setUnitSort] = useState("newest");
   const [unitPage, setUnitPage] = useState(1);
+  const targetUnitId = searchParams.get("unitId") || "";
+  const targetPage = searchParams.get("page") || "details";
 
   const visibleUnits = useMemo(
     () => sortCustomerUnits(filterCustomerUnits(units, unitSearch), unitSort),
@@ -144,6 +148,24 @@ function MyUnit() {
       mounted = false;
     };
   }, [reloadKey]);
+
+  useEffect(() => {
+    if (loadingUnits || !targetUnitId) return;
+    const targetKey = `${targetUnitId}:${targetPage}`;
+    if (openedTargetRef.current === targetKey) return;
+    const unit = units.find((item) => [item.id, item.backendUnitId].some((id) => String(id) === String(targetUnitId)));
+    if (!unit) return;
+
+    openedTargetRef.current = targetKey;
+    setUnitSearch("");
+    setUnitSort("newest");
+    const targetIndex = sortCustomerUnits(units, "newest").findIndex((item) => item.id === unit.id);
+    if (targetIndex >= 0) setUnitPage(Math.floor(targetIndex / UNITS_PER_PAGE) + 1);
+    setSelectedUnit(unit);
+    if (targetPage === "warranty") setShowWarrantyModal(true);
+    else if (["history", "service"].includes(targetPage)) setShowHistoryModal(true);
+    else setShowDetailsModal(true);
+  }, [loadingUnits, targetPage, targetUnitId, units]);
 
   const handleViewHistory = (unit) => {
     setSelectedUnit(unit);

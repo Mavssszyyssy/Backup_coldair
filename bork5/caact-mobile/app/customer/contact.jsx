@@ -16,6 +16,7 @@ import {
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { createContactMessage, getMyContactMessages } from "../../services/api";
+import { startLiveRefresh } from "../../services/liveRefresh";
 
 const CONTACT_CATEGORIES = [
   { id: "general", name: "General question" },
@@ -62,21 +63,61 @@ function ContactRow({ label, value, href }) {
   );
 }
 
+function SupportMessage({ item, focused = false }) {
+  if (!item) return null;
+  return (
+    <View style={{
+      paddingVertical: SPACING.md,
+      borderTopWidth: focused ? 0 : 1,
+      borderTopColor: COLORS.border,
+      borderLeftWidth: focused ? 3 : 0,
+      borderLeftColor: COLORS.primary,
+      paddingLeft: focused ? SPACING.sm : 0,
+    }}>
+      <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{item.subject}</Text>
+      <Text style={{ color: COLORS.primary, marginTop: 3 }}>Reference {item.ticketCode} · {String(item.status || "new").replace(/_/g, " ")}</Text>
+      <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.message}</Text>
+      {item.adminReply ? (
+        <View style={{ marginTop: SPACING.sm, padding: SPACING.sm, backgroundColor: COLORS.primaryLight, borderRadius: 10 }}>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>Support reply</Text>
+          <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.adminReply}</Text>
+        </View>
+      ) : (
+        <Text style={{ color: COLORS.textMuted, marginTop: SPACING.sm }}>Waiting for a support reply.</Text>
+      )}
+    </View>
+  );
+}
+
 export default function CustomerContactScreen() {
   const router = useRouter();
   const { messageId } = useLocalSearchParams();
   const { current, token } = useUserContext();
   const [history, setHistory] = useState([]);
   const [historyError, setHistoryError] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(true);
 
-  const loadHistory = useCallback(async () => {
-    if (!token) return;
-    const result = await getMyContactMessages(token);
-    if (result.success) { setHistory(result.messages); setHistoryError(""); }
-    else setHistoryError(result.error);
+  const loadHistory = useCallback(async ({ background = false, isCurrent = () => true } = {}) => {
+    if (!token) {
+      if (isCurrent()) setHistoryLoading(false);
+      return;
+    }
+    if (!background && isCurrent()) setHistoryLoading(true);
+    try {
+      const result = await getMyContactMessages(token);
+      if (!isCurrent()) return;
+      if (result.success) {
+        setHistory(Array.isArray(result.messages) ? result.messages : []);
+        setHistoryError("");
+      } else setHistoryError(result.error);
+    } catch (requestError) {
+      if (isCurrent()) setHistoryError(requestError?.message || "Unable to load your support messages.");
+    } finally {
+      if (isCurrent()) setHistoryLoading(false);
+    }
   }, [token]);
 
-  useFocusEffect(useCallback(() => { void loadHistory(); }, [loadHistory]));
+  useFocusEffect(useCallback(() => startLiveRefresh(loadHistory), [loadHistory]));
   const [category, setCategory] = useState(CONTACT_CATEGORIES[0]);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -88,6 +129,13 @@ export default function CustomerContactScreen() {
     current?.activeBranch || current?.assignedBranch || current?.branch || "",
   ).trim();
   const branchLabel = assignedBranch || "your assigned service branch";
+  const focusedMessageId = String(Array.isArray(messageId) ? messageId[0] || "" : messageId || "");
+  const focusedMessage = focusedMessageId
+    ? history.find((item) => String(item.id || item._id) === focusedMessageId) || null
+    : null;
+  const remainingHistory = focusedMessage
+    ? history.filter((item) => String(item.id || item._id) !== focusedMessageId)
+    : history;
 
   const submitMessage = async () => {
     setError("");
@@ -133,6 +181,15 @@ export default function CustomerContactScreen() {
       title="Contact"
       subtitle="Send a tracked message to the Cold Air ACT support team"
     >
+      {focusedMessageId ? (
+        <Card>
+          <CustomerSectionHeader title="Selected Support Message" />
+          {historyLoading ? <Text style={{ color: COLORS.textMuted }}>Loading this support message…</Text> : null}
+          {!historyLoading && focusedMessage ? <SupportMessage item={focusedMessage} focused /> : null}
+          {!historyLoading && !focusedMessage ? <Text style={{ color: COLORS.danger }}>This support message is no longer available.</Text> : null}
+        </Card>
+      ) : null}
+
       <Card>
         <CustomerSectionHeader title="Send a Support Message" />
         <View style={{ padding: SPACING.md, borderRadius: 12, backgroundColor: COLORS.primaryLight, marginBottom: SPACING.md }}>
@@ -179,15 +236,9 @@ export default function CustomerContactScreen() {
         <CustomerSectionHeader title="My Support Messages" />
         <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>Track each reference and read replies from your support team.</Text>
         {historyError ? <Text style={{ color: COLORS.danger }}>{historyError}</Text> : null}
-        {history.length === 0 && !historyError ? <Text style={{ color: COLORS.textMuted }}>No messages sent yet.</Text> : null}
-        {history.map((item) => (
-          <View key={item.id || item._id} style={{ paddingVertical: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border, borderLeftWidth: String(messageId || "") === String(item.id || item._id) ? 3 : 0, borderLeftColor: COLORS.primary, paddingLeft: String(messageId || "") === String(item.id || item._id) ? SPACING.sm : 0 }}>
-            <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{item.subject}</Text>
-            <Text style={{ color: COLORS.primary, marginTop: 3 }}>Reference {item.ticketCode} · {String(item.status || "new").replace(/_/g, " ")}</Text>
-            <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.message}</Text>
-            {item.adminReply ? <View style={{ marginTop: SPACING.sm, padding: SPACING.sm, backgroundColor: COLORS.primaryLight, borderRadius: 10 }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>Support reply</Text><Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>{item.adminReply}</Text></View> : null}
-          </View>
-        ))}
+        {historyLoading && !history.length ? <Text style={{ color: COLORS.textMuted }}>Loading your support messages…</Text> : null}
+        {!historyLoading && history.length === 0 && !historyError ? <Text style={{ color: COLORS.textMuted }}>No messages sent yet.</Text> : null}
+        {remainingHistory.map((item) => <SupportMessage key={item.id || item._id} item={item} />)}
       </Card>
 
       <Card>

@@ -67,7 +67,9 @@ export default function AdminContactMessages({ recordId = "" }) {
   }, [messages, search, statusFilter]);
 
   const selected = messages.find((item) => item.id === selectedId) || null;
-  useEffect(() => { setReply(selected?.adminReply || ""); }, [selectedId, selected?.adminReply]);
+  // The reply box is a new-message composer, not a mirror of the latest saved
+  // reply. Reset it when staff switch tickets and after a successful send.
+  useEffect(() => { setReply(""); }, [selectedId]);
 
   const summary = useMemo(() => ({
     total: messages.length,
@@ -86,6 +88,7 @@ export default function AdminContactMessages({ recordId = "" }) {
         body: JSON.stringify(payload),
       });
       setMessages((items) => items.map((item) => item.id === selected.id ? result.message : item));
+      if (Object.prototype.hasOwnProperty.call(payload, "adminReply")) setReply("");
     } catch (requestError) {
       setError(requestError.message || "Unable to update this message.");
     } finally {
@@ -141,7 +144,7 @@ export default function AdminContactMessages({ recordId = "" }) {
               <div className="contact-detail__message"><span>Customer message</span><p>{selected.message}</p><small>Received {dateTime(selected.createdAt)}</small></div>
               <label className="contact-detail__reply"><span>Reply to customer</span><textarea rows="5" maxLength={3000} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a clear update for the customer…" /><small>{reply.length}/3000</small></label>
               <div className="contact-detail__actions">
-                <button type="button" className="primary" disabled={busy || !reply.trim() || reply.trim() === (selected.adminReply || "")} onClick={() => save({ adminReply: reply, status: selected.status === "new" ? "in_progress" : selected.status })}>{busy ? "Saving…" : "Send Reply"}</button>
+                <button type="button" className="primary" disabled={busy || !reply.trim() || reply.trim() === (selected.adminReply || "")} onClick={() => save({ adminReply: reply.trim(), status: selected.status === "new" ? "in_progress" : selected.status })}>{busy ? "Saving…" : "Send Reply"}</button>
                 {selected.status !== "in_progress" ? <button type="button" disabled={busy} onClick={() => save({ status: "in_progress" })}>Mark In Progress</button> : null}
                 {selected.status !== "resolved" ? <button type="button" disabled={busy} onClick={() => save({ status: "resolved" })}>Mark Resolved</button> : null}
                 {selected.status !== "new" ? <button type="button" disabled={busy} onClick={() => save({ status: "new" })}>Reopen</button> : null}

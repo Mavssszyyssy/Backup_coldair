@@ -1,5 +1,5 @@
 import { DeviceMobile, ShieldCheck, Wrench } from "@phosphor-icons/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -11,11 +11,14 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import "./Contact.css";
 import ContactForm from "./ContactForm";
+import ContactHistory from "./ContactHistory";
 import ContactInfo from "./ContactInfo";
 import ServicesSupport from "./ServicesSupport";
 
 function Contact() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const messageId = searchParams.get("messageId") || "";
 
   const handleBack = () => {
     navigate("/home");
@@ -116,6 +119,8 @@ function Contact() {
             <ContactForm />
             <ContactInfo />
           </div>
+
+          <ContactHistory messageId={messageId} />
 
           <ServicesSupport />
         </BoutiqueStack>

@@ -10,10 +10,9 @@ const routeForNotification = (item = {}) => {
   if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "superadmin");
   const targetType = String(item.targetType || item.category || '').toLowerCase();
   if (['amp_pipeline', 'maintenance_pipeline'].includes(targetType)) return '/manager/amp';
-  if (['contact', 'contact_message'].includes(targetType)) return '/superadmin/services?tab=customer-messages';
-  if (['inventory', 'stock', 'reorder'].includes(targetType)) return '/superadmin/inventory';
-  if (['warranty', 'claim', 'service', 'parts_request'].includes(targetType)) return '/superadmin/services?tab=service-requests';
-  if (['task', 'technician'].includes(targetType)) return '/superadmin/services?tab=technicians';
+  if (['contact', 'contact_message', 'inventory', 'stock', 'reorder', 'warranty', 'claim', 'service', 'service_request', 'parts_request', 'task', 'technician', 'order'].includes(targetType)) {
+    return operationalAlertRoute(item, 'superadmin');
+  }
   const text = `${item.title || ''} ${item.message || ''}`.toLowerCase();
   if (text.includes('complaint') || text.includes('refund') || text.includes('cancel')) return '/superadmin/alerts';
   if (text.includes('stock') || text.includes('inventory') || text.includes('reorder')) return '/superadmin/inventory?tab=reorders';

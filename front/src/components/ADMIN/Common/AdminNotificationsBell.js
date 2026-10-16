@@ -19,11 +19,9 @@ const resolveNotificationRoute = (item = {}) => {
   if (["order", "payment", "delivery", "service", "warranty", "technician"].includes(item.type)) return operationalAlertRoute(item, "admin");
   const targetType = String(item.targetType || item.category || "").toLowerCase();
   if (["amp_pipeline", "maintenance_pipeline"].includes(targetType)) return "/manager/amp";
-  if (["contact", "contact_message"].includes(targetType)) return "/admin/services?tab=customer-messages";
-  if (["inventory", "stock", "reorder"].includes(targetType)) return "/admin/inventory";
-  if (["warranty", "claim"].includes(targetType)) return "/admin/services/service-requests";
-  if (["service", "parts_request"].includes(targetType)) return "/admin/services/service-requests";
-  if (["task", "technician"].includes(targetType)) return "/admin/services/technicians";
+  if (["contact", "contact_message", "inventory", "stock", "reorder", "warranty", "claim", "service", "service_request", "parts_request", "task", "technician", "order"].includes(targetType)) {
+    return operationalAlertRoute(item, "admin");
+  }
   const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
   if (text.includes("stock") || text.includes("inventory")) return "/admin/reorder";
   if (text.includes("task") || text.includes("technician")) return "/admin/services/technicians";

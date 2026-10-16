@@ -51,3 +51,18 @@ test("technician task-list alerts open all schedule dates while task alerts open
     targetId: "task-id",
   }, "technician")).toBe("/technician/task/task-id/information");
 });
+test("customer support, service, and unit alerts open their exact records", () => {
+  expect(resolveNotificationRoute({
+    targetType: "contact_message",
+    targetId: "message-id",
+  }, "customer")).toBe("/customer/contact?messageId=message-id");
+  expect(resolveNotificationRoute({
+    targetType: "service_request",
+    targetId: "request-id",
+  }, "customer")).toBe("/customer/services?requestId=request-id");
+  expect(resolveNotificationRoute({
+    targetType: "unit",
+    targetId: "unit-id",
+    category: "amp_due_soon",
+  }, "customer")).toBe("/customer/units/unit-id?page=amp");
+});

@@ -257,11 +257,22 @@ describe("mobile customer readiness rules", () => {
 
   test("mobile notifications translate website routes to valid app screens", () => {
     expect(resolveNotificationRoute({ route: "/contact" }, "customer")).toBe("/customer/contact");
+    expect(resolveNotificationRoute({ route: "/contact", targetType: "contact_message", targetId: "message-1" }, "customer")).toBe("/customer/contact?messageId=message-1");
     expect(resolveNotificationRoute({ route: "/my-orders" }, "customer")).toBe("/customer/orders");
     expect(resolveNotificationRoute({ route: "/customer/service-requests" }, "customer")).toBe("/customer/services");
     expect(resolveNotificationRoute({ route: "/tech/tasks/TSK-1" }, "technician")).toBe("/technician/tasks");
     expect(resolveNotificationRoute({ route: "/technician/tasks" }, "technician")).toBe("/technician/tasks?schedule=all");
     expect(resolveNotificationRoute({ route: "/technician/tasks", targetType: "task", targetId: "TSK-1" }, "technician")).toBe("/technician/task/TSK-1/information");
+  });
+
+  test("customer support stays current and opens a notification's selected message", () => {
+    const contactSource = fs.readFileSync(
+      path.join(__dirname, "..", "app", "customer", "contact.jsx"),
+      "utf8",
+    );
+    expect(contactSource).toContain("startLiveRefresh(loadHistory)");
+    expect(contactSource).toContain('title="Selected Support Message"');
+    expect(contactSource).toContain("focusedMessageId");
   });
 
   test("customer AC details show technician-recorded room size without edit controls", () => {
