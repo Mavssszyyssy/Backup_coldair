@@ -6,6 +6,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../../services/liveRefresh";
 import React, { useState } from "react";
 import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { scrollToAssessmentPager } from "../../../../services/technicianAssessmentScroll";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
@@ -369,13 +370,7 @@ export default function TaskInformationScreen() {
 
   const scrollToAssessmentPage = (pager) => {
     requestAnimationFrame(() => {
-      const contentNode = scrollRef.current?.getInnerViewNode?.();
-      if (!pager || !contentNode) return;
-      pager.measureLayout(
-        contentNode,
-        (_x, y) => scrollRef.current?.scrollTo({ y: Math.max(0, y - SPACING.sm), animated: true }),
-        () => {},
-      );
+      scrollToAssessmentPager(scrollRef.current, pager, SPACING.sm);
     });
   };
 
