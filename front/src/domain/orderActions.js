@@ -16,6 +16,15 @@ export const hasDispatchStarted = (order = {}) => {
   return Boolean(order.dispatchedAt) || POST_DISPATCH_DELIVERY_STATUSES.has(deliveryStatus);
 };
 
+export const needsDispatchedTaskRepair = (order = {}, task = null) => {
+  if (!['to_dispatch', 'to_install'].includes(order.workflowStatus)) return false;
+  const deliveryStatus = String(order.deliveryStatus || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+  if (['failed installation', 'for rescheduling'].includes(deliveryStatus) || !hasDispatchStarted(order)) return false;
+  if (task?.visitAttempt?.awaitingAdmin || task?.payload?.visitAttempt?.awaitingAdmin) return false;
+  // An unloaded task is not evidence of a missing task: the order screen pages task results.
+  return Boolean(task) && ['pending', 'accepted'].includes(String(task.status || '').toLowerCase());
+};
+
 export const canCancelOrder = (order = {}) =>
   ['to_pay', 'to_deliver', 'to_dispatch', 'for_rescheduling'].includes(order.workflowStatus) &&
   !hasDispatchStarted(order);

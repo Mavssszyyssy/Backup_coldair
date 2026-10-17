@@ -500,13 +500,13 @@ export default function TaskInformationScreen() {
               <DetailItem icon="calendar-sharp" label="Schedule" value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || "Unscheduled"} accent={COLORS.warning} />
               <DetailItem icon="call-sharp" label="Customer Contact" value={task?.customerPhone || "Not recorded"} />
               <DetailItem icon="person-sharp" label="Assigned Technician" value={task?.assignedTechnicianName || "Not recorded"} />
-              {task?.schedule?.driverName ? <DetailItem icon="car-sharp" label="Driver" value={task.schedule.driverName} /> : null}
+              {task?.schedule?.driverName && task.schedule.driverName !== task?.assignedTechnicianName ? <DetailItem icon="car-sharp" label="Driver" value={task.schedule.driverName} /> : null}
               {task?.schedule?.notes ? <DetailItem icon="reader-sharp" label="Admin Schedule Note" value={task.schedule.notes} accent={COLORS.warning} /> : null}
               <DetailItem icon="chatbox-ellipses-sharp" label={installationTask ? "Installation Details" : "Service Concern"} value={task?.description || task?.concern || (installationTask ? "No special instructions" : "None")} />
             </Card>
 
             {!installationTask ? <ServicePaymentCard task={task} onUpdated={setTask} /> : null}
-            {hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
+            {!installationTask && hasCheckedIn && task?.status === TASK_STATUS.IN_PROGRESS && !task?.visitAttempt?.awaitingAdmin ? <Card>
               <SectionHeading icon="person-remove-sharp" title="No one available?" subtitle="Record an unattended visit after arrival" />
               <TechButton title="Close visit / request reschedule" variant="secondary" onPress={() => router.push(`/technician/task/${id}/visit-attempt`)} />
             </Card> : null}

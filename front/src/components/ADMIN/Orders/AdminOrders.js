@@ -10,7 +10,7 @@ import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
 
-import { canCancelOrder, getOrderAction } from '../../../domain/orderActions';
+import { canCancelOrder, getOrderAction, hasDispatchStarted, needsDispatchedTaskRepair } from '../../../domain/orderActions';
 import {
   ORDER_DATE_OPTIONS,
   ORDER_PAYMENT_OPTIONS,
@@ -474,7 +474,9 @@ const AdminOrders = ({ embedded = false }) => {
     if (!order?.id) return;
     const actionLabels = {
       assign_technician: 'assign and sync the technician work order',
-      recreate_task: 'repair the technician task',
+      recreate_task: hasDispatchStarted(order) && ['to_dispatch', 'to_install'].includes(order.workflowStatus)
+        ? 'activate and synchronize the dispatched technician work order'
+        : 'repair the technician task',
       sync_installed_units: 'sync installed customer units',
     };
     const label = actionLabels[action] || 'run recovery';
@@ -694,6 +696,7 @@ const AdminOrders = ({ embedded = false }) => {
               actionConfig?.action === 'complete' &&
               (!taskCompleted || !hasProof);
             const canRepairTask = ['to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling', 'complete'].includes(order.workflowStatus);
+            const needsTaskActivation = needsDispatchedTaskRepair(order, linkedTask);
             const canSyncInstalledUnits = taskCompleted || order.workflowStatus === 'complete';
             const paymentStatus = getPaymentStatus(order);
             const deliveryStatus = getDeliveryStatus(order);
@@ -919,6 +922,11 @@ const AdminOrders = ({ embedded = false }) => {
                   </div>
                 ) : null}
                 <VisitFollowUpPanel task={linkedTask ? { ...detailedTask, ...linkedTask } : detailedTask} onUpdated={() => { setTaskDetailsById({}); return loadOrders(); }} />
+                {needsTaskActivation ? (
+                  <p className="admin-order-recovery-note" role="alert">
+                    The order is dispatched, but its technician work order is not active. Use Activate Work Order below to synchronize it before field work.
+                  </p>
+                ) : null}
                 {isWaitingTechnician ? (
                   <p className="admin-order-recovery-note">
                     Waiting for the technician to complete installation registration and submit all required proof.
@@ -980,7 +988,9 @@ const AdminOrders = ({ embedded = false }) => {
                         onClick={() => handleRecovery(order, 'recreate_task')}
                         disabled={processingId === `${order.id}:recovery-recreate_task`}
                       >
-                        {processingId === `${order.id}:recovery-recreate_task` ? 'Repairing...' : 'Repair Task'}
+                        {processingId === `${order.id}:recovery-recreate_task`
+                          ? 'Repairing...'
+                          : needsTaskActivation ? 'Activate Work Order' : 'Repair Task'}
                       </button>
                     ) : null}
                     {canSyncInstalledUnits ? (
