@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Card from "../ui/Card";
 import TechButton from "./TechButton";
@@ -47,6 +47,7 @@ const Items = ({ label, values, format = item => item }) => {
 
 function AssessmentPager({ pages, resetKey, onPageChange }) {
   const [pageIndex, setPageIndex] = useState(0);
+  const pagerRef = useRef(null);
 
   useEffect(() => {
     setPageIndex(0);
@@ -57,13 +58,13 @@ function AssessmentPager({ pages, resetKey, onPageChange }) {
   const page = pages[safeIndex];
   const changePage = nextIndex => {
     setPageIndex(Math.max(0, Math.min(nextIndex, lastIndex)));
-    onPageChange?.();
+    onPageChange?.(pagerRef.current);
   };
 
   if (!page) return null;
 
   return (
-    <View style={styles.pager}>
+    <View ref={pagerRef} collapsable={false} style={styles.pager}>
       <View style={styles.pageHeadingRow}>
         <View style={styles.pageHeadingCopy}>
           <Text style={styles.pageTitle}>{page.title}</Text>
@@ -199,7 +200,7 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
         {(!pre?.review?.decision || pre.review.decision === "pending") ? <View style={styles.reviewActions}>
           <TechButton title="Confirm" size="sm" onPress={() => review("pre", "confirmed")} loading={busy === "pre"} style={styles.reviewButton} />
           <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("pre", "rejected")} loading={busy === "pre"} style={styles.reviewButton} />
-        </View> : <Text accessibilityRole="status" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
+        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
       </>,
     },
   ].filter(page => page.visible);
@@ -249,7 +250,7 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
         {(!post?.review?.decision || post.review.decision === "pending") ? <View style={styles.reviewActions}>
           <TechButton title="Confirm" size="sm" onPress={() => review("post", "confirmed")} loading={busy === "post"} style={styles.reviewButton} />
           <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("post", "rejected")} loading={busy === "post"} style={styles.reviewButton} />
-        </View> : <Text accessibilityRole="status" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
+        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
       </>,
     },
   ].filter(page => page.visible);

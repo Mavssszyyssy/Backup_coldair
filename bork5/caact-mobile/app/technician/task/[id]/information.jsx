@@ -204,7 +204,6 @@ export default function TaskInformationScreen() {
   const { id } = useLocalSearchParams();
   const scrollRef = React.useRef(null);
   const openingVisitAttempt = React.useRef(false);
-  const assessmentOffset = React.useRef(0);
   const [task, setTask] = useState(null);
   const [unit, setUnit] = useState(null);
   const [requests, setRequests] = useState([]);
@@ -366,6 +365,18 @@ export default function TaskInformationScreen() {
     const safePage = Math.max(0, Math.min(detailPages.length - 1, nextPage));
     setDetailPage(safePage);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
+  };
+
+  const scrollToAssessmentPage = (pager) => {
+    requestAnimationFrame(() => {
+      const contentNode = scrollRef.current?.getInnerViewNode?.();
+      if (!pager || !contentNode) return;
+      pager.measureLayout(
+        contentNode,
+        (_x, y) => scrollRef.current?.scrollTo({ y: Math.max(0, y - SPACING.sm), animated: true }),
+        () => {},
+      );
+    });
   };
 
   const confirmCash = () => confirmAction({
@@ -550,7 +561,7 @@ export default function TaskInformationScreen() {
           </>) : null}
 
           {activePage.key === "service" ? <>
-            {!installationTask ? <View onLayout={(event) => { assessmentOffset.current = event.nativeEvent.layout.y; }}><MaintenanceDecisionCard taskId={task.id} requestId={task.requestId} completed={task.status === TASK_STATUS.COMPLETED} onPageChange={() => requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, assessmentOffset.current - SPACING.sm), animated: true }))} /></View> : null}
+            {!installationTask ? <MaintenanceDecisionCard taskId={task.id} requestId={task.requestId} completed={task.status === TASK_STATUS.COMPLETED} onPageChange={scrollToAssessmentPage} /> : null}
             <Card>
               <SectionHeading icon="document-text-sharp" title="Service Report" subtitle="Recorded findings and resolution" />
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />

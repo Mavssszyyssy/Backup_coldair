@@ -31,34 +31,44 @@ export default function LogSelectScreen() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [view, setView] = useState("notes");
+  const historyRequestKey = React.useRef("");
+  const historyGeneration = React.useRef(0);
 
   const loadUnitHistory = React.useCallback(async (taskForHistory) => {
+    const generation = historyGeneration.current;
+    setHistoryLoading(true);
+    setHistoryError("");
     const serialNumber =
       taskForHistory?.unit?.serialNumber ||
       taskForHistory?.unitSerialNumber ||
       taskForHistory?.serialNumber ||
       taskForHistory?.serialNumbers?.[0];
     if (!serialNumber || !taskForHistory?.id) {
-      setHistoryError("This work order does not include a linked AC serial number.");
+      if (generation === historyGeneration.current) {
+        setHistoryError("This work order does not include a linked AC serial number.");
+        setHistoryLoading(false);
+      }
       return;
     }
-    setHistoryLoading(true);
-    setHistoryError("");
     try {
       const token = await getStoredToken();
       const history = await fetchTechnicianUnitHistory(token, serialNumber, taskForHistory.id);
       if (!history.success) throw new Error(history.error || "Unable to load previous AC service history.");
-      setUnitHistory(history);
+      if (generation === historyGeneration.current) setUnitHistory(history);
     } catch (error) {
-      setHistoryError(error?.message || "Unable to load previous AC service history.");
+      if (generation === historyGeneration.current) setHistoryError(error?.message || "Unable to load previous AC service history.");
     } finally {
-      setHistoryLoading(false);
+      if (generation === historyGeneration.current) setHistoryLoading(false);
     }
   }, []);
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
+      historyGeneration.current += 1;
+      historyRequestKey.current = "";
+      setUnitHistory(null);
+      setHistoryError("");
       async function load({ background }) {
         if (!background) setLoading(true);
         setLoadError("");
@@ -78,10 +88,20 @@ export default function LogSelectScreen() {
       const stop = startLiveRefresh(load);
       return () => {
         active = false;
+        historyGeneration.current += 1;
         stop();
       };
     }, [taskId]),
   );
+
+  React.useEffect(() => {
+    if (loading || loadError || !task?.id) return;
+    const serial = task.unit?.serialNumber || task.unitSerialNumber || task.serialNumber || task.serialNumbers?.[0] || "";
+    const key = `${task.id}:${serial}`;
+    if (historyRequestKey.current === key) return;
+    historyRequestKey.current = key;
+    void loadUnitHistory(task);
+  }, [loading, loadError, task, loadUnitHistory]);
 
   const canEdit = task?.status === TASK_STATUS.IN_PROGRESS;
   const isDelivery = String(task?.serviceType || task?.issueType || task?.title || "")
@@ -111,7 +131,7 @@ export default function LogSelectScreen() {
         />
 
         <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 8, marginBottom: SPACING.md }}>
-          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => { setView(key); if (key === "history" && !unitHistory && !historyLoading) void loadUnitHistory(task); }} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
+          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
         </View>
 
         {view === "notes" && canEdit && (
@@ -208,7 +228,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           )} />
         ) : null}
-        {!loading && !loadError && view === "history" ? historyLoading ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{historyError}</Text><TechButton title="Retry AC unit history" size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
+        {view === "history" && !loadError ? loading || historyLoading || (!unitHistory && !historyError) ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{historyError}</Text><TechButton title="Retry AC unit history" size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : <UnitHistoryPanel key={taskId} history={unitHistory} /> : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -32,7 +32,9 @@ test('technician sees saved advice and can reject it without changing the visit 
   expect(await screen.findByText('rejected')).toBeTruthy();
   expect(screen.queryByText('Confirm')).toBeNull();
   expect(screen.queryByText('Reject')).toBeNull();
-  expect(screen.getByText('Review saved. No further action is required.')).toBeTruthy();
+  const savedReview = screen.getByText('Review saved. No further action is required.');
+  expect(savedReview.props.accessibilityRole).toBeUndefined();
+  expect(savedReview.props.accessibilityLiveRegion).toBe('polite');
 });
 
 test('completed maintenance allows a separate future-issue assessment', async () => {
@@ -47,6 +49,10 @@ test('completed maintenance allows a separate future-issue assessment', async ()
     missing_evidence: ['Motor test readings were not recorded.'],
     preventive_actions: ['Inspect and clean the fan assembly.'],
   } } });
+  reviewTaskDecisionSupport.mockResolvedValue({ success: true, assessment: { status: 'completed', assessment: {
+    possible_future_issue: 'Outdoor fan vibration should be monitored.',
+    preventive_actions: ['Inspect and clean the fan assembly.'],
+  }, review: { decision: 'confirmed' } } });
   await render(<MaintenanceDecisionCard taskId="task-2" requestId="request-2" completed />);
   fireEvent.press(screen.getByRole('button', { name: 'AI parts and future-issue assessment' }));
   const generateButton = await screen.findByText('Generate future-issue assessment');
@@ -63,6 +69,10 @@ test('completed maintenance allows a separate future-issue assessment', async ()
   await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'Next assessment page' })); });
   expect(screen.getByText('Preventive actions')).toBeTruthy();
   expect(screen.getByText('Assessment page 4 of 4')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByText('Confirm')); });
+  const savedReview = await screen.findByText('Review saved. No further action is required.');
+  expect(savedReview.props.accessibilityRole).toBeUndefined();
+  expect(savedReview.props.accessibilityLiveRegion).toBe('polite');
 });
 
 test('long AI lists use explicit See more and See less controls', async () => {
