@@ -33,8 +33,15 @@ export default function LogSelectScreen() {
   const [view, setView] = useState("notes");
 
   const loadUnitHistory = React.useCallback(async (taskForHistory) => {
-    const serialNumber = taskForHistory?.unit?.serialNumber;
-    if (!serialNumber || !taskForHistory?.id) return;
+    const serialNumber =
+      taskForHistory?.unit?.serialNumber ||
+      taskForHistory?.unitSerialNumber ||
+      taskForHistory?.serialNumber ||
+      taskForHistory?.serialNumbers?.[0];
+    if (!serialNumber || !taskForHistory?.id) {
+      setHistoryError("This work order does not include a linked AC serial number.");
+      return;
+    }
     setHistoryLoading(true);
     setHistoryError("");
     try {
@@ -201,7 +208,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           )} />
         ) : null}
-        {!loading && !loadError && view === "history" ? historyLoading ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Text style={{ color: COLORS.danger }}>{historyError}</Text> : unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
+        {!loading && !loadError && view === "history" ? historyLoading ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{historyError}</Text><TechButton title="Retry AC unit history" size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : unitHistory ? <UnitHistoryPanel key={taskId} history={unitHistory} /> : <EmptyState title="No linked AC history" message="This work order has no linked AC serial for service history." /> : null}
       </ScrollView>
     </SafeAreaView>
   );

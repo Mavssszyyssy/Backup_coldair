@@ -5,8 +5,9 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 import AmpRegistrationScreen from '../app/technician/task/[id]/amp-registration';
 import { apiFetch } from '../constants/config';
 import { getTaskById, registerTaskAmpUnit } from './taskStorage';
+const mockFetchTechnicianUnitHistory = jest.fn();
 jest.mock('../constants/config', () => ({ apiFetch: jest.fn() }));
-jest.mock('./api', () => ({ getStoredToken: async () => 'fixture-token', fetchTechnicianUnitHistory: async () => ({ success: false }) }));
+jest.mock('./api', () => ({ getStoredToken: async () => 'fixture-token', fetchTechnicianUnitHistory: (...args) => mockFetchTechnicianUnitHistory(...args) }));
 jest.mock('./taskStorage', () => ({ getTaskById: jest.fn(), registerTaskAmpUnit: jest.fn() }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: 'task1' }), useFocusEffect: (callback) => require('react').useEffect(callback, [callback]) }));
 jest.mock('../components/technician/UnitHistoryPanel', () => () => null);
@@ -25,6 +26,7 @@ let alert;
 beforeEach(() => {
   jest.clearAllMocks();
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  mockFetchTechnicianUnitHistory.mockResolvedValue({ success: false });
   getTaskById.mockResolvedValue(task());
   apiFetch.mockResolvedValue({ ok: true, json: async () => ({ unit: { serialNumber: 'CAACT-FIXTURE' } }) });
 });
@@ -117,4 +119,19 @@ test('already verified assignment is not submitted twice', async () => {
   await fireEvent.press(screen.getByText('Scan fixture QR'));
   expect(alert).toHaveBeenCalledWith('Already registered', expect.any(String));
   expect(registerTaskAmpUnit).not.toHaveBeenCalled();
+});
+
+test('a secondary history read failure does not misreport a successfully saved room size', async () => {
+  await mount();
+  await fireEvent.press(screen.getByText('Scan fixture QR'));
+  await screen.findByText('Room capacity check');
+  await fireEvent.press(screen.getByText('Choose 12 square meters'));
+  registerTaskAmpUnit.mockResolvedValue({ task: { ...task(), registrationProgress: { isComplete: true, totalRequired: 1, totalRegistered: 1 } } });
+  mockFetchTechnicianUnitHistory.mockRejectedValueOnce(new Error('History read timed out'));
+
+  await fireEvent.press(screen.getByText('Save room size and verify unit'));
+
+  await screen.findByText('Assigned AC unit verified');
+  expect(alert).toHaveBeenCalledWith('AC unit verified', expect.any(String), expect.any(Array));
+  expect(alert).not.toHaveBeenCalledWith('Unable to verify AC unit', expect.any(String));
 });

@@ -79,7 +79,6 @@ const TextField = forwardRef(function TextField({
             borderRadius: RADIUS.md,
             paddingHorizontal: SPACING.md - 2,
             paddingVertical: SPACING.md - 2,
-            borderWidth: 1,
             borderColor: error ? COLORS.danger : focused ? COLORS.borderFocus : COLORS.borderInput,
             borderWidth: focused || error ? 1.5 : 1,
             fontSize: FONT.base,

@@ -153,6 +153,12 @@ export function normalizeTask(item = {}) {
     ampRegistrations: value("ampRegistrations", {}),
     requestId: value("requestId"),
     unit: value("unit", null),
+    unitSerialNumber:
+      value("unitSerialNumber") ||
+      value("serialNumber") ||
+      value("unit", null)?.serialNumber ||
+      serialNumbers[0] ||
+      "",
     title,
     description,
     customerId: value("customerId") || value("userId"),

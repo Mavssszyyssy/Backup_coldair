@@ -11,6 +11,7 @@ import TechButton from "../../components/technician/TechButton";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import IconRow from "../../components/ui/IconRow";
+import KeyboardAwareScrollView from "../../components/ui/KeyboardAwareScrollView";
 import StatusChip from "../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
@@ -141,7 +142,7 @@ function FilterSheet({
           onPress={() => {}}
           style={{ maxHeight: "88%", backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl }}
         >
-          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} contentContainerStyle={{ padding: SPACING.md }}>
+          <KeyboardAwareScrollView minBottomPadding={SPACING.xxl + 48} contentContainerStyle={{ padding: SPACING.md }}>
           <View style={{ width: 42, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderInput, alignSelf: "center", marginBottom: SPACING.sm }} />
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
             <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
@@ -221,7 +222,7 @@ function FilterSheet({
             <TechButton title="Clear" onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
             <TechButton title="Show results" onPress={closeSheet} style={{ flex: 1 }} />
           </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </Pressable>
       </Pressable>
       </KeyboardAvoidingView>

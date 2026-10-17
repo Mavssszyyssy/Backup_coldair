@@ -204,6 +204,7 @@ export default function TaskInformationScreen() {
   const { id } = useLocalSearchParams();
   const scrollRef = React.useRef(null);
   const openingVisitAttempt = React.useRef(false);
+  const assessmentOffset = React.useRef(0);
   const [task, setTask] = useState(null);
   const [unit, setUnit] = useState(null);
   const [requests, setRequests] = useState([]);
@@ -549,7 +550,7 @@ export default function TaskInformationScreen() {
           </>) : null}
 
           {activePage.key === "service" ? <>
-            {!installationTask ? <MaintenanceDecisionCard taskId={task.id} requestId={task.requestId} completed={task.status === TASK_STATUS.COMPLETED} /> : null}
+            {!installationTask ? <View onLayout={(event) => { assessmentOffset.current = event.nativeEvent.layout.y; }}><MaintenanceDecisionCard taskId={task.id} requestId={task.requestId} completed={task.status === TASK_STATUS.COMPLETED} onPageChange={() => requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, assessmentOffset.current - SPACING.sm), animated: true }))} /></View> : null}
             <Card>
               <SectionHeading icon="document-text-sharp" title="Service Report" subtitle="Recorded findings and resolution" />
               <DetailItem icon="eye-sharp" label="Before" value={task?.beforeCondition || "No report yet"} />

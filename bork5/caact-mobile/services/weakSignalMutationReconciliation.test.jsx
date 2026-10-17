@@ -3,8 +3,10 @@ import {
   collectServicePayment,
   confirmCodCollection,
   createMyServiceRequest,
+  generateTaskDecisionSupport,
   patchServiceRequestStatus,
   patchTask,
+  reviewTaskDecisionSupport,
   submitVisitAttempt,
 } from "./api";
 
@@ -132,4 +134,36 @@ test("an unattended visit is verified from the exact arrival without replaying i
   });
   expect(apiFetch.mock.calls.filter(([, options]) => options.method === "PATCH")).toHaveLength(1);
   expect(apiFetch.mock.calls[1][1]).toMatchObject({ method: "GET", maxAttempts: 1 });
+});
+
+test("a generated AI assessment is recovered when only its response is lost", async () => {
+  apiFetch
+    .mockRejectedValueOnce(lostResponse())
+    .mockResolvedValueOnce(response({
+      preAssessment: { status: "completed", assessment: { possible_problem: "Restricted airflow" } },
+      futurePrediction: null,
+    }));
+
+  await expect(generateTaskDecisionSupport("token", "task-1", "pre")).resolves.toMatchObject({
+    success: true,
+    reconciled: true,
+    preAssessment: { status: "completed" },
+  });
+  expect(apiFetch.mock.calls.filter(([, options]) => options.method === "POST")).toHaveLength(1);
+});
+
+test("a saved AI review is recovered and the review action is not replayed", async () => {
+  apiFetch
+    .mockRejectedValueOnce(lostResponse())
+    .mockResolvedValueOnce(response({
+      preAssessment: { status: "completed", review: { decision: "confirmed" } },
+      futurePrediction: null,
+    }));
+
+  await expect(reviewTaskDecisionSupport("token", "task-1", "pre", "confirmed")).resolves.toMatchObject({
+    success: true,
+    reconciled: true,
+    assessment: { review: { decision: "confirmed" } },
+  });
+  expect(apiFetch.mock.calls.filter(([, options]) => options.method === "PATCH")).toHaveLength(1);
 });

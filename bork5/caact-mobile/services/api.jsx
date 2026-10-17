@@ -1080,13 +1080,35 @@ export async function fetchTaskDecisionSupport(token, taskId) {
 
 export async function generateTaskDecisionSupport(token, taskId, phase) {
   const endpoint = phase === "post" ? "future-prediction" : "pre-assessment";
-  const { ok, data } = await post(`/amp/tasks/${encodeURIComponent(taskId)}/${endpoint}`, {}, token);
-  return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "AI assessment is unavailable."), ...data };
+  const path = `/amp/tasks/${encodeURIComponent(taskId)}/${endpoint}`;
+  try {
+    const { ok, data } = await request("POST", path, { token, body: {}, timeoutMs: AMP_REPORT_TIMEOUT_MS });
+    return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "AI assessment is unavailable."), ...data };
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const saved = await fetchTaskDecisionSupport(token, taskId);
+      const assessment = phase === "post" ? saved.futurePrediction : saved.preAssessment;
+      return saved.success && assessment?.status === "completed"
+        ? { ...saved, success: true, reconciled: true }
+        : null;
+    });
+  }
 }
 
 export async function reviewTaskDecisionSupport(token, taskId, phase, decision) {
-  const { ok, data } = await patch(`/amp/tasks/${encodeURIComponent(taskId)}/${phase}/review`, { decision }, token);
-  return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "Unable to save technician review.") };
+  const path = `/amp/tasks/${encodeURIComponent(taskId)}/${phase}/review`;
+  try {
+    const { ok, data } = await request("PATCH", path, { token, body: { decision }, timeoutMs: OPERATIONAL_WRITE_TIMEOUT_MS });
+    return ok ? { success: true, ...data } : { success: false, error: getErrorMessage(data, "Unable to save technician review.") };
+  } catch (error) {
+    return reconcileUncertainMutation(path, error, async () => {
+      const saved = await fetchTaskDecisionSupport(token, taskId);
+      const assessment = phase === "post" ? saved.futurePrediction : saved.preAssessment;
+      return saved.success && assessment?.review?.decision === decision
+        ? { success: true, assessment, reconciled: true }
+        : null;
+    });
+  }
 }
 
 export async function fetchRecordedPartsPreparation(token, unitId) {

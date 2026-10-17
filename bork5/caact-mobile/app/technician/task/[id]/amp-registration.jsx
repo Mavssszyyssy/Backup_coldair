@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Keyboard, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
@@ -11,6 +11,7 @@ import Card from "../../../../components/ui/Card";
 import InfoCard from "../../../../components/ui/InfoCard";
 import { getTodayDateKey } from "../../../../components/ui/CalendarDatePicker";
 import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
+import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
@@ -58,6 +59,7 @@ export default function AmpRegistrationScreen() {
   const [resolvingQr, setResolvingQr] = useState(false);
   const scanInFlight = React.useRef(false);
   const manualVerificationInFlight = React.useRef(false);
+  const scrollRef = React.useRef(null);
   const [scannerActive, setScannerActive] = useState(true);
   const [verificationMode, setVerificationMode] = useState("scan");
   const [manualSerial, setManualSerial] = useState("");
@@ -77,12 +79,18 @@ export default function AmpRegistrationScreen() {
 
   const loadUnitHistory = React.useCallback(async (serialNumber) => {
     if (!serialNumber) return null;
-    const token = await getStoredToken();
-    if (!token) return null;
-    const result = await fetchTechnicianUnitHistory(token, serialNumber, id);
-    if (!result.success) return null;
-    setUnitHistory(result);
-    return result;
+    try {
+      const token = await getStoredToken();
+      if (!token) return null;
+      const result = await fetchTechnicianUnitHistory(token, serialNumber, id);
+      if (!result.success) return null;
+      setUnitHistory(result);
+      return result;
+    } catch {
+      // Registration is authoritative. A secondary history read must never
+      // turn a successfully verified unit into a misleading save failure.
+      return null;
+    }
   }, [id]);
 
   const load = React.useCallback(async () => {
@@ -137,8 +145,12 @@ export default function AmpRegistrationScreen() {
       setScannerActive(false);
       setPendingSerial(assignedSerial);
       setPendingSource(manuallyEntered ? "manual_serial" : "qr_scan");
-      if (manuallyEntered) setManualSerial("");
+      if (manuallyEntered) {
+        setManualSerial("");
+        Keyboard.dismiss();
+      }
       setRoomDetails(defaultRoomDetails);
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd?.({ animated: true }));
     } catch (error) {
       Alert.alert(manuallyEntered ? "Unable to verify serial number" : "Unable to verify QR", error?.message || (manuallyEntered
         ? "Check the serial number and your connection, then try again."
@@ -158,6 +170,7 @@ export default function AmpRegistrationScreen() {
       Alert.alert("Choose a room size", "Select the closest room size so the AC horsepower can be checked.");
       return;
     }
+    Keyboard.dismiss();
     setSaving(true);
     try {
       const result = await registerTaskAmpUnit(id, automaticAmpPayload(pendingSerial, roomDetails, pendingSource));
@@ -174,7 +187,12 @@ export default function AmpRegistrationScreen() {
       setMessage(text);
       setPendingSerial("");
       setScannerActive(!complete);
-      Alert.alert("AC unit verified", text, [{ text: "Review work order" }]);
+      Alert.alert("AC unit verified", text, [{
+        text: complete ? "Continue work order" : "Verify next unit",
+        onPress: complete
+          ? () => router.replace(`/technician/task/${id}/complete-service`)
+          : () => scrollRef.current?.scrollToEnd?.({ animated: true }),
+      }]);
     } catch (error) {
       Alert.alert("Unable to verify AC unit", error?.message || "Scan the assigned QR label or enter its serial number again.");
     } finally {
@@ -194,7 +212,7 @@ export default function AmpRegistrationScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl + 48 }}>
+      <KeyboardAwareScrollView ref={scrollRef} contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={SPACING.xxl + 72}>
         <Card>
           <InfoCard label="Work order" value={task?.taskCode || task?.title || "Loading…"} />
           <InfoCard label="Customer" value={task?.customerName || task?.customer || "Loading…"} />
@@ -278,7 +296,7 @@ export default function AmpRegistrationScreen() {
             <TechButton title="Cancel verification" variant="secondary" onPress={() => { setPendingSerial(""); setPendingSource("qr_scan"); setScannerActive(verificationMode === "scan"); }} disabled={saving} style={{ marginTop: SPACING.sm }} />
           </Card>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

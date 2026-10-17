@@ -8,28 +8,44 @@ import { fetchTaskDecisionSupport, generateTaskDecisionSupport, reviewTaskDecisi
 const hasText = value => typeof value === "string" && value.trim().length > 0;
 const hasItems = values => Array.isArray(values) && values.length > 0;
 
-const Detail = ({ label, value }) => hasText(value) ? (
-  <View style={styles.detailBlock}>
-    <Text style={styles.detailLabel}>{label}</Text>
-    <Text style={styles.detailValue}>{value}</Text>
-  </View>
-) : null;
-
-const Items = ({ label, values, format = item => item }) => hasItems(values) ? (
-  <View style={styles.detailBlock}>
-    <Text style={styles.detailLabel}>{label}</Text>
-    <View style={styles.itemList}>
-      {values.map((item, index) => (
-        <View key={`${label}-${index}`} style={styles.itemRow}>
-          <View style={styles.bullet} />
-          <Text style={styles.itemText}>{format(item)}</Text>
-        </View>
-      ))}
+const Detail = ({ label, value }) => {
+  const [showAll, setShowAll] = useState(false);
+  if (!hasText(value)) return null;
+  const collapsible = value.trim().length > 180;
+  return (
+    <View style={styles.detailBlock}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue} numberOfLines={collapsible && !showAll ? 4 : undefined}>{value}</Text>
+      {collapsible ? <Pressable accessibilityRole="button" accessibilityLabel={`${showAll ? "See less" : "See more"} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
+        <Text style={styles.seeMoreText}>{showAll ? "See less" : "See more"}</Text>
+      </Pressable> : null}
     </View>
-  </View>
-) : null;
+  );
+};
 
-function AssessmentPager({ pages, resetKey }) {
+const Items = ({ label, values, format = item => item }) => {
+  const [showAll, setShowAll] = useState(false);
+  if (!hasItems(values)) return null;
+  const visibleValues = showAll ? values : values.slice(0, 3);
+  return (
+    <View style={styles.detailBlock}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <View style={styles.itemList}>
+        {visibleValues.map((item, index) => (
+          <View key={`${label}-${index}`} style={styles.itemRow}>
+            <View style={styles.bullet} />
+            <Text style={styles.itemText}>{format(item)}</Text>
+          </View>
+        ))}
+      </View>
+      {values.length > 3 ? <Pressable accessibilityRole="button" accessibilityLabel={`${showAll ? "See less" : "See more"} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
+        <Text style={styles.seeMoreText}>{showAll ? "See less" : `See more (${values.length - 3})`}</Text>
+      </Pressable> : null}
+    </View>
+  );
+};
+
+function AssessmentPager({ pages, resetKey, onPageChange }) {
   const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
@@ -39,6 +55,10 @@ function AssessmentPager({ pages, resetKey }) {
   const lastIndex = Math.max(pages.length - 1, 0);
   const safeIndex = Math.min(pageIndex, lastIndex);
   const page = pages[safeIndex];
+  const changePage = nextIndex => {
+    setPageIndex(Math.max(0, Math.min(nextIndex, lastIndex)));
+    onPageChange?.();
+  };
 
   if (!page) return null;
 
@@ -71,7 +91,7 @@ function AssessmentPager({ pages, resetKey }) {
           size="sm"
           variant="secondary"
           disabled={safeIndex === 0}
-          onPress={() => setPageIndex(index => Math.max(index - 1, 0))}
+          onPress={() => changePage(safeIndex - 1)}
           accessibilityLabel="Previous assessment page"
           style={styles.pageButton}
         />
@@ -80,7 +100,7 @@ function AssessmentPager({ pages, resetKey }) {
           size="sm"
           variant="secondary"
           disabled={safeIndex === lastIndex}
-          onPress={() => setPageIndex(index => Math.min(index + 1, lastIndex))}
+          onPress={() => changePage(safeIndex + 1)}
           accessibilityLabel="Next assessment page"
           style={styles.pageButton}
         />
@@ -90,7 +110,7 @@ function AssessmentPager({ pages, resetKey }) {
   );
 }
 
-export default function MaintenanceDecisionCard({ taskId, completed, requestId }) {
+export default function MaintenanceDecisionCard({ taskId, completed, requestId, onPageChange }) {
   const [record, setRecord] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState("");
@@ -176,10 +196,10 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
         <Items label="Diagnostic actions" values={a?.diagnostic_actions} />
         <Items label="Safety flags" values={a?.safety_flags} />
         <Detail label="Technician review" value={pre?.review?.decision || "pending"} />
-        <View style={styles.reviewActions}>
+        {(!pre?.review?.decision || pre.review.decision === "pending") ? <View style={styles.reviewActions}>
           <TechButton title="Confirm" size="sm" onPress={() => review("pre", "confirmed")} loading={busy === "pre"} style={styles.reviewButton} />
           <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("pre", "rejected")} loading={busy === "pre"} style={styles.reviewButton} />
-        </View>
+        </View> : <Text accessibilityRole="status" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
       </>,
     },
   ].filter(page => page.visible);
@@ -226,10 +246,10 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
         <Detail label="Follow-up" value={p?.follow_up} />
         <Items label="Safety flags" values={p?.safety_flags} />
         <Detail label="Technician review" value={post?.review?.decision || "pending"} />
-        <View style={styles.reviewActions}>
+        {(!post?.review?.decision || post.review.decision === "pending") ? <View style={styles.reviewActions}>
           <TechButton title="Confirm" size="sm" onPress={() => review("post", "confirmed")} loading={busy === "post"} style={styles.reviewButton} />
           <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("post", "rejected")} loading={busy === "post"} style={styles.reviewButton} />
-        </View>
+        </View> : <Text accessibilityRole="status" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
       </>,
     },
   ].filter(page => page.visible);
@@ -237,7 +257,7 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
   return <Card>
     <Pressable accessibilityRole="button" accessibilityLabel="AI parts and future-issue assessment" accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
       <Text style={styles.cardTitle}>AI parts and future-issue assessment</Text>
-      <Text style={styles.cardSummary}>{expanded ? "Hide assessment details" : (completed ? "Check what may need monitoring after this visit" : "Check suggested parts to prepare before this visit")} {expanded ? "▲" : "▼"}</Text>
+      <Text style={styles.cardSummary}>{expanded ? "See less" : "See more"} {expanded ? "▲" : "▼"}</Text>
     </Pressable>
     {expanded && <>
     <View style={styles.guidanceNote}>
@@ -248,7 +268,7 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
       <Text style={styles.sectionTitle}>Before maintenance</Text>
       <Text style={styles.sectionDescription}>Parts preparation and diagnostic guidance</Text>
       {pre?.status === "completed" ? (
-        <AssessmentPager pages={prePages} resetKey={`${taskId}:pre:${pagerRevision.pre}`} />
+        <AssessmentPager pages={prePages} resetKey={`${taskId}:pre:${pagerRevision.pre}`} onPageChange={onPageChange} />
       ) : (
         <Text style={styles.emptyText}>{pre?.error || "No AI assessment saved yet."}</Text>
       )}
@@ -258,7 +278,7 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId }
       <Text style={styles.sectionTitle}>After maintenance</Text>
       <Text style={styles.sectionDescription}>Future-risk monitoring and preventive guidance</Text>
       {post?.status === "completed" ? (
-        <AssessmentPager pages={postPages} resetKey={`${taskId}:post:${pagerRevision.post}`} />
+        <AssessmentPager pages={postPages} resetKey={`${taskId}:post:${pagerRevision.post}`} onPageChange={onPageChange} />
       ) : (
         <Text style={styles.emptyText}>{post?.error || "Generate after the final technician report is saved."}</Text>
       )}
@@ -397,6 +417,12 @@ const styles = StyleSheet.create({
     fontSize: FONT.base,
     lineHeight: 21,
   },
+  seeMoreText: {
+    color: COLORS.tech,
+    fontSize: FONT.sm,
+    fontWeight: FONT.bold,
+    marginTop: SPACING.sm,
+  },
   progressDots: {
     alignItems: "center",
     flexDirection: "row",
@@ -434,6 +460,12 @@ const styles = StyleSheet.create({
   },
   reviewButton: {
     flex: 1,
+  },
+  reviewSaved: {
+    color: COLORS.success,
+    fontSize: FONT.sm,
+    fontWeight: FONT.bold,
+    marginTop: SPACING.xs,
   },
   emptyText: {
     color: COLORS.textSecondary,

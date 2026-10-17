@@ -30,6 +30,9 @@ test('technician sees saved advice and can reject it without changing the visit 
   await act(async () => { fireEvent.press(screen.getByText('Reject')); });
   await waitFor(() => expect(reviewTaskDecisionSupport).toHaveBeenCalledWith('task-1', 'pre', 'rejected'));
   expect(await screen.findByText('rejected')).toBeTruthy();
+  expect(screen.queryByText('Confirm')).toBeNull();
+  expect(screen.queryByText('Reject')).toBeNull();
+  expect(screen.getByText('Review saved. No further action is required.')).toBeTruthy();
 });
 
 test('completed maintenance allows a separate future-issue assessment', async () => {
@@ -60,4 +63,23 @@ test('completed maintenance allows a separate future-issue assessment', async ()
   await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'Next assessment page' })); });
   expect(screen.getByText('Preventive actions')).toBeTruthy();
   expect(screen.getByText('Assessment page 4 of 4')).toBeTruthy();
+});
+
+test('long AI lists use explicit See more and See less controls', async () => {
+  const onPageChange = jest.fn();
+  fetchTaskDecisionSupport.mockResolvedValue({ success: true, preAssessment: { status: 'completed', evidence: [], assessment: {
+    possible_problem: 'Inspection needed.',
+    safety_flags: ['First', 'Second', 'Third', 'Fourth'],
+  }, review: { decision: 'pending' } }, futurePrediction: null });
+
+  await render(<MaintenanceDecisionCard taskId="task-3" requestId="request-3" completed={false} onPageChange={onPageChange} />);
+  fireEvent.press(screen.getByRole('button', { name: 'AI parts and future-issue assessment' }));
+  await screen.findByText('Inspection needed.');
+  await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'Next assessment page' })); });
+  expect(onPageChange).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Fourth')).toBeNull();
+  await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'See more Safety flags' })); });
+  expect(await screen.findByText('Fourth')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'See less Safety flags' })); });
+  await waitFor(() => expect(screen.queryByText('Fourth')).toBeNull());
 });
