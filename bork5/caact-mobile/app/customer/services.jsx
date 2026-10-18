@@ -37,7 +37,7 @@ const getServiceAddress = (user = {}) => {
   };
 };
 
-const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress"]);
+const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress", "on hold"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
 
 const readableStatus = (value = "") => String(value || "").replace(/_/g, " ");
@@ -331,23 +331,24 @@ export default function CustomerServicesScreen() {
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             {selectedActiveRequest.serviceType || selectedActiveRequest.issueType || "Service"} is already being handled. You can follow updates here and in your notifications.
           </Text>
-          <Button
-            title="View Request Details"
-            variant="secondary"
-            onPress={() => router.push({
-              pathname: "/customer/units/[id]",
-              params: { id: selectedUnit.id, page: "service" },
-            })}
-          />
         </> : null}
-        {activeWarrantyClaim ? <>
+        {activeWarrantyClaim ? <View style={selectedActiveRequest ? { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border } : undefined}>
           <StatusChip label={`Claim ${readableStatus(activeWarrantyClaim.status)}`} color={COLORS.warning} />
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             {String(activeWarrantyClaim.status).toLowerCase() === "approved"
               ? "Your claim was approved and a service request was created. The branch will notify you when a technician and schedule are assigned."
               : "No duplicate request is needed. Your claim is being reviewed, and you will be notified when its status changes."}
           </Text>
-        </> : null}
+        </View> : null}
+        {selectedActiveRequest ? <Button
+          title="View Request Details"
+          variant="secondary"
+          style={{ marginTop: SPACING.md }}
+          onPress={() => router.push({
+            pathname: "/customer/units/[id]",
+            params: { id: selectedUnit.id, page: "service" },
+          })}
+        /> : null}
         {requestMode === "warranty" && !warrantyEligible && !activeWarrantyClaim ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, lineHeight: 20 }}>This AC does not currently have active warranty coverage. Choose Cleaning or Service for a standard request, or contact our team about your coverage.</Text> : null}
       </Card> : null}
       <ServiceRequestPaymentSummary mode={requestMode} service={selectedService} payment={selectedActiveRequest?.servicePayment} />

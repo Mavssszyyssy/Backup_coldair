@@ -6,6 +6,7 @@ import { customerServiceChoices } from './customerServiceChoices';
 import { createWarrantyClaim, fetchServiceCatalog } from './api';
 import { createServiceRequest } from './serviceRequestStorage';
 import { getUnitsByUser } from './unitStorage';
+import { getCustomerServiceHistory } from './customerHistoryService';
 import { notifyNotificationsChanged } from './notificationEvents';
 
 let mockParams;
@@ -25,11 +26,23 @@ beforeEach(()=>{
  jest.clearAllMocks(); mockParams={};
  jest.spyOn(Alert,'alert').mockImplementation(()=>{});
  getUnitsByUser.mockResolvedValue(units);
+ getCustomerServiceHistory.mockResolvedValue({requests:[]});
  fetchServiceCatalog.mockResolvedValue({success:true,offerings});
  createWarrantyClaim.mockResolvedValue({success:true,warranty:{status:'active',claims:[{status:'submitted'}]}});
  createServiceRequest.mockResolvedValue({id:'request',unitId:'ac1',status:'Submitted'});
 });
 afterEach(()=>jest.restoreAllMocks());
+
+test('approved claim details have space before the request action', async()=>{
+ mockParams={unitId:'ac1',serviceType:'warranty'};
+ getUnitsByUser.mockResolvedValue([{...units[0],warranty:{claims:[{status:'approved'}]}}]);
+ getCustomerServiceHistory.mockResolvedValue({requests:[{id:'request-1',unitId:'ac1',status:'Reviewed',serviceType:'Warranty Repair'}]});
+ const view=await render(<CustomerServicesScreen/>);
+ await view.findByText('Claim approved');
+ await view.findByText('View Request Details');
+ const tree=JSON.stringify(view.toJSON());
+ expect(tree.indexOf('Claim approved')).toBeLessThan(tree.indexOf('View Request Details'));
+});
 
 test('old catalogues show separate cleaning choices without losing prices or exposing order services', ()=>{
  const choices=customerServiceChoices(offerings);

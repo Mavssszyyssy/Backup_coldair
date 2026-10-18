@@ -7,7 +7,7 @@ import { apiRequest } from '../../../config/api';
 import '../adminShared.css';
 import './styles.css';
 
-const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'Completed', 'Cancelled'];
+const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
 
 const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [selected, setSelected] = useState(null);
@@ -20,30 +20,52 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [error, setError] = useState('');
   const [warrantyClaims, setWarrantyClaims] = useState([]);
   const [busyClaimId, setBusyClaimId] = useState('');
+  const [claimDecision, setClaimDecision] = useState(null);
+  const [decisionNote, setDecisionNote] = useState('');
+  const [decisionError, setDecisionError] = useState('');
 
-  const load = useCallback(async () => {
-    setError('');
-    setLoading(true);
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) { setError(''); setLoading(true); }
     try {
       const [result, claimResult] = await Promise.all([
         apiRequest('/service-requests'),
         apiRequest('/warranties/claims'),
       ]);
-      setRequests(Array.isArray(result.requests) ? result.requests : []);
-      if (recordId) setSelected((result.requests || []).find((item) => String(item.id || item._id) === recordId) || null);
+      const nextRequests = Array.isArray(result.requests) ? result.requests : [];
+      setRequests(nextRequests);
+      setSelected((previous) => {
+        const targetId = recordId || previous?.id || previous?._id;
+        if (!targetId) return null;
+        const latest = nextRequests.find((item) => String(item.id || item._id) === String(targetId)) || null;
+        if (latest && previous && latest.status === previous.status && latest.updatedAt === previous.updatedAt) return previous;
+        return latest;
+      });
       setWarrantyClaims(Array.isArray(claimResult.claims) ? claimResult.claims : []);
     } catch (requestError) {
-      setError(requestError.message || 'Unable to load service requests.');
+      if (!quiet) setError(requestError.message || 'Unable to load service requests.');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [recordId]);
 
   useEffect(() => {
     load();
+    const refreshVisible = () => {
+      if (document.visibilityState === 'visible') load({ quiet: true });
+    };
+    document.addEventListener('visibilitychange', refreshVisible);
+    window.addEventListener('focus', refreshVisible);
+    const interval = window.setInterval(() => {
+      refreshVisible();
+    }, 30000);
     apiRequest('/users?role=technician')
       .then((result) => setTechnicians(Array.isArray(result.users) ? result.users : []))
       .catch(() => setTechnicians([]));
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshVisible);
+      window.removeEventListener('focus', refreshVisible);
+    };
   }, [load]);
 
   const handleUpdated = (updatedRequest) => {
@@ -75,6 +97,7 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
     total: requests.length,
     unassigned: requests.filter((request) => !request.assignedTechnicianId && !['Completed', 'Cancelled'].includes(request.status)).length,
     active: requests.filter((request) => ['Assigned', 'In Progress'].includes(request.status)).length,
+    onHold: requests.filter((request) => request.status === 'On Hold').length,
     completed: requests.filter((request) => request.status === 'Completed').length,
   }), [requests]);
 
@@ -84,10 +107,17 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
     setTechnicianFilter('all');
   };
 
-  const reviewWarrantyClaim = async (claim, status, coveredComponent = '') => {
+  const openClaimReview = (claim, status, coveredComponent = '') => {
+    setClaimDecision({ claim, status, coveredComponent });
+    setDecisionNote('');
+    setDecisionError('');
+  };
+
+  const reviewWarrantyClaim = async (event) => {
+    event.preventDefault();
+    if (!claimDecision) return;
+    const { claim, status, coveredComponent } = claimDecision;
     const key = `${claim.unitId}:${claim.claimId}`;
-    const decisionNote = window.prompt(`Optional note for this ${status.replace('_', ' ')} decision:`, '');
-    if (decisionNote === null) return;
     setBusyClaimId(key);
     try {
       const result = await apiRequest(`/warranties/units/${encodeURIComponent(claim.unitId)}/claims/${encodeURIComponent(claim.claimId)}`, {
@@ -100,8 +130,9 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
           : item
       )));
       if (status === 'approved') await load();
+      setClaimDecision(null);
     } catch (claimError) {
-      setError(claimError.message || 'Unable to update the warranty claim.');
+      setDecisionError(claimError.message || 'Unable to update the warranty claim.');
     } finally {
       setBusyClaimId('');
     }
@@ -120,6 +151,9 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
           <div className="maintenance-summary-card maintenance-summary-card--active">
             <span>In progress</span><strong>{summary.active}</strong><small>Technician work underway</small>
           </div>
+          <div className="maintenance-summary-card maintenance-summary-card--hold">
+            <span>On hold</span><strong>{summary.onHold}</strong><small>Admin follow-up needed</small>
+          </div>
           <div className="maintenance-summary-card maintenance-summary-card--complete">
             <span>Completed</span><strong>{summary.completed}</strong><small>Work and proof finalized</small>
           </div>
@@ -127,7 +161,29 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
 
         {error ? <div className="maintenance-alert" role="alert">{error}<button type="button" onClick={load}>Try again</button></div> : null}
 
-        <WarrantyClaims claims={warrantyClaims} busyClaimId={busyClaimId} onReview={reviewWarrantyClaim} />
+        <WarrantyClaims claims={warrantyClaims} busyClaimId={busyClaimId} onReview={openClaimReview} />
+
+        {claimDecision ? <div className="maintenance-decision-backdrop">
+          <section className="maintenance-decision-dialog" role="dialog" aria-modal="true" aria-labelledby="maintenance-decision-title" onKeyDown={(event) => {
+            if (event.key === 'Escape' && !busyClaimId) setClaimDecision(null);
+          }}>
+            <div className="maintenance-decision-heading">
+              <div><p className="maintenance-eyebrow">Warranty claim</p><h2 id="maintenance-decision-title">{claimDecision.status === 'approved' ? 'Approve repair' : claimDecision.status === 'rejected' ? 'Reject claim' : 'Mark for review'}</h2></div>
+              <button type="button" className="maintenance-decision-close" aria-label="Close claim decision" disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>×</button>
+            </div>
+            <p className="maintenance-decision-copy">{claimDecision.claim.unitName || 'AC unit'} · {claimDecision.claim.claimId}</p>
+            {claimDecision.coveredComponent ? <p className="maintenance-decision-component">Covered component: <strong>{claimDecision.coveredComponent}</strong></p> : null}
+            <form onSubmit={reviewWarrantyClaim}>
+              <label htmlFor="maintenance-decision-note">Decision note <span>(optional)</span></label>
+              <textarea id="maintenance-decision-note" autoFocus value={decisionNote} maxLength={500} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Add context for the claim record" disabled={Boolean(busyClaimId)} />
+              {decisionError ? <p className="maintenance-decision-error" role="alert">{decisionError}</p> : null}
+              <div className="maintenance-decision-actions">
+                <button type="button" className="maintenance-button maintenance-button--secondary" disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>Cancel</button>
+                <button type="submit" className="maintenance-button" disabled={Boolean(busyClaimId)}>{busyClaimId ? 'Saving…' : 'Save decision'}</button>
+              </div>
+            </form>
+          </section>
+        </div> : null}
 
         <div className="maintenance-workspace">
           <div className="maintenance-queue-panel">

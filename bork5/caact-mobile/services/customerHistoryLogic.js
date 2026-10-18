@@ -4,6 +4,7 @@ const ACTIVE_SERVICE_REQUEST_STATUSES = new Set([
   "reviewed",
   "assigned",
   "in progress",
+  "on hold",
 ]);
 
 const CUSTOMER_CANCELLABLE_SERVICE_REQUEST_STATUSES = new Set([

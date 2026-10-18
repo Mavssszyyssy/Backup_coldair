@@ -122,6 +122,7 @@ describe("mobile customer readiness rules", () => {
     )).toContain('params: { id: selectedUnit.id, page: "service" }');
     expect(isActiveServiceRequest({ status: "Completed" })).toBe(false);
     expect(isActiveServiceRequest({ status: "In Progress" })).toBe(true);
+    expect(isActiveServiceRequest({ status: "On Hold" })).toBe(true);
     expect(canCustomerCancelServiceRequest({ status: "Submitted" })).toBe(true);
     expect(canCustomerCancelServiceRequest({ status: "Assigned" })).toBe(true);
     expect(canCustomerCancelServiceRequest({ status: "In Progress" })).toBe(false);

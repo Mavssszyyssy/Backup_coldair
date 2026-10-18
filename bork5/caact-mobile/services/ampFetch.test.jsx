@@ -4,6 +4,7 @@ import {
   DIRECT_FETCH_TIMEOUT_MS,
   READ_RETRY_DELAY_MS,
 } from "../constants/config";
+import { failBackendConnection, finishBackendConnection } from "./backendConnectionState";
 jest.mock("expo-constants", () => ({ expoConfig: {} }));
 jest.mock("./backendConnectionState", () => ({ beginBackendConnection: jest.fn(), failBackendConnection: jest.fn(), finishBackendConnection: jest.fn() }));
 
@@ -16,6 +17,18 @@ test("an AI request is not repeated on a fallback server after connection loss",
     await expect(apiFetch("/ai/amp-report", { method: "POST" })).rejects.toThrow("Connection lost");
     expect(global.fetch).toHaveBeenCalledTimes(1);
   } finally { global.fetch = previousFetch; API_BASE_FALLBACKS.splice(0, API_BASE_FALLBACKS.length, ...previousFallbacks); }
+});
+
+test("an AI provider failure is not reported as a lost backend connection", async () => {
+  jest.clearAllMocks();
+  const previousFetch = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({ status: 424, ok: false });
+  try {
+    const response = await apiFetch("/amp/tasks/task-1/pre-assessment", { method: "POST" });
+    expect(response.status).toBe(424);
+    expect(finishBackendConnection).toHaveBeenCalledWith("/amp/tasks/task-1/pre-assessment");
+    expect(failBackendConnection).not.toHaveBeenCalledWith("/amp/tasks/task-1/pre-assessment");
+  } finally { global.fetch = previousFetch; }
 });
 
 test("an ordinary read recovers once from a temporary backend response", async () => {

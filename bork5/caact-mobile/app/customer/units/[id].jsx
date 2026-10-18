@@ -175,6 +175,7 @@ function requestStatusColors(status = "") {
   if (normalized === "completed") return { background: COLORS.successLight, text: COLORS.success };
   if (normalized === "cancelled") return { background: COLORS.dangerLight, text: COLORS.danger };
   if (["assigned", "in progress"].includes(normalized)) return { background: COLORS.primaryLight, text: COLORS.primaryDark };
+  if (normalized === "on hold") return { background: COLORS.warningLight, text: COLORS.warning };
   return { background: COLORS.warningLight, text: COLORS.warning };
 }
 

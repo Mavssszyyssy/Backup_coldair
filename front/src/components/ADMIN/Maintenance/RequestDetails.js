@@ -181,8 +181,8 @@ const RequestDetails = ({ request, onUpdated }) => {
     <VisitFollowUpPanel task={linkedTask} onUpdated={async () => {
       const result = await apiRequest(`/tasks/${encodeURIComponent(linkedTask.id || linkedTask.taskCode)}`);
       setLinkedTask(result.task);
-      setCurrent(value => ({ ...value, scheduledDate: result.task.scheduledDate, timeSlot: result.task.timeSlot }));
-      onUpdated?.({ ...current, scheduledDate: result.task.scheduledDate, timeSlot: result.task.timeSlot });
+      setCurrent(value => ({ ...value, status: 'In Progress', scheduledDate: result.task.scheduledDate, timeSlot: result.task.timeSlot }));
+      onUpdated?.({ ...current, status: 'In Progress', scheduledDate: result.task.scheduledDate, timeSlot: result.task.timeSlot });
     }} />
     <div className="maintenance-completion-note"><strong>Completion workflow</strong><span>{completionNote}</span></div>
     <div className="maintenance-detail-section"><h3>Technician arrival</h3>{hasCheckIn ? <><p>Checked in: {formatDateTime(checkIn.checkedInAt)}</p><p>{checkIn.latitude}, {checkIn.longitude}</p><a href={`https://www.google.com/maps?q=${checkIn.latitude},${checkIn.longitude}`} target="_blank" rel="noreferrer">Open check-in map</a></> : <p>No GPS check-in recorded yet.</p>}</div>
