@@ -423,7 +423,6 @@ export default function CustomerSettingsScreen() {
           <CustomerSettingsRow icon="log-out-sharp" title="Sign out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
         </Section>
         <Section title="Help & Support">
-          <CustomerSettingsRow icon="chatbubbles-sharp" title="AEROPULSE Assistant" subtitle="Ask about orders, payments, AC units, and service requests" onPress={() => router.push("/customer/chat")} />
           <CustomerSettingsRow icon="help-buoy-sharp" title="Frequently Asked Questions" subtitle="Orders, payments, delivery, warranty, and AC care" onPress={() => router.push("/customer/faq")} />
           <CustomerSettingsRow icon="chatbubble-ellipses-sharp" title="Contact Customer Support" subtitle="Get help with an order or service request" onPress={() => router.push("/customer/contact")} />
         </Section>

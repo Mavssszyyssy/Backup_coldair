@@ -56,8 +56,9 @@ test("customer mobile explains email sign-in verification without another securi
   expect(screen.getByText(/verify the code sent to your email/i)).toBeTruthy();
 });
 
-test("customer Account menu opens the existing AEROPULSE Assistant", async () => {
+test("customer Account menu omits the assistant while keeping FAQs available", async () => {
   await render(<CustomerSettingsScreen />);
-  await fireEvent.press(screen.getByRole("button", { name: "AEROPULSE Assistant" }));
-  expect(mockPush).toHaveBeenCalledWith("/customer/chat");
+  expect(screen.queryByRole("button", { name: "AEROPULSE Assistant" })).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Frequently Asked Questions" }));
+  expect(mockPush).toHaveBeenCalledWith("/customer/faq");
 });
