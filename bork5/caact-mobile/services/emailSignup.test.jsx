@@ -105,12 +105,29 @@ test("optional address can be skipped and registration keeps legal and email pro
     email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
     name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
   }));
-  await fireEvent.press(view.getByText("Continue Without Address"));
+  await fireEvent.press(view.getByText("Skip for now"));
   await waitFor(() => expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({
     role: "customer", contact_method: "email", locations: [],
     registrationVerificationToken: "email-proof",
     legalConsent: { app: true, service: true, warranty: true, privacy: true, version: LEGAL_VERSION },
   })));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/customer/oobe", params: { registered: "1" } });
+});
+
+test("only the selected address action shows progress during registration", async () => {
+  let finishRegistration;
+  mockRegister.mockImplementationOnce(() => new Promise((resolve) => { finishRegistration = resolve; }));
+  const view = await renderStep(SignUpStep3);
+  await act(async () => updateDraftForTest({
+    legalConsent: { app: true, service: true, warranty: true, privacy: true },
+    email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
+    name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
+  }));
+  fireEvent.press(view.getByText("Skip for now"));
+  await waitFor(() => expect(view.getByText("Creating account...")).toBeTruthy());
+  expect(view.getByText("Save Location")).toBeTruthy();
+  expect(view.getByLabelText("Save Location").props.accessibilityState.disabled).toBe(true);
+  await act(async () => finishRegistration({ success: true }));
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/customer/oobe", params: { registered: "1" } });
 });
 
@@ -121,7 +138,7 @@ test("creating with an address requires complete location fields", async () => {
     email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
     name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
   }));
-  await fireEvent.press(view.getAllByText("Create Account").at(-1));
+  await fireEvent.press(view.getByText("Save Location"));
   expect(mockRegister).not.toHaveBeenCalled();
   expect(view.getByText("Region is required.")).toBeTruthy();
 });

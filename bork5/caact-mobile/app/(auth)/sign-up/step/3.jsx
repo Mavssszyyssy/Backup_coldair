@@ -33,7 +33,7 @@ export default function SignUpStep3() {
   const router = useRouter();
   const { draft, updateDraft } = useRegistrationDraft();
   const { register } = useUserContext();
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState(null);
   const [form, setForm] = useState({
     region: draft.address.region || "",
     regionCode: draft.address.regionCode || "",
@@ -276,7 +276,7 @@ export default function SignUpStep3() {
   };
 
   const submitRegistration = async (includeAddress) => {
-    if (submitting || !validateAddress(includeAddress)) return;
+    if (submittingAction || !validateAddress(includeAddress)) return;
     if (!hasAllLegalConsents(draft.legalConsent) || !draft.emailVerified || !draft.registrationVerificationToken || !draft.name_first || !draft.name_last || !draft.password) {
       Alert.alert("Registration incomplete", "Please finish the earlier account steps before creating your account.");
       router.replace("/sign-up/step/0");
@@ -295,7 +295,7 @@ export default function SignUpStep3() {
       },
       source: "manual",
     };
-    setSubmitting(true);
+    setSubmittingAction(includeAddress ? "save" : "skip");
     try {
       const result = await register({
         name_first: draft.name_first.trim(), name_last: draft.name_last.trim(), suffix: draft.suffix.trim(),
@@ -318,7 +318,7 @@ export default function SignUpStep3() {
     } catch (error) {
       Alert.alert("Registration Failed", error?.message || "Unable to create account right now.");
     } finally {
-      setSubmitting(false);
+      setSubmittingAction(null);
     }
   };
 
@@ -503,17 +503,17 @@ export default function SignUpStep3() {
       <StickyActionBar>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <Button
-            title={submitting ? "Creating account..." : "Continue Without Address"}
+            title={submittingAction === "skip" ? "Creating account..." : "Skip for now"}
             onPress={() => submitRegistration(false)}
             variant="secondary"
-            disabled={submitting}
+            disabled={Boolean(submittingAction)}
             style={{ flex: 1 }}
           />
           <Button
-            title={submitting ? "Creating account..." : "Create Account"}
+            title={submittingAction === "save" ? "Creating account..." : "Save Location"}
             onPress={() => submitRegistration(true)}
             variant="primary"
-            disabled={submitting}
+            disabled={Boolean(submittingAction)}
             style={{ flex: 1 }}
             leftIcon={<Ionicons name="arrow-forward-sharp" size={18} color={COLORS.surface} />}
           />
