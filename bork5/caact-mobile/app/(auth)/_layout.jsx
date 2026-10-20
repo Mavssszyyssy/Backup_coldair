@@ -6,6 +6,7 @@ import { View } from "react-native";
 import LoadingLogo from "../../components/LoadingLogo";
 import { COLORS } from "../../constants/theme";
 import { useGuestGuard } from "../../hooks/useGuestGuard";
+import { RegistrationDraftProvider } from "../../context/RegistrationDraftContext";
 
 export default function AuthLayout() {
   const { current, initialized, redirectHref } = useGuestGuard();
@@ -30,6 +31,7 @@ export default function AuthLayout() {
   }
 
   return (
+    <RegistrationDraftProvider>
     <Stack screenOptions={{ headerShown: false }} initialRouteName="sign-in">
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="login" />
@@ -37,8 +39,10 @@ export default function AuthLayout() {
       <Stack.Screen name="sign-up/step/0" />
       <Stack.Screen name="sign-up/step/1" />
       <Stack.Screen name="sign-up/step/2" />
+      <Stack.Screen name="sign-up/step/3" />
       <Stack.Screen name="recover/index" />
       <Stack.Screen name="recover/factor/1" />
     </Stack>
+    </RegistrationDraftProvider>
   );
 }
