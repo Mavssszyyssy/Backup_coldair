@@ -164,12 +164,14 @@ function ProductModal({ product, onClose, onAddToCart }) {
                         : (product.stockLabel || `${availableStock} units available`)}
                     </BoutiqueTechnicalCard>
                   </div>
-                  <BoutiqueNumberInput
-                    value={quantity}
-                    onChange={setQuantity}
-                    max={maxQuantity}
-                    width="180px"
-                  />
+                  {!isOutOfStock ? (
+                    <BoutiqueNumberInput
+                      value={quantity}
+                      onChange={setQuantity}
+                      max={maxQuantity}
+                      width="180px"
+                    />
+                  ) : null}
                 </div>
 
                 <div className="bq-modal-reveal-container">
@@ -182,16 +184,13 @@ function ProductModal({ product, onClose, onAddToCart }) {
                         </span>
                       </div>
                     </div>
-                    <div className="bq-modal-buy-row">
-                      <BoutiqueButton
-                        variant="outline"
-                        fullWidth
-                        onClick={handleBuyNow}
-                        disabled={isOutOfStock}
-                      >
-                        Buy Now <Lightning size={18} weight="fill" />
-                      </BoutiqueButton>
-                    </div>
+                    {!isOutOfStock ? (
+                      <div className="bq-modal-buy-row">
+                        <BoutiqueButton variant="outline" fullWidth onClick={handleBuyNow}>
+                          Buy Now <Lightning size={18} weight="fill" />
+                        </BoutiqueButton>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="bq-modal-add-row">

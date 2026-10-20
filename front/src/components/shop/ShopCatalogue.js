@@ -25,6 +25,8 @@ export default function ShopCatalogue({
     { value: "hp_desc", label: "Horsepower: High to Low" },
     { value: "name_asc", label: "Name: A to Z" },
   ];
+  const availableProducts = products.filter((product) => product.inStock !== false);
+  const unavailableProducts = products.filter((product) => product.inStock === false);
 
   return (
     <BoutiqueBox
@@ -110,17 +112,29 @@ export default function ShopCatalogue({
             ) : null}
           </BoutiqueBox>
         ) : (
-          <BoutiqueGrid className="bq-grid">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAddToCart={onAddToCart}
-                onBuyNow={onBuyNow}
-                onClick={onProductClick}
-              />
-            ))}
-          </BoutiqueGrid>
+          <BoutiqueBox>
+            {availableProducts.length > 0 ? (
+              <BoutiqueBox tag="section" margin="0 0 36px">
+                <BoutiqueText variant="h3" margin="0 0 18px">Available now ({availableProducts.length})</BoutiqueText>
+                <BoutiqueGrid className="bq-grid">
+                  {availableProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
+                  ))}
+                </BoutiqueGrid>
+              </BoutiqueBox>
+            ) : null}
+            {unavailableProducts.length > 0 ? (
+              <BoutiqueBox tag="section" aria-label="Out of stock products">
+                <BoutiqueText variant="h3" margin="0 0 6px">Out of stock ({unavailableProducts.length})</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">You can view these AC units, but they cannot be ordered until stock returns.</BoutiqueText>
+                <BoutiqueGrid className="bq-grid">
+                  {unavailableProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
+                  ))}
+                </BoutiqueGrid>
+              </BoutiqueBox>
+            ) : null}
+          </BoutiqueBox>
         )}
       </BoutiqueBox>
 

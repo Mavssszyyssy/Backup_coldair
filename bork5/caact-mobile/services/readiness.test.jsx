@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { filterAndSortProducts, getProductImageAssetKey } from "./ecommerceService";
+import { filterAndSortProducts, getProductImageAssetKey, partitionProductsByAvailability } from "./ecommerceService";
 import {
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
@@ -60,6 +60,17 @@ describe("mobile customer readiness rules", () => {
     ];
     expect(filterAndSortProducts(products, { selectedBrand: "Cold Air" })).toHaveLength(1);
     expect(filterAndSortProducts(products, { searchTerm: "OT-1" })[0].id).toBe("2");
+  });
+
+  test("shop keeps unavailable products after available products for display", () => {
+    const products = [
+      { id: "sold-out", inStock: false },
+      { id: "ready-1", inStock: true },
+      { id: "ready-2", inStock: true },
+    ];
+    const groups = partitionProductsByAvailability(products);
+    expect(groups.available.map((product) => product.id)).toEqual(["ready-1", "ready-2"]);
+    expect(groups.unavailable.map((product) => product.id)).toEqual(["sold-out"]);
   });
 
   test("mobile shop uses bundled catalog images for each seeded model family", () => {

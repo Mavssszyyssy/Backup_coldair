@@ -612,6 +612,10 @@ const Shop = () => {
   }, [products]);
 
   const handleAddToCart = (product, qty = 1) => {
+    if (!product.inStock) {
+      alert("This AC unit is currently out of stock and cannot be added to your cart.");
+      return;
+    }
     if (!isAuthenticated) {
       return showAuthRequiredPrompt(
         "Sign in to add this AC unit to your cart.",
@@ -622,6 +626,10 @@ const Shop = () => {
   };
 
   const handleBuyNow = (product) => {
+    if (!product.inStock) {
+      alert("This AC unit is currently out of stock and cannot be ordered.");
+      return;
+    }
     if (!isAuthenticated) {
       return showAuthRequiredPrompt("Sign in to buy this AC unit.");
     }

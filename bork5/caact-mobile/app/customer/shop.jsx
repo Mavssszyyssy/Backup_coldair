@@ -28,6 +28,7 @@ import {
   fallbackProducts,
   fetchShopProducts,
   filterAndSortProducts,
+  partitionProductsByAvailability,
   formatPeso,
   mergeProducts,
 } from "../../services/ecommerceService";
@@ -118,30 +119,19 @@ function ProductCard({ product, onPress, onAddToCart, onBuyNow }) {
             {formatPeso(product.price)}
           </BoutiqueText>
           <BoutiqueChip
-            label={product.stock > 0 ? (product.stockLabel || `${product.stock} units`) : "Out"}
-            variant={product.stock > 0 ? "success" : "danger"}
+            label={product.inStock ? (product.stockLabel || `${product.stock} units`) : "Out of stock"}
+            variant={product.inStock ? "success" : "danger"}
           />
         </View>
 
-        <View style={{ flexDirection: "row", gap: BQ_SPACING.sm }}>
-          <BoutiqueButton
-            title="Buy Now"
-            variant="outline"
-            size="sm"
-            disabled={!product.inStock}
-            onPress={() => onBuyNow(product)}
-            style={{ flex: 1 }}
-            rightIcon={<Ionicons name="flash-sharp" size={16} color={BQ_COLORS.ink} />}
-          />
-          <BoutiqueButton
-            title="Add"
-            size="sm"
-            disabled={!product.inStock}
-            onPress={() => onAddToCart(product)}
-            style={{ flex: 1 }}
-            rightIcon={<Ionicons name="cart-sharp" size={16} color="#fff" />}
-          />
-        </View>
+        {product.inStock ? (
+          <View style={{ flexDirection: "row", gap: BQ_SPACING.sm }}>
+            <BoutiqueButton title="Buy Now" variant="outline" size="sm" onPress={() => onBuyNow(product)} style={{ flex: 1 }} rightIcon={<Ionicons name="flash-sharp" size={16} color={BQ_COLORS.ink} />} />
+            <BoutiqueButton title="Add" size="sm" onPress={() => onAddToCart(product)} style={{ flex: 1 }} rightIcon={<Ionicons name="cart-sharp" size={16} color="#fff" />} />
+          </View>
+        ) : (
+          <BoutiqueButton title="Out of stock" variant="outline" size="sm" disabled fullWidth />
+        )}
       </View>
     </BoutiqueCard>
   );
@@ -270,17 +260,21 @@ function ProductModal({ product, visible, onClose, onAddToCart, onBuyNow }) {
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BQ_SPACING.sm }}>
               {product.specs ? <BoutiqueChip label={product.specs} variant="blue" /> : null}
               <BoutiqueChip label={product.category} variant="neutral" />
-              <BoutiqueChip label={product.stock > 0 ? (product.stockLabel || `${product.stock} units`) : "Out of stock"} variant={product.stock > 0 ? "success" : "danger"} />
+              <BoutiqueChip label={product.inStock ? (product.stockLabel || `${product.stock} units`) : "Out of stock"} variant={product.inStock ? "success" : "danger"} />
             </View>
             <BoutiqueText color={BQ_COLORS.inkMuted}>{product.description}</BoutiqueText>
             <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
               Warranty: {product.warranty}
             </BoutiqueText>
             <BoutiqueText variant="h1">{formatPeso(product.price)}</BoutiqueText>
-            <View style={{ flexDirection: "row", gap: BQ_SPACING.sm }}>
-              <BoutiqueButton title="Add to Cart" fullWidth disabled={!product.inStock} onPress={() => onAddToCart(product)} style={{ flex: 1 }} />
-              <BoutiqueButton title="Buy Now" variant="outline" fullWidth disabled={!product.inStock} onPress={() => onBuyNow(product)} style={{ flex: 1 }} />
-            </View>
+            {product.inStock ? (
+              <View style={{ flexDirection: "row", gap: BQ_SPACING.sm }}>
+                <BoutiqueButton title="Add to Cart" fullWidth onPress={() => onAddToCart(product)} style={{ flex: 1 }} />
+                <BoutiqueButton title="Buy Now" variant="outline" fullWidth onPress={() => onBuyNow(product)} style={{ flex: 1 }} />
+              </View>
+            ) : (
+              <BoutiqueButton title="Out of stock" variant="outline" fullWidth disabled />
+            )}
           </View>
         </BoutiqueCard>
       </View>
@@ -341,6 +335,10 @@ export default function CustomerShopScreen() {
     () => filterAndSortProducts(products, { selectedCategory, selectedBrand, searchTerm, sortBy }),
     [products, selectedCategory, selectedBrand, searchTerm, sortBy],
   );
+  const { available: availableProducts, unavailable: unavailableProducts } = useMemo(
+    () => partitionProductsByAvailability(filteredProducts),
+    [filteredProducts],
+  );
 
   const requireCustomer = () => {
     if (current) return true;
@@ -350,12 +348,14 @@ export default function CustomerShopScreen() {
   };
 
   const handleAddToCart = (product) => {
+    if (!product.inStock) return;
     if (!requireCustomer()) return;
     addToCart(product, 1);
     setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
   };
 
   const handleBuyNow = (product) => {
+    if (!product.inStock) return;
     if (!requireCustomer()) return;
     addToCart(product, 1);
     router.push("/customer/checkout");
@@ -365,7 +365,7 @@ export default function CustomerShopScreen() {
     <>
       <BoutiqueHeader
         title="Shop AC Units"
-        subtitle="Available stock across all branches"
+        subtitle="Browse AC units and stock across all branches"
         onCart={() => setCartOpen(true)}
         cartCount={cartCount}
       />
@@ -473,15 +473,25 @@ export default function CustomerShopScreen() {
             />
           </BoutiqueCard>
         ) : (
-          filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onPress={() => setSelectedProduct(product)}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-            />
-          ))
+          <View style={{ gap: BQ_SPACING.sm }}>
+            {availableProducts.length > 0 ? (
+              <View>
+                <BoutiqueText variant="h3" style={{ marginBottom: BQ_SPACING.sm }}>Available now ({availableProducts.length})</BoutiqueText>
+                {availableProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} onPress={() => setSelectedProduct(product)} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
+                ))}
+              </View>
+            ) : null}
+            {unavailableProducts.length > 0 ? (
+              <View>
+                <BoutiqueText variant="h3" style={{ marginBottom: BQ_SPACING.xs }}>Out of stock ({unavailableProducts.length})</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} style={{ marginBottom: BQ_SPACING.md }}>View these AC units while waiting for stock to return.</BoutiqueText>
+                {unavailableProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} onPress={() => setSelectedProduct(product)} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
+                ))}
+              </View>
+            ) : null}
+          </View>
         )}
       </BoutiqueScreen>
 

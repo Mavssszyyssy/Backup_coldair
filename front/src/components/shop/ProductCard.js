@@ -50,10 +50,11 @@ export default function ProductCard({
 
   const horsepower = product.specs || product.capacity || "";
   const brandLogoUrl = getBrandLogo(product.brand);
+  const outOfStock = product.inStock === false;
 
   return (
     <BoutiqueBox
-      className={`bq-card ${product.featured ? "featured" : ""}`}
+      className={`bq-card ${product.featured ? "featured" : ""} ${outOfStock ? "bq-card--unavailable" : ""}`}
       onClick={() => onClick(product)}
       tag="div"
     >
@@ -89,7 +90,11 @@ export default function ProductCard({
           </BoutiqueBox>
         )}
 
-        {product.discount > 0 && (
+        {outOfStock ? (
+          <BoutiqueBox className="bq-card-badge-right">
+            <BoutiqueTechnicalCard variant="danger" size="sm">Out of stock</BoutiqueTechnicalCard>
+          </BoutiqueBox>
+        ) : product.discount > 0 && (
           <BoutiqueBox className="bq-card-badge-right">
             <BoutiqueTechnicalCard variant="danger" size="sm">
               {product.discount}% OFF
@@ -187,10 +192,10 @@ export default function ProductCard({
               </BoutiqueBox>
 
               <BoutiqueTechnicalCard
-                variant={product.stock > 0 ? "success" : "danger"}
+                variant={outOfStock ? "danger" : "success"}
                 size="sm"
               >
-                {product.stock > 0 ? (product.stockLabel || `${product.stock} Units`) : "Out of Stock"}
+                {outOfStock ? "Currently unavailable" : (product.stockLabel || `${product.stock} Units`)}
               </BoutiqueTechnicalCard>
             </BoutiqueBox>
 
@@ -203,9 +208,9 @@ export default function ProductCard({
                   e.stopPropagation();
                   onBuyNow(product);
                 }}
-                disabled={!product.inStock}
+                disabled={outOfStock}
               >
-                Buy Now <Lightning size={18} weight="fill" />
+                {outOfStock ? "Out of stock" : <>Buy Now <Lightning size={18} weight="fill" /></>}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueStack>
@@ -224,9 +229,9 @@ export default function ProductCard({
                 e.stopPropagation();
                 onAddToCart(product, 1);
               }}
-              disabled={!product.inStock}
+              disabled={outOfStock}
             >
-              Add to Cart <ShoppingCart size={18} weight="bold" />
+              {outOfStock ? "Unavailable" : <>Add to Cart <ShoppingCart size={18} weight="bold" /></>}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueBox>
@@ -299,6 +304,8 @@ export default function ProductCard({
         .bq-card:hover .bq-reveal-group {
           transform: translateY(0);
         }
+
+        .bq-card--unavailable .bq-reveal-group { transform: translateY(0); }
 
         .bq-current-price {
           letter-spacing: -0.05em;

@@ -491,6 +491,12 @@ function Checkout() {
         }),
       });
       const created = response.order;
+      const orderId = created?._id || created?.id;
+      if (!orderId) {
+        const error = new Error("The order response did not include a reference. Check My Orders before trying again.");
+        error.code = "ORDER_REFERENCE_MISSING";
+        throw error;
+      }
       const paymentUrl =
         response.payment?.checkoutUrl ||
         response.payment?.checkout_url ||
@@ -500,14 +506,30 @@ function Checkout() {
       orderRequestKeyRef.current = "";
       clearCheckoutIdempotencyKey();
       clearCart();
-      if (paymentUrl) {
-        openOnlineCheckout(paymentUrl, created._id || created.id);
+      if (selectedPayment !== "cod") {
+        if (!paymentUrl) {
+          alert("The secure payment link is unavailable. Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.");
+          setIsProcessingPayment(false);
+          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
+          return;
+        }
+        try {
+          openOnlineCheckout(paymentUrl, orderId);
+        } catch (openError) {
+          alert(`${openError?.message || "Unable to open secure payment."} Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.`);
+          setIsProcessingPayment(false);
+          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
+        }
         return;
       }
       setIsProcessingPayment(false);
-      navigate(`/order-confirmation/${created._id || created.id}`);
+      navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
     } catch (error) {
       setIsProcessingPayment(false);
+      if (error?.code === "ORDER_REFERENCE_MISSING") {
+        alert(error.message);
+        return;
+      }
       if (error?.code === "PAYMENT_CONNECTION_TIMEOUT" || error?.code === "API_TIMEOUT") {
         alert(error.message);
         return;

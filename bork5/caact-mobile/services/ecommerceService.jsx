@@ -91,6 +91,10 @@ export const filterAndSortProducts = (products, { selectedCategory = "all", sele
   const filtered = products.filter((product) => (selectedCategory === "all" || product.category === selectedCategory) && (selectedBrand === "all" || product.brand === selectedBrand) && (!query || [product.name, product.brand, product.model, product.sku].join(" ").toLowerCase().includes(query)));
   return [...filtered].sort((a, b) => ({ price_asc: a.price - b.price, price_desc: b.price - a.price, hp_asc: String(a.specs).localeCompare(String(b.specs)), hp_desc: String(b.specs).localeCompare(String(a.specs)), name_asc: a.name.localeCompare(b.name) }[sortBy] || 0));
 };
+export const partitionProductsByAvailability = (products = []) => ({
+  available: products.filter((product) => product.inStock),
+  unavailable: products.filter((product) => !product.inStock),
+});
 export const mergeProducts = (fallback, backend) => {
   const merged = new Map((fallback || []).map((product) => [String(product.id), product]));
   (backend || []).forEach((product) => merged.set(String(product.id), product));

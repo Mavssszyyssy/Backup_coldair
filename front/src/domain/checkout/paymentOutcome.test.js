@@ -36,3 +36,25 @@ test("browser Back returns to the saved order, including cached checkout and ret
   onPageShow({ persisted: true });
   expect(browser.location.reload).toHaveBeenCalledTimes(1);
 });
+
+test.each(["", "not-a-url", "http://checkout.example", "javascript:alert(1)"])(
+  "invalid payment link %s is rejected before changing browser history",
+  (paymentUrl) => {
+    const browser = { history: { state: null, replaceState: vi.fn() }, location: { assign: vi.fn() } };
+    expect(() => openOnlineCheckout(paymentUrl, "order123", browser)).toThrow(/secure payment link is invalid/i);
+    expect(browser.history.replaceState).not.toHaveBeenCalled();
+    expect(browser.location.assign).not.toHaveBeenCalled();
+  },
+);
+
+test("a browser-open failure restores the checkout URL and reports a payment-link error", () => {
+  const browser = {
+    history: { state: { idx: 2 }, replaceState: vi.fn() },
+    location: { pathname: "/checkout", search: "?from=cart", hash: "", assign: vi.fn(() => { throw new Error("Blocked"); }) },
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
+  expect(() => openOnlineCheckout("https://checkout.example", "order123", browser)).toThrow(/could not open the secure payment link/i);
+  expect(browser.history.replaceState).toHaveBeenLastCalledWith({ idx: 2 }, "", "/checkout?from=cart");
+  expect(browser.removeEventListener).toHaveBeenCalledWith("pageshow", expect.any(Function));
+});
