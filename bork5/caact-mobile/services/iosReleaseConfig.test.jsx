@@ -38,7 +38,8 @@ test("requests only iOS permissions used by current features", () => {
   expect(pluginConfig("expo-location")).toMatchObject({
     locationAlwaysAndWhenInUsePermission: false,
     locationAlwaysPermission: false,
-    motionUsagePermission: false,
+    motionUsagePermission:
+      "Allow Cold Air ACT to use motion activity to support location-based technician check-ins and service visits.",
     isIosBackgroundLocationEnabled: false,
   });
   expect(pluginConfig("expo-notifications")).toMatchObject({

@@ -61,7 +61,7 @@
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "locationWhenInUsePermission": "Allow Cold Air ACT to use your location for service addresses and technician check-ins.",
-          "motionUsagePermission": false,
+          "motionUsagePermission": "Allow Cold Air ACT to use motion activity to support location-based technician check-ins and service visits.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false,
