@@ -77,6 +77,15 @@
   color: var(--gray-800);
 }
 
+/* The legacy dashboard sets its own light canvas and text tokens. Keep them
+   consistent with the surrounding Admin shell when the account uses dark mode. */
+:root[data-theme='dark'] .admin-layout .admin-dashboard.commerce-dashboard {
+  --gray-800: #e2e8f0;
+  --gray-900: #f1f5f9;
+  background: transparent;
+  color: #e2e8f0;
+}
+
 /* ── Welcome ── */
 .welcome-section {
   margin-bottom: 28px;

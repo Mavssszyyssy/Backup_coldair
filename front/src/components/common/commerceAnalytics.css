@@ -85,3 +85,31 @@
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table td{border-bottom-color:#26364c}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-empty{border-color:#3a4d66;background:#162236;color:#a8b7c9}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--red{color:#f87171}
+
+/* Reporting controls and data cards share the same low-glare surfaces as the
+   surrounding dashboard. Their light defaults otherwise leave bright islands. */
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-date-filter,
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-branch-details {
+  border-color: #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-date-filter label {
+  color: #e2e8f0;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-updated {
+  border-color: #475569;
+  background: #26364a;
+  color: #bfdbfe;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-bar-track,
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-rank {
+  background: #26364a;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-product-track {
+  background: #344459;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--blue { color: #60a5fa; }
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--green { color: #34d399; }
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--violet { color: #a78bfa; }
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--amber { color: #fbbf24; }

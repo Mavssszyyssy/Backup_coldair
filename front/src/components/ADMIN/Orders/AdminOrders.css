@@ -361,6 +361,8 @@
 .admin-order-fulfillment label {
   display: grid;
   min-width: 0;
+  grid-template-rows: minmax(2.7em, auto) 56px;
+  align-content: start;
   gap: 5px;
   color: #475569;
   font-size: 12px;
@@ -381,6 +383,17 @@
   padding: 8px 10px;
   font: inherit;
   text-transform: none;
+}
+
+.admin-order-fulfillment select,
+.admin-order-fulfillment input[type='date'] {
+  height: 56px;
+  min-height: 56px;
+}
+
+.admin-order-fulfillment label small {
+  grid-row: 3;
+  line-height: 1.35;
 }
 
 .admin-order-items {

@@ -49,6 +49,75 @@
   --ops-shadow-md: 0 12px 30px rgba(6, 12, 20, 0.26);
   background: var(--ops-canvas);
   color: var(--ops-text);
+  color-scheme: dark;
+}
+
+/* The branch Admin shell has older light sidebar rules. Scope the dark
+   override to Admin so Superadmin keeps its existing independent palette. */
+:root[data-theme="dark"] .admin-layout .admin-sidebar {
+  border-right: 1px solid #344459;
+  background: #1d2939;
+  color: #d7e0eb;
+  box-shadow: 6px 0 24px rgba(6, 12, 20, 0.22);
+}
+:root[data-theme="dark"] .admin-layout .admin-sidebar-brand-row,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-footer,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-subnav {
+  border-color: #344459;
+}
+:root[data-theme="dark"] .admin-layout .admin-sidebar-brand { color: #f1f5f9; }
+:root[data-theme="dark"] .admin-layout .admin-sidebar-brand-copy small { color: #a8bdd3; }
+:root[data-theme="dark"] .admin-layout .admin-sidebar-link,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-sublink { color: #cbd5e1; }
+:root[data-theme="dark"] .admin-layout .admin-sidebar-link:hover,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-link.active,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-sublink:hover,
+:root[data-theme="dark"] .admin-layout .admin-sidebar-sublink.active {
+  background: #2a3950;
+  color: #f8fafc;
+}
+:root[data-theme="dark"] .admin-layout .admin-sidebar-link.active .nav-icon {
+  background: #35466a;
+  color: #d5dbff;
+}
+:root[data-theme="dark"] .admin-layout .admin-sidebar-logout {
+  border-color: #6f4650;
+  background: #352831;
+  color: #f2b8c0;
+}
+:root[data-theme="dark"] .admin-layout .admin-sidebar-close,
+:root[data-theme="dark"] .admin-layout .burger-button,
+:root[data-theme="dark"] .admin-layout .admin-notifications-btn {
+  border-color: #4a5b72;
+  background: #243347;
+  color: #e2e8f0;
+}
+:root[data-theme="dark"] .admin-layout .burger-button span { background: #e2e8f0; }
+:root[data-theme="dark"] .admin-layout .admin-notifications-badge { border-color: #243347; }
+:root[data-theme="dark"] .admin-layout .admin-notifications-panel,
+:root[data-theme="dark"] .admin-layout .admin-notifications-item {
+  border-color: #344459;
+  background: #1d2939;
+}
+:root[data-theme="dark"] .admin-layout .admin-notifications-item.unread,
+:root[data-theme="dark"] .admin-layout .admin-notifications-item:hover,
+:root[data-theme="dark"] .admin-layout .admin-notifications-tabs button,
+:root[data-theme="dark"] .admin-layout .admin-notifications-archive {
+  background: #26364a;
+}
+:root[data-theme="dark"] .admin-layout .admin-notifications-title,
+:root[data-theme="dark"] .admin-layout .admin-notifications-item-title { color: #f1f5f9; }
+:root[data-theme="dark"] .admin-layout .admin-notifications-item-msg,
+:root[data-theme="dark"] .admin-layout .admin-notifications-item-time,
+:root[data-theme="dark"] .admin-layout .admin-notifications-empty { color: #cbd5e1; }
+:root[data-theme="dark"] .admin-layout .admin-notifications-link,
+:root[data-theme="dark"] .admin-layout .admin-notifications-archive { color: #bfdbfe; }
+:root[data-theme="dark"] .admin-layout .admin-card h3 { border-color: #475569; }
+:root[data-theme="dark"] .admin-layout .admin-card .admin-settings-success { color: #6ee7b7; }
+:root[data-theme="dark"] .admin-layout .admin-card :is(input, select, textarea):focus {
+  border-color: #60a5fa;
+  background: #26364a;
+  color: #f8fafc;
 }
 
 :is(.admin-layout, .super-layout) *,
