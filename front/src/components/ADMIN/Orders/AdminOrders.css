@@ -605,7 +605,8 @@
 .admin-assign-technician-btn {
   align-self: end;
   grid-column: 1 / -1;
-  justify-self: end;
+  justify-self: stretch;
+  width: 100%;
   max-width: 100%;
   white-space: normal;
   background: #0f766e;

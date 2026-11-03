@@ -136,6 +136,9 @@ test('creates a work order from linked customer, address, unit, service, and tec
   fireEvent.change(screen.getByLabelText(/Registered AC unit/), { target: { value: 'unit-1' } });
   fireEvent.change(screen.getByLabelText('Work type'), { target: { value: 'repair' } });
   fireEvent.change(screen.getByLabelText('Assign technician'), { target: { value: 'tech-1' } });
+  const priority = screen.getByLabelText('Priority');
+  expect(within(priority).getAllByRole('option').map((option) => option.value)).toEqual(['urgent', 'high', 'medium', 'normal', 'low']);
+  fireEvent.change(priority, { target: { value: 'urgent' } });
   fireEvent.click(screen.getByRole('button', { name: 'Assign work order' }));
 
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/tasks', expect.objectContaining({ method: 'POST' })));
@@ -151,6 +154,7 @@ test('creates a work order from linked customer, address, unit, service, and tec
     unitId: 'unit-1',
     assignedTechnicianId: 'tech-1',
     branch: 'Cavite',
+    priority: 'urgent',
   });
 });
 

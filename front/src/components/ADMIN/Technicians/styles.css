@@ -44,7 +44,10 @@
 .tech-details-toggle:focus-visible, .tech-primary-button:focus-visible, .tech-secondary-button:focus-visible, .tech-danger-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 .tech-person-details { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
 .tech-person-control-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.tech-person-edit-row { align-items: start; }
+.tech-person-edit-row > button { align-self: start; margin-top: 21px; min-height: 44px; }
 .tech-person-action-row--admin { display: flex; justify-content: flex-end; }
+.tech-person-action-row { border-top: 1px solid #e2e8f0; padding-top: 12px; }
 .tech-person-action-row--admin > button { min-width: 0; }
 .tech-person-summary { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
 .tech-person-main > div:last-child { min-width: 0; }
@@ -146,6 +149,7 @@
   .tech-account-status, .tech-availability { justify-self: start; }
   .tech-details-toggle, .tech-inline-select, .tech-person-control-row > button { width: 100%; }
   .tech-person-control-row { grid-template-columns: 1fr; }
+  .tech-person-edit-row > button { margin-top: 0; }
   .tech-pagination { align-items: flex-start; flex-direction: column; }
   .tech-work-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-work-footer { align-items: stretch; flex-direction: column; }

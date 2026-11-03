@@ -18,7 +18,7 @@ vi.mock('../../../context/UserContext', () => ({
       assignedBranch: 'Cavite',
       activeBranch: 'Bulacan',
       permissions: ['manage_branch_operations'],
-      preferences: { currency: 'PHP', language: languageState.value },
+      preferences: { currency: 'PHP', language: languageState.value, theme: 'dark', darkMode: true },
       notifications: {
         email: true,
         inApp: true,
@@ -52,6 +52,7 @@ it('shows the admin settings interface in Filipino when that account preference 
   render(<AdminSettings />);
   expect(screen.getByText('Impormasyon ng Kompanya')).toBeInTheDocument();
   expect(screen.getByLabelText('Wika ng interface')).toHaveValue('Filipino');
+  expect(screen.getByLabelText('Tema')).toHaveValue('dark');
   expect(screen.getByRole('button', { name: 'I-save ang mga Setting ng Sistema' })).toBeInTheDocument();
 });
 
@@ -65,18 +66,20 @@ it('shows company and assigned-branch details without redundant authority panels
   expect(screen.queryByText('Role & Permissions')).not.toBeInTheDocument();
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/Currency display preference/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Theme')).toHaveValue('dark');
 });
 
 it('saves only database-backed preferences and alert settings', async () => {
   render(<AdminSettings />);
 
   fireEvent.change(screen.getByLabelText('Interface language'), { target: { value: 'Filipino' } });
+  fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'light' } });
   fireEvent.click(screen.getByLabelText('Push alerts'));
   fireEvent.click(screen.getByRole('button', { name: 'Save System Settings' }));
 
   await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
   const payload = updateSettings.mock.calls[0][0];
-  expect(payload.preferences).toEqual({ language: 'Filipino' });
+  expect(payload.preferences).toEqual({ language: 'Filipino', theme: 'light', darkMode: false });
   expect(payload.notifications.push).toBe(true);
   expect(payload).not.toHaveProperty('general');
   expect(payload).not.toHaveProperty('roles');

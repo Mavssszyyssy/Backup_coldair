@@ -154,7 +154,7 @@ const SuperAdminSettings = () => {
         <label>{t('Language')}<select value={preferences.language} onChange={(event) => updateDisplayPreference('language', event.target.value)}><option value="English">{t('English')}</option><option value="Filipino">{t('Filipino')}</option></select></label>
         <label>{t('Currency')}<select value={preferences.currency} onChange={(event) => updateDisplayPreference('currency', event.target.value)}><option value="PHP">PHP — Philippine Peso</option><option value="USD">USD — US Dollar</option></select></label>
         <label>{t('Time zone')}<select value={preferences.timezone} onChange={(event) => updateDisplayPreference('timezone', event.target.value)}><option value="Asia/Manila">Asia/Manila (PHT)</option><option value="UTC">UTC</option></select></label>
-        <button type="button" onClick={saveDisplayPreferences} disabled={savingPreferences}>{t(savingPreferences ? 'Saving display preferences…' : 'Save display preferences')}</button>
+        <button type="button" className="hq-display-save" onClick={saveDisplayPreferences} disabled={savingPreferences}>{t(savingPreferences ? 'Saving display preferences…' : 'Save display preferences')}</button>
         {preferencesNotice ? <span className="hq-success" role="status">{t(preferencesNotice)}</span> : null}
         {preferencesError ? <span className="hq-error" role="alert">{t(preferencesError)}</span> : null}
       </section>

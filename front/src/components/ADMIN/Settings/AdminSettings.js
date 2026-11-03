@@ -30,6 +30,7 @@ function AdminSettings() {
   const { user, updateSettings, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
   const [language, setLanguage] = useState('English');
+  const [theme, setTheme] = useState('light');
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -37,9 +38,12 @@ function AdminSettings() {
 
   useEffect(() => {
     setLanguage(user?.preferences?.language || 'English');
+    setTheme(user?.preferences?.theme || (user?.preferences?.darkMode ? 'dark' : 'light'));
     setNotifications({ ...DEFAULT_NOTIFICATIONS, ...(user?.notifications || {}) });
   }, [
     user?.preferences?.language,
+    user?.preferences?.theme,
+    user?.preferences?.darkMode,
     user?.notifications?.email,
     user?.notifications?.inApp,
     user?.notifications?.push,
@@ -72,7 +76,7 @@ function AdminSettings() {
       // preference and notification schemas. Company, branch and authority
       // values never enter the update payload.
       await updateSettings({
-        preferences: { language },
+        preferences: { language, theme, darkMode: theme === 'dark' },
         notifications: {
           email: Boolean(notifications.email),
           inApp: Boolean(notifications.inApp),
@@ -138,6 +142,12 @@ function AdminSettings() {
               <select value={language} onChange={(event) => setLanguage(event.target.value)}>
                 <option value="English">{t('English')}</option>
                 <option value="Filipino">{t('Filipino')}</option>
+              </select>
+            </label>
+            <label>{t('Theme')}
+              <select value={theme} onChange={(event) => setTheme(event.target.value)}>
+                <option value="light">{t('Light')}</option>
+                <option value="dark">{t('Dark')}</option>
               </select>
             </label>
           </div>
