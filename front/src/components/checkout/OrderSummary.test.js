@@ -32,7 +32,8 @@ it('handles failed images without a retry loop and loads a changed image source'
   expect(screen.getByRole('img', { name: /product image unavailable/ })).toBeInTheDocument();
   expect(document.querySelector('img')).toBeNull();
   rerender(view({ ...item, imageUrl: '/catalog/ac/tcl-uje-window.jpg' }));
-  expect(screen.getByRole('img', { name: item.name })).toHaveAttribute('src', '/catalog/ac/tcl-uje-window-card.jpg');
+  expect(screen.getByRole('img', { name: item.name })).toHaveAttribute('src', '/catalog/ac/tcl-uje-window-card.webp');
+  expect(existsSync(path.resolve('public', 'catalog/ac/tcl-uje-window-card.webp'))).toBe(true);
   fireEvent.error(screen.getByRole('img', { name: item.name }));
   expect(screen.getByRole('img', { name: item.name })).toHaveAttribute('src', '/catalog/ac/tcl-uje-window.jpg');
 });

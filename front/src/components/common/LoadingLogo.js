@@ -1,4 +1,4 @@
-import coldAirLogo from "./images/Cold Air Logo.jpg";
+const coldAirLogo = "/Cold Air Logo-compact.webp";
 
 function LoadingLogo({ compact = false, label = "Loading" }) {
   return (

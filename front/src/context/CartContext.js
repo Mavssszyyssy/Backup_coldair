@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { apiRequest } from "../config/api";
+import { useUser } from "./UserContext";
 
 const CartContext = createContext();
 
@@ -12,23 +13,37 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
+  const { isAuthenticated, loading: authLoading, user } = useUser();
   const [cart, setCart] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const sessionGeneration = useRef(0);
+  const readyToSync = useRef(false);
 
   useEffect(() => {
     const clearOnLogout = () => {
       sessionGeneration.current += 1;
+      readyToSync.current = false;
+      setIsInitialLoad(true);
       setCart([]);
     };
     window.addEventListener("auth:session-ended", clearOnLogout);
     return () => window.removeEventListener("auth:session-ended", clearOnLogout);
   }, []);
 
-  // Load cart from server session on mount
+  // Anonymous visitors do not need a cart session to browse the public catalogue.
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated || user?.role !== "customer") {
+      sessionGeneration.current += 1;
+      readyToSync.current = false;
+      setIsInitialLoad(true);
+      setCart([]);
+      return;
+    }
+    readyToSync.current = false;
+    setIsInitialLoad(true);
     const fetchSession = async () => {
-      const generation = sessionGeneration.current;
+      const generation = ++sessionGeneration.current;
       try {
         const response = await apiRequest("/auth/session");
         if (generation === sessionGeneration.current && response.session && Array.isArray(response.session.cart)) {
@@ -37,15 +52,21 @@ export const CartProvider = ({ children }) => {
       } catch (err) {
         console.error("Failed to fetch session cart", err);
       } finally {
-        setIsInitialLoad(false);
+        if (generation === sessionGeneration.current) setIsInitialLoad(false);
       }
     };
     fetchSession();
-  }, []);
+    return () => { sessionGeneration.current += 1; };
+  }, [authLoading, isAuthenticated, user?.id, user?.role]);
 
   // Sync cart to server session on changes (debounced)
   useEffect(() => {
-    if (isInitialLoad) return;
+    if (isInitialLoad || !isAuthenticated || user?.role !== "customer") return;
+    // Hydrating from the server must never write an empty initial cart back.
+    if (!readyToSync.current) {
+      readyToSync.current = true;
+      return;
+    }
 
     const generation = sessionGeneration.current;
     const syncTimeout = setTimeout(async () => {
@@ -61,7 +82,7 @@ export const CartProvider = ({ children }) => {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(syncTimeout);
-  }, [cart, isInitialLoad]);
+  }, [cart, isInitialLoad, isAuthenticated, user?.role]);
 
   const clampToAvailableStock = (item, desiredQuantity) => {
     const stock =

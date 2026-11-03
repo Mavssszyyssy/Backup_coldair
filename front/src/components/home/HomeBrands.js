@@ -58,7 +58,7 @@ export default function HomeBrands({ brands }) {
           letter-spacing: 0.25em;
           text-align: center;
           margin-bottom: 72px;
-          opacity: 0.6;
+          opacity: 1;
         }
 
         .brands-grid {

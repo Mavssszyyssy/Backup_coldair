@@ -144,7 +144,11 @@ const performApiRequest = async (path, options = {}) => {
             ...(shouldDisableCache ? { cache: "no-store" } : {}),
             credentials: "include",
             headers: {
-              "Content-Type": "application/json",
+              // A bodyless GET needs no JSON content type. Sending one forces
+              // an avoidable CORS preflight for public catalog and health reads.
+              ...(method !== "GET" || requestOptions.body != null
+                ? { "Content-Type": "application/json" }
+                : {}),
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
               ...(activeBranch ? { "X-Branch": activeBranch } : {}),
               ...(requestOptions.headers || {}),

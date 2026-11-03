@@ -96,8 +96,9 @@ export default function ShopCatalogue({
             padding="100px 20px"
             color={BQ_COLORS.inkFaint}
             aria-live="polite"
+            style={{ minHeight: `calc(100vh - ${BQ_GEOMETRY.headerHeight})` }}
           >
-            <BoutiqueText variant="h3">{t("Loading the latest available AC units...")}</BoutiqueText>
+            <BoutiqueText variant="h2" style={{ fontSize: "18px" }}>{t("Loading the latest available AC units...")}</BoutiqueText>
           </BoutiqueBox>
         ) : products.length === 0 ? (
           <BoutiqueBox
@@ -108,7 +109,7 @@ export default function ShopCatalogue({
             color={BQ_COLORS.inkFaint}
           >
             <WarningDiamond size={64} weight="bold" />
-            <BoutiqueText variant="h3" margin="16px 0 0">
+            <BoutiqueText variant="h2" margin="16px 0 0" style={{ fontSize: "18px" }}>
               {error || t("No products found matching your filters.")}
             </BoutiqueText>
             {error && onRetry ? (
@@ -119,7 +120,7 @@ export default function ShopCatalogue({
           <BoutiqueBox>
             {availableProducts.length > 0 ? (
               <BoutiqueBox tag="section" margin="0 0 36px">
-                <BoutiqueText variant="h3" margin="0 0 18px">{t("Available now")} ({availableProducts.length})</BoutiqueText>
+                <BoutiqueText variant="h2" margin="0 0 18px" style={{ fontSize: "18px" }}>{t("Available now")} ({availableProducts.length})</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
                   {availableProducts.map((product, index) => (
                     <ProductCard key={product.id} product={product} priority={index === 0} eager={index < 3} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
@@ -129,7 +130,7 @@ export default function ShopCatalogue({
             ) : null}
             {unavailableProducts.length > 0 ? (
               <BoutiqueBox tag="section" aria-label={t("Out of stock products")}>
-                <BoutiqueText variant="h3" margin="0 0 6px">{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
+                <BoutiqueText variant="h2" margin="0 0 6px" style={{ fontSize: "18px" }}>{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
                 <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">{t("You can view these AC units, but they cannot be ordered until stock returns.")}</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
                   {unavailableProducts.map((product, index) => (

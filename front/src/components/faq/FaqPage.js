@@ -108,7 +108,7 @@ function FaqPage() {
                     >
                       <Question size={16} weight="bold" />
                     </BoutiqueBox>
-                    <BoutiqueText variant="h3" weight={800}>
+                    <BoutiqueText variant="h2" weight={800} style={{ fontSize: "18px" }}>
                       {t(item.question)}
                     </BoutiqueText>
                   </BoutiqueBox>

@@ -1,8 +1,9 @@
 import { useCart } from '../../context/CartContext';
 import icons from '../common/icons';
-import coldAirLogo from '../common/images/Cold Air Logo.jpg';
 import { useUser } from '../../context/UserContext';
 import { translateText } from '../../utils/customerI18n';
+
+const coldAirLogo = '/Cold Air Logo-compact.webp';
 
 function Header({ onMenuToggle, onNotificationClick, onCartClick, notificationCount, scrolled }) {
   const { getCartCount } = useCart();

@@ -43,7 +43,7 @@ export default function HomeInfo() {
                   <f.icon size={24} weight="fill" />
                 </div>
                 <div className="feat-content">
-                  <h4>{t(f.title)}</h4>
+                  <h3>{t(f.title)}</h3>
                   <p>{t(f.desc)}</p>
                 </div>
               </div>
@@ -102,7 +102,7 @@ export default function HomeInfo() {
         }
         .feat-item:hover .feat-icon { transform: scale(1.1) rotate(5deg); background: ${BQ_COLORS.accent}; }
 
-        .feat-content h4 {
+        .feat-content h3 {
           font-family: ${BQ_FONTS.heading}; font-size: 22px; font-weight: 900;
           color: ${BQ_COLORS.ink}; margin-bottom: 8px; letter-spacing: -0.02em;
         }

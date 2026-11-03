@@ -213,30 +213,21 @@ function Login() {
             <BoutiqueText variant="label">{t("Boutique Security")}</BoutiqueText>
           </BoutiqueBox>
           <BoutiqueStack gap={10} tag="ul" className="bq-tips-list">
-            <BoutiqueText
-              tag="li"
-              size="13px"
-              color={BQ_COLORS.inkMuted}
-              weight={600}
-            >
-              {t("Secure sign-in and encrypted session management")}
-            </BoutiqueText>
-            <BoutiqueText
-              tag="li"
-              size="13px"
-              color={BQ_COLORS.inkMuted}
-              weight={600}
-            >
-              {t("Encrypted session management")}
-            </BoutiqueText>
-            <BoutiqueText
-              tag="li"
-              size="13px"
-              color={BQ_COLORS.inkMuted}
-              weight={600}
-            >
-              {t("Assigned branch auto-routing enabled")}
-            </BoutiqueText>
+            <li>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
+                {t("Secure sign-in and encrypted session management")}
+              </BoutiqueText>
+            </li>
+            <li>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
+                {t("Encrypted session management")}
+              </BoutiqueText>
+            </li>
+            <li>
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
+                {t("Assigned branch auto-routing enabled")}
+              </BoutiqueText>
+            </li>
           </BoutiqueStack>
         </BoutiqueBox>
       </BoutiqueStack>

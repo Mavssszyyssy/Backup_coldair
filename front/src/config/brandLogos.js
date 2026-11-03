@@ -5,10 +5,10 @@ export const BRAND_LOGOS = {
   Samsung: "/catalog/brands/samsung.png",
   Daikin: "/catalog/brands/daikin.png",
   Carrier: "/catalog/brands/carrier-logo.svg",
-  LG: "/catalog/brands/lg.jpg",
+  LG: "/catalog/brands/lg-small.webp",
   "American Home": "/catalog/brands/american-home.jpg",
   Gree: "/catalog/brands/gree-small.png",
-  Generic: "/Cold Air Logo.jpg",
+  Generic: "/Cold Air Logo-compact.webp",
 };
 
 export const getBrandLogo = (brandName) => {

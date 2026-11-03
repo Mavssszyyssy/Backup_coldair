@@ -9,7 +9,6 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import coldAirLogo from "../common/images/Cold Air Logo.jpg";
 import { COMPANY_CONTACT } from "../../config/company";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
@@ -19,6 +18,8 @@ import {
   LEGAL_POLICY_LIST,
 } from "../../domain/legalPolicies";
 import "./LegalPolicyPage.css";
+
+const coldAirLogo = "/Cold Air Logo-compact.webp";
 
 export default function LegalPolicyPage({ policyId }) {
   const { currentLanguage } = useUser();

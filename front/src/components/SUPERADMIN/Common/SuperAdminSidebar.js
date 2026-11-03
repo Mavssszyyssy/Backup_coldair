@@ -14,7 +14,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmLogout } from "../../../utils/dialog";
 import { translateText } from "../../../utils/customerI18n";
-import logo from "../../common/images/Cold Air Logo.jpg";
+const logo = "/Cold Air Logo-compact.webp";
 
 const links = [
   { to: "/superadmin/dashboard", label: "Dashboard", icon: ShieldCheck },

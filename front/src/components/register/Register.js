@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
@@ -21,7 +21,9 @@ import { translateText } from "../../utils/customerI18n";
 import RegisterEmailStep from "./RegisterEmailStep";
 import RegisterLegalConsentsStep from "./RegisterLegalConsentsStep";
 import RegisterLocationStep from "./RegisterLocationStep";
-import RegisterProfilePasswordStep from "./RegisterProfilePasswordStep";
+
+// Password-strength analysis is needed only after the legal and email steps.
+const RegisterProfilePasswordStep = lazy(() => import("./RegisterProfilePasswordStep"));
 
 const STORAGE_KEY = "bq_reg_state";
 // A contact method is verified once at the beginning. The older, separate
@@ -257,16 +259,18 @@ export default function Register() {
           />
         )}
         {step === "identity" && (
-          <RegisterProfilePasswordStep
-            currentLanguage={currentLanguage}
-            formData={formData}
-            onFieldChange={handleFieldChange}
-            detectedRole={detectedRole}
-            detectedRoleLabel={detectedRole.toUpperCase()}
-            onNext={goNext}
-            onBack={goBack}
-            onCancel={clearRegistrationSession}
-          />
+          <Suspense fallback={<BoutiqueText>{t("Loading...")}</BoutiqueText>}>
+            <RegisterProfilePasswordStep
+              currentLanguage={currentLanguage}
+              formData={formData}
+              onFieldChange={handleFieldChange}
+              detectedRole={detectedRole}
+              detectedRoleLabel={detectedRole.toUpperCase()}
+              onNext={goNext}
+              onBack={goBack}
+              onCancel={clearRegistrationSession}
+            />
+          </Suspense>
         )}
         {step === "location" && (
           <RegisterLocationStep

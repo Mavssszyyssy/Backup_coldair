@@ -4,13 +4,14 @@ import {
   List,
   ShoppingCartSimple,
 } from "@phosphor-icons/react";
-import coldAirLogo from "../images/Cold Air Logo.jpg";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
 import { useUser } from "../../../context/UserContext";
 import { translateText } from "../../../utils/customerI18n";
+
+const coldAirLogo = "/Cold Air Logo-compact.webp";
 
 export default function BoutiqueHeader({
   variant = "text", // "text" for Shop, "logo" for Home

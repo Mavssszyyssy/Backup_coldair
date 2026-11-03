@@ -3,7 +3,7 @@ import {
   BQ_FONTS,
   BQ_SHADOWS,
 } from "../common/boutique/BoutiqueTheme";
-import coldAirLogo from "../common/images/Cold Air Logo.jpg";
+const coldAirLogo = "/Cold Air Logo-compact.webp";
 
 export default function RegisterBrandSection() {
   return (
