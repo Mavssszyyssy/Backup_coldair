@@ -101,6 +101,15 @@ const AdminDashboard = () => {
         {error ? <div className="commerce-error">{error}</div> : null}
         {period === 'custom' ? <form className="commerce-date-filter" onSubmit={applyDateRange}><label>{t("From Date")}<input type="date" max={today} value={dateDraft.from} onChange={(event) => setDateDraft((current) => ({ ...current, from: event.target.value }))} /></label><label>{t("To Date")}<input type="date" max={today} value={dateDraft.to} onChange={(event) => setDateDraft((current) => ({ ...current, to: event.target.value }))} /></label><button type="submit">{t("Apply range")}</button>{dateError ? <span role="alert">{t(dateError)}</span> : null}</form> : null}
 
+        <section className="commerce-panel commerce-actions-panel">
+          <div className="commerce-panel-header"><div><h2>{t("Operations")}</h2><p>{t("Open the workflow that needs action.")}</p></div></div>
+          <div className="commerce-action-grid">
+            <button type="button" onClick={() => navigate("/admin/services/orders")}>{t("Process orders")}</button>
+            <button type="button" onClick={() => navigate("/admin/inventory")}>{t("Review inventory")}</button>
+            <button type="button" onClick={() => navigate("/admin/services/technicians")}>{t("Manage technicians")}</button>
+          </div>
+        </section>
+
         {scopedDashboard?.stats ? <>
         <div className="commerce-kpi-grid">
           <KpiCard label={t("Paid revenue")} value={formatCurrency(stats.totalSales)} detail={t("Collected from paid orders")} tone="blue" />
@@ -133,14 +142,6 @@ const AdminDashboard = () => {
         </div>
         </> : !error ? <div className="commerce-empty" role="status">{t("Loading analytics for the selected scope…")}</div> : null}
 
-        <section className="commerce-panel commerce-actions-panel">
-          <div className="commerce-panel-header"><div><h2>{t("Operations")}</h2><p>{t("Open the workflow that needs action.")}</p></div></div>
-          <div className="commerce-action-grid">
-            <button type="button" onClick={() => navigate("/admin/services/orders")}>{t("Process orders")}</button>
-            <button type="button" onClick={() => navigate("/admin/inventory")}>{t("Review inventory")}</button>
-            <button type="button" onClick={() => navigate("/admin/services/technicians")}>{t("Manage technicians")}</button>
-          </div>
-        </section>
       </div>
     </AdminLayout>
   );

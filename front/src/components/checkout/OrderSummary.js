@@ -3,19 +3,27 @@ import { Snowflake } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
+import { getCatalogThumbnailUrl } from "../../config/catalogImages";
 
 function CheckoutProductImage({ item, t }) {
   const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
   const [failedSource, setFailedSource] = useState("");
+  const thumbnailUrl = getCatalogThumbnailUrl(imageUrl);
+  const displayUrl = failedSource === thumbnailUrl
+    ? (thumbnailUrl === imageUrl ? "" : imageUrl)
+    : failedSource === imageUrl ? "" : thumbnailUrl;
   return (
     <div className="summary-item-image">
-      {imageUrl && imageUrl !== failedSource ? (
+      {displayUrl ? (
         <img
-          src={imageUrl}
+          src={displayUrl}
           alt={item.name || "Air conditioner"}
           className="summary-product-image"
           decoding="async"
-          onError={() => setFailedSource(imageUrl)}
+          loading="lazy"
+          width="80"
+          height="80"
+          onError={() => setFailedSource(displayUrl)}
         />
       ) : (
         <span role="img" aria-label={`${item.name || t("Air conditioner")}: ${t("product image unavailable")}`}>

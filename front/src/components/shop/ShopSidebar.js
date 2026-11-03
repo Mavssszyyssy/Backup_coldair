@@ -84,7 +84,7 @@ export default function ShopSidebar({
             variant="label"
             className="bq-sidebar-title"
             color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
+            style={{ letterSpacing: "0.2em" }}
           >
             {t("Search")}
           </BoutiqueText>
@@ -100,7 +100,7 @@ export default function ShopSidebar({
             variant="label"
             className="bq-sidebar-title"
             color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
+            style={{ letterSpacing: "0.2em" }}
           >
             {t("Categories")}
           </BoutiqueText>
@@ -119,19 +119,14 @@ export default function ShopSidebar({
                 <BoutiqueBox
                   tag="li"
                   key={category.id}
-                  direction="row"
-                  align="center"
-                  justify="space-between"
-                  padding="10px 16px"
                   className={`bq-cat-item ${isActive ? "active" : ""}`}
-                  onClick={() => onSelectCategory(category.id)}
                   style={{
                     borderRadius: BQ_GEOMETRY.radiusPill,
-                    cursor: "pointer",
                     transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
                   }}
                 >
-                  <BoutiqueBox
+                  <button type="button" aria-pressed={isActive} onClick={() => onSelectCategory(category.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 16px", border: 0, borderRadius: "inherit", background: "transparent", color: "inherit", cursor: "pointer", font: "inherit", textAlign: "left" }}>
+                    <BoutiqueBox
                     direction="row"
                     align="center"
                     gap={14}
@@ -141,8 +136,8 @@ export default function ShopSidebar({
                     <BoutiqueText size="14px" weight={700}>
                       {t(category.name)}
                     </BoutiqueText>
-                  </BoutiqueBox>
-                  <BoutiqueBox className="bq-cat-right">
+                    </BoutiqueBox>
+                    <BoutiqueBox className="bq-cat-right">
                     <BoutiqueText
                       className="bq-cat-count"
                       size="10px"
@@ -158,7 +153,8 @@ export default function ShopSidebar({
                     >
                       {category.count}
                     </BoutiqueText>
-                  </BoutiqueBox>
+                    </BoutiqueBox>
+                  </button>
                 </BoutiqueBox>
               );
             })}
@@ -170,7 +166,7 @@ export default function ShopSidebar({
             variant="label"
             className="bq-sidebar-title"
             color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
+            style={{ letterSpacing: "0.2em" }}
           >
             {t("Brands")}
           </BoutiqueText>
@@ -192,7 +188,7 @@ export default function ShopSidebar({
             variant="label"
             className="bq-sidebar-title"
             color={BQ_COLORS.inkMuted}
-            style={{ letterSpacing: "0.2em", opacity: 0.8 }}
+            style={{ letterSpacing: "0.2em" }}
           >
             {t("Price Range")}
           </BoutiqueText>
@@ -268,7 +264,7 @@ export default function ShopSidebar({
           width: 100%;
           border: 1px solid ${BQ_COLORS.border};
           border-radius: ${BQ_GEOMETRY.radiusPill};
-          background: white;
+          background: ${BQ_COLORS.surface};
           color: ${BQ_COLORS.ink};
           padding: 14px 18px;
           font: inherit;
@@ -278,7 +274,7 @@ export default function ShopSidebar({
         }
 
         .bq-cat-item { color: ${BQ_COLORS.inkMuted}; }
-        .bq-cat-item:hover { background: white; color: ${BQ_COLORS.ink}; box-shadow: ${BQ_SHADOWS.soft}; transform: translateX(4px); }
+        .bq-cat-item:hover { background: ${BQ_COLORS.surface}; color: ${BQ_COLORS.ink}; box-shadow: ${BQ_SHADOWS.soft}; transform: translateX(4px); }
         .bq-cat-item.active { background: ${BQ_COLORS.brand}; color: white; box-shadow: ${BQ_SHADOWS.float}; transform: translateX(0); }
 
         .bq-clear-btn {
@@ -288,7 +284,7 @@ export default function ShopSidebar({
           color: ${BQ_COLORS.inkMuted}; text-transform: uppercase; letter-spacing: 0.1em;
           cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); margin-top: 16px;
         }
-        .bq-clear-btn:hover { border-color: ${BQ_COLORS.ink}; color: ${BQ_COLORS.ink}; background: white; box-shadow: ${BQ_SHADOWS.soft}; transform: translateY(-2px); }
+        .bq-clear-btn:hover { border-color: ${BQ_COLORS.ink}; color: ${BQ_COLORS.ink}; background: ${BQ_COLORS.surface}; box-shadow: ${BQ_SHADOWS.soft}; transform: translateY(-2px); }
 
         @media (max-width: 900px) {
           .bq-sidebar {

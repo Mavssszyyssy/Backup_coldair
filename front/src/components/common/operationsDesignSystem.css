@@ -109,6 +109,9 @@
   backdrop-filter: blur(14px);
 }
 
+/* Branch pages scroll as one document so the title never obscures forms or tables. */
+.admin-layout .admin-header { position: relative; top: auto; background: var(--ops-surface); backdrop-filter: none; }
+
 :root[data-theme="dark"] :is(.admin-header, .super-header) {
   border-color: rgba(74, 91, 114, 0.9);
   background: rgba(29, 41, 57, 0.96);

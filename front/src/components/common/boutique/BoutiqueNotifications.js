@@ -28,6 +28,7 @@ export default function BoutiqueNotifications({
       side="right"
       width="440px"
       title={t("Alerts")}
+      currentLanguage={currentLanguage}
     >
       <BoutiqueBox
         className="bq-notif-wrapper"

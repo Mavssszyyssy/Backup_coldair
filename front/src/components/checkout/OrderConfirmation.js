@@ -142,7 +142,7 @@ function OrderConfirmation() {
   if (loading) {
     return (
       <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
-        <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
+        <BoutiqueBox tag="main" flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={20} align="center">
             <BoutiqueBox className="bq-spin" color={BQ_COLORS.brand}>
               <Clock size={48} weight="bold" />
@@ -159,7 +159,7 @@ function OrderConfirmation() {
   if (error || !order) {
     return (
       <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
-        <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
+        <BoutiqueBox tag="main" flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={24} align="center">
             <WarningDiamond size={64} weight="bold" color={BQ_COLORS.danger} />
             <BoutiqueText variant="h2">
@@ -185,12 +185,14 @@ function OrderConfirmation() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
+        headingLevel={2}
         title={t("Order payment")}
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
       />
 
       <BoutiqueBox
+        tag="main"
         direction="column"
         flex={1}
         width="100%"

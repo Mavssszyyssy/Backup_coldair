@@ -37,7 +37,7 @@ export default function ShopCatalogue({
       tag="section"
       className="bq-catalogue"
       flex={1}
-      background="white"
+      background={BQ_COLORS.surface}
       style={{
         height: `calc(100vh - ${BQ_GEOMETRY.headerHeight})`,
         position: "sticky",
@@ -59,7 +59,7 @@ export default function ShopCatalogue({
           justify="space-between"
           padding="24px 0 12px"
           margin="-32px 0 32px"
-          background="white"
+          background={BQ_COLORS.surface}
           className="bq-catalogue-header"
           style={{
             position: "sticky",
@@ -76,12 +76,12 @@ export default function ShopCatalogue({
             style={{
               letterSpacing: "0.05em",
               textTransform: "uppercase",
-              opacity: 0.6,
             }}
           >
             {loading ? t("Loading products...") : isFilipino(currentLanguage) ? `${products.length} produktong nakita` : `Found ${products.length} products`}
           </BoutiqueText>
           <BoutiqueSelect
+            aria-label={t("Sort products")}
             options={sortOptions}
             value={sortBy}
             onChange={onSortChange}
@@ -121,8 +121,8 @@ export default function ShopCatalogue({
               <BoutiqueBox tag="section" margin="0 0 36px">
                 <BoutiqueText variant="h3" margin="0 0 18px">{t("Available now")} ({availableProducts.length})</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
-                  {availableProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
+                  {availableProducts.map((product, index) => (
+                    <ProductCard key={product.id} product={product} priority={index === 0} eager={index < 3} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
                   ))}
                 </BoutiqueGrid>
               </BoutiqueBox>
@@ -132,8 +132,8 @@ export default function ShopCatalogue({
                 <BoutiqueText variant="h3" margin="0 0 6px">{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
                 <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">{t("You can view these AC units, but they cannot be ordered until stock returns.")}</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
-                  {unavailableProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
+                  {unavailableProducts.map((product, index) => (
+                    <ProductCard key={product.id} product={product} priority={availableProducts.length === 0 && index === 0} eager={availableProducts.length === 0 && index < 3} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
                   ))}
                 </BoutiqueGrid>
               </BoutiqueBox>

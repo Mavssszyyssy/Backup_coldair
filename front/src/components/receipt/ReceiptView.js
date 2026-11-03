@@ -159,15 +159,15 @@ function ReceiptView() {
   if (loading || error || !order || !order.receiptAvailable) {
     return (
       <BoutiqueScreen withHeader={false}>
-        <BoutiqueHeader title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
-        <div className="receipt-page">{loading ? t("Loading receipt...") : error ? t(error) : t(!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</div>
+        <BoutiqueHeader headingLevel={2} title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
+        <main className="receipt-page">{loading ? t("Loading receipt...") : error ? t(error) : t(!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</main>
       </BoutiqueScreen>
     );
   }
 
   return (
     <BoutiqueScreen withHeader={false}>
-      <BoutiqueHeader title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
+      <BoutiqueHeader headingLevel={2} title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
       <main className="receipt-page">
         <section className="receipt-shell">
           <div className="receipt-actions">

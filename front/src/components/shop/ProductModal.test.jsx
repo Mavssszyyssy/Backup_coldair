@@ -9,6 +9,8 @@ const product = { id: "p1", name: "Cold Air AC", brand: "Cold Air", model: "AC-1
 test("typed decimal, zero and over-stock quantities cannot be added", async () => {
   const onAddToCart = vi.fn().mockResolvedValue(true);
   render(<ProductModal product={product} onClose={vi.fn()} onAddToCart={onAddToCart} />);
+  expect(screen.getByRole("dialog", { name: "Product details: Cold Air AC" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Close product details" })).toHaveFocus();
   const input = document.querySelector(".bq-num-field");
   for (const value of ["1.5", "0", "3", "letters"]) {
     fireEvent.change(input, { target: { value } });

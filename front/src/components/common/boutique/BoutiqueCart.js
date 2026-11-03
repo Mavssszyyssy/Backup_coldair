@@ -8,23 +8,32 @@ import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS, BQ_GEOMETRY } from "./BoutiqueTheme";
 
 import { getBrandLogo } from "../../../config/brandLogos";
+import { getCatalogThumbnailUrl } from "../../../config/catalogImages";
 import { formatCartHorsepower, formatCartModel } from "../../../domain/cart/cartProductDetails";
 import { translateText } from "../../../utils/customerI18n";
 
 function CartItemImage({ item }) {
-  const [imgBroken, setBroken] = useState(false);
+  const [failedImage, setFailedImage] = useState("");
   const [brandBroken, setBrandBroken] = useState(false);
 
   const brandLogoUrl = getBrandLogo(item.brand);
-  const hasImage = item.imageUrl && item.imageUrl.trim() !== "";
+  const originalImage = item.imageUrl?.trim() || "";
+  const thumbnailImage = getCatalogThumbnailUrl(originalImage);
+  const imageUrl = failedImage === thumbnailImage
+    ? (thumbnailImage === originalImage ? "" : originalImage)
+    : failedImage === originalImage ? "" : thumbnailImage;
 
   // 1. Primary: Product Image
-  if (hasImage && !imgBroken) {
+  if (imageUrl) {
     return (
       <img
-        src={item.imageUrl}
+        src={imageUrl}
         alt={item.name}
-        onError={() => setBroken(true)}
+        loading="lazy"
+        decoding="async"
+        width="64"
+        height="64"
+        onError={() => setFailedImage(imageUrl)}
         style={{ width: "100%", height: "100%", objectFit: "contain" }}
       />
     );
@@ -86,6 +95,7 @@ export default function BoutiqueCart({
       side="right"
       width="440px"
       title={t("Your Cart")}
+      currentLanguage={currentLanguage}
     >
       <BoutiqueBox className="bq-cart-wrapper" direction="column" height="100%">
         <BoutiqueStack

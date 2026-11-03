@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 import { getBrandLogo } from "../../config/brandLogos";
+import { getCatalogThumbnailUrl } from "../../config/catalogImages";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
@@ -37,8 +38,10 @@ export default function ProductCard({
   onAddToCart,
   onBuyNow,
   onClick,
+  priority = false,
+  eager = false,
 }) {
-  const [imgBroken, setBroken] = useState(false);
+  const [failedImage, setFailedImage] = useState("");
   const { currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const IconComp = productPlaceholderIcon(product);
@@ -55,6 +58,11 @@ export default function ProductCard({
   const horsepower = product.specs || product.capacity || "";
   const brandLogoUrl = getBrandLogo(product.brand);
   const outOfStock = product.inStock === false;
+  const originalImage = product.imageUrl || DEFAULT_CATALOG_IMAGE_URL;
+  const cardImage = getCatalogThumbnailUrl(originalImage);
+  const imageUrl = failedImage === cardImage
+    ? (cardImage === originalImage ? "" : originalImage)
+    : failedImage === originalImage ? "" : cardImage;
 
   return (
     <BoutiqueBox
@@ -71,20 +79,25 @@ export default function ProductCard({
         padding={24}
         style={{ position: "relative" }}
       >
-        {(product.imageUrl || DEFAULT_CATALOG_IMAGE_URL) && !imgBroken ? (
-          <img
-            src={product.imageUrl || DEFAULT_CATALOG_IMAGE_URL}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            onError={() => setBroken(true)}
-            className="bq-img"
-          />
-        ) : (
-          <BoutiqueBox className="bq-img-fallback">
-            <IconComp size={64} weight="bold" />
-          </BoutiqueBox>
-        )}
+        <button type="button" aria-label={`${t("View details")}: ${product.name}`} onClick={(event) => { event.stopPropagation(); onClick(product); }} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: 0, background: "transparent", cursor: "pointer" }}>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              loading={priority || eager ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : undefined}
+              decoding="async"
+              width="320"
+              height="220"
+              onError={() => setFailedImage(imageUrl)}
+              className="bq-img"
+            />
+          ) : (
+            <BoutiqueBox className="bq-img-fallback">
+              <IconComp size={64} weight="bold" />
+            </BoutiqueBox>
+          )}
+        </button>
 
         {product.featured && (
           <BoutiqueBox className="bq-card-badge-left">
@@ -128,13 +141,14 @@ export default function ProductCard({
                 alt={product.brand}
                 loading="lazy"
                 decoding="async"
+                width="24"
+                height="24"
               />
             </BoutiqueBox>
             <BoutiqueStack gap={2} flex={1}>
               <BoutiqueText
                 variant="label"
                 color={BQ_COLORS.inkMuted}
-                style={{ opacity: 0.9 }}
               >
                 {product.model || "MODEL"}
               </BoutiqueText>
@@ -279,7 +293,7 @@ export default function ProductCard({
           border-color: transparent;
         }
 
-        .bq-card:hover .bq-card-image { background: white !important; }
+        .bq-card:hover .bq-card-image { background: ${BQ_COLORS.surface} !important; }
 
         .bq-img {
           width: 100%; height: 100%; object-fit: contain;

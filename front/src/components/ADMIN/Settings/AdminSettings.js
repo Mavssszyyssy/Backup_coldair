@@ -29,7 +29,6 @@ const ReadOnlyDetail = ({ label, value, hint = 'Managed by SuperAdmin' }) => (
 function AdminSettings() {
   const { user, updateSettings, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
-  const [currency, setCurrency] = useState('PHP');
   const [language, setLanguage] = useState('English');
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
   const [saving, setSaving] = useState(false);
@@ -37,11 +36,9 @@ function AdminSettings() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setCurrency(user?.preferences?.currency || 'PHP');
     setLanguage(user?.preferences?.language || 'English');
     setNotifications({ ...DEFAULT_NOTIFICATIONS, ...(user?.notifications || {}) });
   }, [
-    user?.preferences?.currency,
     user?.preferences?.language,
     user?.notifications?.email,
     user?.notifications?.inApp,
@@ -75,7 +72,7 @@ function AdminSettings() {
       // preference and notification schemas. Company, branch and authority
       // values never enter the update payload.
       await updateSettings({
-        preferences: { currency, language },
+        preferences: { language },
         notifications: {
           email: Boolean(notifications.email),
           inApp: Boolean(notifications.inApp),
@@ -89,7 +86,7 @@ function AdminSettings() {
       appendAuditLog({
         user: user?.email || user?.name || 'admin',
         action: 'update_settings',
-        details: `Updated authorized account preferences (currency=${currency})`,
+        details: 'Updated authorized account preferences',
       });
       setNotice('System settings saved successfully.');
     } catch (requestError) {
@@ -137,13 +134,6 @@ function AdminSettings() {
           </div>
 
           <div className="admin-field-group">
-            <label>
-              {t('Currency display preference (financial records remain in PHP)')}
-              <select value={currency} onChange={(event) => setCurrency(event.target.value)}>
-                <option value="PHP">PHP — Philippine Peso</option>
-                <option value="USD">USD — US Dollar</option>
-              </select>
-            </label>
             <label>{t('Interface language')}
               <select value={language} onChange={(event) => setLanguage(event.target.value)}>
                 <option value="English">{t('English')}</option>

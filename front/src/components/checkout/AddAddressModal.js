@@ -192,8 +192,9 @@ function AddAddressModal({
         </div>
         <div className="address-editor-body">
           <div className="address-editor-field">
-            <label>{t('Label')}</label>
+            <label htmlFor="address-editor-label">{t('Label')}</label>
             <input
+              id="address-editor-label"
               type="text"
               placeholder="Home, Office, Condo"
               value={address.label}
@@ -201,16 +202,17 @@ function AddAddressModal({
             />
           </div>
           <div className="address-editor-field">
-            <label>{t('Address Type')}</label>
-            <select value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
+            <label htmlFor="address-editor-type">{t('Address Type')}</label>
+            <select id="address-editor-type" value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
               <option value="home">{t('Home')}</option>
               <option value="office">{t('Office')}</option>
               <option value="other">{t('Other')}</option>
             </select>
           </div>
           <div className="address-editor-field">
-            <label>{t('Recipient Name')} *</label>
+            <label htmlFor="address-editor-name">{t('Recipient Name')} *</label>
             <input
+              id="address-editor-name"
               type="text"
               placeholder="Full name"
               value={address.name}
@@ -219,8 +221,8 @@ function AddAddressModal({
           </div>
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>{t('Region')} *</label>
-              <select aria-label={t('Region')} value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
+              <label htmlFor="address-editor-region">{t('Region')} *</label>
+              <select id="address-editor-region" value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
                 <option value="">{t('Select Region')}</option>
                 {regions.map((region) => (
                   <option key={region.code || region.name} value={region.name}>{region.name}</option>
@@ -228,8 +230,8 @@ function AddAddressModal({
               </select>
             </div>
             <div className="address-editor-field">
-              <label>{t('Province')} *</label>
-              <select aria-label={t('Province')} value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
+              <label htmlFor="address-editor-province">{t('Province')} *</label>
+              <select id="address-editor-province" value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
                 <option value="">{t('Select Province')}</option>
                 {provinces.map((province) => (
                   <option key={province.code || province.name} value={province.name}>{province.name}</option>
@@ -240,8 +242,8 @@ function AddAddressModal({
 
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>{t('City / Municipality')} *</label>
-              <select aria-label={t('City / Municipality')} value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
+              <label htmlFor="address-editor-city">{t('City / Municipality')} *</label>
+              <select id="address-editor-city" value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
                 <option value="">{t('Select City / Municipality')}</option>
                 {cities.map((city) => (
                   <option key={city.code || city.name} value={city.name}>{city.name}</option>
@@ -249,8 +251,8 @@ function AddAddressModal({
               </select>
             </div>
             <div className="address-editor-field">
-              <label>{t('Barangay')} *</label>
-              <select aria-label={t('Barangay')} value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
+              <label htmlFor="address-editor-barangay">{t('Barangay')} *</label>
+              <select id="address-editor-barangay" value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
                 <option value="">{t('Select Barangay')}</option>
                 {barangays.map((barangay) => (
                   <option key={barangay.code || barangay.name} value={barangay.name}>{barangay.name}</option>
@@ -260,8 +262,9 @@ function AddAddressModal({
           </div>
 
           <div className="address-editor-field">
-            <label>{t('Street Address')} *</label>
+            <label htmlFor="address-editor-street">{t('Street Address')} *</label>
             <input
+              id="address-editor-street"
               type="text"
               placeholder="House/Block/Lot No., Street"
               value={address.street}
@@ -270,8 +273,9 @@ function AddAddressModal({
           </div>
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>{t('ZIP Code')} *</label>
+              <label htmlFor="address-editor-zip">{t('ZIP Code')} *</label>
               <input
+                id="address-editor-zip"
                 type="text"
                 placeholder="4-digit ZIP code"
                 value={address.postalCode}
@@ -282,8 +286,9 @@ function AddAddressModal({
               />
             </div>
             <div className="address-editor-field">
-              <label>{t('Phone Number')} *</label>
+              <label htmlFor="address-editor-phone">{t('Phone Number')} *</label>
               <input
+                id="address-editor-phone"
                 type="tel"
                 placeholder="09XXXXXXXXX"
                 value={address.phone}

@@ -23,6 +23,8 @@ export default function HomeBrands({ brands }) {
                   alt={brand.name}
                   loading="lazy"
                   decoding="async"
+                  width="120"
+                  height="120"
                 />
               </div>
               <div className="brand-info">

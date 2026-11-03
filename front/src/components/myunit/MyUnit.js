@@ -196,6 +196,7 @@ function MyUnit() {
       />
 
       <BoutiqueBox
+        tag="main"
         direction="column"
         flex={1}
         width="100%"

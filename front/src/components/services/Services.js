@@ -44,12 +44,14 @@ function Services() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
+        headingLevel={2}
         title={t("Mobile Services")}
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
 
       <BoutiqueBox
+        tag="main"
         width="100%"
         padding="40px 24px"
         style={{ maxWidth: 980, margin: "0 auto" }}

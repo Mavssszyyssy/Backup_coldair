@@ -14,7 +14,7 @@ export default function TechnicianMobileNotice() {
     navigate('/login', { replace: true });
   });
   return <BoutiqueAuthLayout>
-    <main style={{ width: '100%', maxWidth: 720, margin: 'auto', padding: 24 }}>
+    <div style={{ width: '100%', maxWidth: 720, margin: 'auto', padding: 24 }}>
       <BoutiqueAuthHeader title="Technician Account Management" subtitle="Work orders remain mobile-only. You can review and secure your account here." />
       <BoutiqueCard padding={28} style={{ marginBottom: 20 }}>
         <h2 style={{ marginTop: 0 }}>Profile / Account Information</h2>
@@ -34,6 +34,6 @@ export default function TechnicianMobileNotice() {
       <button type="button" onClick={returnToLogin} style={{ marginTop: 24, padding: '14px 20px', borderRadius: 12, background: '#111827', color: '#fff', border: 0, cursor: 'pointer', fontWeight: 600 }}>
         Sign out and use another account
       </button>
-    </main>
+    </div>
   </BoutiqueAuthLayout>;
 }

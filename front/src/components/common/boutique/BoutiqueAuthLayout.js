@@ -27,9 +27,10 @@ export default function BoutiqueAuthLayout({ children }) {
 
         {/* FORM PANEL AREA */}
         <BoutiqueBox
+          tag="main"
           className="bq-auth-form-area"
           flex={1}
-          background="white"
+          background={BQ_COLORS.surface}
           align="center"
           style={{ overflowY: "auto" }}
         >

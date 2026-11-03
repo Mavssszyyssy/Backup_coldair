@@ -18,6 +18,10 @@ test('renders an accessible address dialog with consistent footer actions', () =
   render(<AddAddressModal onClose={onClose} onSave={vi.fn()} />);
 
   expect(screen.getByRole('dialog', { name: 'Add New Address' })).toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: /Recipient Name/ })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /Address Type/ })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /Region/ })).toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: /Street Address/ })).toBeInTheDocument();
 
   const cancelButton = screen.getByRole('button', { name: 'Cancel' });
   const saveButton = screen.getByRole('button', { name: 'Save Address' });

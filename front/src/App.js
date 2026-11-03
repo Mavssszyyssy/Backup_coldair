@@ -55,7 +55,7 @@ const RoleRoute = ({ allowedRoles, children }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading-screen"><LoadingLogo /></div>;
+    return <main className="loading-screen"><LoadingLogo /></main>;
   }
 
   if (!isAuthenticated) {
@@ -74,7 +74,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
 
   if (loading) {
-    return <div className="loading-screen"><LoadingLogo /></div>;
+    return <main className="loading-screen"><LoadingLogo /></main>;
   }
 
   return !isAuthenticated ? (
@@ -89,7 +89,7 @@ const HomeRoute = ({ children }) => {
   const { loading } = useUser();
 
   if (loading) {
-    return <div className="loading-screen"><LoadingLogo /></div>;
+    return <main className="loading-screen"><LoadingLogo /></main>;
   }
 
   return children;
@@ -108,7 +108,7 @@ export function AppContent() {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading-screen"><LoadingLogo /></div>;
+    return <main className="loading-screen"><LoadingLogo /></main>;
   }
 
   const hiddenChatbotRoutes = ["/login", "/register", "/forgot-password", "/privacy"];
@@ -121,7 +121,7 @@ export function AppContent() {
 
   return (
     <>
-      <Suspense fallback={<div className="loading-screen"><LoadingLogo /></div>}>
+      <Suspense fallback={<main className="loading-screen"><LoadingLogo /></main>}>
       <Routes>
         {/* Shopping is the primary customer entry point. */}
         <Route path="/" element={<Navigate to="/shop" replace />} />

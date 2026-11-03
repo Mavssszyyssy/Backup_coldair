@@ -60,7 +60,7 @@ export default function BoutiqueSideMenu({
   };
 
   return (
-    <BoutiqueDrawer isOpen={isOpen} onClose={onClose} side="left" width="360px">
+    <BoutiqueDrawer isOpen={isOpen} onClose={onClose} side="left" width="360px" currentLanguage={user?.preferences?.language}>
       <BoutiqueBox className="bq-menu-wrapper" height="100%">
         <BoutiqueStack gap={16} padding="40px 32px" className="bq-user-block">
           <BoutiqueBox

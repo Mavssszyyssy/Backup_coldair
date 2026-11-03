@@ -26,6 +26,7 @@ export default function BoutiqueSearchInput({
         type="text"
         className="bq-search-field"
         placeholder={placeholder}
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         {...props}
@@ -64,7 +65,6 @@ export default function BoutiqueSearchInput({
           color: ${BQ_COLORS.ink};
           box-shadow: ${BQ_SHADOWS.soft};
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-          outline: none;
         }
 
         .bq-search-field:focus {
@@ -72,6 +72,8 @@ export default function BoutiqueSearchInput({
           transform: translateY(-2px);
           border-color: ${BQ_COLORS.brand};
         }
+
+        .bq-search-field:focus-visible { outline: 3px solid ${BQ_COLORS.accent}; outline-offset: 3px; }
 
         .bq-search-field:focus ~ .bq-search-icon {
           color: ${BQ_COLORS.brand};

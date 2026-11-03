@@ -7,7 +7,7 @@ import {
   SquareSplitHorizontal,
   X,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 import { getBrandLogo } from "../../config/brandLogos";
@@ -61,6 +61,28 @@ function ProductModal({ product, onClose, onAddToCart }) {
   const [quantity, setQuantity] = useState(1);
   const [quantityError, setQuantityError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const modalRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    closeRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const focusable = [...(modalRef.current?.querySelectorAll('button:not(:disabled), input:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])') || [])];
+      if (!focusable.length) return;
+      if (event.shiftKey && document.activeElement === focusable[0]) {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
+        event.preventDefault();
+        focusable[0].focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => { window.removeEventListener("keydown", handleKeyDown); previousFocus?.focus?.(); };
+  }, [onClose]);
 
   useEffect(() => {
     setQuantity(1);
@@ -111,9 +133,9 @@ function ProductModal({ product, onClose, onAddToCart }) {
 
   return (
     <div className="bq-modal-overlay" onClick={onClose}>
-      <div className="bq-modal-container" onClick={(e) => e.stopPropagation()}>
+      <div ref={modalRef} className="bq-modal-container" role="dialog" aria-modal="true" aria-label={`${t("Product details")}: ${product.name}`} onClick={(e) => e.stopPropagation()}>
         {/* Floating Close Button outside modal boundary */}
-        <button className="bq-modal-floating-close" onClick={onClose} aria-label={t("Close product details")}>
+        <button ref={closeRef} type="button" className="bq-modal-floating-close" onClick={onClose} aria-label={t("Close product details")}>
           <X size={24} weight="bold" />
         </button>
 
@@ -243,7 +265,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
           position: absolute;
           top: -20px;
           right: -20px;
-          background: white; border: 1.5px solid ${BQ_COLORS.border}; color: ${BQ_COLORS.ink};
+          background: ${BQ_COLORS.surface}; border: 1.5px solid ${BQ_COLORS.border}; color: ${BQ_COLORS.ink};
           width: 48px; height: 48px; border-radius: 50%;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -252,7 +274,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
         .bq-modal-floating-close:hover { transform: scale(1.1) rotate(90deg); box-shadow: ${BQ_SHADOWS.hover}; background: ${BQ_COLORS.bg}; }
 
         .bq-modal-container {
-          background: white;
+          background: ${BQ_COLORS.surface};
           width: 1120px;
           height: 560px;
           border-radius: 40px; overflow: visible; position: relative;
@@ -274,7 +296,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
         .bq-modal-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.05)); }
         .bq-modal-fallback { opacity: 0.1; color: ${BQ_COLORS.ink}; }
 
-        .bq-modal-body { padding: 48px 60px; display: flex; flex-direction: column; background: white; overflow: hidden; }
+        .bq-modal-body { padding: 48px 60px; display: flex; flex-direction: column; background: ${BQ_COLORS.surface}; overflow: hidden; }
 
         .bq-modal-header { margin-bottom: 24px; flex-shrink: 0; }
         .bq-header-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; width: 100%; }

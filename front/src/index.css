@@ -7,8 +7,8 @@
     --bq-color-surface: #ffffff;
     --bq-color-surface-alt: #fcfcfc;
     --bq-color-ink: #09090b;
-    --bq-color-ink-muted: #71717a;
-    --bq-color-ink-faint: #a1a1aa;
+    --bq-color-ink-muted: #52525b;
+    --bq-color-ink-faint: #62626d;
     --bq-color-border: rgba(0,0,0,0.08);
 }
 
@@ -44,6 +44,11 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: #f4f5f7;
+}
+
+:where(a, button, input, select, textarea, [role="button"]):focus-visible {
+    outline: 3px solid var(--bq-color-accent) !important;
+    outline-offset: 3px;
 }
 
 body.dark-mode {

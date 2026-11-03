@@ -29,6 +29,13 @@ it('keeps long acquisition labels and exact unknown counts visible', () => {
   expect(css).toMatch(/\.commerce-legend-label\s*\{[^}]*overflow-wrap:anywhere/s);
 });
 
+it('clarifies that Other describes a recorded signup source, not a customer type', () => {
+  render(<DonutChart title="Customer acquisition" caption="customers" data={[{ key: 'other', label: 'Other (recorded)', count: 30 }]} />);
+  expect(screen.getByText('Other recorded signup source')).toBeVisible();
+  expect(screen.getByRole('img', { name: /Other recorded signup source, 30/ })).toBeInTheDocument();
+  expect(screen.queryByText('Other (recorded)')).not.toBeInTheDocument();
+});
+
 it('localizes chart labels without changing the order-stage colors', () => {
   const t = (text) => translateText(text, 'Filipino');
   const { container } = render(<DonutChart title={t('Order pipeline')} canonicalTitle="Order pipeline" caption={t('orders')} data={[{ key: 'cancelled', label: 'Cancelled', count: 2 }]} t={t} />);

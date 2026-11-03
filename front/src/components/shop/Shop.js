@@ -735,6 +735,7 @@ const Shop = () => {
       />
 
       <BoutiqueBox
+        tag="main"
         direction="row"
         flex={1}
         width="100%"

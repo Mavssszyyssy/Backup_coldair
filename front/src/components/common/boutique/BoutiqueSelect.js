@@ -61,8 +61,12 @@ export default function BoutiqueSelect({
           box-shadow: ${BQ_SHADOWS.soft};
           cursor: pointer;
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-          outline: none;
           color: ${BQ_COLORS.ink};
+        }
+
+        .bq-select-field:focus-visible {
+          outline: 3px solid ${BQ_COLORS.accent};
+          outline-offset: 3px;
         }
 
         .bq-select-field:hover {

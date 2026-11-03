@@ -31,6 +31,7 @@ function Contact() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
+        headingLevel={2}
         title={t("Customer Support")}
         leftAction="back"
         onLeftAction={handleBack}

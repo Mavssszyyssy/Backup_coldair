@@ -22,7 +22,9 @@ export default function BoutiqueNumberInput({
   width = "auto",
   placeholder = "",
   strict = false,
+  ariaLabel,
 }) {
+  const accessibleName = ariaLabel || placeholder || "Quantity";
   // Helper to format with commas
   const formatValue = (val) => {
     if (val === "" || val === null || val === undefined) return "";
@@ -110,6 +112,7 @@ export default function BoutiqueNumberInput({
         className="bq-num-btn"
         style={{ width: btnSizes[size], height: btnSizes[size] }}
         onClick={decrement}
+        aria-label={`Decrease ${accessibleName}`}
         disabled={getRawNumber(value) <= min}
       >
         <Minus size={size === "sm" ? 14 : 18} weight="bold" />
@@ -125,6 +128,7 @@ export default function BoutiqueNumberInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         inputMode="numeric"
+        aria-label={accessibleName}
       />
 
       <button
@@ -132,6 +136,7 @@ export default function BoutiqueNumberInput({
         className="bq-num-btn"
         style={{ width: btnSizes[size], height: btnSizes[size] }}
         onClick={increment}
+        aria-label={`Increase ${accessibleName}`}
         disabled={max !== null && getRawNumber(value) >= max}
       >
         <Plus size={size === "sm" ? 14 : 18} weight="bold" />

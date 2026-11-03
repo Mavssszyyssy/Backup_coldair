@@ -580,7 +580,7 @@ function Checkout() {
           onLeftAction={() => navigate("/shop")}
           hideCart
         />
-        <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
+        <BoutiqueBox tag="main" flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={20} align="center">
             <BoutiqueText variant="h2">{t("Your cart is empty")}</BoutiqueText>
             <BoutiqueButton
@@ -648,6 +648,7 @@ function Checkout() {
       />
 
       <BoutiqueBox
+        tag="main"
         direction="row"
         flex={1}
         width="100%"

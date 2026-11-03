@@ -80,6 +80,14 @@ it("localizes the Admin Services tabs in Filipino", async () => {
   await waitFor(() => expect(apiRequest).toHaveBeenCalled());
 });
 
+it("places Admin operation shortcuts above analytics", async () => {
+  const { container } = renderScreen(AdminDashboard, "/admin/dashboard");
+  const shortcuts = screen.getByRole("heading", { name: "Operations" }).closest("section");
+  expect(shortcuts).toContainElement(screen.getByRole("button", { name: "Process orders" }));
+  await waitFor(() => expect(container.querySelector(".commerce-kpi-grid")).toBeInTheDocument());
+  expect(shortcuts.compareDocumentPosition(container.querySelector(".commerce-kpi-grid")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 it("localizes the branch reorder empty state in Filipino", async () => {
   language = "Filipino";
   renderScreen(AdminInventory, "/admin/inventory?tab=reorder");

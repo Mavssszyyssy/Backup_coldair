@@ -53,12 +53,14 @@ function FaqPage() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
+        headingLevel={2}
         title={t("Help & FAQs")}
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
 
       <BoutiqueBox
+        tag="main"
         direction="column"
         flex={1}
         width="100%"

@@ -268,6 +268,7 @@
 .admin-order-meta {
   margin: 6px 0;
   color: #334155;
+  overflow-wrap: anywhere;
 }
 
 .admin-order-workflow-summary {
@@ -348,7 +349,7 @@
 
 .admin-order-fulfillment {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  grid-template-columns: minmax(180px, 1.2fr) minmax(190px, 1fr) minmax(170px, 1fr);
   gap: 10px;
   margin: 12px 0;
   padding: 12px;
@@ -359,6 +360,7 @@
 
 .admin-order-fulfillment label {
   display: grid;
+  min-width: 0;
   gap: 5px;
   color: #475569;
   font-size: 12px;
@@ -602,8 +604,20 @@
 
 .admin-assign-technician-btn {
   align-self: end;
+  grid-column: 1 / -1;
+  justify-self: end;
+  max-width: 100%;
+  white-space: normal;
   background: #0f766e;
 }
+
+:root[data-theme='dark'] .admin-order-card,
+:root[data-theme='dark'] .admin-order-fulfillment { border-color: #4a5b72; background: #1d2939; color: #e8edf5; }
+:root[data-theme='dark'] .admin-order-workflow-summary { border-color: #4a5b72; background: #243347; }
+:root[data-theme='dark'] .admin-order-workflow-summary span { color: #cbd5e1; }
+:root[data-theme='dark'] .admin-order-workflow-summary b { color: #b5c0cf; }
+:root[data-theme='dark'] .admin-order-meta,
+:root[data-theme='dark'] .admin-order-fulfillment label { color: #cbd5e1; }
 
 .admin-assign-technician-btn:disabled {
   cursor: not-allowed;
@@ -650,6 +664,7 @@
 }
 
 @media (max-width: 860px) {
+  .admin-order-fulfillment { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-order-workflow-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -701,6 +716,7 @@
   .admin-order-fulfillment {
     grid-template-columns: 1fr;
   }
+  .admin-assign-technician-btn { width: 100%; }
 
   .admin-cancel-reason {
     max-width: none;

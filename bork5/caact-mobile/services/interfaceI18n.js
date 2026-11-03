@@ -1,4 +1,5 @@
 const FILIPINO = {
+  "Other recorded signup source": "Ibang nakatalang pinagmulan ng pag-sign up",
   "Email or Username": "Email o Username",
   "Email address or username": "Email address o username",
   "Enter your password": "Ilagay ang iyong password",

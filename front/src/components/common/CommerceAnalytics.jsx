@@ -76,6 +76,9 @@ export function SalesTrendChart({ data = [], period = "monthly", t = (value) => 
 }
 
 export function DonutChart({ title, caption, canonicalTitle = title, data = [], valueKey = "count", valueFormatter = (value) => value.toLocaleString(), emptyText, t = (value) => value }) {
+  const labelForItem = (item) => t(canonicalTitle === "Customer acquisition" && item.key === "other"
+    ? "Other recorded signup source"
+    : item.label || item.branch || item.source);
   const values = data
     .map((item) => ({ ...item, value: Math.max(0, Number(item[valueKey] || 0)) }))
     .filter((item) => item.value > 0);
@@ -91,14 +94,14 @@ export function DonutChart({ title, caption, canonicalTitle = title, data = [], 
 
   return (
     <div className="commerce-donut-layout">
-      <div className="commerce-donut" style={{ background: `conic-gradient(${segments.join(", ")})` }} role="img" aria-label={`${title}: ${values.map((item) => `${t(item.label || item.branch || item.source)}, ${valueFormatter(item.value)}`).join("; ")}`}>
+      <div className="commerce-donut" style={{ background: `conic-gradient(${segments.join(", ")})` }} role="img" aria-label={`${title}: ${values.map((item) => `${labelForItem(item)}, ${valueFormatter(item.value)}`).join("; ")}`}>
         <div className="commerce-donut-center"><strong>{valueFormatter(total)}</strong><span>{caption}</span></div>
       </div>
       <div className="commerce-legend">
         {values.map((item, index) => (
-          <div className="commerce-legend-item" key={item.key || item.label || index} title={`${t(item.label || item.branch || item.source)}: ${valueFormatter(item.value)} ${caption}`}>
+          <div className="commerce-legend-item" key={item.key || item.label || index} title={`${labelForItem(item)}: ${valueFormatter(item.value)} ${caption}`}>
             <span className="commerce-legend-dot" style={{ backgroundColor: segmentColor(canonicalTitle, item, index) }} />
-            <span className="commerce-legend-label">{t(item.label || item.branch || item.source)}</span>
+            <span className="commerce-legend-label">{labelForItem(item)}</span>
             <strong>{valueFormatter(item.value)}</strong>
           </div>
         ))}

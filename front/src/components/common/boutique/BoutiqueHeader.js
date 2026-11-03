@@ -15,6 +15,7 @@ import { translateText } from "../../../utils/customerI18n";
 export default function BoutiqueHeader({
   variant = "text", // "text" for Shop, "logo" for Home
   title = "Shop AC Units",
+  headingLevel = 1,
   leftAction = "back", // "back" or "menu"
   onLeftAction,
   onNotificationClick,
@@ -79,7 +80,7 @@ export default function BoutiqueHeader({
               gap={12}
               className="bq-logo-group"
             >
-              <img src={coldAirLogo} alt="Cold Air" className="bq-logo-img" />
+              <img src={coldAirLogo} alt="Cold Air" className="bq-logo-img" width="40" height="40" />
               <BoutiqueStack gap={0} className="bq-logo-text">
                 <BoutiqueText
                   weight={900}
@@ -105,9 +106,9 @@ export default function BoutiqueHeader({
             </BoutiqueBox>
           ) : (
             <BoutiqueText
-              variant="h2"
+              variant={headingLevel === 1 ? "h1" : "h2"}
               className="bq-title-text"
-              style={{ letterSpacing: "-0.04em" }}
+              style={{ letterSpacing: "-0.04em", fontSize: "24px", fontWeight: 700 }}
             >
               {t(title)}
             </BoutiqueText>

@@ -64,19 +64,19 @@ it('shows company and assigned-branch details without redundant authority panels
   expect(screen.queryByText('Bulacan (Main Branch)')).not.toBeInTheDocument();
   expect(screen.queryByText('Role & Permissions')).not.toBeInTheDocument();
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/Currency display preference/)).not.toBeInTheDocument();
 });
 
 it('saves only database-backed preferences and alert settings', async () => {
   render(<AdminSettings />);
 
-  fireEvent.change(screen.getByLabelText(/Currency display preference/), { target: { value: 'USD' } });
   fireEvent.change(screen.getByLabelText('Interface language'), { target: { value: 'Filipino' } });
   fireEvent.click(screen.getByLabelText('Push alerts'));
   fireEvent.click(screen.getByRole('button', { name: 'Save System Settings' }));
 
   await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
   const payload = updateSettings.mock.calls[0][0];
-  expect(payload.preferences).toEqual({ currency: 'USD', language: 'Filipino' });
+  expect(payload.preferences).toEqual({ language: 'Filipino' });
   expect(payload.notifications.push).toBe(true);
   expect(payload).not.toHaveProperty('general');
   expect(payload).not.toHaveProperty('roles');
