@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { serviceDateLabel, serviceLabel } from "../../domain/myunit/serviceHistoryDisplay";
 import HistoryPagination from "./HistoryPagination";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 const SECTIONS_PER_PAGE = 2;
 
@@ -13,39 +15,41 @@ function PrescriptionList({ title, items = [], empty = "" }) {
 }
 
 function AiServicePrescriptionContent({ interpretation, compact = false }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [assessmentPage, setAssessmentPage] = useState(1);
   const assessmentRef = useRef(null);
   const date = interpretation.recommendedFollowUpDate || interpretation.recommendedDate;
-  const technicianFinding = interpretation.technicianRecorded || interpretation.problemsFound || "No detailed technician finding was recorded.";
+  const technicianFinding = interpretation.technicianRecorded || interpretation.problemsFound || t("No detailed technician finding was recorded.");
   const possibleCauses = Array.isArray(interpretation.possibleCauses) ? interpretation.possibleCauses.filter(Boolean) : [];
   const diagnosticActions = Array.isArray(interpretation.diagnosticActions) ? interpretation.diagnosticActions.filter(Boolean) : [];
   const sections = [
     <section key="technician-findings" className="ai-prescription-block">
-      <h5>1. Technician Findings</h5>
+      <h5>{t("1. Technician Findings")}</h5>
       <p>{technicianFinding}</p>
-      <small>Confirmed recorded evidence from the completed technician report.</small>
+      <small>{t("Confirmed recorded evidence from the completed technician report.")}</small>
     </section>,
     <section key="ai-assessment" className="ai-prescription-block">
-      <h5>2. AI Assessment</h5>
+      <h5>{t("2. AI Assessment")}</h5>
       <p>{interpretation.aiAssessment || interpretation.componentConcern || interpretation.customerSummary}</p>
-      <small>Possible interpretation, not a confirmed physical diagnosis.</small>
+      <small>{t("Possible interpretation, not a confirmed physical diagnosis.")}</small>
     </section>,
     interpretation.historicalContext ? <section key="history" className="ai-prescription-block ai-prescription-history">
-      <h5>Historical Evidence Used</h5>
+      <h5>{t("Historical Evidence Used")}</h5>
       <p>{interpretation.historicalContext}</p>
     </section> : null,
-    <PrescriptionList key="possible-causes" title="3. Possible Causes" items={possibleCauses} empty="No fault cause is indicated by the completed record." />,
-    diagnosticActions.length ? <PrescriptionList key="diagnostic-actions" title="4. Recommended Diagnostic Actions" items={diagnosticActions} /> : null,
+    <PrescriptionList key="possible-causes" title={t("3. Possible Causes")} items={possibleCauses} empty={t("No fault cause is indicated by the completed record.")} />,
+    diagnosticActions.length ? <PrescriptionList key="diagnostic-actions" title={t("4. Recommended Diagnostic Actions")} items={diagnosticActions} /> : null,
     <section key="service-repair" className="ai-prescription-block">
-      <h5>5. Recommended Service / Repair</h5>
-      <p>{interpretation.recommendedServiceOrRepair || serviceLabel(interpretation.recommendedService)}</p>
+      <h5>{t("5. Recommended Service / Repair")}</h5>
+      <p>{interpretation.recommendedServiceOrRepair || t(serviceLabel(interpretation.recommendedService))}</p>
     </section>,
     <section key="parts" className="ai-prescription-block">
-      <h5>6. Parts / Component Recommendation</h5>
-      <p>{interpretation.partsRecommendation || interpretation.inventoryMessage || "No part replacement is supported by the completed record."}</p>
+      <h5>{t("6. Parts / Component Recommendation")}</h5>
+      <p>{interpretation.partsRecommendation || interpretation.inventoryMessage || t("No part replacement is supported by the completed record.")}</p>
     </section>,
     <section key="date" className="ai-prescription-block">
-      <h5>7. Suggested Servicing Date</h5>
+      <h5>{t("7. Suggested Servicing Date")}</h5>
       <p><strong>{serviceDateLabel(date)}</strong></p>
       {interpretation.whyThisDate ? <small>{interpretation.whyThisDate}</small> : null}
     </section>,
@@ -69,19 +73,19 @@ function AiServicePrescriptionContent({ interpretation, compact = false }) {
     assessmentRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
 
-  return <section ref={assessmentRef} className={`ai-prescription${compact ? " ai-prescription-compact" : ""}`} aria-label="AI assessment and service prescription">
+  return <section ref={assessmentRef} className={`ai-prescription${compact ? " ai-prescription-compact" : ""}`} aria-label={t("AI assessment and service prescription")}>
     <header className="ai-prescription-header">
-      <span className="ai-prescription-title">AI-assisted assessment &amp; prescription</span>
-      <small className="ai-prescription-source">{interpretation.provider === "openai" ? "AI-reviewed" : "Based on your service records"}</small>
+      <span className="ai-prescription-title">{t("AI-assisted assessment & prescription")}</span>
+      <small className="ai-prescription-source">{interpretation.provider === "openai" ? t("AI-reviewed") : t("Based on your service records")}</small>
     </header>
     {visibleSections}
     <HistoryPagination
       currentPage={assessmentPage}
       totalPages={assessmentPages}
       onPageChange={changeAssessmentPage}
-      label="Assessment page"
+      label={t("Assessment page")}
     />
-    <footer>A qualified technician must confirm the physical diagnosis before repair or component replacement is finalized.</footer>
+    <footer>{t("A qualified technician must confirm the physical diagnosis before repair or component replacement is finalized.")}</footer>
   </section>;
 }
 

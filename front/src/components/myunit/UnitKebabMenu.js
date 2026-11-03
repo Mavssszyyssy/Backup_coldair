@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import { useUser } from '../../context/UserContext';
+import { translateText } from '../../utils/customerI18n';
 
 function UnitKebabMenu({
   unit,
   onViewHistory,
   onWarrantyStatus
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -27,7 +31,7 @@ function UnitKebabMenu({
       <button
         type="button"
         className="unit-kebab-btn"
-        aria-label="Unit actions"
+        aria-label={t("Unit actions")}
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
@@ -40,12 +44,12 @@ function UnitKebabMenu({
         <ul className="unit-kebab-menu" role="menu">
           <li>
             <button type="button" role="menuitem" onClick={run(onViewHistory)}>
-              Service history
+              {t("Service history")}
             </button>
           </li>
           <li>
             <button type="button" role="menuitem" onClick={run(onWarrantyStatus)}>
-              Warranty status
+              {t("Warranty status")}
             </button>
           </li>
         </ul>

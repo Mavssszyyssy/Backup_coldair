@@ -10,6 +10,7 @@ import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
 import { buildUnitQrCode } from "../../../../../../services/qrLookupService";
 import { getTaskById } from "../../../../../../services/taskStorage";
 import { getUnitByCode } from "../../../../../../services/unitStorage";
+import { useInterfaceLanguage } from "../../../../../../hooks/useInterfaceLanguage";
 
 function isDelivery(task) {
   return String(task?.serviceType || task?.issueType || task?.title || "")
@@ -19,6 +20,7 @@ function isDelivery(task) {
 
 export default function GenerateDeliveryQrScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { id: taskId } = useLocalSearchParams();
   const [task, setTask] = useState(null);
   const [qrValue, setQrValue] = useState("");
@@ -47,8 +49,8 @@ export default function GenerateDeliveryQrScreen() {
 
   const handleUnavailable = () => {
     Alert.alert(
-      "Unavailable",
-      "Delivery QR code generation is only available for delivery work orders with a linked AC unit.",
+      t("Unavailable"),
+      t("Delivery QR code generation is only available for delivery work orders with a linked AC unit."),
     );
   };
 
@@ -58,8 +60,8 @@ export default function GenerateDeliveryQrScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ padding: SPACING.md }}>
         <PageHeader
-          title="Delivery QR Code"
-          subtitle={task?.unitName || `Work Order #${String(taskId).slice(0, 8)}`}
+          title={t("Delivery QR Code")}
+          subtitle={task?.unitName || `${t("Work Order")} #${String(taskId).slice(0, 8)}`}
           color={COLORS.tech}
           onBack={() => router.back()}
         />
@@ -72,7 +74,7 @@ export default function GenerateDeliveryQrScreen() {
               marginBottom: SPACING.sm,
             }}
           >
-            Customer Delivery Confirmation Code
+            {t("Customer Delivery Confirmation Code")}
           </Text>
           <Text
             selectable
@@ -82,11 +84,11 @@ export default function GenerateDeliveryQrScreen() {
               marginBottom: SPACING.md,
             }}
           >
-            {canGenerate ? qrValue : "No QR code is available for this work order."}
+            {canGenerate ? qrValue : t("No QR code is available for this work order.")}
           </Text>
           <TechButton
-            title="Show QR Code Value"
-            onPress={canGenerate ? () => Alert.alert("QR Ready", qrValue) : handleUnavailable}
+            title={t("Show QR Code Value")}
+            onPress={canGenerate ? () => Alert.alert(t("QR Ready"), qrValue) : handleUnavailable}
             disabled={!canGenerate}
           />
         </Card>

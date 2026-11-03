@@ -1,27 +1,29 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { exportHtmlToPdfViaPrint } from "./exporters";
+import { downloadElementPdf } from "./pdfDownload";
+
+vi.mock("./pdfDownload", () => ({ downloadElementPdf: vi.fn(async () => true) }));
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("keeps the print footer in normal document flow so it cannot overlap report rows", () => {
-  const document = {
-    open: vi.fn(),
-    write: vi.fn(),
-    close: vi.fn(),
-  };
-  const printWindow = { document, focus: vi.fn(), print: vi.fn(), opener: window };
-  vi.spyOn(window, "open").mockReturnValue(printWindow);
-
-  exportHtmlToPdfViaPrint({
+it("downloads a report PDF without opening the print dialog or retaining a blank renderer", async () => {
+  const open = vi.spyOn(window, "open");
+  const print = vi.spyOn(window, "print");
+  await exportHtmlToPdfViaPrint({
     title: "Sales Report",
     html: '<section class="report-page"><table><tr><td>Order</td></tr></table></section>',
+    fileName: "sales-report.pdf",
     metadata: { documentStyle: "tabular", pageOrientation: "landscape" },
   });
-
-  const output = document.write.mock.calls[0][0];
-  expect(output).toContain("report-document--tabular");
-  expect(output).toContain(".report-footer { position: static;");
-  expect(output).not.toContain(".report-footer { position: fixed;");
+  expect(downloadElementPdf).toHaveBeenCalledWith(expect.objectContaining({
+    fileName: "sales-report.pdf",
+    orientation: "landscape",
+  }));
+  expect(downloadElementPdf.mock.calls[0][0].element.nodeType).toBe(1);
+  expect(downloadElementPdf.mock.calls[0][0].element.innerHTML).toContain("Order");
+  expect(open).not.toHaveBeenCalled();
+  expect(print).not.toHaveBeenCalled();
+  expect(document.querySelector('iframe[title="PDF export renderer"]')).toBeNull();
 });

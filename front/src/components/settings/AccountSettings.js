@@ -1,5 +1,6 @@
 import { WarningDiamond } from "@phosphor-icons/react";
 import { useState } from "react";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -14,6 +15,7 @@ function AccountSettings({
   onChangePassword,
   onDeleteAccount,
 }) {
+  const t = (value) => translateText(value, user?.preferences?.language);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteData, setDeleteData] = useState({
     password: "",
@@ -27,11 +29,11 @@ function AccountSettings({
 
   const handleDeleteAccount = async () => {
     if (deleteData.confirmText.trim().toUpperCase() !== "DELETE") {
-      alert("Please type DELETE to continue.");
+      alert(t("Please type DELETE to continue."));
       return;
     }
     if (usesLocalPassword && !deleteData.password) {
-      alert("Password confirmation is required.");
+      alert(t("Password confirmation is required."));
       return;
     }
 
@@ -60,7 +62,7 @@ function AccountSettings({
             align="center"
             justify="space-between"
             padding="20px"
-            background="#fff1f2"
+            background={BQ_COLORS.surfaceAlt}
             style={{
               borderRadius: "16px",
               cursor: "pointer",
@@ -70,10 +72,10 @@ function AccountSettings({
           >
             <BoutiqueStack gap={4}>
               <BoutiqueText weight={700} color={BQ_COLORS.danger}>
-                Delete Account
+                {t("Delete Account")}
               </BoutiqueText>
-              <BoutiqueText size="13px" color="#991b1b">
-                This action is irreversible. Your profile will be removed.
+              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
+                {t("This action is irreversible. Your profile will be removed.")}
               </BoutiqueText>
             </BoutiqueStack>
             <BoutiqueText weight={800} color={BQ_COLORS.danger}>
@@ -91,6 +93,7 @@ function AccountSettings({
             zIndex: 10000,
             background: "rgba(0,0,0,0.4)",
             backdropFilter: "blur(4px)",
+            padding: "16px",
           }}
           align="center"
           justify="center"
@@ -98,7 +101,7 @@ function AccountSettings({
         >
           <BoutiqueCard
             width="100%"
-            style={{ maxWidth: "440px" }}
+            style={{ maxWidth: "440px", maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}
             padding={40}
             onClick={(e) => e.stopPropagation()}
             className="bq-slide-up"
@@ -110,17 +113,18 @@ function AccountSettings({
                   weight="fill"
                   color={BQ_COLORS.danger}
                 />
-                <BoutiqueText variant="h2">Delete Account</BoutiqueText>
+                <BoutiqueText variant="h2">{t("Delete Account")}</BoutiqueText>
               </BoutiqueBox>
 
-              <BoutiqueText color="#991b1b" weight={600}>
-                Warning: This action is permanent and cannot be undone.
+              <BoutiqueText color={BQ_COLORS.danger} weight={600}>
+                {t("Warning: This action is permanent and cannot be undone.")}
               </BoutiqueText>
 
               <BoutiqueStack gap={20}>
                 {usesLocalPassword && (
                   <BoutiqueInput
-                    label="Current Password"
+                    label={t("Current Password")}
+                    language={user?.preferences?.language}
                     type="password"
                     value={deleteData.password}
                     onChange={(e) =>
@@ -133,7 +137,7 @@ function AccountSettings({
                   />
                 )}
                 <BoutiqueInput
-                  label="Type DELETE to confirm"
+                  label={t("Type DELETE to confirm")}
                   placeholder="DELETE"
                   value={deleteData.confirmText}
                   onChange={(e) =>
@@ -152,7 +156,7 @@ function AccountSettings({
                   flex={1}
                   onClick={() => setShowDeleteModal(false)}
                 >
-                  Cancel
+                  {t("Cancel")}
                 </BoutiqueButton>
                 <BoutiqueButton
                   variant="cancel"
@@ -160,7 +164,7 @@ function AccountSettings({
                   onClick={handleDeleteAccount}
                   loading={loadingDelete}
                 >
-                  Delete Account
+                  {t("Delete Account")}
                 </BoutiqueButton>
               </BoutiqueBox>
             </BoutiqueStack>

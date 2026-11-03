@@ -37,3 +37,16 @@ test('technician login does not hydrate or persist customer shopping state', asy
   expect(AsyncStorage.getItem).not.toHaveBeenCalled();
   expect(AsyncStorage.setItem).not.toHaveBeenCalled();
 });
+test('cart refuses fractional and over-stock quantities without changing totals', async () => {
+  await render(tree());
+  await act(async () => cart.addToCart({ id: 'ac1', stock: 2, price: 100 }, 1));
+  expect(cart.cart[0].quantity).toBe(1);
+  for (const quantity of [1.5, 0, -1, 3]) {
+    await act(async () => cart.updateQuantity('ac1', quantity));
+    expect(cart.cart[0].quantity).toBe(1);
+  }
+  await act(async () => cart.addToCart({ id: 'ac1', stock: 2, price: 100 }, 2));
+  expect(cart.cart[0].quantity).toBe(1);
+  await act(async () => cart.updateQuantity('ac1', 2));
+  expect(cart.cart[0].quantity).toBe(2);
+});

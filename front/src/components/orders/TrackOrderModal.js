@@ -1,4 +1,9 @@
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
+
 function TrackOrderModal({ order, onClose }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const timeline = Array.isArray(order.tracking?.timeline) ? order.tracking.timeline : [];
   const currentStage = order.tracking?.currentStage || "placed";
   const steps = timeline.map((step) => ({
@@ -74,12 +79,13 @@ function TrackOrderModal({ order, onClose }) {
               color: "#0f172a",
             }}
           >
-            Track Order
+            {t("Track Order")}
           </h3>
           <button
             type="button"
             className="close-modal"
             onClick={onClose}
+            aria-label={t("Close tracking details")}
             style={{
               background: "none",
               border: "none",
@@ -112,7 +118,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#64748b",
               }}
             >
-              Order: <strong style={{ color: "#0f172a" }}>{order.orderCode || order.id}</strong>
+              {t("Order")}: <strong style={{ color: "#0f172a" }}>{order.orderCode || order.id}</strong>
             </div>
             <div
               style={{
@@ -121,7 +127,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#64748b",
               }}
             >
-              Tracking #:{" "}
+              {t("Tracking #")}:{" "}
               <div
                 className="tracking-number"
                 style={{
@@ -134,11 +140,11 @@ function TrackOrderModal({ order, onClose }) {
                   fontFamily: "monospace",
                 }}
               >
-                {order.tracking?.trackingNumber || order.trackingNumber || "Pending"}
+                {order.tracking?.trackingNumber || order.trackingNumber || t("Pending")}
               </div>
             </div>
             {!["to_dispatch", "to_install", "for_rescheduling", "complete"].includes(String(order.workflowStatus || order.status || "").toLowerCase()) ? <div style={{ fontSize: "13px", color: "#64748b" }}>
-              Estimated Delivery:{" "}
+              {t("Estimated Delivery")}:{" "}
               <span
                 className="delivery-date"
                 style={{ color: "#10b981", fontWeight: 700 }}
@@ -150,7 +156,7 @@ function TrackOrderModal({ order, onClose }) {
               <div
                 style={{ fontSize: "13px", marginTop: "4px", color: "#64748b" }}
               >
-                E-Receipt:{" "}
+                {t("E-Receipt")}:{" "}
                 <strong style={{ color: "#0f172a" }}>
                   {order.receipt.receiptNumber}
                 </strong>
@@ -160,7 +166,7 @@ function TrackOrderModal({ order, onClose }) {
               <div
                 style={{ fontSize: "13px", marginTop: "4px", color: "#64748b" }}
               >
-                Assigned Technician:{" "}
+                {t("Assigned Technician")}:{" "}
                 <strong style={{ color: "#0f172a" }}>
                   {order.assignedTechnician}
                 </strong>
@@ -170,7 +176,7 @@ function TrackOrderModal({ order, onClose }) {
               <div
                 style={{ fontSize: "13px", marginTop: "4px", color: "#64748b" }}
               >
-                Estimated Arrival:{" "}
+                {t("Estimated Arrival")}:{" "}
                 <strong style={{ color: "#0f172a" }}>
                   {new Date(order.estimatedArrival).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
                 </strong>
@@ -180,7 +186,7 @@ function TrackOrderModal({ order, onClose }) {
               <div
                 style={{ fontSize: "13px", marginTop: "4px", color: "#64748b" }}
               >
-                Estimated Installation:{" "}
+                {t("Estimated Installation")}:{" "}
                 <strong style={{ color: "#0f172a" }}>
                   {new Date(order.installationDate).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
                 </strong>
@@ -197,7 +203,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#0f172a",
               }}
             >
-              Delivery Tracking
+              {t("Delivery Tracking")}
             </h4>
             <div>
               {steps.map((step, idx) => (
@@ -242,7 +248,7 @@ function TrackOrderModal({ order, onClose }) {
                         color: "#1e293b",
                       }}
                     >
-                      {step.label}
+                      {t(step.label)}
                     </div>
                     {step.date && (
                       <div style={{ fontSize: "12px", color: "#94a3b8" }}>
@@ -274,7 +280,7 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#0f172a",
               }}
             >
-              Delivery Address
+              {t("Delivery Address")}
             </h4>
             <p
               style={{
@@ -304,7 +310,7 @@ function TrackOrderModal({ order, onClose }) {
                 fontWeight: 600,
               }}
             >
-              Phone: {order.address.phone || "Not provided"}
+              {t("Phone")}: {order.address.phone || t("Not provided")}
             </p>
           </div>
 
@@ -317,14 +323,14 @@ function TrackOrderModal({ order, onClose }) {
                 color: "#0f172a",
               }}
             >
-              Payment Method
+              {t("Payment Method")}
             </h4>
             <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
               {order.paymentMethod === "cod"
-                ? "Cash on Delivery"
+                ? t("Cash on Delivery")
                 : order.paymentMethod === "gcash"
                   ? "GCash"
-                  : "Credit/Debit Card"}
+                  : t("Credit/Debit Card")}
             </p>
           </div>
         </div>
@@ -353,7 +359,7 @@ function TrackOrderModal({ order, onClose }) {
               cursor: "pointer",
             }}
           >
-            Close
+            {t("Close")}
           </button>
         </div>
       </div>

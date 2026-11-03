@@ -1,9 +1,22 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import CancelOrderDialog from "./CancelOrderDialog";
+const languageState = vi.hoisted(() => ({ value: "English" }));
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: languageState.value }) }));
 const order = { id: "order-1", orderCode: "CAA-123", paymentMethod: "cod" };
 beforeEach(() => {
+  languageState.value = "English";
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+});
+it("switches dialog controls to Filipino without changing the entered reason", () => {
+  languageState.value = "Filipino";
+  const { rerender } = render(<CancelOrderDialog order={order} onConfirm={vi.fn()} onClose={vi.fn()} />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Wrong model" } });
+  expect(screen.getByText("Kumpirmahin ang pagkansela")).toBeInTheDocument();
+  languageState.value = "English";
+  rerender(<CancelOrderDialog order={order} onConfirm={vi.fn()} onClose={vi.fn()} />);
+  expect(screen.getByText("Confirm cancellation")).toBeInTheDocument();
+  expect(screen.getByRole("textbox")).toHaveValue("Wrong model");
 });
 afterEach(cleanup);
 it("validates the reason and submits only after explicit confirmation", async () => {

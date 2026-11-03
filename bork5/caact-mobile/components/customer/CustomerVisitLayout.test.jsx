@@ -5,6 +5,10 @@ import CustomerRequestTimeline from "./CustomerRequestTimeline";
 import CompletedServiceReports from "./CompletedServiceReports";
 import PagedItems from "../ui/PagedItems";
 
+jest.mock("../../hooks/useInterfaceLanguage", () => ({
+  useInterfaceLanguage: () => ({ language: "English", t: (value) => value }),
+}));
+
 const events = Array.from({ length: 7 }, (_, i) => ({ id: `${i}`, title: `Event ${i}`, timestamp: `2026-09-0${i + 1}T10:00:00Z`, description: `Detail ${i}` }));
 test("only the visit has a pager; older activity is revealed without a second pager", async () => {
   await render(<PagedItems controlsPosition="top" label="Service visits" items={["Visit A", "Visit B"]} pageSize={1} renderItem={visit => <React.Fragment key={visit}><Text>{visit}</Text><CustomerRequestTimeline events={events} formatDateTime={value => value} /></React.Fragment>} />);

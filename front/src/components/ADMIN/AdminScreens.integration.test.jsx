@@ -14,6 +14,7 @@ const updateProfile = vi.fn();
 const changePassword = vi.fn();
 const updateSettings = vi.fn();
 const saveSettings = vi.fn();
+let language = "English";
 
 vi.mock("../../config/api", () => ({
   apiRequest: (...args) => apiRequest(...args),
@@ -21,6 +22,7 @@ vi.mock("../../config/api", () => ({
 
 vi.mock("../../context/UserContext", () => ({
   useUser: () => ({
+    currentLanguage: language,
     user: {
       id: "admin-test",
       name: "Cavite Admin",
@@ -51,6 +53,7 @@ vi.mock("../../context/AdminSettingsContext", () => ({
 }));
 
 beforeEach(() => {
+  language = "English";
   updateProfile.mockReset();
   updateProfile.mockResolvedValue({});
   apiRequest.mockImplementation(async (path) => {
@@ -67,6 +70,30 @@ beforeEach(() => {
     if (path === "/reorders/mine") return { reorders: [] };
     return {};
   });
+});
+
+it("localizes the Admin Services tabs in Filipino", async () => {
+  language = "Filipino";
+  renderScreen(AdminServices, "/admin/services");
+  expect(screen.getByRole("tab", { name: "Mga Order ng Customer" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Mga Kahilingan sa Serbisyo" })).toBeInTheDocument();
+  await waitFor(() => expect(apiRequest).toHaveBeenCalled());
+});
+
+it("localizes the branch reorder empty state in Filipino", async () => {
+  language = "Filipino";
+  renderScreen(AdminInventory, "/admin/inventory?tab=reorder");
+  expect(await screen.findByText("Mga produktong kakaunti ang stock")).toBeInTheDocument();
+  expect(screen.getByText("Walang produkto sa iyong branch na mas mababa sa antas para muling mag-order.")).toBeInTheDocument();
+});
+
+it("localizes Admin inventory filters without translating branch names", async () => {
+  language = "Filipino";
+  renderScreen(AdminInventory, "/admin/inventory");
+  expect(screen.getByRole("tab", { name: "Imbentaryo / Stock" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Tingnan ang stock ng branch")).toHaveValue("Cavite");
+  expect(screen.getByRole("searchbox", { name: "Maghanap sa imbentaryo" })).toBeInTheDocument();
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite"));
 });
 
 it("limits the Admin profile phone field to 11 digits before saving", async () => {

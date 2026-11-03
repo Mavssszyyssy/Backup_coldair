@@ -7,8 +7,11 @@ import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
 
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
+let language = 'English';
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language }) }));
 const request = { id: 'request-1', status: 'Reviewed', branch: 'Bulacan', unitName: 'Test AC', timeline: [] };
 beforeEach(() => {
+  language = 'English';
   vi.clearAllMocks();
   apiRequest.mockImplementation(async (path, options) => {
     if (path.startsWith('/users')) return { users: [{ id: 'tech-1', name: 'Branch technician', assignedBranch: 'Bulacan', serviceQuota: 4 }] };
@@ -18,6 +21,14 @@ beforeEach(() => {
 });
 
 describe('maintenance request controls', () => {
+  it('localizes Admin labels while preserving the original customer concern', async () => {
+    language = 'Filipino';
+    render(<RequestDetails request={{ ...request, customerName: 'Ana Santos', issueDescription: 'Original customer concern.' }} />);
+    expect(screen.getByRole('heading', { name: 'Customer at kahilingan' })).toBeTruthy();
+    expect(screen.getByText('Original customer concern.')).toBeTruthy();
+    expect(screen.getByText('Ana Santos')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Pagtatalaga ng technician' })).toBeTruthy();
+  });
   it('requires an appointment and submits it with the selected technician', async () => {
     render(<RequestDetails request={request} />);
     await screen.findByRole('option', { name: /Branch technician/ });

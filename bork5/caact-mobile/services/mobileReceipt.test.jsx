@@ -3,6 +3,7 @@ import { render, screen, act } from '@testing-library/react-native';
 import { notifyNotificationsChanged } from './notificationEvents';
 import ReceiptScreen from '../app/customer/receipt/[id]';
 import { getOrderById } from './orderStorage';
+jest.mock('../hooks/useInterfaceLanguage',()=>({useInterfaceLanguage:()=>({t:(value)=>value})}));
 jest.mock('expo-router',()=>({useLocalSearchParams:()=>({id:'order1'}),useRouter:()=>({back:jest.fn(),replace:jest.fn()}),useFocusEffect:cb=>require('react').useEffect(cb,[cb])}));
 jest.mock('./orderStorage',()=>({getOrderById:jest.fn(async()=>({id:'order1',orderCode:'ORD-1',receiptAvailable:true,paymentMethod:'gcash',paymentStatus:'paid',receipt:{receiptNumber:'RCP-1'},items:[]}))}));
 jest.mock('../components/boutique',()=>{

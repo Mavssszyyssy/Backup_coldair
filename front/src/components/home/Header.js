@@ -1,9 +1,13 @@
 import { useCart } from '../../context/CartContext';
 import icons from '../common/icons';
 import coldAirLogo from '../common/images/Cold Air Logo.jpg';
+import { useUser } from '../../context/UserContext';
+import { translateText } from '../../utils/customerI18n';
 
 function Header({ onMenuToggle, onNotificationClick, onCartClick, notificationCount, scrolled }) {
   const { getCartCount } = useCart();
+  const { currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
   const cartCount = getCartCount();
 
   const formatBadgeCount = (count) => {
@@ -21,10 +25,10 @@ function Header({ onMenuToggle, onNotificationClick, onCartClick, notificationCo
       <div className="header-content">
         <div className="header-left">
           {/* Keep menu toggle functional while grouping brand on the left */}
-          <button type="button" className="menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
+          <button type="button" className="menu-toggle" onClick={onMenuToggle} aria-label={t('Open menu')}>
             <img src={icons.customize} alt="" className="inline-icon inline-icon--md" />
           </button>
-          <div className="header-brand-group" aria-label="Company identity">
+          <div className="header-brand-group" aria-label={t('Company identity')}>
             <div className="logo">
               <div className="logo-icon">
                 <img src={coldAirLogo} alt="Cold Air logo" className="logo-icon-img" />
@@ -41,13 +45,13 @@ function Header({ onMenuToggle, onNotificationClick, onCartClick, notificationCo
         <div className="header-center-spacer" aria-hidden="true" />
 
         <div className="header-right" aria-label="Header actions">
-          <button type="button" className="icon-btn header-action-btn" onClick={onNotificationClick} aria-label="Alerts">
+          <button type="button" className="icon-btn header-action-btn" onClick={onNotificationClick} aria-label={t('Alerts')}>
             <img src={icons.visit} alt="" className="inline-icon inline-icon--md" />
             {notificationBadge && (
               <span className="badge" aria-live="polite">{notificationBadge}</span>
             )}
           </button>
-          <button type="button" className="icon-btn header-action-btn" onClick={onCartClick} aria-label="Cart">
+          <button type="button" className="icon-btn header-action-btn" onClick={onCartClick} aria-label={t('Cart')}>
             <img src={icons.cartShoppingFast} alt="" className="inline-icon inline-icon--md" />
             {cartBadge && <span className="badge" aria-live="polite">{cartBadge}</span>}
           </button>

@@ -18,8 +18,10 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { translateText } from "../../utils/customerI18n";
 
 export default function RegisterEmailStep({
+  currentLanguage = "English",
   formData,
   errors: externalErrors,
   onFieldChange,
@@ -28,6 +30,7 @@ export default function RegisterEmailStep({
   onNext,
   onBack,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
   const [loading, setLoading] = useState(false);
   const [destinationError, setDestinationError] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -125,26 +128,26 @@ export default function RegisterEmailStep({
   return (
     <BoutiqueStack gap={24} className="bq-reg-step bq-fade-in" height="100%">
       <BoutiqueBox className="bq-reg-header">
-        <BoutiqueText variant="h2">Verify your email</BoutiqueText>
+        <BoutiqueText variant="h2">{t("Verify your email")}</BoutiqueText>
         <BoutiqueText variant="body" color={BQ_COLORS.inkMuted} margin="8px 0 0">
-          We’ll email you a verification code to confirm your account.
+          {t("We’ll email you a verification code to confirm your account.")}
         </BoutiqueText>
       </BoutiqueBox>
 
-      <BoutiqueInput label="Email Address" icon={EnvelopeSimple} type="email" placeholder="you@example.com" value={formData.email} onChange={(event) => changeDestination("email", event.target.value)} disabled={otpSent || loading || verified} status={verified ? "success" : visibleError ? "error" : null} errorMessage={visibleError} required />
+      <BoutiqueInput label={t("Email Address")} icon={EnvelopeSimple} type="email" placeholder="you@example.com" value={formData.email} onChange={(event) => changeDestination("email", event.target.value)} disabled={otpSent || loading || verified} status={verified ? "success" : visibleError ? "error" : null} errorMessage={t(visibleError)} required />
 
       {otpSent && !verified ? (
         <BoutiqueStack gap={20} padding={24} background="#f8fafc" style={{ borderRadius: 20, border: "1px solid #e2e8f0" }}>
-          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Enter the 6-digit code sent to <strong>{destination}</strong>.</BoutiqueText>
-          <BoutiqueInput label="Verification Code" icon={ShieldCheck} placeholder="000000" maxLength="6" value={otpCode} onChange={(event) => { setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setOtpError(""); }} status={otpError ? "error" : null} errorMessage={otpError} style={{ letterSpacing: "0.5em", textAlign: "center", fontWeight: 800, fontSize: 18, fontFamily: "monospace" }} />
-          <BoutiqueBox direction="row" justify="center" gap={16}><button type="button" className="bq-otp-reset" onClick={resetOtp}>Change email</button><button type="button" className="bq-otp-reset" onClick={sendCode} disabled={loading}>Resend code</button></BoutiqueBox>
+          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Enter the 6-digit code sent to")} <strong>{destination}</strong>.</BoutiqueText>
+          <BoutiqueInput label={t("Verification Code")} icon={ShieldCheck} placeholder="000000" maxLength="6" value={otpCode} onChange={(event) => { setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setOtpError(""); }} status={otpError ? "error" : null} errorMessage={t(otpError)} style={{ letterSpacing: "0.5em", textAlign: "center", fontWeight: 800, fontSize: 18, fontFamily: "monospace" }} />
+          <BoutiqueBox direction="row" justify="center" gap={16}><button type="button" className="bq-otp-reset" onClick={resetOtp}>{t("Change email")}</button><button type="button" className="bq-otp-reset" onClick={sendCode} disabled={loading}>{t("Resend code")}</button></BoutiqueBox>
         </BoutiqueStack>
       ) : null}
 
-      {verified ? <BoutiqueBox padding={16} background="#ecfdf5" style={{ borderRadius: 12 }}><BoutiqueText color={BQ_COLORS.success} weight={800}>Email verified</BoutiqueText></BoutiqueBox> : null}
-      {detectedRole !== "customer" ? <BoutiqueBox padding="12px 20px" background="#f1f5f9" style={{ borderRadius: 12 }}><BoutiqueText size="14px">Role detected: <strong>{detectedRoleLabel}</strong></BoutiqueText></BoutiqueBox> : null}
+      {verified ? <BoutiqueBox padding={16} background="#ecfdf5" style={{ borderRadius: 12 }}><BoutiqueText color={BQ_COLORS.success} weight={800}>{t("Email verified")}</BoutiqueText></BoutiqueBox> : null}
+      {detectedRole !== "customer" ? <BoutiqueBox padding="12px 20px" background="#f1f5f9" style={{ borderRadius: 12 }}><BoutiqueText size="14px">{t("Role detected:")} <strong>{t(detectedRoleLabel)}</strong></BoutiqueText></BoutiqueBox> : null}
 
-      <BoutiqueBox direction="row" align="center" justify="space-between" margin="auto 0 0"><BoutiqueButton variant="ghost" onClick={onBack} disabled={loading}><ArrowLeft size={18} weight="bold" /> Back</BoutiqueButton><BoutiqueButton onClick={verified ? onNext : otpSent ? verifyCode : sendCode} disabled={loading || (otpSent && otpCode.length !== 6)}>{loading ? <Spinner className="bq-spin" size={18} /> : verified ? <>Continue <ArrowRight size={18} weight="bold" /></> : otpSent ? "Verify code" : "Send email code"}</BoutiqueButton></BoutiqueBox>
+      <BoutiqueBox direction="row" align="center" justify="space-between" margin="auto 0 0"><BoutiqueButton variant="ghost" onClick={onBack} disabled={loading}><ArrowLeft size={18} weight="bold" /> {t("Back")}</BoutiqueButton><BoutiqueButton onClick={verified ? onNext : otpSent ? verifyCode : sendCode} disabled={loading || (otpSent && otpCode.length !== 6)}>{loading ? <Spinner className="bq-spin" size={18} /> : verified ? <>{t("Continue")} <ArrowRight size={18} weight="bold" /></> : otpSent ? t("Verify code") : t("Send email code")}</BoutiqueButton></BoutiqueBox>
 
       <style dangerouslySetInnerHTML={{ __html: `.bq-reg-inline-btn{padding:8px 16px;background:#e2e8f0;color:${BQ_COLORS.ink};border:0;border-radius:50px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase}.bq-reg-inline-btn.selected{background:${BQ_COLORS.brand};color:#fff}.bq-reg-inline-btn:disabled,.bq-otp-reset:disabled{opacity:.5;cursor:not-allowed}.bq-otp-reset{min-height:42px;padding:9px 16px;background:${BQ_COLORS.surface};border:1px solid #d4d4d8;border-radius:999px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:${BQ_COLORS.ink};transition:background .18s ease,border-color .18s ease,transform .18s ease}.bq-otp-reset:hover:not(:disabled){background:${BQ_COLORS.bgAlt};border-color:${BQ_COLORS.ink};transform:translateY(-1px)}.bq-otp-reset:focus-visible{outline:3px solid rgba(37,99,235,.22);outline-offset:2px}.bq-spin{animation:bq-spin 1s linear infinite}@keyframes bq-spin{to{transform:rotate(360deg)}}` }} />
     </BoutiqueStack>

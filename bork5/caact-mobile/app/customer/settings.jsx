@@ -34,8 +34,11 @@ import {
   validateRequired,
 } from "../../utils/authValidation";
 import { confirmAction } from "../../utils/confirmAction";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const toText = (value) => String(value || "").trim();
+const MAX_SAVED_ADDRESSES = 8;
+const SUCCESS_NOTICE_DURATION_MS = 4000;
 const addressId = (address) => String(address?._id || address?.id || "");
 const fullName = (user) => [user?.name_first, user?.name_last, user?.suffix].filter(Boolean).join(" ").trim() || user?.name || "Customer";
 const addressLine = (address = {}) => [address.street, address.barangay, address.city, address.province, address.region].filter(Boolean).join(", ");
@@ -78,7 +81,7 @@ function editableAddress(address, user) {
 
 function validateAddressForm(form) {
   const errors = {};
-  const nameError = validateRequired(form.name, "Recipient name");
+  const nameError = validatePersonName(form.name, "Recipient name");
   const phoneError = validatePhone(form.phone);
   const regionError = validateRequired(form.region, "Region");
   const provinceError = validateRequired(form.province, "Province");
@@ -99,6 +102,8 @@ function validateAddressForm(form) {
 
 export default function CustomerSettingsScreen() {
   const router = useRouter();
+  const { language, t, updateLanguage } = useInterfaceLanguage();
+  const [savingLanguage, setSavingLanguage] = useState(false);
   const {
     current,
     logout,
@@ -127,15 +132,37 @@ export default function CustomerSettingsScreen() {
   const [localitiesLoading, setLocalitiesLoading] = useState(true);
   const [barangaysLoading, setBarangaysLoading] = useState(false);
   const addressEditorRequest = useRef(0);
+  const noticeTimeout = useRef(null);
+
+  useEffect(() => () => {
+    if (noticeTimeout.current !== null) clearTimeout(noticeTimeout.current);
+  }, []);
+
+  const showNotice = (message) => {
+    if (noticeTimeout.current !== null) clearTimeout(noticeTimeout.current);
+    setNotice(message);
+    noticeTimeout.current = setTimeout(() => {
+      setNotice("");
+      noticeTimeout.current = null;
+    }, SUCCESS_NOTICE_DURATION_MS);
+  };
 
   const addresses = Array.isArray(current?.addresses) ? current.addresses : [];
   const isEditingAddress = Boolean(addressForm);
   const isEditing = editingProfile || isEditingAddress || Boolean(securityMode);
 
+  const selectLanguage = async (nextLanguage) => {
+    if (savingLanguage || nextLanguage === language) return;
+    setSavingLanguage(true);
+    const result = await updateLanguage(nextLanguage);
+    setSavingLanguage(false);
+    if (!result.success) Alert.alert(t("Unable to save preferences."), result.error || t("Please try again."));
+  };
+
   useEffect(() => {
-    setProfileForm(buildEditableProfile(current));
+    if (!editingProfile) setProfileForm(buildEditableProfile(current));
     if (!isEditingAddress) setAddressForm(null);
-  }, [current]);
+  }, [current, editingProfile]);
 
   useEffect(() => {
     let active = true;
@@ -190,6 +217,10 @@ export default function CustomerSettingsScreen() {
   };
 
   const openAddressEditor = async (address = null) => {
+    if (!address && addresses.length >= MAX_SAVED_ADDRESSES) {
+      Alert.alert(t("Address limit reached"), t("You can save up to 8 delivery addresses."));
+      return;
+    }
     setEditingProfile(false);
     setAddressErrors({});
     const draft = editableAddress(address, current);
@@ -228,18 +259,18 @@ export default function CustomerSettingsScreen() {
   const savePassword = async () => {
     const validationError = validateAccountPassword(newPassword);
     if (!currentPassword || validationError || newPassword !== confirmPassword) {
-      Alert.alert("Check your password", !currentPassword ? "Enter your current password." : validationError || "New passwords do not match.");
+      Alert.alert(t("Check your password"), t(!currentPassword ? "Enter your current password." : validationError || "New passwords do not match."));
       return;
     }
     if (currentPassword === newPassword) {
-      Alert.alert("Check your password", "New password must be different from your current password.");
+      Alert.alert(t("Check your password"), t("New password must be different from your current password."));
       return;
     }
     setSaving(true);
     try {
       const result = await changeMyPassword({ currentPassword, newPassword });
-      if (!result.success) return Alert.alert("Password not changed", result.error || "Please try again.");
-      setNotice("Password changed successfully.");
+      if (!result.success) return Alert.alert(t("Password not changed"), t(result.error || "Please try again."));
+      showNotice(t("Password changed successfully."));
       closeEditor();
     } finally { setSaving(false); }
   };
@@ -299,11 +330,12 @@ export default function CustomerSettingsScreen() {
   };
 
   const saveProfile = async () => {
+    if (saving) return;
     Keyboard.dismiss();
     const errors = {};
     const firstNameError = validatePersonName(profileForm.name_first, "First name");
     const lastNameError = validatePersonName(profileForm.name_last, "Last name");
-    const aliasError = validateRequired(profileForm.alias, "Alias");
+    const aliasError = /^[a-z0-9_.-]{3,30}$/.test(toText(profileForm.alias)) ? "" : "Username must be 3-30 letters, numbers, dots, underscores, or hyphens.";
     const phoneError = validatePhone(profileForm.phone);
     if (firstNameError) errors.name_first = firstNameError;
     if (lastNameError) errors.name_last = lastNameError;
@@ -322,14 +354,19 @@ export default function CustomerSettingsScreen() {
       };
       profilePayload.phone = canonicalizePhMobile(profileForm.phone);
       const result = await updateMyAccount(profilePayload);
-      if (!result.success) return Alert.alert("Save failed", result.error || "Unable to update your account.");
-      setNotice("Account details updated.");
+      if (!result.success) return Alert.alert(t("Save failed"), t(result.error || "Unable to update your account."));
+      showNotice(t("Account details updated."));
       setEditingProfile(false);
     } finally { setSaving(false); }
   };
 
   const saveAddress = async () => {
+    if (saving) return;
     Keyboard.dismiss();
+    if (!addressId(addressForm) && addresses.length >= MAX_SAVED_ADDRESSES) {
+      Alert.alert(t("Address limit reached"), t("You can save up to 8 delivery addresses."));
+      return;
+    }
     const errors = validateAddressForm(addressForm || {});
     setAddressErrors(errors);
     if (Object.keys(errors).length) return;
@@ -355,9 +392,9 @@ export default function CustomerSettingsScreen() {
       }, existingId);
       if (!result.success) {
         if (result.errors) setAddressErrors(result.errors);
-        return Alert.alert("Address not saved", result.error || "Check the address details and try again.");
+        return Alert.alert(t("Address not saved"), t(result.error || "Check the address details and try again."));
       }
-      setNotice(existingId ? "Delivery address updated and branch refreshed." : "Delivery address added and branch assigned.");
+      showNotice(t(existingId ? "Delivery address updated and branch refreshed." : "Delivery address added and branch assigned."));
       setAddressForm(null);
     } finally { setSaving(false); }
   };
@@ -367,16 +404,16 @@ export default function CustomerSettingsScreen() {
       setSaving(true);
       try {
         const result = await deleteDeliveryAddress(addressId(address));
-        if (!result.success) return Alert.alert("Address not deleted", result.error || "Unable to delete this address.");
-        setNotice("Delivery address deleted. The service branch was refreshed.");
+        if (!result.success) return Alert.alert(t("Address not deleted"), t(result.error || "Unable to delete this address."));
+        showNotice(t("Delivery address deleted. The service branch was refreshed."));
         setAddressForm(null);
       } finally { setSaving(false); }
     };
     return confirmAction({
-      title: "Delete Address?",
-      message: "This address will no longer be available at checkout.",
-      confirmText: "Delete Address",
-      pendingText: "Deleting...",
+      title: t("Delete Address?"),
+      message: t("This address will no longer be available at checkout."),
+      confirmText: t("Delete Address"),
+      pendingText: t("Deleting..."),
       destructive: true,
       onConfirm: remove,
     });
@@ -384,10 +421,10 @@ export default function CustomerSettingsScreen() {
 
   const performLogout = async () => { await logout(); router.replace("/sign-in"); };
   const handleLogout = () => confirmAction({
-    title: "Sign out?",
-    message: "Are you sure you want to sign out of your account?",
-    confirmText: "Sign out",
-    pendingText: "Signing out...",
+    title: t("Sign out?"),
+    message: t("Are you sure you want to sign out of your account?"),
+    confirmText: t("Sign out"),
+    pendingText: t("Signing out..."),
     destructive: true,
     onConfirm: performLogout,
   });
@@ -397,50 +434,67 @@ export default function CustomerSettingsScreen() {
   const saveTitle = securityMode === "password" ? "Reset Password" : isEditingAddress ? "Save Address" : "Save Account";
   return (
     <CustomerScreen
-      title="Account"
-      subtitle={subtitle}
+      title={t("Account")}
+      subtitle={t(subtitle)}
       contentContainerStyle={{ paddingBottom: isEditing ? 176 : 96 }}
-      stickyAction={isEditing ? <StickyActionBar><Button title={saving ? "Saving..." : saveTitle} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title="Cancel" variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}
+      stickyAction={isEditing ? <StickyActionBar><Button title={t(saving ? "Saving..." : saveTitle)} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title={t("Cancel")} variant="secondary" onPress={closeEditor} disabled={saving} /></StickyActionBar> : null}
     >
       {notice ? <View style={{ flexDirection: "row", gap: 8, alignItems: "center", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}><Ionicons name="checkmark-circle" size={20} color={COLORS.success} /><Text style={{ flex: 1, color: "#166534", fontWeight: "700" }}>{notice}</Text></View> : null}
 
       {!isEditing ? <>
-        <Section title="Account">
-          <CustomerSettingsRow icon="person-circle-sharp" title={fullName(current)} subtitle={`${current?.alias || "No alias"} · ${current?.email || "No email"}`} right={<CustomerEditAction onPress={() => { setAddressForm(null); setEditingProfile(true); }} />} />
-          <CustomerSettingsRow icon="call-sharp" title="Phone" subtitle={current?.phone || "No phone on file"} />
+        <Section title={t("Personal details")}>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.sm }}>{t("Review your name and contact details.")}</Text>
+          <CustomerSettingsRow icon="person-circle-sharp" title={fullName(current)} subtitle={`${current?.alias || t("No username")} · ${current?.email || t("No email")}`} right={<CustomerEditAction onPress={() => { setProfileForm(buildEditableProfile(current)); setAddressForm(null); setEditingProfile(true); }} />} />
+          <CustomerSettingsRow icon="call-sharp" title={t("Phone")} subtitle={current?.phone || t("No phone on file")} />
         </Section>
-        <Section title="Delivery Addresses">
+        <Section title={t("Interface language")}>
+          <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>{t("Choose the language used for buttons, labels, and navigation.")}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
+            {["English", "Filipino"].map((choice) => (
+              <TouchableOpacity key={choice} accessibilityRole="radio" accessibilityState={{ checked: language === choice, disabled: savingLanguage }} disabled={savingLanguage} onPress={() => selectLanguage(choice)} style={{ minWidth: 112, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: 10, borderWidth: 1, borderColor: language === choice ? COLORS.primary : COLORS.border, backgroundColor: language === choice ? COLORS.primaryLight : COLORS.surface }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, textAlign: "center" }}>{t(choice)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Section>
+        <Section title={t("Delivery Addresses")}>
+          <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>{language === "Filipino" ? `${addresses.length} sa ${MAX_SAVED_ADDRESSES} naka-save na address` : `${addresses.length} of ${MAX_SAVED_ADDRESSES} saved addresses`}</Text>
           {addresses.length ? addresses.map((address) => {
-            const details = addressLine(address) || "Address details incomplete";
+            const details = addressLine(address) || t("Address details incomplete");
             const addressIssue = validatePostalCodeForAddress(address);
-            return <CustomerSettingsRow key={addressId(address)} icon={address.isDefault ? "location-sharp" : "location-outline"} title={`${address.label || "Delivery address"}${address.isDefault ? " · Default" : ""}`} subtitle={addressIssue ? `${details}\nNeeds review: ${addressIssue}` : details} color={addressIssue ? COLORS.warning : COLORS.primary} onPress={() => openAddressEditor(address)} />;
-          }) : <View style={{ paddingVertical: SPACING.sm }}><Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>No delivery address saved yet. You can add one whenever you are ready to check out.</Text></View>}
-          <Button title={addresses.length ? "Add another address" : "Add delivery address"} variant="secondary" onPress={() => openAddressEditor()} />
+            return <CustomerSettingsRow key={addressId(address)} icon={address.isDefault ? "location-sharp" : "location-outline"} title={`${address.label || t("Delivery address")}${address.isDefault ? ` · ${t("Default")}` : ""}`} subtitle={addressIssue ? `${details}\n${t("Needs review")}: ${addressIssue}` : details} color={addressIssue ? COLORS.warning : COLORS.primary} onPress={() => openAddressEditor(address)} />;
+          }) : <View style={{ paddingVertical: SPACING.sm }}><Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{t("No delivery address saved yet. You can add one whenever you are ready to check out.")}</Text></View>}
+          <Button title={t(addresses.length ? "Add another address" : "Add delivery address")} variant="secondary" disabled={addresses.length >= MAX_SAVED_ADDRESSES} onPress={() => openAddressEditor()} />
+          {addresses.length >= MAX_SAVED_ADDRESSES ? <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>{t("You can save up to 8 delivery addresses. Edit or delete one to add another.")}</Text> : null}
         </Section>
-        <Section title="Security & Session">
-          <CustomerSettingsRow icon="key-sharp" title="Reset Password" subtitle="Verify your current password and choose a new one." onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
-          <CustomerSettingsRow icon="shield-checkmark-sharp" title="Email Sign-in Verification" subtitle="After your password is accepted, verify the code sent to your email." />
-          <CustomerSettingsRow icon="log-out-sharp" title="Sign out" subtitle="Sign out of this customer account on this device." danger onPress={handleLogout} />
+        <Section title={t("Password & sign-in")}>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.sm }}>{t("Manage your password and learn how email codes are used at sign-in.")}</Text>
+          <CustomerSettingsRow icon="key-sharp" title={t("Reset Password")} subtitle={t("Verify your current password and choose a new one.")} onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
+          <CustomerSettingsRow icon="mail-outline" title={t("Email code at sign-in")} subtitle={t("After entering your password, you may be asked for a one-time code sent to your email.")} />
         </Section>
-        <Section title="Help & Support">
-          <CustomerSettingsRow icon="help-buoy-sharp" title="Frequently Asked Questions" subtitle="Orders, payments, delivery, warranty, and AC care" onPress={() => router.push("/customer/faq")} />
-          <CustomerSettingsRow icon="chatbubble-ellipses-sharp" title="Contact Customer Support" subtitle="Get help with an order or service request" onPress={() => router.push("/customer/contact")} />
+        <Section title={t("Help & Support")}>
+          <CustomerSettingsRow icon="help-buoy-sharp" title={t("Frequently Asked Questions")} subtitle={t("Orders, payments, delivery, warranty, and AC care")} onPress={() => router.push("/customer/faq")} />
+          <CustomerSettingsRow icon="chatbubble-ellipses-sharp" title={t("Contact Customer Support")} subtitle={t("Get help with an order or service request")} onPress={() => router.push("/customer/contact")} />
         </Section>
-      </> : securityMode === "password" ? <Section title="Reset Password">
-        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
-        <PasswordField label="New Password" value={newPassword} onChangeText={setNewPassword} showRequirements editable={!saving} />
-        <PasswordField label="Confirm New Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
+        <Section title={t("Session")}>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.sm }}>{t("Manage this device's signed-in session.")}</Text>
+          <CustomerSettingsRow icon="log-out-sharp" title={t("Sign out")} subtitle={t("Sign out of this customer account on this device.")} danger onPress={handleLogout} />
+        </Section>
+      </> : securityMode === "password" ? <Section title={t("Reset Password")}>
+        <PasswordField label={t("Current Password")} value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <PasswordField label={t("New Password")} value={newPassword} onChangeText={setNewPassword} showRequirements editable={!saving} />
+        <PasswordField label={t("Confirm New Password")} value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
       </Section> : isEditingAddress ? <>
-        <Section title="Address details">
-          <TextField label="Address label" value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder="Home, office, etc." />
-          <TextField label="Recipient name" value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
-          <TextField label="Mobile number" value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} showKeyboardDone />
-          <BottomSheetSelect label="Region" value={addressForm.region} placeholder="Select region" items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage="No regions found. Check your connection and try again." onSelect={selectRegion} />
-          <BottomSheetSelect label="Province" value={addressForm.province} placeholder="Select province" items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={addressForm.regionCode ? "No provinces found." : "Select a region first."} onSelect={selectProvince} />
-          <BottomSheetSelect label="City or municipality" value={addressForm.city} placeholder="Select city or municipality" items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first."} onSelect={selectLocality} />
-          <BottomSheetSelect label="Barangay or district" value={addressForm.barangay} placeholder="Select barangay" items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first."} onSelect={selectBarangay} />
-          <TextField label="Street address" value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder="House, block, lot, street" error={addressErrors.street} />
-          <TextField label="ZIP Code *" value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} showKeyboardDone />
+        <Section title={t("Address details")}>
+          <TextField translate={t} label={t("Address label")} value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder={t("Home, office, etc.")} />
+          <TextField translate={t} label={t("Recipient name")} value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
+          <TextField translate={t} label={t("Mobile number")} value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} showKeyboardDone />
+          <BottomSheetSelect translate={t} label={t("Region")} value={addressForm.region} placeholder={t("Select region")} items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage={t("No regions found. Check your connection and try again.")} onSelect={selectRegion} />
+          <BottomSheetSelect translate={t} label={t("Province")} value={addressForm.province} placeholder={t("Select province")} items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={t(addressForm.regionCode ? "No provinces found." : "Select a region first.")} onSelect={selectProvince} />
+          <BottomSheetSelect translate={t} label={t("City or municipality")} value={addressForm.city} placeholder={t("Select city or municipality")} items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={t(addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first.")} onSelect={selectLocality} />
+          <BottomSheetSelect translate={t} label={t("Barangay or district")} value={addressForm.barangay} placeholder={t("Select barangay")} items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={t(addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first.")} onSelect={selectBarangay} />
+          <TextField translate={t} label={t("Street address")} value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder={t("House, block, lot, street")} error={addressErrors.street} />
+          <TextField translate={t} label={t("ZIP Code *")} value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} showKeyboardDone />
           <TouchableOpacity
             accessibilityRole="checkbox"
             accessibilityState={{ checked: Boolean(addressForm.isDefault), disabled: Boolean(addressForm.isDefault || saving) }}
@@ -464,24 +518,24 @@ export default function CustomerSettingsScreen() {
             />
             <View style={{ flex: 1 }}>
               <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>
-                {addressForm.isDefault ? "Default delivery address" : "Use as my default delivery address"}
+                {t(addressForm.isDefault ? "Default delivery address" : "Use as my default delivery address")}
               </Text>
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                {addressForm.isDefault
+                {t(addressForm.isDefault
                   ? "This address is already selected automatically at checkout."
-                  : "This choice will be applied when you save the address."}
+                  : "This choice will be applied when you save the address.")}
               </Text>
             </View>
           </TouchableOpacity>
-          {addressId(addressForm) ? <Button title="Delete this address" variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
+          {addressId(addressForm) ? <Button title={t("Delete this address")} variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
         </Section>
-      </> : <Section title="Account details">
-        <TextField label="First name" value={profileForm.name_first} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={profileErrors.name_first} />
-        <TextField label="Last name" value={profileForm.name_last} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={profileErrors.name_last} />
-        <TextField label="Suffix (optional)" value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
-        <TextField label="Username" value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
-        <TextField label="Email" value={profileForm.email} editable={false} />
-        <TextField label="Phone" value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
+      </> : <Section title={t("Account details")}>
+        <TextField translate={t} label={t("First name")} value={profileForm.name_first} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={profileErrors.name_first} />
+        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={profileErrors.name_last} />
+        <TextField translate={t} label={t("Suffix (optional)")} value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
+        <TextField translate={t} label={t("Username")} value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
+        <TextField translate={t} label={t("Email")} value={profileForm.email} editable={false} />
+        <TextField translate={t} label={t("Phone")} value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizePhMobileInput(value))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
       </Section>}
     </CustomerScreen>
   );

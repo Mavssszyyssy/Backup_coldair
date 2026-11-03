@@ -9,6 +9,8 @@ import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 const FAQ_ITEMS = [
   {
@@ -45,11 +47,13 @@ const FAQ_ITEMS = [
 
 function FaqPage() {
   const navigate = useNavigate();
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
 
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Help & FAQs"
+        title={t("Help & FAQs")}
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
@@ -64,7 +68,7 @@ function FaqPage() {
         <BoutiqueStack gap={40}>
           <BoutiqueBox align="center">
             <BoutiqueText variant="h1" align="center">
-              Frequently Asked Questions
+              {t("Frequently Asked Questions")}
             </BoutiqueText>
             <BoutiqueText
               color={BQ_COLORS.inkMuted}
@@ -73,8 +77,7 @@ function FaqPage() {
               margin="8px 0 0"
               style={{ maxWidth: "600px" }}
             >
-              Quick answers about ordering, service appointments, payments, and
-              warranty support.
+              {t("Quick answers about ordering, service appointments, payments, and warranty support.")}
             </BoutiqueText>
           </BoutiqueBox>
 
@@ -104,7 +107,7 @@ function FaqPage() {
                       <Question size={16} weight="bold" />
                     </BoutiqueBox>
                     <BoutiqueText variant="h3" weight={800}>
-                      {item.question}
+                      {t(item.question)}
                     </BoutiqueText>
                   </BoutiqueBox>
                   <BoutiqueBox padding="0 0 0 40px">
@@ -112,7 +115,7 @@ function FaqPage() {
                       color={BQ_COLORS.inkMuted}
                       style={{ lineHeight: 1.7, fontSize: "15px" }}
                     >
-                      {item.answer}
+                      {t(item.answer)}
                     </BoutiqueText>
                   </BoutiqueBox>
                 </BoutiqueStack>
@@ -132,16 +135,16 @@ function FaqPage() {
               className="faq-cta-flex"
             >
               <BoutiqueStack gap={8}>
-                <BoutiqueText variant="h2">Still have questions?</BoutiqueText>
+                <BoutiqueText variant="h2">{t("Still have questions?")}</BoutiqueText>
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
-                  Our team is ready to assist you personally.
+                  {t("Our team is ready to assist you personally.")}
                 </BoutiqueText>
               </BoutiqueStack>
               <BoutiqueButton
                 variant="primary"
                 onClick={() => navigate("/contact")}
               >
-                <ChatCircleText size={18} weight="bold" /> Contact Support
+                <ChatCircleText size={18} weight="bold" /> {t("Contact Support")}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueCard>

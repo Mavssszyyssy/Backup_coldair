@@ -1,11 +1,13 @@
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import ReceiptView from './ReceiptView';
 import { apiRequest } from '../../config/api';
+import { downloadElementPdf } from '../../utils/pdfDownload';
 const session = vi.hoisted(() => ({ user: { role: 'admin' } }));
 vi.mock('../../context/UserContext', () => ({ useUser: () => session }));
 vi.mock('../../config/api', () => ({ apiRequest: vi.fn() }));
+vi.mock('../../utils/pdfDownload', () => ({ downloadElementPdf: vi.fn(async () => true) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const mount = () => render(<MemoryRouter initialEntries={['/receipt/order1']}><Routes><Route path="/receipt/:orderId" element={<ReceiptView />} /></Routes></MemoryRouter>);
 for (const role of ['admin', 'superadmin', 'customer']) it(role + ' reads a receipt using the correct endpoint without claiming unpaid COD was paid', async () => {
@@ -54,4 +56,18 @@ it('places the order name above the receipt reference details', async () => {
   const orderName = await screen.findAllByText('LG Premium Dual Inverter');
   const receiptNumber = screen.getByText('Receipt Number');
   expect(orderName[0].compareDocumentPosition(receiptNumber) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it('downloads a named PDF without invoking browser print', async () => {
+  session.user = { role: 'customer' };
+  apiRequest.mockResolvedValue({ order: { id: 'order1', orderCode: 'ORD-1', receiptAvailable: true, paymentMethod: 'gcash', paymentStatus: 'paid', receipt: { receiptNumber: 'RCP-1' } } });
+  const print = vi.spyOn(window, 'print');
+  mount();
+  fireEvent.click(await screen.findByRole('button', { name: 'Save as PDF' }));
+  await waitFor(() => expect(downloadElementPdf).toHaveBeenCalledWith(expect.objectContaining({
+    fileName: 'cold-air-receipt-RCP-1.pdf',
+    element: expect.any(HTMLElement),
+  })));
+  expect(print).not.toHaveBeenCalled();
+  print.mockRestore();
 });

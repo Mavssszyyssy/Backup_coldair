@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react-native";
 
 import ServiceRequestPaymentSummary from "./ServiceRequestPaymentSummary";
+jest.mock("../../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => ({ t: (value) => value }) }));
 
 describe("ServiceRequestPaymentSummary", () => {
   it("shows the saved Admin quote instead of the catalog estimate", async () => {

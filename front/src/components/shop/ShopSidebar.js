@@ -9,6 +9,8 @@ import {
   Wrench,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
 import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
@@ -45,6 +47,8 @@ export default function ShopSidebar({
   onClearFilters,
 }) {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
 
   return (
     <BoutiqueBox
@@ -67,7 +71,7 @@ export default function ShopSidebar({
         aria-expanded={mobileFiltersOpen}
         onClick={() => setMobileFiltersOpen((open) => !open)}
       >
-        <span>Search &amp; filters</span>
+        <span>{t("Search & filters")}</span>
         <span aria-hidden="true">{mobileFiltersOpen ? "−" : "+"}</span>
       </button>
 
@@ -82,10 +86,10 @@ export default function ShopSidebar({
             color={BQ_COLORS.inkMuted}
             style={{ letterSpacing: "0.2em", opacity: 0.8 }}
           >
-            Search
+            {t("Search")}
           </BoutiqueText>
           <BoutiqueSearchInput
-            placeholder="Search products..."
+            placeholder={t("Search products...")}
             value={searchTerm}
             onChange={onSearchChange}
           />
@@ -98,7 +102,7 @@ export default function ShopSidebar({
             color={BQ_COLORS.inkMuted}
             style={{ letterSpacing: "0.2em", opacity: 0.8 }}
           >
-            Categories
+            {t("Categories")}
           </BoutiqueText>
           <BoutiqueStack
             gap={4}
@@ -135,7 +139,7 @@ export default function ShopSidebar({
                   >
                     <IconComp size={20} weight={isActive ? "fill" : "bold"} />
                     <BoutiqueText size="14px" weight={700}>
-                      {category.name}
+                      {t(category.name)}
                     </BoutiqueText>
                   </BoutiqueBox>
                   <BoutiqueBox className="bq-cat-right">
@@ -168,14 +172,14 @@ export default function ShopSidebar({
             color={BQ_COLORS.inkMuted}
             style={{ letterSpacing: "0.2em", opacity: 0.8 }}
           >
-            Brands
+            {t("Brands")}
           </BoutiqueText>
           <BoutiqueStack gap={4} className="bq-brand-list">
             {brands.map((brand) => (
               <BoutiqueCheckbox
                 key={brand}
                 type="radio"
-                label={brand === "all" ? "All Brands" : brand}
+                label={brand === "all" ? t("All Brands") : brand}
                 checked={selectedBrand === brand}
                 onChange={() => onSelectBrand(brand)}
               />
@@ -190,7 +194,7 @@ export default function ShopSidebar({
             color={BQ_COLORS.inkMuted}
             style={{ letterSpacing: "0.2em", opacity: 0.8 }}
           >
-            Price Range
+            {t("Price Range")}
           </BoutiqueText>
           <BoutiqueStack gap={16} className="bq-price-inputs">
             <BoutiqueBox
@@ -206,11 +210,11 @@ export default function ShopSidebar({
                 color={BQ_COLORS.inkFaint}
                 style={{ letterSpacing: "0.1em", minWidth: "54px" }}
               >
-                Maximum
+                {t("Maximum")}
               </BoutiqueText>
               <BoutiqueNumberInput
                 size="sm"
-                placeholder="Max Price"
+                placeholder={t("Max Price")}
                 value={priceRange.max}
                 onChange={(val) => onPriceChange("max", val)}
                 min={0}
@@ -231,11 +235,11 @@ export default function ShopSidebar({
                 color={BQ_COLORS.inkFaint}
                 style={{ letterSpacing: "0.1em", minWidth: "54px" }}
               >
-                Minimum
+                {t("Minimum")}
               </BoutiqueText>
               <BoutiqueNumberInput
                 size="sm"
-                placeholder="Min Price"
+                placeholder={t("Min Price")}
                 value={priceRange.min}
                 onChange={(val) => onPriceChange("min", val)}
                 min={0}
@@ -247,7 +251,7 @@ export default function ShopSidebar({
         </BoutiqueStack>
 
         <button className="bq-clear-btn" onClick={onClearFilters}>
-          Clear All Filters
+          {t("Clear All Filters")}
         </button>
       </BoutiqueStack>
 

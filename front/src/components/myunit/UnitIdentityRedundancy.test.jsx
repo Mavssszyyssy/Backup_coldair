@@ -3,6 +3,22 @@ import { vi } from "vitest";
 import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
 
+const mockLanguage = vi.hoisted(() => ({ current: "English" }));
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: mockLanguage.current }) }));
+
+test("Filipino AC card labels preserve its product model and serial number", () => {
+  mockLanguage.current = "Filipino";
+  try {
+    render(<UnitCard unit={unit} position={1} onClick={vi.fn()} onViewHistory={vi.fn()} onWarrantyStatus={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tingnan Pa" }));
+    expect(screen.getByText("Numero ng Order")).toBeInTheDocument();
+    expect(screen.getByText(unit.productSku)).toBeInTheDocument();
+    expect(screen.getByText(unit.serialNumber)).toBeInTheDocument();
+  } finally {
+    mockLanguage.current = "English";
+  }
+});
+
 const unit = {
   id: "unit-1",
   unitName: "Bedroom AC",

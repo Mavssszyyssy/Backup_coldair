@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
 import { announceNotificationUpdate, subscribeToNotificationUpdates } from '../../../utils/notificationSync';
+import { formatBusinessDateTime } from '../../../utils/dateTime';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 
 const routeForNotification = (item = {}) => {
   if (String(item.route || '').startsWith('/superadmin/')) return operationalAlertRoute(item, 'superadmin');
@@ -21,13 +24,11 @@ const routeForNotification = (item = {}) => {
   return '/superadmin/dashboard';
 };
 
-const timeLabel = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-};
+const timeLabel = (value) => formatBusinessDateTime(value);
 
 const SuperAdminNotificationsBell = () => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -134,14 +135,14 @@ const SuperAdminNotificationsBell = () => {
   };
 
   return <div className="super-notifications">
-    <button ref={buttonRef} type="button" className="super-notifications-button" onClick={() => setOpen((value) => !value)} aria-label="Open alerts">
+    <button ref={buttonRef} type="button" className="super-notifications-button" onClick={() => setOpen((value) => !value)} aria-label={t('Open alerts')}>
       <Bell size={20} weight="bold" />
       {unreadCount ? <span>{unreadCount > 99 ? '99+' : unreadCount}</span> : null}
     </button>
-    {open ? <section ref={panelRef} className="super-notifications-panel" role="dialog" aria-label="Super Admin alerts">
-      <header><div><strong>Alerts</strong><small>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</small></div><div><button type="button" onClick={() => refresh(view)} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button><button type="button" onClick={markAllRead} disabled={!unreadCount || view === 'archived'}>Mark read</button></div></header>
-      <div className="super-notifications-tabs" role="tablist" aria-label="Alert folders">{[['active', 'Current'], ['archived', 'Archive']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>{label}</button>)}</div>
-      {items.length === 0 ? <p className="super-notifications-empty">{view === 'archived' ? 'No archived alerts.' : 'No alerts right now.'}</p> : <div className="super-notifications-list">{items.map((item) => <div className="super-notifications-row" key={item.id}><button type="button" className={item.unread ? 'unread' : ''} onClick={() => openNotification(item)}><strong>{item.title || 'System alert'}</strong><span>{item.message || 'No additional details.'}</span><small>{timeLabel(item.createdAt)}</small></button><button type="button" className="super-notifications-archive" onClick={() => archiveNotification(item)}>{view === 'archived' ? 'Restore' : 'Archive'}</button></div>)}</div>}
+    {open ? <section ref={panelRef} className="super-notifications-panel" role="dialog" aria-label={t('Super Admin alerts')}>
+      <header><div><strong>{t('Alerts')}</strong><small>{unreadCount ? `${unreadCount} ${t('unread')}` : t('All caught up')}</small></div><div><button type="button" onClick={() => refresh(view)} disabled={busy}>{t(busy ? 'Loading…' : 'Refresh')}</button><button type="button" onClick={markAllRead} disabled={!unreadCount || view === 'archived'}>{t('Mark read')}</button></div></header>
+      <div className="super-notifications-tabs" role="tablist" aria-label={t('Alert folders')}>{[['active', 'Current'], ['archived', 'Archive']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>{t(label)}</button>)}</div>
+      {items.length === 0 ? <p className="super-notifications-empty">{t(view === 'archived' ? 'No archived alerts.' : 'No alerts right now.')}</p> : <div className="super-notifications-list">{items.map((item) => <div className="super-notifications-row" key={item.id}><button type="button" className={item.unread ? 'unread' : ''} onClick={() => openNotification(item)}><strong>{item.title || t('System alert')}</strong><span>{item.message || t('No additional details.')}</span><small>{timeLabel(item.createdAt)}</small></button><button type="button" className="super-notifications-archive" onClick={() => archiveNotification(item)}>{t(view === 'archived' ? 'Restore' : 'Archive')}</button></div>)}</div>}
     </section> : null}
   </div>;
 };

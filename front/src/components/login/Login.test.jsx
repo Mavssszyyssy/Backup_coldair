@@ -35,3 +35,14 @@ it("keeps polished secondary actions when the login form switches to email verif
   expect(screen.getByRole("button", { name: "Use a different account" })).toHaveClass("bq-auth-action--ghost");
   expect(document.querySelector(".bq-auth-secondary-actions")).toBeInTheDocument();
 });
+
+it("keeps the sign-in form usable after rejected credentials", async () => {
+  login.mockRejectedValueOnce(new Error("Invalid credentials"));
+  render(<MemoryRouter><Login /></MemoryRouter>);
+  fireEvent.change(screen.getByPlaceholderText("juan.dc"), { target: { value: "wrong.role" } });
+  fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "WrongPassword1!" } });
+  fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+  expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Sign In" })).toBeEnabled();
+  expect(screen.getByPlaceholderText("juan.dc")).toBeEnabled();
+});

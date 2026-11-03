@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { apiRequest } from '../../../config/api';
-import { BRANCHES } from '../../../domain/branches/branches';
+import useActiveBranches from '../../../domain/branches/useActiveBranches';
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
@@ -24,6 +24,7 @@ const initialForm = {
 };
 
 const AddProduct = ({ onCreated }) => {
+  const branchNames = useActiveBranches();
   const { user } = useUser();
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,13 @@ const AddProduct = ({ onCreated }) => {
     event.preventDefault();
     if (!form.name || !form.sku) return;
     setError('');
+    for (const branchName of branchNames) {
+      const raw = String(form[`stock${branchName}`] ?? '').trim();
+      if (raw && (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)))) {
+        setError(`${branchName} stock must be a nonnegative whole number.`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const result = await apiRequest('/products', {
@@ -55,7 +63,7 @@ const AddProduct = ({ onCreated }) => {
             .filter(Boolean),
           threshold: Number(form.threshold) || 0,
           price: Number(form.price) || 0,
-          branchStock: BRANCHES.reduce((acc, branchName) => {
+          branchStock: branchNames.reduce((acc, branchName) => {
             acc[branchName] = Number(form[`stock${branchName}`]) || 0;
             return acc;
           }, {}),
@@ -90,7 +98,7 @@ const AddProduct = ({ onCreated }) => {
       <input name="features" value={form.features} onChange={handleChange} placeholder="Features (comma separated)" />
       <input
         name={`stock${activeBranch || 'Bulacan'}`}
-        value={form[`stock${activeBranch || 'Bulacan'}`]}
+        value={form[`stock${activeBranch || 'Bulacan'}`] || ''}
         onChange={handleChange}
         placeholder={`${activeBranch || 'Bulacan'} stock`}
         type="number"

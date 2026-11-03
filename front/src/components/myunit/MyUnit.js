@@ -18,6 +18,8 @@ import UnitCard from "./UnitCard";
 import UnitDetailsModal from "./UnitDetailsModal";
 import WarrantyStatusModal from "./WarrantyStatusModal";
 import { filterCustomerUnits, sortCustomerUnits } from "../../domain/myunit/unitDisplay";
+import { useUser } from "../../context/UserContext";
+import { isFilipino, translateText } from "../../utils/customerI18n";
 
 const UNITS_PER_PAGE = 3;
 
@@ -84,6 +86,9 @@ const buildUnitFromBackend = (unit = {}) => ({
 });
 
 function MyUnit() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
+  const filipino = isFilipino(currentLanguage);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const openedTargetRef = useRef("");
@@ -185,7 +190,7 @@ function MyUnit() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="My AC Units"
+        title={t("My AC Units")}
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
@@ -204,16 +209,16 @@ function MyUnit() {
           margin="0 0 32px"
         >
           <BoutiqueStack gap={4}>
-            <BoutiqueText variant="h2">Your Registered AC Units</BoutiqueText>
+            <BoutiqueText variant="h2">{t("Your Registered AC Units")}</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
-              View your AC details, warranty coverage, and recommended service schedule.
+              {t("View your AC details, warranty coverage, and recommended service schedule.")}
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>
 
         {loadingUnits ? (
           <BoutiqueBox flex={1} align="center" justify="center" padding={60} background="white" aria-live="polite">
-            <BoutiqueText variant="h3">Loading your registered AC units...</BoutiqueText>
+            <BoutiqueText variant="h3">{t("Loading your registered AC units...")}</BoutiqueText>
           </BoutiqueBox>
         ) : units.length === 0 ? (
           <BoutiqueBox
@@ -229,59 +234,59 @@ function MyUnit() {
           >
             <BoutiqueStack gap={20} align="center">
               <Snowflake size={64} weight="bold" color={BQ_COLORS.inkFaint} />
-              <BoutiqueText variant="h3">{unitLoadError ? "We couldn't load your AC units" : "No Installed AC Units Yet"}</BoutiqueText>
+              <BoutiqueText variant="h3">{t(unitLoadError ? "We couldn't load your AC units" : "No Installed AC Units Yet")}</BoutiqueText>
               <BoutiqueText
                 color={BQ_COLORS.inkMuted}
                 align="center"
                 style={{ maxWidth: "320px" }}
               >
-                {unitLoadError || "Your AC will appear here after installation, along with its serial number, warranty, care plan, and service history."}
+                {unitLoadError ? t(unitLoadError) : t("Your AC will appear here after installation, along with its serial number, warranty, care plan, and service history.")}
               </BoutiqueText>
               {unitLoadError ? (
-                <button type="button" className="bq-my-unit-retry" onClick={() => setReloadKey((value) => value + 1)}>Try again</button>
+                <button type="button" className="bq-my-unit-retry" onClick={() => setReloadKey((value) => value + 1)}>{t("Try again")}</button>
               ) : null}
             </BoutiqueStack>
           </BoutiqueBox>
         ) : (
           <>
-            <section className="unit-organizer" aria-label="Find and organize your AC units">
+            <section className="unit-organizer" aria-label={t("Find and organize your AC units")}>
               <div className="unit-organizer-copy">
-                <BoutiqueText variant="h3">Find your AC unit</BoutiqueText>
+                <BoutiqueText variant="h3">{t("Find your AC unit")}</BoutiqueText>
                 <BoutiqueText color={BQ_COLORS.inkMuted} size="13px">
-                  The newest purchase appears first. Search by model, serial number, order number, branch, or installation address.
+                  {t("The newest purchase appears first. Search by model, serial number, order number, branch, or installation address.")}
                 </BoutiqueText>
               </div>
               <label className="unit-search-field">
-                <span>Search your units</span>
+                <span>{t("Search your units")}</span>
                 <input
                   type="search"
                   value={unitSearch}
                   onChange={(event) => setUnitSearch(event.target.value)}
-                  placeholder="Model, serial, order number, branch, or address"
+                  placeholder={t("Model, serial, order number, branch, or address")}
                 />
               </label>
               <label className="unit-sort-field">
-                <span>Arrange by</span>
+                <span>{t("Arrange by")}</span>
                 <select value={unitSort} onChange={(event) => setUnitSort(event.target.value)}>
-                  <option value="newest">Newest purchase first</option>
-                  <option value="oldest">Oldest purchase first</option>
-                  <option value="name">Name A–Z</option>
+                  <option value="newest">{t("Newest purchase first")}</option>
+                  <option value="oldest">{t("Oldest purchase first")}</option>
+                  <option value="name">{t("Name A–Z")}</option>
                 </select>
               </label>
             </section>
 
             <div className="unit-results-summary" aria-live="polite">
               {visibleUnits.length
-                ? `Showing ${firstUnitIndex + 1}–${Math.min(firstUnitIndex + UNITS_PER_PAGE, visibleUnits.length)} of ${visibleUnits.length} matching AC units (${units.length} registered)`
-                : `Showing 0 of ${units.length} registered AC units`}
+                ? filipino ? `Ipinapakita ang ${firstUnitIndex + 1}–${Math.min(firstUnitIndex + UNITS_PER_PAGE, visibleUnits.length)} sa ${visibleUnits.length} tumugmang AC unit (${units.length} nakarehistro)` : `Showing ${firstUnitIndex + 1}–${Math.min(firstUnitIndex + UNITS_PER_PAGE, visibleUnits.length)} of ${visibleUnits.length} matching AC units (${units.length} registered)`
+                : filipino ? `Ipinapakita ang 0 sa ${units.length} nakarehistrong AC unit` : `Showing 0 of ${units.length} registered AC units`}
             </div>
 
             {visibleUnits.length === 0 ? (
               <div className="unit-no-results">
                 <Snowflake size={34} weight="bold" color={BQ_COLORS.inkFaint} />
-                <BoutiqueText variant="h3">No matching AC unit</BoutiqueText>
-                <BoutiqueText color={BQ_COLORS.inkMuted}>Try a different model, serial number, order number, branch, or address.</BoutiqueText>
-                <button type="button" className="bq-my-unit-retry" onClick={() => setUnitSearch("")}>Clear search</button>
+                <BoutiqueText variant="h3">{t("No matching AC unit")}</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Try a different model, serial number, order number, branch, or address.")}</BoutiqueText>
+                <button type="button" className="bq-my-unit-retry" onClick={() => setUnitSearch("")}>{t("Clear search")}</button>
               </div>
             ) : (
             <BoutiqueGrid
@@ -302,15 +307,15 @@ function MyUnit() {
             </BoutiqueGrid>
             )}
 
-            {visibleUnits.length > UNITS_PER_PAGE ? <nav className="unit-list-pagination" aria-label="My AC Units pagination">
-              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.max(1, page - 1))} disabled={currentUnitPage === 1}>Previous</button>
-              <div className="unit-page-numbers" aria-label={`Page ${currentUnitPage} of ${unitPageCount}`}>
+            {visibleUnits.length > UNITS_PER_PAGE ? <nav className="unit-list-pagination" aria-label={t("My AC Units pagination")}>
+              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.max(1, page - 1))} disabled={currentUnitPage === 1}>{t("Previous")}</button>
+              <div className="unit-page-numbers" aria-label={filipino ? `Pahina ${currentUnitPage} sa ${unitPageCount}` : `Page ${currentUnitPage} of ${unitPageCount}`}>
                 {unitPagination.map((page) => typeof page === "number"
-                  ? <button type="button" className="unit-page-number" key={page} aria-current={page === currentUnitPage ? "page" : undefined} aria-label={`Page ${page}`} onClick={() => setUnitPage(page)}>{page}</button>
+                  ? <button type="button" className="unit-page-number" key={page} aria-current={page === currentUnitPage ? "page" : undefined} aria-label={`${t("Page")} ${page}`} onClick={() => setUnitPage(page)}>{page}</button>
                   : <span key={page} aria-hidden="true">…</span>)}
               </div>
-              <span className="unit-page-status">Page {currentUnitPage} of {unitPageCount}</span>
-              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.min(unitPageCount, page + 1))} disabled={currentUnitPage === unitPageCount}>Next</button>
+              <span className="unit-page-status">{filipino ? `Pahina ${currentUnitPage} sa ${unitPageCount}` : `Page ${currentUnitPage} of ${unitPageCount}`}</span>
+              <button type="button" className="unit-page-direction" onClick={() => setUnitPage((page) => Math.min(unitPageCount, page + 1))} disabled={currentUnitPage === unitPageCount}>{t("Next")}</button>
             </nav> : null}
 
             <div className="customer-amp-report-center">
@@ -326,8 +331,8 @@ function MyUnit() {
                   unitId: unit.backendUnitId || unit.id,
                   modelName: unit.model,
                 }))}
-                title="Your AC care guide"
-                subtitle="Check your next suggested service or review the work done on your AC."
+                title={t("Your AC care guide")}
+                subtitle={t("Check your next suggested service or review the work done on your AC.")}
               />
             </div>
           </>

@@ -90,7 +90,7 @@ test("profile requires verified email and never infers staff role from email", a
   }));
   await fireEvent.changeText(view.getByPlaceholderText("First name"), "Test");
   await fireEvent.changeText(view.getByPlaceholderText("Last name"), "Customer");
-  await fireEvent.changeText(view.getByLabelText("Sign-in Alias"), "customer.alias");
+  await fireEvent.changeText(view.getByLabelText("Username"), "customer.alias");
   await fireEvent.changeText(view.getByLabelText("Password"), "StrongPass1!");
   await fireEvent.changeText(view.getByLabelText("Confirm Password"), "StrongPass1!");
   await fireEvent.press(view.getByText("Continue to delivery address"));

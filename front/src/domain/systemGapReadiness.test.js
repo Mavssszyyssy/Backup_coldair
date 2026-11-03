@@ -53,7 +53,7 @@ describe("cross-surface readiness gaps", () => {
     expect(reports).toContain("Model and parts history");
     expect(reports).not.toContain('label: "Predictive Maintenance"');
     expect(owner).toContain("These are not confirmed bookings");
-    expect(owner).toContain("Estimated amount for each service");
+    expect(owner).toContain("Planning amount per suggested service");
     expect(owner).toContain("It does not rate a model or predict a breakdown");
     expect(reports).toContain("Suggested servicing date");
     expect(reports).not.toContain("Operating environment");
@@ -65,23 +65,25 @@ describe("cross-surface readiness gaps", () => {
     const manager = source("src/components/AMP/ManagerAmpDashboard.js");
     const shell = source("src/components/AMP/AmpDashboardShell.js");
     expect(manager).toContain('"Branch maintenance"');
-    expect(manager).toContain('<option value="all">All branches</option>');
+    expect(manager).toContain('<option value="all">{t("All branches")}</option>');
     expect(manager).toContain("branch=${encodeURIComponent(selectedBranch)}");
     expect(manager).toContain("const SERVICE_WINDOWS = [30, 90, 180, 365]");
-    expect(manager).toContain("[...BRANCHES, UNASSIGNED_BRANCH]");
-    expect(manager).toContain("unit{unassignedCount === 1 ? \" has\" : \"s have\"} no responsible branch");
+    expect(manager).toContain("[...branchNames, UNASSIGNED_BRANCH]");
+    expect(manager).toContain("useActiveBranches()");
+    expect(manager).toContain('t(unassignedCount === 1 ? "unit has no responsible branch." : "units have no responsible branch.")');
     expect(manager).toContain("days=${serviceWindow}");
     expect(manager).toContain("Branch admins remain responsible for service processing");
-    expect(manager).toContain('<PipelineTable units={group.units} onSelectPlan={selectPlan} />');
+    expect(manager).toContain('<PipelineTable units={group.units} onSelectPlan={selectPlan} t={t} />');
     expect(shell).toContain('isOwner ? "Branch maintenance" : "My branch maintenance"');
     expect(source("src/components/SUPERADMIN/Common/SuperAdminSidebar.js")).toContain('{ to: "/manager/amp", label: "AMP Planning"');
   });
 
-  test("superadmin alerts translate internal payment codes", () => {
+  test("superadmin alerts label payment codes using the selected interface language", () => {
     const contents = source("src/components/SUPERADMIN/Dashboard/SuperAdminAlerts.js");
     expect(contents).toContain("Cash on Delivery");
     expect(contents).toContain("Payment due on delivery");
-    expect(contents).toContain("paymentSummary(order)");
+    expect(contents).toContain("paymentSummary(order, t)");
+    expect(contents).toContain("translateText(value, currentLanguage)");
   });
 
   test("superadmin no longer exposes the Processing Sales module", () => {
@@ -99,7 +101,7 @@ describe("cross-surface readiness gaps", () => {
     const registry = source("src/components/ADMIN/SerialQr/AdminSerialQr.js");
     expect(registry).toContain('const isSuperAdmin = user?.role === "superadmin"');
     expect(registry).toContain('className="serialqr-branch-scope"');
-    expect(registry).toContain("{assignedBranch} branch");
-    expect(registry).toContain('<option value="all">All branches</option>');
+    expect(registry).toContain('{assignedBranch} {t("branch")}');
+    expect(registry).toContain('<option value="all">{t("All branches")}</option>');
   });
 });

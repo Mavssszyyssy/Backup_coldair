@@ -67,7 +67,7 @@ it("scopes the follow-up summary to the selected branch", () => {
   expect(summary).toMatchObject({ total: 4, overdue: 1, upcoming: 3, branchTotal: 4, serviceTotal: 4, isReconciled: true });
 });
 
-it("keeps each AMP See more card at its own content height", () => {
+it("keeps recommendation cards compact in the AMP grid", () => {
   const css = fs.readFileSync(path.resolve(process.cwd(), "src", "components", "AMP", "styles.css"), "utf8");
 
   expect(css).toMatch(/\.amp-action-grid\s*\{[^}]*align-items:\s*start/s);
@@ -84,6 +84,7 @@ it("uses the calm AMP visual system across navigation, reports, history, and own
   expect(owner).toContain("amp-owner-branch-grid");
   expect(owner).toContain("amp-insight-details");
   expect(css).toMatch(/\.amp-report-controls\s*\{[^}]*grid-template-columns:/s);
+  expect(css).toMatch(/\.amp-report-controls\s*\{\s*display:\s*flex;\s*flex-wrap:\s*wrap;/s);
   expect(css).toMatch(/\.amp-report-result\s*\{[^}]*border-radius:/s);
   expect(css).toContain(".amp-insight-details > summary");
   expect(css).toContain(".amp-owner-branch-grid");
@@ -106,10 +107,25 @@ it("keeps Superadmin branch and service-window filters working with clearer labe
   show(<ManagerAmpDashboard />);
   expect(await screen.findByText(/No units are entering/)).toBeVisible();
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Branch maintenance");
-  fireEvent.change(screen.getByRole("combobox", { name: "Branch", exact: true }), { target: { value: "Bulacan" } });
+  expect(screen.queryByText("Branch service overview")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("combobox", { name: /Branch \(including branches with no due units\)/ }), { target: { value: "Bulacan" } });
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10&branch=Bulacan"));
   expect(screen.getByRole("link", { name: "12-month workload plan" })).toBeVisible();
+});
+
+it("uses the saved Filipino preference for AMP navigation, filters, and follow-up actions", async () => {
+  useUser.mockReturnValue({ userRole: "superadmin", currentLanguage: "Filipino", user: { role: "superadmin" }, logout: vi.fn() });
+  show(<ManagerAmpDashboard />);
+  expect(await screen.findByRole("heading", { level: 1, name: "Maintenance ng mga branch" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Plano ng gawain sa 12 buwan" })).toBeVisible();
+  expect(screen.getByRole("combobox", { name: "Panahon ng serbisyo" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Distribusyon ng mga branch" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Inirerekomendang follow-up" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Tingnan ang detalye" })).toBeVisible();
+  expect(screen.getByRole("combobox", { name: "Uri ng ulat" })).toBeVisible();
+  expect(screen.getByRole("combobox", { name: "Naka-install na AC unit" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Tingnan ang ulat" })).toBeVisible();
 });
 
 it("shows a reconciled, interactive Superadmin follow-up summary", async () => {
@@ -153,11 +169,10 @@ it.each([ManagerAmpDashboard, OwnerAmpDashboard])("does not present a failed req
 it("does not invent a busiest month when no services are due", async () => {
   show(<OwnerAmpDashboard />);
   expect(await screen.findByText("No services due")).toBeVisible();
-  expect(screen.getByText("This is an estimate, not earned revenue.")).not.toBeVisible();
-  expect(screen.getByText("Estimated Value")).not.toBeVisible();
-  fireEvent.click(screen.getByText("Estimated service value"));
-  expect(screen.getByText("Estimated Value")).toBeVisible();
+  expect(screen.getByText("Estimated service value")).toBeVisible();
   expect(screen.getByText("This is an estimate, not earned revenue.")).toBeVisible();
+  expect(screen.getByText("Current service needs")).toBeVisible();
+  expect(screen.getByText("No suggested services have an estimated value in this period.")).toBeVisible();
 });
 
 it("renders the 12-month workload before the AC selector and defers hidden history", async () => {
@@ -186,11 +201,40 @@ it("renders the 12-month workload before the AC selector and defers hidden histo
   expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=false");
   expect(apiRequest).not.toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true");
 
-  fireEvent.click(screen.getByText("Service and parts summary"));
+  expect(screen.getByText("Current service needs")).toBeVisible();
+  fireEvent.click(screen.getByText("Recorded parts history"));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true"));
   expect(await screen.findByText("Control Board")).toBeVisible();
 
   await act(async () => resolveReportUnits({ units: [] }));
+});
+
+it("shows exact estimated values immediately without mixing them into paid revenue", async () => {
+  apiRequest.mockImplementation(async (path) => path === '/amp/report-units' ? { units: [] } : {
+    forecast: [{ month: '2026-09', label: 'Sep 2026', serviceVolume: 2, projectedRevenue: 5000 }],
+    totalForecastedServices: 2,
+    totalProjectedRevenue: 5000,
+    averageServiceRevenue: 2500,
+    revenueDisclaimer: 'Planning scenario only.',
+  });
+  show(<OwnerAmpDashboard />);
+  expect(await screen.findByText('Planning scenario only.')).toBeVisible();
+  expect(screen.getByText('Projected 12-month value').parentElement).toHaveTextContent('₱5,000');
+  expect(screen.getByText('Planning amount per suggested service').parentElement).toHaveTextContent('₱2,500');
+  expect(screen.getByRole('table', { name: /Months with suggested services/ })).toHaveTextContent('₱5,000');
+  expect(screen.getByRole('listitem', { name: /Sep 2026: 2 suggested services; estimated value ₱5,000/ })).toBeInTheDocument();
+  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true');
+});
+
+it("loads optional model history only when that panel is opened directly", async () => {
+  apiRequest.mockImplementation(async (path) => path.includes('includeHistory=true')
+    ? { recordedPartsTrend: [], modelTrends: [{ label: 'AC One', recordedServices: 2, servicesPerUnit: 1 }], brandTrends: [] }
+    : { units: [], forecast: [], recommendedServiceDemand: [] });
+  show(<OwnerAmpDashboard />);
+  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true');
+  fireEvent.click(screen.getByText('Service records by model and brand'));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true'));
+  expect(await screen.findByText('AC One')).toBeVisible();
 });
 
 it("gives branch admins a service-window control without cross-branch access", async () => {
@@ -211,6 +255,56 @@ it("loads later maintenance pipeline pages without hiding the total", async () =
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=2&pageSize=10"));
   expect(await screen.findByText("Page 2 of 8 · 75 units")).toBeVisible();
+});
+
+it("keeps follow-up rows compact and opens the full assessment in a closable dialog", async () => {
+  apiRequest.mockImplementation(async path => path.includes("pipeline") ? { units: [{
+    unitId: "unit-1", modelName: "Samsung Windfree", customerName: "Edrian Mab",
+    bestServicedBy: "2026-10-28", daysUntilDue: 1,
+    technicianRecorded: "Original technician findings remain available.",
+    aiAssessment: "A detailed interpretation of the recorded issue.",
+    possibleCauses: ["Inspect the control board connection."],
+    recommendedActions: ["Confirm the fault before replacement."],
+  }] } : { units: [] });
+  show(<ManagerAmpDashboard />);
+  const open = await screen.findByRole("button", { name: "View details" });
+  expect(screen.queryByRole("dialog", { name: /Maintenance assessment/ })).not.toBeInTheDocument();
+  fireEvent.click(open);
+  const dialog = screen.getByRole("dialog", { name: /Maintenance assessment/ });
+  expect(dialog).toHaveTextContent("Original technician findings remain available.");
+  expect(dialog).toHaveTextContent("Inspect the control board connection.");
+  expect(dialog).toHaveTextContent("Confirm the fault before replacement.");
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog", { name: /Maintenance assessment/ })).not.toBeInTheDocument();
+  expect(open).toHaveFocus();
+});
+
+it("filters report units by customer and searches a long unit list", async () => {
+  const units = Array.from({ length: 12 }, (_, index) => ({
+    unitId: `unit-${index + 1}`, modelName: `Model ${index + 1}`,
+    serialNumber: `SERIAL-${index + 1}`, customerName: index < 6 ? "Alice" : "Bob",
+  }));
+  apiRequest.mockImplementation(async path => path.includes("pipeline") ? { units: [] } : { units });
+  show(<ManagerAmpDashboard />);
+  await screen.findByRole("option", { name: /Alice · Model 1/ });
+  fireEvent.change(screen.getByRole("combobox", { name: "Customer name" }), { target: { value: "Bob" } });
+  expect(screen.queryByRole("option", { name: /Alice · Model 1/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Find installed AC unit" }), { target: { value: "SERIAL-12" } });
+  expect(screen.getByRole("option", { name: /Model 12 · SERIAL-12/ })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: /Model 11 · SERIAL-11/ })).not.toBeInTheDocument();
+});
+
+it("does not mix installed units belonging to customers with the same name", async () => {
+  const units = [
+    { unitId: "unit-alice-1", customerId: "customer-111111", customerName: "Alex Cruz", modelName: "Model A", serialNumber: "SERIAL-A" },
+    { unitId: "unit-alice-2", customerId: "customer-222222", customerName: "Alex Cruz", modelName: "Model B", serialNumber: "SERIAL-B" },
+  ];
+  apiRequest.mockImplementation(async path => path.includes("pipeline") ? { units: [] } : { units });
+  show(<ManagerAmpDashboard />);
+  await screen.findByRole("option", { name: /Alex Cruz · 111111/ });
+  fireEvent.change(screen.getByRole("combobox", { name: "Customer name" }), { target: { value: "customer-111111" } });
+  expect(screen.getByRole("option", { name: /Model A · SERIAL-A/ })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: /Model B · SERIAL-B/ })).not.toBeInTheDocument();
 });
 
 it("opens the selected unit's plan without automatically calling AI", async () => {
@@ -271,10 +365,11 @@ it("turns maintenance totals into data-backed management recommendations", async
   expect(await screen.findByRole("heading", { name: "Recommended follow-up" })).toBeVisible();
   expect(screen.getByText("Prepare upcoming customer follow-ups")).toBeVisible();
   expect(screen.getByText("Review units marked for repair")).toBeVisible();
-  expect(screen.getAllByText("See more").length).toBeGreaterThanOrEqual(1);
-  screen.getAllByText("See more").forEach((control) => fireEvent.click(control));
-  expect(screen.getByText(/check the technician's notes/i)).toBeVisible();
+  expect(screen.getAllByRole("button", { name: "See details" }).length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText("Review Samsung Windfree 1.5")).toBeVisible();
+  const trigger = screen.getByRole("heading", { name: "Review Samsung Windfree 1.5" }).closest("article").querySelector("button");
+  fireEvent.click(trigger);
+  expect(screen.getByRole("dialog", { name: "Review Samsung Windfree 1.5" })).toHaveTextContent("Overdue");
   expect(screen.getAllByText("What the records suggest").length).toBeGreaterThanOrEqual(1);
   expect(screen.getAllByText("Technician notes").length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText("Work already completed")).toBeVisible();
@@ -285,6 +380,9 @@ it("turns maintenance totals into data-backed management recommendations", async
   expect(screen.getByText(/Button controls were not working properly/i)).toBeVisible();
   expect(screen.getByText(/Cleaned the air filter/i)).toBeVisible();
   expect(screen.getByText(/Arrange a qualified technician assessment before approving replacement/i)).toBeVisible();
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog", { name: "Review Samsung Windfree 1.5" })).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
 });
 
 it("refreshes branch workload after a generated plan without making another paid request", async () => {

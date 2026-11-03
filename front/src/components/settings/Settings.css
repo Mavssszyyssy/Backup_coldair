@@ -3,6 +3,15 @@
    Minimalist, clean, #2563eb primary
    ============================================ */
 
+.address-list-header, .address-item-content, .address-item-actions { min-width: 0; }
+.address-item-content .bq-text { overflow-wrap: anywhere; }
+@media (max-width: 680px) {
+  .address-list-header, .address-item-content { flex-direction: column !important; align-items: stretch !important; gap: 16px !important; }
+  .address-item-actions { flex-wrap: wrap !important; }
+  .address-item-actions button { flex: 1 1 auto; }
+  .settings-panel { min-width: 0; }
+}
+
 /* ========== LIGHT MODE ========== */
 .settings-container {
   min-height: 100vh;
@@ -199,6 +208,49 @@
 @media (max-width: 768px) {
   .logout-btn span { display: none; }
   .logout-btn { padding: 9px 12px; }
+}
+
+/* The active customer settings layout uses BoutiqueBox inline dimensions.
+   Override those only at compact widths so the sidebar and translated
+   controls cannot force horizontal scrolling. */
+@media (max-width: 900px) {
+  .settings-layout {
+    flex-direction: column !important;
+    padding: 20px 16px !important;
+    gap: 24px;
+  }
+
+  .settings-sidebar {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .settings-sidebar nav {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-sidebar .bq-nav-item,
+  .settings-panel {
+    min-width: 0;
+    width: 100% !important;
+  }
+
+  .settings-sidebar .bq-nav-item span {
+    overflow-wrap: anywhere;
+  }
+
+  .address-list-header,
+  .address-item-content,
+  .address-item-actions {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 460px) {
+  .settings-sidebar nav { grid-template-columns: minmax(0, 1fr); }
+  .address-item-actions { width: 100%; }
 }
 
 /* ========== SETTINGS CONTENT ========== */

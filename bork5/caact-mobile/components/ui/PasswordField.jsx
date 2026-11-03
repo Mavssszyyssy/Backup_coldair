@@ -10,6 +10,7 @@ export default function PasswordField({
   value,
   onChangeText,
   error,
+  placeholder,
   maxLength,
   style,
   editable = true,
@@ -56,6 +57,7 @@ export default function PasswordField({
           onChangeText={onChangeText}
           secureTextEntry={!visible}
           maxLength={maxLength}
+          placeholder={placeholder}
           placeholderTextColor={COLORS.textMuted}
           style={{
             flex: 1,

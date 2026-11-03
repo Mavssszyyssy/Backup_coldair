@@ -7,7 +7,7 @@ import {
   SignOut,
   UserCircle,
 } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
@@ -63,6 +63,9 @@ function Settings() {
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
     if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
@@ -71,6 +74,8 @@ function Settings() {
   }, [requestedTab]);
 
   const selectTab = (tabId) => {
+    window.clearTimeout(toastTimer.current);
+    setToast(null);
     setActiveTab(tabId);
     setSearchParams({ tab: tabId }, { replace: true });
   };
@@ -98,8 +103,9 @@ function Settings() {
   const t = (text) => translateText(text, language);
 
   const pushToast = (message, type = "success") => {
-    setToast({ message, type });
-    window.setTimeout(() => setToast(null), 2400);
+    window.clearTimeout(toastTimer.current);
+    setToast({ message: t(message), type });
+    toastTimer.current = window.setTimeout(() => setToast(null), 2400);
   };
 
   const callWithToast = async (action, successMessage) => {
@@ -216,7 +222,7 @@ function Settings() {
                       gap: "16px",
                       padding: "16px 20px",
                       border: "none",
-                      background: isActive ? "white" : "transparent",
+                      background: isActive ? BQ_COLORS.surface : "transparent",
                       color: isActive ? BQ_COLORS.brand : BQ_COLORS.inkMuted,
                       borderRadius: BQ_GEOMETRY.radiusMd,
                       fontWeight: isActive ? 700 : 600,
@@ -282,6 +288,7 @@ function Settings() {
             {activeTab === "addresses" && (
               <MyAddressesSettings
                 onAddressesChanged={synchronizeAddresses}
+                language={language}
               />
             )}
             {activeTab === "security" && (
@@ -310,6 +317,8 @@ function Settings() {
             borderRadius: "50px",
             boxShadow: BQ_SHADOWS.float,
             zIndex: 10000,
+            maxWidth: "calc(100vw - 32px)",
+            overflowWrap: "anywhere",
           }}
           className="bq-slide-up"
         >

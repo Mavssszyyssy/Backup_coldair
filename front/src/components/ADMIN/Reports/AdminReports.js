@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { COMPANY_PROFILE } from "../../../config/company";
 import { useUser } from "../../../context/UserContext";
-import { BRANCHES } from "../../../domain/branches/branches";
+import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { exportHtmlToPdfViaPrint, exportToExcel, formatReportValue } from "../../../utils/exporters";
 import { getSessionActiveBranch } from "../../../utils/authSession";
+import { formatBusinessDate, formatBusinessDateTime } from "../../../utils/dateTime";
+import { translateText } from "../../../utils/customerI18n";
 import AdminLayout from "../Common/AdminLayout";
 import SuperAdminLayout from "../../SUPERADMIN/Common/SuperAdminLayout";
 import "./AdminReports.css";
@@ -12,8 +14,8 @@ import "./AdminReports.css";
 const COMPANY = COMPANY_PROFILE;
 
 const TABS = [
-  { id: "intelligence", label: "Business Intelligence" },
   { id: "sales", label: "Sales Report" },
+  { id: "intelligence", label: "Business Intelligence" },
   { id: "inventory", label: "Inventory Report" },
   { id: "tech", label: "Technician Performance" },
 ];
@@ -120,7 +122,7 @@ const defaultRange = () => {
 };
 const humanize = (value) => COLUMN_LABELS[value] || SUMMARY_LABELS[value] || String(value).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/^./, (letter) => letter.toUpperCase());
 const displayValue = (value, key) => {
-  if (key === "transactionDate" && value) return new Date(value).toLocaleString("en-PH");
+  if (key === "transactionDate" && value) return formatBusinessDateTime(value);
   return formatReportValue(value, key);
 };
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -226,14 +228,14 @@ const businessIntelligenceReportHtml = (intelligence = {}, summaryHtml = "") => 
   return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>${escapeHtml(label)}</strong><span>Page ${index + 1} of ${BUSINESS_INTELLIGENCE_PAGES.length}</span></div>${reportTableHtml(categoryRows, { title: label })}</section>`;
 }).join("");
 
-function ReportTable({ title, rows, inventory = false }) {
+function ReportTable({ title, rows, inventory = false, t = (value) => value }) {
   if (!rows.length) return null;
   const headers = Object.keys(rows[0]);
   return <section className="company-report-table-section">
-    <h3>{title}</h3>
+    <h3>{t(title)}</h3>
     <div className="company-report-table-wrap">
       <table className="company-report-table">
-        <thead><tr>{headers.map((header) => <th key={header}>{humanize(header)}</th>)}</tr></thead>
+        <thead><tr>{headers.map((header) => <th key={header}>{t(humanize(header))}</th>)}</tr></thead>
         <tbody>{rows.map((row, index) => <tr key={`${row.orderCode || row.sku || index}-${row.branch || ""}`}>
           {headers.map((header) => <td key={header} className={inventory && header === "currentStock" ? `stock-cell stock-cell--${row.stockStatus === "Out of stock" ? "out" : row.stockStatus === "Low stock" ? "low" : "ok"}` : ""}>{displayValue(row[header], header)}</td>)}
         </tr>)}</tbody>
@@ -242,17 +244,17 @@ function ReportTable({ title, rows, inventory = false }) {
   </section>;
 }
 
-function IntelligenceTrend({ title, rows = [], valueKey, valueLabel, money = false }) {
+function IntelligenceTrend({ title, rows = [], valueKey, valueLabel, money = false, t = (value) => value }) {
   if (!rows.length) return null;
   const maximum = Math.max(1, ...rows.map((row) => Number(row[valueKey] || 0)));
-  return <section className="company-bi-trend" aria-label={title}>
-    <h3>{title}</h3>
+  return <section className="company-bi-trend" aria-label={t(title)}>
+    <h3>{t(title)}</h3>
     <div className="company-bi-trend-list">
       {rows.map((row) => {
         const value = Number(row[valueKey] || 0);
         const display = money ? formatReportValue(value, "amountCollected") : value;
         return <article key={`${row.bucket}-${value}`}>
-          <div><span>{String(row.bucket || "").slice(0, 10)}</span><strong>{display} {valueLabel}</strong></div>
+          <div><span>{String(row.bucket || "").slice(0, 10)}</span><strong>{display} {t(valueLabel)}</strong></div>
           <span className="company-bi-trend-track" aria-hidden="true"><span style={{ width: `${Math.max(value > 0 ? 4 : 0, (value / maximum) * 100)}%` }} /></span>
         </article>;
       })}
@@ -260,7 +262,7 @@ function IntelligenceTrend({ title, rows = [], valueKey, valueLabel, money = fal
   </section>;
 }
 
-function BusinessIntelligenceView({ data, page = 1 }) {
+function BusinessIntelligenceView({ data, page = 1, t = (value) => value }) {
   const intelligence = data.intelligence || {};
   const summary = intelligence.summary || {};
   const insights = intelligence.insights || {};
@@ -276,35 +278,37 @@ function BusinessIntelligenceView({ data, page = 1 }) {
   ];
   const category = ["sales", "service", "inventory", "amp"][page - 1] || "sales";
   return <>
-    {page === 1 ? <div className="company-bi-metrics">{metrics.map(([metric, value]) => <article key={metric}><span>{metric}</span><strong>{value}</strong></article>)}</div> : null}
-    {data.warning ? <p className="company-report-basis" role="status"><strong>Analysis status:</strong> {data.warning}</p> : null}
-    <div className="company-bi-page-heading"><span>Business intelligence page {page} of {BUSINESS_INTELLIGENCE_PAGES.length}</span><h3>{BUSINESS_INTELLIGENCE_PAGES[page - 1]}</h3></div>
+    {page === 1 ? <div className="company-bi-metrics">{metrics.map(([metric, value]) => <article key={metric}><span>{t(metric)}</span><strong>{value}</strong></article>)}</div> : null}
+    {data.warning ? <p className="company-report-basis" role="status"><strong>{t('Analysis status:')}</strong> {t(data.warning)}</p> : null}
+    <div className="company-bi-page-heading"><span>{t('Business intelligence page')} {page} {t('of')} {BUSINESS_INTELLIGENCE_PAGES.length}</span><h3>{t(BUSINESS_INTELLIGENCE_PAGES[page - 1])}</h3></div>
     <div className="company-bi-insights"><section>
-      <h3>{category === "amp" ? "AMP / Predictive Maintenance" : `${humanize(category)} Performance`}</h3>
-      {(insights[category] || []).map((item) => <article key={item.id}><p>{item.statement}</p>{item.action ? <p><strong>Manager action:</strong> {item.action}</p> : null}</article>)}
+      <h3>{t(category === "amp" ? "AMP / Predictive Maintenance" : `${humanize(category)} Performance`)}</h3>
+      {(insights[category] || []).map((item) => <article key={item.id}><p>{item.statement}</p>{item.action ? <p><strong>{t('Manager action:')}</strong> {item.action}</p> : null}</article>)}
     </section></div>
     {category === "sales" ? <>
-      <div className="company-bi-trends"><IntelligenceTrend title="Collected sales trend" rows={charts.salesTrend || []} valueKey="amountCollected" valueLabel="collected" money /></div>
-      <ReportTable title="Best-selling AC models" rows={(tables.topModels || []).map(({ brand, model, sku, unitsSold, sales }) => ({ brand, model, sku, unitsSold, sales }))} />
-      <ReportTable title="Best-selling brands" rows={(tables.topBrands || []).map(({ brand, unitsSold }) => ({ brand, unitsSold }))} />
+      <div className="company-bi-trends"><IntelligenceTrend title="Collected sales trend" rows={charts.salesTrend || []} valueKey="amountCollected" valueLabel="collected" money t={t} /></div>
+      <ReportTable t={t} title="Best-selling AC models" rows={(tables.topModels || []).map(({ brand, model, sku, unitsSold, sales }) => ({ brand, model, sku, unitsSold, sales }))} />
+      <ReportTable t={t} title="Best-selling brands" rows={(tables.topBrands || []).map(({ brand, unitsSold }) => ({ brand, unitsSold }))} />
     </> : null}
     {category === "service" ? <>
-      <div className="company-bi-trends"><IntelligenceTrend title="Completed service trend" rows={charts.serviceTrend || []} valueKey="count" valueLabel="services" /></div>
-      <ReportTable title="Recorded service mix" rows={(charts.serviceByType || []).map(({ label, count }) => ({ serviceType: label, completedServices: count }))} />
-      <ReportTable title="Most frequently serviced AC models" rows={(tables.servicedModels || []).map(({ model, count }) => ({ model, completedServices: count }))} />
-      <ReportTable title="Common recorded service concerns" rows={(tables.commonIssues || []).map(({ issue, count }) => ({ issue, completedRecords: count }))} />
-      <ReportTable title="Frequently recorded service parts" rows={(tables.serviceParts || []).map(({ part, count }) => ({ part, recordedUses: count }))} />
+      <div className="company-bi-trends"><IntelligenceTrend title="Completed service trend" rows={charts.serviceTrend || []} valueKey="count" valueLabel="services" t={t} /></div>
+      <ReportTable t={t} title="Recorded service mix" rows={(charts.serviceByType || []).map(({ label, count }) => ({ serviceType: label, completedServices: count }))} />
+      <ReportTable t={t} title="Most frequently serviced AC models" rows={(tables.servicedModels || []).map(({ model, count }) => ({ model, completedServices: count }))} />
+      <ReportTable t={t} title="Common recorded service concerns" rows={(tables.commonIssues || []).map(({ issue, count }) => ({ issue, completedRecords: count }))} />
+      <ReportTable t={t} title="Frequently recorded service parts" rows={(tables.serviceParts || []).map(({ part, count }) => ({ part, recordedUses: count }))} />
     </> : null}
     {category === "inventory" ? <>
-      <ReportTable title="Inventory movement and current stock" rows={(tables.inventoryMovement || []).map(({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }) => ({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }))} inventory />
-      <ReportTable title="Stocked lines with no paid sales in this period" rows={(tables.slowMovingInventory || []).map(({ branch, product, sku, currentStock, stockStatus }) => ({ branch, product, sku, currentStock, stockStatus }))} inventory />
+      <ReportTable t={t} title="Inventory movement and current stock" rows={(tables.inventoryMovement || []).map(({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }) => ({ branch, product, sku, unitsSoldInPeriod, currentStock, stockStatus }))} inventory />
+      <ReportTable t={t} title="Stocked lines with no paid sales in this period" rows={(tables.slowMovingInventory || []).map(({ branch, product, sku, currentStock, stockStatus }) => ({ branch, product, sku, currentStock, stockStatus }))} inventory />
     </> : null}
-    {category === "amp" ? <p className="company-report-basis">Unit-level AMP recommendations remain available in AMP Planning, where managers can review the supporting service history and action for each AC unit.</p> : null}
+    {category === "amp" ? <p className="company-report-basis">{t('Unit-level AMP recommendations remain available in AMP Planning, where managers can review the supporting service history and action for each AC unit.')}</p> : null}
   </>;
 }
 
 function AdminReports() {
-  const { user } = useUser();
+  const branchNames = useActiveBranches();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const isSuperAdmin = user?.role === "superadmin";
   const Layout = isSuperAdmin ? SuperAdminLayout : AdminLayout;
   const assignedBranch = user?.activeBranch || user?.assignedBranch || getSessionActiveBranch() || "";
@@ -362,7 +366,7 @@ function AdminReports() {
     setError("");
     setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
   };
-  const rangeError = range.from && range.to && range.from > range.to ? "The report start date must be on or before the end date." : "";
+  const rangeError = range.from && range.to && range.from > range.to ? t('The report start date must be on or before the end date.') : "";
   const canExport = data.rows.length > 0;
   const isPaginatedReport = ["sales", "inventory", "intelligence"].includes(activeTab);
   const reportTotalPages = activeTab === "intelligence"
@@ -376,9 +380,9 @@ function AdminReports() {
   const firstReportPageNumber = Math.max(1, Math.min(currentReportPage - 2, reportTotalPages - 4));
   const reportPageNumbers = Array.from({ length: Math.min(5, reportTotalPages) }, (_, index) => firstReportPageNumber + index);
   const title = useMemo(() => {
-    const label = TABS.find((tab) => tab.id === activeTab)?.label || "Report";
-    return activeTab === "inventory" ? `${label} · ${branch === "all" ? "All Branches" : branch}` : `${label} · ${range.from} to ${range.to}`;
-  }, [activeTab, branch, range]);
+    const label = t(TABS.find((tab) => tab.id === activeTab)?.label || "Report");
+    return activeTab === "inventory" ? `${label} · ${branch === "all" ? t('All Branches') : branch}` : `${label} · ${range.from} ${t('to')} ${range.to}`;
+  }, [activeTab, branch, range, currentLanguage]);
 
   const generate = async () => {
     if (rangeError && activeTab !== "inventory") return setError(rangeError);
@@ -421,9 +425,9 @@ function AdminReports() {
     branch: isSuperAdmin && branch === "all" ? "Head Office · All Branches" : branch || assignedBranch || "Unassigned Branch",
     representative: user?.name || user?.email || "AEROPULSE Representative",
     representativeRole: isSuperAdmin ? "Super Admin · Authorized Representative" : "Branch Admin · Authorized Representative",
-    reportingPeriod: activeTab === "inventory" ? `Inventory as of ${new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}` : `${range.from} to ${range.to}`,
+    reportingPeriod: activeTab === "inventory" ? `Inventory as of ${formatBusinessDateTime(data.updatedAt || Date.now())}` : `${formatBusinessDate(range.from)} to ${formatBusinessDate(range.to)}`,
     reportId: `APR-${activeTab.toUpperCase()}-${(activeTab === "inventory" ? toIsoDate(new Date()) : range.from).replaceAll("-", "")}-${activeTab === "inventory" ? String(branch || "ALL").toUpperCase() : range.to.replaceAll("-", "")}`,
-    generatedAt: new Date().toLocaleString("en-PH"),
+    generatedAt: formatBusinessDateTime(new Date()),
     filters: activeTab === "sales"
       ? `Search: ${salesSearch.trim() || "None"}; Status: ${SALES_STATUS_OPTIONS.find(([value]) => value === salesStatus)?.[1] || salesStatus}; Payment: ${SALES_PAYMENT_OPTIONS.find(([value]) => value === salesPaymentMethod)?.[1] || salesPaymentMethod}; SKU: ${salesSku.trim() || "All"}; Customer: ${salesCustomer.trim() || "All"}`
       : activeTab === "inventory"
@@ -448,71 +452,71 @@ function AdminReports() {
     exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} - Branch: ${reportMetadata.branch} - Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR", pageOrientation: "landscape", documentStyle: "tabular" } });
   };
 
-  return <Layout title="Analytics & Reports" subtitle="AI-prioritized business intelligence and company-formatted operational records">
+  return <Layout title={t('Analytics & Reports')} subtitle={t('AI-prioritized business intelligence and company-formatted operational records')}>
     <section className="company-report-shell">
       <header className="company-report-brand">
-        <img src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" />
-        <div><p>Company operational report</p><h2>{COMPANY.name}</h2><span>{COMPANY.address}</span><span>{COMPANY.proprietor} · {COMPANY.contact} · {COMPANY.taxRegistration}</span></div>
+        <img src="/Cold%20Air%20Logo.jpg" alt={t('Cold Air logo')} />
+        <div><p>{t('Company operational report')}</p><h2>{COMPANY.name}</h2><span>{COMPANY.address}</span><span>{COMPANY.proprietor} · {COMPANY.contact} · {COMPANY.taxRegistration}</span></div>
       </header>
 
-      <nav className="company-report-tabs" aria-label="Report type">{TABS.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} onClick={() => setTab(tab.id)}>{tab.label}</button>)}</nav>
+      <nav className="company-report-tabs" aria-label={t('Report type')}>{TABS.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} onClick={() => setTab(tab.id)}>{t(tab.label)}</button>)}</nav>
 
       <div className="company-report-controls">
         <div className="company-report-period-row">
-          {activeTab !== "inventory" ? <><label>From<input type="date" value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>To<input type="date" value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
-          <label>Branch<select value={branch || assignedBranch} disabled={!isSuperAdmin} onChange={(event) => setBranch(event.target.value)}>{isSuperAdmin ? <option value="all">All branches</option> : null}{(isSuperAdmin ? BRANCHES : [assignedBranch]).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          {activeTab !== "inventory" ? <><label>{t('From')}<input type="date" max={new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>{t('To')}<input type="date" max={new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
+          <label>{t('Branch')}<select value={branch || assignedBranch} disabled={!isSuperAdmin} onChange={(event) => setBranch(event.target.value)}>{isSuperAdmin ? <option value="all">{t('All branches')}</option> : null}{(isSuperAdmin ? branchNames : [assignedBranch]).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         </div>
         {activeTab === "sales" ? <section className="company-report-filter-panel" aria-labelledby="sales-filter-heading">
-          <div className="company-report-filter-heading"><strong id="sales-filter-heading">Sales filters</strong><span>Use one search or narrow the report with the dropdowns.</span></div>
+          <div className="company-report-filter-heading"><strong id="sales-filter-heading">{t('Sales filters')}</strong><span>{t('Use one search or narrow the report with the dropdowns.')}</span></div>
           <div className="company-report-filter-grid">
-            <label className="company-report-filter-search">Search<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder="Order number, product, SKU, or customer" /></label>
-            <label>SKU<select value={salesSku} onChange={(event) => setSalesSku(event.target.value)}><option value="">All SKUs</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
-            <label>Customer<select value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)}><option value="">All customers</option>{filterOptions.customers.map((customer) => <option key={customer} value={customer}>{customer}</option>)}</select></label>
-            <label>Payment method<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label>Transaction status<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder={t('Order number, product, SKU, or customer')} /></label>
+            <label>SKU<select value={salesSku} onChange={(event) => setSalesSku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
+            <label>{t('Customer')}<select value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)}><option value="">{t('All customers')}</option>{filterOptions.customers.map((customer) => <option key={customer} value={customer}>{customer}</option>)}</select></label>
+            <label>{t('Payment method')}<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+            <label>{t('Transaction status')}<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
           </div>
         </section> : null}
         {activeTab === "inventory" ? <section className="company-report-filter-panel" aria-labelledby="inventory-filter-heading">
-          <div className="company-report-filter-heading"><strong id="inventory-filter-heading">Inventory filters</strong><span>Use one search or narrow the report with the dropdowns.</span></div>
+          <div className="company-report-filter-heading"><strong id="inventory-filter-heading">{t('Inventory filters')}</strong><span>{t('Use one search or narrow the report with the dropdowns.')}</span></div>
           <div className="company-report-filter-grid">
-            <label className="company-report-filter-search">Search<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Product, model, SKU, or branch" /></label>
-            <label>SKU<select value={inventorySku} onChange={(event) => setInventorySku(event.target.value)}><option value="">All SKUs</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
-            <label>Brand<select value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)}><option value="">All brands</option>{brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
-            <label>Stock status<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label>Category<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder={t('Product, model, SKU, or branch')} /></label>
+            <label>SKU<select value={inventorySku} onChange={(event) => setInventorySku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
+            <label>{t('Brand')}<select value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)}><option value="">{t('All brands')}</option>{brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
+            <label>{t('Stock status')}<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+            <label>{t('Category')}<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
           </div>
         </section> : null}
         {activeTab === "tech" ? <section className="company-report-filter-panel" aria-labelledby="technician-filter-heading">
-          <div className="company-report-filter-heading"><strong id="technician-filter-heading">Technician filters</strong><span>Choose a technician or use one search for names and branches.</span></div>
+          <div className="company-report-filter-heading"><strong id="technician-filter-heading">{t('Technician filters')}</strong><span>{t('Choose a technician or use one search for names and branches.')}</span></div>
           <div className="company-report-filter-grid company-report-filter-grid--compact">
-            <label className="company-report-filter-search">Search<input type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder="Technician name or branch" /></label>
-            <label>Technician<select value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}><option value="">All active technicians</option>{filterOptions.technicians.map((technician) => <option key={technician.value} value={technician.value}>{technician.label}{isSuperAdmin && technician.branch ? ` · ${technician.branch}` : ""}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder={t('Technician name or branch')} /></label>
+            <label>{t('Technician')}<select value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}><option value="">{t('All active technicians')}</option>{filterOptions.technicians.map((technician) => <option key={technician.value} value={technician.value}>{technician.label}{isSuperAdmin && technician.branch ? ` · ${technician.branch}` : ""}</option>)}</select></label>
           </div>
         </section> : null}
         <div className="company-report-actions">
-          <button className="company-report-generate" type="button" onClick={generate} disabled={busy || Boolean(rangeError && activeTab !== "inventory")}>{busy ? "Generating…" : "Generate report"}</button>
-          <button type="button" onClick={exportExcel} disabled={!canExport}>Export Excel</button><button type="button" onClick={exportPdf} disabled={!canExport}>Export PDF</button>
+          <button className="company-report-generate" type="button" onClick={generate} disabled={busy || Boolean(rangeError && activeTab !== "inventory")}>{t(busy ? 'Generating…' : 'Generate report')}</button>
+          <button type="button" onClick={exportExcel} disabled={!canExport}>{t('Export Excel')}</button><button type="button" onClick={exportPdf} disabled={!canExport}>{t('Export PDF')}</button>
         </div>
       </div>
       {rangeError && activeTab !== "inventory" ? <p className="company-report-error" role="alert">{rangeError}</p> : null}
-      {error ? <p className="company-report-error" role="alert">{error}</p> : null}
+      {error ? <p className="company-report-error" role="alert">{t(error)}</p> : null}
 
       {data.summary ? <article className="company-report-document">
-        <div className="company-report-document-heading"><div><p>{activeTab === "inventory" ? "Stock position" : "Reporting period"}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? "All Branches" : branch || assignedBranch}</strong><span>Generated {new Date(data.updatedAt || Date.now()).toLocaleString("en-PH")}</span></div></div>
-        {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{humanize(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
-        {data.basis ? <p className="company-report-basis"><strong>Report basis:</strong> {data.basis}</p> : null}
-        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} page={currentReportPage} /> : <ReportTable title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
-        {isPaginatedReport && data.rows.length ? <nav className="company-report-pagination" aria-label={`${activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report"} pagination`}>
-          <span>{activeTab === "intelligence" ? BUSINESS_INTELLIGENCE_PAGES[currentReportPage - 1] : `Showing ${firstReportRowIndex + 1}–${Math.min(firstReportRowIndex + REPORT_PAGE_SIZE, data.rows.length)} of ${data.rows.length} records`}</span>
+        <div className="company-report-document-heading"><div><p>{t(activeTab === "inventory" ? 'Stock position' : 'Reporting period')}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? t('All Branches') : branch || assignedBranch}</strong><span>{t('Generated')} {formatBusinessDateTime(data.updatedAt || Date.now())}</span></div></div>
+        {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{t(humanize(key))}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
+        {data.basis ? <p className="company-report-basis"><strong>{t('Report basis:')}</strong> {t(data.basis)}</p> : null}
+        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} page={currentReportPage} t={t} /> : <ReportTable t={t} title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
+        {isPaginatedReport && data.rows.length ? <nav className="company-report-pagination" aria-label={`${t(activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report")} ${t('pagination')}`}>
+          <span>{activeTab === "intelligence" ? t(BUSINESS_INTELLIGENCE_PAGES[currentReportPage - 1]) : `${t('Showing')} ${firstReportRowIndex + 1}–${Math.min(firstReportRowIndex + REPORT_PAGE_SIZE, data.rows.length)} ${t('of')} ${data.rows.length} ${t('records')}`}</span>
           <div>
-            <button type="button" onClick={() => setReportPage((page) => Math.max(1, page - 1))} disabled={currentReportPage === 1}>Previous</button>
-            {reportPageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentReportPage ? "is-current" : ""} aria-current={pageNumber === currentReportPage ? "page" : undefined} aria-label={`${activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report"} page ${pageNumber}`} onClick={() => setReportPage(pageNumber)}>{pageNumber}</button>)}
-            <button type="button" onClick={() => setReportPage((page) => Math.min(reportTotalPages, page + 1))} disabled={currentReportPage === reportTotalPages}>Next</button>
+            <button type="button" onClick={() => setReportPage((page) => Math.max(1, page - 1))} disabled={currentReportPage === 1}>{t('Previous')}</button>
+            {reportPageNumbers.map((pageNumber) => <button key={pageNumber} type="button" className={pageNumber === currentReportPage ? "is-current" : ""} aria-current={pageNumber === currentReportPage ? "page" : undefined} aria-label={`${t(activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report")} ${t('page')} ${pageNumber}`} onClick={() => setReportPage(pageNumber)}>{pageNumber}</button>)}
+            <button type="button" onClick={() => setReportPage((page) => Math.min(reportTotalPages, page + 1))} disabled={currentReportPage === reportTotalPages}>{t('Next')}</button>
           </div>
         </nav> : null}
-        {data.secondaryRows.length && activeTab === "sales" && currentReportPage === 1 ? <ReportTable title="Product sales summary" rows={data.secondaryRows} /> : null}
-        {activeTab !== "intelligence" && !data.rows.length ? <div className="company-report-empty">No records match the selected filters.</div> : null}
-      </article> : <div className="company-report-empty">Choose the report filters, then select Generate report.</div>}
+        {data.secondaryRows.length && activeTab === "sales" && currentReportPage === 1 ? <ReportTable t={t} title="Product sales summary" rows={data.secondaryRows} /> : null}
+        {activeTab !== "intelligence" && !data.rows.length ? <div className="company-report-empty">{t('No records match the selected filters.')}</div> : null}
+      </article> : <div className="company-report-empty">{t('Choose the report filters, then select Generate report.')}</div>}
     </section>
   </Layout>;
 }

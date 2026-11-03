@@ -1,4 +1,6 @@
 import { CalendarCheck, ShoppingBag } from "@phosphor-icons/react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import {
   BQ_COLORS,
   BQ_FONTS,
@@ -7,25 +9,26 @@ import {
 } from "../common/boutique/BoutiqueTheme";
 
 export default function HomeHero({ onBookNow, onShop }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   return (
     <section className="home-hero">
       <div className="hero-content">
         <span className="hero-badge">AeroPulse Premium</span>
         <h1 className="hero-title">
-          Experience the Art of <br />
-          Perfect Cooling.
+          {t("Experience the Art of")} <br />
+          {t("Perfect Cooling.")}
         </h1>
         <p className="hero-subtitle">
-          From high-performance Inverter ACs to precision maintenance services.
-          We bring boutique comfort to your living space.
+          {t("From high-performance Inverter ACs to precision maintenance services. We bring boutique comfort to your living space.")}
         </p>
 
         <div className="hero-actions">
           <button className="hero-btn hero-btn-primary" onClick={onShop}>
-            Shop Collections <ShoppingBag size={20} weight="bold" />
+            {t("Shop Collections")} <ShoppingBag size={20} weight="bold" />
           </button>
           <button className="hero-btn hero-btn-secondary" onClick={onBookNow}>
-            Get the Mobile App <CalendarCheck size={20} weight="bold" />
+            {t("Get the Mobile App")} <CalendarCheck size={20} weight="bold" />
           </button>
         </div>
       </div>

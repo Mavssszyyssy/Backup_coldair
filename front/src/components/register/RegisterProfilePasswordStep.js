@@ -11,7 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
-import { BRANCHES } from "../../domain/branches/branches";
+import useActiveBranches from "../../domain/branches/useActiveBranches";
 import { defaultAliasFromEmail } from "../../domain/register/defaultAliasFromEmail";
 import { validateProfileAndSecurityStep } from "../../domain/register/validateRegistrationProfile";
 import {
@@ -25,8 +25,10 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { translateText } from "../../utils/customerI18n";
 
 export default function RegisterProfilePasswordStep({
+  currentLanguage = "English",
   formData,
   errors: externalErrors,
   onFieldChange,
@@ -35,6 +37,8 @@ export default function RegisterProfilePasswordStep({
   onNext,
   onCancel,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
+  const branchNames = useActiveBranches();
   const [localErrors, setLocalErrors] = useState({});
   const [aliasStatus, setAliasStatus] = useState(null); // null, 'checking', 'available', 'taken'
 
@@ -156,7 +160,7 @@ export default function RegisterProfilePasswordStep({
     >
       <BoutiqueBox className="bq-reg-header">
         <BoutiqueText variant="h2" className="bq-reg-title">
-          Profile & Security
+          {t("Profile & Security")}
         </BoutiqueText>
         <BoutiqueText
           variant="body"
@@ -164,36 +168,36 @@ export default function RegisterProfilePasswordStep({
           margin="8px 0 0"
           style={{ opacity: 0.8 }}
         >
-          Set your account details and contact information.
+          {t("Set your account details and contact information.")}
         </BoutiqueText>
       </BoutiqueBox>
 
       <BoutiqueGrid columns="1fr 1fr" gap={24} className="bq-reg-form-grid">
         <BoutiqueInput
-          label="First Name"
+          label={t("First Name")}
           icon={User}
           placeholder="Juan"
           value={formData.firstName}
           onChange={(e) => handleNameChange("firstName", e.target.value)}
           status={errors.firstName ? "error" : null}
-          errorMessage={errors.firstName}
+          errorMessage={t(errors.firstName)}
           required
         />
 
         <BoutiqueInput
-          label="Last Name"
+          label={t("Last Name")}
           icon={User}
           placeholder="Dela Cruz"
           value={formData.lastName}
           onChange={(e) => handleNameChange("lastName", e.target.value)}
           status={errors.lastName ? "error" : null}
-          errorMessage={errors.lastName}
+          errorMessage={t(errors.lastName)}
           required
         />
 
         <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
-            label="Username"
+            label={t("Username")}
             icon={UserCircle}
             placeholder={aliasPlaceholder}
             value={formData.alias}
@@ -208,8 +212,8 @@ export default function RegisterProfilePasswordStep({
             }
             errorMessage={
               aliasStatus === "taken"
-                ? "This identifier is already in use."
-                : errors.alias
+                ? t("This identifier is already in use.")
+                : t(errors.alias)
             }
             inlineAction={
               aliasStatus === "checking" ? (
@@ -235,7 +239,7 @@ export default function RegisterProfilePasswordStep({
               >
                 <ShieldCheck size={14} weight="fill" />
                 <BoutiqueText variant="caption" weight={700}>
-                  Username available
+                  {t("Username available")}
                 </BoutiqueText>
               </BoutiqueBox>
             )}
@@ -245,12 +249,12 @@ export default function RegisterProfilePasswordStep({
         {detectedRole !== "customer" && (
           <BoutiqueBox style={{ gridColumn: "span 2" }}>
             <BoutiqueInput
-              label="Branch Assignment"
+              label={t("Branch Assignment")}
               icon={Buildings}
               type="select"
-              placeholder="Select your branch"
+              placeholder={t("Select your branch")}
               value={formData.branch || ""}
-              options={BRANCHES}
+              options={branchNames}
               onChange={(e) => {
                 onFieldChange("branch", e.target.value);
                 if (localErrors.branch)
@@ -261,7 +265,7 @@ export default function RegisterProfilePasswordStep({
                   });
               }}
               status={errors.branch ? "error" : null}
-              errorMessage={errors.branch}
+              errorMessage={t(errors.branch)}
               required
             />
           </BoutiqueBox>
@@ -269,10 +273,10 @@ export default function RegisterProfilePasswordStep({
 
         <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
-            label="Password"
+            label={t("Password")}
             icon={LockKey}
             type="password"
-            placeholder="Create a password"
+            placeholder={t("Create a password")}
             value={formData.password}
             onChange={(e) => {
               onFieldChange("password", e.target.value);
@@ -290,7 +294,7 @@ export default function RegisterProfilePasswordStep({
                   ? "success"
                   : null
             }
-            errorMessage={errors.password}
+            errorMessage={t(errors.password)}
             style={{ fontFamily: "monospace" }}
             maxLength={25}
             required
@@ -299,10 +303,10 @@ export default function RegisterProfilePasswordStep({
 
         <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
-            label="Confirm Password"
+            label={t("Confirm Password")}
             icon={LockKey}
             type="password"
-            placeholder="Confirm your password"
+            placeholder={t("Confirm your password")}
             value={formData.confirmPassword}
             onChange={(e) => {
               onFieldChange("confirmPassword", e.target.value);
@@ -320,7 +324,7 @@ export default function RegisterProfilePasswordStep({
                   ? "success"
                   : null
             }
-            errorMessage={errors.confirmPassword}
+            errorMessage={t(errors.confirmPassword)}
             style={{ fontFamily: "monospace" }}
             maxLength={25}
             required
@@ -337,9 +341,9 @@ export default function RegisterProfilePasswordStep({
                 align="center"
               >
                 <BoutiqueText variant="label" color="#64748b">
-                  Strength:{" "}
+                  {t("Strength:")}{" "}
                   <strong style={{ color: passwordStrength.color }}>
-                    {passwordStrength.label}
+                    {t(passwordStrength.label)}
                   </strong>
                 </BoutiqueText>
                 <BoutiqueText size="12px" weight={700} color="#94a3b8">
@@ -378,14 +382,14 @@ export default function RegisterProfilePasswordStep({
                     <>
                       <ShieldCheck size={14} weight="fill" />
                       <BoutiqueText variant="caption" weight={700}>
-                        Passwords match
+                        {t("Passwords match")}
                       </BoutiqueText>
                     </>
                   ) : (
                     <>
                       <WarningDiamond size={14} weight="bold" />
                       <BoutiqueText variant="caption" weight={700}>
-                        Passwords do not match
+                        {t("Passwords do not match")}
                       </BoutiqueText>
                     </>
                   )}
@@ -405,13 +409,13 @@ export default function RegisterProfilePasswordStep({
         className="bq-reg-actions"
       >
         <BoutiqueButton type="button" variant="cancel" onClick={onCancel}>
-          <X size={18} weight="bold" /> Cancel
+          <X size={18} weight="bold" /> {t("Cancel")}
         </BoutiqueButton>
         <BoutiqueButton
           type="submit"
           disabled={aliasStatus === "taken"}
         >
-          Continue <ArrowRight size={18} weight="bold" />
+          {t("Continue")} <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
       </BoutiqueBox>
 

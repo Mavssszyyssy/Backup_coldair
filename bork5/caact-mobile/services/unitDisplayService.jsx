@@ -35,6 +35,7 @@ export function filterCustomerUnits(units = [], query = "") {
     unit?.serialNumber,
     unit?.orderCode,
     unit?.serviceBranch,
+    unit?.installationAddress,
     unit?.placementArea,
     unit?.installationEnvironment,
     unit?.status,

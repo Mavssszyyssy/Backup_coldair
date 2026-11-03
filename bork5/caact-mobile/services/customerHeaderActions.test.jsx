@@ -5,6 +5,7 @@ import CustomerHeaderActions from "../components/customer/CustomerHeaderActions"
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("../components/NotificationBadge", () => () => null);
+jest.mock("../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => ({ language: "English", t: (value) => value }) }));
 
 beforeEach(() => jest.clearAllMocks());
 

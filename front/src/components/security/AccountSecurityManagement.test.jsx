@@ -13,7 +13,7 @@ beforeEach(() => {
 test("signed-in password change uses current password, confirmation, and the existing action", async () => {
   render(<AccountSecurityManagement user={{ authProvider: "local" }} onChangePassword={changePassword} />);
   expect(screen.queryByLabelText("Current Password")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Reset Password" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change Password" }));
   const passwordToggles = screen.getAllByRole("button", { name: "Show password" });
   expect(passwordToggles).toHaveLength(3);
   expect(screen.getByLabelText("Current Password")).toHaveAttribute("type", "password");
@@ -34,4 +34,12 @@ test("security settings explain account-bound email sign-in verification", () =>
   render(<AccountSecurityManagement user={{ authProvider: "local" }} onChangePassword={changePassword} />);
   expect(screen.getByText(/one-time code sent to your account email/i)).toBeInTheDocument();
   expect(screen.queryByText(/recovery code/i)).not.toBeInTheDocument();
+});
+
+test("security controls and validation follow the customer's Filipino preference", () => {
+  render(<AccountSecurityManagement user={{ authProvider: "local", preferences: { language: "Filipino" } }} onChangePassword={changePassword} />);
+  fireEvent.click(screen.getByRole("button", { name: "Palitan ang Password" }));
+  expect(screen.getByLabelText("Bagong Password")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "I-save ang Bagong Password" }));
+  expect(screen.getByRole("status")).toHaveTextContent("Punan ang lahat ng field ng password.");
 });

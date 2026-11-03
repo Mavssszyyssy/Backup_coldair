@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import SuperAdminInventory from "./SuperAdminInventory";
 
 const apiRequest = vi.fn();
+let currentLanguage = "English";
 
 vi.mock("../../../config/api", () => ({
   apiRequest: (...args) => apiRequest(...args),
@@ -11,17 +12,40 @@ vi.mock("../../../config/api", () => ({
 vi.mock("../../../context/UserContext", () => ({
   useUser: () => ({
     user: { id: "superadmin-test", name: "Super Admin", role: "superadmin" },
+    currentLanguage,
     logout: vi.fn(),
   }),
 }));
 
 beforeEach(() => {
+  currentLanguage = "English";
   apiRequest.mockImplementation(async (path) => {
     if (path === "/products") return { products: [] };
     if (path === "/reorders") return { reorders: [] };
     if (path.startsWith("/notifications")) return { notifications: [] };
     return {};
   });
+});
+
+it("localizes the Super Admin inventory shell without changing product or branch names", async () => {
+  currentLanguage = "Filipino";
+  apiRequest.mockImplementation(async (path) => {
+    if (path === "/products") return { products: [{ id: "unit-1", name: "American Home Inverter", sku: "AH-1", branchStock: { Bulacan: 0 } }] };
+    if (path.startsWith("/notifications")) return { notifications: [] };
+    return {};
+  });
+  renderInventory("/superadmin/inventory?tab=checker");
+  expect(screen.getByRole("heading", { name: "Pamamahala ng Imbentaryo" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Taga-check ng Imbentaryo" })).toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "Maghanap sa imbentaryo" })).toBeInTheDocument();
+  expect((await screen.findAllByText("American Home Inverter")).length).toBeGreaterThan(0);
+});
+
+it("localizes the reorder queue controls in Filipino", async () => {
+  currentLanguage = "Filipino";
+  renderInventory("/superadmin/inventory?tab=reorders");
+  expect(await screen.findByRole("heading", { name: "Talaan ng muling pag-order" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Salain ang talaan ng muling pag-order" })).toBeInTheDocument();
 });
 
 const renderInventory = (entry) => render(

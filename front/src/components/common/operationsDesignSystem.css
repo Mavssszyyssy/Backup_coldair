@@ -506,3 +506,13 @@
     animation-duration: 0.01ms !important;
   }
 }
+.admin-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination),
+.super-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; min-width: 0; }
+.admin-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) > div,
+.super-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) button,
+.super-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) button { min-width: 42px; min-height: 40px; }
+@media (max-width: 600px) {
+  .admin-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination),
+  .super-layout :is(.inventory-pagination, .serialqr-pagination, .reorder-pagination, .maintenance-pagination, .tech-pagination, .company-report-pagination) { align-items: stretch; flex-direction: column; }
+}

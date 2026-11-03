@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Keyboard } from "react-native";
 
 import BottomSheetSelect from "./BottomSheetSelect";
+import { translateText } from "../../services/interfaceI18n";
 
 describe("BottomSheetSelect keyboard lifecycle", () => {
   afterEach(() => {
@@ -33,5 +34,17 @@ describe("BottomSheetSelect keyboard lifecycle", () => {
     expect(dismissSpy).toHaveBeenCalled();
     expect(onSelect).toHaveBeenCalledWith(barangay);
     expect(screen.queryByPlaceholderText("Search barangay or district")).toBeNull();
+  }, 20000);
+
+  test("localizes shared selection controls without changing option values", async () => {
+    const onSelect = jest.fn();
+    const province = { code: "03", name: "Bulacan" };
+    const translate = (text) => translateText(text, "Filipino");
+    await render(<BottomSheetSelect label="Lalawigan" placeholder="Pumili ng lalawigan" items={[province]} onSelect={onSelect} translate={translate} />);
+    await fireEvent.press(screen.getByText("Pumili ng lalawigan"));
+    expect(screen.getByText("Pumili ng Lalawigan")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Maghanap ng lalawigan")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Bulacan"));
+    expect(onSelect).toHaveBeenCalledWith(province);
   });
 });

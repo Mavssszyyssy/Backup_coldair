@@ -29,6 +29,7 @@ export default function BottomSheetSelect({
   itemIcon = "location-sharp",
   accentColor = COLORS.primary,
   searchPlaceholder,
+  translate = (text) => text,
   getKey = (item) => String(item.code || item.id || item.name),
   getLabel = (item) => item.displayName || item.title || item.name || "",
   onSelect,
@@ -153,9 +154,12 @@ export default function BottomSheetSelect({
                   color: COLORS.textPrimary,
                   fontWeight: FONT.black,
                   fontSize: FONT.lg,
+                  flex: 1,
+                  flexShrink: 1,
+                  paddingRight: SPACING.sm,
                 }}
               >
-                Select {label || "Option"}
+                {label ? `${translate("Select a")} ${label}` : translate("Select an option")}
               </Text>
               <TouchableOpacity onPress={closeSheet} hitSlop={12}>
                 <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
@@ -167,7 +171,7 @@ export default function BottomSheetSelect({
               label=""
               value={query}
               onChangeText={setQuery}
-              placeholder={searchPlaceholder || `Search ${String(label || "options").toLowerCase()}`}
+              placeholder={searchPlaceholder || `${translate("Search for")} ${String(label || translate("options")).toLowerCase()}`}
               autoCapitalize="words"
               returnKeyType="done"
               onSubmitEditing={dismissKeyboard}
@@ -177,7 +181,7 @@ export default function BottomSheetSelect({
               <View style={{ padding: SPACING.xl, alignItems: "center" }}>
                 <ActivityIndicator size="large" color={accentColor} />
                 <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
-                  Loading list...
+                  {translate("Loading list...")}
                 </Text>
               </View>
             ) : (
@@ -194,7 +198,7 @@ export default function BottomSheetSelect({
                       padding: SPACING.lg,
                     }}
                   >
-                    {emptyMessage || "No matching records found."}
+                    {emptyMessage || translate("No matching records found.")}
                   </Text>
                 }
                 renderItem={({ item }) => (

@@ -3,6 +3,8 @@ import { CalendarBlank, DeviceMobile, Info, Wrench } from "@phosphor-icons/react
 import { apiRequest } from "../../config/api";
 import { customerSystemMessage } from "../../domain/customerLanguage";
 import AiServicePrescription from "./AiServicePrescription";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
 const dateLabel = (value) => value
@@ -39,6 +41,8 @@ const planLabel = (recommendation = {}) => {
 };
 
 function DynamicServiceSticker({ unit }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const unitId = unit?.ampUnitId || unit?.backendUnitId || unit?.unitId || unit?.id;
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,8 +58,8 @@ function DynamicServiceSticker({ unit }) {
     return () => { alive = false; };
   }, [unitId]);
   if (!isMongoId(unitId)) return null;
-  if (loading) return <section className="service-sticker">Checking your recommended service schedule...</section>;
-  if (error) return <section className="service-sticker service-sticker-alert">We could not load your service schedule right now. Please try again.</section>;
+  if (loading) return <section className="service-sticker">{t("Checking your recommended service schedule...")}</section>;
+  if (error) return <section className="service-sticker service-sticker-alert">{t("We could not load your service schedule right now. Please try again.")}</section>;
   const recommendation = result?.recommendation;
   if (!recommendation) return null;
   const roomGuidance = capacityMessage(recommendation.capacityAssessment);
@@ -63,58 +67,58 @@ function DynamicServiceSticker({ unit }) {
   const serviceActions = (recommendation.latestVisitAnalysis?.recommendedActions || recommendation.conditionBasedFollowUp?.recommendedActions || [])
     .filter(Boolean);
   const visitPrescription = recommendation.latestVisitAnalysis || recommendation.conditionBasedFollowUp || null;
-  return <section className="service-sticker" aria-label="Recommended service schedule">
+  return <section className="service-sticker" aria-label={t("Recommended service schedule")}>
     <header className="service-sticker-header">
       <span className="service-sticker-icon" aria-hidden="true"><CalendarBlank size={22} weight="fill" /></span>
       <div className="service-sticker-heading">
-        <span className="service-sticker-label">Next recommended service</span>
-        <strong className="service-sticker-date">{dateLabel(recommendation.bestServicedBy)}</strong>
+        <span className="service-sticker-label">{t("Next recommended service")}</span>
+        <strong className="service-sticker-date">{t(dateLabel(recommendation.bestServicedBy))}</strong>
       </div>
-      <span className="service-sticker-source">{planLabel(recommendation)}</span>
+      <span className="service-sticker-source">{t(planLabel(recommendation))}</span>
     </header>
 
     <div className="service-sticker-service">
       <span className="service-sticker-service-icon" aria-hidden="true"><Wrench size={19} weight="bold" /></span>
       <div className="service-sticker-service-copy">
-        <span>Recommended service</span>
-        <strong>{serviceLabel(recommendation.recommendedService)}</strong>
+        <span>{t("Recommended service")}</span>
+        <strong>{t(serviceLabel(recommendation.recommendedService))}</strong>
       </div>
     </div>
 
-    <p className="service-sticker-explanation">{serviceExplanation(recommendation.recommendedService)}</p>
+    <p className="service-sticker-explanation">{t(serviceExplanation(recommendation.recommendedService))}</p>
 
-    {!visitPrescription && serviceActions.length ? <section className="service-sticker-plan" aria-label="Recommended service action plan">
-      <strong>Recommended service action plan</strong>
+    {!visitPrescription && serviceActions.length ? <section className="service-sticker-plan" aria-label={t("Recommended service action plan")}>
+      <strong>{t("Recommended service action plan")}</strong>
       <ol>{serviceActions.map((action, index) => <li key={`${action}-${index}`}>{customerSystemMessage(action)}</li>)}</ol>
-      <p>These steps are based on the recorded technician findings. Final repair or replacement is confirmed only after inspection.</p>
+      <p>{t("These steps are based on the recorded technician findings. Final repair or replacement is confirmed only after inspection.")}</p>
     </section> : null}
 
     {visitPrescription ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
-      <summary>Review service assessment</summary>
+      <summary>{t("Review service assessment")}</summary>
       <AiServicePrescription interpretation={visitPrescription} compact />
     </details> : recommendation.aiAssessment ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
-      <summary>Review service assessment</summary>
+      <summary>{t("Review service assessment")}</summary>
       <p>{recommendation.aiAssessment}</p>
     </details> : null}
 
     {recommendationReason ? <details className="service-sticker-reason" onClick={(event) => event.stopPropagation()}>
-      <summary>Why this date?</summary>
+      <summary>{t("Why this date?")}</summary>
       <p>{recommendationReason}</p>
     </details> : null}
 
     {recommendation.dataQuality?.message ? <div className="service-sticker-notice service-sticker-quality" role="status">
       <Info size={18} weight="fill" aria-hidden="true" />
-      <div><strong>Record check</strong><p>{customerSystemMessage(recommendation.dataQuality.message)}</p></div>
+      <div><strong>{t("Record check")}</strong><p>{customerSystemMessage(recommendation.dataQuality.message)}</p></div>
     </div> : null}
 
     {roomGuidance ? <div className="service-sticker-notice">
       <Info size={18} weight="fill" aria-hidden="true" />
-      <div><strong>Room size guidance</strong><p>{roomGuidance}</p></div>
+      <div><strong>{t("Room size guidance")}</strong><p>{["room_size_required", "capacity_required", "suitable", "insufficient", "higher_than_necessary"].includes(recommendation.capacityAssessment?.status) ? t(roomGuidance) : roomGuidance}</p></div>
     </div> : null}
 
     <footer className="service-sticker-app-note">
       <DeviceMobile size={18} weight="bold" aria-hidden="true" />
-      <span>Book this service using your Cold Air mobile account.</span>
+      <span>{t("Book this service using your Cold Air mobile account.")}</span>
     </footer>
   </section>;
 }

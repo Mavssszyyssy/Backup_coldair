@@ -4,6 +4,10 @@ import LogSelectScreen from "../app/technician/task/[id]/unit/log/select";
 import { getTaskById } from "./taskStorage";
 
 const mockHistory = jest.fn();
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   useLocalSearchParams: () => ({ id: "task-current" }),

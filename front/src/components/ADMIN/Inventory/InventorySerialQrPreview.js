@@ -1,6 +1,8 @@
 import { Copy, QrCode, X } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useUser } from "../../../context/UserContext";
+import { translateText } from "../../../utils/customerI18n";
 
 const HOVER_OPEN_DELAY_MS = 650;
 const HOVER_CLOSE_DELAY_MS = 1200;
@@ -12,6 +14,8 @@ const getProductModel = (product) =>
   product?.model || product?.modelName || product?.specs || product?.sku || "Model not recorded";
 
 function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const units = useMemo(
     () =>
       (product?.serialUnits || []).filter(
@@ -93,7 +97,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
   };
 
   if (!units.length) {
-    return <span className="inventory-serial-empty">No unit QR</span>;
+    return <span className="inventory-serial-empty">{t("No unit QR")}</span>;
   }
 
   return (
@@ -106,7 +110,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
         type="button"
         className="inventory-serial-trigger"
         aria-expanded={open}
-        aria-label={`View serial and QR records for ${product?.name || "AC unit"}`}
+        aria-label={`${t('View serial and QR records for')} ${product?.name || t("AC unit")}`}
         onFocus={openPreview}
         onClick={() => {
           if (open && pinned) {
@@ -118,7 +122,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
         }}
       >
         <QrCode size={17} weight="bold" />
-        <span>Serial / QR</span>
+        <span>{t("Serial / QR")}</span>
         <small>{units.length}</small>
       </button>
 
@@ -126,7 +130,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
         <section
           className={`inventory-serial-preview inventory-serial-preview--${placement}`}
           role="dialog"
-          aria-label="AC unit serial and QR preview"
+          aria-label={t("AC unit serial and QR preview")}
           onMouseEnter={openPreview}
           onMouseLeave={scheduleClose}
         >
@@ -134,30 +138,30 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
             type="button"
             className="inventory-serial-preview-close"
             onClick={closePreview}
-            aria-label="Close serial and QR details"
+            aria-label={t("Close serial and QR details")}
           >
             <X size={15} weight="bold" />
           </button>
           <div className="inventory-serial-preview-heading">
             <div>
-              <strong>{product?.name || "AC Unit"}</strong>
+              <strong>{product?.name || t("AC Unit")}</strong>
               <span>{getProductModel(product)}</span>
             </div>
             <span className="inventory-serial-status">
-              {selectedUnit.status || "available"}
+              {t(selectedUnit.status || "available")}
             </span>
           </div>
 
           {units.length > 1 ? (
             <label className="inventory-serial-picker">
-              Select AC unit
+              {t("Select AC unit")}
               <select
                 value={getUnitKey(selectedUnit, units.indexOf(selectedUnit))}
                 onChange={(event) => setSelectedKey(event.target.value)}
               >
                 {units.map((unit, index) => (
                   <option key={getUnitKey(unit, index)} value={getUnitKey(unit, index)}>
-                    {unit.serialNumber || unit.qrUnitId || `Unit ${index + 1}`}
+                    {unit.serialNumber || unit.qrUnitId || `${t('Unit')} ${index + 1}`}
                   </option>
                 ))}
               </select>
@@ -166,9 +170,9 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
 
           <div className="inventory-serial-preview-content">
             <div className="inventory-serial-details">
-              <span>Serial Number</span>
-              <code title="Serial number is selectable">
-                {selectedUnit.serialNumber || "Not recorded"}
+              <span>{t("Serial Number")}</span>
+              <code title={t("Serial number is selectable")}>
+                {selectedUnit.serialNumber || t("Not recorded")}
               </code>
               <button
                 type="button"
@@ -177,16 +181,16 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
                 disabled={!selectedUnit.serialNumber}
               >
                 <Copy size={14} weight="bold" />
-                {copied ? "Copied" : "Copy serial"}
+                {t(copied ? "Copied" : "Copy serial")}
               </button>
 
-              <span>Unit ID</span>
-              <code title="Permanent QR unit identifier">
-                {selectedUnit.qrUnitId || "Not recorded"}
+              <span>{t("Unit ID")}</span>
+              <code title={t("Permanent QR unit identifier")}>
+                {selectedUnit.qrUnitId || t("Not recorded")}
               </code>
 
-              <span>Branch</span>
-              <strong>{selectedUnit.branch || branch || "Not recorded"}</strong>
+              <span>{t("Branch")}</span>
+              <strong>{selectedUnit.branch || branch || t("Not recorded")}</strong>
             </div>
 
             <div className="inventory-serial-qr">
@@ -198,9 +202,9 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
                   includeMargin
                 />
               ) : (
-                <div className="inventory-serial-qr-empty">No stored QR</div>
+                <div className="inventory-serial-qr-empty">{t("No stored QR")}</div>
               )}
-              <small>Saved QR record</small>
+              <small>{t("Saved QR record")}</small>
             </div>
           </div>
         </section>

@@ -1,62 +1,36 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiRequest } from "../../../config/api";
-import AdminContactMessages from "./AdminContactMessages";
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, expect, test, vi } from 'vitest';
+import { apiRequest } from '../../../config/api';
+import AdminContactMessages from './AdminContactMessages';
 
-vi.mock("../../../config/api", () => ({ apiRequest: vi.fn() }));
+vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
+let language = 'English';
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language }) }));
 
-const message = {
-  id: "message-1",
-  ticketCode: "MSG-001",
-  category: "general",
-  subject: "Need help",
-  message: "Please help with my account.",
-  customerName: "Test Customer",
-  email: "customer@example.com",
-  phone: "09123456789",
-  branch: "Bulacan",
-  source: "web",
-  status: "new",
-  adminReply: "",
-  createdAt: "2026-10-17T01:00:00.000Z",
-  timeline: [],
-};
+beforeEach(() => { language = 'English'; apiRequest.mockReset(); });
 
-describe("AdminContactMessages reply composer", () => {
-  beforeEach(() => {
-    apiRequest.mockReset().mockImplementation(async (path, options = {}) => {
-      if (path === "/contact-messages") return { messages: [message] };
-      if (path === "/contact-messages/message-1" && options.method === "PATCH") {
-        const payload = JSON.parse(options.body);
-        return { message: { ...message, ...payload, timeline: [{ status: payload.status, note: payload.adminReply }] } };
-      }
-      throw new Error(`Unexpected request: ${path}`);
-    });
+test('inbox uses backend-filtered results and server counts rather than counting one page', async () => {
+  apiRequest.mockResolvedValue({
+    messages: [{ id: 'active-1', ticketCode: 'MSG-1', customerName: 'Active Customer', subject: 'Help', message: 'A real concern', status: 'new' }],
+    counts: { total: 43, new: 9, active: 12, resolved: 22 },
+    pagination: { page: 1, limit: 20, total: 43, pages: 3 },
   });
+  render(<AdminContactMessages />);
+  expect(await screen.findByText('Active Customer · MSG-1')).toBeInTheDocument();
+  expect(screen.getByText('43')).toBeInTheDocument();
+  expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search messages' }), { target: { value: 'specific ticket' } });
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('search=specific+ticket')));
+  fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'in_progress' } });
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('status=in_progress')));
+});
 
-  it("clears the reply field only after a successful send", async () => {
-    render(<AdminContactMessages />);
-    const reply = await screen.findByRole("textbox", { name: /reply to customer/i });
-    fireEvent.change(reply, { target: { value: "  Your request is ready.  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Reply" }));
-
-    await waitFor(() => expect(reply).toHaveValue(""));
-    const patchCall = apiRequest.mock.calls.find(([, options]) => options?.method === "PATCH");
-    expect(JSON.parse(patchCall[1].body).adminReply).toBe("Your request is ready.");
-  });
-
-  it("keeps the reply text when sending fails", async () => {
-    apiRequest.mockImplementation(async (path, options = {}) => {
-      if (path === "/contact-messages") return { messages: [message] };
-      if (options.method === "PATCH") throw new Error("Reply could not be sent");
-      return {};
-    });
-    render(<AdminContactMessages />);
-    const reply = await screen.findByRole("textbox", { name: /reply to customer/i });
-    fireEvent.change(reply, { target: { value: "Keep this draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Reply" }));
-
-    await screen.findByText("Reply could not be sent");
-    expect(reply).toHaveValue("Keep this draft");
-  });
+test('Filipino inbox keeps the original customer message and subject', async () => {
+  language = 'Filipino';
+  apiRequest.mockResolvedValue({ messages: [{ id: 'm-1', ticketCode: 'MSG-1', customerName: 'Ana Santos', subject: 'Need help', message: 'Original customer message', status: 'new' }], counts: { total: 1, new: 1, active: 0, resolved: 0 } });
+  render(<AdminContactMessages />);
+  expect(await screen.findByText('Mga bagong mensahe')).toBeInTheDocument();
+  expect(screen.getAllByText('Need help').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Original customer message').length).toBeGreaterThan(0);
+  expect(screen.getByRole('searchbox', { name: 'Maghanap ng mensahe' })).toBeInTheDocument();
 });

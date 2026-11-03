@@ -51,7 +51,7 @@ export default function TechnicianLayout() {
         <Stack.Screen name="notifications" options={{ title: "Alerts" }} />
         <Stack.Screen name="tasks" options={{ title: "My Work Orders" }} />
         <Stack.Screen name="scan-qr" options={{ title: "Work Orders" }} />
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
+        <Stack.Screen name="profile" options={{ title: "Account" }} />
         <Stack.Screen
           name="task/[id]/information"
           options={{ title: "Work Order Details" }}

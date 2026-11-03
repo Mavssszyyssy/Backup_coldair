@@ -2,12 +2,14 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { confirmLogout } from '../../utils/dialog';
+import { translateText } from '../../utils/customerI18n';
 import icons from '../common/icons';
 
 function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated } = useUser();
+  const { user, isAuthenticated, currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState(activePage);
   const [showLoginGreeting] = useState(() => {
@@ -114,7 +116,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   {user?.avatarUrl && !avatarBroken ? (
                     <img
                       src={user.avatarUrl}
-                      alt="Profile"
+                      alt={t('Profile')}
                       className="inline-icon inline-icon--lg"
                       onError={() => setAvatarBroken(true)}
                     />
@@ -125,12 +127,12 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   )}
                 </div>
                 <div className="user-info">
-                  <h3>{showLoginGreeting ? 'Welcome Back,' : 'Your account'}</h3>
+                  <h3>{t(showLoginGreeting ? 'Welcome Back,' : 'Your account')}</h3>
                   <p className="user-name">{getUserDisplayName()}</p>
-                  <span className="user-role">{getUserRole()}</span>
+                  <span className="user-role">{t(getUserRole())}</span>
                 </div>
               </div>
-              <button type="button" className="close-menu" onClick={onClose} aria-label="Close menu">
+              <button type="button" className="close-menu" onClick={onClose} aria-label={t('Close menu')}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -151,8 +153,8 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                     </span>
                   </div>
                   <div className="menu-item-content">
-                    <span className="menu-label">{item.label}</span>
-                    <span className="menu-description">{item.description}</span>
+                    <span className="menu-label">{t(item.label)}</span>
+                    <span className="menu-description">{t(item.description)}</span>
                   </div>
                   {activeMenuItem === item.id && (
                     <div className="active-indicator"></div>
@@ -169,15 +171,15 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   </span>
                 </div>
                 <div className="menu-item-content">
-                  <span className="menu-label">Logout</span>
-                  <span className="menu-description">Sign out of your account</span>
+                  <span className="menu-label">{t('Logout')}</span>
+                  <span className="menu-description">{t('Sign out of your account')}</span>
                 </div>
               </div>
             </div>
 
             <div className="menu-footer">
               <div className="version-info">
-                <span>Version 1.0.0</span>
+                <span>{t('Version')} 1.0.0</span>
                 <span>© Cold Air</span>
               </div>
             </div>
@@ -191,12 +193,12 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   <img src={icons.memberList} alt="" className="inline-icon inline-icon--lg" />
                 </div>
                 <div className="user-info">
-                  <h3>Welcome,</h3>
-                  <p className="user-name">Guest User</p>
-                  <span className="user-role">Not logged in</span>
+                  <h3>{t('Welcome,')}</h3>
+                  <p className="user-name">{t('Guest User')}</p>
+                  <span className="user-role">{t('Not logged in')}</span>
                 </div>
               </div>
-              <button type="button" className="close-menu" onClick={onClose} aria-label="Close menu">
+              <button type="button" className="close-menu" onClick={onClose} aria-label={t('Close menu')}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -209,7 +211,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M12 6v6l4 2"/>
                 </svg>
-                <p>Log in to access all features and manage your account.</p>
+                <p>{t('Log in to access all features and manage your account.')}</p>
               </div>
 
               <button 
@@ -218,13 +220,13 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                 onClick={handleLoginClick}
               >
                 <img src={icons.signOutAlt} alt="" className="inline-icon" />
-                <span>Go to Login</span>
+                <span>{t('Go to Login')}</span>
               </button>
             </div>
 
             <div className="menu-footer">
               <div className="version-info">
-                <span>Version 1.0.0</span>
+                <span>{t('Version')} 1.0.0</span>
                 <span>© Cold Air</span>
               </div>
             </div>

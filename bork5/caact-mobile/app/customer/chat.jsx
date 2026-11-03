@@ -16,6 +16,7 @@ import {
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { getStoredToken, sendCustomerChatMessage } from "../../services/api";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const WELCOME_MESSAGE = {
   id: "welcome",
@@ -41,6 +42,7 @@ const MOBILE_ROUTE_BY_WEB_ROUTE = {
 
 export default function CustomerChatScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const listRef = useRef(null);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
@@ -87,6 +89,7 @@ export default function CustomerChatScreen() {
           id: `bot-${Date.now()}`,
           from: "bot",
           text: error?.message || "The AEROPULSE assistant is unavailable right now.",
+          isLocalError: true,
           route: "/customer/contact",
         },
       ]);
@@ -97,8 +100,8 @@ export default function CustomerChatScreen() {
 
   return (
     <CustomerScreen
-      title="AEROPULSE Assistant"
-      subtitle="Customer help for Cold Air ACT"
+      title={t("AEROPULSE Assistant")}
+      subtitle={t("Customer help for Cold Air ACT")}
       scroll={false}
       withBottomNav={false}
       onBack={() => router.back()}
@@ -132,17 +135,17 @@ export default function CustomerChatScreen() {
                       { color: fromUser ? "#FFFFFF" : COLORS.textPrimary },
                     ]}
                   >
-                    {item.text}
+                    {item.id === "welcome" || item.isLocalError ? t(item.text) : item.text}
                   </Text>
                   {item.route ? (
                     <Pressable
                       onPress={() => router.push(item.route)}
                       accessibilityRole="button"
-                      accessibilityLabel="Open suggested page"
+                      accessibilityLabel={t("Open suggested page")}
                       style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}
                     >
                       <Text style={{ color: fromUser ? "#FFFFFF" : COLORS.primary, fontWeight: FONT.bold }}>
-                        Open page
+                        {t("Open page")}
                       </Text>
                     </Pressable>
                   ) : null}
@@ -153,13 +156,13 @@ export default function CustomerChatScreen() {
           ListFooterComponent={sending ? (
             <View style={styles.thinkingRow}>
               <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={{ color: COLORS.textSecondary }}>AEROPULSE is thinking…</Text>
+              <Text style={{ color: COLORS.textSecondary }}>{t("AEROPULSE is thinking…")}</Text>
             </View>
           ) : null}
         />
 
         <View style={styles.quickSection}>
-          <Text style={styles.quickLabel}>Quick questions</Text>
+          <Text style={styles.quickLabel}>{t("Quick questions")}</Text>
           <FlatList
             horizontal
             data={QUICK_QUESTIONS}
@@ -181,7 +184,7 @@ export default function CustomerChatScreen() {
                 ]}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.primary} />
-                <Text numberOfLines={2} style={styles.quickText}>{item}</Text>
+                <Text numberOfLines={2} style={styles.quickText}>{t(item)}</Text>
               </Pressable>
             )}
           />
@@ -194,16 +197,16 @@ export default function CustomerChatScreen() {
             editable={!sending}
             maxLength={1000}
             multiline
-            placeholder="Ask about customer features…"
+            placeholder={t("Ask about customer features…")}
             placeholderTextColor={COLORS.textMuted}
-            accessibilityLabel="Message AEROPULSE assistant"
+            accessibilityLabel={t("Message AEROPULSE assistant")}
             style={styles.input}
           />
           <Pressable
             onPress={() => send(input)}
             disabled={sending || !input.trim()}
             accessibilityRole="button"
-            accessibilityLabel="Send message"
+            accessibilityLabel={t("Send message")}
             accessibilityState={{ disabled: sending || !input.trim() }}
             style={[
               styles.sendButton,

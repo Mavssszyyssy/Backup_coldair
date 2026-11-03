@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
+import { isFilipino, translateText } from "../../utils/customerI18n";
+import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import {
   getCatalogProductImageUrl,
   mapCatalogProductToCartProduct,
@@ -413,13 +415,16 @@ const Shop = () => {
     getCartCount,
     getCartTotal,
   } = useCart();
-  const { user, isAuthenticated, logout, showAuthRequiredPrompt } = useUser();
+  const { user, isAuthenticated, logout, showAuthRequiredPrompt, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const location = useLocation();
 
   const [backendProducts, setBackendProducts] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
+  const [fulfillmentBranch, setFulfillmentBranch] = useState("");
+  const [stockNotice, setStockNotice] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -507,9 +512,17 @@ const Shop = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await apiRequest("/products/public", { silentConnection: true });
+      let branch = "";
+      if (isAuthenticated) {
+        const addressResult = await apiRequest("/users/addresses", { silentConnection: true });
+        const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
+        const address = addresses.find((entry) => entry.isDefault) || addresses[0];
+        if (address) branch = await resolveConfiguredBranch(address);
+      }
+      const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, { silentConnection: true });
       const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
       setBackendProducts(mapped);
+      setFulfillmentBranch(branch);
       setCatalogError("");
     } catch (error) {
       // Keep the last confirmed server catalogue visible rather than showing
@@ -519,7 +532,7 @@ const Shop = () => {
     } finally {
       setCatalogLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchProducts();
@@ -611,35 +624,56 @@ const Shop = () => {
     return ["all", ...unique];
   }, [products]);
 
-  const handleAddToCart = (product, qty = 1) => {
+  const handleAddToCart = async (product, qty = 1) => {
+    setStockNotice("");
+    if (!Number.isSafeInteger(Number(qty)) || !/^\d+$/.test(String(qty).trim()) || Number(qty) <= 0) {
+      setStockNotice(t("Enter a positive whole-number quantity."));
+      return false;
+    }
     if (!product.inStock) {
-      alert("This AC unit is currently out of stock and cannot be added to your cart.");
-      return;
+      alert(t("This AC unit is currently out of stock and cannot be added to your cart."));
+      return false;
     }
     if (!isAuthenticated) {
-      return showAuthRequiredPrompt(
-        "Sign in to add this AC unit to your cart.",
+      showAuthRequiredPrompt(
+        t("Sign in to add this AC unit to your cart."),
       );
+      return false;
     }
-    addToCart(product, qty);
-    setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+    try {
+      const addressesResult = await apiRequest("/users/addresses");
+      const addresses = Array.isArray(addressesResult.addresses) ? addressesResult.addresses : [];
+      const address = addresses.find((entry) => entry.isDefault) || addresses[0];
+      if (!address) throw new Error(t("Save a delivery address before adding items to your cart."));
+      const branch = await resolveConfiguredBranch(address);
+      if (!branch) throw new Error(t("Your delivery address is outside our service areas. Update it before adding items."));
+      const stockResult = await apiRequest(`/products/public?branch=${encodeURIComponent(branch)}`);
+      const availableProduct = (stockResult.products || []).find((entry) => String(entry.id || entry._id) === String(product.id));
+      const available = Number(availableProduct?.stock || 0);
+      const existing = cart.find((item) => item.id === product.id);
+      const requested = Number(qty) + Number(existing?.quantity || 0);
+      if (!Number.isSafeInteger(available) || available < requested) {
+        throw new Error(available <= 0
+          ? (isFilipino(currentLanguage) ? `Hindi available ang AC unit na ito sa sangay ng ${branch}.` : `This AC unit is unavailable at the ${branch} branch.`)
+          : (isFilipino(currentLanguage) ? `Ang sangay ng ${branch} ay may ${available} available na unit lamang; magiging ${requested} ang unit sa iyong cart.` : `The ${branch} branch has only ${available} unit${available === 1 ? "" : "s"} available; your cart would contain ${requested}.`));
+      }
+      addToCart({ ...mapCatalogProductToCartProduct(availableProduct), fulfillmentBranch: branch }, Number(qty));
+      setFulfillmentBranch(branch);
+      setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+      return true;
+    } catch (error) {
+      setStockNotice(error.message || t("Unable to confirm branch stock. Please try again."));
+      return false;
+    }
   };
 
-  const handleBuyNow = (product) => {
-    if (!product.inStock) {
-      alert("This AC unit is currently out of stock and cannot be ordered.");
-      return;
-    }
-    if (!isAuthenticated) {
-      return showAuthRequiredPrompt("Sign in to buy this AC unit.");
-    }
-    addToCart(product, 1);
-    navigate("/checkout");
+  const handleBuyNow = async (product) => {
+    if (await handleAddToCart(product, 1)) navigate("/checkout");
   };
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
-      return showAuthRequiredPrompt("Sign in to continue to checkout.");
+      return showAuthRequiredPrompt(t("Sign in to continue to checkout."));
     }
     navigate("/checkout");
     setIsCartOpen(false);
@@ -650,8 +684,8 @@ const Shop = () => {
   return (
     <BoutiqueScreen withHeader={false} padding={0}>
       <BoutiqueHeader
-        title="Shop AC Units"
-        subtitle="Available stock across all branches"
+        title={t("Shop AC Units")}
+        subtitle={fulfillmentBranch ? (isFilipino(currentLanguage) ? `Available sa sangay ng ${fulfillmentBranch} para sa paghahatid` : `Available at your ${fulfillmentBranch} delivery branch`) : t("Browse AC units · add a delivery address to check local stock")}
         onLeftAction={() => setSidebarOpen(true)}
         leftAction="menu"
         cartCount={getCartCount()}
@@ -684,13 +718,15 @@ const Shop = () => {
         >
           <span aria-hidden="true" style={{ display: "grid", width: "24px", height: "24px", placeItems: "center", borderRadius: "50%", background: "#22c55e", fontWeight: 900 }}>✓</span>
           <span style={{ display: "grid", lineHeight: 1.25 }}>
-            <strong style={{ fontSize: "13px" }}>Added to cart</strong>
+            <strong style={{ fontSize: "13px" }}>{t("Added to cart")}</strong>
             <span style={{ color: "#d1d5db", fontSize: "12px" }}>{cartNotice.name}</span>
           </span>
         </div>
       ) : null}
+      {stockNotice ? <div role="alert" style={{ margin: "12px 24px", padding: "12px", borderRadius: "8px", color: "#991b1b", background: "#fee2e2" }}>{stockNotice}</div> : null}
 
       <BoutiqueNotifications
+        currentLanguage={currentLanguage}
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
@@ -728,7 +764,7 @@ const Shop = () => {
         <ShopCatalogue
           products={filteredProducts}
           loading={catalogLoading}
-          error={catalogError}
+          error={t(catalogError)}
           onRetry={fetchProducts}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -738,6 +774,7 @@ const Shop = () => {
         />
 
         <BoutiqueCart
+          currentLanguage={currentLanguage}
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
           cart={cart}

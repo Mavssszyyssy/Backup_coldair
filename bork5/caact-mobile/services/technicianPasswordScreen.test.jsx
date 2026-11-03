@@ -11,11 +11,23 @@ const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }), usePathname: () => '/technician/profile' }));
 jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate }) }));
 
+test('technician profile groups account details and explains email sign-in without a verification claim', async () => {
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 320, height: 640 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+  for (const heading of ['Profile details', 'Security & Session', 'Account settings', 'Session']) {
+    expect(screen.getByText(heading)).toBeTruthy();
+  }
+  expect(screen.getByText('Email Sign-in Verification')).toBeTruthy();
+  expect(screen.getByText(/After your password is accepted, verify the code sent to your email/)).toBeTruthy();
+  expect(screen.queryByText('Account Security')).toBeNull();
+  expect(screen.getByLabelText('Edit technician profile')).toBeTruthy();
+});
+
 test('technician contact editing normalizes formatted numbers, rejects excess digits, and allows retry', async () => {
   mockUpdate.mockReset().mockRejectedValueOnce(new Error('Connection interrupted'));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
   await fireEvent.press(screen.getByLabelText('Edit technician profile'));
+  expect(screen.queryByText('Sign out')).toBeNull();
   expect(screen.queryByText(/Spaces and dashes are accepted/)).toBeNull();
   expect(screen.getByLabelText('Contact Number').props.maxLength).toBeUndefined();
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '091234567890');
@@ -35,15 +47,30 @@ test('technician contact editing normalizes formatted numbers, rejects excess di
   alert.mockRestore();
   mockUpdate.mockReset();
 });
+test('technician profile rejects an invalid new alias and discards cancelled edits', async () => {
+  mockUpdate.mockReset();
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+  await fireEvent.press(screen.getByLabelText('Edit technician profile'));
+  await fireEvent.changeText(screen.getByLabelText('Username'), 'bad alias');
+  await fireEvent.press(screen.getByText('Save Changes'));
+  expect(alert).toHaveBeenCalledWith('Invalid username', expect.any(String));
+  expect(mockUpdate).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByText('Cancel'));
+  await fireEvent.press(screen.getByLabelText('Edit technician profile'));
+  expect(screen.getByLabelText('Username').props.value).toBe('tech.cavite.test');
+  alert.mockRestore();
+});
 test('technician password UI sends current and new password to the dedicated action', async () => {
   mockChange.mockResolvedValue({ success: true });
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
   expect(screen.getByText(/verify the code sent to your email/i)).toBeTruthy();
   await fireEvent.press(screen.getByText('Reset Password'));
+  expect(screen.queryByText('Sign out')).toBeNull();
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'NewPass123!');
-  await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'NewPass123!');
-  await fireEvent.press(screen.getByText('Save Changes'));
+  await fireEvent.changeText(screen.getByLabelText('Confirm New Password'), 'NewPass123!');
+  await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
   await waitFor(() => expect(mockChange).toHaveBeenCalledWith({ currentPassword: 'OldPass123!', newPassword: 'NewPass123!' }));
   expect(mockUpdate).not.toHaveBeenCalled();
 });
@@ -72,15 +99,15 @@ test('password fields preserve input, allow visibility checks, and report failed
   expect(next.props.maxLength).toBeUndefined(); // report over-length input instead of silently truncating paste
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(next, 'NewPass123.');
-  await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'NewPass123.');
+  await fireEvent.changeText(screen.getByLabelText('Confirm New Password'), 'NewPass123.');
   await fireEvent.press(screen.getByLabelText('Show new password'));
   expect(screen.getByLabelText('New Password').props.secureTextEntry).toBe(false);
   expect(screen.getByLabelText('New Password').props.value).toBe('NewPass123.');
-  await fireEvent.press(screen.getByText('Save Changes'));
+  await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
   await waitFor(() => expect(alert).toHaveBeenCalledWith('Password not changed', 'Connection interrupted'));
   expect(screen.getByLabelText('New Password').props.value).toBe('NewPass123.');
   mockChange.mockResolvedValue({ success: true });
-  await fireEvent.press(screen.getByText('Save Changes'));
+  await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
   await waitFor(() => expect(alert).toHaveBeenCalledWith('Password changed', expect.any(String)));
   alert.mockRestore();
 });
@@ -93,8 +120,8 @@ test('a pending password save cannot be cancelled while the server may still app
   await fireEvent.press(screen.getByText('Reset Password'));
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(screen.getByLabelText('New Password'), 'NewPass123!');
-  await fireEvent.changeText(screen.getByLabelText('Confirm Password'), 'NewPass123!');
-  const pendingSave = fireEvent.press(screen.getByRole('button', { name: 'Save Changes' }));
+  await fireEvent.changeText(screen.getByLabelText('Confirm New Password'), 'NewPass123!');
+  const pendingSave = fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
   await waitFor(() => expect(screen.getByLabelText('New Password').props.editable).toBe(false));
   try {
     expect(screen.getByRole('button', { name: 'Cancel' }).props.accessibilityState.disabled).toBe(true);

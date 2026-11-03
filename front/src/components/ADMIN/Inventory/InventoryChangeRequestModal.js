@@ -20,8 +20,8 @@ const InventoryChangeRequestModal = ({ isOpen, product, currentStock, onClose, o
     }
 
     const qty = Number(addQuantity);
-    if (!Number.isFinite(qty) || qty <= 0) {
-      setError('Quantity must be a valid positive number');
+    if (!/^\d+$/.test(String(addQuantity).trim()) || !Number.isSafeInteger(qty) || qty <= 0) {
+      setError('Quantity must be a positive whole number.');
       return;
     }
 

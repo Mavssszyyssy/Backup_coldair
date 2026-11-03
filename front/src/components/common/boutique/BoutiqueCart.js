@@ -9,6 +9,7 @@ import { BQ_COLORS, BQ_GEOMETRY } from "./BoutiqueTheme";
 
 import { getBrandLogo } from "../../../config/brandLogos";
 import { formatCartHorsepower, formatCartModel } from "../../../domain/cart/cartProductDetails";
+import { translateText } from "../../../utils/customerI18n";
 
 function CartItemImage({ item }) {
   const [imgBroken, setBroken] = useState(false);
@@ -54,6 +55,7 @@ function CartItemImage({ item }) {
 }
 
 export default function BoutiqueCart({
+  currentLanguage = "English",
   isOpen,
   onClose,
   cart,
@@ -62,13 +64,28 @@ export default function BoutiqueCart({
   onCheckout,
   getCartTotal,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
+  const [quantityErrors, setQuantityErrors] = useState({});
+  const handleQuantityChange = (item, value) => {
+    const parsed = Number(value);
+    if (!/^\d+$/.test(String(value).trim()) || !Number.isSafeInteger(parsed) || parsed < 1) {
+      setQuantityErrors((current) => ({ ...current, [item.id]: "invalid" }));
+      return;
+    }
+    if (Number.isSafeInteger(item.stock) && parsed > item.stock) {
+      setQuantityErrors((current) => ({ ...current, [item.id]: "stock" }));
+      return;
+    }
+    setQuantityErrors((current) => ({ ...current, [item.id]: "" }));
+    onUpdateQuantity(item.id, parsed);
+  };
   return (
     <BoutiqueDrawer
       isOpen={isOpen}
       onClose={onClose}
       side="right"
       width="440px"
-      title="Your Cart"
+      title={t("Your Cart")}
     >
       <BoutiqueBox className="bq-cart-wrapper" direction="column" height="100%">
         <BoutiqueStack
@@ -88,7 +105,7 @@ export default function BoutiqueCart({
             >
               <ShoppingCartSimple size={64} weight="bold" />
               <BoutiqueText variant="h3" margin="16px 0 0" weight={700}>
-                Your cart is empty.
+                {t("Your cart is empty.")}
               </BoutiqueText>
             </BoutiqueBox>
           ) : (
@@ -133,7 +150,7 @@ export default function BoutiqueCart({
                     margin="0 0 2px"
                     className="bq-item-model"
                   >
-                    Model: {formatCartModel(item)}
+                    {t("Model:")} {formatCartModel(item)}
                   </BoutiqueText>
                   <BoutiqueText
                     variant="label"
@@ -143,7 +160,7 @@ export default function BoutiqueCart({
                     margin="0 0 6px"
                     className="bq-item-horsepower"
                   >
-                    Horsepower: {formatCartHorsepower(item)}
+                    {t("Horsepower:")} {formatCartHorsepower(item)}
                   </BoutiqueText>
                   <BoutiqueBox
                     direction="row"
@@ -170,7 +187,7 @@ export default function BoutiqueCart({
                           letterSpacing: "0.05em",
                         }}
                       >
-                        ₱{item.price.toLocaleString()} ea.
+                        ₱{item.price.toLocaleString()} {t("ea.")}
                       </BoutiqueText>
                     )}
                   </BoutiqueBox>
@@ -185,12 +202,17 @@ export default function BoutiqueCart({
                     <BoutiqueNumberInput
                       size="sm"
                       value={item.quantity}
-                      onChange={(newQty) => onUpdateQuantity(item.id, newQty)}
+                      onChange={(newQty) => handleQuantityChange(item, newQty)}
                       min={1}
+                      max={Number.isSafeInteger(item.stock) ? item.stock : null}
+                      strict
                       width="120px"
                     />
+                    {quantityErrors[item.id] ? <small role="alert" style={{ color: "#b91c1c" }}>{quantityErrors[item.id] === "invalid" ? t("Enter a positive whole number.") : `${t("Only")} ${item.stock} ${t(item.stock === 1 ? "unit" : "units")} ${t("available at your delivery branch.")}`}</small> : null}
                     <button
                       className="bq-item-remove"
+                      type="button"
+                      aria-label={`${t("Remove")} ${item.name}`}
                       onClick={() => onRemoveItem(item.id)}
                     >
                       <Trash size={18} weight="bold" />
@@ -221,7 +243,7 @@ export default function BoutiqueCart({
                 weight={700}
                 color={BQ_COLORS.inkMuted}
               >
-                Subtotal
+                {t("Subtotal")}
               </BoutiqueText>
               <BoutiqueText
                 weight={800}
@@ -233,7 +255,7 @@ export default function BoutiqueCart({
               </BoutiqueText>
             </BoutiqueBox>
             <button className="bq-checkout-btn" onClick={onCheckout}>
-              Checkout Now
+              {t("Checkout Now")}
             </button>
           </BoutiqueBox>
         )}

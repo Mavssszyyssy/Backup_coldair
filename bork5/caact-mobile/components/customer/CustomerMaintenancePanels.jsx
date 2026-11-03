@@ -7,6 +7,7 @@ import DetailRow from "../ui/DetailRow";
 import StatusChip from "../ui/StatusChip";
 import { customerSystemMessage } from "../../services/customerLanguage";
 import VisitFollowUpPlan from "./VisitFollowUpPlan";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const dateLabel = (value) => value
   ? new Date(value).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })
@@ -31,23 +32,24 @@ const roomSizeMessage = (assessment = {}) => ({
 }[assessment.status] || assessment.summary || "");
 
 export function CustomerRecommendationPanel({ recommendation, maintenance }) {
+  const { t } = useInterfaceLanguage();
   if (!recommendation) return null;
   const assessment = recommendation.predictiveAssessment || {};
   return <Card>
     <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
       <View style={{ width: 52, height: 52, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}><Ionicons name="calendar-clear-sharp" size={25} color={COLORS.primary} /></View>
-      <View style={{ flex: 1 }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>SUGGESTED SERVICING DATE</Text><Text style={{ color: COLORS.textPrimary, fontSize: FONT.xl, fontWeight: FONT.black, marginTop: 2 }}>{dateLabel(recommendation.bestServicedBy)}</Text></View>
-      <StatusChip label={serviceLabel(recommendation.recommendedService)} color={recommendation.overdue ? COLORS.danger : COLORS.success} />
+      <View style={{ flex: 1 }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{t("SUGGESTED SERVICING DATE")}</Text><Text style={{ color: COLORS.textPrimary, fontSize: FONT.xl, fontWeight: FONT.black, marginTop: 2 }}>{t(dateLabel(recommendation.bestServicedBy))}</Text></View>
+      <StatusChip label={t(serviceLabel(recommendation.recommendedService))} color={recommendation.overdue ? COLORS.danger : COLORS.success} />
     </View>
-    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{serviceExplanation(recommendation.recommendedService)}</Text>
-    <DetailRow label="Priority" value={assessment.priority || (recommendation.overdue ? "Schedule soon" : "Routine")} />
-    {!recommendation.latestVisitAnalysis ? <DetailRow label="Assessment Summary" value={assessment.assessmentSummary || recommendation.aiAssessment || "AEROPULSE needs more completed service details before it can assess this AC."} multiline /> : null}
-    {!recommendation.latestVisitAnalysis ? <DetailRow label="Why This Date" value={assessment.reasonForRecommendation || recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || "A completed cleaning or installation date is needed before a date can be suggested."} multiline /> : null}
-    {!recommendation.latestVisitAnalysis && assessment.recommendedActions?.length ? <DetailRow label="Recommended Actions" value={assessment.recommendedActions.map((item, index) => `${index + 1}. ${item}`).join("\n")} multiline /> : null}
+    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>{t(serviceExplanation(recommendation.recommendedService))}</Text>
+    <DetailRow label={t("Priority")} value={assessment.priority || t(recommendation.overdue ? "Schedule soon" : "Routine")} />
+    {!recommendation.latestVisitAnalysis ? <DetailRow label={t("Assessment Summary")} value={assessment.assessmentSummary || recommendation.aiAssessment || t("AEROPULSE needs more completed service details before it can assess this AC.")} multiline /> : null}
+    {!recommendation.latestVisitAnalysis ? <DetailRow label={t("Why This Date")} value={assessment.reasonForRecommendation || recommendation.whyThisDate || customerSystemMessage(recommendation.recommendationBasis) || t("A completed cleaning or installation date is needed before a date can be suggested.")} multiline /> : null}
+    {!recommendation.latestVisitAnalysis && assessment.recommendedActions?.length ? <DetailRow label={t("Recommended Actions")} value={assessment.recommendedActions.map((item, index) => `${index + 1}. ${item}`).join("\n")} multiline /> : null}
     {recommendation.dataQuality?.message ? <Text style={{ color: COLORS.danger, fontSize: FONT.sm, marginTop: SPACING.sm }}>{customerSystemMessage(recommendation.dataQuality.message)}</Text> : null}
-    {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={maintenance.urgency} color={maintenance.color} /></View> : null}
-    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>This is a suggestion. A visit is only booked after you submit a service request.</Text>
+    {maintenance?.urgency ? <View style={{ alignSelf: "flex-start", marginTop: SPACING.sm }}><StatusChip label={t(maintenance.urgency)} color={maintenance.color} /></View> : null}
+    <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.sm }}>{t("This is a suggestion. A visit is only booked after you submit a service request.")}</Text>
     {recommendation.latestVisitAnalysis ? <VisitFollowUpPlan interpretation={recommendation.latestVisitAnalysis} /> : null}
-    {roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment) ? <DetailRow label="Room and AC Size Match" value={roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment)} multiline /> : null}
+    {roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment) ? <DetailRow label={t("Room and AC Size Match")} value={t(roomSizeMessage(recommendation.capacityAssessment || maintenance?.capacityAssessment))} multiline /> : null}
   </Card>;
 }

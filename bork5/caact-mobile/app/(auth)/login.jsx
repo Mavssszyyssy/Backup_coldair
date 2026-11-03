@@ -1,6 +1,6 @@
 // app/(auth)/login.jsx
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,6 +12,8 @@ import TextField from "../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../components/ui/KeyboardAwareScrollView";
 import { COLORS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
+import { useOtpResendCooldown } from "../../hooks/useOtpResendCooldown";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import {
   hasValidationErrors,
   normalizeEmail,
@@ -21,6 +23,9 @@ import {
 export function LoginScreen() {
   const router = useRouter();
   const { login, verifyEmailLogin, resendLoginEmail } = useUserContext();
+  const { t } = useInterfaceLanguage();
+  const requestInFlight = useRef(false);
+  const { secondsRemaining, useServerDeadline } = useOtpResendCooldown();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -35,7 +40,7 @@ export function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    if (submitting) return;
+    if (requestInFlight.current) return;
 
     const nextErrors = challengeToken
       ? (/^\d{6}$/.test(verificationCode)
@@ -45,6 +50,7 @@ export function LoginScreen() {
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
 
+    requestInFlight.current = true;
     setSubmitting(true);
     try {
       const result = challengeToken
@@ -54,6 +60,8 @@ export function LoginScreen() {
       if (result.requiresEmailVerification) {
         setChallengeToken(result.challengeToken);
         setMaskedEmail(result.maskedEmail || "your account email");
+        setVerificationCode("");
+        useServerDeadline(result.resendAvailableAt, 60);
         setErrors({});
         return;
       }
@@ -71,8 +79,11 @@ export function LoginScreen() {
           password: result.error || "Check your username and password, then try again.",
         });
     } catch {
-      setErrors({ email: "Unable to login right now.", password: "" });
+      setErrors(challengeToken
+        ? { verificationCode: "Unable to verify the code right now." }
+        : { email: "Unable to login right now.", password: "" });
     } finally {
+      requestInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -110,15 +121,16 @@ export function LoginScreen() {
           ) : (
             <>
               <TextField
-                label="Email or Alias"
+                label={t("Email or Username")}
                 value={form.email}
                 onChangeText={(v) => updateField("email", v)}
-                placeholder="you@example.com or your username"
+                placeholder={t("Email address or username")}
                 error={errors.email}
                 autoCapitalize="none"
               />
               <PasswordField
-                label="Password"
+                label={t("Password")}
+                placeholder={t("Enter your password")}
                 value={form.password}
                 onChangeText={(v) => updateField("password", v)}
                 error={errors.password}
@@ -138,18 +150,31 @@ export function LoginScreen() {
         {challengeToken ? (
           <View style={{ gap: SPACING.xs, marginTop: SPACING.sm }}>
             <Button
-              title={submitting ? "Resending…" : "Resend code"}
+              title={submitting ? t("Resending…") : secondsRemaining > 0 ? `${t("Resend code")} (${secondsRemaining}s)` : t("Resend code")}
               onPress={async () => {
-                if (submitting) return;
+                if (requestInFlight.current || secondsRemaining > 0) return;
+                requestInFlight.current = true;
                 setSubmitting(true);
-                const result = await resendLoginEmail(challengeToken);
-                if (result.challengeToken) setChallengeToken(result.challengeToken);
-                setErrors(result.success ? {} : { verificationCode: result.error || "Unable to resend the code." });
-                setSubmitting(false);
+                try {
+                  const result = await resendLoginEmail(challengeToken);
+                  if (result.challengeToken) setChallengeToken(result.challengeToken);
+                  if (result.success) {
+                    setVerificationCode("");
+                    useServerDeadline(result.resendAvailableAt, 60);
+                  } else if (result.retryAfterSeconds) {
+                    useServerDeadline("", result.retryAfterSeconds);
+                  }
+                  setErrors(result.success ? {} : { verificationCode: result.error || "Unable to resend the code." });
+                } catch {
+                  setErrors({ verificationCode: "Unable to resend the code right now." });
+                } finally {
+                  requestInFlight.current = false;
+                  setSubmitting(false);
+                }
               }}
               variant="secondary"
               size="sm"
-              disabled={submitting}
+              disabled={submitting || secondsRemaining > 0}
             />
             <Button
               title="I have a different account"
@@ -157,6 +182,7 @@ export function LoginScreen() {
                 setChallengeToken("");
                 setVerificationCode("");
                 setMaskedEmail("");
+                useServerDeadline("");
                 setErrors({});
               }}
               variant="ghost"

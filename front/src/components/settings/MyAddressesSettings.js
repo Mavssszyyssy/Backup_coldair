@@ -1,7 +1,8 @@
 import { MapPin, Phone, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
-import { alertDialog, confirmDialog } from "../../utils/dialog";
+import { translateText } from "../../utils/customerI18n";
+import { confirmDialog } from "../../utils/dialog";
 import AddAddressModal from "../checkout/AddAddressModal";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -10,7 +11,8 @@ import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
-function MyAddressesSettings({ onAddressesChanged }) {
+function MyAddressesSettings({ onAddressesChanged, language = "English" }) {
+  const t = (value) => translateText(value, language);
   const [addresses, setAddresses] = useState([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
@@ -36,6 +38,12 @@ function MyAddressesSettings({ onAddressesChanged }) {
     loadAddresses();
   }, [loadAddresses]);
 
+  useEffect(() => {
+    if (!addressNotice) return undefined;
+    const timer = window.setTimeout(() => setAddressNotice(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [addressNotice]);
+
   const handleSaveAddress = async (payload) => {
     const isEditingAddress = Boolean(editingAddress?.id || editingAddress?._id);
     setAddressSaving(true);
@@ -51,18 +59,13 @@ function MyAddressesSettings({ onAddressesChanged }) {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setAddressNotice("New delivery address saved. It can now be selected at checkout.");
       }
       await loadAddresses();
       setAddressModalOpen(false);
       setEditingAddress(null);
-      void alertDialog({
-        title: isEditingAddress ? "Delivery address updated" : "Delivery address added",
-        message: isEditingAddress
-          ? "Your delivery address was updated successfully."
-          : "Your delivery address was added successfully.",
-        confirmText: "Done",
-      });
+      setAddressNotice(isEditingAddress
+        ? "Delivery address updated successfully."
+        : "New delivery address saved. It can now be selected at checkout.");
     } catch (error) {
       alert(error.message || "Unable to save address.");
     } finally {
@@ -120,11 +123,11 @@ function MyAddressesSettings({ onAddressesChanged }) {
             style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, color: "#166534" }}
             role="status"
           >
-            <BoutiqueText weight={700}>{addressNotice}</BoutiqueText>
-            <BoutiqueButton variant="ghost" size="sm" onClick={() => setAddressNotice("")} style={{ width: "auto", color: "#166534" }}>Dismiss</BoutiqueButton>
+            <BoutiqueText weight={700}>{t(addressNotice)}</BoutiqueText>
+            <BoutiqueButton variant="ghost" size="sm" onClick={() => setAddressNotice("")} style={{ width: "auto", color: "#166534" }}>{t("Dismiss")}</BoutiqueButton>
           </BoutiqueBox>
         ) : null}
-        <BoutiqueBox direction="row" align="center" justify="space-between">
+        <BoutiqueBox direction="row" align="center" justify="space-between" className="address-list-header">
           <BoutiqueBox direction="row" align="center" gap={12}>
             <BoutiqueBox
               width={40}
@@ -137,9 +140,9 @@ function MyAddressesSettings({ onAddressesChanged }) {
               <MapPin size={20} weight="bold" />
             </BoutiqueBox>
             <BoutiqueStack gap={2}>
-              <BoutiqueText variant="h2">Delivery Addresses</BoutiqueText>
+              <BoutiqueText variant="h2">{t("Delivery Addresses")}</BoutiqueText>
               <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-                Manage your saved delivery locations.
+                {t("Manage your saved delivery locations.")}
               </BoutiqueText>
             </BoutiqueStack>
           </BoutiqueBox>
@@ -152,7 +155,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
             }}
             style={{ width: "auto" }}
           >
-            <Plus size={18} weight="bold" /> Add Address
+            <Plus size={18} weight="bold" /> {t("Add Address")}
           </BoutiqueButton>
         </BoutiqueBox>
 
@@ -163,7 +166,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
               padding="20px"
               color={BQ_COLORS.inkMuted}
             >
-              Loading your addresses...
+              {t("Loading your addresses...")}
             </BoutiqueText>
           )}
 
@@ -179,7 +182,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
               }}
             >
               <BoutiqueText color={BQ_COLORS.inkMuted} weight={600}>
-                No saved addresses yet.
+                {t("No saved addresses yet.")}
               </BoutiqueText>
             </BoutiqueBox>
           )}
@@ -201,7 +204,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                 <BoutiqueBox
                   key={id}
                   padding={24}
-                  background="white"
+                  background={BQ_COLORS.surface}
                   style={{
                     borderRadius: "16px",
                     border: `1px solid ${address.isDefault ? BQ_COLORS.brand : BQ_COLORS.border}`,
@@ -212,6 +215,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                     direction="row"
                     justify="space-between"
                     align="flex-start"
+                    className="address-item-content"
                   >
                     <BoutiqueStack gap={8} flex={1}>
                       <BoutiqueBox direction="row" align="center" gap={12}>
@@ -230,7 +234,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                               weight={800}
                               style={{ textTransform: "uppercase" }}
                             >
-                              Default
+                              {t("Default")}
                             </BoutiqueText>
                           </BoutiqueBox>
                         )}
@@ -268,7 +272,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                       </BoutiqueBox>
                     </BoutiqueStack>
 
-                    <BoutiqueBox direction="row" gap={8}>
+                    <BoutiqueBox direction="row" gap={8} className="address-item-actions">
                       <BoutiqueButton
                         variant="outline"
                         size="sm"
@@ -279,7 +283,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                         disabled={addressSaving}
                         style={{ width: "auto" }}
                       >
-                        Edit
+                        {t("Edit")}
                       </BoutiqueButton>
                       {!address.isDefault && (
                         <BoutiqueButton
@@ -289,7 +293,7 @@ function MyAddressesSettings({ onAddressesChanged }) {
                           disabled={addressSaving}
                           style={{ width: "auto" }}
                         >
-                          Set Default
+                          {t("Set Default")}
                         </BoutiqueButton>
                       )}
                       <BoutiqueButton
@@ -318,8 +322,9 @@ function MyAddressesSettings({ onAddressesChanged }) {
           }}
           onSave={handleSaveAddress}
           initialAddress={editingAddress}
-          title={editingAddress ? "Update Address" : "Add New Address"}
+          title={t(editingAddress ? "Update Address" : "Add New Address")}
           saveLabel={editingAddress ? "Save Address" : "Add Address"}
+          language={language}
           isSaving={addressSaving}
         />
       )}

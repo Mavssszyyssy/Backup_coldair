@@ -11,6 +11,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmLogout } from "../../../utils/dialog";
+import { translateText } from "../../../utils/customerI18n";
 import logo from "../../common/images/Cold Air Logo.jpg";
 import "./styles.css";
 
@@ -25,7 +26,8 @@ const navItems = [
 ];
 
 const AdminSidebar = ({ isOpen, onClose }) => {
-  const { logout } = useUser();
+  const { logout, currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
   const navigate = useNavigate();
 
   const handleLogout = () => confirmLogout(() => {
@@ -49,13 +51,13 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               style={{ borderRadius: "4px", width: "20px", height: "20px" }}
             />
           </span>
-          <span className="admin-sidebar-brand-copy"><span>AeroPulse</span><small>Branch operations</small></span>
+          <span className="admin-sidebar-brand-copy"><span>AeroPulse</span><small>{t("Branch operations")}</small></span>
         </div>
         <button
           className="admin-sidebar-close"
           onClick={onClose}
           type="button"
-          aria-label="Close menu"
+          aria-label={t("Close menu")}
         >
           {"\u2715"}
         </button>
@@ -74,7 +76,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             <span className="nav-icon">
               <item.icon size={20} weight="bold" className="inline-icon" />
             </span>
-            <span className="nav-label">{item.label}</span>
+            <span className="nav-label">{t(item.label)}</span>
           </NavLink>
         ))}
       </nav>
@@ -88,7 +90,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           <span>
             <SignOut size={20} weight="bold" className="inline-icon" />
           </span>
-          <span>Logout</span>
+          <span>{t("Logout")}</span>
         </button>
       </div>
     </aside>

@@ -3,8 +3,21 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import ForgotPassword from './ForgotPassword';
 import { apiRequest } from '../../config/api';
+const mockLanguage = vi.hoisted(() => ({ current: 'English' }));
 vi.mock('../../config/api', () => ({ apiRequest: vi.fn() }));
-beforeEach(() => apiRequest.mockReset());
+vi.mock('../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: mockLanguage.current }) }));
+beforeEach(() => { apiRequest.mockReset(); mockLanguage.current = 'English'; });
+
+it('localizes recovery controls in Filipino without changing the submitted account identifier', async () => {
+  mockLanguage.current = 'Filipino';
+  apiRequest.mockResolvedValue({ message: 'Success' });
+  render(<MemoryRouter><ForgotPassword /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'I-reset ang Password' })).toBeInTheDocument();
+  fireEvent.change(screen.getByPlaceholderText('you@example.com or account.login'), { target: { value: 'customer@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Magpadala ng verification code' }));
+  await screen.findByPlaceholderText('123456');
+  expect(JSON.parse(apiRequest.mock.calls[0][1].body).identifier).toBe('customer@example.com');
+});
 
 it('uses the same account identifier for recovery-code request and password reset', async () => {
   apiRequest.mockResolvedValue({ message: 'Success' });

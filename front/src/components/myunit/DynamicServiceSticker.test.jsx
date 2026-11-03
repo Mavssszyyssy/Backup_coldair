@@ -4,6 +4,7 @@ import { apiRequest } from "../../config/api";
 import DynamicServiceSticker from "./DynamicServiceSticker";
 
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: "English" }) }));
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);

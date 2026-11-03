@@ -22,4 +22,10 @@ export const taskMatchesScheduleWindow = (task = {}, filter = "today", currentDa
   );
 };
 
+export const countTasksByScheduleWindow = (tasks = [], currentDate = manilaDateKey()) => ({
+  today: tasks.filter((task) => taskMatchesScheduleWindow(task, "today", currentDate)).length,
+  upcoming: tasks.filter((task) => taskMatchesScheduleWindow(task, "upcoming", currentDate)).length,
+  all: tasks.length,
+});
+
 export { manilaDateKey };

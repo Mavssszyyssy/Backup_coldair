@@ -4,11 +4,13 @@ import Card from "../ui/Card";
 import TechButton from "./TechButton";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { fetchTaskDecisionSupport, generateTaskDecisionSupport, reviewTaskDecisionSupport } from "../../services/taskStorage";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const hasText = value => typeof value === "string" && value.trim().length > 0;
 const hasItems = values => Array.isArray(values) && values.length > 0;
 
 const Detail = ({ label, value }) => {
+  const { t } = useInterfaceLanguage();
   const [showAll, setShowAll] = useState(false);
   if (!hasText(value)) return null;
   const collapsible = value.trim().length > 180;
@@ -16,14 +18,15 @@ const Detail = ({ label, value }) => {
     <View style={styles.detailBlock}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue} numberOfLines={collapsible && !showAll ? 4 : undefined}>{value}</Text>
-      {collapsible ? <Pressable accessibilityRole="button" accessibilityLabel={`${showAll ? "See less" : "See more"} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
-        <Text style={styles.seeMoreText}>{showAll ? "See less" : "See more"}</Text>
+      {collapsible ? <Pressable accessibilityRole="button" accessibilityLabel={`${t(showAll ? "See less" : "See more")} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
+        <Text style={styles.seeMoreText}>{t(showAll ? "See less" : "See more")}</Text>
       </Pressable> : null}
     </View>
   );
 };
 
 const Items = ({ label, values, format = item => item }) => {
+  const { t } = useInterfaceLanguage();
   const [showAll, setShowAll] = useState(false);
   if (!hasItems(values)) return null;
   const visibleValues = showAll ? values : values.slice(0, 3);
@@ -38,14 +41,15 @@ const Items = ({ label, values, format = item => item }) => {
           </View>
         ))}
       </View>
-      {values.length > 3 ? <Pressable accessibilityRole="button" accessibilityLabel={`${showAll ? "See less" : "See more"} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
-        <Text style={styles.seeMoreText}>{showAll ? "See less" : `See more (${values.length - 3})`}</Text>
+      {values.length > 3 ? <Pressable accessibilityRole="button" accessibilityLabel={`${t(showAll ? "See less" : "See more")} ${label}`} onPress={() => setShowAll(current => !current)} hitSlop={8}>
+        <Text style={styles.seeMoreText}>{showAll ? t("See less") : `${t("See more")} (${values.length - 3})`}</Text>
       </Pressable> : null}
     </View>
   );
 };
 
 function AssessmentPager({ pages, resetKey, onPageChange }) {
+  const { language, t } = useInterfaceLanguage();
   const [pageIndex, setPageIndex] = useState(0);
   const pagerRef = useRef(null);
 
@@ -77,7 +81,7 @@ function AssessmentPager({ pages, resetKey, onPageChange }) {
 
       <View style={styles.pageContent}>{page.content}</View>
 
-      <View style={styles.progressDots} accessibilityLabel={`Assessment page ${safeIndex + 1} of ${pages.length}`}>
+      <View style={styles.progressDots} accessibilityLabel={language === "Filipino" ? `Pahina ng assessment ${safeIndex + 1} sa ${pages.length}` : `Assessment page ${safeIndex + 1} of ${pages.length}`}>
         {pages.map((item, index) => (
           <View
             key={item.key}
@@ -88,30 +92,31 @@ function AssessmentPager({ pages, resetKey, onPageChange }) {
 
       <View style={styles.pageActions}>
         <TechButton
-          title="Previous"
+          title={t("Previous")}
           size="sm"
           variant="secondary"
           disabled={safeIndex === 0}
           onPress={() => changePage(safeIndex - 1)}
-          accessibilityLabel="Previous assessment page"
+          accessibilityLabel={t("Previous assessment page")}
           style={styles.pageButton}
         />
         <TechButton
-          title="Next"
+          title={t("Next")}
           size="sm"
           variant="secondary"
           disabled={safeIndex === lastIndex}
           onPress={() => changePage(safeIndex + 1)}
-          accessibilityLabel="Next assessment page"
+          accessibilityLabel={t("Next assessment page")}
           style={styles.pageButton}
         />
       </View>
-      <Text style={styles.pageCounter}>Assessment page {safeIndex + 1} of {pages.length}</Text>
+      <Text style={styles.pageCounter}>{language === "Filipino" ? `Pahina ng assessment ${safeIndex + 1} sa ${pages.length}` : `Assessment page ${safeIndex + 1} of ${pages.length}`}</Text>
     </View>
   );
 }
 
 export default function MaintenanceDecisionCard({ taskId, completed, requestId, onPageChange }) {
+  const { t } = useInterfaceLanguage();
   const [record, setRecord] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState("");
@@ -156,51 +161,51 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
   const prePages = [
     {
       key: "overview",
-      title: "Assessment summary",
-      subtitle: "Start with the likely concern and why it needs attention.",
+      title: t("Assessment summary"),
+      subtitle: t("Start with the likely concern and why it needs attention."),
       visible: hasText(a?.possible_problem) || hasText(a?.priority) || hasText(a?.confidence) || hasText(a?.reason_for_recommendation),
       content: <>
-        <Detail label="Possible problem" value={a?.possible_problem} />
-        <Detail label="Priority / confidence" value={[a?.priority, a?.confidence].filter(Boolean).join(" · ")} />
-        <Detail label="Reason" value={a?.reason_for_recommendation} />
+        <Detail label={t("Possible problem")} value={a?.possible_problem} />
+        <Detail label={t("Priority / confidence")} value={[a?.priority, a?.confidence].filter(Boolean).join(" · ")} />
+        <Detail label={t("Reason")} value={a?.reason_for_recommendation} />
       </>,
     },
     {
       key: "parts",
-      title: "Parts and materials",
-      subtitle: "Prepare these items, but replace parts only after diagnosis.",
+      title: t("Parts and materials"),
+      subtitle: t("Prepare these items, but replace parts only after diagnosis."),
       visible: hasItems(a?.parts_to_bring) || hasItems(a?.replace_only_after_diagnosis) || hasItems(a?.tools_and_materials),
       content: <>
-        <Items label="Bring for inspection" values={a?.parts_to_bring} format={part => `${part.name}: ${part.reason}`} />
-        <Items label="Use only after confirmed diagnosis" values={a?.replace_only_after_diagnosis} format={part => `${part.name}: ${part.only_if}`} />
-        <Items label="Tools and materials" values={a?.tools_and_materials} format={tool => `${tool.name}: ${tool.reason}`} />
+        <Items label={t("Bring for inspection")} values={a?.parts_to_bring} format={part => `${part.name}: ${part.reason}`} />
+        <Items label={t("Use only after confirmed diagnosis")} values={a?.replace_only_after_diagnosis} format={part => `${part.name}: ${part.only_if}`} />
+        <Items label={t("Tools and materials")} values={a?.tools_and_materials} format={tool => `${tool.name}: ${tool.reason}`} />
       </>,
     },
     {
       key: "evidence",
-      title: "Recorded evidence",
-      subtitle: "Original wording is kept beside the English interpretation.",
+      title: t("Recorded evidence"),
+      subtitle: t("Original wording is kept beside the English interpretation."),
       visible: hasText(reportedIssue) || hasItems(preObservationEvidence) || hasText(a?.english_interpretation) || hasItems(a?.missing_evidence),
       content: <>
-        <Detail label="Original reported issue" value={reportedIssue} />
-        <Items label="Original technician observations" values={preObservationEvidence} format={entry => `${entry.label}: ${entry.text}`} />
-        <Detail label="English interpretation" value={a?.english_interpretation} />
-        <Items label="Missing evidence" values={a?.missing_evidence} />
+        <Detail label={t("Original reported issue")} value={reportedIssue} />
+        <Items label={t("Original technician observations")} values={preObservationEvidence} format={entry => `${entry.label}: ${entry.text}`} />
+        <Detail label={t("English interpretation")} value={a?.english_interpretation} />
+        <Items label={t("Missing evidence")} values={a?.missing_evidence} />
       </>,
     },
     {
       key: "review",
-      title: "Checks and technician review",
-      subtitle: "Use the assessment as guidance and record your decision.",
+      title: t("Checks and technician review"),
+      subtitle: t("Use the assessment as guidance and record your decision."),
       visible: true,
       content: <>
-        <Items label="Diagnostic actions" values={a?.diagnostic_actions} />
-        <Items label="Safety flags" values={a?.safety_flags} />
-        <Detail label="Technician review" value={pre?.review?.decision || "pending"} />
+        <Items label={t("Diagnostic actions")} values={a?.diagnostic_actions} />
+        <Items label={t("Safety flags")} values={a?.safety_flags} />
+        <Detail label={t("Technician review")} value={t(pre?.review?.decision || "pending")} />
         {(!pre?.review?.decision || pre.review.decision === "pending") ? <View style={styles.reviewActions}>
-          <TechButton title="Confirm" size="sm" onPress={() => review("pre", "confirmed")} loading={busy === "pre"} style={styles.reviewButton} />
-          <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("pre", "rejected")} loading={busy === "pre"} style={styles.reviewButton} />
-        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
+          <TechButton title={t("Confirm")} size="sm" onPress={() => review("pre", "confirmed")} loading={busy === "pre"} style={styles.reviewButton} />
+          <TechButton title={t("Reject")} size="sm" variant="secondary" onPress={() => review("pre", "rejected")} loading={busy === "pre"} style={styles.reviewButton} />
+        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>{t("Review saved. No further action is required.")}</Text>}
       </>,
     },
   ].filter(page => page.visible);
@@ -208,82 +213,82 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
   const postPages = [
     {
       key: "forecast",
-      title: "What to monitor next",
-      subtitle: "A cautious forecast based on the saved visit evidence.",
+      title: t("What to monitor next"),
+      subtitle: t("A cautious forecast based on the saved visit evidence."),
       visible: hasText(p?.possible_future_issue) || hasText(p?.component_to_monitor) || hasText(p?.risk_level) || hasText(p?.confidence),
       content: <>
-        <Detail label="Possible next issue" value={p?.possible_future_issue} />
-        <Detail label="Part to monitor" value={p?.component_to_monitor} />
-        <Detail label="Risk / confidence" value={[p?.risk_level, p?.confidence].filter(Boolean).join(" · ")} />
+        <Detail label={t("Possible next issue")} value={p?.possible_future_issue} />
+        <Detail label={t("Part to monitor")} value={p?.component_to_monitor} />
+        <Detail label={t("Risk / confidence")} value={[p?.risk_level, p?.confidence].filter(Boolean).join(" · ")} />
       </>,
     },
     {
       key: "findings",
-      title: "Technician findings",
-      subtitle: "Review the original notes and their English interpretation.",
+      title: t("Technician findings"),
+      subtitle: t("Review the original notes and their English interpretation."),
       visible: hasText(currentFindings) || hasText(p?.english_interpretation),
       content: <>
-        <Detail label="Original technician findings" value={currentFindings} />
-        <Detail label="English interpretation" value={p?.english_interpretation} />
+        <Detail label={t("Original technician findings")} value={currentFindings} />
+        <Detail label={t("English interpretation")} value={p?.english_interpretation} />
       </>,
     },
     {
       key: "support",
-      title: "Supporting evidence",
-      subtitle: "See what supports the forecast and what information is still missing.",
+      title: t("Supporting evidence"),
+      subtitle: t("See what supports the forecast and what information is still missing."),
       visible: hasItems(p?.supporting_findings) || hasItems(p?.missing_evidence),
       content: <>
-        <Items label="Supporting findings" values={p?.supporting_findings} />
-        <Items label="Missing evidence" values={p?.missing_evidence} />
+        <Items label={t("Supporting findings")} values={p?.supporting_findings} />
+        <Items label={t("Missing evidence")} values={p?.missing_evidence} />
       </>,
     },
     {
       key: "actions",
-      title: "Next actions and review",
-      subtitle: "Follow the recommended prevention steps and record your decision.",
+      title: t("Next actions and review"),
+      subtitle: t("Follow the recommended prevention steps and record your decision."),
       visible: true,
       content: <>
-        <Items label="Preventive actions" values={p?.preventive_actions} />
-        <Detail label="Follow-up" value={p?.follow_up} />
-        <Items label="Safety flags" values={p?.safety_flags} />
-        <Detail label="Technician review" value={post?.review?.decision || "pending"} />
+        <Items label={t("Preventive actions")} values={p?.preventive_actions} />
+        <Detail label={t("Follow-up")} value={p?.follow_up} />
+        <Items label={t("Safety flags")} values={p?.safety_flags} />
+        <Detail label={t("Technician review")} value={t(post?.review?.decision || "pending")} />
         {(!post?.review?.decision || post.review.decision === "pending") ? <View style={styles.reviewActions}>
-          <TechButton title="Confirm" size="sm" onPress={() => review("post", "confirmed")} loading={busy === "post"} style={styles.reviewButton} />
-          <TechButton title="Reject" size="sm" variant="secondary" onPress={() => review("post", "rejected")} loading={busy === "post"} style={styles.reviewButton} />
-        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>Review saved. No further action is required.</Text>}
+          <TechButton title={t("Confirm")} size="sm" onPress={() => review("post", "confirmed")} loading={busy === "post"} style={styles.reviewButton} />
+          <TechButton title={t("Reject")} size="sm" variant="secondary" onPress={() => review("post", "rejected")} loading={busy === "post"} style={styles.reviewButton} />
+        </View> : <Text accessibilityLiveRegion="polite" style={styles.reviewSaved}>{t("Review saved. No further action is required.")}</Text>}
       </>,
     },
   ].filter(page => page.visible);
 
   return <Card>
-    <Pressable accessibilityRole="button" accessibilityLabel="AI parts and future-issue assessment" accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
-      <Text style={styles.cardTitle}>AI parts and future-issue assessment</Text>
-      <Text style={styles.cardSummary}>{expanded ? "See less" : "See more"} {expanded ? "▲" : "▼"}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("AI parts and future-issue assessment")} accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
+      <Text style={styles.cardTitle}>{t("AI parts and future-issue assessment")}</Text>
+      <Text style={styles.cardSummary}>{t(expanded ? "See less" : "See more")} {expanded ? "▲" : "▼"}</Text>
     </Pressable>
     {expanded && <>
     <View style={styles.guidanceNote}>
-      <Text style={styles.guidanceText}>Suggestions can interpret Tagalog and Taglish notes, but your original findings stay unchanged. Confirm faults and part compatibility before replacement.</Text>
+      <Text style={styles.guidanceText}>{t("Suggestions can interpret Tagalog and Taglish notes, but your original findings stay unchanged. Confirm faults and part compatibility before replacement.")}</Text>
     </View>
-    {!!error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
+    {!!error && <Text accessibilityRole="alert" style={styles.errorText}>{t(error)}</Text>}
     {!!requestId && <View style={styles.assessmentSection}>
-      <Text style={styles.sectionTitle}>Before maintenance</Text>
-      <Text style={styles.sectionDescription}>Parts preparation and diagnostic guidance</Text>
+      <Text style={styles.sectionTitle}>{t("Before maintenance")}</Text>
+      <Text style={styles.sectionDescription}>{t("Parts preparation and diagnostic guidance")}</Text>
       {pre?.status === "completed" ? (
         <AssessmentPager pages={prePages} resetKey={`${taskId}:pre:${pagerRevision.pre}`} onPageChange={onPageChange} />
       ) : (
-        <Text style={styles.emptyText}>{pre?.error || "No AI assessment saved yet."}</Text>
+        <Text style={styles.emptyText}>{t(pre?.error || "No AI assessment saved yet.")}</Text>
       )}
-      {!completed && <TechButton title={pre ? "Regenerate AI assessment" : "Generate AI assessment"} onPress={() => run("pre")} loading={busy === "pre"} variant="secondary" style={styles.generateButton} />}
+      {!completed && <TechButton title={t(pre ? "Regenerate AI assessment" : "Generate AI assessment")} onPress={() => run("pre")} loading={busy === "pre"} variant="secondary" style={styles.generateButton} />}
     </View>}
     {completed && <View style={styles.assessmentSection}>
-      <Text style={styles.sectionTitle}>After maintenance</Text>
-      <Text style={styles.sectionDescription}>Future-risk monitoring and preventive guidance</Text>
+      <Text style={styles.sectionTitle}>{t("After maintenance")}</Text>
+      <Text style={styles.sectionDescription}>{t("Future-risk monitoring and preventive guidance")}</Text>
       {post?.status === "completed" ? (
         <AssessmentPager pages={postPages} resetKey={`${taskId}:post:${pagerRevision.post}`} onPageChange={onPageChange} />
       ) : (
-        <Text style={styles.emptyText}>{post?.error || "Generate after the final technician report is saved."}</Text>
+        <Text style={styles.emptyText}>{t(post?.error || "Generate after the final technician report is saved.")}</Text>
       )}
-      <TechButton title={post ? "Regenerate future-issue assessment" : "Generate future-issue assessment"} onPress={() => run("post")} loading={busy === "post"} variant="secondary" style={styles.generateButton} />
+      <TechButton title={t(post ? "Regenerate future-issue assessment" : "Generate future-issue assessment")} onPress={() => run("post")} loading={busy === "post"} variant="secondary" style={styles.generateButton} />
     </View>}
     </>}
   </Card>;

@@ -3,6 +3,7 @@ import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS } from "./BoutiqueTheme";
+import { translateText } from "../../../utils/customerI18n";
 
 /**
  * BOUTIQUE NOTIFICATIONS
@@ -14,7 +15,9 @@ export default function BoutiqueNotifications({
   notifications = [],
   onNotificationClick,
   onMarkAllAsRead,
+  currentLanguage = "English",
 }) {
+  const t = (value) => translateText(value, currentLanguage);
   const hasNotifications = notifications.length > 0;
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -24,7 +27,7 @@ export default function BoutiqueNotifications({
       onClose={onClose}
       side="right"
       width="440px"
-      title="Alerts"
+      title={t("Alerts")}
     >
       <BoutiqueBox
         className="bq-notif-wrapper"
@@ -58,7 +61,7 @@ export default function BoutiqueNotifications({
                     textTransform: "uppercase",
                   }}
                 >
-                  YOU HAVE {unreadCount} NEW ALERT{unreadCount > 1 ? "S" : ""}
+                  {currentLanguage === "Filipino" ? `${unreadCount} ${t("new alerts")}` : `YOU HAVE ${unreadCount} NEW ALERT${unreadCount > 1 ? "S" : ""}`}
                 </BoutiqueText>
               ) : (
                 <BoutiqueText
@@ -68,13 +71,13 @@ export default function BoutiqueNotifications({
                   color={BQ_COLORS.inkMuted}
                   style={{ letterSpacing: "0.1em", textTransform: "uppercase" }}
                 >
-                  NO NEW ALERTS
+                  {t("NO NEW ALERTS")}
                 </BoutiqueText>
               )}
             </BoutiqueBox>
             {unreadCount > 0 && (
               <button className="bq-mark-all-btn" onClick={onMarkAllAsRead}>
-                <CheckCircle size={18} weight="bold" /> Mark all read
+                <CheckCircle size={18} weight="bold" /> {t("Mark all read")}
               </button>
             )}
           </BoutiqueBox>
@@ -96,7 +99,7 @@ export default function BoutiqueNotifications({
             >
               <Bell size={64} weight="bold" />
               <BoutiqueText variant="h3" margin="16px 0 0" weight={700}>
-                Your inbox is empty.
+                {t("Your inbox is empty.")}
               </BoutiqueText>
             </BoutiqueBox>
           ) : (
@@ -104,13 +107,13 @@ export default function BoutiqueNotifications({
               <button
                 key={notif.id}
                 className={`bq-notif-item ${notif.unread ? "unread" : ""}`}
-                aria-label={`${notif.unread ? "Unread" : "Read"} alert: ${notif.title}`}
+                aria-label={`${t(notif.unread ? "Unread" : "Read")} ${t("alert:")} ${notif.title}`}
                 onClick={() => onNotificationClick?.(notif)}
               >
                 <div className="bq-notif-dot" />
                 <BoutiqueBox flex={1} className="bq-notif-content">
                   {["maintenance_due", "amp_due_soon", "amp_overdue"].includes(notif.category) ? (
-                    <span className={`bq-notif-category ${notif.severity || "info"}`}>AC maintenance</span>
+                    <span className={`bq-notif-category ${notif.severity || "info"}`}>{t("AC maintenance")}</span>
                   ) : null}
                   <BoutiqueBox
                     direction="row"
@@ -168,7 +171,7 @@ export default function BoutiqueNotifications({
         .bq-notif-list { scrollbar-width: none; }
 
         .bq-notif-item {
-            display: flex; gap: 16px; padding: 24px 32px; background: white;
+            display: flex; gap: 16px; padding: 24px 32px; background: ${BQ_COLORS.surface};
             border: none; border-bottom: 1px solid ${BQ_COLORS.border};
             text-align: left; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative; width: 100%;

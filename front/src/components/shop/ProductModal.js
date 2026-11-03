@@ -8,6 +8,8 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import { getBrandLogo } from "../../config/brandLogos";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
@@ -54,29 +56,42 @@ function ModalProductImage({ product }) {
 }
 
 function ProductModal({ product, onClose, onAddToCart }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [quantity, setQuantity] = useState(1);
+  const [quantityError, setQuantityError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setQuantity(1);
+    setQuantityError("");
   }, [product?.id]);
 
   const availableStock = product?.stock;
   const maxQuantity = product?.stock || 0;
   const isOutOfStock = maxQuantity <= 0;
 
-  const handleAddToCart = () => {
-    if (isOutOfStock) return;
-    const finalQty = parseInt(quantity) || 1;
-    onAddToCart(product, finalQty);
-    onClose();
+  const validQuantity = /^\d+$/.test(String(quantity).trim()) && Number.isSafeInteger(Number(quantity)) && Number(quantity) >= 1 && Number(quantity) <= maxQuantity;
+  const addSelectedQuantity = async () => {
+    if (isOutOfStock) return false;
+    if (!validQuantity) {
+      setQuantityError(`${t("Enter a whole number between 1 and")} ${maxQuantity}.`);
+      return false;
+    }
+    setSubmitting(true);
+    try {
+      const added = await onAddToCart(product, Number(quantity));
+      if (added) onClose();
+      return Boolean(added);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleBuyNow = () => {
-    if (isOutOfStock) return;
-    const finalQty = parseInt(quantity) || 1;
-    onAddToCart(product, finalQty);
-    onClose();
-    window.dispatchEvent(new CustomEvent("bq:buy-now"));
+  const handleAddToCart = () => { void addSelectedQuantity(); };
+
+  const handleBuyNow = async () => {
+    if (await addSelectedQuantity()) window.dispatchEvent(new CustomEvent("bq:buy-now"));
   };
 
   if (!product) return null;
@@ -92,14 +107,13 @@ function ProductModal({ product, onClose, onAddToCart }) {
 
   const horsepower = product.specs || product.capacity || "";
   const brandLogoUrl = getBrandLogo(product.brand);
-  const currentQty = parseInt(quantity) || 1;
-  const totalPrice = product.price * currentQty;
+  const totalPrice = validQuantity ? product.price * Number(quantity) : 0;
 
   return (
     <div className="bq-modal-overlay" onClick={onClose}>
       <div className="bq-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Floating Close Button outside modal boundary */}
-        <button className="bq-modal-floating-close" onClick={onClose}>
+        <button className="bq-modal-floating-close" onClick={onClose} aria-label={t("Close product details")}>
           <X size={24} weight="bold" />
         </button>
 
@@ -160,17 +174,22 @@ function ProductModal({ product, onClose, onAddToCart }) {
                       size="sm"
                     >
                       {isOutOfStock
-                        ? "Temporarily Unavailable"
-                        : (product.stockLabel || `${availableStock} units available`)}
+                        ? t("Temporarily Unavailable")
+                        : (product.stockLabel?.replace(/ Units available$/, ` ${t("Units available")}`) || `${availableStock} ${t("Units available")}`)}
                     </BoutiqueTechnicalCard>
                   </div>
                   {!isOutOfStock ? (
+                    <>
                     <BoutiqueNumberInput
                       value={quantity}
-                      onChange={setQuantity}
+                      onChange={(value) => { setQuantity(value); setQuantityError(""); }}
+                      min={1}
                       max={maxQuantity}
                       width="180px"
+                      strict
                     />
+                    {quantityError ? <small role="alert" style={{ color: "#b91c1c" }}>{quantityError}</small> : null}
+                    </>
                   ) : null}
                 </div>
 
@@ -186,8 +205,8 @@ function ProductModal({ product, onClose, onAddToCart }) {
                     </div>
                     {!isOutOfStock ? (
                       <div className="bq-modal-buy-row">
-                        <BoutiqueButton variant="outline" fullWidth onClick={handleBuyNow}>
-                          Buy Now <Lightning size={18} weight="fill" />
+                        <BoutiqueButton variant="outline" fullWidth onClick={handleBuyNow} disabled={submitting}>
+                          {t("Buy Now")} <Lightning size={18} weight="fill" />
                         </BoutiqueButton>
                       </div>
                     ) : null}
@@ -198,9 +217,9 @@ function ProductModal({ product, onClose, onAddToCart }) {
                       variant="primary"
                       fullWidth
                       onClick={handleAddToCart}
-                      disabled={isOutOfStock}
+                      disabled={isOutOfStock || submitting}
                     >
-                      {isOutOfStock ? "Unavailable" : "Add to Cart"}
+                      {isOutOfStock ? t("Unavailable") : t("Add to Cart")}
                     </BoutiqueButton>
                   </div>
                 </div>

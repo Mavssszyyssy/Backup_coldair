@@ -70,6 +70,9 @@ const normalizeProduct = (product = {}) => ({
   price: Number(product.price || product.salePrice || 0),
   stock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0),
   inStock: Number(product.stock ?? product.quantity ?? product.inventory ?? 0) > 0,
+  stockScope: product.stockScope || "all_branches",
+  inventoryBranch: product.inventoryBranch || "",
+  totalStock: Number(product.totalStock ?? product.stock ?? 0),
   stockLabel:
     product.stockScope === "branch"
       ? `${Number(product.stock || 0)} units · ${product.inventoryBranch}`
@@ -95,6 +98,12 @@ export const partitionProductsByAvailability = (products = []) => ({
   available: products.filter((product) => product.inStock),
   unavailable: products.filter((product) => !product.inStock),
 });
+export const paginateProducts = (products = [], requestedPage = 1, pageSize = 8) => {
+  const size = Math.max(1, Math.floor(Number(pageSize) || 8));
+  const totalPages = Math.max(1, Math.ceil(products.length / size));
+  const page = Math.min(totalPages, Math.max(1, Math.floor(Number(requestedPage) || 1)));
+  return { items: products.slice((page - 1) * size, page * size), page, totalPages };
+};
 export const mergeProducts = (fallback, backend) => {
   const merged = new Map((fallback || []).map((product) => [String(product.id), product]));
   (backend || []).forEach((product) => merged.set(String(product.id), product));

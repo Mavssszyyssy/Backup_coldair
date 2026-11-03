@@ -3,6 +3,8 @@ import { QRCodeCanvas } from "qrcode.react";
 import AdminLayout from "../Common/AdminLayout";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
+import { translateText } from "../../../utils/customerI18n";
+import { formatBusinessDate } from "../../../utils/dateTime";
 import "../adminShared.css";
 import "./styles.css";
 
@@ -14,11 +16,7 @@ const getSerialLabel = (unit) =>
     ? "Manufacturer serial number"
     : "Temporary inventory serial";
 
-const formatDate = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
-};
+const formatDate = formatBusinessDate;
 
 const getUnitOwner = (unit = {}) =>
   unit?.ampRegistration?.customerName ||
@@ -41,13 +39,22 @@ const getTechnicianQrValue = (unit) =>
   unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.serialNumber || ""}`;
 
 const AdminSerialQr = ({ embedded = false }) => {
-  const { user } = useUser();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
+  const installationStatusLabel = (unit) => {
+    const status = getInstallationStatus(unit);
+    const datedPrefix = "Installed · ";
+    return status.startsWith(datedPrefix)
+      ? `${t("Installed ·")} ${status.slice(datedPrefix.length)}`
+      : t(status);
+  };
   const isSuperAdmin = user?.role === "superadmin";
   const canManageSerials = isSuperAdmin;
   const assignedBranch = user?.activeBranch || user?.assignedBranch || "Assigned branch";
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshNotice, setRefreshNotice] = useState("");
   const [query, setQuery] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -58,12 +65,20 @@ const AdminSerialQr = ({ embedded = false }) => {
   const [savingSerial, setSavingSerial] = useState(false);
   const pageSize = 12;
 
-  const load = async () => {
+  const load = async (manual = false) => {
     setError("");
+    setRefreshNotice("");
     setLoading(true);
     try {
       const result = await apiRequest("/products");
-      setProducts(result.products || []);
+      const nextProducts = result.products || [];
+      setProducts(nextProducts);
+      if (manual) {
+        const ids = nextProducts.flatMap((product) => (product.serialUnits || []).map((unit) => unit.qrUnitId).filter(Boolean));
+        const duplicateCount = ids.length - new Set(ids).size;
+        if (duplicateCount) setError(`${duplicateCount} duplicate QR Unit ID(s) found. No records were changed; contact a Super Admin to investigate.`);
+        else setRefreshNotice(`QR registry refreshed: ${ids.length} unique Unit IDs. Existing labels were not changed.`);
+      }
     } catch (err) {
       setError(err.message || "Unable to load product serial numbers.");
     } finally {
@@ -203,55 +218,56 @@ const AdminSerialQr = ({ embedded = false }) => {
 
   return (
     <AdminLayout
-      title="Serial Numbers and QR Codes"
-      subtitle="Every QR has a permanent Unit ID. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment."
+      title={t("Serial Numbers and QR Codes")}
+      subtitle={t("Every QR has a permanent Unit ID. SuperAdmin can replace a temporary inventory serial with the real manufacturer serial before assignment.")}
       embedded={embedded}
     >
       <div className="serialqr-toolbar admin-card">
         <div>
-          <h3>AC Unit QR Registry</h3>
+          <h3>{t("AC Unit QR Registry")}</h3>
           <p>
-            {products.length} models · {availableSerials} available QR labels · {totalSerials} QR records (including sold and assigned units)
+            {products.length} {t("models ·")} {availableSerials} {t("available QR labels ·")} {totalSerials} {t("QR records (including sold and assigned units)")}
           </p>
         </div>
         <div className="serialqr-actions">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search model, SKU, branch, or serial"
+            placeholder={t("Search model, SKU, branch, or serial")}
           />
           {isSuperAdmin ? (
-            <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label="Filter QR records by branch">
-              <option value="all">All branches</option>
+            <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
+              <option value="all">{t("All branches")}</option>
               {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
             </select>
           ) : (
-            <span className="serialqr-branch-scope" aria-label="QR records assigned branch">
-              {assignedBranch} branch
+            <span className="serialqr-branch-scope" aria-label={t("QR records assigned branch")}>
+              {assignedBranch} {t("branch")}
             </span>
           )}
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter QR records by status">
-            <option value="all">All statuses</option>
-            {statusOptions.map((status) => <option key={status} value={status}>{status.replace(/-/g, " ")}</option>)}
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
+            <option value="all">{t("All statuses")}</option>
+            {statusOptions.map((status) => <option key={status} value={status}>{t(status.replace(/-/g, " "))}</option>)}
           </select>
-          <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label="Filter QR records by serial type">
-            <option value="all">All serial types</option>
-            <option value="manufacturer">Manufacturer serial</option>
-            <option value="temporary">Temporary serial</option>
+          <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label={t("Filter QR records by serial type")}>
+            <option value="all">{t("All serial types")}</option>
+            <option value="manufacturer">{t("Manufacturer serial")}</option>
+            <option value="temporary">{t("Temporary serial")}</option>
           </select>
           {(query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
             <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); }}>
-              Clear filters
+              {t("Clear filters")}
             </button>
           ) : null}
-          <button type="button" onClick={load} disabled={loading}>
-            {loading ? "Syncing..." : "Sync unique QRs"}
+          <button type="button" onClick={() => load(true)} disabled={loading}>
+            {t(loading ? "Refreshing..." : "Refresh QR registry")}
           </button>
         </div>
       </div>
 
-      {error ? <p className="serialqr-error">{error}</p> : null}
-      {loading ? <div className="admin-card">Loading serial numbers...</div> : null}
+      {error ? <p className="serialqr-error">{t(error)}</p> : null}
+      {refreshNotice ? <p role="status" className="serialqr-refresh-notice">{t(refreshNotice)}</p> : null}
+      {loading ? <div className="admin-card">{t("Loading serial numbers...")}</div> : null}
 
       <div className="serialqr-model-list">
         {pageProducts.map((product) => {
@@ -270,19 +286,19 @@ const AdminSerialQr = ({ embedded = false }) => {
                 <span className="serialqr-count">
                   {product.filteredAvailableCount ?? serialUnits.filter(
                     (unit) => (unit.status || "available") === "available",
-                  ).length} available · {product.filteredSerialCount ?? serialUnits.length} QR records
+                  ).length} {t("available ·")} {product.filteredSerialCount ?? serialUnits.length} {t("QR records")}
                   {(product.filteredSerialCount ?? serialUnits.length) > serialUnits.length
-                    ? ` · ${serialUnits.length} shown`
+                    ? ` · ${serialUnits.length} ${t('shown')}`
                     : ""}
                 </span>
               </header>
 
               {serialUnits.length === 0 ? (
-                <p>No serial numbers generated for this model yet.</p>
+                <p>{t("No serial numbers generated for this model yet.")}</p>
               ) : (
                 <div className="serialqr-grid">
                   {serialUnits.map((unit, index) => (
-                    <article className="serialqr-card" key={unit.qrUnitId || unit.serialNumber}>
+                    <article className="serialqr-card" key={`${unit.qrUnitId || unit.serialNumber || "unit"}-${index}`}>
                       <div className="serialqr-codebox">
                         <QRCodeCanvas
                           value={getTechnicianQrValue(unit)}
@@ -293,43 +309,43 @@ const AdminSerialQr = ({ embedded = false }) => {
                       </div>
                       <div className="serialqr-card-body">
                         <strong>{getUnitLabel(product)}</strong>
-                        <small>Product model · {product.sku || "No SKU"}</small>
-                        <small>QR Unit ID</small>
-                        <code title={unit.qrUnitId || unit.qrCode}>{unit.qrUnitId || "Legacy QR identity"}</code>
-                        <small>{getSerialLabel(unit)}</small>
-                        <code title={unit.serialNumber}>{unit.serialNumber || "Serial pending"}</code>
+                        <small>{t("Product model ·")} {product.sku || t("No SKU")}</small>
+                        <small>{t("QR Unit ID")}</small>
+                        <code title={unit.qrUnitId || unit.qrCode}>{unit.qrUnitId || t("Legacy QR identity")}</code>
+                        <small>{t(getSerialLabel(unit))}</small>
+                        <code title={unit.serialNumber}>{unit.serialNumber || t("Serial pending")}</code>
                         <span>
-                          {unit.status || "available"}
+                          {t(unit.status || "available")}
                           {unit.branch ? ` · ${unit.branch}` : ""}
                         </span>
-                        <small>Current owner · {getUnitOwner(unit)}</small>
-                        <small>Installation · {getInstallationStatus(unit)}</small>
+                        <small>{t("Current owner ·")} {t(getUnitOwner(unit))}</small>
+                         <small>{t("Installation ·")} {installationStatusLabel(unit)}</small>
                         {canManageSerials && (unit.status || "available") === "available" ? (
                           editingSerial?.productId === product.id &&
                           editingSerial?.currentSerial === unit.serialNumber ? (
                             <div className="serialqr-editor">
                               <label htmlFor={`manufacturer-serial-${product.id}-${index}`}>
-                                Real manufacturer serial
+                                {t("Real manufacturer serial")}
                               </label>
                               <input
                                 id={`manufacturer-serial-${product.id}-${index}`}
                                 value={serialDraft}
                                 onChange={(event) => setSerialDraft(event.target.value.toUpperCase())}
-                                placeholder="Example: LG24PH-00123456"
+                                placeholder={t("Example: LG24PH-00123456")}
                                 autoCapitalize="characters"
                               />
                               <div>
                                 <button type="button" onClick={saveManufacturerSerial} disabled={savingSerial || !serialDraft.trim()}>
-                                  {savingSerial ? "Saving..." : "Save real serial"}
+                                  {t(savingSerial ? "Saving..." : "Save real serial")}
                                 </button>
                                 <button type="button" className="serialqr-cancel" onClick={cancelSerialEdit} disabled={savingSerial}>
-                                  Cancel
+                                  {t("Cancel")}
                                 </button>
                               </div>
                             </div>
                           ) : (
                             <button type="button" className="serialqr-edit" onClick={() => startSerialEdit(product, unit)}>
-                              Set real serial
+                              {t("Set real serial")}
                             </button>
                           )
                         ) : null}
@@ -344,18 +360,18 @@ const AdminSerialQr = ({ embedded = false }) => {
       </div>
 
       {!loading && filteredEntries.length > 0 ? (
-        <div className="serialqr-pagination" aria-label="QR registry pagination">
-          <span>Showing {firstRecordIndex + 1}-{Math.min(firstRecordIndex + pageSize, filteredEntries.length)} of {filteredEntries.length} registry items</span>
+        <div className="serialqr-pagination" aria-label={t("QR registry pagination")}>
+          <span>{t("Showing")} {firstRecordIndex + 1}-{Math.min(firstRecordIndex + pageSize, filteredEntries.length)} {t("of")} {filteredEntries.length} {t("registry items")}</span>
           <div>
-            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button>
-            <span>Page {page} of {totalPages}</span>
-            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button>
+            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>{t("Previous")}</button>
+            <span>{t("Page")} {page} {t("of")} {totalPages}</span>
+            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>{t("Next")}</button>
           </div>
         </div>
       ) : null}
 
       {!loading && filteredEntries.length === 0 ? (
-        <div className="admin-card">No AC unit models matched your search.</div>
+        <div className="admin-card">{t("No AC unit models matched your search.")}</div>
       ) : null}
     </AdminLayout>
   );

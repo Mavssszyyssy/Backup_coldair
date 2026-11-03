@@ -21,6 +21,7 @@ const TextField = forwardRef(function TextField({
   keyboardType,
   autoCapitalize,
   showKeyboardDone = false,
+  translate = (text) => text,
   inputAccessoryViewID,
   onSubmitEditing,
   returnKeyType,
@@ -128,12 +129,12 @@ const TextField = forwardRef(function TextField({
             <Pressable
               onPress={Keyboard.dismiss}
               accessibilityRole="button"
-              accessibilityLabel="Close keyboard"
+              accessibilityLabel={translate("Close keyboard")}
               hitSlop={10}
               style={{ paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs }}
             >
               <Text style={{ color: COLORS.primary, fontSize: FONT.base, fontWeight: "700" }}>
-                Done
+                {translate("Done")}
               </Text>
             </Pressable>
           </View>

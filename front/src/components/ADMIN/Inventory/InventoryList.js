@@ -4,14 +4,19 @@ import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import { alertDialog } from '../../../utils/dialog';
 import InventorySerialQrPreview from './InventorySerialQrPreview';
+import { sortInventoryProducts } from '../../../domain/inventorySort';
+import { inventoryStockState } from '../../../domain/stockAlerts';
+import { isFilipino, translateText } from '../../../utils/customerI18n';
 import './styles.css';
 
 const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock, canManageStock = false, searchQuery = '', stockFilter = 'all' }) => {
-  const { user } = useUser();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [pendingId, setPendingId] = React.useState('');
   const [rowState, setRowState] = React.useState({});
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
+  const [sort, setSort] = React.useState('recent');
 
   const getRowState = (productId) => rowState[productId] || { quantity: '' };
   const setRowValue = (productId, next) => {
@@ -28,21 +33,19 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
     return product.stock || 0;
   };
 
-  const visibleProducts = products.filter((product) => {
+  const visibleProducts = sortInventoryProducts(products.filter((product) => {
     const stock = Number(getStockDisplay(product) || 0);
     const query = String(searchQuery || '').trim().toLowerCase();
     const searchable = [product.name, product.sku, product.brand, product.category, product.specs]
       .map((value) => String(value || '').toLowerCase())
       .join(' ');
     const matchesSearch = !query || searchable.includes(query);
-    const threshold = Number(product.threshold || 0);
+    const state = inventoryStockState(product, branch, stock);
     const matchesStock =
       stockFilter === 'all' ||
-      (stockFilter === 'out' && stock === 0) ||
-      (stockFilter === 'low' && stock > 0 && threshold > 0 && stock < threshold) ||
-      (stockFilter === 'available' && stock > 0);
+      stockFilter === state;
     return matchesSearch && matchesStock;
-  });
+  }), sort);
 
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
   const firstProductIndex = (page - 1) * pageSize;
@@ -51,7 +54,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
 
   React.useEffect(() => {
     setPage(1);
-  }, [searchQuery, stockFilter, branch, pageSize]);
+  }, [searchQuery, stockFilter, branch, pageSize, sort]);
 
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -60,7 +63,10 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
   const updateStock = async (productId) => {
     const { quantity } = getRowState(productId);
     const qty = Number(quantity);
-    if (!qty || qty <= 0) return;
+    if (!/^\d+$/.test(String(quantity).trim()) || !Number.isSafeInteger(qty) || qty <= 0) {
+      alert(t('Quantity must be a positive whole number.'));
+      return;
+    }
     const product = products.find((item) => item.id === productId || item._id === productId);
     try {
       setPendingId(productId);
@@ -80,12 +86,14 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
       setRowValue(productId, { quantity: '' });
       onRefresh?.();
       void alertDialog({
-        title: 'Stock added successfully',
-        message: `${qty} ${qty === 1 ? 'unit' : 'units'} of ${product?.name || 'the selected product'} ${qty === 1 ? 'was' : 'were'} added to the ${branch} inventory.`,
-        confirmText: 'Done',
+        title: t('Stock added successfully'),
+        message: isFilipino(currentLanguage)
+          ? `${t('Added')} ${qty} ${t(qty === 1 ? 'unit' : 'units')} ${t('of')} ${product?.name || t('the selected product')} ${t('to the inventory of')} ${branch}.`
+          : `${qty} ${qty === 1 ? 'unit' : 'units'} of ${product?.name || 'the selected product'} ${qty === 1 ? 'was' : 'were'} added to the ${branch} inventory.`,
+        confirmText: t('Done'),
       });
     } catch (error) {
-      alert(error.message || 'Unable to update stock');
+      alert(t(error.message || 'Unable to update stock'));
     } finally {
       setPendingId('');
     }
@@ -95,24 +103,25 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
 
   return (
     <div className="admin-card">
-      <h3>Inventory List</h3>
+      <h3>{t('Inventory List')}</h3>
       {loading ? (
-        <p>Loading…</p>
+        <p>{t('Loading…')}</p>
       ) : null}
+      <label className="inventory-sort-control">{t('Sort products')} <select aria-label={t('Sort inventory')} value={sort} onChange={(event) => setSort(event.target.value)}><option value="recent">{t('Newest first')}</option><option value="name-asc">{t('Product Name — A to Z')}</option><option value="name-desc">{t('Product Name — Z to A')}</option></select></label>
       <div className="inventory-table-scroll">
         <table className="admin-table inventory-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Brand</th>
-            <th>Category</th>
-            <th>HP / Specs</th>
+            <th>{t('Name')}</th>
+            <th>{t('Brand')}</th>
+            <th>{t('Category')}</th>
+            <th>{t('HP / Specs')}</th>
             <th>SKU</th>
-            <th>Stock</th>
-            <th>Serial / QR</th>
-            <th>Price</th>
-            {canManageStock && <th>Stock Adjustment</th>}
-            {onRequestChange && <th>Manager Actions</th>}
+            <th>{t('Stock')}</th>
+            <th>{t('Serial / QR')}</th>
+            <th>{t('Price')}</th>
+            {canManageStock && <th>{t('Stock Adjustment')}</th>}
+            {onRequestChange && <th>{t('Manager Actions')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -124,8 +133,8 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
               <td>{product.specs || '-'}</td>
               <td>{product.sku}</td>
               <td className="stock-cell">
-                <span className={`stock-badge ${Number(getStockDisplay(product)) === 0 ? 'stock-badge--out' : ''}`}>
-                  {Number(getStockDisplay(product)) === 0 ? 'OUT OF STOCK · 0' : getStockDisplay(product)}
+                <span className={`stock-badge ${inventoryStockState(product, branch, getStockDisplay(product)) === 'out' ? 'stock-badge--out' : inventoryStockState(product, branch, getStockDisplay(product)) === 'low' ? 'stock-badge--low' : ''}`}>
+                  {t(inventoryStockState(product, branch, getStockDisplay(product)) === 'out' ? 'Out of stock' : inventoryStockState(product, branch, getStockDisplay(product)) === 'low' ? 'Low stock' : 'In stock')} · {getStockDisplay(product)}
                 </span>
               </td>
               <td className="inventory-serial-cell">
@@ -145,11 +154,11 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                       min="1"
                       value={getRowState(product.id).quantity}
                       onChange={(event) => setRowValue(product.id, { quantity: event.target.value })}
-                      placeholder="Qty"
-                      aria-label={`Quantity to add for ${product.name}`}
+                      placeholder={t('Qty')}
+                      aria-label={`${t('Quantity to add for')} ${product.name}`}
                     />
                     <button className="inventory-primary-action" type="button" onClick={() => updateStock(product.id)} disabled={pendingId === product.id || !branch}>
-                      {pendingId === product.id ? 'Saving...' : 'Add stock'}
+                      {t(pendingId === product.id ? 'Saving...' : 'Add stock')}
                     </button>
                   </div>
                 </td>
@@ -163,29 +172,29 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                     onClick={() => onRequestChange(product)}
                     disabled={pendingId === product.id}
                   >
-                    Request Change
+                    {t('Request Change')}
                   </button>
                 </td>
               )}
             </tr>
           ))}
           {!loading && visibleProducts.length === 0 ? (
-            <tr><td colSpan={columnCount} className="inventory-empty-cell">No products match the current search and filters.</td></tr>
+            <tr><td colSpan={columnCount} className="inventory-empty-cell">{t('No products match the current search and filters.')}</td></tr>
           ) : null}
         </tbody>
         </table>
       </div>
       {!loading && visibleProducts.length > 0 ? (
-        <div className="inventory-pagination" aria-label="Inventory pagination">
+        <div className="inventory-pagination" aria-label={t('Inventory pagination')}>
           <span className="inventory-pagination-summary">
-            Showing {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, visibleProducts.length)} of {visibleProducts.length}
+            {t('Showing')} {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, visibleProducts.length)} {t('of')} {visibleProducts.length}
           </span>
           <label className="inventory-page-size">
-            Rows
+            {t('Rows')}
             <select
               value={pageSize}
               onChange={(event) => setPageSize(Number(event.target.value))}
-              aria-label="Inventory rows per page"
+              aria-label={t('Inventory rows per page')}
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -194,17 +203,17 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
           </label>
           <div className="inventory-page-controls">
             <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
-              Previous
+              {t('Previous')}
             </button>
-            <span>Page {page} of {totalPages}</span>
+            <span>{t('Page')} {page} {t('of')} {totalPages}</span>
             <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>
-              Next
+              {t('Next')}
             </button>
           </div>
         </div>
       ) : null}
       <button type="button" className="inventory-refresh-button" onClick={onRefresh}>
-        Refresh
+        {t('Refresh')}
       </button>
     </div>
   );

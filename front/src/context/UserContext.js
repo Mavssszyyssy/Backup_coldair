@@ -62,6 +62,7 @@ export const UserProvider = ({ children }) => {
     setUserRole(null);
     setCurrentSession(null);
     setIsAuthenticated(false);
+    window.dispatchEvent(new Event("auth:session-ended"));
   }, []);
 
   const currentTheme = useMemo(() => {
@@ -201,8 +202,15 @@ export const UserProvider = ({ children }) => {
   };
 
   const logout = () => {
-    removeAuthSessionItem(ACTIVE_ACCOUNT_SESSION_KEY);
+    // Close the server cookie session as well as the local bearer session.
+    // Clear local access immediately even if the network request fails.
+    const serverLogout = apiRequest("/auth/logout", {
+      method: "POST",
+      timeoutMs: 5000,
+      silentConnection: true,
+    }).catch(() => undefined);
     forceLogout();
+    return serverLogout;
   };
 
   const updateProfile = async (updatedData) => {
@@ -299,10 +307,17 @@ export const UserProvider = ({ children }) => {
   };
 
   const changePassword = async (currentPassword, newPassword) => {
-    return apiRequest("/users/password", {
+    const result = await apiRequest("/users/password", {
       method: "PATCH",
       body: JSON.stringify({ currentPassword, newPassword }),
     });
+    if (result.token) setAuthSessionItem("accessToken", result.token);
+    if (result.user) {
+      setUser(result.user);
+      setCurrentSession(result.user);
+      setAuthSessionItem("currentUser", JSON.stringify(result.user));
+    }
+    return result;
   };
 
   const deleteAccount = async (payload = {}) => {

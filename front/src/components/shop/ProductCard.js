@@ -9,6 +9,8 @@ import {
   Star,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import { getBrandLogo } from "../../config/brandLogos";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -37,6 +39,8 @@ export default function ProductCard({
   onClick,
 }) {
   const [imgBroken, setBroken] = useState(false);
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const IconComp = productPlaceholderIcon(product);
 
   // Strip brand and "AC" from title
@@ -85,19 +89,19 @@ export default function ProductCard({
         {product.featured && (
           <BoutiqueBox className="bq-card-badge-left">
             <BoutiqueTechnicalCard variant="brand" size="sm" icon={Star}>
-              Featured
+              {t("Featured")}
             </BoutiqueTechnicalCard>
           </BoutiqueBox>
         )}
 
         {outOfStock ? (
           <BoutiqueBox className="bq-card-badge-right">
-            <BoutiqueTechnicalCard variant="danger" size="sm">Out of stock</BoutiqueTechnicalCard>
+            <BoutiqueTechnicalCard variant="danger" size="sm">{t("Out of stock")}</BoutiqueTechnicalCard>
           </BoutiqueBox>
         ) : product.discount > 0 && (
           <BoutiqueBox className="bq-card-badge-right">
             <BoutiqueTechnicalCard variant="danger" size="sm">
-              {product.discount}% OFF
+              {product.discount}% {t("OFF")}
             </BoutiqueTechnicalCard>
           </BoutiqueBox>
         )}
@@ -195,7 +199,7 @@ export default function ProductCard({
                 variant={outOfStock ? "danger" : "success"}
                 size="sm"
               >
-                {outOfStock ? "Currently unavailable" : (product.stockLabel || `${product.stock} Units`)}
+                {outOfStock ? t("Currently unavailable") : (product.stockLabel?.replace(/ Units available$/, ` ${t("Units available")}`) || `${product.stock} ${t("Units available")}`)}
               </BoutiqueTechnicalCard>
             </BoutiqueBox>
 
@@ -210,7 +214,7 @@ export default function ProductCard({
                 }}
                 disabled={outOfStock}
               >
-                {outOfStock ? "Out of stock" : <>Buy Now <Lightning size={18} weight="fill" /></>}
+                {outOfStock ? t("Out of stock") : <>{t("Buy Now")} <Lightning size={18} weight="fill" /></>}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueStack>
@@ -231,7 +235,7 @@ export default function ProductCard({
               }}
               disabled={outOfStock}
             >
-              {outOfStock ? "Unavailable" : <>Add to Cart <ShoppingCart size={18} weight="bold" /></>}
+              {outOfStock ? t("Unavailable") : <>{t("Add to Cart")} <ShoppingCart size={18} weight="bold" /></>}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueBox>

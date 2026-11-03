@@ -1,10 +1,12 @@
 import { DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
 import { receiptOrderName, receiptReferences, customerStatus } from "../../domain/customerLanguage";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { apiRequest } from "../../config/api";
+import { downloadElementPdf } from "../../utils/pdfDownload";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
@@ -47,21 +49,21 @@ const deliveryAddressRows = (address = {}) => [
   ["ZIP Code", address.postalCode],
 ].filter(([, value]) => String(value || "").trim());
 
-function DeliveryAddressDetails({ address }) {
+function DeliveryAddressDetails({ address, t }) {
   const rows = deliveryAddressRows(address);
   return (
     <section className="receipt-address-details">
-      <span>Delivery Address Details</span>
+      <span>{t("Delivery Address Details")}</span>
       {rows.length ? (
         <dl>
           {rows.map(([label, value]) => (
             <div key={label}>
-              <dt>{label}</dt>
+              <dt>{t(label)}</dt>
               <dd>{value}</dd>
             </div>
           ))}
         </dl>
-      ) : <strong>Pending</strong>}
+      ) : <strong>{t("Pending")}</strong>}
     </section>
   );
 }
@@ -93,12 +95,16 @@ const normalizeOrder = (order = {}) => ({
 
 function ReceiptView() {
   const { orderId } = useParams();
-  const { user } = useUser();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const isStaff = ["admin", "superadmin"].includes(user?.role);
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exportError, setExportError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const receiptRef = useRef(null);
   const backDestination = user?.role === "superadmin"
     ? "/superadmin/services"
     : user?.role === "admin"
@@ -125,10 +131,19 @@ function ReceiptView() {
     };
   }, [orderId, isStaff]);
 
-  const downloadReceipt = () => {
-    // The browser print dialog preserves the same receipt markup and styles
-    // shown in the preview. Customers can select "Save as PDF" to download it.
-    window.print();
+  const downloadReceipt = async () => {
+    setExportError("");
+    setExporting(true);
+    try {
+      await downloadElementPdf({
+        element: receiptRef.current,
+        fileName: `cold-air-receipt-${String(order?.receipt?.receiptNumber || order?.orderCode || orderId).replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf`,
+      });
+    } catch (downloadError) {
+      setExportError(downloadError?.message || "Unable to download the PDF receipt. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const deliveryAddress = resolveDeliveryAddress(order || {});
@@ -144,85 +159,88 @@ function ReceiptView() {
   if (loading || error || !order || !order.receiptAvailable) {
     return (
       <BoutiqueScreen withHeader={false}>
-        <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={returnToWorkspace} />
-        <div className="receipt-page">{loading ? "Loading receipt..." : error || (!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</div>
+        <BoutiqueHeader title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
+        <div className="receipt-page">{loading ? t("Loading receipt...") : error ? t(error) : t(!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</div>
       </BoutiqueScreen>
     );
   }
 
   return (
     <BoutiqueScreen withHeader={false}>
-      <BoutiqueHeader title="E-Receipt" leftAction="back" onLeftAction={returnToWorkspace} />
+      <BoutiqueHeader title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
       <main className="receipt-page">
         <section className="receipt-shell">
           <div className="receipt-actions">
             <div className="receipt-action-buttons">
-              <BoutiqueButton onClick={downloadReceipt} style={{ width: "auto" }}>
-                <DownloadSimple size={18} /> Save as PDF
+              <BoutiqueButton onClick={downloadReceipt} disabled={exporting} style={{ width: "auto" }}>
+                <DownloadSimple size={18} /> {t(exporting ? "Preparing PDF..." : "Save as PDF")}
               </BoutiqueButton>
+              <BoutiqueButton onClick={() => window.print()} style={{ width: "auto" }}>{t("Print")}</BoutiqueButton>
             </div>
           </div>
 
-          <article className="receipt-paper">
+          {exportError ? <p role="alert" className="receipt-export-error">{t(exportError)}</p> : null}
+
+          <article ref={receiptRef} className="receipt-paper">
             <div className="receipt-brand">
               <img className="receipt-icon" src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" style={{ objectFit: "contain", background: "white" }} />
               <div>
-                <p className="receipt-eyebrow">Official E-Receipt</p>
+                <p className="receipt-eyebrow">{t("Official E-Receipt")}</p>
                 <h1>Coldair ACT</h1>
               </div>
               <div className="receipt-status">
-                <span>{paymentStatusLabel.toUpperCase()}</span>
+                <span>{t(paymentStatusLabel).toUpperCase()}</span>
               </div>
             </div>
 
             <div className="receipt-order-name">
-              <span>Order</span>
+              <span>{t("Order")}</span>
               <strong>{orderName}</strong>
             </div>
 
             <div className="receipt-band">
               <div>
-                <span>Receipt Number</span>
+                <span>{t("Receipt Number")}</span>
                 <strong>{references.receiptNumber}</strong>
               </div>
               <div>
-                <span>Date issued</span>
-                <strong>{formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt)}</strong>
-                {references.orderNumber ? <><span>Order number</span><strong>{references.orderNumber}</strong></> : null}
+                <span>{t("Date issued")}</span>
+                <strong>{t(formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt))}</strong>
+                {references.orderNumber ? <><span>{t("Order number")}</span><strong>{references.orderNumber}</strong></> : null}
               </div>
             </div>
 
             <div className="receipt-grid">
               <div>
-                <span>Customer</span>
+                <span>{t("Customer")}</span>
                 <strong>{order.invoice?.customer?.name || order.customerName}</strong>
-                <small>{[order.invoice?.customer?.email, order.invoice?.customer?.phone].filter(Boolean).join(" · ") || "Contact pending"}</small>
+                <small>{[order.invoice?.customer?.email, order.invoice?.customer?.phone].filter(Boolean).join(" · ") || t("Contact pending")}</small>
               </div>
               <div>
-                <span>Branch</span>
-                <strong>{order.invoice?.branch || "Branch pending"}</strong>
+                <span>{t("Branch")}</span>
+                <strong>{order.invoice?.branch || t("Branch pending")}</strong>
               </div>
               <div>
-                <span>Payment Method</span>
-                <strong>{paymentMethodLabel}</strong>
-                <small>{paymentStatusLabel}</small>
+                <span>{t("Payment Method")}</span>
+                <strong>{t(paymentMethodLabel)}</strong>
+                <small>{t(paymentStatusLabel)}</small>
               </div>
               <div>
-                <span>Payment Reference</span>
-                <strong>{isCashOnDelivery ? "Cash collected upon delivery" : order.paymentReference || "Pending"}</strong>
+                <span>{t("Payment Reference")}</span>
+                <strong>{isCashOnDelivery ? t("Cash collected upon delivery") : order.paymentReference || t("Pending")}</strong>
               </div>
-              <DeliveryAddressDetails address={deliveryAddress} />
+              <DeliveryAddressDetails address={deliveryAddress} t={t} />
               <div>
-                <span>Billing Address</span>
-                <strong>{formatAddress(order.invoice?.billingAddress || order.address)}</strong>
+                <span>{t("Billing Address")}</span>
+                <strong>{t(formatAddress(order.invoice?.billingAddress || order.address))}</strong>
               </div>
               <div>
-                <span>Delivery progress</span>
+                <span>{t("Delivery progress")}</span>
                 <strong>{order.tracking?.currentLabel || customerStatus(order.invoice?.orderStatus || "Pending")}</strong>
               </div>
               <div>
-                <span>Warranty / Installation</span>
-                <strong>{order.invoice?.warranty || "Warranty activates after installation."}</strong>
+                <span>{t("Warranty / Installation")}</span>
+                <strong>{order.invoice?.warranty || t("Warranty activates after installation.")}</strong>
                 {order.invoice?.technician?.name && <small>{order.invoice.technician.name} · {order.invoice.technician.status}</small>}
               </div>
             </div>
@@ -230,12 +248,12 @@ function ReceiptView() {
             <div className="receipt-table-wrap">
               <table className="receipt-table">
                 <thead>
-                  <tr><th>Product / Model / Serial</th><th>Specs</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+                  <tr><th>{t("Product / Model / Serial")}</th><th>{t("Specs")}</th><th>{t("Qty")}</th><th>{t("Unit Price")}</th><th>{t("Total")}</th></tr>
                 </thead>
                 <tbody>
                   {order.items.map((item, index) => (
                     <tr key={`${item.name}-${index}`}>
-                      <td><strong>{item.name}</strong><br /><small>{item.serialNumbers?.length ? `Serial: ${item.serialNumbers.join(", ")}` : "Serial pending"}</small></td>
+                      <td><strong>{item.name}</strong><br /><small>{item.serialNumbers?.length ? `${t("Serial:")} ${item.serialNumbers.join(", ")}` : t("Serial pending")}</small></td>
                       <td>{item.specs || "-"}</td>
                       <td>{item.quantity}</td>
                       <td>{money(item.price)}</td>
@@ -248,20 +266,20 @@ function ReceiptView() {
 
             <div className="receipt-bottom">
               <div>
-                <p>Keep this receipt for payment questions and warranty support.</p>
+                <p>{t("Keep this receipt for payment questions and warranty support.")}</p>
                 {order.tracking?.timeline?.length > 0 && (
                   <div className="receipt-tracking">
-                    <strong>Delivery tracking</strong>
+                    <strong>{t("Delivery tracking")}</strong>
                     {order.tracking.timeline.map((step) => <span key={step.stage}>✓ {step.label}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</span>)}
                   </div>
                 )}
               </div>
               <div className="receipt-totals">
-                <p><span>Subtotal</span><strong>{money(order.subtotalAmount)}</strong></p>
-                <p><span>VAT</span><strong>{money(order.vatAmount)}</strong></p>
-                <p><span>Delivery</span><strong>{money(order.shippingFee)}</strong></p>
-                <p><span>Discount</span><strong>-{money(order.discountAmount)}</strong></p>
-                <p className="receipt-grand-total"><span>{isCashOnDelivery && !isCompleted ? "Amount Due" : "Total Paid"}</span><strong>{money(order.totalAmount)}</strong></p>
+                <p><span>{t("Subtotal")}</span><strong>{money(order.subtotalAmount)}</strong></p>
+                <p><span>{t("VAT")}</span><strong>{money(order.vatAmount)}</strong></p>
+                <p><span>{t("Delivery")}</span><strong>{money(order.shippingFee)}</strong></p>
+                <p><span>{t("Discount")}</span><strong>-{money(order.discountAmount)}</strong></p>
+                <p className="receipt-grand-total"><span>{t(isCashOnDelivery && !isCompleted ? "Amount Due" : "Total Paid")}</span><strong>{money(order.totalAmount)}</strong></p>
               </div>
             </div>
           </article>

@@ -4,24 +4,24 @@
  */
 
 export const BQ_COLORS = {
-  brand: "#000000",
-  brandHover: "#333333",
-  accent: "#2563eb",
+  brand: "var(--bq-color-brand)",
+  brandHover: "var(--bq-color-brand-hover)",
+  accent: "var(--bq-color-accent)",
 
-  bg: "#f4f5f7",
-  bgAlt: "#f9fafb",
-  surface: "#ffffff",
-  surfaceAlt: "#fcfcfc",
+  bg: "var(--bq-color-bg)",
+  bgAlt: "var(--bq-color-bg-alt)",
+  surface: "var(--bq-color-surface)",
+  surfaceAlt: "var(--bq-color-surface-alt)",
 
-  ink: "#09090b",
-  inkMuted: "#71717a",
-  inkFaint: "#a1a1aa",
+  ink: "var(--bq-color-ink)",
+  inkMuted: "var(--bq-color-ink-muted)",
+  inkFaint: "var(--bq-color-ink-faint)",
 
   success: "#10b981",
   danger: "#ef4444",
   warning: "#f59e0b",
 
-  border: "rgba(0,0,0,0.05)",
+  border: "var(--bq-color-border)",
 };
 
 export const BQ_SHADOWS = {

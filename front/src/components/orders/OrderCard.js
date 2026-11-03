@@ -7,6 +7,8 @@ import {
   Truck,
   Wrench,
 } from "@phosphor-icons/react";
+import { useUser } from "../../context/UserContext";
+import { isFilipino, translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -29,6 +31,8 @@ const cancellationStatusLabel = (order = {}) => {
 };
 
 function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPayAgain, cancelling = false, paying = false, reordering = false }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const getStatusConfig = (status) => {
     switch (status) {
       case "to_pay":
@@ -125,12 +129,12 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
             color={BQ_COLORS.inkMuted}
             style={{ letterSpacing: "0.05em" }}
           >
-            ORDER #{order.id}
+            {t("ORDER")} #{order.id}
           </BoutiqueText>
           <BoutiqueBox direction="row" align="center" gap={6}>
             <Calendar size={14} weight="bold" color={BQ_COLORS.inkFaint} />
             <BoutiqueText size="13px" weight={600} color={BQ_COLORS.inkMuted}>
-              {new Date(order.date).toLocaleDateString("en-US", {
+              {new Date(order.date).toLocaleDateString(isFilipino(currentLanguage) ? "fil-PH" : "en-US", {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
@@ -154,7 +158,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
             color="inherit"
             style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
           >
-            {statusCfg.label}
+            {t(statusCfg.label)}
           </BoutiqueText>
         </BoutiqueBox>
       </BoutiqueBox>
@@ -170,10 +174,10 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   size="9px"
                   color={BQ_COLORS.inkFaint}
                 >
-                  Refund Review
+                  {t("Refund Review")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700} color="#d97706">
-                  {refundStatusLabel(order.refundReview.status)}
+                  {t(refundStatusLabel(order.refundReview.status))}
                 </BoutiqueText>
               </BoutiqueStack>
             )}
@@ -184,10 +188,10 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   size="9px"
                   color={BQ_COLORS.inkFaint}
                 >
-                  Cancellation
+                  {t("Cancellation")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700} color="#2563eb">
-                  {cancellationLabel}
+                  {t(cancellationLabel)}
                 </BoutiqueText>
               </BoutiqueStack>
             )}
@@ -198,7 +202,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   size="9px"
                   color={BQ_COLORS.inkFaint}
                 >
-                  E-Receipt
+                  {t("E-Receipt")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700}>
                   {order.receipt.receiptNumber}
@@ -212,7 +216,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   size="9px"
                   color={BQ_COLORS.inkFaint}
                 >
-                  Technician
+                  {t("Technician")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700}>
                   {order.assignedTechnician}
@@ -226,7 +230,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   size="9px"
                   color={BQ_COLORS.inkFaint}
                 >
-                  Arrival
+                  {t("Arrival")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={700}>
                   {new Date(order.estimatedArrival).toLocaleDateString()}{order.installationTimeSlot ? ` · ${order.installationTimeSlot}` : ""}
@@ -273,7 +277,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                     weight={600}
                     color={BQ_COLORS.inkFaint}
                   >
-                    QTY: {item.quantity}
+                    {t("QTY")}: {item.quantity}
                   </BoutiqueText>
                 </BoutiqueBox>
               </BoutiqueBox>
@@ -288,14 +292,14 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                 size="10px"
                 color={BQ_COLORS.inkFaint}
               >
-                Total Amount
+                {t("Total Amount")}
               </BoutiqueText>
               <BoutiqueText weight={800} size="20px" color={BQ_COLORS.brand}>
                 ₱{Number(order.total || 0).toLocaleString()}
               </BoutiqueText>
             </BoutiqueStack>
 
-            <BoutiqueBox direction="row" gap={12}>
+            <BoutiqueBox direction="row" gap={12} wrap="wrap" style={{ justifyContent: "flex-end" }}>
               {order.receipt?.receiptNumber ? (
                 <BoutiqueButton
                   variant="outline"
@@ -303,7 +307,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   onClick={() => onReceipt(order)}
                   style={{ width: "auto" }}
                 >
-                  <Receipt size={16} weight="bold" /> Receipt
+                  <Receipt size={16} weight="bold" /> {t("Receipt")}
                 </BoutiqueButton>
               ) : null}
               <BoutiqueButton
@@ -312,7 +316,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                 onClick={() => onTrack(order)}
                 style={{ width: "auto" }}
               >
-                Track Order
+                {t("Track Order")}
               </BoutiqueButton>
               {canRequestCancel ? (
                 <BoutiqueButton
@@ -323,13 +327,13 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   onClick={() => onCancelRequest(order)}
                   style={{ width: "auto", color: BQ_COLORS.danger, borderColor: "#fecaca" }}
                 >
-                  {cancelling ? "Submitting..." : "Request Cancel"}
+                  {cancelling ? t("Submitting...") : t("Request Cancel")}
                 </BoutiqueButton>
               ) : null}
               {isUnpaidGcash ? (
                 paymentRetryLimitReached ? (
                   <BoutiqueText size="12px" weight={800} color={BQ_COLORS.danger} style={{ maxWidth: "240px" }}>
-                    Maximum payment attempts reached. You can no longer retry payment for this order.
+                    {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}
                   </BoutiqueText>
                 ) : (
                   <BoutiqueButton
@@ -340,7 +344,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                     onClick={() => onPayAgain?.(order)}
                     style={{ width: "auto" }}
                   >
-                    {paying ? "Connecting..." : "Pay Again"}
+                    {paying ? t("Connecting...") : t("Pay Again")}
                   </BoutiqueButton>
                 )
               ) : null}
@@ -351,7 +355,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                 disabled={reordering}
                 style={{ width: "auto" }}
               >
-                {reordering ? "Adding..." : "Reorder"}
+                {reordering ? t("Adding...") : t("Reorder")}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueBox>

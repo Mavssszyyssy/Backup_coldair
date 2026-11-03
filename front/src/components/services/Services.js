@@ -15,6 +15,8 @@ import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 const MOBILE_SERVICE_FEATURES = [
   {
@@ -36,11 +38,13 @@ const MOBILE_SERVICE_FEATURES = [
 
 function Services() {
   const navigate = useNavigate();
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
 
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Mobile Services"
+        title={t("Mobile Services")}
         leftAction="back"
         onLeftAction={() => navigate("/home")}
       />
@@ -67,17 +71,17 @@ function Services() {
               >
                 <DeviceMobile size={18} weight="bold" />
                 <BoutiqueText size="12px" weight={900} color="white">
-                  MOBILE APP ONLY
+                  {t("MOBILE APP ONLY")}
                 </BoutiqueText>
               </BoutiqueBox>
               <BoutiqueText variant="h1" color="white">
-                Manage AC services in the AeroPulse Mobile App
+                {t("Manage AC services in the AeroPulse Mobile App")}
               </BoutiqueText>
               <BoutiqueText
                 color="rgba(255,255,255,0.82)"
                 style={{ maxWidth: 720, lineHeight: 1.65 }}
               >
-                Maintenance, cleaning, repair, installation support, and warranty requests are created only in the mobile app. Sign in on your phone using the same Cold Air account as this website.
+                {t("Maintenance, cleaning, repair, installation support, and warranty requests are created only in the mobile app. Sign in on your phone using the same Cold Air account as this website.")}
               </BoutiqueText>
             </BoutiqueStack>
           </BoutiqueCard>
@@ -96,9 +100,9 @@ function Services() {
                   >
                     <feature.icon size={24} weight="bold" />
                   </BoutiqueBox>
-                  <BoutiqueText variant="h3">{feature.title}</BoutiqueText>
+                  <BoutiqueText variant="h3">{t(feature.title)}</BoutiqueText>
                   <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 1.55 }}>
-                    {feature.description}
+                    {t(feature.description)}
                   </BoutiqueText>
                 </BoutiqueStack>
               </BoutiqueCard>
@@ -107,13 +111,13 @@ function Services() {
 
           <BoutiqueCard padding={28} background={BQ_COLORS.bgAlt}>
             <BoutiqueStack gap={12}>
-              <BoutiqueText variant="h2">What remains available on the website?</BoutiqueText>
+              <BoutiqueText variant="h2">{t("What remains available on the website?")}</BoutiqueText>
               <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 1.65 }}>
-                You can shop for AC units, track orders, view registered-unit details, review warranty coverage, and read completed service history here. The website does not create service or warranty requests.
+                {t("You can shop for AC units, track orders, view registered-unit details, review warranty coverage, and read completed service history here. The website does not create service or warranty requests.")}
               </BoutiqueText>
               <BoutiqueBox direction="row" gap={12} wrap="wrap" margin="8px 0 0">
-                <BoutiqueButton onClick={() => navigate("/myunit")}>View My AC Units</BoutiqueButton>
-                <BoutiqueButton variant="outline" onClick={() => navigate("/contact")}>Contact Support</BoutiqueButton>
+                <BoutiqueButton onClick={() => navigate("/myunit")}>{t("View My AC Units")}</BoutiqueButton>
+                <BoutiqueButton variant="outline" onClick={() => navigate("/contact")}>{t("Contact Support")}</BoutiqueButton>
               </BoutiqueBox>
             </BoutiqueStack>
           </BoutiqueCard>

@@ -7,6 +7,8 @@ import {
   WarningDiamond,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { paymentOutcome } from "../../domain/checkout/paymentOutcome";
@@ -49,6 +51,8 @@ const normalizeOrder = (order = {}) => ({
 });
 
 function OrderConfirmation() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -127,10 +131,10 @@ function OrderConfirmation() {
         response.order?.paymentUrl ||
         response.order?.paymongo?.checkoutUrl ||
         "";
-      if (!paymentUrl) throw new Error("A secure payment link was not returned.");
+      if (!paymentUrl) throw new Error(t("A secure payment link was not returned."));
       openOnlineCheckout(paymentUrl, order.id);
     } catch (err) {
-      alert(err?.message || "Unable to open secure payment.");
+      alert(err?.message || t("Unable to open secure payment."));
       setPaying(false);
     }
   };
@@ -144,7 +148,7 @@ function OrderConfirmation() {
               <Clock size={48} weight="bold" />
             </BoutiqueBox>
             <BoutiqueText variant="h3">
-              Fetching your order details...
+              {t("Fetching your order details...")}
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>
@@ -159,18 +163,18 @@ function OrderConfirmation() {
           <BoutiqueStack gap={24} align="center">
             <WarningDiamond size={64} weight="bold" color={BQ_COLORS.danger} />
             <BoutiqueText variant="h2">
-              {error || "Something went wrong"}
+              {t(error || "Something went wrong")}
             </BoutiqueText>
             <BoutiqueButton
               onClick={() => setRefresh((value) => value + 1)}
             >
-              Check payment status
+              {t("Check payment status")}
             </BoutiqueButton>
             <BoutiqueButton
               onClick={() => navigate("/shop")}
               style={{ width: "auto" }}
             >
-              Back to Shop
+              {t("Back to Shop")}
             </BoutiqueButton>
           </BoutiqueStack>
         </BoutiqueBox>
@@ -181,7 +185,7 @@ function OrderConfirmation() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Order payment"
+        title={t("Order payment")}
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
       />
@@ -208,10 +212,10 @@ function OrderConfirmation() {
               {outcome.kind === "failed" ? <WarningDiamond size={48} weight="fill" /> : outcome.kind === "pending" ? <Clock size={48} weight="bold" /> : <CheckCircle size={48} weight="fill" />}
             </BoutiqueBox>
             <BoutiqueText variant="h1" align="center">
-              {outcome.title}
+              {t(outcome.title)}
             </BoutiqueText>
             <BoutiqueText align="center" color={BQ_COLORS.inkMuted} margin="12px 0 0">
-              {outcome.body}
+              {t(outcome.body)}
             </BoutiqueText>
             <BoutiqueBox
               margin="12px 0 0"
@@ -225,7 +229,7 @@ function OrderConfirmation() {
                 color={BQ_COLORS.inkMuted}
                 style={{ letterSpacing: "0.05em" }}
               >
-                ORDER #{order.orderCode}
+                {t("ORDER")} #{order.orderCode}
               </BoutiqueText>
             </BoutiqueBox>
 
@@ -241,15 +245,15 @@ function OrderConfirmation() {
                 }}
               >
                 <BoutiqueText weight={800} color={order.paymentStatus === "paid" ? "#047857" : "#9a3412"}>
-                  Payment: {(order.paymentStatus || "pending").toUpperCase()}
+                  {t("Payment")}: {t(order.paymentStatus || "pending").toUpperCase()}
                 </BoutiqueText>
                 {paymentRetryLimitReached ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.danger} margin="6px 0 0">
-                    Maximum payment attempts reached. You can no longer retry payment for this order.
+                    {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}
                   </BoutiqueText>
                 ) : canRetryPayment ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">
-                    Complete payment so our team can prepare your order.
+                    {t("Complete payment so our team can prepare your order.")}
                   </BoutiqueText>
                 ) : null}
               </BoutiqueBox>
@@ -271,10 +275,10 @@ function OrderConfirmation() {
                 justify="space-between"
               >
                 <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
-                  Current Status
+                  {t("Current Status")}
                 </BoutiqueText>
                 <BoutiqueText weight={800} color={BQ_COLORS.accent}>
-                  {(
+                  {t(
                     order.workflowLabel ||
                     order.workflowStatus ||
                     "Processing"
@@ -293,7 +297,7 @@ function OrderConfirmation() {
                 margin="0 0 20px"
               >
                 <Receipt size={20} weight="fill" color={BQ_COLORS.accent} />
-                <BoutiqueText variant="h3">Summary</BoutiqueText>
+                <BoutiqueText variant="h3">{t("Summary")}</BoutiqueText>
               </BoutiqueBox>
               <BoutiqueStack gap={16}>
                 {order.items.map((item, idx) => (
@@ -311,7 +315,7 @@ function OrderConfirmation() {
                       <span>
                         {item.name}
                         <span style={{ display: "block", fontSize: "12px", color: BQ_COLORS.inkMuted }}>
-                          Horsepower: {item.horsepower > 0 ? `${item.horsepower} HP` : "Not specified"}
+                          {t("Horsepower")}: {item.horsepower > 0 ? `${item.horsepower} HP` : t("Not specified")}
                         </span>
                       </span>{" "}
                       <BoutiqueText
@@ -331,7 +335,7 @@ function OrderConfirmation() {
                   direction="row"
                   justify="space-between"
                 >
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Subtotal</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Subtotal")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={700}>
                     PHP {order.subtotalAmount.toLocaleString()}
                   </BoutiqueText>
@@ -340,7 +344,7 @@ function OrderConfirmation() {
                   direction="row"
                   justify="space-between"
                 >
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>VAT</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("VAT")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={700}>
                     PHP {order.vatAmount.toLocaleString()}
                   </BoutiqueText>
@@ -349,7 +353,7 @@ function OrderConfirmation() {
                   direction="row"
                   justify="space-between"
                 >
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Delivery</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Delivery")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={700}>
                     PHP {order.shippingFee.toLocaleString()}
                   </BoutiqueText>
@@ -359,7 +363,7 @@ function OrderConfirmation() {
                     direction="row"
                     justify="space-between"
                   >
-                    <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Discount</BoutiqueText>
+                    <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Discount")}</BoutiqueText>
                     <BoutiqueText size="14px" weight={700}>
                       -PHP {order.discountAmount.toLocaleString()}
                     </BoutiqueText>
@@ -372,7 +376,7 @@ function OrderConfirmation() {
                   direction="row"
                   justify="space-between"
                 >
-                  <BoutiqueText weight={800}>Total Amount</BoutiqueText>
+                  <BoutiqueText weight={800}>{t("Total Amount")}</BoutiqueText>
                   <BoutiqueText variant="h2" color={BQ_COLORS.brand}>
                     ₱{order.total.toLocaleString()}
                   </BoutiqueText>
@@ -388,23 +392,23 @@ function OrderConfirmation() {
                 margin="0 0 20px"
               >
                 <Receipt size={20} weight="fill" color={BQ_COLORS.accent} />
-                <BoutiqueText variant="h3">{order.receiptAvailable ? "Receipt" : "Payment record"}</BoutiqueText>
+                <BoutiqueText variant="h3">{order.receiptAvailable ? t("Receipt") : t("Payment record")}</BoutiqueText>
               </BoutiqueBox>
               <BoutiqueStack gap={12}>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{order.receiptAvailable ? "Receipt No." : "Official receipt"}</BoutiqueText>
-                  <BoutiqueText size="14px" weight={700}>{order.receiptAvailable ? order.receipt?.receiptNumber : "Issued after payment confirmation"}</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{order.receiptAvailable ? t("Receipt No.") : t("Official receipt")}</BoutiqueText>
+                  <BoutiqueText size="14px" weight={700}>{order.receiptAvailable ? order.receipt?.receiptNumber : t("Issued after payment confirmation")}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Payment Status</BoutiqueText>
-                  <BoutiqueText size="14px" weight={700}>{order.receipt?.paymentStatus || order.paymentStatus || "pending"}</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Payment Status")}</BoutiqueText>
+                  <BoutiqueText size="14px" weight={700}>{t(order.receipt?.paymentStatus || order.paymentStatus || "pending")}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Payment Ref.</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Payment Ref.")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={700}>{order.receipt?.paymentReference || order.paymongo?.paymentId || "Pending"}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>Amount Paid</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Amount Paid")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={800}>PHP {Number(order.receipt?.amountPaid || 0).toLocaleString()}</BoutiqueText>
                 </BoutiqueBox>
               </BoutiqueStack>
@@ -418,7 +422,7 @@ function OrderConfirmation() {
                 margin="0 0 20px"
               >
                 <MapPin size={20} weight="fill" color={BQ_COLORS.accent} />
-                <BoutiqueText variant="h3">Delivery</BoutiqueText>
+                <BoutiqueText variant="h3">{t("Delivery")}</BoutiqueText>
               </BoutiqueBox>
               <BoutiqueStack gap={12}>
                 <BoutiqueText weight={700}>{order.address?.name}</BoutiqueText>
@@ -437,16 +441,16 @@ function OrderConfirmation() {
                     .join(", ")}
                 </BoutiqueText>
                 <BoutiqueText size="13px" weight={600} margin="4px 0 0">
-                  Phone: {order.address?.phone}
+                  {t("Phone")}: {order.address?.phone}
                 </BoutiqueText>
               </BoutiqueStack>
             </BoutiqueCard>
           </BoutiqueGrid>
 
-          <BoutiqueBox direction="row" gap={16} margin="16px 0 0">
+          <BoutiqueBox direction="row" gap={16} margin="16px 0 0" wrap="wrap">
             {paymentNeedsAction ? (
               <BoutiqueButton variant="outline" onClick={() => setRefresh((value) => value + 1)}>
-                Check payment status
+                {t("Check payment status")}
               </BoutiqueButton>
             ) : null}
             {canRetryPayment && !paymentRetryLimitReached ? (
@@ -456,7 +460,7 @@ function OrderConfirmation() {
                 onClick={handlePayNow}
                 disabled={paying}
               >
-                {paying ? "Connecting..." : "Pay Again"}
+                {paying ? t("Connecting...") : t("Pay Again")}
               </BoutiqueButton>
             ) : null}
             {order.receiptAvailable ? (
@@ -465,7 +469,7 @@ function OrderConfirmation() {
                 flex={1}
                 onClick={() => navigate(`/receipt/${order.id}`)}
               >
-                <Receipt size={18} weight="bold" /> View Receipt
+                <Receipt size={18} weight="bold" /> {t("View Receipt")}
               </BoutiqueButton>
             ) : null}
             <BoutiqueButton
@@ -473,14 +477,14 @@ function OrderConfirmation() {
               flex={1}
               onClick={() => navigate("/my-orders")}
             >
-              <Receipt size={18} weight="bold" /> View My Orders
+              <Receipt size={18} weight="bold" /> {t("View My Orders")}
             </BoutiqueButton>
             <BoutiqueButton
               variant="primary"
               flex={1}
               onClick={() => navigate("/shop")}
             >
-              <ShoppingBag size={18} weight="bold" /> Continue Shopping
+              <ShoppingBag size={18} weight="bold" /> {t("Continue Shopping")}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>

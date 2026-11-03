@@ -3,6 +3,8 @@ import DynamicServiceSticker from "./DynamicServiceSticker";
 import UnitKebabMenu from "./UnitKebabMenu";
 import UnitProductVisual from "./UnitProductVisual";
 import { formatUnitHorsepower } from "../../domain/myunit/unitDisplay";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 function UnitCard({
   unit,
@@ -12,6 +14,8 @@ function UnitCard({
   position,
   isNewest = false,
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [expanded, setExpanded] = useState(false);
   const warrantyLabel = {
     pending_activation: "Activation in progress",
@@ -39,11 +43,11 @@ function UnitCard({
     <div className="unit-card" onClick={() => onClick(unit)}>
       <div className="unit-header">
         <div className="unit-identity-badges">
-          <span>AC Unit {position}</span>
-          {isNewest ? <span className="unit-newest-badge">Newest purchase</span> : null}
+          <span>{t("AC Unit")} {position}</span>
+          {isNewest ? <span className="unit-newest-badge">{t("Newest purchase")}</span> : null}
         </div>
-        <div className="unit-brand-model">{unit.unitName || unit.brand || "Installed AC Unit"}</div>
-        <div className="unit-model-code">{unit.productSku || unit.model || "Model not recorded"}</div>
+        <div className="unit-brand-model">{unit.unitName || unit.brand || t("Installed AC Unit")}</div>
+        <div className="unit-model-code">{unit.productSku || unit.model || t("Model not recorded")}</div>
         <div className="unit-header-actions">
           <UnitKebabMenu
             unit={unit}
@@ -56,23 +60,23 @@ function UnitCard({
       <div className="unit-body">
         <div className="unit-info">
           <div className="info-row">
-            <span className="info-label">Horsepower</span>
+            <span className="info-label">{t("Horsepower")}</span>
             <span className="info-value">{formatUnitHorsepower(unit)}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Status</span>
+            <span className="info-label">{t("Status")}</span>
             <span className={`unit-status ${getStatusClass()}`}>
-              {unit.status}
+              {t(unit.status)}
             </span>
           </div>
-          {expanded ? <div className="unit-more-details" aria-label="Additional AC unit details">
-            <div className="info-row"><span className="info-label">Serial Number</span><span className="info-value">{unit.serialNumber || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Installation Date</span><span className="info-value">{unit.installationDate || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Order Number</span><span className="info-value">{unit.orderCode || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Ordered On</span><span className="info-value">{unit.purchaseDate || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Responsible Branch</span><span className="info-value">{unit.serviceBranch || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Installed At</span><span className="info-value">{[unit.placementArea, unit.installationEnvironment].filter(Boolean).join(", ") || "Not recorded"}</span></div>
-            <div className="info-row"><span className="info-label">Warranty</span><span className="info-value">{warrantyLabel}</span></div>
+          {expanded ? <div className="unit-more-details" aria-label={t("Additional AC unit details")}>
+            <div className="info-row"><span className="info-label">{t("Serial Number")}</span><span className="info-value">{unit.serialNumber || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Installation Date")}</span><span className="info-value">{unit.installationDate || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Order Number")}</span><span className="info-value">{unit.orderCode || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Ordered On")}</span><span className="info-value">{unit.purchaseDate || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Responsible Branch")}</span><span className="info-value">{unit.serviceBranch || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Installed At")}</span><span className="info-value">{[unit.placementArea, unit.installationEnvironment].filter(Boolean).join(", ") || t("Not recorded")}</span></div>
+            <div className="info-row"><span className="info-label">{t("Warranty")}</span><span className="info-value">{t(warrantyLabel)}</span></div>
           </div> : null}
         </div>
         {expanded ? <DynamicServiceSticker unit={unit} /> : null}
@@ -87,7 +91,7 @@ function UnitCard({
             setExpanded((current) => !current);
           }}
         >
-          {expanded ? "View Less" : "View More"}
+          {t(expanded ? "View Less" : "View More")}
         </button>
         <button
           type="button"
@@ -97,7 +101,7 @@ function UnitCard({
             onViewHistory(unit);
           }}
         >
-          Service History
+          {t("Service History")}
         </button>
       </div>
     </div>

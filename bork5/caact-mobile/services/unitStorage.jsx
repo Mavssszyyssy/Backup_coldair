@@ -31,6 +31,7 @@ function normalizeUnit(unit = {}) {
     purchaseDate: unit.purchaseDate || "",
     qrUnitId: unit.qrUnitId || "",
     serviceBranch: unit.serviceBranch || "",
+    installationAddress: unit.installationAddress || unit.installation?.addressLine || "",
     status: unit.status || "Active",
     installationDate: unit.installationDate || "",
     placementArea,

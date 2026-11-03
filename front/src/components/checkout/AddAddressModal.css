@@ -8,6 +8,26 @@
   background: rgba(15, 23, 42, 0.58);
 }
 
+:root[data-theme='dark'] .address-editor-dialog,
+:root[data-theme='dark'] .address-editor-header,
+:root[data-theme='dark'] .address-editor-alert-region,
+:root[data-theme='dark'] .address-editor-footer {
+  background: var(--bq-color-surface);
+  color: var(--bq-color-ink);
+  border-color: var(--bq-color-border);
+}
+
+:root[data-theme='dark'] .address-editor-header h2,
+:root[data-theme='dark'] .address-editor-field label,
+:root[data-theme='dark'] .address-editor-default label { color: var(--bq-color-ink); }
+:root[data-theme='dark'] .address-editor-eyebrow { color: var(--bq-color-ink-muted); }
+:root[data-theme='dark'] .address-editor-field input,
+:root[data-theme='dark'] .address-editor-field select {
+  background: var(--bq-color-bg-alt);
+  color: var(--bq-color-ink);
+  border-color: var(--bq-color-border);
+}
+
 .address-editor-dialog {
   width: min(640px, 100%);
   max-height: min(88vh, 780px);

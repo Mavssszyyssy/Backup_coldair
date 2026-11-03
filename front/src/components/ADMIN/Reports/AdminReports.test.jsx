@@ -18,6 +18,17 @@ vi.mock("../../../context/UserContext", () => ({
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const renderReport = () => render(<MemoryRouter><AdminReports /></MemoryRouter>);
 
+it("shows the default Sales Report first and switches without loading other reports automatically", async () => {
+  apiRequest.mockResolvedValue({ customers: [], technicians: [], skus: [], brands: [] });
+  renderReport();
+  const tabs = screen.getAllByRole("button", { name: /Report|Performance|Intelligence/ });
+  expect(tabs[0]).toHaveTextContent("Sales Report");
+  expect(tabs[0]).toHaveAttribute("aria-current", "page");
+  fireEvent.click(screen.getByRole("button", { name: "Business Intelligence" }));
+  expect(screen.getByRole("button", { name: "Business Intelligence" })).toHaveAttribute("aria-current", "page");
+  expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/sales?") || path.startsWith("/reports/business-intelligence?"))).toBe(false);
+});
+
 it("requests paid branch sales with unshifted date-only filters and renders stored totals", async () => {
   const report = {
     summary: { transactionCount: 1, totalOrderValue: 2490, amountCollected: 2490 },

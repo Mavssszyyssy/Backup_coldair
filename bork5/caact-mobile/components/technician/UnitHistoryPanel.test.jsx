@@ -2,6 +2,23 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 import UnitHistoryPanel from "./UnitHistoryPanel";
 
+const mockLanguage = { current: "English" };
+jest.mock("../../hooks/useInterfaceLanguage", () => {
+  const { translateText } = require("../../services/interfaceI18n");
+  return { useInterfaceLanguage: () => ({ language: mockLanguage.current, t: (value) => translateText(value, mockLanguage.current) }) };
+});
+beforeEach(() => { mockLanguage.current = "English"; });
+
+test("Filipino history labels leave the original technician finding unchanged", async () => {
+  mockLanguage.current = "Filipino";
+  await render(<UnitHistoryPanel history={history} />);
+  expect(screen.getByText("KASAYSAYAN NG AC UNIT")).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText("Piliin ang bahagi ng kasaysayan"));
+  await fireEvent.press(screen.getByLabelText("Kasaysayan ng AC: Maintenance"));
+  expect(screen.getByText("Mga pagbisita para sa maintenance")).toBeTruthy();
+  expect(screen.getByText("Visit finding 3")).toBeTruthy();
+});
+
 const history = {
   unit: { id: "unit1", serialNumber: "CAA-123" },
   maintenanceHistory: Array.from({ length: 4 }, (_, i) => ({ id: String(i), date: `2026-09-0${i + 1}`, findings: `Visit finding ${i}`, actionTaken: `Work ${i}` })),

@@ -1,14 +1,17 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { registerPushToken } from "./api";
+import { registerPushToken, unregisterPushToken } from "./api";
 import {
   ANDROID_NOTIFICATION_CHANNEL_ID,
+  disablePushNotifications,
   enablePushNotifications,
+  setActivePushRecipient,
 } from "./pushNotificationService";
 
 jest.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4 },
+  IosAuthorizationStatus: { PROVISIONAL: 3 },
   setNotificationHandler: jest.fn(),
   setNotificationChannelAsync: jest.fn().mockResolvedValue(),
   getPermissionsAsync: jest.fn(),
@@ -25,7 +28,9 @@ jest.mock("expo-constants", () => ({
   easConfig: null,
 }));
 
-jest.mock("./api", () => ({ registerPushToken: jest.fn() }));
+jest.mock("./api", () => ({ registerPushToken: jest.fn(), unregisterPushToken: jest.fn() }));
+
+const foregroundHandler = Notifications.setNotificationHandler.mock.calls[0][0].handleNotification;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -34,6 +39,7 @@ beforeEach(() => {
   Notifications.requestPermissionsAsync.mockResolvedValue({ status: "granted" });
   Notifications.getExpoPushTokenAsync.mockResolvedValue({ data: "ExponentPushToken[fixture]" });
   registerPushToken.mockResolvedValue({ success: true });
+  unregisterPushToken.mockResolvedValue({ success: true });
 });
 
 let platformDescriptor;
@@ -89,4 +95,51 @@ test("registers iOS push notifications without Android channel setup", async () 
     "ios-session",
     "ExponentPushToken[fixture]",
   );
+});
+
+test("denied permission and missing device tokens do not register a recipient", async () => {
+  setPlatform("ios");
+  Notifications.getPermissionsAsync.mockResolvedValue({ status: "denied", canAskAgain: false });
+  await expect(enablePushNotifications("session-token")).resolves.toMatchObject({ success: false });
+  expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  expect(registerPushToken).not.toHaveBeenCalled();
+
+  Notifications.getPermissionsAsync.mockResolvedValue({ status: "granted" });
+  Notifications.getExpoPushTokenAsync.mockResolvedValue({ data: "" });
+  await expect(enablePushNotifications("session-token")).resolves.toMatchObject({ success: false });
+  expect(registerPushToken).not.toHaveBeenCalled();
+});
+
+test("a foreground retry does not prompt again and token failures leave the app usable", async () => {
+  setPlatform("android");
+  Notifications.getPermissionsAsync.mockResolvedValue({ status: "denied", canAskAgain: true });
+  await expect(enablePushNotifications("session-token", { requestPermission: false })).resolves.toMatchObject({ success: false });
+  expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+
+  Notifications.getPermissionsAsync.mockResolvedValue({ status: "granted" });
+  Notifications.getExpoPushTokenAsync.mockRejectedValue(new Error("Push service unavailable"));
+  await expect(enablePushNotifications("session-token", { requestPermission: false })).resolves.toMatchObject({
+    success: false, error: "Push service unavailable",
+  });
+  expect(registerPushToken).not.toHaveBeenCalled();
+});
+
+test("accepts provisional iOS authorization and removes the device token on sign-out", async () => {
+  setPlatform("ios");
+  Notifications.getPermissionsAsync.mockResolvedValue({ status: "undetermined", ios: { status: 3 } });
+  await expect(enablePushNotifications("ios-session")).resolves.toEqual({ success: true });
+  expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  await expect(disablePushNotifications("ios-session")).resolves.toEqual({ success: true });
+  expect(unregisterPushToken).toHaveBeenCalledWith("ios-session", "ExponentPushToken[fixture]");
+});
+
+test("foreground display hides another account's queued push", async () => {
+  setActivePushRecipient("customer-1");
+  await expect(foregroundHandler({ request: { content: { data: { recipientId: "customer-2" } } } }))
+    .resolves.toMatchObject({ shouldShowBanner: false, shouldPlaySound: false });
+  await expect(foregroundHandler({ request: { content: { data: { recipientId: "customer-1" } } } }))
+    .resolves.toMatchObject({ shouldShowBanner: true });
+  await expect(foregroundHandler({ request: { content: { data: {} } } }))
+    .resolves.toMatchObject({ shouldShowBanner: false });
+  setActivePushRecipient(null);
 });

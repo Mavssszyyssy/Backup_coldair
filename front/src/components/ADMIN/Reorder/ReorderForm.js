@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
 import './styles.css';
 
 const ReorderForm = ({ item, onSubmitted }) => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
@@ -34,7 +38,7 @@ const ReorderForm = ({ item, onSubmitted }) => {
         method: 'POST',
         body: JSON.stringify({ productId: item.id, quantity: requestedQuantity, notes }),
       });
-      setMessage(`Request sent: ${requestedQuantity} unit(s) of ${item.name}. Stock will change only after SuperAdmin approval.`);
+      setMessage(`${t('Request sent:')} ${requestedQuantity} ${t('unit(s) of')} ${item.name}. ${t('Stock will change only after SuperAdmin approval.')}`);
       onSubmitted?.();
     } catch (requestError) {
       setError(requestError.message || 'Unable to submit the reorder request.');
@@ -45,18 +49,18 @@ const ReorderForm = ({ item, onSubmitted }) => {
 
   return (
     <form className="reorder-form" onSubmit={submit}>
-      <h2>Create reorder request</h2>
+      <h2>{t("Create reorder request")}</h2>
       {item ? (
         <>
-          <div className="reorder-product-summary"><strong>{item.name}</strong><span>{item.sku || 'No SKU'} · {formatCartHorsepower(item)} · {Number(item.stock || 0)} currently in stock</span></div>
-          <label>Quantity to request<input type="number" min="1" step="1" inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
-          <label>Note for SuperAdmin <span>(optional)</span><textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Supplier, urgency, or branch notes" /></label>
-          <button className="reorder-primary-action" type="submit" disabled={saving}>{saving ? 'Sending request…' : 'Send Reorder Request'}</button>
-          <p className="reorder-helper">Approval adds stock and generates the inventory serial records for this branch.</p>
+          <div className="reorder-product-summary"><strong>{item.name}</strong><span>{item.sku || 'No SKU'} · {formatCartHorsepower(item)} · {Number(item.stock || 0)} {t("currently in stock")}</span></div>
+          <label>{t("Quantity to request")}<input type="number" min="1" step="1" inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
+          <label>{t("Note for SuperAdmin")} <span>{t("(optional)")}</span><textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t("Supplier, urgency, or branch notes")} /></label>
+          <button className="reorder-primary-action" type="submit" disabled={saving}>{t(saving ? 'Sending request…' : 'Send Reorder Request')}</button>
+          <p className="reorder-helper">{t("Approval adds stock and generates the inventory serial records for this branch.")}</p>
         </>
-      ) : <div className="reorder-empty">Choose a low-stock product to begin.</div>}
-      {error ? <p className="reorder-message is-error">{error}</p> : null}
-      {message ? <p className="reorder-message is-success">{message}</p> : null}
+      ) : <div className="reorder-empty">{t("Choose a low-stock product to begin.")}</div>}
+      {error ? <p className="reorder-message is-error">{t(error)}</p> : null}
+      {message ? <p className="reorder-message is-success">{t(message)}</p> : null}
     </form>
   );
 };

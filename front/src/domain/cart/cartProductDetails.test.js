@@ -26,8 +26,8 @@ describe("cart product details", () => {
       "utf8",
     );
 
-    expect(cartSource).toContain("Model: {formatCartModel(item)}");
-    expect(cartSource).toContain("Horsepower: {formatCartHorsepower(item)}");
+    expect(cartSource).toContain('{t("Model:")} {formatCartModel(item)}');
+    expect(cartSource).toContain('{t("Horsepower:")} {formatCartHorsepower(item)}');
     expect(shopSource).toContain("Added to cart");
   });
 

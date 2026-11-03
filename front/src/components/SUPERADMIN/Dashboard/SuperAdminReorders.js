@@ -3,14 +3,19 @@ import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
+import { formatBusinessDateTime } from '../../../utils/dateTime';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import '../../ADMIN/Reorder/styles.css';
 
 const displayName = (user) => user?.name || [user?.name_first, user?.name_last].filter(Boolean).join(' ') || user?.email || 'Admin';
-const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
+const formatDate = (value) => value ? formatBusinessDateTime(value) : 'Not recorded';
 const statusLabel = (status) => ({ submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' }[status] || status);
 const REORDER_PAGE_SIZE = 4;
 
 export default function SuperAdminReorders({ embedded = false }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [reorders, setReorders] = useState([]);
   const [filter, setFilter] = useState('submitted');
   const [page, setPage] = useState(1);
@@ -47,12 +52,12 @@ export default function SuperAdminReorders({ embedded = false }) {
   const decide = async (reorder, status) => {
     const approval = status === 'approved';
     const message = approval
-      ? `Approve ${reorder.quantity} unit(s) of ${reorder.product?.name || 'this product'} for ${reorder.branch}? Stock will be added immediately.`
-      : 'Reject this reorder request?';
+      ? `${t('Approve')} ${reorder.quantity} ${t('unit(s) of')} ${reorder.product?.name || t('this product')} ${t('for')} ${reorder.branch}? ${t('Stock will be added immediately.')}`
+      : t('Reject this reorder request?');
     const confirmed = await confirmDialog({
-      title: approval ? 'Approve Reorder Request?' : 'Reject Reorder Request?',
+      title: t(approval ? 'Approve Reorder Request?' : 'Reject Reorder Request?'),
       message,
-      confirmText: approval ? 'Approve & Add Stock' : 'Reject Request',
+      confirmText: t(approval ? 'Approve & Add Stock' : 'Reject Request'),
       destructive: !approval,
     });
     if (!confirmed) return;
@@ -69,62 +74,62 @@ export default function SuperAdminReorders({ embedded = false }) {
   };
 
   return (
-    <SuperAdminLayout title="Inventory Management — Reorder Management" subtitle="Review branch replenishment requests and add stock safely" embedded={embedded}>
-      <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>Requests awaiting your decision</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>Approved replenishments</span></div><button type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>
-      {error ? <p className="reorder-message is-error">{error}</p> : null}
+    <SuperAdminLayout title={t('Inventory Management — Reorder Management')} subtitle={t('Review branch replenishment requests and add stock safely')} embedded={embedded}>
+      <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>{t('Requests awaiting your decision')}</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>{t('Approved replenishments')}</span></div><button type="button" onClick={load} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button></div>
+      {error ? <p className="reorder-message is-error">{t(error)}</p> : null}
       <section className="reorder-history">
         <div className="reorder-panel-heading">
           <div>
-            <span className="reorder-section-eyebrow">Stock replenishment</span>
-            <h2>Reorder queue</h2>
-            <p>Review the request details before adding stock and creating serial records.</p>
+            <span className="reorder-section-eyebrow">{t('Stock replenishment')}</span>
+            <h2>{t('Reorder queue')}</h2>
+            <p>{t('Review the request details before adding stock and creating serial records.')}</p>
           </div>
           <label className="reorder-filter">
-            <span>Show requests</span>
-            <select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filter reorder queue">
-              <option value="submitted">Awaiting review</option>
-              <option value="all">All requests</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+            <span>{t('Show requests')}</span>
+            <select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label={t('Filter reorder queue')}>
+              <option value="submitted">{t('Awaiting review')}</option>
+              <option value="all">{t('All requests')}</option>
+              <option value="approved">{t('Approved')}</option>
+              <option value="rejected">{t('Rejected')}</option>
             </select>
           </label>
         </div>
-        {loading ? <div className="reorder-empty">Loading reorder requests…</div> : visible.length === 0 ? <div className="reorder-empty">No reorder requests match this filter.</div> : (
+        {loading ? <div className="reorder-empty">{t('Loading reorder requests…')}</div> : visible.length === 0 ? <div className="reorder-empty">{t('No reorder requests match this filter.')}</div> : (
           <div className="reorder-history-list">
             {pageReorders.map((reorder) => (
               <article className="reorder-history-item reorder-request-card" key={reorder.id}>
                 <div className="reorder-request-content">
                   <div className="reorder-request-header">
                     <div>
-                      <strong>{reorder.product?.name || 'Removed product'}</strong>
-                      <span className="reorder-request-summary">{formatCartHorsepower(reorder.product)} · {reorder.quantity} unit(s) · {reorder.branch || 'No branch'} branch</span>
+                      <strong>{reorder.product?.name || t('Removed product')}</strong>
+                      <span className="reorder-request-summary">{formatCartHorsepower(reorder.product)} · {reorder.quantity} {t('unit(s)')} · {reorder.branch || t('No branch')} {t('branch')}</span>
                     </div>
-                    <span className={`reorder-status status-${reorder.status}`}>{statusLabel(reorder.status)}</span>
+                    <span className={`reorder-status status-${reorder.status}`}>{t(statusLabel(reorder.status))}</span>
                   </div>
                   <div className="reorder-request-meta">
-                    <span><small>Requested by</small>{displayName(reorder.requestedBy)}</span>
-                    <span><small>Submitted</small>{formatDate(reorder.createdAt)}</span>
+                    <span><small>{t('Requested by')}</small>{displayName(reorder.requestedBy)}</span>
+                    <span><small>{t('Submitted')}</small>{reorder.createdAt ? formatDate(reorder.createdAt) : t('Not recorded')}</span>
                   </div>
-                  {reorder.notes ? <div className="reorder-request-note"><small>Request note</small><p>{reorder.notes}</p></div> : null}
+                  {reorder.notes ? <div className="reorder-request-note"><small>{t('Request note')}</small><p>{reorder.notes}</p></div> : null}
                   {reorder.status === 'submitted' ? (
                     <div className="reorder-decision-field">
-                      <label htmlFor={`decision-note-${reorder.id}`}>Decision note <span>Optional</span></label>
+                      <label htmlFor={`decision-note-${reorder.id}`}>{t('Decision note')} <span>{t('Optional')}</span></label>
                       <textarea
                         id={`decision-note-${reorder.id}`}
                         rows="3"
                         value={notes[reorder.id] || ''}
                         onChange={(event) => setNotes((current) => ({ ...current, [reorder.id]: event.target.value }))}
-                        placeholder="Add context for the branch administrator"
+                        placeholder={t('Add context for the branch administrator')}
                       />
                       <div className="reorder-decision-actions">
-                        <button type="button" className="reorder-primary-action" disabled={processingId === reorder.id} onClick={() => decide(reorder, 'approved')}>{processingId === reorder.id ? 'Saving…' : 'Approve & Add Stock'}</button>
-                        <button type="button" className="reorder-secondary-action is-danger" disabled={processingId === reorder.id} onClick={() => decide(reorder, 'rejected')}>Reject request</button>
+                        <button type="button" className="reorder-primary-action" disabled={processingId === reorder.id} onClick={() => decide(reorder, 'approved')}>{t(processingId === reorder.id ? 'Saving…' : 'Approve & Add Stock')}</button>
+                        <button type="button" className="reorder-secondary-action is-danger" disabled={processingId === reorder.id} onClick={() => decide(reorder, 'rejected')}>{t('Reject request')}</button>
                       </div>
                     </div>
                   ) : (
                     <div className="reorder-review-result">
-                      <small>Decision record</small>
-                      <p>{reorder.reviewNotes || 'No decision note'} · Reviewed {formatDate(reorder.reviewedAt)}</p>
+                      <small>{t('Decision record')}</small>
+                      <p>{reorder.reviewNotes || t('No decision note')} · {t('Reviewed')} {reorder.reviewedAt ? formatDate(reorder.reviewedAt) : t('Not recorded')}</p>
                     </div>
                   )}
                 </div>
@@ -132,9 +137,9 @@ export default function SuperAdminReorders({ embedded = false }) {
             ))}
           </div>
         )}
-        {visible.length > REORDER_PAGE_SIZE ? <nav className="reorder-pagination" aria-label="Reorder queue pagination">
-          <span>Showing {(page - 1) * REORDER_PAGE_SIZE + 1}–{Math.min(page * REORDER_PAGE_SIZE, visible.length)} of {visible.length}</span>
-          <div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button><span>Page {page} of {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button></div>
+        {visible.length > REORDER_PAGE_SIZE ? <nav className="reorder-pagination" aria-label={t('Reorder queue pagination')}>
+          <span>{t('Showing')} {(page - 1) * REORDER_PAGE_SIZE + 1}–{Math.min(page * REORDER_PAGE_SIZE, visible.length)} {t('of')} {visible.length}</span>
+          <div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>{t('Previous')}</button><span>{t('Page')} {page} {t('of')} {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>{t('Next')}</button></div>
         </nav> : null}
       </section>
     </SuperAdminLayout>

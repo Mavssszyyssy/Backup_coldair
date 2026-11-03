@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { COMPANY_CONTACT } from "../../constants/company";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const FAQ_ITEMS = [
   {
@@ -116,6 +117,7 @@ function openLink(url) {
 
 export default function CustomerFaqScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState(null);
@@ -124,14 +126,14 @@ export default function CustomerFaqScreen() {
     const search = query.trim().toLowerCase();
     if (!search) return FAQ_ITEMS;
     return FAQ_ITEMS.filter((item) =>
-      `${item.question} ${item.answer}`.toLowerCase().includes(search),
+      `${item.question} ${item.answer} ${t(item.question)} ${t(item.answer)} ${t(item.category)}`.toLowerCase().includes(search),
     );
-  }, [query]);
+  }, [query, t]);
 
   return (
     <CustomerScreen
-      title="FAQ & Help"
-      subtitle="Answers for orders, AC care, and service"
+      title={t("FAQ & Help")}
+      subtitle={t("Answers for orders, AC care, and service")}
     >
       <Card style={{ backgroundColor: COLORS.primaryLight, borderColor: "#BFDBFE" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
@@ -139,8 +141,8 @@ export default function CustomerFaqScreen() {
             <Ionicons name="help-buoy-sharp" size={22} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>How can we help?</Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.base, marginTop: 2 }}>Search common questions or reach our team directly.</Text>
+            <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{t("How can we help?")}</Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.base, marginTop: 2 }}>{t("Search common questions or reach our team directly.")}</Text>
           </View>
         </View>
       </Card>
@@ -150,13 +152,13 @@ export default function CustomerFaqScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search delivery, warranty, payment..."
+          placeholder={t("Search delivery, warranty, payment...")}
           placeholderTextColor={COLORS.textMuted}
-          accessibilityLabel="Search frequently asked questions"
+          accessibilityLabel={t("Search frequently asked questions")}
           style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderInput, paddingLeft: 44, paddingRight: 42, paddingVertical: 13, color: COLORS.textPrimary, fontSize: FONT.base }}
         />
         {query ? (
-          <Pressable onPress={() => setQuery("")} accessibilityRole="button" accessibilityLabel="Clear FAQ search" hitSlop={12} style={{ position: "absolute", right: 12, top: 12 }}>
+          <Pressable onPress={() => setQuery("")} accessibilityRole="button" accessibilityLabel={t("Clear FAQ search")} hitSlop={12} style={{ position: "absolute", right: 12, top: 12 }}>
             <Ionicons name="close-circle" size={22} color={COLORS.textMuted} />
           </Pressable>
         ) : null}
@@ -170,7 +172,7 @@ export default function CustomerFaqScreen() {
               <Pressable
                 onPress={() => setExpandedId(expanded ? null : item.id)}
                 accessibilityRole="button"
-                accessibilityLabel={`${expanded ? "Collapse" : "Expand"} question: ${item.question}`}
+                accessibilityLabel={`${t(expanded ? "Collapse question" : "Expand question")}: ${t(item.question)}`}
                 accessibilityState={{ expanded }}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: SPACING.md }, pressed && { backgroundColor: COLORS.surfaceAlt }]}
               >
@@ -178,14 +180,14 @@ export default function CustomerFaqScreen() {
                   <Ionicons name="help-sharp" size={16} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.black, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{item.category}</Text>
-                  <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold, lineHeight: 20 }}>{item.question}</Text>
+                  <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.black, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{t(item.category)}</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold, lineHeight: 20 }}>{t(item.question)}</Text>
                 </View>
                 <Ionicons name={expanded ? "chevron-up-sharp" : "chevron-down-sharp"} size={20} color={COLORS.primary} style={{ marginLeft: SPACING.sm }} />
               </Pressable>
               {expanded ? (
                 <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.md }}>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: FONT.base, lineHeight: 21 }}>{item.answer}</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: FONT.base, lineHeight: 21 }}>{t(item.answer)}</Text>
                 </View>
               ) : null}
             </Card>
@@ -196,27 +198,27 @@ export default function CustomerFaqScreen() {
       {visibleFaqs.length === 0 ? (
         <Card style={{ alignItems: "center" }}>
           <Ionicons name="search-outline" size={34} color={COLORS.textMuted} />
-          <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.bold, marginTop: SPACING.sm }}>No matching answer found</Text>
-          <Text style={{ color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginTop: 4 }}>Contact our support team and we will help you with your concern.</Text>
+          <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.bold, marginTop: SPACING.sm }}>{t("No matching answer found")}</Text>
+          <Text style={{ color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginTop: 4 }}>{t("Contact our support team and we will help you with your concern.")}</Text>
         </Card>
       ) : null}
 
       <Card style={{ borderStyle: "dashed", borderColor: "#93C5FD", backgroundColor: COLORS.surfaceAlt }}>
-        <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Still have questions?</Text>
-        <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4, marginBottom: SPACING.sm }}>Our customer-service team is ready to assist you.</Text>
-        <Button title="Contact Support" onPress={() => router.push("/customer/contact")} leftIcon={<Ionicons name="chatbubble-ellipses-sharp" size={18} color="#FFFFFF" />} />
+        <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{t("Still have questions?")}</Text>
+        <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 4, marginBottom: SPACING.sm }}>{t("Our customer-service team is ready to assist you.")}</Text>
+        <Button title={t("Contact Support")} onPress={() => router.push("/customer/contact")} leftIcon={<Ionicons name="chatbubble-ellipses-sharp" size={18} color="#FFFFFF" />} />
         <View style={{ flexDirection: width < 380 ? "column" : "row", gap: SPACING.sm, marginTop: SPACING.md }}>
-          <Pressable onPress={() => openLink(`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`)} accessibilityRole="button" accessibilityLabel="Call customer support" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => openLink(`tel:${COMPANY_CONTACT.hotline.replace(/\s+/g, "")}`)} accessibilityRole="button" accessibilityLabel={t("Call customer support")} style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="call-sharp" size={17} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Call</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>{t("Call")}</Text>
           </Pressable>
-          <Pressable onPress={() => openLink(`mailto:${COMPANY_CONTACT.supportEmail}`)} accessibilityRole="button" accessibilityLabel="Email customer support" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => openLink(`mailto:${COMPANY_CONTACT.supportEmail}`)} accessibilityRole="button" accessibilityLabel={t("Email customer support")} style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="mail-sharp" size={17} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Email</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>{t("Email")}</Text>
           </Pressable>
-          <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel="Open AEROPULSE assistant" style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
+          <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel={t("Open AEROPULSE assistant")} style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
             <Ionicons name="chatbubbles-sharp" size={17} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>Chat</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>{t("Chat")}</Text>
           </Pressable>
         </View>
       </Card>

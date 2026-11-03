@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
-import { BRANCHES } from "../../../domain/branches/branches";
+import { translateText } from "../../../utils/customerI18n";
+import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
-import { formatBusinessDateKey } from "../../../utils/dateTime";
+import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime } from "../../../utils/dateTime";
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
@@ -43,24 +44,14 @@ const isInstallationTask = (task = {}) =>
 const taskCheckIn = (task = {}) => task?.checkIn || task?.payload?.checkIn || null;
 const formatCheckInTime = (value) => {
   if (!value) return "Time not recorded";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+  return formatBusinessDateTime(value);
 };
 const formatScheduledDate = (value) => {
   if (!value) return "Date not set";
   const key = /^\d{4}-\d{2}-\d{2}$/.test(String(value))
     ? String(value)
     : formatBusinessDateKey(new Date(value));
-  const [year, month, day] = key.split("-").map(Number);
-  if (!year || !month || !day) return String(value);
-  return new Date(Date.UTC(year, month - 1, day, 12)).toLocaleDateString("en-PH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  });
+  return formatBusinessDate(key);
 };
 const checkInMapUrl = (checkIn = {}) => {
   const latitude = Number(checkIn?.latitude);
@@ -126,6 +117,8 @@ const assignmentTitle = (task = {}) => {
 };
 
 const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, disabled }) => {
+  const { currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
   const [open, setOpen] = useState(false);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCustomers = customers
@@ -138,7 +131,7 @@ const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, di
     if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
   }}>
     <label>
-      <span>Customer / site</span>
+      <span>{t("Customer / site")}</span>
       <input
         type="search"
         role="combobox"
@@ -150,7 +143,7 @@ const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, di
         disabled={disabled}
         onFocus={() => setOpen(true)}
         onChange={(event) => { onQueryChange(event.target.value); setOpen(true); }}
-        placeholder="Search customer name, email, phone, or address"
+        placeholder={t("Search customer name, email, phone, or address")}
       />
     </label>
     {open ? <div className="tech-customer-options" id="tech-customer-options" role="listbox">
@@ -164,7 +157,7 @@ const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, di
       >
         <strong>{customer.name}</strong>
         <span>{customer.addressSummary || customer.email || customer.phone || "No saved site information"}</span>
-      </button>) : <p>No customers match this search.</p>}
+      </button>) : <p>{t("No customers match this search.")}</p>}
     </div> : null}
   </div>;
 };
@@ -197,7 +190,9 @@ const initialStaffDraft = (branch = "") => ({
 });
 
 const AdminTechnician = ({ embedded = false, initialView = "technicians", recordId = "" }) => {
-  const { user } = useUser();
+  const branchNames = useActiveBranches();
+  const { user, currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
   const isSuperAdmin = user?.role === "superadmin";
   const homeBranch = user?.assignedBranch || user?.activeBranch || "";
   const [technicians, setTechnicians] = useState([]);
@@ -277,7 +272,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [search, accountFilter, workloadFilter, branchFilter]);
-  useEffect(() => { setWorkPage(1); }, [tasks.length, workSearch, workStatusFilter, workTypeFilter, workTechnicianFilter]);
+  useEffect(() => { setWorkPage(1); }, [workSearch, workStatusFilter, workTypeFilter, workTechnicianFilter]);
   useEffect(() => {
     if (!isSuperAdmin) {
       setBranchFilter(homeBranch || "all");
@@ -359,6 +354,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     });
   }, [tasks, workSearch, workStatusFilter, workTechnicianFilter, workTypeFilter]);
   const workTotalPages = Math.max(1, Math.ceil(filteredWorkAssignments.length / WORK_ASSIGNMENT_PAGE_SIZE));
+  useEffect(() => { setWorkPage((current) => Math.min(current, workTotalPages)); }, [workTotalPages]);
   const pageWorkAssignments = filteredWorkAssignments.slice((workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE, workPage * WORK_ASSIGNMENT_PAGE_SIZE);
   const hasWorkFilters = Boolean(workSearch.trim()) || workStatusFilter !== "all" || workTypeFilter !== "all" || workTechnicianFilter !== "all";
   useEffect(() => {
@@ -491,15 +487,15 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     const loginName = credentialPart(staffDraft.loginName);
     const serviceQuota = Number(staffDraft.serviceQuota);
     if (!firstName || !lastName || !loginName || !staffDraft.branch) {
-      setError("Enter the technician's name, login name, and assigned branch.");
+      setError("Enter the technician's name, username, and assigned branch.");
       return;
     }
     if (credentialPreview.loginIdentifier.length > 30 || credentialPreview.defaultPassword.length > 25) {
-      setError("Use a shorter login name so the Login ID and default password fit their limits.");
+      setError("Use a shorter username so the Login ID and default password fit their limits.");
       return;
     }
     if (loginName.length < 2) {
-      setError("Enter a technician login name with at least 2 letters or numbers.");
+      setError("Enter a technician username with at least 2 letters or numbers.");
       return;
     }
     if (!Number.isSafeInteger(serviceQuota) || serviceQuota < 1) {
@@ -526,7 +522,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
       });
       setTemporaryPassword(result.tempPassword || "");
       setCreatedLoginIdentifier(result.loginIdentifier || result.user?.username || result.user?.alias || "");
-      setNotice(`${firstName} ${lastName} was added. Share the first-use credentials below securely.`);
+      setNotice(`${firstName} ${lastName} ${t('was added. Share the first-use credentials below securely.')}`);
       setStaffDraft(initialStaffDraft(staffDraft.branch));
       setShowAddStaff(false);
       await load();
@@ -553,7 +549,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
       scheduledDate: draft.scheduledDate,
       timeSlot: draft.timeSlot,
     })) {
-      setError(`${technician.name} already has an overlapping work order on this date and time.`);
+      setError(`${technician.name} ${t('already has an overlapping work order on this date and time.')}`);
       return;
     }
     const workTitle = draft.unitName ? `${service.title} - ${draft.unitName}` : service.title;
@@ -586,7 +582,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
           status: "pending",
         }),
       });
-      setNotice(`Work order assigned to ${technician.name}.`);
+      setNotice(`${t('Work order assigned to')} ${technician.name}.`);
       setDraft(initialDraft(isSuperAdmin ? draft.branch : homeBranch));
       setCustomerQuery("");
       await load();
@@ -610,13 +606,13 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
           assignedTechnicianName: technician.name,
         }),
       });
-      const successMessage = `Work order reassigned to ${technician.name}.`;
+      const successMessage = `${t('Work order reassigned to')} ${technician.name}.`;
       setTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
       setNotice(successMessage);
       void alertDialog({
-        title: "Work order reassigned",
+        title: t("Work order reassigned"),
         message: successMessage,
-        confirmText: "Done",
+        confirmText: t("Done"),
       });
     } catch (requestError) {
       setError(requestError.message || "Unable to reassign this work order.");
@@ -659,7 +655,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     await updateTechnician(
       technician,
       { email },
-      `${technician.name}'s email was updated successfully.`,
+      `${technician.name}${t("'s email was updated successfully.")}`,
     );
   };
 
@@ -672,7 +668,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         body: JSON.stringify({ status: "in-progress" }),
       });
       setTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
-      setNotice(`${task.taskCode || "Work order"} is active. The technician can now begin the visit.`);
+      setNotice(`${task.taskCode || t("Work order")} ${t('is active. The technician can now begin the visit.')}`);
     } catch (requestError) {
       setError(requestError.message || "Unable to activate this work order.");
     } finally {
@@ -684,10 +680,10 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     const isDisabling = technician.accountStatus === "active";
     if (isDisabling) {
       const confirmed = await confirmDialog({
-        title: "Disable technician account?",
-        message: `Disable ${technician.name}'s account? The account will remain disabled until an administrator enables it again.`,
-        confirmText: "Disable account",
-        cancelText: "Keep account active",
+        title: t("Disable technician account?"),
+        message: `${t("Disable the account of")} ${technician.name}? ${t("The account will remain disabled until an administrator enables it again.")}`,
+        confirmText: t("Disable account"),
+        cancelText: t("Keep account active"),
         destructive: true,
       });
       if (!confirmed) return;
@@ -696,65 +692,65 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     await updateTechnician(
       technician,
       { status: isDisabling ? "disabled" : "active" },
-      `${technician.name}'s account is now ${isDisabling ? "disabled" : "active"}.`,
+      `${technician.name}${t("'s account is now")} ${t(isDisabling ? "disabled" : "active")}.`,
     );
   };
 
   return (
-    <AdminLayout title="Technician Management" subtitle="Assign work, monitor workload, and keep field coverage organized." embedded={embedded}>
-      <div className="module-tabs tech-workspace-tabs" role="tablist" aria-label="Technician workspace sections">
-        <button type="button" role="tab" aria-selected={workspaceView === "technicians"} className={workspaceView === "technicians" ? "active" : ""} onClick={() => setWorkspaceView("technicians")}>Technicians</button>
-        <button type="button" role="tab" aria-selected={workspaceView === "schedule"} className={workspaceView === "schedule" ? "active" : ""} onClick={() => setWorkspaceView("schedule")}>Daily Schedule</button>
+    <AdminLayout title={t("Technician Management")} subtitle={t("Assign work, monitor workload, and keep field coverage organized.")} embedded={embedded}>
+      <div className="module-tabs tech-workspace-tabs" role="tablist" aria-label={t("Technician workspace sections")}>
+        <button type="button" role="tab" aria-selected={workspaceView === "technicians"} className={workspaceView === "technicians" ? "active" : ""} onClick={() => setWorkspaceView("technicians")}>{t("Technicians")}</button>
+        <button type="button" role="tab" aria-selected={workspaceView === "schedule"} className={workspaceView === "schedule" ? "active" : ""} onClick={() => setWorkspaceView("schedule")}>{t("Daily Schedule")}</button>
       </div>
       {workspaceView === "schedule" ? <DailyWorkSchedule /> : <section className="tech-management">
         <div className="tech-summary-grid">
-          <article><span>Total technicians</span><strong>{technicians.length}</strong><small>Visible to your access level</small></article>
-          <article><span>Active accounts</span><strong>{activeCount}</strong><small>Ready for work assignment</small></article>
-          <article><span>Busy technicians</span><strong>{busyCount}</strong><small>Three or more open work orders</small></article>
-          <article><span>Open work orders</span><strong>{tasks.filter(openTask).length}</strong><small>Pending, in progress, or on hold</small></article>
+          <article><span>{t("Total technicians")}</span><strong>{technicians.length}</strong><small>{t("Visible to your access level")}</small></article>
+          <article><span>{t("Active accounts")}</span><strong>{activeCount}</strong><small>{t("Ready for work assignment")}</small></article>
+          <article><span>{t("Busy technicians")}</span><strong>{busyCount}</strong><small>{t("Three or more open work orders")}</small></article>
+          <article><span>{t("Open work orders")}</span><strong>{tasks.filter(openTask).length}</strong><small>{t("Pending, in progress, or on hold")}</small></article>
         </div>
 
-        <section className="tech-filter-card admin-card" aria-label="Technician filters">
-          <div className="tech-filter-heading"><div><h2>Find a technician</h2><p>Use the filters to match one assigned technician to each job.</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button></div>
+        <section className="tech-filter-card admin-card" aria-label={t("Technician filters")}>
+          <div className="tech-filter-heading"><div><h2>{t("Find a technician")}</h2><p>{t("Use the filters to match one assigned technician to each job.")}</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button></div>
           <div className="tech-filter-grid">
-            <label className="tech-search-field"><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, login ID, skill, or branch" /></label>
-            <label><span>Account status</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">All accounts</option><option value="active">Active</option><option value="disabled">Disabled</option></select></label>
-            <label><span>Workload</span><select value={workloadFilter} onChange={(event) => setWorkloadFilter(event.target.value)}><option value="all">All workloads</option><option value="available">Available (under 3 open)</option><option value="busy">Busy (3+ open)</option></select></label>
-            <label><span>Branch</span><select value={branchFilter} disabled={!isSuperAdmin && Boolean(homeBranch)} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">All branches</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label className="tech-search-field"><span>{t("Search")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Name, login ID, skill, or branch")} /></label>
+            <label><span>{t("Account status")}</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">{t("All accounts")}</option><option value="active">{t("Active")}</option><option value="disabled">{t("Disabled")}</option></select></label>
+            <label><span>{t("Workload")}</span><select value={workloadFilter} onChange={(event) => setWorkloadFilter(event.target.value)}><option value="all">{t("All workloads")}</option><option value="available">{t("Available (under 3 open)")}</option><option value="busy">{t("Busy (3+ open)")}</option></select></label>
+            <label><span>{t("Branch")}</span><select value={branchFilter} disabled={!isSuperAdmin && Boolean(homeBranch)} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">{t("All branches")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
           </div>
         </section>
 
-        {isSuperAdmin ? <section className="tech-add-staff-card admin-card" aria-label="Add technician staff">
+        {isSuperAdmin ? <section className="tech-add-staff-card admin-card" aria-label={t("Add technician staff")}>
           <div className="tech-filter-heading">
-            <div><h2>Add technician staff</h2><p>Create a branch-based technician login without using an email address.</p></div>
-            <button type="button" className="tech-primary-button" disabled={savingStaff} onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{showAddStaff ? "Close" : "Add technician"}</button>
+            <div><h2>{t("Add technician staff")}</h2><p>{t("Create a branch-based technician login without using an email address.")}</p></div>
+            <button type="button" className="tech-primary-button" disabled={savingStaff} onClick={() => { setShowAddStaff((current) => !current); setError(""); }}>{t(showAddStaff ? "Close" : "Add technician")}</button>
           </div>
           {showAddStaff ? <form className="tech-add-staff-form" onSubmit={createTechnician}>
             <div className="tech-form-row">
-              <label><span>First name</span><input value={staffDraft.firstName} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
-              <label><span>Last name</span><input value={staffDraft.lastName} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
+              <label><span>{t("First name")}</span><input value={staffDraft.firstName} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
+              <label><span>{t("Last name")}</span><input value={staffDraft.lastName} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
             </div>
-            <label><span>Login name</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder="name" autoComplete="off" required /><small>Use a short, unique name such as juan or j.delacruz. Check the generated Login ID below.</small></label>
-            <label><span>Assigned branch</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
-            <label><span>Service Quota</span><input type="number" min="1" step="1" value={staffDraft.serviceQuota} onChange={(event) => updateStaffDraft("serviceQuota", event.target.value)} placeholder="Maximum service jobs" required /><small>This value must be defined before the technician can receive warranty claims.</small></label>
-            <div className="tech-credential-preview"><span>Login ID</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>Default password</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
-            <p className="tech-staff-note">Email is not used. At first sign-in in the mobile app, the technician must confirm a contact number and replace the default password before accessing work.</p>
-            <button type="submit" className="tech-primary-button" disabled={savingStaff}>{savingStaff ? "Adding technician…" : "Create technician account"}</button>
+            <label><span>{t("Username")}</span><input value={staffDraft.loginName} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder={t("e.g. j.delacruz")} autoComplete="off" required /><small>{t("Use a short, unique username. Check the generated Login ID below.")}</small></label>
+            <label><span>{t("Assigned branch")}</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label><span>{t("Service Quota")}</span><input type="number" min="1" step="1" value={staffDraft.serviceQuota} onChange={(event) => updateStaffDraft("serviceQuota", event.target.value)} placeholder={t("Maximum service jobs")} required /><small>{t("This value must be defined before the technician can receive warranty claims.")}</small></label>
+            <div className="tech-credential-preview"><span>{t("Login ID")}</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>{t("Default password")}</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
+            <p className="tech-staff-note">{t("Email is not used. At first sign-in in the mobile app, the technician must confirm a contact number and replace the default password before accessing work.")}</p>
+            <button type="submit" className="tech-primary-button" disabled={savingStaff}>{t(savingStaff ? "Adding technician…" : "Create technician account")}</button>
           </form> : null}
         </section> : null}
 
         <PersistentErrorNotice
-          title="Please check this action"
-          message={error}
+          title={t("Please check this action")}
+          message={t(error)}
           onDismiss={() => setError("")}
         />
-        {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
-        {temporaryPassword ? <p className="tech-message tech-message--temporary">Login ID: <strong>{createdLoginIdentifier}</strong><br />Default password: <strong>{temporaryPassword}</strong><br />Give both to the technician securely; the password is not shown again.</p> : null}
+        {notice ? <p className="tech-message tech-message--success">{t(notice)}</p> : null}
+        {temporaryPassword ? <p className="tech-message tech-message--temporary">{t("Login ID:")} <strong>{createdLoginIdentifier}</strong><br />{t("Default password:")} <strong>{temporaryPassword}</strong><br />{t("Give both to the technician securely; the password is not shown again.")}</p> : null}
 
         <div className="tech-management-grid">
           <section className="admin-card tech-roster-card">
-            <div className="tech-section-heading"><div><h2>Field team</h2><p>{filteredTechnicians.length} technician{filteredTechnicians.length === 1 ? "" : "s"} match the selected filters.</p></div></div>
-            {loading ? <p className="tech-empty">Loading technicians…</p> : pageTechnicians.length === 0 ? <p className="tech-empty">No technicians match these filters.</p> : <div className="tech-roster-list">{pageTechnicians.map((technician) => {
+            <div className="tech-section-heading"><div><h2>{t("Field team")}</h2><p>{filteredTechnicians.length} {t(filteredTechnicians.length === 1 ? "technician" : "technicians")} {t("match the selected filters.")}</p></div></div>
+            {loading ? <p className="tech-empty">{t("Loading technicians…")}</p> : pageTechnicians.length === 0 ? <p className="tech-empty">{t("No technicians match these filters.")}</p> : <div className="tech-roster-list">{pageTechnicians.map((technician) => {
               const openCount = openTasksByTechnician[String(technician.id)] || 0;
               const taskStats = taskStatsByTechnician[String(technician.id)] || {
                 assigned: 0,
@@ -773,44 +769,44 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
               const detailsExpanded = expandedTechnicianIds.includes(String(technician.id));
               return <article className="tech-person-card" key={technician.id}>
                 <div className="tech-person-summary">
-                  <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || "Field technician"}</p><small>{technician.username || technician.alias || technician.email || "No login ID recorded"}</small></div></div>
-                  <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{technician.accountStatus}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{availability}</span><span>{technician.branch || "Unassigned branch"}</span><strong>{openCount} assigned task{openCount === 1 ? "" : "s"}</strong></div>
+                  <div className="tech-person-main"><div className="tech-avatar">{technician.name.charAt(0).toUpperCase()}</div><div><h3>{technician.name}</h3><p>{technician.department || technician.skills?.[0] || t("Field technician")}</p><small>{technician.username || technician.alias || technician.email || t("No login ID recorded")}</small></div></div>
+                  <div className="tech-person-meta"><span className={`tech-account-status is-${technician.accountStatus}`}>{t(technician.accountStatus)}</span><span className={`tech-availability is-${availability.toLowerCase()}`}>{t(availability)}</span><span>{technician.branch || t("Unassigned branch")}</span><strong>{openCount} {t(openCount === 1 ? "assigned task" : "assigned tasks")}</strong></div>
                   <button
                     type="button"
                     className="tech-details-toggle"
                     aria-expanded={detailsExpanded}
                     aria-controls={`technician-details-${technician.id}`}
-                    aria-label={`${detailsExpanded ? "Show less" : "See more"} details for ${technician.name}`}
+                    aria-label={`${t(detailsExpanded ? "Show less" : "See more")} ${t("details for")} ${technician.name}`}
                     onClick={() => toggleTechnicianDetails(technician.id)}
-                  >{detailsExpanded ? "Show Less" : "See More"}</button>
+                  >{t(detailsExpanded ? "Show Less" : "See More")}</button>
                 </div>
-                <div className="tech-person-workflow" aria-label={`${technician.name} work summary`}>
-                  <span>Current work: <strong>{taskStats.currentStatus || "No active task"}</strong></span>
-                  <span>Active service: <strong>{taskStats.activeServices}</strong></span>
-                  <span>Installations: <strong>{taskStats.activeInstallations}</strong></span>
-                  <span>Completed jobs: <strong>{taskStats.completed}</strong></span>
+                <div className="tech-person-workflow" aria-label={`${technician.name} ${t("work summary")}`}>
+                  <span>{t("Current work:")} <strong>{t(taskStats.currentStatus || "No active task")}</strong></span>
+                  <span>{t("Active service:")} <strong>{taskStats.activeServices}</strong></span>
+                  <span>{t("Installations:")} <strong>{taskStats.activeInstallations}</strong></span>
+                  <span>{t("Completed jobs:")} <strong>{taskStats.completed}</strong></span>
                 </div>
                 {detailsExpanded ? <div className="tech-person-details" id={`technician-details-${technician.id}`}>
                   <div className="tech-person-control-row">
-                    <label className="tech-inline-select"><span>Service Quota</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment"}</small></label>
-                    <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}'s Service Quota is now ${technician.serviceQuota}.`)}>{changing ? "Saving…" : "Save quota"}</button>
+                    <label className="tech-inline-select"><span>{t("Service Quota")}</span><input type="number" min="1" step="1" value={technician.serviceQuota || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, serviceQuota: event.target.value } : item))} /><small>{t(technician.serviceQuota ? "Required for warranty assignment" : "Required before warranty assignment")}</small></label>
+                    <button type="button" className="tech-secondary-button" disabled={changing || !Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1} onClick={() => updateTechnician(technician, { serviceQuota: Number(technician.serviceQuota) }, `${technician.name}${t("'s Service Quota is now")} ${technician.serviceQuota}.`)}>{t(changing ? "Saving…" : "Save quota")}</button>
                   </div>
-                  {isSuperAdmin ? <div className="tech-person-control-row"><label className="tech-inline-select tech-email-field"><span>Email address</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>Contact email only; the technician still signs in with the unique login ID above.</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{changing ? "Saving…" : "Save email"}</button></div> : null}
+                  {isSuperAdmin ? <div className="tech-person-control-row"><label className="tech-inline-select tech-email-field"><span>{t("Email address")}</span><input type="email" value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>{t("Contact email only; the technician still signs in with the unique login ID above.")}</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{t(changing ? "Saving…" : "Save email")}</button></div> : null}
                   <div className="tech-person-control-row">
-                    {isSuperAdmin ? <label className="tech-inline-select"><span>Branch assignment</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} is now assigned to ${event.target.value}.`)}><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <span />}
-                    <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account"}</button>
+                    {isSuperAdmin ? <label className="tech-inline-select"><span>{t("Branch assignment")}</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} ${t('is now assigned to')} ${event.target.value}.`)}><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <span />}
+                    <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{t(changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account")}</button>
                   </div>
                 </div> : null}
               </article>;
             })}</div>}
-            {filteredTechnicians.length > PAGE_SIZE ? <div className="tech-pagination"><span>Page {page} of {totalPages}</span><div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</button><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Next</button></div></div> : null}
+            {filteredTechnicians.length > PAGE_SIZE ? <div className="tech-pagination"><span>{t("Page")} {page} {t("of")} {totalPages}</span><div><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>{t("Previous")}</button><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>{t("Next")}</button></div></div> : null}
           </section>
 
           <form className="admin-card tech-assignment-form" onSubmit={createTask}>
-            <div className="tech-section-heading"><div><h2>Create work order</h2><p>Assignment is saved directly to the selected technician’s My Work list.</p></div></div>
+            <div className="tech-section-heading"><div><h2>{t("Create work order")}</h2><p>{t("Assignment is saved directly to the selected technician’s My Work list.")}</p></div></div>
             <fieldset className="tech-form-section">
-              <legend>Customer and service location</legend>
-              {isSuperAdmin ? <label><span>Branch</span><select value={draft.branch} onChange={(event) => changeWorkOrderBranch(event.target.value)} required><option value="">Select branch</option>{BRANCHES.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <p className="tech-branch-note">Branch: <strong>{homeBranch || "Your active branch"}</strong></p>}
+              <legend>{t("Customer and service location")}</legend>
+              {isSuperAdmin ? <label><span>{t("Branch")}</span><select value={draft.branch} onChange={(event) => changeWorkOrderBranch(event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <p className="tech-branch-note">{t("Branch:")} <strong>{homeBranch || "Your active branch"}</strong></p>}
               <CustomerCombobox
                 customers={availableCustomers}
                 value={draft.customerId}
@@ -819,69 +815,69 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
                 onSelect={selectCustomer}
                 disabled={isSuperAdmin && !draft.branch}
               />
-              <label><span>Service address</span><select value={draft.addressId} onChange={(event) => selectAddress(event.target.value)} disabled={!draft.customerId} required><option value="">Select a saved address</option>{addressOptions.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.address}</option>)}<option value={CUSTOM_ADDRESS_ID}>+ Use another address</option></select></label>
-              {draft.customAddress ? <label><span>Custom service address</span><input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder="Enter the complete service address" required /></label> : null}
-              <label><span>Registered AC unit <small>(optional)</small></span><select value={draft.unitId} onChange={(event) => selectUnit(event.target.value)} disabled={!draft.customerId || customerUnits.length === 0}><option value="">{customerUnits.length ? "No specific unit" : "No registered units for this customer"}</option>{customerUnits.map((unit) => <option key={unit.unitId} value={unit.unitId}>{unit.modelName}{unit.serialNumber ? ` · ${unit.serialNumber}` : ""}</option>)}</select></label>
+              <label><span>{t("Service address")}</span><select value={draft.addressId} onChange={(event) => selectAddress(event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select a saved address")}</option>{addressOptions.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.address}</option>)}<option value={CUSTOM_ADDRESS_ID}>{t("+ Use another address")}</option></select></label>
+              {draft.customAddress ? <label><span>{t("Custom service address")}</span><input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder={t("Enter the complete service address")} required /></label> : null}
+              <label><span>{t("Registered AC unit")} <small>{t("(optional)")}</small></span><select value={draft.unitId} onChange={(event) => selectUnit(event.target.value)} disabled={!draft.customerId || customerUnits.length === 0}><option value="">{t(customerUnits.length ? "No specific unit" : "No registered units for this customer")}</option>{customerUnits.map((unit) => <option key={unit.unitId} value={unit.unitId}>{unit.modelName}{unit.serialNumber ? ` · ${unit.serialNumber}` : ""}</option>)}</select></label>
             </fieldset>
 
             <fieldset className="tech-form-section">
-              <legend>Work details</legend>
-              <label><span>Work type</span><select value={draft.serviceTypeId} onChange={(event) => updateDraft("serviceTypeId", event.target.value)} required><option value="">Select work type</option>{serviceOfferings.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}</select></label>
-              <label><span>Instructions <small>(optional)</small></span><textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder="Add access notes or a short description of the work" /></label>
+              <legend>{t("Work details")}</legend>
+              <label><span>{t("Work type")}</span><select value={draft.serviceTypeId} onChange={(event) => updateDraft("serviceTypeId", event.target.value)} required><option value="">{t("Select work type")}</option>{serviceOfferings.map((service) => <option key={service.id} value={service.id}>{t(service.title)}</option>)}</select></label>
+              <label><span>{t("Instructions")} <small>{t("(optional)")}</small></span><textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder={t("Add access notes or a short description of the work")} /></label>
             </fieldset>
 
             <fieldset className="tech-form-section">
-              <legend>Schedule and assignment</legend>
-              <label><span>Assign technician</span><select value={draft.technicianId} onChange={(event) => updateDraft("technicianId", event.target.value)} disabled={!draft.customerId} required><option value="">Select an active technician</option>{availableForAssignment.map((technician) => {
+              <legend>{t("Schedule and assignment")}</legend>
+              <label><span>{t("Assign technician")}</span><select value={draft.technicianId} onChange={(event) => updateDraft("technicianId", event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select an active technician")}</option>{availableForAssignment.map((technician) => {
                 const conflict = technicianHasConflict(tasks, { technicianId: technician.id, scheduledDate: draft.scheduledDate, timeSlot: draft.timeSlot });
-                return <option key={technician.id} value={technician.id} disabled={conflict}>{technician.name} · {openTasksByTechnician[String(technician.id)] || 0} open{conflict ? " · Schedule conflict" : ""}</option>;
+                return <option key={technician.id} value={technician.id} disabled={conflict}>{technician.name} · {openTasksByTechnician[String(technician.id)] || 0} {t("open")}{conflict ? ` · ${t("Schedule conflict")}` : ""}</option>;
               })}</select></label>
-              <div className="tech-form-row"><label><span>Scheduled date</span><input type="date" min={today()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} required /></label><label><span>Time slot</span><select value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label></div>
-              <label><span>Priority</span><select value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+              <div className="tech-form-row"><label><span>{t("Scheduled date")}</span><input type="date" min={today()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} required /></label><label><span>{t("Time slot")}</span><select value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label></div>
+              <label><span>{t("Priority")}</span><select value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="low">{t("Low")}</option><option value="medium">{t("Medium")}</option><option value="high">{t("High")}</option></select></label>
             </fieldset>
-            <button className="tech-primary-button" type="submit" disabled={savingTask}>{savingTask ? "Creating work order…" : "Assign work order"}</button>
+            <button className="tech-primary-button" type="submit" disabled={savingTask}>{t(savingTask ? "Creating work order…" : "Assign work order")}</button>
           </form>
         </div>
 
         <section className="admin-card tech-work-orders">
-          <div className="tech-section-heading"><div><h2>Recent work assignments</h2><p>Search, filter, activate, or reassign work without scanning the entire history.</p></div><span className="tech-result-count">{filteredWorkAssignments.length} of {tasks.length} shown</span></div>
-          <div className="tech-work-filters" aria-label="Work assignment filters">
-            <label className="tech-work-search"><span>Search assignments</span><input type="search" value={workSearch} onChange={(event) => setWorkSearch(event.target.value)} placeholder="Work order, customer, unit, branch…" /></label>
-            <label><span>Status</span><select value={workStatusFilter} onChange={(event) => setWorkStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Awaiting Admin</option><option value="in-progress">In progress</option><option value="installing">Installing</option><option value="on-hold">On hold</option><option value="completed">Completed</option></select></label>
-            <label><span>Assignment type</span><select value={workTypeFilter} onChange={(event) => setWorkTypeFilter(event.target.value)}><option value="all">All work types</option><option value="service">Service</option><option value="installation">Installation</option></select></label>
-            <label><span>Technician</span><select value={workTechnicianFilter} onChange={(event) => setWorkTechnicianFilter(event.target.value)}><option value="all">All technicians</option>{technicians.map((technician) => <option key={technician.id} value={String(technician.id)}>{technician.name}</option>)}</select></label>
-            {hasWorkFilters ? <button type="button" className="tech-clear-filters" onClick={() => { setWorkSearch(""); setWorkStatusFilter("all"); setWorkTypeFilter("all"); setWorkTechnicianFilter("all"); }}>Clear filters</button> : null}
+          <div className="tech-section-heading"><div><h2>{t("Recent work assignments")}</h2><p>{t("Search, filter, activate, or reassign work without scanning the entire history.")}</p></div><span className="tech-result-count">{filteredWorkAssignments.length} {t("of")} {tasks.length} {t("shown")}</span></div>
+          <div className="tech-work-filters" aria-label={t("Work assignment filters")}>
+            <label className="tech-work-search"><span>{t("Search assignments")}</span><input type="search" value={workSearch} onChange={(event) => setWorkSearch(event.target.value)} placeholder={t("Work order, customer, unit, branch…")} /></label>
+            <label><span>{t("Status")}</span><select value={workStatusFilter} onChange={(event) => setWorkStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option><option value="pending">{t("Awaiting Admin")}</option><option value="in-progress">{t("In progress")}</option><option value="installing">{t("Installing")}</option><option value="on-hold">{t("On hold")}</option><option value="completed">{t("Completed")}</option></select></label>
+            <label><span>{t("Assignment type")}</span><select value={workTypeFilter} onChange={(event) => setWorkTypeFilter(event.target.value)}><option value="all">{t("All work types")}</option><option value="service">{t("Service")}</option><option value="installation">{t("Installation")}</option></select></label>
+            <label><span>{t("Technician")}</span><select value={workTechnicianFilter} onChange={(event) => setWorkTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={String(technician.id)}>{technician.name}</option>)}</select></label>
+            {hasWorkFilters ? <button type="button" className="tech-clear-filters" onClick={() => { setWorkSearch(""); setWorkStatusFilter("all"); setWorkTypeFilter("all"); setWorkTechnicianFilter("all"); }}>{t("Clear filters")}</button> : null}
           </div>
-          {pageWorkAssignments.length === 0 ? <p className="tech-empty">{tasks.length ? "No work assignments match these filters." : "There are no work orders yet."}</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
+          {pageWorkAssignments.length === 0 ? <p className="tech-empty">{t(tasks.length ? "No work assignments match these filters." : "There are no work orders yet.")}</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
             const checkIn = taskCheckIn(task);
             const mapUrl = checkInMapUrl(checkIn);
             const installation = isInstallationTask(task);
             return <article key={task.id} id={`tech-work-${task.id}`} className="tech-work-item">
               <div className="tech-work-heading">
-                <div><h3>{assignmentTitle(task)}</h3><small>{task.taskCode || "Work order"}</small></div>
-                <div className="tech-work-badges"><span className={`tech-task-status is-${String(task.status || "pending").replace(/[\s_]+/g, "-")}`}>{taskStatusLabel(task.status)}</span><span className={`tech-work-kind is-${installation ? "installation" : "service"}`}>{installation ? "Installation" : "Service"}</span></div>
+                <div><h3>{assignmentTitle(task)}</h3><small>{task.taskCode || t("Work order")}</small></div>
+                <div className="tech-work-badges"><span className={`tech-task-status is-${String(task.status || "pending").replace(/[\s_]+/g, "-")}`}>{t(taskStatusLabel(task.status))}</span><span className={`tech-work-kind is-${installation ? "installation" : "service"}`}>{t(installation ? "Installation" : "Service")}</span></div>
               </div>
               <dl className="tech-work-meta">
-                <div><dt>Customer</dt><dd>{task.customerName || task.customer || "Customer"}{task.unitName ? <small>{task.unitName}</small> : null}</dd></div>
-                <div><dt>Branch</dt><dd>{task.branch || "No branch"}</dd></div>
-                <div><dt>Schedule</dt><dd>{formatScheduledDate(task.scheduledDate)}<small>{task.timeSlot || "Time not set"}</small></dd></div>
-                <div><dt>Technician</dt><dd>{task.assignedTechnicianName || "Not assigned"}</dd></div>
+                <div><dt>{t("Customer")}</dt><dd>{task.customerName || task.customer || t("Customer")}{task.unitName ? <small>{task.unitName}</small> : null}</dd></div>
+                <div><dt>{t("Branch")}</dt><dd>{task.branch || t("No branch")}</dd></div>
+                <div><dt>{t("Schedule")}</dt><dd>{t(formatScheduledDate(task.scheduledDate))}<small>{task.timeSlot || t("Time not set")}</small></dd></div>
+                <div><dt>{t("Technician")}</dt><dd>{task.assignedTechnicianName || t("Not assigned")}</dd></div>
               </dl>
               <div className="tech-work-footer">
-                {String(task.status || "").toLowerCase() === "pending" && !(task.orderId || task.orderCode || task.payload?.orderId || task.payload?.orderCode) ? <button type="button" className="tech-primary-button" disabled={updatingId === `task-${task.id}`} onClick={() => activateTask(task)}>{updatingId === `task-${task.id}` ? "Activating…" : "Activate work order"}</button> : null}
+                {String(task.status || "").toLowerCase() === "pending" && !(task.orderId || task.orderCode || task.payload?.orderId || task.payload?.orderCode) ? <button type="button" className="tech-primary-button" disabled={updatingId === `task-${task.id}`} onClick={() => activateTask(task)}>{t(updatingId === `task-${task.id}` ? "Activating…" : "Activate work order")}</button> : null}
                 {checkIn?.checkedInAt ? <div className="tech-check-in is-verified">
-                  <strong>GPS check-in verified</strong>
+                  <strong>{t("GPS check-in verified")}</strong>
                   <span>{formatCheckInTime(checkIn.checkedInAt)}</span>
-                  <span>{formatCheckInCoordinates(checkIn)}</span>
-                  {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer">Open check-in map</a> : null}
-                </div> : <div className="tech-check-in"><strong>Not checked in</strong><span>The technician’s GPS arrival has not been recorded.</span></div>}
-                {openTask(task) ? <label><span>Assigned technician</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">Select technician</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <p className="tech-completed-by"><span>Completed by</span><strong>{task.assignedTechnicianName || "Technician"}</strong></p>}
+                  <span>{t(formatCheckInCoordinates(checkIn))}</span>
+                  {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer">{t("Open check-in map")}</a> : null}
+                </div> : <div className="tech-check-in"><strong>{t("Not checked in")}</strong><span>{t("The technician’s GPS arrival has not been recorded.")}</span></div>}
+                {openTask(task) ? <label><span>{t("Assigned technician")}</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">{t("Select technician")}</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <p className="tech-completed-by"><span>{t("Completed by")}</span><strong>{task.assignedTechnicianName || t("Technician")}</strong></p>}
               </div>
             </article>;
           })}</div>}
-          {filteredWorkAssignments.length > WORK_ASSIGNMENT_PAGE_SIZE ? <nav className="tech-pagination" aria-label="Recent work assignments pagination">
-            <span>Showing {(workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE + 1}–{Math.min(workPage * WORK_ASSIGNMENT_PAGE_SIZE, filteredWorkAssignments.length)} of {filteredWorkAssignments.length}</span>
-            <div><button type="button" onClick={() => setWorkPage((current) => Math.max(1, current - 1))} disabled={workPage === 1}>Previous</button><span>Page {workPage} of {workTotalPages}</span><button type="button" onClick={() => setWorkPage((current) => Math.min(workTotalPages, current + 1))} disabled={workPage === workTotalPages}>Next</button></div>
+          {filteredWorkAssignments.length > WORK_ASSIGNMENT_PAGE_SIZE ? <nav className="tech-pagination" aria-label={t("Recent work assignments pagination")}>
+            <span>{t("Showing")} {(workPage - 1) * WORK_ASSIGNMENT_PAGE_SIZE + 1}–{Math.min(workPage * WORK_ASSIGNMENT_PAGE_SIZE, filteredWorkAssignments.length)} {t("of")} {filteredWorkAssignments.length}</span>
+            <div><button type="button" onClick={() => setWorkPage((current) => Math.max(1, current - 1))} disabled={workPage === 1}>{t("Previous")}</button><span>{t("Page")} {workPage} {t("of")} {workTotalPages}</span><button type="button" onClick={() => setWorkPage((current) => Math.min(workTotalPages, current + 1))} disabled={workPage === workTotalPages}>{t("Next")}</button></div>
           </nav> : null}
         </section>
       </section>}

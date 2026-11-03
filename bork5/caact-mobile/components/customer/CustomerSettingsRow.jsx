@@ -2,18 +2,20 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 export function CustomerEditAction({ onPress, color = COLORS.primary }) {
+  const { t } = useInterfaceLanguage();
   return (
     <TouchableOpacity
       activeOpacity={0.74}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Edit"
+      accessibilityLabel={t("Edit")}
       style={{
-        width: 36,
-        height: 36,
-        borderRadius: 8,
+        width: 44,
+        height: 44,
+        borderRadius: 10,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: COLORS.surfaceAlt,
@@ -43,20 +45,21 @@ export default function CustomerSettingsRow({
         style={{
           width: 40,
           height: 40,
-          borderRadius: 8,
+          borderRadius: 10,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: danger ? COLORS.dangerLight : COLORS.primaryLight,
-          marginRight: SPACING.sm,
+          marginRight: SPACING.md,
         }}
       >
         <Ionicons name={icon} size={20} color={accent} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={{
             color: danger ? COLORS.danger : COLORS.textPrimary,
             fontWeight: FONT.black,
+            fontSize: FONT.md,
           }}
         >
           {title}
@@ -66,6 +69,7 @@ export default function CustomerSettingsRow({
             style={{
               color: COLORS.textSecondary,
               fontSize: FONT.sm,
+              lineHeight: 19,
               marginTop: 2,
             }}
           >
@@ -81,7 +85,13 @@ export default function CustomerSettingsRow({
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: SPACING.sm,
-        minHeight: 56,
+        paddingHorizontal: SPACING.sm,
+        minHeight: 64,
+        marginTop: SPACING.xs,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.surfaceAlt,
       };
 
   if (!onPress) return <View style={rowStyle}>{content}</View>;

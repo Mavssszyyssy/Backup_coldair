@@ -17,6 +17,7 @@ import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { translateText } from "../../utils/customerI18n";
 import RegisterEmailStep from "./RegisterEmailStep";
 import RegisterLegalConsentsStep from "./RegisterLegalConsentsStep";
 import RegisterLocationStep from "./RegisterLocationStep";
@@ -29,7 +30,8 @@ const STEPS = ["legal", "verification", "identity", "location"];
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register } = useUser();
+  const { register, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const isShuttingDown = useRef(false);
   const registrationStateReady = useRef(false);
 
@@ -126,9 +128,9 @@ export default function Register() {
 
     if (hasVerifiedData) {
       const confirmed = await confirmDialog({
-        title: "Cancel Registration?",
-        message: "Your verified registration progress will be removed. This cannot be undone.",
-        confirmText: "Discard Progress",
+        title: t("Cancel Registration?"),
+        message: t("Your verified registration progress will be removed. This cannot be undone."),
+        confirmText: t("Discard Progress"),
         destructive: true,
       });
       if (!confirmed) return;
@@ -166,6 +168,11 @@ export default function Register() {
 
     try {
       const payload = {
+        // Optional campaign-link parameters only; ordinary signups stay untracked.
+        registrationAttribution: {
+          utmSource: new URLSearchParams(window.location.search).get("utm_source") || "",
+          utmMedium: new URLSearchParams(window.location.search).get("utm_medium") || "",
+        },
         name_first: formData.firstName,
         name_last: formData.lastName,
         alias: formData.alias,
@@ -198,7 +205,7 @@ export default function Register() {
 
   return (
     <BoutiqueAuthLayout>
-      <BoutiqueAuthHeader title="Join AeroPulse">
+      <BoutiqueAuthHeader title={t("Join AeroPulse")}>
         <BoutiqueBox
           direction="row"
           align="center"
@@ -229,6 +236,7 @@ export default function Register() {
       <BoutiqueBox className="bq-reg-step-container" width="100%" height="100%">
         {step === "legal" && (
           <RegisterLegalConsentsStep
+            currentLanguage={currentLanguage}
             formData={formData}
             errors={errors}
             onFieldChange={handleFieldChange}
@@ -238,6 +246,7 @@ export default function Register() {
         )}
         {step === "verification" && (
           <RegisterEmailStep
+            currentLanguage={currentLanguage}
             formData={formData}
             errors={errors}
             onFieldChange={handleFieldChange}
@@ -249,6 +258,7 @@ export default function Register() {
         )}
         {step === "identity" && (
           <RegisterProfilePasswordStep
+            currentLanguage={currentLanguage}
             formData={formData}
             onFieldChange={handleFieldChange}
             detectedRole={detectedRole}
@@ -260,6 +270,7 @@ export default function Register() {
         )}
         {step === "location" && (
           <RegisterLocationStep
+            currentLanguage={currentLanguage}
             formData={formData}
             onFieldChange={handleFieldChange}
             onNext={handleFinalSubmit}
@@ -281,7 +292,7 @@ export default function Register() {
             }}
           >
             <BoutiqueText color={BQ_COLORS.danger} size="14px" weight={700}>
-              {submissionError}
+              {t(submissionError)}
             </BoutiqueText>
           </BoutiqueBox>
         )}

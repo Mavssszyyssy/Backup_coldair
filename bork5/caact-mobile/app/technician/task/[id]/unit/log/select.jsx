@@ -19,9 +19,11 @@ import {
   LOG_TYPES,
   serviceLogsFromTask,
 } from "../../../../../../services/unitServiceLogStorage";
+import { useInterfaceLanguage } from "../../../../../../hooks/useInterfaceLanguage";
 
 export default function LogSelectScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { id: taskId } = useLocalSearchParams();
   const [task, setTask] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -124,14 +126,14 @@ export default function LogSelectScreen() {
         }}
       >
         <PageHeader
-          title="Service Notes"
-          subtitle={task?.unitName || `Work Order #${String(taskId).slice(0, 8)}`}
+          title={t("Service Notes")}
+          subtitle={task?.unitName || `${t("Work Order")} #${String(taskId).slice(0, 8)}`}
           color={COLORS.tech}
           onBack={() => router.back()}
         />
 
         <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 8, marginBottom: SPACING.md }}>
-          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{label}</Text></TouchableOpacity>)}
+          {[["notes", "Visit notes"], ["history", "AC unit history"]].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="tab" accessibilityLabel={t(label)} accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={{ flex: 1, padding: 14, alignItems: "center", borderRadius: 12, backgroundColor: view === key ? COLORS.tech : COLORS.surface }}><Text style={{ color: view === key ? COLORS.surface : COLORS.textPrimary, fontWeight: "700" }}>{t(label)}</Text></TouchableOpacity>)}
         </View>
 
         {view === "notes" && canEdit && (
@@ -143,12 +145,12 @@ export default function LogSelectScreen() {
                 marginBottom: SPACING.sm,
               }}
             >
-              Add Service Note
+              {t("Add Service Note")}
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
               {isDelivery && (
                 <TechButton
-                  title="Generate Delivery QR Code"
+                  title={t("Generate Delivery QR Code")}
                   onPress={() =>
                     router.push(`/technician/task/${taskId}/unit/log/generate-qr`)
                   }
@@ -159,7 +161,7 @@ export default function LogSelectScreen() {
               {visibleLogTypes.map((type) => (
                 <TechButton
                   key={type.id}
-                  title={type.label}
+                  title={t(type.label)}
                   onPress={() =>
                     router.push({
                       pathname: `/technician/task/${taskId}/unit/log/insert`,
@@ -175,15 +177,15 @@ export default function LogSelectScreen() {
           </Card>
         )}
 
-        {loading ? <Text style={{ color: COLORS.textSecondary }}>Loading work-order notes...</Text> : null}
-        {loadError ? <Text style={{ color: COLORS.danger }}>{loadError}</Text> : null}
+        {loading ? <Text style={{ color: COLORS.textSecondary }}>{t("Loading work-order notes...")}</Text> : null}
+        {loadError ? <Text style={{ color: COLORS.danger }}>{t(loadError)}</Text> : null}
         {!loading && !loadError && view === "notes" ? logs.length === 0 ? (
           <EmptyState
-            title="No notes for this work order yet"
-            message="Notes you add here belong to this visit. Open AC unit history for earlier visits."
+            title={t("No notes for this work order yet")}
+            message={t("Notes you add here belong to this visit. Open AC unit history for earlier visits.")}
           />
         ) : (
-          <PagedItems key={taskId} items={logs} label="Saved service notes" renderItem={(log) => (
+          <PagedItems key={taskId} items={logs} label={t("Saved service notes")} renderItem={(log) => (
             <TouchableOpacity
               key={log.id}
               onPress={() =>
@@ -210,7 +212,7 @@ export default function LogSelectScreen() {
                   {log.label}
                 </Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
-                  Condition: {log.condition} • Hours worked: {log.hoursSpent ?? "Not recorded"}
+                  {t("Condition")}: {log.condition} • {t("Hours worked")}: {log.hoursSpent ?? t("Not recorded")}
                 </Text>
                   </View>
                   <Ionicons name="chevron-forward-sharp" size={18} color={COLORS.textMuted} />
@@ -228,7 +230,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           )} />
         ) : null}
-        {view === "history" && !loadError ? loading || historyLoading || (!unitHistory && !historyError) ? <Text style={{ color: COLORS.textSecondary }}>Loading AC unit history...</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{historyError}</Text><TechButton title="Retry AC unit history" size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : <UnitHistoryPanel key={taskId} history={unitHistory} /> : null}
+        {view === "history" && !loadError ? loading || historyLoading || (!unitHistory && !historyError) ? <Text style={{ color: COLORS.textSecondary }}>{t("Loading AC unit history...")}</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{t(historyError)}</Text><TechButton title={t("Retry AC unit history")} size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : <UnitHistoryPanel key={taskId} history={unitHistory} /> : null}
       </ScrollView>
     </SafeAreaView>
   );

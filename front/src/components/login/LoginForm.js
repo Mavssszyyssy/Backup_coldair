@@ -1,8 +1,10 @@
 import { ArrowRight, LockKey, UserCircle } from "@phosphor-icons/react";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
+import { translateText } from "../../utils/customerI18n";
 
 export default function LoginForm({
+  currentLanguage = "English",
   identifier,
   password,
   errors,
@@ -13,6 +15,7 @@ export default function LoginForm({
   disabled,
   onForgotPassword,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit();
@@ -21,27 +24,27 @@ export default function LoginForm({
   return (
     <form className="bq-login-step" onSubmit={handleSubmit}>
       <BoutiqueInput
-        label="Sign-In Alias"
+        label={t("Sign-In Alias")}
         icon={UserCircle}
         placeholder="juan.dc"
         value={identifier}
         onChange={(e) => onIdentifierChange(e.target.value)}
         disabled={disabled}
         status={errors.identifier ? "error" : null}
-        errorMessage={errors.identifier}
+        errorMessage={t(errors.identifier)}
         required
       />
 
       <div className="bq-login-password-field">
         <div className="bq-login-pass-header">
-          <label className="bq-input-label">Password</label>
+          <label className="bq-input-label">{t("Password")}</label>
           <button
             type="button"
             className="bq-login-forgot"
             onClick={onForgotPassword}
             tabIndex="-1"
           >
-            Reset Password
+            {t("Reset Password")}
           </button>
         </div>
 
@@ -53,7 +56,7 @@ export default function LoginForm({
           onChange={(e) => onPasswordChange(e.target.value)}
           disabled={disabled}
           status={errors.password ? "error" : null}
-          errorMessage={errors.password}
+          errorMessage={t(errors.password)}
           style={{ fontFamily: "monospace" }}
           required
         />
@@ -64,7 +67,7 @@ export default function LoginForm({
         className="bq-login-btn bq-login-btn--primary"
         disabled={disabled || loading}
       >
-        {loading ? "Signing in..." : "Sign In"}{" "}
+        {t(loading ? "Signing in..." : "Sign In")}{" "}
         {!loading && <ArrowRight size={18} weight="bold" />}
       </button>
 

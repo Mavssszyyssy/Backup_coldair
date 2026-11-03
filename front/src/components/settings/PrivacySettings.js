@@ -1,5 +1,6 @@
 import { ShieldCheck } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -9,6 +10,7 @@ import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 
 function PrivacySettings({ user, onUpdatePrivacy, onUpdateSettings }) {
+  const t = (value) => translateText(value, user?.preferences?.language);
   const [privacy, setPrivacy] = useState({
     profileVisibility: "public",
     dataSharing: false,
@@ -54,9 +56,9 @@ function PrivacySettings({ user, onUpdatePrivacy, onUpdateSettings }) {
       padding="16px 0"
     >
       <BoutiqueStack gap={4}>
-        <BoutiqueText weight={700}>{label}</BoutiqueText>
+        <BoutiqueText weight={700}>{t(label)}</BoutiqueText>
         <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-          {description}
+          {t(description)}
         </BoutiqueText>
       </BoutiqueStack>
       <label className="bq-toggle">
@@ -80,21 +82,21 @@ function PrivacySettings({ user, onUpdatePrivacy, onUpdateSettings }) {
           >
             <ShieldCheck size={20} weight="bold" />
           </BoutiqueBox>
-          <BoutiqueText variant="h2">Privacy</BoutiqueText>
+          <BoutiqueText variant="h2">{t("Privacy")}</BoutiqueText>
         </BoutiqueBox>
 
         <BoutiqueStack gap={24}>
           <BoutiqueInput
-            label="Profile Visibility"
+            label={t("Profile Visibility")}
             type="select"
             value={privacy.profileVisibility}
             onChange={(e) => updateField("profileVisibility", e.target.value)}
             options={[
-              { value: "public", label: "Public" },
-              { value: "private", label: "Private" },
-              { value: "role_based", label: "Role-based" },
+              { value: "public", label: t("Public") },
+              { value: "private", label: t("Private") },
+              { value: "role_based", label: t("Role-based") },
             ]}
-            hint="Control who can view your profile."
+            hint={t("Control who can view your profile.")}
           />
 
           <BoutiqueStack
@@ -138,7 +140,7 @@ function PrivacySettings({ user, onUpdatePrivacy, onUpdateSettings }) {
               loading={saving}
               style={{ width: "auto", minWidth: "200px" }}
             >
-              Save Privacy Settings
+              {t("Save Privacy Settings")}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>

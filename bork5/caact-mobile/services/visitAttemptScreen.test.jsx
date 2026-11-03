@@ -3,10 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 import { Alert } from 'react-native';
 import VisitAttemptScreen from '../app/technician/task/[id]/visit-attempt';
 const mockGet = jest.fn(); const mockSubmit = jest.fn();
+let mockLanguage = 'English';
+jest.mock('../hooks/useInterfaceLanguage', () => ({ useInterfaceLanguage: () => ({ t: (value) => require('./interfaceI18n').translateText(value, mockLanguage) }) }));
 jest.mock('./taskStorage', () => ({ getTaskById: (...args) => mockGet(...args), submitVisitAttempt: (...args) => mockSubmit(...args), TASK_STATUS: { IN_PROGRESS: 'In Progress' } }));
 jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'task-1' }), useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useFocusEffect: (cb) => require('react').useEffect(cb, [cb]) }));
 jest.mock('../components/technician/VisitProofCapture', () => ({ onChange }) => require('react').createElement(require('react-native').Text, { onPress: () => onChange({ uri: 'data:image/jpeg;base64,photo' }) }, 'Capture test proof'));
 beforeEach(() => {
+  mockLanguage = 'English';
   mockGet.mockReset(); mockSubmit.mockReset(); mockSubmit.mockResolvedValue({});
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   mockGet.mockResolvedValue({ id: 'task-1', taskCode: 'TSK-TEST', status: 'In Progress', checkIn: { checkedInAt: '2026-09-10T02:00:00Z' } });
@@ -62,4 +65,16 @@ test('failed installation treats a confirmed card timestamp as paid when the sav
   await render(<VisitAttemptScreen />);
   expect(await screen.findByText('Card payment confirmed')).toBeTruthy();
   expect(screen.queryByText(/waiting for payment/i)).toBeNull();
+});
+
+test('visit controls switch to Filipino while the technician note is submitted unchanged', async () => {
+  mockLanguage = 'Filipino';
+  await render(<VisitAttemptScreen />);
+  await screen.findByText('Ano ang susunod na dapat gawin?');
+  await fireEvent.press(screen.getByText('Isara ang pagbisitang ito'));
+  const note = 'Walang sumagot sa bahay.';
+  await fireEvent.changeText(screen.getByPlaceholderText('Ilarawan ang nangyari nang dumating ka'), note);
+  await fireEvent.press(screen.getByText('Capture test proof'));
+  await fireEvent.press(screen.getByText('Isumite ang pagsubok na pagbisita'));
+  await waitFor(() => expect(mockSubmit).toHaveBeenCalledWith('task-1', expect.objectContaining({ note })));
 });

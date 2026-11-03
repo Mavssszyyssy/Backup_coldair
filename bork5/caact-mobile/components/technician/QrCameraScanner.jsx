@@ -5,8 +5,10 @@ import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native"
 
 import TechButton from "./TechButton";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 export default function QrCameraScanner({ active = true, onScanned }) {
+  const { t } = useInterfaceLanguage();
   const [permission, requestPermission] = useCameraPermissions();
   const [locked, setLocked] = useState(false);
   const [testValue, setTestValue] = useState("");
@@ -62,7 +64,7 @@ export default function QrCameraScanner({ active = true, onScanned }) {
               textAlign: "center",
             }}
           >
-            Web QR test
+            {t("Web QR test")}
           </Text>
           <TextInput
             value={testValue}
@@ -83,7 +85,7 @@ export default function QrCameraScanner({ active = true, onScanned }) {
           />
           <View style={{ flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.sm }}>
             <TechButton
-              title="Test QR Scan"
+              title={t("Test QR Scan")}
               onPress={() => onScanned?.(testValue)}
               style={{ flex: 1 }}
               leftIcon={<Ionicons name="scan-sharp" size={18} color={COLORS.surface} />}
@@ -126,13 +128,13 @@ export default function QrCameraScanner({ active = true, onScanned }) {
               textAlign: "center",
             }}
           >
-            Camera access needed
+            {t("Camera access needed")}
           </Text>
           <Text style={{ color: COLORS.textSecondary, textAlign: "center", marginTop: 4 }}>
-            Allow camera access to scan AC unit QR codes.
+            {t("Allow camera access to scan AC unit QR codes.")}
           </Text>
           <TechButton
-            title="Allow Camera"
+            title={t("Allow Camera")}
             onPress={requestPermission}
             style={{ alignSelf: "stretch", marginTop: SPACING.md }}
             leftIcon={<Ionicons name="camera-sharp" size={18} color={COLORS.surface} />}
@@ -206,11 +208,11 @@ export default function QrCameraScanner({ active = true, onScanned }) {
         >
           <Ionicons name="scan-sharp" size={22} color={COLORS.surface} />
           <Text style={{ color: COLORS.surface, flex: 1, marginLeft: SPACING.sm }}>
-            {locked ? "QR code captured. Review the AC unit details below." : "Align the AC unit QR code inside the frame."}
+            {t(locked ? "QR code captured. Review the AC unit details below." : "Align the AC unit QR code inside the frame.")}
           </Text>
           {locked ? (
             <TouchableOpacity onPress={resetScan} hitSlop={10}>
-              <Text style={{ color: "#BAE6FD", fontWeight: FONT.black }}>Scan again</Text>
+              <Text style={{ color: "#BAE6FD", fontWeight: FONT.black }}>{t("Scan again")}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

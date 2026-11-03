@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
+import { formatBusinessDate } from '../../../utils/dateTime';
 import './PendingApprovalsModal.css';
 
 const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
@@ -134,7 +135,7 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Requested:</span>
-                      <span className="detail-value">{new Date(request.createdAt).toLocaleDateString()}</span>
+                      <span className="detail-value">{formatBusinessDate(request.createdAt)}</span>
                     </div>
                   </div>
 

@@ -27,11 +27,13 @@ import {
   saveLogDraft,
   upsertServiceLog,
 } from "../../../../../../services/unitServiceLogStorage";
+import { useInterfaceLanguage } from "../../../../../../hooks/useInterfaceLanguage";
 
 const CONDITION_OPTIONS = ["Excellent", "Good", "Fair", "Poor"];
 
 export default function LogInsertScreen({ mode = "insert" }) {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const params = useLocalSearchParams();
   const { id: taskId, logId, logType = "other", label = "Other" } = params;
   const { current } = useUserContext();
@@ -78,11 +80,11 @@ export default function LogInsertScreen({ mode = "insert" }) {
           setPartsCost(source.partsCost == null ? "" : String(source.partsCost));
         }
       }
-      load().catch(error => { if (active) Alert.alert('Unable to load service note', error?.message || 'Please reopen this work order and try again.'); });
+      load().catch(error => { if (active) Alert.alert(t('Unable to load service note'), t(error?.message || 'Please reopen this work order and try again.')); });
       return () => {
         active = false;
       };
-    }, [taskId, logId, isUpdate, logType]),
+    }, [taskId, logId, isUpdate, logType, t]),
   );
 
   useEffect(() => {
@@ -142,7 +144,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
       skipDraftSaveRef.current = true;
       router.back();
     } catch (error) {
-      Alert.alert('Draft not saved', error?.message || 'Your entries are still here. Please try again.');
+      Alert.alert(t('Draft not saved'), t(error?.message || 'Your entries are still here. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -151,16 +153,16 @@ export default function LogInsertScreen({ mode = "insert" }) {
   const handleSubmit = async () => {
     if (saving) return;
     if (task?.status !== TASK_STATUS.IN_PROGRESS) {
-      Alert.alert("Unavailable", "Service notes can only be added or edited while the work order is in progress.");
+      Alert.alert(t("Unavailable"), t("Service notes can only be added or edited while the work order is in progress."));
       return;
     }
     const reportError = resourcesError || choiceError || serviceReportError(findings, resolution);
     if (!technicianStatus) {
-      Alert.alert("Technician status required", "Choose For Repair, For Further Inspection, or Completed for this visit.");
+      Alert.alert(t("Technician status required"), t("Choose For Repair, For Further Inspection, or Completed for this visit."));
       return;
     }
     if (reportError) {
-      Alert.alert("Service report incomplete", reportError);
+      Alert.alert(t("Service report incomplete"), t(reportError));
       return;
     }
 
@@ -188,14 +190,14 @@ export default function LogInsertScreen({ mode = "insert" }) {
       });
       skipDraftSaveRef.current = true;
       await clearLogDraft(taskId);
-      Alert.alert("Saved", "Service note saved successfully.", [
+      Alert.alert(t("Saved"), t("Service note saved successfully."), [
         {
-          text: "OK",
+          text: t("OK"),
           onPress: () => router.replace(`/technician/task/${taskId}/unit/log/select`),
         },
       ]);
     } catch (error) {
-      Alert.alert("Service note not saved", error?.message || "Please try again. Your entries are still here.");
+      Alert.alert(t("Service note not saved"), t(error?.message || "Please try again. Your entries are still here."));
     } finally {
       setSaving(false);
     }
@@ -215,13 +217,13 @@ export default function LogInsertScreen({ mode = "insert" }) {
         }}
       >
         <PageHeader
-          title={`${isUpdate ? "Update" : "Add"} Service Note`}
-          subtitle={task?.unitName || `Work Order #${String(taskId).slice(0, 8)}`}
+          title={`${t(isUpdate ? "Update" : "Add")} ${t("Service Note")}`}
+          subtitle={task?.unitName || `${t("Work Order")} #${String(taskId).slice(0, 8)}`}
           color={COLORS.tech}
           onBack={persistDraftAndBack}
         />
 
-        <Text style={{ fontWeight: "700", marginBottom: SPACING.md }}>{["1. Condition and resources", "2. Findings and work performed", "3. Review service note"][page]}</Text>
+        <Text style={{ fontWeight: "700", marginBottom: SPACING.md }}>{t(["1. Condition and resources", "2. Findings and work performed", "3. Review service note"][page])}</Text>
         <View style={{ display: page === 0 ? "flex" : "none" }}>
         <Card style={{ marginBottom: SPACING.md }}>
           <TechnicianStatusSelector value={technicianStatus} onChange={setTechnicianStatus} />
@@ -236,7 +238,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
               marginBottom: SPACING.sm,
             }}
           >
-            AC Unit Condition
+            {t("AC Unit Condition")}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
             {CONDITION_OPTIONS.map((opt) => (
@@ -258,7 +260,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
                     fontSize: FONT.sm,
                   }}
                 >
-                  {opt}
+                  {t(opt)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -273,10 +275,10 @@ export default function LogInsertScreen({ mode = "insert" }) {
         <Card style={{ marginBottom: SPACING.md }}>
           <ServiceReportQuickChoices serviceType={reportType} findings={findings} resolution={resolution} onFindingsChange={setFindings} onResolutionChange={setResolution} onValidationChange={setChoiceError} />
           <TextField
-            label="Additional Notes (Optional)"
+            label={t("Additional Notes (Optional)")}
             value={notes}
             onChangeText={setNotes}
-            placeholder="Add customer advice or follow-up details"
+            placeholder={t("Add customer advice or follow-up details")}
             multiline
             numberOfLines={4}
           />
@@ -286,22 +288,22 @@ export default function LogInsertScreen({ mode = "insert" }) {
         {page === 2 ? <>
         <ServiceNoteDetails unitName={task?.unitName} log={{ condition, technicianStatus, hoursSpent: hoursSpent === "" ? null : Number(hoursSpent), partsUsed, laborCost: laborCost === "" ? null : Number(laborCost), partsCost: partsCost === "" ? null : Number(partsCost), findings, resolution, notes, technicianName: getDisplayName(current) }} />
         <TechButton
-          title={saving ? "Saving..." : "Save Service Note"}
+          title={t(saving ? "Saving..." : "Save Service Note")}
           onPress={handleSubmit}
           loading={saving}
           style={{ marginBottom: SPACING.md }}
         />
-        {saving ? <Text accessibilityRole="text" style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: SPACING.sm }}>Saving service note… Please wait.</Text> : null}
+        {saving ? <Text accessibilityRole="text" style={{ color: COLORS.textSecondary, textAlign: "center", marginBottom: SPACING.sm }}>{t("Saving service note… Please wait.")}</Text> : null}
         </> : null}
-        <PageControls page={page} total={3} label="Service note" onChange={next => {
+        <PageControls page={page} total={3} label={t("Service note")} onChange={next => {
           if (saving) return;
           const error = next > page ? (page === 0 ? (!technicianStatus ? "Choose the technician status for this visit." : resourcesError) : choiceError || serviceReportError(findings, resolution)) : "";
-          if (error) { Alert.alert("Check service note", error); return; }
+          if (error) { Alert.alert(t("Check service note"), t(error)); return; }
           Keyboard.dismiss();
           setPage(next);
           scrollRef.current?.scrollTo({ y: 0, animated: true });
         }} />
-        {!isUpdate ? <TechButton title="Save Draft" onPress={persistDraftAndBack} disabled={saving} variant="secondary" /> : null}
+        {!isUpdate ? <TechButton title={t("Save Draft")} onPress={persistDraftAndBack} disabled={saving} variant="secondary" /> : null}
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

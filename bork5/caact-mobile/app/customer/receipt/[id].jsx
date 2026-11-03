@@ -20,6 +20,7 @@ import {
 } from "../../../components/boutique";
 import { formatPeso } from "../../../services/ecommerceService";
 import { getOrderById } from "../../../services/orderStorage";
+import { useInterfaceLanguage } from "../../../hooks/useInterfaceLanguage";
 
 const formatDateTime = (value = "") => {
   if (!value) return "Pending";
@@ -96,6 +97,7 @@ const deliveryAddressRows = (address = {}) => [
 ].filter(([, value]) => String(value || "").trim());
 
 function DeliveryAddressDetails({ address }) {
+  const { t } = useInterfaceLanguage();
   const rows = deliveryAddressRows(address);
   return (
     <View
@@ -108,18 +110,19 @@ function DeliveryAddressDetails({ address }) {
         borderColor: BQ_COLORS.border,
       }}
     >
-      <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>DELIVERY ADDRESS DETAILS</BoutiqueText>
+      <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("DELIVERY ADDRESS DETAILS")}</BoutiqueText>
       {rows.length ? rows.map(([label, value]) => (
         <View key={label} style={{ flexDirection: "row", gap: BQ_SPACING.sm, alignItems: "flex-start" }}>
-          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} style={{ width: 112 }}>{label}</BoutiqueText>
+          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} style={{ width: 112 }}>{t(label)}</BoutiqueText>
           <BoutiqueText variant="body" style={{ flex: 1, fontWeight: "700" }}>{value}</BoutiqueText>
         </View>
-      )) : <BoutiqueText variant="h3">Pending</BoutiqueText>}
+      )) : <BoutiqueText variant="h3">{t("Pending")}</BoutiqueText>}
     </View>
   );
 }
 
 function DetailCell({ label, value, fullWidth = true }) {
+  const { t } = useInterfaceLanguage();
   return (
     <View
       style={{
@@ -137,7 +140,7 @@ function DetailCell({ label, value, fullWidth = true }) {
         {label}
       </BoutiqueText>
       <BoutiqueText variant="body" selectable style={{ fontWeight: "600", flexShrink: 1 }}>
-        {value || "Pending"}
+        {value || t("Pending")}
       </BoutiqueText>
     </View>
   );
@@ -168,6 +171,7 @@ function AmountRow({ label, value, strong = false, negative = false }) {
 
 export default function ReceiptScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { id } = useLocalSearchParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -203,18 +207,18 @@ export default function ReceiptScreen() {
 
   return (
     <>
-      <BoutiqueHeader title="Your receipt" onBack={() => router.back()} />
+      <BoutiqueHeader title={t("Your receipt")} onBack={() => router.back()} />
       <BoutiqueScreen contentContainerStyle={{ padding: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl * 3 }}>
         {loading ? (
           <BoutiqueCard>
-            <BoutiqueText color={BQ_COLORS.inkMuted}>Loading receipt…</BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Loading receipt…")}</BoutiqueText>
           </BoutiqueCard>
         ) : !order || !order.receiptAvailable ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={48} color={BQ_COLORS.inkFaint} />
-            <BoutiqueText variant="h2" align="center">Receipt unavailable</BoutiqueText>
-            <BoutiqueText color={BQ_COLORS.inkMuted} align="center">The official receipt will appear after payment is confirmed.</BoutiqueText>
-            <BoutiqueButton title="View Orders" onPress={() => router.replace("/customer/orders")} />
+            <BoutiqueText variant="h2" align="center">{t("Receipt unavailable")}</BoutiqueText>
+            <BoutiqueText color={BQ_COLORS.inkMuted} align="center">{t("The official receipt will appear after payment is confirmed.")}</BoutiqueText>
+            <BoutiqueButton title={t("View Orders")} onPress={() => router.replace("/customer/orders")} />
           </BoutiqueCard>
         ) : (
           <View
@@ -240,52 +244,52 @@ export default function ReceiptScreen() {
                   backgroundColor: "#eff6ff",
                 }}
               >
-                <Image source={require("../../../images/cold logo.png")} accessibilityLabel="Cold Air logo" style={{ width: 54, height: 54 }} resizeMode="contain" />
+                <Image source={require("../../../images/cold logo.png")} accessibilityLabel={t("Cold Air logo")} style={{ width: 54, height: 54 }} resizeMode="contain" />
               </View>
               <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
-                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>OFFICIAL E-RECEIPT</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("OFFICIAL E-RECEIPT")}</BoutiqueText>
                 <BoutiqueText variant="h2">Coldair ACT</BoutiqueText>
               </View>
               <View style={{ alignItems: "flex-start", gap: BQ_SPACING.xs }}>
-                <BoutiqueChip label={String(receipt.paymentStatus).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
+                <BoutiqueChip label={t(String(receipt.paymentStatus)).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
               </View>
             </View>
 
             <View style={{ paddingHorizontal: BQ_SPACING.lg, paddingVertical: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderTopWidth: 1, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
-              <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>ORDER</BoutiqueText>
+              <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("ORDER")}</BoutiqueText>
               <BoutiqueText variant="h3" style={{ marginTop: BQ_SPACING.xs }}>{orderName}</BoutiqueText>
             </View>
 
             <View style={{ backgroundColor: "#0f172a" }}>
               <View style={{ padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">Receipt number</BoutiqueText>
+                <BoutiqueText variant="label" color="#94a3b8">{t("Receipt number")}</BoutiqueText>
                 <BoutiqueText variant="body" selectable color="#fff" style={{ fontWeight: "600" }}>{references.receiptNumber}</BoutiqueText>
                 {references.orderNumber ? <>
-                  <BoutiqueText variant="label" color="#94a3b8" style={{ marginTop: BQ_SPACING.sm }}>Order number</BoutiqueText>
+                  <BoutiqueText variant="label" color="#94a3b8" style={{ marginTop: BQ_SPACING.sm }}>{t("Order number")}</BoutiqueText>
                   <BoutiqueText variant="body" selectable color="#fff">{references.orderNumber}</BoutiqueText>
                 </> : null}
               </View>
               <View style={{ paddingHorizontal: BQ_SPACING.md, paddingBottom: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">Date issued</BoutiqueText>
-                <BoutiqueText variant="body" color="#fff">{formatDateTime(receipt.issuedAt)}</BoutiqueText>
+                <BoutiqueText variant="label" color="#94a3b8">{t("Date issued")}</BoutiqueText>
+                <BoutiqueText variant="body" color="#fff">{receipt.issuedAt ? formatDateTime(receipt.issuedAt) : t("Pending")}</BoutiqueText>
               </View>
             </View>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: BQ_COLORS.border }}>
-              <DetailCell label="CUSTOMER" value={[invoice.customer?.name || order.customerName || order.address?.name || "Customer", invoice.customer?.email, invoice.customer?.phone].filter(Boolean).join("\n")} />
-              <DetailCell label="BRANCH" value={invoice.branch || order.stockSourceBranch || order.customerBranch || "Pending"} />
-              <DetailCell label="PAYMENT METHOD" value={receipt.paymentMethod} />
-              <DetailCell label="PAYMENT REFERENCE" value={receipt.paymentReference} />
+              <DetailCell label={t("CUSTOMER")} value={[invoice.customer?.name || order.customerName || order.address?.name || t("Customer"), invoice.customer?.email, invoice.customer?.phone].filter(Boolean).join("\n")} />
+              <DetailCell label={t("BRANCH")} value={invoice.branch || order.stockSourceBranch || order.customerBranch || t("Pending")} />
+              <DetailCell label={t("PAYMENT METHOD")} value={t(receipt.paymentMethod)} />
+              <DetailCell label={t("PAYMENT REFERENCE")} value={t(receipt.paymentReference)} />
               <DeliveryAddressDetails address={deliveryAddress} />
-              <DetailCell label="BILLING ADDRESS" value={formatAddress(invoice.billingAddress || order.address) || "Same as delivery"} />
-              <DetailCell label="Delivery progress" value={order.tracking?.currentLabel || customerStatus(invoice.orderStatus || order.workflowLabel || "Pending")} />
-              <DetailCell label="WARRANTY / TECHNICIAN" value={[invoice.warranty, invoice.technician?.name && `${invoice.technician.name} (${invoice.technician.status})`].filter(Boolean).join("\n") || "Warranty activates after installation."} />
+              <DetailCell label={t("BILLING ADDRESS")} value={formatAddress(invoice.billingAddress || order.address) || t("Same as delivery")} />
+              <DetailCell label={t("Delivery progress")} value={t(order.tracking?.currentLabel || customerStatus(invoice.orderStatus || order.workflowLabel || "Pending"))} />
+              <DetailCell label={t("WARRANTY / TECHNICIAN")} value={[invoice.warranty, invoice.technician?.name && `${invoice.technician.name} (${t(invoice.technician.status)})`].filter(Boolean).join("\n") || t("Warranty activates after installation.")} />
             </View>
 
             <View style={{ paddingHorizontal: BQ_SPACING.lg, paddingTop: BQ_SPACING.lg, gap: BQ_SPACING.sm }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: BQ_SPACING.sm, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }}>
-                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>ITEM</BoutiqueText>
-                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>TOTAL</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("ITEM")}</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("TOTAL")}</BoutiqueText>
               </View>
               {(order.items || []).map((item, index) => {
                 const quantity = Number(item.quantity || 1);
@@ -296,12 +300,12 @@ export default function ReceiptScreen() {
                       <View style={{ flex: 1 }}>
                         <BoutiqueText variant="h3">{item.name}</BoutiqueText>
                         {!!item.specs && <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.specs}</BoutiqueText>}
-                        <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
-                        {!!item.serialNumbers?.length && <BoutiqueText variant="caption" color={BQ_COLORS.success}>Serial: {item.serialNumbers.join(", ")}</BoutiqueText>}
+                        <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Horsepower")}: {item.horsepower ? formatHorsepower(item) : t(formatHorsepower(item))}</BoutiqueText>
+                        {!!item.serialNumbers?.length && <BoutiqueText variant="caption" color={BQ_COLORS.success}>{t("Serial")}: {item.serialNumbers.join(", ")}</BoutiqueText>}
                       </View>
                       <BoutiqueText variant="h3">{formatPeso(price * quantity)}</BoutiqueText>
                     </View>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Qty {quantity} × {formatPeso(price)}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Qty")} {quantity} × {formatPeso(price)}</BoutiqueText>
                   </View>
                 );
               })}
@@ -309,22 +313,22 @@ export default function ReceiptScreen() {
 
             <View style={{ padding: BQ_SPACING.lg, gap: BQ_SPACING.lg }}>
               <BoutiqueText color={BQ_COLORS.inkMuted} style={{ lineHeight: 21 }}>
-                Keep this receipt for payment questions and warranty support.
+                {t("Keep this receipt for payment questions and warranty support.")}
               </BoutiqueText>
               {!!order.tracking?.timeline?.length && (
                 <View style={{ gap: BQ_SPACING.xs, padding: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderRadius: BQ_RADIUS.sm }}>
-                  <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>DELIVERY TRACKING</BoutiqueText>
+                  <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("DELIVERY TRACKING")}</BoutiqueText>
                   {order.tracking.timeline.map((step) => (
-                    <BoutiqueText key={step.stage} variant="caption">✓ {step.label}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</BoutiqueText>
+                    <BoutiqueText key={step.stage} variant="caption">✓ {t(step.label)}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</BoutiqueText>
                   ))}
                 </View>
               )}
               <View style={{ gap: BQ_SPACING.sm }}>
-                <AmountRow label="Subtotal" value={receipt.subtotal} />
-                <AmountRow label="VAT" value={receipt.vat} />
-                <AmountRow label="Delivery" value={receipt.delivery} />
-                <AmountRow label="Discount" value={receipt.discount} negative />
-                <AmountRow label={receipt.totalLabel} value={receipt.total} strong />
+                <AmountRow label={t("Subtotal")} value={receipt.subtotal} />
+                <AmountRow label={t("VAT")} value={receipt.vat} />
+                <AmountRow label={t("Delivery")} value={receipt.delivery} />
+                <AmountRow label={t("Discount")} value={receipt.discount} negative />
+                <AmountRow label={t(receipt.totalLabel)} value={receipt.total} strong />
               </View>
             </View>
           </View>

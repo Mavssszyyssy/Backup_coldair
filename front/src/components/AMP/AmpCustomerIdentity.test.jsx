@@ -9,5 +9,6 @@ afterEach(cleanup);
 it.each(['admin', 'superadmin'])('identifies a customer before %s generates a report', role => {
   state.role = role;
   render(<AmpReportCenter units={[{ unitId: 'u1', customerName: 'Sample Customer', modelName: 'AC Model', capacityHp: 2.5, serialNumber: 'SERIAL-1' }]} />);
-  expect(screen.getByRole('option', { name: 'Sample Customer · AC Model · 2.5 HP · SERIAL-1' })).toBeTruthy();
+  expect(screen.getByRole('option', { name: 'Sample Customer' })).toBeTruthy();
+  expect(screen.getByRole('option', { name: 'Sample Customer · AC Model · SERIAL-1' })).toBeTruthy();
 });

@@ -2,6 +2,8 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import CustomerChatScreen from "../app/customer/chat";
+import { useInterfaceLanguage } from "../hooks/useInterfaceLanguage";
+import { translateText } from "./interfaceI18n";
 
 const mockPush = jest.fn();
 const mockGetToken = jest.fn();
@@ -15,15 +17,27 @@ jest.mock("./api", () => ({
   getStoredToken: (...args) => mockGetToken(...args),
   sendCustomerChatMessage: (...args) => mockSend(...args),
 }));
+jest.mock("../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  useInterfaceLanguage.mockReturnValue({ t: (value) => value });
   mockGetToken.mockResolvedValue("customer-token");
   mockSend.mockResolvedValue({
     success: true,
     provider: "openai",
     reply: { text: "Open My Orders and choose Pay Again.", route: "/my-orders" },
   });
+});
+
+test("chat switches static prompts while keeping the original question and AI response", async () => {
+  useInterfaceLanguage.mockReturnValue({ t: (value) => translateText(value, "Filipino") });
+  await render(<CustomerChatScreen />);
+  await fireEvent.press(screen.getByText("Saan ko masusubaybayan ang aking order?"));
+  await waitFor(() => expect(mockSend).toHaveBeenCalledWith("customer-token", expect.objectContaining({
+    message: "Where can I track my order?",
+  })));
+  expect(screen.getByText("Open My Orders and choose Pay Again.")).toBeTruthy();
 });
 
 test("mobile customer chat sends the question to AI and maps its page action", async () => {

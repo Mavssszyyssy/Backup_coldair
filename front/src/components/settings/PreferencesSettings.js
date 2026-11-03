@@ -74,6 +74,7 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
         <BoutiqueStack gap={24}>
           <BoutiqueInput
             label={t("Theme")}
+            aria-label={t("Theme")}
             type="select"
             value={preferences.theme}
             onChange={(e) => updateField("theme", e.target.value)}
@@ -81,11 +82,12 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
               { value: "light", label: t("Light") },
               { value: "dark", label: t("Dark") },
             ]}
-            hint="Choose your app appearance."
+            hint={t("Choose your app appearance.")}
           />
 
           <BoutiqueInput
             label={t("Language")}
+            aria-label={t("Language")}
             type="select"
             value={preferences.language}
             onChange={(e) => updateField("language", e.target.value)}
@@ -93,11 +95,12 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
               { value: "English", label: "English" },
               { value: "Filipino", label: "Filipino" },
             ]}
-            hint="Choose your preferred language."
+            hint={t("Choose your preferred language.")}
           />
 
           <BoutiqueInput
             label={t("Timezone")}
+            aria-label={t("Timezone")}
             type="select"
             value={preferences.timezone}
             onChange={(e) => updateField("timezone", e.target.value)}
@@ -107,7 +110,7 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
               { value: "America/New_York", label: "America/New_York" },
               { value: "Europe/London", label: "Europe/London" },
             ]}
-            hint="Use your locale for schedules and logs."
+            hint={t("Use your locale for schedules and logs.")}
           />
 
           <BoutiqueBox
@@ -119,12 +122,13 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
             <BoutiqueStack gap={4}>
               <BoutiqueText weight={700}>{t("Auto-booking")}</BoutiqueText>
               <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-                Automatically schedule recurring services.
+                {t("Automatically schedule recurring services.")}
               </BoutiqueText>
             </BoutiqueStack>
             <label className="bq-toggle">
               <input
                 type="checkbox"
+                aria-label={t("Auto-booking")}
                 checked={preferences.autoBook}
                 onChange={() => updateField("autoBook", !preferences.autoBook)}
               />

@@ -9,10 +9,12 @@ import KeyboardAwareScrollView from "../../../components/ui/KeyboardAwareScrollV
 import PageHeader from "../../../components/ui/PageHeader";
 import { COLORS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
+import { useInterfaceLanguage } from "../../../hooks/useInterfaceLanguage";
 
 export default function CustomerOobeScreen() {
   const router = useRouter();
   const { current, updateMyAccount } = useUserContext();
+  const { t } = useInterfaceLanguage();
   const [saving, setSaving] = useState(false);
 
   const finishOnboarding = async () => {
@@ -25,7 +27,7 @@ export default function CustomerOobeScreen() {
       }
       router.replace("/customer/home");
     } catch (error) {
-      Alert.alert("Setup not completed", error.message || "Please try again.");
+      Alert.alert(t("Setup not completed"), t(error.message || "Please try again."));
     } finally {
       setSaving(false);
     }
@@ -34,12 +36,12 @@ export default function CustomerOobeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <KeyboardAwareScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: SPACING.md }}>
-        <PageHeader title="Account Ready" subtitle="Your email address has been verified" color={COLORS.primary} />
+        <PageHeader title={t("Account Ready")} subtitle={t("Your email address has been verified")} color={COLORS.primary} />
         <Card>
-          <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: "800", marginBottom: SPACING.sm }}>Welcome to Cold Air ACT</Text>
-          <Text style={{ color: COLORS.textSecondary, lineHeight: 22 }}>Your account is ready. Future sign-ins use your password followed by a one-time code sent to your account email.</Text>
+          <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: "800", marginBottom: SPACING.sm }}>{t("Welcome to Cold Air ACT")}</Text>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 22 }}>{t("Your account is ready. Future sign-ins use your password followed by a one-time code sent to your account email.")}</Text>
         </Card>
-        <Button title={saving ? "Finishing…" : "Continue"} onPress={finishOnboarding} loading={saving} disabled={saving} />
+        <Button title={saving ? t("Finishing…") : t("Continue")} onPress={finishOnboarding} loading={saving} disabled={saving} />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

@@ -4,8 +4,8 @@ import { useUserContext } from "./UserContext";
 
 const CartContext = createContext(null);
 
-const normalizeQuantity = (quantity, max = Number.POSITIVE_INFINITY) =>
-  Math.max(1, Math.min(Math.floor(Number(quantity) || 1), Math.max(1, Number(max) || 1)));
+const validQuantity = (quantity, stock = Number.POSITIVE_INFINITY) =>
+  Number.isSafeInteger(quantity) && quantity > 0 && quantity <= stock;
 
 export function CartProvider({ children }) {
   const { current, initialized } = useUserContext();
@@ -48,18 +48,19 @@ export function CartProvider({ children }) {
   }, [cart, hydrated, cartStorageKey]);
 
   const addToCart = useCallback((product, quantity = 1) => {
-    if (!product?.id) return;
+    if (!product?.id || !validQuantity(quantity)) return;
     setCart((currentCart) => {
       const existing = currentCart.find((item) => String(item.id) === String(product.id));
       const max = product.stock ?? Number.POSITIVE_INFINITY;
+      if (!validQuantity((existing?.quantity || 0) + quantity, max)) return currentCart;
       if (existing) {
         return currentCart.map((item) =>
           String(item.id) === String(product.id)
-            ? { ...item, ...product, quantity: normalizeQuantity(item.quantity + quantity, max) }
+            ? { ...item, ...product, quantity: item.quantity + quantity }
             : item,
         );
       }
-      return [...currentCart, { ...product, quantity: normalizeQuantity(quantity, max) }];
+      return [...currentCart, { ...product, quantity }];
     });
   }, []);
 
@@ -67,7 +68,7 @@ export function CartProvider({ children }) {
     setCart((currentCart) =>
       currentCart.map((item) =>
         String(item.id) === String(productId)
-          ? { ...item, quantity: normalizeQuantity(quantity, item.stock ?? Number.POSITIVE_INFINITY) }
+          ? validQuantity(quantity, item.stock ?? Number.POSITIVE_INFINITY) ? { ...item, quantity } : item
           : item,
       ),
     );

@@ -1,4 +1,6 @@
 import { Headphones, ShieldCheck, Truck } from "@phosphor-icons/react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import {
   BQ_COLORS,
   BQ_FONTS,
@@ -6,6 +8,8 @@ import {
 } from "../common/boutique/BoutiqueTheme";
 
 export default function HomeInfo() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const features = [
     {
       icon: ShieldCheck,
@@ -28,11 +32,9 @@ export default function HomeInfo() {
     <section className="home-info">
       <div className="info-container">
         <div className="info-main">
-          <h2 className="info-title">Why AeroPulse?</h2>
+          <h2 className="info-title">{t("Why AeroPulse?")}</h2>
           <p className="info-text">
-            We don't just sell air conditioners; we curate comfort environments.
-            Our boutique approach ensures that every unit is paired with
-            precision engineering and world-class support.
+            {t("We don't just sell air conditioners; we curate comfort environments. Our boutique approach ensures that every unit is paired with precision engineering and world-class support.")}
           </p>
           <div className="info-features">
             {features.map((f, i) => (
@@ -41,8 +43,8 @@ export default function HomeInfo() {
                   <f.icon size={24} weight="fill" />
                 </div>
                 <div className="feat-content">
-                  <h4>{f.title}</h4>
-                  <p>{f.desc}</p>
+                  <h4>{t(f.title)}</h4>
+                  <p>{t(f.desc)}</p>
                 </div>
               </div>
             ))}
@@ -52,7 +54,7 @@ export default function HomeInfo() {
           {/* A high-end floating stat block */}
           <div className="stat-blob">
             <span className="stat-num">99.8%</span>
-            <span className="stat-label">Client Satisfaction</span>
+            <span className="stat-label">{t("Client Satisfaction")}</span>
           </div>
         </div>
       </div>

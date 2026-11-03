@@ -9,6 +9,8 @@ import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
+import { useUser } from "../../../context/UserContext";
+import { translateText } from "../../../utils/customerI18n";
 
 export default function BoutiqueHeader({
   variant = "text", // "text" for Shop, "logo" for Home
@@ -23,11 +25,13 @@ export default function BoutiqueHeader({
   isAuthenticated = false,
   scrolled = false,
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   return (
     <BoutiqueBox
       tag="header"
       height={scrolled ? "72px" : BQ_GEOMETRY.headerHeight}
-      background="rgba(255, 255, 255, 0.9)"
+      background={BQ_COLORS.surface}
       justify="center"
       className={`bq-header ${scrolled ? "scrolled" : ""}`}
       style={{
@@ -59,7 +63,7 @@ export default function BoutiqueHeader({
             type="button"
             className="bq-action-btn"
             onClick={onLeftAction}
-            aria-label={leftAction === "back" ? "Go back" : "Open menu"}
+            aria-label={t(leftAction === "back" ? "Go back" : "Open menu")}
           >
             {leftAction === "back" ? (
               <ArrowLeft size={18} weight="bold" />
@@ -105,7 +109,7 @@ export default function BoutiqueHeader({
               className="bq-title-text"
               style={{ letterSpacing: "-0.04em" }}
             >
-              {title}
+              {t(title)}
             </BoutiqueText>
           )}
         </BoutiqueBox>
@@ -122,7 +126,7 @@ export default function BoutiqueHeader({
               type="button"
               className="bq-action-btn bq-notif-btn"
               onClick={onNotificationClick}
-              aria-label="Open alerts"
+              aria-label={t("Open alerts")}
             >
               <Bell size={22} weight="bold" />
               {notificationCount > 0 && (
@@ -138,7 +142,7 @@ export default function BoutiqueHeader({
               type="button"
               className="bq-cart-trigger"
               onClick={onCartClick}
-              aria-label="Open cart"
+              aria-label={t("Open cart")}
             >
               <ShoppingCartSimple size={22} weight="bold" />
               {cartCount > 0 && (

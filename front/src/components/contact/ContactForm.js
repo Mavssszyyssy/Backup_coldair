@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { validateEmailForSubmission } from "../../domain/emailPolicy";
+import { translateText } from "../../utils/customerI18n";
 
 const CATEGORY_OPTIONS = [
   { value: "general", label: "General question" },
@@ -17,7 +18,8 @@ const getName = (user = {}) =>
   user.name || `${user.name_first || ""} ${user.name_last || ""}`.trim();
 
 function ContactForm() {
-  const { user } = useUser();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const requestKey = useRef(makeRequestKey());
   const [formData, setFormData] = useState({
     name: getName(user), email: user?.email || "", phone: user?.phone || "",
@@ -71,54 +73,54 @@ function ContactForm() {
   return (
     <section className="form-section" id="contact-message-form" aria-labelledby="contact-form-heading">
       <div className="contact-section-heading">
-        <span className="contact-section-eyebrow">Customer support</span>
-        <h2 id="contact-form-heading">Send Us a Message</h2>
-        <p>Your message will be routed to the correct branch team and can also be reviewed by SuperAdmin.</p>
+        <span className="contact-section-eyebrow">{t("Customer support")}</span>
+        <h2 id="contact-form-heading">{t("Send Us a Message")}</h2>
+        <p>{t("Your message will be routed to the correct branch team and can also be reviewed by SuperAdmin.")}</p>
       </div>
       <div className="contact-mobile-service-note">
-        Maintenance, repair, cleaning, installation-support, and warranty requests must be submitted in the AeroPulse Mobile App. Messages sent here do not create service appointments.
-        <a href="/services"> View mobile service instructions.</a>
+        {t("Maintenance, repair, cleaning, installation-support, and warranty requests must be submitted in the AeroPulse Mobile App. Messages sent here do not create service appointments.")}
+        <a href="/services"> {t("View mobile service instructions.")}</a>
       </div>
       {confirmation ? (
         <div className="contact-form-notice contact-form-notice--success" role="status">
-          <strong>Message sent successfully.</strong>
-          <span>Keep reference <b>{confirmation.ticketCode}</b>. We will notify you when our team replies.</span>
+          <strong>{t("Message sent successfully.")}</strong>
+          <span>{t("Keep reference")} <b>{confirmation.ticketCode}</b>. {t("We will notify you when our team replies.")}</span>
         </div>
       ) : null}
-      {error ? <div className="contact-form-notice contact-form-notice--error" role="alert">{error}</div> : null}
+      {error ? <div className="contact-form-notice contact-form-notice--error" role="alert">{t(error)}</div> : null}
       <form className="contact-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="contact-name">Your Name *</label>
+            <label htmlFor="contact-name">{t("Your Name")} *</label>
             <input id="contact-name" type="text" value={formData.name} onChange={(event) => update("name", event.target.value)} maxLength={120} required />
           </div>
           <div className="form-group">
-            <label htmlFor="contact-email">Email Address *</label>
+            <label htmlFor="contact-email">{t("Email Address")} *</label>
             <input id="contact-email" type="email" value={formData.email} onChange={(event) => update("email", event.target.value)} maxLength={180} required />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="contact-phone">Phone Number</label>
+            <label htmlFor="contact-phone">{t("Phone Number")}</label>
             <input id="contact-phone" type="tel" placeholder="09XX XXX XXXX" value={formData.phone} onChange={(event) => update("phone", event.target.value)} maxLength={30} />
           </div>
           <div className="form-group">
-            <label htmlFor="contact-category">What can we help with? *</label>
+            <label htmlFor="contact-category">{t("What can we help with?")} *</label>
             <select id="contact-category" value={formData.category} onChange={(event) => update("category", event.target.value)} required>
-              {CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
           </div>
         </div>
         <div className="form-group">
-          <label htmlFor="contact-subject">Subject *</label>
-          <input id="contact-subject" type="text" placeholder="Briefly describe what you need" value={formData.subject} onChange={(event) => update("subject", event.target.value)} maxLength={160} required />
+          <label htmlFor="contact-subject">{t("Subject")} *</label>
+          <input id="contact-subject" type="text" placeholder={t("Briefly describe what you need")} value={formData.subject} onChange={(event) => update("subject", event.target.value)} maxLength={160} required />
         </div>
         <div className="form-group">
-          <label htmlFor="contact-message">Message *</label>
-          <textarea id="contact-message" rows="5" placeholder="Include any order number, AC model, or other details that will help us assist you." value={formData.message} onChange={(event) => update("message", event.target.value)} minLength={10} maxLength={3000} required />
+          <label htmlFor="contact-message">{t("Message")} *</label>
+          <textarea id="contact-message" rows="5" placeholder={t("Include any order number, AC model, or other details that will help us assist you.")} value={formData.message} onChange={(event) => update("message", event.target.value)} minLength={10} maxLength={3000} required />
           <small className="contact-character-count">{formData.message.length}/3000</small>
         </div>
-        <button type="submit" className="submit-btn" disabled={submitting}>{submitting ? "Sending…" : "Send to Support"}</button>
+        <button type="submit" className="submit-btn" disabled={submitting}>{t(submitting ? "Sending…" : "Send to Support")}</button>
       </form>
     </section>
   );

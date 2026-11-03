@@ -46,7 +46,7 @@
 }
 
 .bq-btn--outline {
-    background: white;
+    background: var(--bq-color-surface);
     color: var(--bq-color-ink);
     border: 1px solid var(--bq-color-border);
 }
@@ -56,7 +56,7 @@
 
 .bq-btn--ghost {
     background: transparent;
-    color: #71717a;
+    color: var(--bq-color-ink-muted);
 }
 .bq-btn--ghost:hover:not(:disabled) {
     background: var(--bq-color-bg);
@@ -65,7 +65,7 @@
 
 .bq-btn--cancel {
     background: transparent;
-    color: #71717a;
+    color: var(--bq-color-ink-muted);
 }
 .bq-btn--cancel:hover:not(:disabled) {
     background: rgba(239, 68, 68, 0.05);
@@ -158,7 +158,7 @@
     position: fixed;
     top: 0;
     height: 100%;
-    background: white;
+    background: var(--bq-color-surface);
     z-index: 2000;
     display: flex;
     flex-direction: column;

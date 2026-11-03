@@ -25,3 +25,12 @@ it('ignores a legacy SMS choice and requests and verifies email only', async () 
   const verifyCall = apiRequest.mock.calls.find(([path]) => path === '/auth/verify-otp');
   expect(JSON.parse(verifyCall[1].body).channel).toBe('email');
 });
+
+it('shows Filipino verification controls without changing the saved email', () => {
+  const onNext = vi.fn();
+  render(<RegisterEmailStep currentLanguage="Filipino" formData={{ email: 'customer@gmail.com', emailVerified: true }} errors={{}} detectedRole="customer" onFieldChange={vi.fn()} onNext={onNext} onBack={vi.fn()} />);
+  expect(screen.getByText('I-verify ang iyong email')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('customer@gmail.com')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /magpatuloy/i }));
+  expect(onNext).toHaveBeenCalledOnce();
+});

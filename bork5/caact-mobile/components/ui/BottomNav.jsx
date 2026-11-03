@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS } from "../../constants/theme";
 import NavButton from "./NavButton";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 export default function BottomNav() {
+  const { t } = useInterfaceLanguage();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 4);
 
@@ -20,6 +22,7 @@ export default function BottomNav() {
         alignItems: "center",
         paddingBottom: bottomInset,
         paddingHorizontal: 4,
+        paddingTop: 2,
         shadowColor: "#0F2742",
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.08,
@@ -30,31 +33,31 @@ export default function BottomNav() {
       <NavButton
         href="/customer/home"
         iconName="home-sharp"
-        label="Home"
+        label={t("Home")}
       />
 
       <NavButton
         href="/customer/shop"
         iconName="bag-handle-sharp"
-        label="Shop"
+        label={t("Shop")}
       />
 
       <NavButton
         href="/customer/services"
         iconName="construct-sharp"
-        label="Services"
+        label={t("Services")}
       />
 
       <NavButton
         href="/customer/orders"
         iconName="receipt-sharp"
-        label="Orders"
+        label={t("Orders")}
       />
 
       <NavButton
         href="/customer/settings"
         iconName="person-circle-sharp"
-        label="Account"
+        label={t("Account")}
       />
     </View>
   );

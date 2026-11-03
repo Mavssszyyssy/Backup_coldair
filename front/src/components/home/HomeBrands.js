@@ -4,12 +4,16 @@ import {
   BQ_GEOMETRY,
   BQ_SHADOWS,
 } from "../common/boutique/BoutiqueTheme";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 export default function HomeBrands({ brands }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   return (
     <section className="home-brands">
       <div className="brands-container">
-        <h2 className="brands-title">Our Partners</h2>
+        <h2 className="brands-title">{t("Our Partners")}</h2>
         <div className="brands-grid">
           {brands.map((brand) => (
             <div key={brand.id} className="brand-card">
@@ -23,7 +27,7 @@ export default function HomeBrands({ brands }) {
               </div>
               <div className="brand-info">
                 <span className="brand-name">{brand.name}</span>
-                <span className="brand-desc">{brand.description}</span>
+                <span className="brand-desc">{t(brand.description)}</span>
               </div>
             </div>
           ))}

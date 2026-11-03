@@ -16,27 +16,17 @@ import StatusChip from "../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { getTasksByTechnician, TASK_STATUS } from "../../services/taskStorage";
-import { manilaDateKey, taskMatchesScheduleWindow } from "../../services/taskScheduleFilter";
+import { countTasksByScheduleWindow, manilaDateKey, taskMatchesScheduleWindow } from "../../services/taskScheduleFilter";
 import { sortTechnicianWorkOrders } from "../../services/technicianWorkOrderSort";
 import { workOrderRouteFilters } from "../../services/technicianWorkOrderFilters";
-
-const STATUS_COLOR = {
-  [TASK_STATUS.PENDING]: COLORS.warning,
-  [TASK_STATUS.ACCEPTED]: COLORS.tech,
-  [TASK_STATUS.ON_THE_WAY]: COLORS.tech,
-  [TASK_STATUS.ARRIVED]: COLORS.success,
-  [TASK_STATUS.INSTALLING]: COLORS.tech,
-  [TASK_STATUS.IN_PROGRESS]: COLORS.tech,
-  [TASK_STATUS.ON_HOLD]: COLORS.warning,
-  [TASK_STATUS.FAILED]: COLORS.danger,
-  [TASK_STATUS.RESCHEDULED]: COLORS.warning,
-  [TASK_STATUS.COMPLETED]: COLORS.success,
-  [TASK_STATUS.CANCELLED]: COLORS.textMuted,
-};
+import { priorityPresentation, taskPriorityKey } from "../../services/technicianPriority";
+import { workOrderStatusKey, workOrderStatusPresentation } from "../../services/technicianWorkOrderPresentation";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const WORK_FILTERS = [
   { key: "all", label: "All" },
   { key: "active", label: "Active" },
+  { key: "in-progress", label: "In progress" },
   { key: "pending", label: "Awaiting Admin" },
   { key: "on-hold", label: "On hold" },
   { key: "completed", label: "Completed" },
@@ -47,12 +37,12 @@ const STATUS_GROUPS = {
   active: new Set(["accepted", "on-the-way", "arrived", "installing", "in-progress"]),
 };
 
-const taskStatusKey = (status = "") => String(status).trim().toLowerCase().replace(/[_\s]+/g, "-");
-const taskPriorityKey = (priority = "") => String(priority || "Normal").trim().toLowerCase();
+const taskStatusKey = workOrderStatusKey;
 const PRIORITY_FILTERS = [
   { key: "all", label: "Any priority" },
   { key: "urgent", label: "Urgent" },
   { key: "high", label: "High" },
+  { key: "medium", label: "Medium" },
   { key: "normal", label: "Normal" },
   { key: "low", label: "Low" },
 ];
@@ -87,11 +77,6 @@ const taskMatchesQuery = (task = {}, query = "") => {
   return searchable.includes(term);
 };
 
-function Badge({ label }) {
-  const c = STATUS_COLOR[label] || COLORS.textSecondary;
-  return <StatusChip label={label} color={c} />;
-}
-
 function getTaskSerials(task = {}) {
   const safeTask = task && typeof task === "object" ? task : {};
   const progressSerials = Array.isArray(safeTask.registrationProgress?.requiredSerials)
@@ -121,6 +106,7 @@ function FilterSheet({
   onSearchChange,
   tasks,
 }) {
+  const { t } = useInterfaceLanguage();
   const closeSheet = () => {
     Keyboard.dismiss();
     onClose();
@@ -149,10 +135,10 @@ function FilterSheet({
               <Ionicons name="options-sharp" size={21} color={COLORS.tech} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>Filter work orders</Text>
-              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Find work by status, priority, customer, or reference</Text>
+              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{t("Filter work orders")}</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{t("Find work by status, priority, customer, or reference")}</Text>
             </View>
-            <TouchableOpacity onPress={closeSheet} hitSlop={12} accessibilityLabel="Close filters">
+            <TouchableOpacity onPress={closeSheet} hitSlop={12} accessibilityLabel={t("Close filters")}>
               <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -162,23 +148,23 @@ function FilterSheet({
             <TextInput
               value={searchQuery}
               onChangeText={onSearchChange}
-              placeholder="Search customer, task, order, or serial"
+              placeholder={t("Search customer, task, order, or serial")}
               placeholderTextColor={COLORS.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
               onSubmitEditing={Keyboard.dismiss}
               style={{ flex: 1, color: COLORS.textPrimary, marginLeft: SPACING.xs, paddingVertical: SPACING.xs, fontSize: FONT.md }}
-              accessibilityLabel="Search work orders"
+              accessibilityLabel={t("Search work orders")}
             />
             {searchQuery ? (
-              <TouchableOpacity onPress={() => onSearchChange("")} hitSlop={10} accessibilityLabel="Clear work order search">
+              <TouchableOpacity onPress={() => onSearchChange("")} hitSlop={10} accessibilityLabel={t("Clear work order search")}>
                 <Ionicons name="close-circle-sharp" size={20} color={COLORS.textMuted} />
               </TouchableOpacity>
             ) : null}
           </View>
 
-          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Work status</Text>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>{t("Work status")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
             {WORK_FILTERS.map((status) => {
               const active = statusFilter === status.key;
@@ -190,9 +176,11 @@ function FilterSheet({
                   key={status.key}
                   onPress={() => onStatusChange(status.key)}
                   activeOpacity={0.78}
-                  style={{ minHeight: 38, flexDirection: "row", alignItems: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface, paddingHorizontal: SPACING.sm + 2, gap: 6 }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={{ minHeight: 44, flexDirection: "row", alignItems: "center", borderRadius: RADIUS.full, borderWidth: 2, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface, paddingHorizontal: SPACING.sm + 2, gap: 6 }}
                 >
-                  <Text style={{ color: active ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold }}>{status.label}</Text>
+                  <Text style={{ color: active ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold }}>{t(status.label)}</Text>
                   <View style={{ minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: active ? "rgba(255,255,255,0.2)" : COLORS.surfaceAlt }}>
                     <Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontSize: 11, fontWeight: FONT.bold }}>{count}</Text>
                   </View>
@@ -201,7 +189,7 @@ function FilterSheet({
             })}
           </View>
 
-          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>Priority</Text>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, marginBottom: SPACING.xs }}>{t("Priority")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
             {PRIORITY_FILTERS.map((priority) => {
               const active = priorityFilter === priority.key;
@@ -210,17 +198,19 @@ function FilterSheet({
                   key={priority.key}
                   onPress={() => onPriorityChange(priority.key)}
                   activeOpacity={0.78}
-                  style={{ minHeight: 38, justifyContent: "center", borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.techLight : COLORS.surface, paddingHorizontal: SPACING.sm + 4 }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={{ minHeight: 44, justifyContent: "center", borderRadius: RADIUS.full, borderWidth: 2, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface, paddingHorizontal: SPACING.sm + 4 }}
                 >
-                  <Text style={{ color: active ? COLORS.tech : COLORS.textSecondary, fontWeight: active ? FONT.bold : "500" }}>{priority.label}</Text>
+                  <Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontWeight: active ? FONT.black : FONT.bold }}>{t(priority.label)}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-            <TechButton title="Clear" onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
-            <TechButton title="Show results" onPress={closeSheet} style={{ flex: 1 }} />
+            <TechButton title={t("Clear")} onPress={clearFilters} variant="secondary" style={{ flex: 1 }} />
+            <TechButton title={t("Show results")} onPress={closeSheet} style={{ flex: 1 }} />
           </View>
           </KeyboardAwareScrollView>
         </Pressable>
@@ -232,6 +222,7 @@ function FilterSheet({
 
 export default function TasksScreen() {
   const router = useRouter();
+  const { t, language } = useInterfaceLanguage();
   const params = useLocalSearchParams();
   const routeFilters = workOrderRouteFilters(params);
   const { current } = useUserContext();
@@ -275,16 +266,20 @@ export default function TasksScreen() {
     }, [current]),
   );
 
-  const filteredTasks = useMemo(
+  const baseFilteredTasks = useMemo(
     () => tasks.filter((task) => {
       const normalizedStatus = taskStatusKey(task.status);
       const statusMatch = statusFilter === "all" || STATUS_GROUPS[statusFilter]?.has(normalizedStatus) || normalizedStatus === statusFilter;
       const priorityMatch = priorityFilter === "all" || taskPriorityKey(task.priority) === priorityFilter;
-      const currentDate = manilaDateKey();
-      const scheduleMatch = taskMatchesScheduleWindow(task, scheduleFilter, currentDate);
-      return scheduleMatch && statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
+      return statusMatch && priorityMatch && taskMatchesQuery(task, searchQuery);
     }),
-    [tasks, scheduleFilter, statusFilter, priorityFilter, searchQuery],
+    [tasks, statusFilter, priorityFilter, searchQuery],
+  );
+  const currentDate = manilaDateKey();
+  const scheduleCounts = useMemo(() => countTasksByScheduleWindow(baseFilteredTasks, currentDate), [baseFilteredTasks, currentDate]);
+  const filteredTasks = useMemo(
+    () => baseFilteredTasks.filter((task) => taskMatchesScheduleWindow(task, scheduleFilter, currentDate)),
+    [baseFilteredTasks, scheduleFilter, currentDate],
   );
   const activeFilterCount = Number(scheduleFilter !== "today") + Number(statusFilter !== "all") + Number(priorityFilter !== "all") + Number(Boolean(searchQuery.trim()));
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / PAGE_SIZE));
@@ -303,7 +298,7 @@ export default function TasksScreen() {
       style={{
         marginBottom: SPACING.sm,
         borderLeftWidth: 4,
-        borderLeftColor: STATUS_COLOR[item.status] || COLORS.tech,
+        borderLeftColor: workOrderStatusPresentation(item.status).color,
       }}
     >
       <View
@@ -323,13 +318,17 @@ export default function TasksScreen() {
         >
           {item.title || item.issueType || "Work Order"}
         </Text>
-        <Badge label={item.status} />
+        <StatusChip label={t(workOrderStatusPresentation(item.status).label)} color={workOrderStatusPresentation(item.status).color} />
+      </View>
+      <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: SPACING.xs, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 5, backgroundColor: priorityPresentation(item.priority).background, marginBottom: SPACING.xs }} accessibilityLabel={t(priorityPresentation(item.priority).label)}>
+        <Ionicons name={priorityPresentation(item.priority).icon} size={15} color={priorityPresentation(item.priority).color} />
+        <Text style={{ color: priorityPresentation(item.priority).color, fontWeight: FONT.bold, fontSize: FONT.sm }}>{t(priorityPresentation(item.priority).label)}</Text>
       </View>
       {!!item.customerName && (
         <IconRow
           icon="person-sharp"
           title={item.customerName}
-          subtitle={item.address || "No address"}
+          subtitle={item.address || t("No address")}
           color={COLORS.tech}
           style={{ paddingVertical: SPACING.xs }}
         />
@@ -337,7 +336,7 @@ export default function TasksScreen() {
       {!!item.scheduledDate && (
         <IconRow
           icon="calendar-sharp"
-          title={`${item.scheduledDate === manilaDateKey() ? "Today" : "Scheduled"}${item.timeSlot ? ` · ${item.timeSlot}` : ""}`}
+          title={`${t(item.scheduledDate === manilaDateKey() ? "Today" : "Scheduled")}${item.timeSlot ? ` · ${item.timeSlot}` : ""}`}
           subtitle={item.scheduledDate}
           color={COLORS.warning}
           style={{ paddingVertical: SPACING.xs }}
@@ -345,37 +344,37 @@ export default function TasksScreen() {
       )}
       {taskStatusKey(item.status) === "completed" ? <IconRow
         icon="checkmark-done-sharp"
-        title="Completed work"
-        subtitle={item.completedAt ? `Finished ${new Date(item.completedAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}` : "Completion time was not recorded"}
+        title={t("Completed work")}
+        subtitle={item.completedAt ? `${t("Finished")} ${new Date(item.completedAt).toLocaleString(language === "Filipino" ? "fil-PH" : "en-PH", { dateStyle: "medium", timeStyle: "short" })}` : t("Completion time was not recorded")}
         color={COLORS.success}
         style={{ paddingVertical: SPACING.xs }}
       /> : null}
       <IconRow
         icon="person-sharp"
-        title="Assigned technician"
-        subtitle={item.assignedTechnicianName || "Technician not recorded"}
+        title={t("Assigned technician")}
+        subtitle={item.assignedTechnicianName || t("Technician not recorded")}
         color={COLORS.tech}
         style={{ paddingVertical: SPACING.xs }}
       />
       {(item.customerPhone || item.schedule?.driverName) ? <IconRow
         icon="call-sharp"
-        title={item.customerPhone || "Contact not recorded"}
-        subtitle={item.schedule?.driverName ? `Driver: ${item.schedule.driverName}` : "No driver assigned"}
+        title={item.customerPhone || t("Contact not recorded")}
+        subtitle={item.schedule?.driverName ? `${t("Driver")}: ${item.schedule.driverName}` : t("No driver assigned")}
         color={COLORS.success}
         style={{ paddingVertical: SPACING.xs }}
       /> : null}
       {item.scheduleDetails ? <IconRow
         icon="briefcase-sharp"
-        title={item.scheduleDetails.workDescription || item.issueType || "Assigned work"}
-        subtitle={[item.scheduleDetails.paymentMethod, item.scheduleDetails.paymentStatus].filter(Boolean).join(" · ") || "Payment details not recorded"}
+        title={item.scheduleDetails.workDescription || item.issueType || t("Assigned work")}
+        subtitle={[item.scheduleDetails.paymentMethod, item.scheduleDetails.paymentStatus].filter(Boolean).join(" · ") || t("Payment details not recorded")}
         color={COLORS.warning}
         style={{ paddingVertical: SPACING.xs }}
       /> : null}
-      {item.schedule?.notes ? <View style={{ marginTop: SPACING.xs, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>Admin schedule note</Text><Text style={{ color: COLORS.textPrimary, marginTop: 4, lineHeight: 19 }}>{item.schedule.notes}</Text></View> : null}
+      {item.schedule?.notes ? <View style={{ marginTop: SPACING.xs, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{t("Admin schedule note")}</Text><Text style={{ color: COLORS.textPrimary, marginTop: 4, lineHeight: 19 }}>{item.schedule.notes}</Text></View> : null}
       {getTaskSerials(item).length > 0 && (
         <IconRow
           icon="qr-code-sharp"
-          title={`${getTaskSerials(item).length} assigned unit${getTaskSerials(item).length === 1 ? "" : "s"}`}
+          title={`${getTaskSerials(item).length} ${t(getTaskSerials(item).length === 1 ? "assigned unit" : "assigned units")}`}
           subtitle={getTaskSerials(item).join(", ")}
           color={COLORS.success}
           style={{ paddingVertical: SPACING.xs }}
@@ -383,21 +382,21 @@ export default function TasksScreen() {
       )}
       <View style={{ marginTop: SPACING.sm }}>
         <TechButton
-          title="Open Work Order"
+          title={t("Open Work Order")}
           onPress={() => router.push(`/technician/task/${item.id}/information`)}
           size="sm"
           variant="secondary"
           leftIcon={<Ionicons name="information-circle-sharp" size={16} color={COLORS.tech} />}
         />
-        {item.status === TASK_STATUS.PENDING ? <Text style={{ color: COLORS.warning, fontSize: FONT.sm, marginTop: SPACING.sm }}>This work order is assigned but cannot be started until Admin dispatches it.</Text> : null}
+        {item.status === TASK_STATUS.PENDING ? <Text style={{ color: COLORS.warning, fontSize: FONT.sm, marginTop: SPACING.sm }}>{t("This work order is assigned but cannot be started until Admin dispatches it.")}</Text> : null}
       </View>
     </Card>
   );
 
   return (
     <TechnicianScreen
-      title="My Work Orders"
-      subtitle="Review Admin-activated installation and service work"
+      title={t("My Work Orders")}
+      subtitle={t("Review Admin-activated installation and service work")}
       icon="clipboard-sharp"
       scroll={false}
     >
@@ -408,20 +407,20 @@ export default function TasksScreen() {
       >
         <View>
           <TechHero
-            eyebrow="Work Order Board"
-            title={scheduleFilter === "today" ? `${filteredTasks.length} job${filteredTasks.length === 1 ? "" : "s"} today` : `${filteredTasks.length} work order${filteredTasks.length === 1 ? "" : "s"} to view`}
-            subtitle={activeFilterCount ? `${filteredTasks.length} matching work order${filteredTasks.length === 1 ? "" : "s"}. ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.` : "Live Admin assignments, customer details, schedule notes, and work-order status."}
+            eyebrow={t("Work Order Board")}
+            title={scheduleFilter === "today" ? `${filteredTasks.length} ${t(filteredTasks.length === 1 ? "job today" : "jobs today")}` : `${filteredTasks.length} ${t(filteredTasks.length === 1 ? "work order to view" : "work orders to view")}`}
+            subtitle={activeFilterCount ? `${filteredTasks.length} ${t(filteredTasks.length === 1 ? "matching work order" : "matching work orders")}. ${activeFilterCount} ${t(activeFilterCount === 1 ? "filter applied" : "filters applied")}.` : t("Live Admin assignments, customer details, schedule notes, and work-order status.")}
             icon="map-sharp"
           />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginBottom: SPACING.md }}>
+          <View style={{ flexDirection: "row", gap: SPACING.xs, marginBottom: SPACING.md }}>
             {SCHEDULE_FILTERS.map((filter) => {
               const active = scheduleFilter === filter.key;
-              return <TouchableOpacity key={filter.key} onPress={() => setScheduleFilter(filter.key)} style={{ minHeight: 38, justifyContent: "center", paddingHorizontal: SPACING.md, borderRadius: RADIUS.full, borderWidth: 1, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface }}><Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontWeight: FONT.black }}>{filter.label}</Text></TouchableOpacity>;
+              return <TouchableOpacity key={filter.key} onPress={() => setScheduleFilter(filter.key)} accessibilityRole="tab" accessibilityLabel={`${t(filter.label)}: ${scheduleCounts[filter.key]}`} accessibilityState={{ selected: active }} style={{ flex: 1, minWidth: 0, minHeight: 58, justifyContent: "center", alignItems: "center", paddingHorizontal: SPACING.xs, borderRadius: RADIUS.md, borderWidth: 2, borderColor: active ? COLORS.tech : COLORS.border, backgroundColor: active ? COLORS.tech : COLORS.surface }}><Text numberOfLines={2} style={{ color: active ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.sm, textAlign: "center" }}>{t(filter.label)}</Text><Text style={{ color: active ? COLORS.surface : COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{scheduleCounts[filter.key]}</Text></TouchableOpacity>;
             })}
           </View>
           <Card
             onPress={() => setFilterVisible(true)}
-            accessibilityLabel="Open work order filters"
+            accessibilityLabel={t("Open work order filters")}
             style={{ marginBottom: SPACING.md, padding: SPACING.sm + 4 }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -429,9 +428,9 @@ export default function TasksScreen() {
                 <Ionicons name="options-sharp" size={20} color={COLORS.tech} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Filter work orders</Text>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{t("Filter work orders")}</Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-                  {activeFilterCount === 0 ? `${tasks.length} assigned work order${tasks.length === 1 ? "" : "s"}. Latest activity appears first.` : `${filteredTasks.length} matching - ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied`}
+                  {activeFilterCount === 0 ? `${tasks.length} ${t(tasks.length === 1 ? "assigned work order" : "assigned work orders")}. ${t("Latest activity appears first.")}` : `${filteredTasks.length} ${t("matching")} - ${activeFilterCount} ${t(activeFilterCount === 1 ? "filter applied" : "filters applied")}`}
                 </Text>
               </View>
               <View style={{ minWidth: 30, height: 26, borderRadius: RADIUS.full, backgroundColor: activeFilterCount ? COLORS.tech : COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: SPACING.xs }}>
@@ -443,13 +442,13 @@ export default function TasksScreen() {
         </View>
         {visibleTasks.length === 0 ? (
           <EmptyState
-            title={tasks.length ? "No matching work orders" : "No work orders assigned"}
-            message={tasks.length ? "Try clearing or changing the current filters." : "Assigned service work will appear here."}
+            title={t(tasks.length ? "No matching work orders" : "No work orders assigned")}
+            message={t(tasks.length ? "Try clearing or changing the current filters." : "Assigned service work will appear here.")}
             icon="clipboard-sharp"
             iconColor={COLORS.tech}
             action={tasks.length ? (
               <TechButton
-                title="Clear Filters"
+                title={t("Clear Filters")}
                 onPress={() => {
                   setStatusFilter("all");
                   setPriorityFilter("all");
@@ -466,9 +465,9 @@ export default function TasksScreen() {
         ))}
         {filteredTasks.length > PAGE_SIZE ? (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACING.sm, paddingTop: SPACING.sm }}>
-            <TechButton title="Previous" size="sm" variant="secondary" disabled={page === 1} onPress={() => setPage((currentPage) => Math.max(1, currentPage - 1))} style={{ flex: 1 }} />
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{`Page ${page} of ${totalPages}`}</Text>
-            <TechButton title="Next" size="sm" disabled={page === totalPages} onPress={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))} style={{ flex: 1 }} />
+            <TechButton title={t("Previous")} size="sm" variant="secondary" disabled={page === 1} onPress={() => setPage((currentPage) => Math.max(1, currentPage - 1))} style={{ flex: 1 }} />
+            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, fontWeight: FONT.bold }}>{`${t("Page")} ${page} ${t("of")} ${totalPages}`}</Text>
+            <TechButton title={t("Next")} size="sm" disabled={page === totalPages} onPress={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))} style={{ flex: 1 }} />
           </View>
         ) : null}
       </ScrollView>

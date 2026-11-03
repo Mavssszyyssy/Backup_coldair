@@ -2,6 +2,11 @@ import React from "react";
 import { render, screen } from "@testing-library/react-native";
 import ServiceCostSummary from "./ServiceCostSummary";
 
+jest.mock('../../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
+
 test("missing expenses have one explanation and do not copy the maintenance fee", async () => {
   await render(<ServiceCostSummary task={{ laborCost: null, partsCost: null, servicePayment: { amount: 800, status: "paid" } }} />);
   expect(screen.getByText(/800.*Collected/)).toBeTruthy();

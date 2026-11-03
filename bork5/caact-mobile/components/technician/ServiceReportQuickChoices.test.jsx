@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react-native";
 import ServiceReportQuickChoices from "./ServiceReportQuickChoices";
 import { serviceReportError } from "../../services/serviceReportValidation";
+let mockLanguage = "English";
+jest.mock("../../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => ({ language: mockLanguage, t: (value) => require("../../services/interfaceI18n").translateText(value, mockLanguage) }) }));
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); mockLanguage = "English"; });
 function Form({ type = "regular_cleaning", initial = "", onFindings = jest.fn(), onWork = jest.fn(), onValidation }) {
   const [findings, setFindings] = useState(initial);
   const [work, setWork] = useState("");
@@ -70,4 +72,13 @@ test.each([
 test("generic text still fails the existing written-report validation", () => {
   expect(serviceReportError("AMP recommended regular cleaning for this AC unit.", "Service completed")).not.toBe("");
   expect(serviceReportError("Dust buildup on the air filter.", "Cleaned the air filter.")).toBe("");
+});
+
+test("Filipino choice labels keep the saved technician finding in its original wording", async () => {
+  mockLanguage = "Filipino";
+  const changed = jest.fn();
+  await render(<Form onFindings={changed} />);
+  await fireEvent.press(screen.getByLabelText("Pumili Mga Natuklasan ng Technician"));
+  await fireEvent.press(screen.getByLabelText("Mga Natuklasan ng Technician: May naipong alikabok sa air filter."));
+  expect(changed).toHaveBeenLastCalledWith("Dust buildup on the air filter.");
 });

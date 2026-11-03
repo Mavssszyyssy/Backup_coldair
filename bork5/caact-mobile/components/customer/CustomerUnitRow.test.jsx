@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import CustomerUnitRow from "./CustomerUnitRow";
 
 jest.mock("./CustomerUnitImage", () => () => null);
+jest.mock("../../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => ({ language: "English", t: (value) => value }) }));
 
 test("keeps secondary AC details compact until View More is pressed", async () => {
   await render(<CustomerUnitRow

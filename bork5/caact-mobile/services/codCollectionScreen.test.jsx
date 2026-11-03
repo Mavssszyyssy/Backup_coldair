@@ -6,6 +6,10 @@ import TaskInformation from '../app/technician/task/[id]/information';
 const mockGet = jest.fn();
 const mockCollect = jest.fn();
 const mockConfirmPresence = jest.fn();
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   useLocalSearchParams: () => ({ id: 'task1' }),

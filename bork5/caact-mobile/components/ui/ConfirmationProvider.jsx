@@ -121,16 +121,6 @@ export default function ConfirmationProvider({ children }) {
                   {dialog?.message}
                 </Text>
               </View>
-              <TouchableOpacity
-                testID="confirmation-cancel-button"
-                accessibilityRole="button"
-                accessibilityLabel="Close confirmation"
-                onPress={() => close(false)}
-                disabled={busy}
-                style={{ width: 34, height: 34, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surfaceAlt }}
-              >
-                <Text style={{ color: COLORS.textMuted, fontSize: 22, lineHeight: 24 }}>×</Text>
-              </TouchableOpacity>
             </View>
 
             {error ? (

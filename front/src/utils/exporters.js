@@ -1,3 +1,5 @@
+import { downloadElementPdf } from './pdfDownload';
+
 const downloadBlob = (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -122,17 +124,18 @@ export const exportToCsv = ({ filename, rows }) => {
   downloadBlob(new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' }), filename || 'report.csv');
 };
 
-export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName = '', metadata = {} }) => {
+export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', fileName = '', metadata = {} }) => {
   const pageOrientation = metadata.pageOrientation === 'portrait' ? 'portrait' : 'landscape';
   const documentStyle = metadata.documentStyle === 'narrative'
     ? ' report-document--narrative'
     : metadata.documentStyle === 'tabular' ? ' report-document--tabular' : '';
-  const w = window.open('', '_blank');
-  if (!w) {
-    window.alert('Your browser blocked the PDF window. Please allow pop-ups for this site and try again.');
-    return false;
-  }
-  w.opener = null;
+  const frame = document.createElement('iframe');
+  frame.title = 'PDF export renderer';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = `position:fixed;left:-10000px;top:0;width:${pageOrientation === 'portrait' ? 840 : 1120}px;height:800px;border:0;pointer-events:none;`;
+  document.body.appendChild(frame);
+  const w = frame.contentWindow;
+  if (!w) { frame.remove(); window.alert('PDF rendering is unavailable in this browser.'); return false; }
   w.document.open();
   w.document.write(`<!doctype html>
 <html>
@@ -144,7 +147,7 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       * { box-sizing: border-box; }
       html { background: #eef2f7; }
       body { margin: 0; padding: 28px; background: #eef2f7; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.48; }
-      .report-document { width: min(100%, ${pageOrientation === 'portrait' ? '900px' : '1200px'}); min-height: 1120px; margin: 0 auto; padding: 32px 36px 28px; background: #fff; box-shadow: 0 18px 48px rgba(15, 23, 42, .14); }
+      .report-document { width: min(100%, ${pageOrientation === 'portrait' ? '840px' : '1120px'}); margin: 0 auto; padding: 26px 30px; background: #fff; box-shadow: none; }
       .report-document--narrative { max-width: 860px; }
       .report-header { border-bottom: 3px solid #0f4c81; padding-bottom: 14px; margin-bottom: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
       .company-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -214,7 +217,7 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
       .report-footer { margin-top: 24px; color: #64748b; font-size: 8px; border-top: 1px solid #cbd5e1; padding-top: 6px; display: flex; justify-content: space-between; gap: 12px; }
       @media (max-width: 700px) {
         body { padding: 0; }
-        .report-document { min-height: 100vh; padding: 22px 18px; box-shadow: none; }
+        .report-document { padding: 22px 18px; box-shadow: none; }
         .report-header { flex-direction: column; }
         .generated { flex-basis: auto; text-align: left; }
         .summary, .report-grid { grid-template-columns: 1fr; }
@@ -239,11 +242,19 @@ export const exportHtmlToPdfViaPrint = ({ title, html, subtitle = '', fileName =
     </main>
   </body>
 </html>`);
-  w.onload = () => {
-    w.focus();
-    w.print();
-  };
   w.document.close();
-  return true;
+  try {
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+    return await downloadElementPdf({
+      element: w.document.querySelector('.report-document'),
+      fileName: fileName || 'aeropulse-report.pdf',
+      orientation: pageOrientation,
+    });
+  } catch (_error) {
+    window.alert('Unable to generate this PDF. Please try again or contact support if it continues.');
+    return false;
+  } finally {
+    frame.remove();
+  }
 };
 

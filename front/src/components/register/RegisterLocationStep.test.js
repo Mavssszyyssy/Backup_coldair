@@ -37,3 +37,11 @@ it('validates and saves a manually entered location', () => {
     coordinates: expect.objectContaining({ latitude: null, longitude: null }),
   })]);
 });
+
+it('localizes location actions without translating entered address data', () => {
+  const onNext = vi.fn();
+  render(<RegisterLocationStep currentLanguage="Filipino" formData={{ locations: [] }} onFieldChange={vi.fn()} onNext={onNext} onBack={vi.fn()} />);
+  expect(screen.getByText('Magdagdag ng delivery address ngayon, o laktawan muna at idagdag ito sa ibang pagkakataon.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /laktawan muna/i }));
+  expect(onNext).toHaveBeenCalledOnce();
+});

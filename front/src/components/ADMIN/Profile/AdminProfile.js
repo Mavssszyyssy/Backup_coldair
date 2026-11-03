@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import AdminLayout from '../Common/AdminLayout';
 import AccountSecurityManagement from '../../security/AccountSecurityManagement';
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
+import { formatBusinessDateTime } from '../../../utils/dateTime';
 import '../adminShared.css';
 import './styles.css';
 
 const AdminProfile = () => {
-  const { user, updateProfile, changePassword } = useUser();
+  const { user, updateProfile, changePassword, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const roleTitle = user?.role === 'superadmin' ? 'SuperAdmin' : 'Admin';
   const branchName = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
   const branchInfo = loadBranchNetwork().find((branch) => branch.name === branchName);
@@ -51,18 +54,18 @@ const AdminProfile = () => {
   };
 
   return (
-    <AdminLayout title={`${roleTitle} Profile`} subtitle="Manage profile and security">
+    <AdminLayout title={`${t(roleTitle)} ${t('Profile')}`} subtitle={t('Manage profile and security')}>
       <div className="admin-profile-page">
         <div className="admin-profile-grid">
           <div className="admin-profile-card">
-            <h3>Profile</h3>
-            <p><strong>Name:</strong> {user?.name || 'Administrator'}</p>
-            <p><strong>Email:</strong> {user?.email || 'admin@aeropulse.com'}</p>
-            <p><strong>Role:</strong> {user?.role || 'admin'}</p>
-            <p><strong>Phone:</strong> {user?.phone || '-'}</p>
-            <p><strong>Location:</strong> {adminLocation}</p>
-            <p><strong>Last Login:</strong> {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : '-'}</p>
-            <button type="button" onClick={openEditModal}>Edit Profile</button>
+            <h3>{t("Profile")}</h3>
+            <p><strong>{t("Name:")}</strong> {user?.name || 'Administrator'}</p>
+            <p><strong>{t("Email:")}</strong> {user?.email || 'admin@aeropulse.com'}</p>
+            <p><strong>{t("Role:")}</strong> {user?.role || 'admin'}</p>
+            <p><strong>{t("Phone:")}</strong> {user?.phone || '-'}</p>
+            <p><strong>{t("Location:")}</strong> {adminLocation}</p>
+            <p><strong>{t("Last Login:")}</strong> {user?.lastLogin ? formatBusinessDateTime(user.lastLogin) : '-'}</p>
+            <button type="button" onClick={openEditModal}>{t("Edit Profile")}</button>
           </div>
           <div className="admin-profile-card">
             <AccountSecurityManagement
@@ -74,10 +77,10 @@ const AdminProfile = () => {
         {isEditing && (
           <div className="admin-profile-modal-overlay" onClick={() => setIsEditing(false)}>
             <form className="admin-profile-modal-card" onSubmit={saveProfile} onClick={(event) => event.stopPropagation()}>
-              <h3>Edit Admin Profile</h3>
-              <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" />
+              <h3>{t("Edit Admin Profile")}</h3>
+              <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder={t("Name")} />
               <input
-                aria-label="Phone number"
+                aria-label={t("Phone number")}
                 type="tel"
                 inputMode="numeric"
                 autoComplete="tel-national"
@@ -87,13 +90,13 @@ const AdminProfile = () => {
                   setForm((prev) => ({ ...prev, phone: sanitizeLocalPhMobileInput(event.target.value) }));
                   setPhoneError('');
                 }}
-                placeholder="09XXXXXXXXX"
+                placeholder={t("09XXXXXXXXX")}
               />
-              {phoneError ? <p className="admin-profile-phone-error" role="alert">{phoneError}</p> : <small className="admin-profile-phone-help">Use exactly 11 digits (09XXXXXXXXX).</small>}
-              <input value={adminLocation} readOnly disabled placeholder="Location" />
+              {phoneError ? <p className="admin-profile-phone-error" role="alert">{t(phoneError)}</p> : <small className="admin-profile-phone-help">{t("Use exactly 11 digits (09XXXXXXXXX).")}</small>}
+              <input value={adminLocation} readOnly disabled placeholder={t("Location")} />
               <div className="admin-profile-modal-actions">
-                <button type="button" onClick={() => setIsEditing(false)}>Cancel</button>
-                <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+                <button type="button" onClick={() => setIsEditing(false)}>{t("Cancel")}</button>
+                <button type="submit" disabled={saving}>{t(saving ? 'Saving...' : 'Save Changes')}</button>
               </div>
             </form>
           </div>

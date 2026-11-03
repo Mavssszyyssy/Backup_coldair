@@ -3,6 +3,7 @@ const firstParam = (value) => Array.isArray(value) ? value[0] : value;
 const allowedStatusFilters = new Set([
   "all",
   "active",
+  "in-progress",
   "pending",
   "on-hold",
   "completed",

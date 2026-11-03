@@ -7,10 +7,15 @@ import SuperAdminLayout from '../../SUPERADMIN/Common/SuperAdminLayout';
 import '../adminShared.css';
 import './styles.css';
 import '../../common/operationsDesignSystem.css';
+import { translateText } from '../../../utils/customerI18n';
 
 const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
-  const { user } = useUser();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user, currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try { return window.innerWidth >= 768 && window.sessionStorage.getItem('admin-sidebar-open') === 'true'; }
+    catch { return false; }
+  });
 
   const initials = useMemo(() => {
     const name = user?.name?.trim();
@@ -20,6 +25,12 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
+
+  useEffect(() => {
+    try {
+      if (window.innerWidth >= 768) window.sessionStorage.setItem('admin-sidebar-open', String(isSidebarOpen));
+    } catch { /* Sidebar still works when browser storage is unavailable. */ }
+  }, [isSidebarOpen]);
 
   useEffect(() => {
     if (isSidebarOpen && window.innerWidth < 768) {
@@ -43,11 +54,11 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
 
   return (
     <div className="admin-layout">
-      <a className="ops-skip-link" href="#admin-main-content">Skip to main content</a>
+      <a className="ops-skip-link" href="#admin-main-content">{t('Skip to main content')}</a>
       <button
         className={`burger-button ${isSidebarOpen ? 'open' : ''}`}
         onClick={toggleSidebar}
-        aria-label="Toggle menu"
+        aria-label={t('Toggle menu')}
         aria-expanded={isSidebarOpen}
         type="button"
       >
@@ -70,8 +81,8 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
             <header className="admin-header">
               <div className="admin-header-left">
                 <div>
-                  {title && <h1>{title}</h1>}
-                  {subtitle && <p>{subtitle}</p>}
+                  {title && <h1>{t(title)}</h1>}
+                  {subtitle && <p>{t(subtitle)}</p>}
                 </div>
               </div>
               <div className="admin-header-user">
@@ -79,7 +90,7 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
                 <div className="admin-user-avatar">{initials}</div>
                 <div className="admin-header-identity">
                   <strong>{user?.name || 'Admin'}</strong>
-                  <small>Branch administrator</small>
+                  <small>{t('Branch administrator')}</small>
                 </div>
               </div>
             </header>

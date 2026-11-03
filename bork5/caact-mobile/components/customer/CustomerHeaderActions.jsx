@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import NotificationBadge from "../NotificationBadge";
 import { COLORS, SPACING } from "../../constants/theme";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const actionStyle = {
   width: 40,
@@ -12,6 +13,7 @@ const actionStyle = {
 };
 
 export default function CustomerHeaderActions() {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
@@ -19,7 +21,7 @@ export default function CustomerHeaderActions() {
         onPress={() => router.push("/customer/chat")}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Chat Support"
+        accessibilityLabel={t("Chat Support")}
         style={actionStyle}
       >
         <Ionicons name="chatbubble-ellipses-sharp" size={23} color={COLORS.primary} />
@@ -28,7 +30,7 @@ export default function CustomerHeaderActions() {
         onPress={() => router.push("/customer/notifications")}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Alerts"
+        accessibilityLabel={t("Alerts")}
         style={actionStyle}
       >
         <Ionicons name="notifications-sharp" size={24} color={COLORS.primary} />

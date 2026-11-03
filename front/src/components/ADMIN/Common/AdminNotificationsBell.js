@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../../config/api";
 import { announceNotificationUpdate, subscribeToNotificationUpdates } from "../../../utils/notificationSync";
+import { formatBusinessDateTime } from "../../../utils/dateTime";
+import { useUser } from "../../../context/UserContext";
+import { translateText } from "../../../utils/customerI18n";
 
 const adminRouteAliases = {
   "/admin/orders": "/admin/services/orders",
@@ -30,6 +33,8 @@ const resolveNotificationRoute = (item = {}) => {
 };
 
 function AdminNotificationsBell() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -161,7 +166,7 @@ function AdminNotificationsBell() {
         type="button"
         className="admin-notifications-btn"
         onClick={() => setOpen((prev) => !prev)}
-        aria-label="Open alerts"
+        aria-label={t('Open alerts')}
       >
         <Bell size={20} weight="bold" />
         {unreadCount > 0 ? (
@@ -174,10 +179,10 @@ function AdminNotificationsBell() {
           className="admin-notifications-panel"
           ref={panelRef}
           role="dialog"
-          aria-label="Alerts"
+          aria-label={t('Alerts')}
         >
           <div className="admin-notifications-head">
-            <div className="admin-notifications-title">Alerts</div>
+            <div className="admin-notifications-title">{t('Alerts')}</div>
             <div className="admin-notifications-actions">
               <button
                 type="button"
@@ -185,7 +190,7 @@ function AdminNotificationsBell() {
                 onClick={() => refresh(view)}
                 disabled={busy}
               >
-                {busy ? "Refreshing..." : "Refresh"}
+                {t(busy ? 'Refreshing...' : 'Refresh')}
               </button>
               <button
                 type="button"
@@ -193,17 +198,17 @@ function AdminNotificationsBell() {
                 onClick={onMarkAllRead}
                 disabled={view === "archived" || unreadCount === 0}
               >
-                Mark all as read
+                {t('Mark all as read')}
               </button>
             </div>
           </div>
-          <div className="admin-notifications-tabs" role="tablist" aria-label="Alert folders">
-            {[["active", "Current"], ["archived", "Archive"]].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? "active" : ""} onClick={() => setView(key)}>{label}</button>)}
+          <div className="admin-notifications-tabs" role="tablist" aria-label={t('Alert folders')}>
+            {[["active", "Current"], ["archived", "Archive"]].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? "active" : ""} onClick={() => setView(key)}>{t(label)}</button>)}
           </div>
 
           {items.length === 0 ? (
             <div className="admin-notifications-empty">
-              No alerts right now.
+              {t(view === 'archived' ? 'No archived alerts.' : 'No alerts right now.')}
             </div>
           ) : (
             <div className="admin-notifications-list">
@@ -212,9 +217,9 @@ function AdminNotificationsBell() {
                   <button type="button" className={`admin-notifications-item ${item.unread ? "unread" : ""}`} onClick={() => onNavigate(item)}>
                     <div className="admin-notifications-item-title">{item.title}</div>
                     <div className="admin-notifications-item-msg">{item.message}</div>
-                    <time className="admin-notifications-item-time">{new Date(item.createdAt).toLocaleString()}</time>
+                    <time className="admin-notifications-item-time">{formatBusinessDateTime(item.createdAt)}</time>
                   </button>
-                  <button type="button" className="admin-notifications-archive" onClick={() => onArchive(item)}>{view === "archived" ? "Restore" : "Archive"}</button>
+                  <button type="button" className="admin-notifications-archive" onClick={() => onArchive(item)}>{t(view === 'archived' ? 'Restore' : 'Archive')}</button>
                 </div>
               ))}
             </div>

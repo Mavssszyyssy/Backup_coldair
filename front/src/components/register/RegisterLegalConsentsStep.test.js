@@ -10,6 +10,24 @@ const emptyConsents = {
 };
 
 describe("registration legal consents", () => {
+  it("localizes consent controls in Filipino while retaining consent IDs", () => {
+    const onFieldChange = vi.fn();
+    render(
+      <RegisterLegalConsentsStep
+        currentLanguage="Filipino"
+        formData={emptyConsents}
+        errors={{}}
+        onFieldChange={onFieldChange}
+        onNext={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Mga Tuntunin at Pagkapribado")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /suriin.*warranty/i }));
+    fireEvent.click(screen.getByRole("button", { name: /tapusin ang pagsusuri/i }));
+    expect(onFieldChange).toHaveBeenCalledWith("agreeTermsWarranty", true);
+  });
+
   it("reviews each required consent on the current page", () => {
     const onFieldChange = vi.fn();
     render(

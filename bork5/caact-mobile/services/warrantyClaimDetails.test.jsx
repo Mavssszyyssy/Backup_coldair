@@ -2,6 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import WarrantyClaimDetails from '../components/customer/WarrantyClaimDetails';
 
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
+
 test('customer can read branch decisions and cancellation reasons', async () => {
   await render(<WarrantyClaimDetails claim={{ claimId: 'CL-1', status: 'cancelled', issue: 'No cooling', decisionNote: 'Control board repair approved', reviewedAt: '2026-09-07', coveredComponent: 'parts', cancellationReason: 'Customer requested cancellation' }} formatDate={value => value} />);
   for (const text of ['CL-1 · cancelled', 'Control board repair approved', '2026-09-07', 'parts', 'Customer requested cancellation']) expect(screen.getByText(text)).toBeTruthy();

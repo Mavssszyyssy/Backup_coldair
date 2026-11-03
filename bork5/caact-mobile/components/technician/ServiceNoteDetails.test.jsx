@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react-native";
 import ServiceNoteDetails from "./ServiceNoteDetails";
+jest.mock("../../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => ({ t: (value) => value }) }));
 test("note details group missing costs once and preserve saved hours and findings", async () => {
   await render(<ServiceNoteDetails log={{ hoursSpent: 3, findings: "Dust buildup on the filter.", resolution: "Flushed the drain line.", partsUsed: "Nons" }} />);
   expect(screen.getByText("3 hours")).toBeTruthy();

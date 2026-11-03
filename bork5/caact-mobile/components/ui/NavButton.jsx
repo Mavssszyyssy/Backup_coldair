@@ -26,7 +26,7 @@ export default function NavButton({
   active,
   color = COLORS.primary,
   inactiveColor = COLORS.textMuted,
-  size = 24,
+  size = 22,
   badge,
   flex = 1,
 }) {
@@ -63,16 +63,18 @@ export default function NavButton({
         flex,
         alignItems: "center",
         justifyContent: "center",
-        minHeight: 58,
+        minHeight: 64,
+        minWidth: 0,
       }}
     >
       <View
         style={{
           alignItems: "center",
           justifyContent: "center",
+          width: "100%",
         }}
       >
-        <View style={{ position: "relative", width: 38, height: 32, borderRadius: RADIUS.full, alignItems: "center", justifyContent: "center", backgroundColor: isActive ? COLORS.primaryLight : "transparent" }}>
+        <View style={{ position: "relative", width: 38, height: 34, borderRadius: RADIUS.full, alignItems: "center", justifyContent: "center", backgroundColor: isActive ? COLORS.primaryLight : "transparent" }}>
           <Ionicons name={iconName} size={size} color={iconTintColor} />
           {badge > 0 ? (
             <View style={{ position: "absolute", top: -8, right: -12, backgroundColor: COLORS.danger, borderRadius: RADIUS.full, minWidth: 18, height: 18, justifyContent: "center", alignItems: "center", paddingHorizontal: 4 }}>
@@ -80,7 +82,7 @@ export default function NavButton({
             </View>
           ) : null}
         </View>
-        <Text style={{ fontSize: 11, color: labelColor, marginTop: 4, fontWeight: isActive ? FONT.black : FONT.bold }}>
+        <Text numberOfLines={2} style={{ fontSize: 11, color: labelColor, marginTop: 3, lineHeight: 14, textAlign: "center", width: "100%", fontWeight: isActive ? FONT.black : FONT.bold }}>
           {label}
         </Text>
       </View>

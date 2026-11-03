@@ -4,25 +4,43 @@ import { vi, test, expect, beforeEach } from 'vitest';
 import AdminTechnician from './AdminTechnician';
 import GlobalDialog from '../../common/GlobalDialog';
 import { apiRequest } from '../../../config/api';
+const languageState = vi.hoisted(() => ({ current: 'English' }));
 vi.mock('../Common/AdminLayout', () => ({ default: ({ children }) => <div>{children}</div> }));
-vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ user: { role: 'superadmin', assignedBranch: 'Cavite' } }) }));
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ user: { role: 'superadmin', assignedBranch: 'Cavite' }, currentLanguage: languageState.current }) }));
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 beforeEach(() => {
+  languageState.current = 'English';
   apiRequest.mockReset().mockImplementation(async (path) => path.startsWith('/users') ? { users: [] } : { tasks: [] });
+});
+
+test('uses Filipino controls in the technician workspace without changing saved names', async () => {
+  languageState.current = 'Filipino';
+  apiRequest.mockImplementation(async (path) => path === '/users?role=technician'
+    ? { users: [{ id: 'tech-1', name: 'Carl Ramos', assignedBranch: 'Cavite', accountStatus: 'active' }] }
+    : path.startsWith('/users') ? { users: [] } : { tasks: [] });
+  render(<AdminTechnician />);
+  expect(await screen.findByRole('heading', { name: 'Maghanap ng technician' })).toBeInTheDocument();
+  expect(screen.getAllByText('Carl Ramos').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Cavite').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: 'Magdagdag ng technician' })).toBeInTheDocument();
 });
 
 test('staff form preserves dotted names, checks minimum length, and prevents duplicate submission', async () => {
   render(<AdminTechnician />);
   await waitFor(() => expect(screen.getByText('Refresh')).toBeEnabled());
   fireEvent.click(screen.getByText('Add technician'));
+  expect(screen.getByLabelText('First name')).toBeRequired();
+  expect(screen.getByLabelText('Last name')).toBeRequired();
+  expect(screen.getByLabelText('Assigned branch')).toHaveValue('Cavite');
+  expect(within(screen.getByLabelText('Assigned branch')).getByRole('option', { name: 'Bulacan' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Fixture' } });
   fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Technician' } });
-  fireEvent.change(screen.getByLabelText(/^Login name/), { target: { value: 'j.' } });
-  expect(screen.getByLabelText(/^Login name/)).toHaveValue('j.');
+  fireEvent.change(screen.getByLabelText(/^Username/), { target: { value: 'j.' } });
+  expect(screen.getByLabelText(/^Username/)).toHaveValue('j.');
   fireEvent.click(screen.getByText('Create technician account'));
   expect(screen.getByRole('alert')).toHaveTextContent(/at least 2 letters or numbers/);
   expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
-  fireEvent.change(screen.getByLabelText(/^Login name/), { target: { value: 'j.delacruz' } });
+  fireEvent.change(screen.getByLabelText(/^Username/), { target: { value: 'j.delacruz' } });
   fireEvent.change(screen.getByLabelText(/^Service Quota/), { target: { value: '3' } });
   expect(screen.getByText('tech.cavite.j.delacruz')).toBeInTheDocument();
   let finish;
@@ -134,6 +152,31 @@ test('creates a work order from linked customer, address, unit, service, and tec
     assignedTechnicianId: 'tech-1',
     branch: 'Cavite',
   });
+});
+
+test('superadmin can create a work order in a branch other than their assigned branch', async () => {
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=technician') return { users: [{ id: 'tech-bulacan', name: 'Bulacan Tech', assignedBranch: 'Bulacan', accountStatus: 'active' }] };
+    if (path === '/users?role=customer') return { users: [{ id: 'customer-bulacan', name: 'Bulacan Customer', assignedBranch: 'Bulacan', accountStatus: 'active', addresses: [{ _id: 'address-bulacan', street: 'Main Road', city: 'Malolos', province: 'Bulacan', isDefault: true }] }] };
+    if (path === '/service-requests/catalog') return { offerings: [{ id: 'repair', title: 'Repair', defaultIssueType: 'Repair' }] };
+    if (path === '/amp/report-units') return { units: [] };
+    if (path === '/tasks' && options?.method === 'POST') return { task: { id: 'task-bulacan' } };
+    if (path === '/tasks') return { tasks: [] };
+    return {};
+  });
+  render(<AdminTechnician />);
+  await screen.findByLabelText('Customer / site');
+  const workOrderForm = screen.getByRole('button', { name: 'Assign work order' }).closest('form');
+  fireEvent.change(within(workOrderForm).getByLabelText('Branch'), { target: { value: 'Bulacan' } });
+  fireEvent.change(screen.getByLabelText('Customer / site'), { target: { value: 'Bulacan Customer' } });
+  fireEvent.click(await screen.findByRole('option', { name: /Bulacan Customer/ }));
+  fireEvent.change(screen.getByLabelText('Service address'), { target: { value: 'address-bulacan' } });
+  fireEvent.change(screen.getByLabelText('Work type'), { target: { value: 'repair' } });
+  fireEvent.change(screen.getByLabelText('Assign technician'), { target: { value: 'tech-bulacan' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Assign work order' }));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/tasks', expect.objectContaining({ method: 'POST' })));
+  const request = apiRequest.mock.calls.find(([path, options]) => path === '/tasks' && options?.method === 'POST');
+  expect(JSON.parse(request[1].body)).toMatchObject({ branch: 'Bulacan', customerId: 'customer-bulacan', assignedTechnicianId: 'tech-bulacan' });
 });
 
 test('shows an immediate success popup after a work order is reassigned', async () => {

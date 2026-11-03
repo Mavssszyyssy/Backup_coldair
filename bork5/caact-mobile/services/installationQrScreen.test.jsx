@@ -6,7 +6,13 @@ import AmpRegistrationScreen from '../app/technician/task/[id]/amp-registration'
 import { apiFetch } from '../constants/config';
 import { getTaskById, registerTaskAmpUnit } from './taskStorage';
 const mockFetchTechnicianUnitHistory = jest.fn();
+const mockLanguage = { current: 'English' };
 jest.mock('../constants/config', () => ({ apiFetch: jest.fn() }));
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const { translateText } = require('./interfaceI18n');
+  const translate = (value) => translateText(value, mockLanguage.current);
+  return { useInterfaceLanguage: () => ({ language: mockLanguage.current, t: translate }) };
+});
 jest.mock('./api', () => ({ getStoredToken: async () => 'fixture-token', fetchTechnicianUnitHistory: (...args) => mockFetchTechnicianUnitHistory(...args) }));
 jest.mock('./taskStorage', () => ({ getTaskById: jest.fn(), registerTaskAmpUnit: jest.fn() }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => ({ id: 'task1' }), useFocusEffect: (callback) => require('react').useEffect(callback, [callback]) }));
@@ -25,6 +31,7 @@ const task = (serial = 'CAACT-FIXTURE') => ({ id: 'task1', taskCode: 'TSK-FIXTUR
 let alert;
 beforeEach(() => {
   jest.clearAllMocks();
+  mockLanguage.current = 'English';
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   mockFetchTechnicianUnitHistory.mockResolvedValue({ success: false });
   getTaskById.mockResolvedValue(task());
@@ -35,6 +42,15 @@ const mount = async () => {
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><AmpRegistrationScreen /></SafeAreaProvider>);
   await screen.findByText('Scan fixture QR');
 };
+
+test('Filipino labels keep the assigned serial value unchanged', async () => {
+  mockLanguage.current = 'Filipino';
+  await mount();
+  expect(screen.getByText('I-verify ang AC')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Scan fixture QR'));
+  await screen.findByText('Pagsuri sa laki ng kuwarto');
+  expect(screen.getByText('CAACT-FIXTURE')).toBeTruthy();
+});
 
 test.each(['Bulacan', 'Cavite', 'Laguna', 'Bataan', 'Pangasinan', 'Ilocos'])('assigned QR in %s reaches room-size selection and submits the serial, not the QR ID', async (branch) => {
   getTaskById.mockResolvedValue({ ...task(), branch });

@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import TrackOrderModal from "./TrackOrderModal";
 
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: "English" }) }));
+
 const completedOrder = {
   id: "order-1",
   orderCode: "ORD-1",

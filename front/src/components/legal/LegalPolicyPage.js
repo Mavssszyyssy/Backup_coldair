@@ -11,6 +11,8 @@ import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import coldAirLogo from "../common/images/Cold Air Logo.jpg";
 import { COMPANY_CONTACT } from "../../config/company";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import {
   getLegalPolicy,
   LEGAL_LAST_UPDATED,
@@ -19,6 +21,8 @@ import {
 import "./LegalPolicyPage.css";
 
 export default function LegalPolicyPage({ policyId }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const location = useLocation();
   const policy = getLegalPolicy(policyId);
@@ -27,7 +31,7 @@ export default function LegalPolicyPage({ policyId }) {
     if (!policy) return undefined;
 
     const previousTitle = document.title;
-    document.title = `${policy.title} | Cold Air ACT`;
+    document.title = `${t(policy.title)} | Cold Air ACT`;
 
     if (location.hash) {
       const sectionId = decodeURIComponent(location.hash.slice(1));
@@ -41,7 +45,7 @@ export default function LegalPolicyPage({ policyId }) {
     return () => {
       document.title = previousTitle;
     };
-  }, [location.hash, policy]);
+  }, [location.hash, policy, currentLanguage]);
 
   if (!policy) return null;
 
@@ -52,28 +56,28 @@ export default function LegalPolicyPage({ policyId }) {
   return (
     <div className="legal-page">
       <a className="legal-skip-link" href="#legal-document">
-        Skip to document
+        {t("Skip to document")}
       </a>
 
       <header className="legal-header">
         <div className="legal-header__inner">
-          <Link className="legal-brand" to="/shop" aria-label="Cold Air ACT shop">
+          <Link className="legal-brand" to="/shop" aria-label={t("Cold Air ACT shop")}>
             <img src={coldAirLogo} alt="" />
             <span>
               <strong>Cold Air ACT</strong>
-              <small>Legal center</small>
+              <small>{t("Legal center")}</small>
             </span>
           </Link>
 
           <button className="legal-back-button" type="button" onClick={handleBack}>
             <ArrowLeft size={18} weight="bold" aria-hidden="true" />
-            Back to sign up
+            {t("Back to sign up")}
           </button>
         </div>
       </header>
 
       <main className="legal-main" id="legal-document">
-        <nav className="legal-policy-tabs" aria-label="Legal documents">
+        <nav className="legal-policy-tabs" aria-label={t("Legal documents")}>
           {LEGAL_POLICY_LIST.map((item) => (
             <Link
               key={item.id}
@@ -81,7 +85,7 @@ export default function LegalPolicyPage({ policyId }) {
               className={item.id === policy.id ? "is-active" : ""}
               aria-current={item.id === policy.id ? "page" : undefined}
             >
-              {item.shortTitle}
+              {t(item.shortTitle)}
             </Link>
           ))}
         </nav>
@@ -94,13 +98,13 @@ export default function LegalPolicyPage({ policyId }) {
               ) : (
                 <FileText size={18} weight="fill" aria-hidden="true" />
               )}
-              {policy.category}
+              {t(policy.category)}
             </div>
-            <h1>{policy.title}</h1>
+            <h1>{t(policy.title)}</h1>
             <p className="legal-document__summary">{policy.summary}</p>
             <div className="legal-document__meta">
               <CalendarBlank size={18} aria-hidden="true" />
-              Effective and last updated: {LEGAL_LAST_UPDATED}
+              {t("Effective and last updated:")} {LEGAL_LAST_UPDATED}
             </div>
           </header>
 
@@ -110,8 +114,8 @@ export default function LegalPolicyPage({ policyId }) {
           </div>
 
           <div className="legal-document__layout">
-            <aside className="legal-toc" aria-label="On this page">
-              <p>On this page</p>
+            <aside className="legal-toc" aria-label={t("On this page")}>
+              <p>{t("On this page")}</p>
               <ol>
                 {policy.sections.map((section) => (
                   <li key={section.id}>
@@ -139,7 +143,7 @@ export default function LegalPolicyPage({ policyId }) {
                     </ul>
                   ) : null}
                   {section.links?.length ? (
-                    <div className="legal-resources" aria-label="Official resources">
+                    <div className="legal-resources" aria-label={t("Official resources")}>
                       {section.links.map((link) => (
                         <a
                           key={link.href}
@@ -161,8 +165,8 @@ export default function LegalPolicyPage({ policyId }) {
           <div>
             <EnvelopeSimple size={25} weight="fill" aria-hidden="true" />
             <div>
-              <h2 id="legal-help-title">Need clarification?</h2>
-              <p>Contact Cold Air ACT before accepting a term you do not understand.</p>
+              <h2 id="legal-help-title">{t("Need clarification?")}</h2>
+              <p>{t("Contact Cold Air ACT before accepting a term you do not understand.")}</p>
             </div>
           </div>
           <a href={`mailto:${COMPANY_CONTACT.supportEmail}`}>
@@ -172,11 +176,11 @@ export default function LegalPolicyPage({ policyId }) {
       </main>
 
       <footer className="legal-footer">
-        <p>© {new Date().getFullYear()} Cold Air ACT. All rights reserved.</p>
-        <nav aria-label="Legal footer">
+        <p>© {new Date().getFullYear()} Cold Air ACT. {t("All rights reserved.")}</p>
+        <nav aria-label={t("Legal footer")}>
           {LEGAL_POLICY_LIST.map((item) => (
             <Link key={item.id} to={item.path}>
-              {item.shortTitle}
+              {t(item.shortTitle)}
             </Link>
           ))}
         </nav>

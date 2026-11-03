@@ -4,8 +4,9 @@ import { paymentOutcome as mobileOutcome } from "../../../../bork5/caact-mobile/
 
 const order = { paymentProvider: "paymongo", paymentMethod: "gcash", paymentStatus: "pending" };
 describe.each([["web", paymentOutcome], ["mobile", mobileOutcome]])("%s payment outcomes", (_name, outcome) => {
-  test.each(["returned", "cancelled"])("unpaid %s is Transaction Failed", (state) => {
-    expect(outcome(order, state).title).toBe("Transaction Failed");
+  test.each(["returned", "cancelled"])("unpaid %s stays pending until verification confirms an outcome", (state) => {
+    expect(outcome(order, state).kind).toBe("pending");
+    expect(outcome(order, state).title).toBe("Payment pending");
   });
   test.each(["returned", "cancelled", "success"])("verified paid wins over %s callback", (state) => {
     expect(outcome({ ...order, paymentStatus: "paid" }, state).kind).toBe("paid");

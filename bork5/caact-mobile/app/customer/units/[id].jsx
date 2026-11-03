@@ -37,6 +37,7 @@ import {
   getUnitByCode,
 } from "../../../services/unitStorage";
 import { confirmAction } from "../../../utils/confirmAction";
+import { useInterfaceLanguage } from "../../../hooks/useInterfaceLanguage";
 
 const careGuideReportFromUnit = (loadedUnit = {}, reportType = "predictive_maintenance") => {
   const amp = loadedUnit.amp || {};
@@ -181,6 +182,7 @@ function requestStatusColors(status = "") {
 
 export default function CustomerUnitDetailsScreen() {
   const router = useRouter();
+  const { language, t } = useInterfaceLanguage();
   const params = useLocalSearchParams();
   const { current } = useUserContext();
   const [unit, setUnit] = useState(null);
@@ -224,18 +226,18 @@ export default function CustomerUnitDetailsScreen() {
   const handleCancelServiceRequest = (request) => {
     if (!canCustomerCancelServiceRequest(request)) {
       Alert.alert(
-        "Cancellation unavailable",
-        "This request can no longer be cancelled because the technician has already started or completed the work.",
+        t("Cancellation unavailable"),
+        t("This request can no longer be cancelled because the technician has already started or completed the work."),
       );
       return;
     }
 
     return confirmAction({
-      title: "Cancel Service Request?",
-      message: "The branch and assigned technician will be notified. You can book another visit afterward.",
-      cancelText: "Keep Request",
-      confirmText: "Cancel Request",
-      pendingText: "Cancelling...",
+      title: t("Cancel Service Request?"),
+      message: t("The branch and assigned technician will be notified. You can book another visit afterward."),
+      cancelText: t("Keep Request"),
+      confirmText: t("Cancel Request"),
+      pendingText: t("Cancelling..."),
       destructive: true,
       onConfirm: async () => {
         setCancellingRequestId(String(request.id));
@@ -261,9 +263,9 @@ export default function CustomerUnitDetailsScreen() {
               ),
             }));
           }
-          Alert.alert("Request cancelled", "The service request and any scheduled work have been cancelled.");
+          Alert.alert(t("Request cancelled"), t("The service request and any scheduled work have been cancelled."));
         } catch (error) {
-          Alert.alert("Unable to cancel request", error?.message || "Please try again.");
+          Alert.alert(t("Unable to cancel request"), t(error?.message || "Please try again."));
         } finally {
           setCancellingRequestId("");
         }
@@ -324,11 +326,11 @@ export default function CustomerUnitDetailsScreen() {
 
   if (loading) {
     return (
-      <CustomerScreen title="AC Unit Details" subtitle="Loading your registered AC unit">
+      <CustomerScreen title={t("AC Unit Details")} subtitle={t("Loading your registered AC unit")}>
         <Card style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
           <ActivityIndicator color={COLORS.primary} size="large" />
           <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
-            Getting the latest unit, warranty, and service details...
+            {t("Getting the latest unit, warranty, and service details...")}
           </Text>
         </Card>
       </CustomerScreen>
@@ -337,15 +339,15 @@ export default function CustomerUnitDetailsScreen() {
 
   if (!unit) {
     return (
-      <CustomerScreen title="AC Unit Details" subtitle="AC unit not found">
+      <CustomerScreen title={t("AC Unit Details")} subtitle={t("AC unit not found")}>
         <Card>
           <EmptyState
-            title="AC unit unavailable"
-            message="This AC unit could not be found for your account."
+            title={t("AC unit unavailable")}
+            message={t("This AC unit could not be found for your account.")}
             icon="alert-circle-sharp"
             iconColor={COLORS.warning}
             action={
-              <Button title="Back to Home" onPress={() => router.replace("/customer/home")} />
+              <Button title={t("Back to Home")} onPress={() => router.replace("/customer/home")} />
             }
           />
         </Card>
@@ -370,8 +372,8 @@ export default function CustomerUnitDetailsScreen() {
 
   return (
     <CustomerScreen
-      title="AC Unit Details"
-      subtitle={unit?.unitName || "Loading AC unit details"}
+      title={t("AC Unit Details")}
+      subtitle={unit?.unitName || t("Loading AC unit details")}
     >
       <Card style={{ backgroundColor: COLORS.primary, borderColor: COLORS.primary, overflow: "hidden" }}>
         <View style={{ position: "absolute", width: 150, height: 150, borderRadius: RADIUS.full, backgroundColor: "rgba(255,255,255,0.10)", right: -45, top: -56 }} />
@@ -385,7 +387,7 @@ export default function CustomerUnitDetailsScreen() {
         >
           <CustomerUnitImage unit={unit} size={88} style={{ marginRight: SPACING.md, borderWidth: 0 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: "#DBEAFE", fontSize: FONT.sm, fontWeight: FONT.bold }}>YOUR REGISTERED UNIT</Text>
+            <Text style={{ color: "#DBEAFE", fontSize: FONT.sm, fontWeight: FONT.bold }}>{t("YOUR REGISTERED UNIT")}</Text>
             <Text
               style={{
                 color: COLORS.surface,
@@ -393,25 +395,25 @@ export default function CustomerUnitDetailsScreen() {
                 fontWeight: FONT.black,
               }}
             >
-              {unit?.unitName || "Unnamed AC Unit"}
+              {unit?.unitName || t("Unnamed AC Unit")}
             </Text>
             <Text style={{ color: "#E0F2FE", marginTop: 2 }}>
               {[unit?.brand, unit?.model].filter(Boolean).join(" / ") ||
-                "Brand and model not set"}
+                t("Brand and model not set")}
             </Text>
           </View>
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm, marginTop: SPACING.sm }}>
           <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
-            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Installed</Text>
-            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.installationDate || "Not recorded"}</Text>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>{t("Installed")}</Text>
+            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.installationDate || t("Not recorded")}</Text>
           </View>
           <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
-            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Status</Text>
-            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{unit?.status || "Active"}</Text>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>{t("Status")}</Text>
+            <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{t(unit?.status || "Active")}</Text>
           </View>
           <View style={{ flexGrow: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: RADIUS.md, padding: SPACING.sm }}>
-            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>Horsepower</Text>
+            <Text style={{ color: "#BFDBFE", fontSize: FONT.sm }}>{t("Horsepower")}</Text>
             <Text style={{ color: COLORS.surface, fontWeight: FONT.black, marginTop: 2 }}>{formatUnitHorsepower(unit)}</Text>
           </View>
         </View>
@@ -421,17 +423,17 @@ export default function CustomerUnitDetailsScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
             <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, fontWeight: FONT.bold }}>
-              PAGE {detailPage + 1} OF {DETAIL_PAGES.length}
+              {language === "Filipino" ? `PAHINA ${detailPage + 1} SA ${DETAIL_PAGES.length}` : `PAGE ${detailPage + 1} OF ${DETAIL_PAGES.length}`}
             </Text>
             <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black, marginTop: 2 }}>
-              {DETAIL_PAGES[detailPage]}
+              {t(DETAIL_PAGES[detailPage])}
             </Text>
           </View>
           <View style={{ flexDirection: "row", gap: 6 }}>
             {DETAIL_PAGES.map((page, index) => (
               <View
                 key={page}
-                accessibilityLabel={`${page}${index === detailPage ? ", current page" : ""}`}
+                accessibilityLabel={`${t(page)}${index === detailPage ? t(", current page") : ""}`}
                 style={{
                   width: index === detailPage ? 22 : 8,
                   height: 8,
@@ -448,70 +450,70 @@ export default function CustomerUnitDetailsScreen() {
         <>
           <CustomerRecommendationPanel recommendation={recommendation} maintenance={maintenance} />
           <Card>
-            <CustomerSectionHeader title="Your AC at a glance" />
-            <DetailRow label="Model" value={unit?.productSku || unit?.model || "Not recorded"} />
-            <DetailRow label="Serial Number" value={unit?.serialNumber} />
-            <DetailRow label="Last Service" value={formatDate(unit?.lastServiceDate)} />
-            <DetailRow label="Placement" value={unit?.placementArea || "Not set"} />
-            <DetailRow label="Horsepower" value={formatUnitHorsepower(unit)} />
+            <CustomerSectionHeader title={t("Your AC at a glance")} />
+            <DetailRow label={t("Model")} value={unit?.productSku || unit?.model || t("Not recorded")} />
+            <DetailRow label={t("Serial Number")} value={unit?.serialNumber} />
+            <DetailRow label={t("Last Service")} value={unit?.lastServiceDate ? formatDate(unit.lastServiceDate) : t("Not recorded")} />
+            <DetailRow label={t("Placement")} value={unit?.placementArea || t("Not set")} />
+            <DetailRow label={t("Horsepower")} value={formatUnitHorsepower(unit)} />
             <DetailRow
-              label="Room size"
-              value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : "Recorded by the technician during installation"}
+              label={t("Room size")}
+              value={Number(unit?.roomSizeSqm || 0) > 0 ? `${Number(unit.roomSizeSqm)} m²` : t("Recorded by the technician during installation")}
               multiline
             />
-            <DetailRow label="Inventory QR" value={unit?.qrCode} multiline />
+            <DetailRow label={t("Inventory QR")} value={unit?.qrCode} multiline />
           </Card>
         </>
       ) : null}
 
       {detailPage === 1 ? (
         <Card>
-          <CustomerSectionHeader title="Warranty" />
+          <CustomerSectionHeader title={t("Warranty")} />
           {warrantyStatus === "pending_activation" ? (
             <View style={{ flexDirection: "row", gap: SPACING.sm, padding: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.warningLight, marginBottom: SPACING.sm }}>
               <Ionicons name="time-sharp" size={22} color={COLORS.warning} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>Waiting for installation verification</Text>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{t("Waiting for installation verification")}</Text>
                 <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: 3 }}>
-                  You do not need to activate this yourself. Your warranty details will appear after the technician confirms installation.
+                  {t("You do not need to activate this yourself. Your warranty details will appear after the technician confirms installation.")}
                 </Text>
               </View>
             </View>
           ) : null}
-          <DetailRow label="Status" value={warrantyStatusLabel(warrantyStatus)} />
-          <DetailRow label="Warranty Type" value={unit?.warranty?.warrantyType || "Standard manufacturer warranty"} />
-          <DetailRow label="Coverage Start" value={formatDate(unit?.warranty?.startDate)} />
-          <DetailRow label="Coverage" value={unit?.warranty?.coverageSummary || "Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch."} multiline />
-          {(unit?.warranty?.componentCoverage || []).map((item) => <DetailRow key={item.component} label={`${item.component} coverage ends`} value={`${formatDate(item.expirationDate)} — ${item.status.replace(/_/g, " ")}`} multiline />)}
-          <DetailRow label="Limitations" value={unit?.warranty?.coverageLimitations?.join(" ") || "See warranty terms"} multiline />
-          <DetailRow label="Warranty Claims" value={String(unit?.warranty?.claims?.length || 0)} />
+          <DetailRow label={t("Status")} value={t(warrantyStatusLabel(warrantyStatus))} />
+          <DetailRow label={t("Warranty Type")} value={unit?.warranty?.warrantyType || t("Standard manufacturer warranty")} />
+          <DetailRow label={t("Coverage Start")} value={unit?.warranty?.startDate ? formatDate(unit.warranty.startDate) : t("Not recorded")} />
+          <DetailRow label={t("Coverage")} value={unit?.warranty?.coverageSummary || t("Shop offer: 1 year parts, 5 years compressor. Confirm this unit’s coverage with the branch.")} multiline />
+          {(unit?.warranty?.componentCoverage || []).map((item) => <DetailRow key={item.component} label={language === "Filipino" ? `Katapusan ng saklaw ng ${item.component}` : `${item.component} coverage ends`} value={`${formatDate(item.expirationDate)} — ${t(item.status.replace(/_/g, " "))}`} multiline />)}
+          <DetailRow label={t("Limitations")} value={unit?.warranty?.coverageLimitations?.join(" ") || t("See warranty terms")} multiline />
+          <DetailRow label={t("Warranty Claims")} value={String(unit?.warranty?.claims?.length || 0)} />
           {(unit?.warranty?.claims || []).map((claim) => (
             <WarrantyClaimDetails key={claim.claimId} claim={claim} formatDate={formatDate} />
           ))}
           {(unit?.warranty?.serviceRecords || []).slice(0, 5).map((record, index) => (
-            <DetailRow key={`${record.serviceDate}-${index}`} label={`${record.claimId ? "Warranty support" : serviceName(record.visitType)} · ${formatDate(record.serviceDate)}`} value={record.summary || "Service record"} multiline />
+            <DetailRow key={`${record.serviceDate}-${index}`} label={`${t(record.claimId ? "Warranty support" : serviceName(record.visitType))} · ${formatDate(record.serviceDate)}`} value={record.summary || t("Service record")} multiline />
           ))}
           <DetailRow
-            label={warrantyStatus === "pending_activation" ? "What happens next" : "Warranty guidance"}
-            value={warrantyGuidance(unit, warrantyStatus)}
+            label={t(warrantyStatus === "pending_activation" ? "What happens next" : "Warranty guidance")}
+            value={unit?.warrantyRecommendation && warrantyStatus !== "pending_activation" ? unit.warrantyRecommendation : t(warrantyGuidance(unit, warrantyStatus))}
             multiline
           />
           {activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            This AC already has an open {activeServiceRequest.serviceType || activeServiceRequest.issueType || "service"} request ({activeServiceRequest.status}). You do not need to open a separate warranty claim while it is being handled.
+            {language === "Filipino" ? "May bukas nang kahilingan para sa " : "This AC already has an open "}{activeServiceRequest.serviceType || activeServiceRequest.issueType || t("service")}{language === "Filipino" ? " ang AC na ito (" : " request ("}{t(activeServiceRequest.status)}{language === "Filipino" ? "). Hindi na kailangang magbukas ng hiwalay na warranty claim habang inaasikaso ito." : "). You do not need to open a separate warranty claim while it is being handled."}
           </Text> : null}
           {activeWarrantyClaim ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            Warranty claim {activeWarrantyClaim.claimId} is {String(activeWarrantyClaim.status || "under review").replace(/_/g, " ")}. No duplicate request is needed; you will be notified after the review.
+            {language === "Filipino" ? "Ang warranty claim " : "Warranty claim "}{activeWarrantyClaim.claimId}{language === "Filipino" ? " ay " : " is "}{t(String(activeWarrantyClaim.status || "under review").replace(/_/g, " "))}{language === "Filipino" ? ". Hindi kailangan ng dobleng kahilingan; aabisuhan ka pagkatapos ng review." : ". No duplicate request is needed; you will be notified after the review."}
           </Text> : null}
           {canSubmitWarrantyClaim ? (
             <>
-              <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>Submit warranty claims through the Service Request form. Your coverage and claim updates remain here.</Text>
-              <Button title="Open Warranty Request Form" onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit.id, serviceType: "warranty" } })} />
+              <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>{t("Submit warranty claims through the Service Request form. Your coverage and claim updates remain here.")}</Text>
+              <Button title={t("Open Warranty Request Form")} onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit.id, serviceType: "warranty" } })} />
             </>
           ) : null}
           {["expired", "void", "pending_activation"].includes(warrantyStatus) && !activeServiceRequest ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             {warrantyStatus === "pending_activation"
-              ? "Need help before activation? You can still book a standard service visit from the Service Visits page."
-              : `Warranty support is unavailable while coverage is ${warrantyStatus.replace(/_/g, " ")}. You can still book a standard service visit from the Service Visits page.`}
+              ? t("Need help before activation? You can still book a standard service visit from the Service Visits page.")
+              : language === "Filipino" ? `Hindi available ang warranty support habang ${t(warrantyStatus.replace(/_/g, " "))} ang saklaw. Maaari ka pa ring mag-book ng karaniwang pagbisita para sa serbisyo sa pahina ng Mga Pagbisita.` : `Warranty support is unavailable while coverage is ${warrantyStatus.replace(/_/g, " ")}. You can still book a standard service visit from the Service Visits page.`}
           </Text> : null}
         </Card>
       ) : null}
@@ -519,32 +521,32 @@ export default function CustomerUnitDetailsScreen() {
       {detailPage === 2 ? (
         <>
           <Card>
-            <CustomerSectionHeader title={hasCurrentVisit ? "Current Visit Check-in" : "Latest Recorded Check-in"} />
+            <CustomerSectionHeader title={t(hasCurrentVisit ? "Current Visit Check-in" : "Latest Recorded Check-in")} />
             {latestCheckIn ? (
               <>
                 <View style={{ alignSelf: "flex-start", backgroundColor: COLORS.successLight, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm + 4, paddingVertical: 6, marginBottom: SPACING.sm }}>
-                  <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.sm }}>{hasCurrentVisit ? "CURRENT VISIT CHECK-IN" : "PREVIOUS VISIT CHECK-IN"}</Text>
+                  <Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.sm }}>{t(hasCurrentVisit ? "CURRENT VISIT CHECK-IN" : "PREVIOUS VISIT CHECK-IN")}</Text>
                 </View>
-                <DetailRow label="Technician" value={checkedInTask?.assignedTechnicianName || "Assigned technician"} />
-                <DetailRow label="Checked in" value={formatDateTime(latestCheckIn.checkedInAt)} />
-                <DetailRow label="GPS location" value={`${Number(latestCheckIn.latitude).toFixed(5)}, ${Number(latestCheckIn.longitude).toFixed(5)}`} multiline />
-                <DetailRow label="Location accuracy" value={Number(latestCheckIn.accuracy) > 0 ? `Within approximately ${Math.round(Number(latestCheckIn.accuracy))} meters` : "Location recorded by the technician’s phone"} multiline />
-                {latestCheckInMapUrl ? <Button title="Open Check-in Map" variant="secondary" onPress={() => Linking.openURL(latestCheckInMapUrl)} leftIcon={<Ionicons name="map-sharp" size={18} color={COLORS.primary} />} /> : null}
+                <DetailRow label={t("Technician")} value={checkedInTask?.assignedTechnicianName || t("Assigned technician")} />
+                <DetailRow label={t("Checked in")} value={formatDateTime(latestCheckIn.checkedInAt)} />
+                <DetailRow label={t("GPS location")} value={`${Number(latestCheckIn.latitude).toFixed(5)}, ${Number(latestCheckIn.longitude).toFixed(5)}`} multiline />
+                <DetailRow label={t("Location accuracy")} value={Number(latestCheckIn.accuracy) > 0 ? language === "Filipino" ? `Sa loob ng humigit-kumulang ${Math.round(Number(latestCheckIn.accuracy))} metro` : `Within approximately ${Math.round(Number(latestCheckIn.accuracy))} meters` : t("Location recorded by the technician’s phone")} multiline />
+                {latestCheckInMapUrl ? <Button title={t("Open Check-in Map")} variant="secondary" onPress={() => Linking.openURL(latestCheckInMapUrl)} leftIcon={<Ionicons name="map-sharp" size={18} color={COLORS.primary} />} /> : null}
               </>
             ) : (
               <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>
                 {hasCurrentVisit
-                  ? "The technician has not checked in for your current request. A previous visit does not confirm arrival for this request."
-                  : "No technician check-in has been recorded for this AC yet. The GPS arrival will appear here after the assigned technician checks in at your service address."}
+                  ? t("The technician has not checked in for your current request. A previous visit does not confirm arrival for this request.")
+                  : t("No technician check-in has been recorded for this AC yet. The GPS arrival will appear here after the assigned technician checks in at your service address.")}
               </Text>
             )}
           </Card>
           <Card>
-            <CustomerSectionHeader title="Service Requests" />
+            <CustomerSectionHeader title={t("Service Requests")} />
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-              {[["Open", activeRequests.length], ["Assigned visits", history.linkedTasks.length], ["Completed", history.completedServices.length]].map(([label, count]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.primaryLight, padding: 10, borderRadius: 10 }}><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 20 }}>{count}</Text><Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 3 }}>{label}</Text></View>)}
+              {[["Open", activeRequests.length], ["Assigned visits", history.linkedTasks.length], ["Completed", history.completedServices.length]].map(([label, count]) => <View key={label} style={{ flex: 1, backgroundColor: COLORS.primaryLight, padding: 10, borderRadius: 10 }}><Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 20 }}>{count}</Text><Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 3 }}>{t(label)}</Text></View>)}
             </View>
-            {history.requests.length ? <PagedItems key={unit.id} label="Service visits" controlsPosition="top" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
+            {history.requests.length ? <PagedItems key={unit.id} label={t("Service visits")} controlsPosition="top" items={history.requests} pageSize={1} renderItem={(request, requestIndex) => {
               const statusColors = requestStatusColors(request.status);
               const requestTimeline = Array.isArray(request.timeline)
                 ? [...request.timeline].sort(
@@ -571,38 +573,38 @@ export default function CustomerUnitDetailsScreen() {
                   <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: SPACING.sm }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.black }}>
-                        {serviceName(request.serviceType || request.issueType)}
+                        {t(serviceName(request.serviceType || request.issueType))}
                       </Text>
                       <Text style={{ color: COLORS.textMuted, fontSize: FONT.sm, marginTop: 2 }}>
-                        Request {requestReference || requestIndex + 1}
+                        {t("Request")} {requestReference || requestIndex + 1}
                       </Text>
                     </View>
                     <View style={{ backgroundColor: statusColors.background, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm + 3, paddingVertical: 6 }}>
                       <Text style={{ color: statusColors.text, fontSize: FONT.sm, fontWeight: FONT.black }}>
-                        {request.status || "Submitted"}
+                        {t(request.status || "Submitted")}
                       </Text>
                     </View>
                   </View>
-                  <DetailRow label="Concern" value={request.issueDescription || request.concern || "Service requested"} multiline />
-                  <DetailRow label="Service amount" value={request.servicePayment?.amount == null ? ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "Not recorded" : "Our team will confirm the price" : `PHP ${Number(request.servicePayment.amount).toFixed(2)}`} />
-                  <DetailRow label="Service payment" value={request.servicePayment?.status === "warranty_covered" ? "Covered by warranty — no cash due" : request.servicePayment?.status === "paid" ? "Cash collected" : request.servicePayment?.status === "no_charge" ? "No charge" : ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "No collection recorded" : request.servicePayment?.amount == null ? "Wait for the confirmed price before paying" : "Pay the technician after arrival is confirmed"} />
-                  <DetailRow label={request.scheduledDate ? "Confirmed appointment" : "Preferred visit"} value={formatDate(request.scheduledDate || request.preferredDate)} />
-                  {request.timeSlot ? <DetailRow label="Time slot" value={request.timeSlot} /> : null}
-                  <DetailRow label="Submitted" value={formatDateTime(request.createdAt)} />
-                  <DetailRow label="Your service branch" value={request.branch || "Being assigned"} />
+                  <DetailRow label={t("Concern")} value={request.issueDescription || request.concern || t("Service requested")} multiline />
+                  <DetailRow label={t("Service amount")} value={request.servicePayment?.amount == null ? ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? t("Not recorded") : t("Our team will confirm the price") : `PHP ${Number(request.servicePayment.amount).toFixed(2)}`} />
+                  <DetailRow label={t("Service payment")} value={t(request.servicePayment?.status === "warranty_covered" ? "Covered by warranty — no cash due" : request.servicePayment?.status === "paid" ? "Cash collected" : request.servicePayment?.status === "no_charge" ? "No charge" : ["completed", "cancelled"].includes(String(request.status).toLowerCase()) ? "No collection recorded" : request.servicePayment?.amount == null ? "Wait for the confirmed price before paying" : "Pay the technician after arrival is confirmed")} />
+                  <DetailRow label={t(request.scheduledDate ? "Confirmed appointment" : "Preferred visit")} value={formatDate(request.scheduledDate || request.preferredDate)} />
+                  {request.timeSlot ? <DetailRow label={t("Time slot")} value={request.timeSlot} /> : null}
+                  <DetailRow label={t("Submitted")} value={formatDateTime(request.createdAt)} />
+                  <DetailRow label={t("Your service branch")} value={request.branch || t("Being assigned")} />
                   <DetailRow
-                    label="Technician"
-                    value={request.assignedTechnicianName || linkedTask?.assignedTechnicianName || "Not assigned yet"}
+                    label={t("Technician")}
+                    value={request.assignedTechnicianName || linkedTask?.assignedTechnicianName || t("Not assigned yet")}
                   />
                   {request.taskCode || linkedTask?.taskCode ? (
-                    <DetailRow label="Visit reference" value={request.taskCode || linkedTask.taskCode} />
+                    <DetailRow label={t("Visit reference")} value={request.taskCode || linkedTask.taskCode} />
                   ) : null}
 
                   <CustomerRequestTimeline key={request.id || requestIndex} events={requestTimeline} formatDateTime={formatDateTime} color={statusColors.text} />
 
                   {canCustomerCancelServiceRequest(request) ? (
                     <Button
-                      title="Cancel Request"
+                      title={t("Cancel Request")}
                       variant="danger"
                       size="sm"
                       loading={String(cancellingRequestId) === String(request.id)}
@@ -615,11 +617,11 @@ export default function CustomerUnitDetailsScreen() {
               );
             }} /> : (
               <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-                No service request has been submitted for this AC yet.
+                {t("No service request has been submitted for this AC yet.")}
               </Text>
             )}
             <Button
-              title={activeServiceRequest ? "You already have a service request" : "Book Service for This AC"}
+              title={t(activeServiceRequest ? "You already have a service request" : "Book Service for This AC")}
               disabled={Boolean(activeServiceRequest)}
               onPress={() => router.push({ pathname: "/customer/services", params: { unitId: unit?.id || "", serviceType: recommendation?.recommendedService || "regular_cleaning" } })}
               leftIcon={<Ionicons name="calendar-sharp" size={18} color={COLORS.surface} />}
@@ -631,24 +633,24 @@ export default function CustomerUnitDetailsScreen() {
 
       {detailPage === 3 ? (
         <Card>
-          <CustomerSectionHeader title="Your AC care guide" />
+          <CustomerSectionHeader title={t("Your AC care guide")} />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 19 }}>
-            Choose what you want to know. A report does not book a service visit.
+            {t("Choose what you want to know. A report does not book a service visit.")}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs, marginTop: SPACING.xs }}>
             {[["predictive_maintenance", "When is my next service?"], ["maintenance_summary", "What work has been done?"]].map(([type, label]) => (
-              <Button key={type} title={label} size="sm" variant="secondary" onPress={() => handleAmpReport(type)} loading={ampReportLoading === type} disabled={Boolean(ampReportLoading)} style={{ marginTop: 0, flexGrow: 1 }} />
+              <Button key={type} title={t(label)} size="sm" variant="secondary" onPress={() => handleAmpReport(type)} loading={ampReportLoading === type} disabled={Boolean(ampReportLoading)} style={{ marginTop: 0, flexGrow: 1 }} />
             ))}
           </View>
-          {ampReportError ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginTop: SPACING.sm }}>{ampReportError}</Text> : null}
+          {ampReportError ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginTop: SPACING.sm }}>{t(ampReportError)}</Text> : null}
           {ampReport ? <CustomerAmpReport key={`${ampReport.reportId}-${ampReport.reportType}-${ampReport.generatedAt}`} report={ampReport} provider={ampReport.provider} /> : null}
         </Card>
       ) : null}
 
       <Card style={{ paddingVertical: SPACING.sm }}>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-          <Button title="Previous" variant="secondary" size="sm" disabled={detailPage === 0} onPress={() => goToDetailPage(detailPage - 1)} style={{ flex: 1, marginTop: 0 }} leftIcon={<Ionicons name="chevron-back-sharp" size={17} color={detailPage === 0 ? COLORS.textMuted : COLORS.primary} />} />
-          <Button title={detailPage === DETAIL_PAGES.length - 1 ? "Back to My Units" : "Next"} size="sm" onPress={() => detailPage === DETAIL_PAGES.length - 1 ? router.back() : goToDetailPage(detailPage + 1)} style={{ flex: 1, marginTop: 0 }} rightIcon={<Ionicons name={detailPage === DETAIL_PAGES.length - 1 ? "checkmark-sharp" : "chevron-forward-sharp"} size={17} color={COLORS.surface} />} />
+          <Button title={t("Previous")} variant="secondary" size="sm" disabled={detailPage === 0} onPress={() => goToDetailPage(detailPage - 1)} style={{ flex: 1, marginTop: 0 }} leftIcon={<Ionicons name="chevron-back-sharp" size={17} color={detailPage === 0 ? COLORS.textMuted : COLORS.primary} />} />
+          <Button title={t(detailPage === DETAIL_PAGES.length - 1 ? "Back to My Units" : "Next")} size="sm" onPress={() => detailPage === DETAIL_PAGES.length - 1 ? router.back() : goToDetailPage(detailPage + 1)} style={{ flex: 1, marginTop: 0 }} rightIcon={<Ionicons name={detailPage === DETAIL_PAGES.length - 1 ? "checkmark-sharp" : "chevron-forward-sharp"} size={17} color={COLORS.surface} />} />
         </View>
       </Card>
     </CustomerScreen>

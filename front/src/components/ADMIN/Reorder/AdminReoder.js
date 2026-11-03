@@ -3,15 +3,20 @@ import AdminLayout from '../Common/AdminLayout';
 import LowStockItems from './LowStockItems';
 import ReorderForm from './ReorderForm';
 import { apiRequest } from '../../../config/api';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
+import { formatBusinessDateTime } from '../../../utils/dateTime';
 import '../adminShared.css';
 import './styles.css';
 
-const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
+const formatDate = (value) => value ? formatBusinessDateTime(value) : 'Not recorded';
 const statusLabel = (status) => String(status || 'submitted').replace(/^./, (letter) => letter.toUpperCase());
 const HISTORY_PAGE_SIZE = 6;
 
 const AdminReoder = ({ embedded = false }) => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [selectedItem, setSelectedItem] = useState(null);
   const [items, setItems] = useState([]);
   const [reorders, setReorders] = useState([]);
@@ -50,23 +55,23 @@ const AdminReoder = ({ embedded = false }) => {
   const submittedCount = reorders.filter((item) => item.status === 'submitted').length;
 
   return (
-    <AdminLayout title="Reorder Management" subtitle="Request stock replenishment and track SuperAdmin decisions" embedded={embedded}>
+    <AdminLayout title={t("Reorder Management")} subtitle={t("Request stock replenishment and track SuperAdmin decisions")} embedded={embedded}>
       <div className="reorder-overview">
-        <div><strong>{submittedCount}</strong><span>Awaiting SuperAdmin review</span></div>
-        <div><strong>{items.length}</strong><span>Low-stock product{items.length === 1 ? '' : 's'} in this branch</span></div>
-        <button type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+        <div><strong>{submittedCount}</strong><span>{t("Awaiting SuperAdmin review")}</span></div>
+        <div><strong>{items.length}</strong><span>{t(items.length === 1 ? "Low-stock product" : "Low-stock products")} {t("in this branch")}</span></div>
+        <button type="button" onClick={load} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button>
       </div>
-      {error ? <p className="reorder-message is-error">{error}</p> : null}
+      {error ? <p className="reorder-message is-error">{t(error)}</p> : null}
       <div className="reorder-management-grid">
         <LowStockItems items={items} selectedItem={selectedItem} onSelect={setSelectedItem} />
         <ReorderForm item={selectedItem} onSubmitted={load} />
       </div>
       <section className="reorder-history">
-        <div className="reorder-panel-heading"><div><h2>Request history</h2><p>Every request remains visible until it is approved or rejected.</p></div><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter reorder history"><option value="all">All statuses</option><option value="submitted">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
-        {loading ? <div className="reorder-empty">Loading reorder requests…</div> : visibleReorders.length === 0 ? <div className="reorder-empty">No reorder requests match this filter.</div> : <div className="reorder-history-list">{pageReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || 'Removed product'}</strong><span>{formatCartHorsepower(reorder.product)} · {reorder.quantity} unit(s) · {reorder.branch || 'Branch not set'}</span><small>{reorder.notes || 'No additional note'} · Submitted {formatDate(reorder.createdAt)}</small>{reorder.reviewNotes ? <small>Review note: {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{statusLabel(reorder.status)}</span></article>)}</div>}
-        {visibleReorders.length > HISTORY_PAGE_SIZE ? <nav className="reorder-pagination" aria-label="Reorder request history pagination">
-          <span>Showing {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(historyPage * HISTORY_PAGE_SIZE, visibleReorders.length)} of {visibleReorders.length}</span>
-          <div><button type="button" onClick={() => setHistoryPage((current) => Math.max(1, current - 1))} disabled={historyPage === 1}>Previous</button><span>Page {historyPage} of {historyTotalPages}</span><button type="button" onClick={() => setHistoryPage((current) => Math.min(historyTotalPages, current + 1))} disabled={historyPage === historyTotalPages}>Next</button></div>
+        <div className="reorder-panel-heading"><div><h2>{t("Request history")}</h2><p>{t("Every request remains visible until it is approved or rejected.")}</p></div><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter reorder history")}><option value="all">{t("All statuses")}</option><option value="submitted">{t("Awaiting review")}</option><option value="approved">{t("Approved")}</option><option value="rejected">{t("Rejected")}</option></select></div>
+        {loading ? <div className="reorder-empty">{t("Loading reorder requests…")}</div> : visibleReorders.length === 0 ? <div className="reorder-empty">{t("No reorder requests match this filter.")}</div> : <div className="reorder-history-list">{pageReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || t('Removed product')}</strong><span>{formatCartHorsepower(reorder.product)} · {reorder.quantity} {t("unit(s) ·")} {reorder.branch || t('Branch not set')}</span><small>{reorder.notes || t('No additional note')} {t("· Submitted")} {t(formatDate(reorder.createdAt))}</small>{reorder.reviewNotes ? <small>{t("Review note:")} {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{t(statusLabel(reorder.status))}</span></article>)}</div>}
+        {visibleReorders.length > HISTORY_PAGE_SIZE ? <nav className="reorder-pagination" aria-label={t("Reorder request history pagination")}>
+          <span>{t("Showing")} {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(historyPage * HISTORY_PAGE_SIZE, visibleReorders.length)} {t("of")} {visibleReorders.length}</span>
+          <div><button type="button" onClick={() => setHistoryPage((current) => Math.max(1, current - 1))} disabled={historyPage === 1}>{t("Previous")}</button><span>{t("Page")} {historyPage} {t("of")} {historyTotalPages}</span><button type="button" onClick={() => setHistoryPage((current) => Math.min(historyTotalPages, current + 1))} disabled={historyPage === historyTotalPages}>{t("Next")}</button></div>
         </nav> : null}
       </section>
     </AdminLayout>

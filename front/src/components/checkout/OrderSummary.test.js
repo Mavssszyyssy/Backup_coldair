@@ -4,6 +4,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import OrderSummary from './OrderSummary';
 
+vi.mock('../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: 'English' }) }));
+
 afterEach(cleanup);
 const item = { id: 'lg1', name: 'LG Premium Dual Inverter', imageUrl: '/catalog/ac/lg-hsn-ipx.jpg', horsepower: 2.5, price: 46499, quantity: 1 };
 const view = (product, onPlaceOrder = vi.fn()) => <OrderSummary cart={[product]} totals={{ subtotal: 46499, vatAmount: 5579.88, deliveryFee: 350, discountAmount: 0, total: 52428.88 }} selectedPayment="cod" onPlaceOrder={onPlaceOrder} />;

@@ -2,7 +2,7 @@
 // Root layout: mounts providers that every screen needs.
 import { Stack, useRouter, useRootNavigationState } from "expo-router";
 import { useEffect, useRef } from "react";
-import { KeyboardAvoidingView, Platform } from "react-native";
+import { AppState, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { requiredSetupRoute } from "../services/accountSetupRoute";
@@ -13,8 +13,10 @@ import { UserProvider } from "../context/UserContext";
 import { useUserContext } from "../context/UserContext";
 import {
   enablePushNotifications,
+  createPushNavigationGuard,
   listenForNotificationNavigation,
   openInitialNotification,
+  setActivePushRecipient,
 } from "../services/pushNotificationService";
 import { checkBackendConnection } from "../services/api";
 import { startNetworkRecovery } from "../services/networkRecovery";
@@ -33,15 +35,40 @@ function PushNotificationSetup() {
   const setupRoute = requiredSetupRoute(current);
 
   useEffect(() => {
-    if (!navigation?.key || !token || !current?.role || setupRoute) return undefined;
-    let active = true;
-    const safeRouter = { push: (route) => { if (active) routerRef.current.push(route); } };
+    setActivePushRecipient(token && current?.id ? current.id : null);
+    return () => setActivePushRecipient(null);
+  }, [token, current?.id]);
 
-    enablePushNotifications(token).catch(() => {});
-    openInitialNotification(safeRouter, current.role).catch(() => {});
-    const unsubscribe = listenForNotificationNavigation(safeRouter, current.role);
-    return () => { active = false; unsubscribe(); };
-  }, [token, current?.role, navigation?.key, setupRoute]);
+  useEffect(() => {
+    if (!navigation?.key || !token || !current?.id || !current?.role || setupRoute) return undefined;
+    let active = true;
+    let registering = false;
+    let retryNeeded = true;
+    const shouldOpen = createPushNavigationGuard();
+    const options = { userId: current.id, shouldOpen };
+    const safeRouter = { push: (route) => {
+      if (!active) return;
+      if (routerRef.current.navigate) routerRef.current.navigate(route);
+      else routerRef.current.push(route);
+    } };
+
+    const register = async (requestPermission) => {
+      if (registering || !active) return;
+      registering = true;
+      try {
+        const result = await enablePushNotifications(token, { requestPermission });
+        if (active) retryNeeded = !result.success && !result.skipped;
+      } catch { if (active) retryNeeded = true; }
+      finally { registering = false; }
+    };
+    void register(true);
+    openInitialNotification(safeRouter, current.role, options).catch(() => {});
+    const unsubscribe = listenForNotificationNavigation(safeRouter, current.role, options);
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active" && retryNeeded) void register(false);
+    });
+    return () => { active = false; unsubscribe(); appStateSubscription.remove(); };
+  }, [token, current?.id, current?.role, navigation?.key, setupRoute]);
 
   return null;
 }

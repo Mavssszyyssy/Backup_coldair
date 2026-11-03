@@ -1,7 +1,11 @@
 import icons from '../common/icons';
 import { COMPANY_CONTACT } from '../../config/company';
+import { useUser } from '../../context/UserContext';
+import { translateText } from '../../utils/customerI18n';
 
 function ServicesSupport() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const services = [
     { icon: icons.temperatureFrigid, name: "AC Installation" },
     { icon: icons.tools, name: "Repair Services" },
@@ -35,8 +39,8 @@ function ServicesSupport() {
   return (
     <>
       <div className="services-section">
-        <h3>Mobile App Services</h3>
-        <p className="service-mobile-note">These service types can be requested and tracked only in the AeroPulse Mobile App.</p>
+        <h3>{t('Mobile App Services')}</h3>
+        <p className="service-mobile-note">{t('These service types can be requested and tracked only in the AeroPulse Mobile App.')}</p>
         <div className="services-list">
           {services.map((service, index) => (
             <div key={index} className="service-item">
@@ -47,14 +51,14 @@ function ServicesSupport() {
                   className="service-list-icon"
                 />
               </span>
-              <span>{service.name}</span>
+              <span>{t(service.name)}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="support-section">
-        <h3>Support Teams</h3>
+        <h3>{t('Support Teams')}</h3>
         <div className="support-grid">
           {support.map((item, index) => (
             <div key={index} className="support-card">
@@ -65,11 +69,11 @@ function ServicesSupport() {
                   className="support-team-icon"
                 />
               </div>
-              <h4>{item.title}</h4>
+              <h4>{t(item.title)}</h4>
               <p>{item.phone}</p>
               <p style={{ fontSize: "12px" }}>{item.email}</p>
               <a href={`mailto:${item.email}`} className="support-link">
-                Contact →
+                {t('Contact')} →
               </a>
             </div>
           ))}

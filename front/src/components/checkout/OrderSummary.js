@@ -1,8 +1,10 @@
 import PurchaseCostBreakdown from "./PurchaseCostBreakdown";
 import { Snowflake } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
-function CheckoutProductImage({ item }) {
+function CheckoutProductImage({ item, t }) {
   const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
   const [failedSource, setFailedSource] = useState("");
   return (
@@ -16,7 +18,7 @@ function CheckoutProductImage({ item }) {
           onError={() => setFailedSource(imageUrl)}
         />
       ) : (
-        <span role="img" aria-label={`${item.name || "Air conditioner"}: product image unavailable`}>
+        <span role="img" aria-label={`${item.name || t("Air conditioner")}: ${t("product image unavailable")}`}>
           <Snowflake size={30} weight="regular" aria-hidden="true" />
         </span>
       )}
@@ -24,9 +26,9 @@ function CheckoutProductImage({ item }) {
   );
 }
 
-const formatHorsepower = (item = {}) => {
+const formatHorsepower = (item = {}, t = (value) => value) => {
   const parsed = Number(item.horsepower || String(item.specs || "").match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
-  return parsed > 0 ? `${parsed} HP` : "Not specified";
+  return parsed > 0 ? `${parsed} HP` : t("Not specified");
 };
 
 function OrderSummary({
@@ -40,30 +42,32 @@ function OrderSummary({
   stockCheckedAt = "",
   isProcessing = false,
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const hasStockIssues = Array.isArray(stockIssues) && stockIssues.length > 0;
   const hasZeroBranchStock = stockIssues.some((issue) => issue?.code === "out_of_stock");
 
   return (
     <div className="checkout-section order-summary">
-      <h2 style={{ marginBottom: "20px" }}>Order Summary</h2>
+      <h2 style={{ marginBottom: "20px" }}>{t("Order Summary")}</h2>
       <div className="summary-items">
         {cart.map((item) => (
           <div key={item.id} className="summary-item">
-            <CheckoutProductImage item={item} />
+            <CheckoutProductImage item={item} t={t} />
             <div className="summary-item-details">
               <div className="summary-item-name">{item.name}</div>
               <div className="summary-item-horsepower">
-                Horsepower: {formatHorsepower(item)}
+                {t("Horsepower")}: {formatHorsepower(item, t)}
               </div>
               <div className="summary-item-price">
-                ₱{item.price.toLocaleString()} each
+                ₱{item.price.toLocaleString()} {t("each")}
               </div>
               <div className="summary-item-quantity">×{item.quantity}</div>
-              <div className="summary-item-controls" aria-label={`Update ${item.name}`}>
+              <div className="summary-item-controls" aria-label={`${t("Update")} ${item.name}`}>
                 <button
                   type="button"
                   onClick={() => onUpdateQuantity?.(item.id, Number(item.quantity || 1) - 1)}
-                  aria-label={`Decrease quantity of ${item.name}`}
+                  aria-label={`${t("Decrease quantity of")} ${item.name}`}
                 >
                   −
                 </button>
@@ -72,7 +76,7 @@ function OrderSummary({
                   type="button"
                   onClick={() => onUpdateQuantity?.(item.id, Number(item.quantity || 1) + 1)}
                   disabled={Number.isFinite(Number(item.stock)) && Number(item.quantity || 0) >= Number(item.stock)}
-                  aria-label={`Increase quantity of ${item.name}`}
+                  aria-label={`${t("Increase quantity of")} ${item.name}`}
                 >
                   +
                 </button>
@@ -80,9 +84,9 @@ function OrderSummary({
                   type="button"
                   className="summary-item-remove"
                   onClick={() => onRemoveItem?.(item.id)}
-                  aria-label={`Remove ${item.name}`}
+                  aria-label={`${t("Remove")} ${item.name}`}
                 >
-                  Remove
+                  {t("Remove")}
                 </button>
               </div>
             </div>
@@ -96,15 +100,15 @@ function OrderSummary({
       <PurchaseCostBreakdown totals={totals} />
 
       <div className="summary-total">
-        <span>Total due</span>
+        <span>{t("Total due")}</span>
         <span>₱{totals.total.toLocaleString()}</span>
       </div>
 
       <p className="checkout-flow-note">
-        Your branch will review your order and arrange delivery.
+        {t("Your branch will review your order and arrange delivery.")}
         {selectedPayment === "gcash" || selectedPayment === "credit"
-          ? " Continue to secure payment after placing the order."
-          : " Pay the assigned technician on delivery after arrival is confirmed."}
+          ? ` ${t("Continue to secure payment after placing the order.")}`
+          : ` ${t("Pay the assigned technician on delivery after arrival is confirmed.")}`}
       </p>
 
       {hasStockIssues ? (
@@ -120,23 +124,23 @@ function OrderSummary({
         >
           <div style={{ fontWeight: 800, marginBottom: "6px" }}>
             {hasZeroBranchStock
-              ? "This branch currently has no stock of this item"
-              : "This branch does not have enough stock for the requested quantity"}
+              ? t("This branch currently has no stock of this item")
+              : t("This branch does not have enough stock for the requested quantity")}
           </div>
           <div style={{ fontSize: "13px", lineHeight: 1.35 }}>
             {stockIssues.slice(0, 4).map((issue) => (
               <div key={issue.id || issue.name}>
-                {issue.name}: requested {issue.desired}, available{" "}
+                {issue.name}: {t("requested")} {issue.desired}, {t("available")}{" "}
                 {issue.available}
               </div>
             ))}
             {stockIssues.length > 4 ? (
-              <div>+{stockIssues.length - 4} more</div>
+              <div>+{stockIssues.length - 4} {t("more")}</div>
             ) : null}
           </div>
           {stockCheckedAt ? (
             <div style={{ marginTop: "8px", fontSize: "12px", opacity: 0.8 }}>
-              Last checked: {new Date(stockCheckedAt).toLocaleTimeString()}
+              {t("Last checked")}: {new Date(stockCheckedAt).toLocaleTimeString()}
             </div>
           ) : null}
         </div>
@@ -150,10 +154,10 @@ function OrderSummary({
         aria-busy={isProcessing}
       >
         {hasStockIssues
-          ? "Update cart to continue"
+          ? t("Update cart to continue")
           : isProcessing
-            ? "Connecting..."
-            : "Place order"}
+            ? t("Connecting...")
+            : t("Place order")}
       </button>
     </div>
   );

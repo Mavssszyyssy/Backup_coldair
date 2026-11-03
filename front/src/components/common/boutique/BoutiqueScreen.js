@@ -1,4 +1,5 @@
 import BoutiqueBox from "./BoutiqueBox";
+import { BQ_COLORS } from "./BoutiqueTheme";
 import { BQ_GEOMETRY } from "./BoutiqueTheme";
 
 /**
@@ -8,7 +9,7 @@ import { BQ_GEOMETRY } from "./BoutiqueTheme";
  */
 export default function BoutiqueScreen({
   children,
-  background = "white",
+  background = BQ_COLORS.bg,
   scrollable = true,
   withHeader = false,
   padding = 0,

@@ -8,8 +8,10 @@ import Card from "../../components/ui/Card";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { confirmAction } from "../../utils/confirmAction";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 export default function ManagerIndexScreen() {
+  const { t } = useInterfaceLanguage();
   const { current, logout } = useUserContext();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -17,10 +19,10 @@ export default function ManagerIndexScreen() {
   const handleLogout = () => {
     if (loggingOut) return;
     return confirmAction({
-      title: "Sign out?",
-      message: "Are you sure you want to sign out of your account?",
-      confirmText: "Sign out",
-      pendingText: "Signing out...",
+      title: t("Sign out?"),
+      message: t("Are you sure you want to sign out of your account?"),
+      confirmText: t("Sign out"),
+      pendingText: t("Signing out..."),
       destructive: true,
       onConfirm: async () => {
         setLoggingOut(true);
@@ -53,7 +55,7 @@ export default function ManagerIndexScreen() {
               textAlign: "center",
             }}
           >
-            You should use the web app instead.
+            {t("You should use the web app instead.")}
           </Text>
           <Text
             style={{
@@ -64,11 +66,11 @@ export default function ManagerIndexScreen() {
               textAlign: "center",
             }}
           >
-            This mobile app is only for customer and technician accounts.
-            {current?.email ? ` Signed in as ${current.email}.` : ""}
+            {t("This mobile app is only for customer and technician accounts.")}
+            {current?.email ? ` ${t("Signed in as")} ${current.email}.` : ""}
           </Text>
           <Button
-            title={loggingOut ? "Signing out..." : "Sign out"}
+            title={t(loggingOut ? "Signing out..." : "Sign out")}
             onPress={handleLogout}
             variant="danger"
             loading={loggingOut}

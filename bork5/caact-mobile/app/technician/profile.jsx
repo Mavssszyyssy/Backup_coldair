@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 
 import TechnicianScreen, {
@@ -16,6 +16,7 @@ import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
 import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
 import PasswordField from "../../components/ui/PasswordField";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
   return (
@@ -27,7 +28,8 @@ function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingVertical: SPACING.sm,
+        minHeight: 56,
+        paddingVertical: SPACING.sm + 4,
       }}
     >
       <View
@@ -47,7 +49,7 @@ function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
           color={danger ? COLORS.danger : COLORS.tech}
         />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={{
             color: danger ? COLORS.danger : COLORS.textPrimary,
@@ -62,27 +64,28 @@ function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
               color: COLORS.textSecondary,
               fontSize: FONT.sm,
               marginTop: 2,
+              lineHeight: 18,
             }}
           >
             {subtitle}
           </Text>
         )}
       </View>
-      {right ?? null}
+      {right ? <View style={{ marginLeft: SPACING.sm }}>{right}</View> : null}
     </TouchableOpacity>
   );
 }
 
-function EditAction({ onPress }) {
+function EditAction({ onPress, label = "Edit technician profile" }) {
   return (
     <TouchableOpacity
       activeOpacity={0.74}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Edit technician profile"
+      accessibilityLabel={label}
       style={{
-        width: 36,
-        height: 36,
+        width: 44,
+        height: 44,
         borderRadius: 8,
         alignItems: "center",
         justifyContent: "center",
@@ -96,8 +99,19 @@ function EditAction({ onPress }) {
   );
 }
 
+function ProfileSectionHeader({ title, description }) {
+  return (
+    <View style={{ paddingBottom: SPACING.sm, marginBottom: SPACING.xs, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+      <Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{title}</Text>
+      {description ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, lineHeight: 18, marginTop: SPACING.xs }}>{description}</Text> : null}
+    </View>
+  );
+}
+
 export default function TechProfile() {
   const router = useRouter();
+  const { language, t, updateLanguage } = useInterfaceLanguage();
+  const [savingLanguage, setSavingLanguage] = useState(false);
   const { current, logout, updateMyAccount, changeMyPassword } = useUserContext();
   const displayName = getDisplayName(current);
   const [alias, setAlias] = useState(current?.alias || "");
@@ -108,62 +122,83 @@ export default function TechProfile() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
+
+  const selectLanguage = async (nextLanguage) => {
+    if (savingLanguage || nextLanguage === language) return;
+    setSavingLanguage(true);
+    const result = await updateLanguage(nextLanguage);
+    setSavingLanguage(false);
+    if (!result.success) Alert.alert(t("Unable to save preferences."), result.error || t("Please try again."));
+  };
 
   const handleSave = async () => {
-    if (saving) return;
-    const phoneError = validatePhone(phone);
-    if (phoneError) {
-      Alert.alert("Invalid contact number", phoneError);
+    if (saveInFlight.current) return;
+    const nextAlias = alias.trim().toLowerCase();
+    if (nextAlias !== String(current?.alias || "").trim().toLowerCase() &&
+      !/^[a-z0-9_.-]{3,30}$/.test(nextAlias)) {
+      Alert.alert(t("Invalid username"), t("Username must be 3-30 letters, numbers, dots, underscores, or hyphens."));
       return;
     }
+    const phoneError = validatePhone(phone);
+    if (phoneError) {
+      Alert.alert(t("Invalid contact number"), t(phoneError));
+      return;
+    }
+    saveInFlight.current = true;
     setSaving(true);
     try {
-      const result = await updateMyAccount({ alias: alias.trim(), phone: canonicalizePhMobile(phone) });
+      const normalizedPhone = canonicalizePhMobile(phone);
+      const result = await updateMyAccount({ alias: nextAlias, phone: normalizedPhone });
       const ok = result.success;
       Alert.alert(
-        ok ? "Saved" : "Not Saved",
-        ok ? "Profile updated." : result.error || "Profile update failed.",
+        t(ok ? "Saved" : "Not Saved"),
+        t(ok ? "Profile updated." : result.error || "Profile update failed."),
       );
       if (ok) {
+        setAlias(result.user?.alias ?? nextAlias);
+        setPhone(canonicalizePhMobile(result.user?.phone ?? normalizedPhone));
         setPassword("");
         setIsEditing(false);
       }
     } catch (error) {
-      Alert.alert("Not Saved", error.message || "Profile update failed. Please try again.");
+      Alert.alert(t("Not Saved"), t(error.message || "Profile update failed. Please try again."));
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
 
   const handlePasswordSave = async () => {
-    if (saving) return;
+    if (saveInFlight.current) return;
     const error = validateAccountPassword(password);
     if (!currentPassword || error || password !== confirmPassword) {
-      Alert.alert("Check your password", !currentPassword ? "Enter your current password." : error || "New passwords do not match.");
+      Alert.alert(t("Check your password"), t(!currentPassword ? "Enter your current password." : error || "New passwords do not match."));
       return;
     }
     if (password === currentPassword) {
-      Alert.alert("Check your password", "New password must be different from current password.");
+      Alert.alert(t("Check your password"), t("New password must be different from current password."));
       return;
     }
+    saveInFlight.current = true;
     setSaving(true);
     try {
       const result = await changeMyPassword({ currentPassword, newPassword: password });
-      if (!result.success) { Alert.alert("Password not changed", result.error || "Please try again."); return; }
+      if (!result.success) { Alert.alert(t("Password not changed"), t(result.error || "Please try again.")); return; }
       setCurrentPassword(""); setPassword(""); setConfirmPassword("");
       setIsChangingPassword(false);
-      Alert.alert("Password changed", "Use your new password the next time you sign in.");
+      Alert.alert(t("Password changed"), t("Use your new password the next time you sign in."));
     } catch (error) {
-      Alert.alert("Password not changed", error.message || "Please try again.");
-    } finally { setSaving(false); }
+      Alert.alert(t("Password not changed"), t(error.message || "Please try again."));
+    } finally { saveInFlight.current = false; setSaving(false); }
   };
 
   const handleLogout = () =>
     confirmAction({
-      title: "Sign out?",
-      message: "Are you sure you want to sign out of your account?",
-      confirmText: "Sign out",
-      pendingText: "Signing out...",
+      title: t("Sign out?"),
+      message: t("Are you sure you want to sign out of your account?"),
+      confirmText: t("Sign out"),
+      pendingText: t("Signing out..."),
       destructive: true,
       onConfirm: async () => {
         await logout();
@@ -173,15 +208,15 @@ export default function TechProfile() {
 
   return (
     <TechnicianScreen
-      title="Profile"
-      subtitle={isChangingPassword ? "Reset your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings"}
+      title={t("Account")}
+      subtitle={t(isChangingPassword ? "Reset your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings")}
       icon="person-sharp"
-      contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : 96 }}
+      contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : SPACING.lg }}
       stickyAction={
         isEditing || isChangingPassword ? (
           <StickyActionBar>
             <TechButton
-              title={saving ? "Saving..." : "Save Changes"}
+              title={t(saving ? "Saving..." : isChangingPassword ? "Reset Password" : "Save Changes")}
               onPress={isChangingPassword ? handlePasswordSave : handleSave}
               loading={saving}
               leftIcon={
@@ -189,9 +224,9 @@ export default function TechProfile() {
               }
             />
             <TechButton
-              title="Cancel"
+              title={t("Cancel")}
               disabled={saving}
-              onPress={() => { if (saving) return; setIsEditing(false); setIsChangingPassword(false); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
+              onPress={() => { if (saveInFlight.current) return; setIsEditing(false); setIsChangingPassword(false); setAlias(current?.alias || ""); setPhone(canonicalizePhMobile(current?.phone || "")); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
               variant="secondary"
             />
           </StickyActionBar>
@@ -199,61 +234,58 @@ export default function TechProfile() {
       }
     >
       <TechHero
-        eyebrow="System Settings"
+        eyebrow={t("Technician account")}
         title={displayName}
-        subtitle="Manage your contact details, password, and sign-in session."
+        subtitle={t("Manage your contact details, password, and sign-in session.")}
         icon="id-card-sharp"
       />
 
       {isChangingPassword ? <Card>
-        <PasswordField label="Current Password" value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
-        <PasswordField label="New Password" value={password} onChangeText={setPassword} showRequirements editable={!saving} />
-        <PasswordField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
+        <ProfileSectionHeader title={t("Reset Password")} description={t("Verify your current password and choose a new one.")} />
+        <PasswordField label={t("Current Password")} value={currentPassword} onChangeText={setCurrentPassword} editable={!saving} />
+        <PasswordField label={t("New Password")} value={password} onChangeText={setPassword} showRequirements editable={!saving} />
+        <PasswordField label={t("Confirm New Password")} value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
       </Card> : !isEditing ? (
         <>
           <Card>
+            <ProfileSectionHeader title={t("Profile details")} description={t("Review your username, contact details, and work status.")} />
             <SettingsRow
               icon="person-circle-sharp"
-              title={displayName}
-              subtitle={`${current?.alias || "No alias"} - ${current?.email || "No email"}`}
-              right={<EditAction onPress={() => setIsEditing(true)} />}
+              title={t("Username")}
+              subtitle={current?.alias || t("No username")}
+              right={<EditAction onPress={() => { setAlias(current?.alias || ""); setPhone(canonicalizePhMobile(current?.phone || "")); setIsEditing(true); }} label={t("Edit technician profile")} />}
             />
+            <SettingsRow icon="mail-sharp" title={t("Email")} subtitle={current?.email || t("No email")} />
             <SettingsRow
               icon="call-sharp"
-              title="Phone"
-              subtitle={current?.phone || "No phone on file"}
-              right={
-                <Ionicons
-                  name="checkmark-circle-sharp"
-                  size={20}
-                  color={COLORS.success}
-                />
-              }
+              title={t("Phone")}
+              subtitle={current?.phone || t("No phone on file")}
             />
             <SettingsRow
               icon="briefcase-sharp"
-              title="Status"
-              subtitle={current?.status || "active"}
+              title={t("Status")}
+              subtitle={t(current?.status || "active")}
             />
           </Card>
 
           <Card>
+            <ProfileSectionHeader title={t("Security & Session")} description={t("Review sign-in requirements and manage your password.")} />
             <SettingsRow
               icon="shield-checkmark-sharp"
-              title="Account Security"
-              subtitle="Sign in with your username and password, then verify the code sent to your email."
+              title={t("Email Sign-in Verification")}
+              subtitle={t("After your password is accepted, verify the code sent to your email.")}
               right={
                 <Ionicons
-                  name="checkmark-circle-sharp"
+                  name="information-circle-outline"
                   size={20}
-                  color={COLORS.success}
+                  color={COLORS.tech}
                 />
               }
             />
             <SettingsRow
               icon="refresh-sharp"
-              title="Reset Password"
-              subtitle="Verify your current password and choose a new one."
+              title={t("Reset Password")}
+              subtitle={t("Verify your current password and choose a new one.")}
               onPress={() => setIsChangingPassword(true)}
               right={
                 <Ionicons
@@ -267,9 +299,10 @@ export default function TechProfile() {
         </>
       ) : (
         <Card>
-          <TextField label="Sign-in Alias" value={alias} onChangeText={setAlias} />
-          <TextField
-            label="Contact Number"
+          <ProfileSectionHeader title={t("Edit technician profile")} description={t("Update your username and contact number.")} />
+          <TextField translate={t} label={t("Username")} value={alias} onChangeText={setAlias} editable={!saving} />
+          <TextField translate={t}
+            label={t("Contact Number")}
             value={phone}
             onChangeText={(value) => setPhone((previous) => sanitizeLocalPhMobileInput(value, previous))}
             keyboardType="phone-pad"
@@ -281,11 +314,27 @@ export default function TechProfile() {
         </Card>
       )}
 
+      {!isEditing && !isChangingPassword ? <>
       <Card>
+        <ProfileSectionHeader title={t("Account settings")} description={t("Choose how the app displays its controls.")} />
+        <View style={{ paddingVertical: SPACING.sm }}>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginBottom: SPACING.xs }}>{t("Interface language")}</Text>
+          <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>{t("Choose the language used for buttons, labels, and navigation.")}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
+            {["English", "Filipino"].map((choice) => (
+              <TouchableOpacity key={choice} accessibilityRole="radio" accessibilityState={{ checked: language === choice, disabled: savingLanguage }} disabled={savingLanguage} onPress={() => selectLanguage(choice)} style={{ minWidth: 112, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: 10, borderWidth: 1, borderColor: language === choice ? COLORS.tech : COLORS.border, backgroundColor: language === choice ? COLORS.techLight : COLORS.surface }}>
+                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, textAlign: "center" }}>{t(choice)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Card>
+      <Card>
+        <ProfileSectionHeader title={t("Session")} description={t("Sign out of this device when you are done.")} />
         <SettingsRow
           icon="log-out-sharp"
-          title="Sign out"
-          subtitle="Sign out of this technician account on this device."
+          title={t("Sign out")}
+          subtitle={t("Sign out of this technician account on this device.")}
           danger
           onPress={handleLogout}
           right={
@@ -297,6 +346,7 @@ export default function TechProfile() {
           }
         />
       </Card>
+      </> : null}
     </TechnicianScreen>
   );
 }

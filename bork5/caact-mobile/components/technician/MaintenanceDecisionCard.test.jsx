@@ -3,6 +3,27 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import MaintenanceDecisionCard from './MaintenanceDecisionCard';
 import { fetchTaskDecisionSupport, generateTaskDecisionSupport, reviewTaskDecisionSupport } from '../../services/taskStorage';
 
+const mockLanguage = { current: 'English' };
+jest.mock('../../hooks/useInterfaceLanguage', () => {
+  const { translateText } = require('../../services/interfaceI18n');
+  return { useInterfaceLanguage: () => ({ language: mockLanguage.current, t: (value) => translateText(value, mockLanguage.current) }) };
+});
+beforeEach(() => { mockLanguage.current = 'English'; });
+
+test('Filipino assessment controls preserve the original AI finding', async () => {
+  mockLanguage.current = 'Filipino';
+  fetchTaskDecisionSupport.mockResolvedValue({ success: true, preAssessment: {
+    status: 'completed', evidence: [],
+    assessment: { possible_problem: 'Cooling and fan noise need inspection.' },
+    review: { decision: 'pending' },
+  } });
+  await render(<MaintenanceDecisionCard taskId="task-fil" requestId="request-fil" completed={false} />);
+  fireEvent.press(screen.getByRole('button', { name: 'Pagsusuri ng AI sa mga piyesa at posibleng susunod na problema' }));
+  expect(await screen.findByText('Buod ng assessment')).toBeTruthy();
+  expect(screen.getByText('Cooling and fan noise need inspection.')).toBeTruthy();
+  expect(screen.getByText('Pahina ng assessment 1 sa 2')).toBeTruthy();
+});
+
 jest.mock('../../services/taskStorage', () => ({
   fetchTaskDecisionSupport: jest.fn(), generateTaskDecisionSupport: jest.fn(), reviewTaskDecisionSupport: jest.fn(),
 }));

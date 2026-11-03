@@ -21,10 +21,12 @@ export default function BoutiqueNumberInput({
   size = "md", // "sm", "md", "lg"
   width = "auto",
   placeholder = "",
+  strict = false,
 }) {
   // Helper to format with commas
   const formatValue = (val) => {
     if (val === "" || val === null || val === undefined) return "";
+    if (strict && !/^\d+$/.test(String(val).replace(/,/g, ""))) return String(val);
     const num = parseInt(val.toString().replace(/,/g, ""));
     if (isNaN(num)) return "";
     return num.toLocaleString();
@@ -38,6 +40,10 @@ export default function BoutiqueNumberInput({
 
   const handleTextChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
+    if (strict) {
+      onChange(rawValue);
+      return;
+    }
     if (rawValue === "") {
       onChange("");
       return;
@@ -48,6 +54,12 @@ export default function BoutiqueNumberInput({
   };
 
   const handleBlur = () => {
+    if (strict) {
+      const raw = String(value ?? "").trim();
+      const parsed = Number(raw);
+      if (/^\d+$/.test(raw) && Number.isSafeInteger(parsed) && parsed >= min && (max === null || parsed <= max)) onChange(parsed);
+      return;
+    }
     let num = getRawNumber(value);
     if (num === "") {
       onChange(min);
@@ -59,6 +71,7 @@ export default function BoutiqueNumberInput({
   };
 
   const increment = () => {
+    if (strict && (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)))) return;
     const current = getRawNumber(value) || 0;
     const next = current + step;
     if (max !== null && next > max) onChange(max);
@@ -66,6 +79,7 @@ export default function BoutiqueNumberInput({
   };
 
   const decrement = () => {
+    if (strict && (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)))) return;
     const current = getRawNumber(value) || 0;
     const next = current - step;
     if (next < min) onChange(min);
@@ -141,7 +155,7 @@ export default function BoutiqueNumberInput({
         .bq-num-btn {
           border-radius: 50%;
           border: none;
-          background: white;
+          background: ${BQ_COLORS.surface};
           color: ${BQ_COLORS.ink};
           cursor: pointer;
           display: flex;

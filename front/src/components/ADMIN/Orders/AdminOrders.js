@@ -7,6 +7,7 @@ import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
 import { formatBusinessDateKey } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import './AdminOrders.css';
 
@@ -104,7 +105,7 @@ const formatDeliveryAddress = (address = {}) =>
 const formatDateTime = (value) => {
   if (!value) return 'Not submitted';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila", timeZoneName: "short" });
 };
 
 const formatHorsepower = (item = {}) => {
@@ -187,7 +188,8 @@ const getPaymentMethodLabel = (order = {}) => {
 };
 
 const AdminOrders = ({ embedded = false }) => {
-  const { user } = useUser();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const location = useLocation();
   const recordId = new URLSearchParams(location.search).get('recordId');
@@ -393,13 +395,11 @@ const AdminOrders = ({ embedded = false }) => {
   const getOrderTechnicians = (order) => {
     const branch = String(order.stockSourceBranch || order.customerBranch || '').trim();
     if (!branch) return technicians;
-    const matching = technicians.filter((technician) =>
+    return technicians.filter((technician) =>
       [technician.assignedBranch, technician.activeBranch]
         .map((value) => String(value || '').trim())
-        .includes(branch) ||
-      (!technician.assignedBranch && !technician.activeBranch),
+        .includes(branch),
     );
-    return matching.length ? matching : technicians;
   };
 
   const handleProcess = async (order, actionOverride = '') => {
@@ -411,6 +411,10 @@ const AdminOrders = ({ embedded = false }) => {
     const form = getFulfillmentForm(order);
     if (config.action === 'dispatch' && !form.assignedTechnicianId) {
       alert('Select a technician before marking this order dispatched. Dispatch creates the assigned technician work order.');
+      return;
+    }
+    if (config.action === 'dispatch' && (!form.installationDate || !form.timeSlot)) {
+      alert(t('Choose an installation date and time slot before dispatching this order.'));
       return;
     }
     if (['approve', 'dispatch'].includes(config.action) && isPastCalendarDate(form.installationDate)) {
@@ -448,7 +452,7 @@ const AdminOrders = ({ embedded = false }) => {
       });
       await loadOrders();
     } catch (e) {
-      alert(e.message || 'Unable to process order.');
+      alert(t(e.message || 'Unable to process order.'));
     } finally {
       setProcessingId('');
     }
@@ -566,95 +570,95 @@ const AdminOrders = ({ embedded = false }) => {
   };
 
   return (
-    <AdminLayout title="Customer Orders" subtitle="Review and process customer checkout requests" embedded={embedded}>
+    <AdminLayout title={t('Customer Orders')} subtitle={t('Review and process customer checkout requests')} embedded={embedded}>
       <div className="admin-orders-page">
-        {loading ? <p>Loading orders...</p> : null}
-        {error ? <p className="admin-orders-error">{error}</p> : null}
+        {loading ? <p>{t('Loading orders...')}</p> : null}
+        {error ? <p className="admin-orders-error">{t(error)}</p> : null}
         {!loading ? (
           <div className="admin-orders-filter-panel">
             <div className="admin-orders-filter-heading">
               <div>
-                <strong>Find customer orders</strong>
-                <span>Search and narrow the list before processing an order.</span>
+                <strong>{t('Find customer orders')}</strong>
+                <span>{t('Search and narrow the list before processing an order.')}</span>
               </div>
               <button type="button" onClick={loadOrders} className="admin-orders-refresh">
-                Refresh{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
+                {t('Refresh')}{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
               </button>
             </div>
 
             <div className="admin-orders-filter-grid">
               <label className="admin-orders-search-field">
-                <span>Search orders</span>
+                <span>{t('Search orders')}</span>
                 <input
                   type="search"
                   value={orderSearch}
                   onChange={(event) => setOrderSearch(event.target.value)}
-                  placeholder="Order code, customer, phone, product, or serial"
+                  placeholder={t('Order code, customer, phone, product, or serial')}
                   autoComplete="off"
                 />
               </label>
               <label>
-                <span>Order stage</span>
+                <span>{t('Order stage')}</span>
                 <select value={workflowFilter} onChange={(event) => setWorkflowFilter(event.target.value)}>
-                  {ORDER_WORKFLOW_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {ORDER_WORKFLOW_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
                 </select>
               </label>
               <label>
-                <span>Payment</span>
+                <span>{t('Payment')}</span>
                 <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
-                  {ORDER_PAYMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {ORDER_PAYMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
                 </select>
               </label>
               <label>
-                <span>Order date</span>
+                <span>{t('Order date')}</span>
                 <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
-                  {ORDER_DATE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {ORDER_DATE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
                 </select>
               </label>
               {branchOptions.length > 1 ? (
                 <label>
-                  <span>Stock branch</span>
+                  <span>{t('Stock branch')}</span>
                   <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-                    <option value="all">All branches</option>
+                    <option value="all">{t('All branches')}</option>
                     {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
                   </select>
                 </label>
               ) : null}
             </div>
 
-            <div className="admin-orders-filterbar" role="group" aria-label="Order work queues">
-              <b>Quick views</b>
+            <div className="admin-orders-filterbar" role="group" aria-label={t('Order work queues')}>
+              <b>{t('Quick views')}</b>
               <button
                 type="button"
                 className={orderViewFilter === 'all' ? 'active' : ''}
                 onClick={() => setOrderViewFilter('all')}
               >
-                All Orders <span>{orders.length}</span>
+                {t('All Orders')} <span>{orders.length}</span>
               </button>
               <button
                 type="button"
                 className={orderViewFilter === 'refund_review' ? 'active' : ''}
                 onClick={() => setOrderViewFilter('refund_review')}
               >
-                Refund Review <span>{refundReviewCount}</span>
+                {t('Refund Review')} <span>{refundReviewCount}</span>
               </button>
               <button
                 type="button"
                 className={orderViewFilter === 'cancel_requests' ? 'active' : ''}
                 onClick={() => setOrderViewFilter('cancel_requests')}
               >
-                Cancel Requests <span>{cancelRequestCount}</span>
+                {t('Cancel Requests')} <span>{cancelRequestCount}</span>
               </button>
             </div>
 
             <div className="admin-orders-filter-summary" aria-live="polite">
-              <span>{pendingOrders.length} matching {pendingOrders.length === 1 ? 'order' : 'orders'}{activeFilterCount ? ` · ${activeFilterCount} active ${activeFilterCount === 1 ? 'filter' : 'filters'}` : ''}</span>
-              <button type="button" onClick={clearOrderFilters} disabled={activeFilterCount === 0}>Clear filters</button>
+              <span>{pendingOrders.length} {t('matching')} {t(pendingOrders.length === 1 ? 'order' : 'orders')}{activeFilterCount ? ` · ${activeFilterCount} ${t('active')} ${t(activeFilterCount === 1 ? 'filter' : 'filters')}` : ''}</span>
+              <button type="button" onClick={clearOrderFilters} disabled={activeFilterCount === 0}>{t('Clear filters')}</button>
             </div>
           </div>
         ) : null}
         {!loading && pendingOrders.length === 0 ? (
-          <p className="admin-orders-empty">{activeFilterCount ? 'No orders match the selected filters.' : 'No customer orders.'}</p>
+          <p className="admin-orders-empty">{t(activeFilterCount ? 'No orders match the selected filters.' : 'No customer orders.')}</p>
         ) : null}
         <div className="admin-orders-list">
           {paginatedOrders.map((order) => {
@@ -705,71 +709,71 @@ const AdminOrders = ({ embedded = false }) => {
               <article key={order.id} id={`admin-order-${order.id}`} className="admin-order-card">
                 <div className="admin-order-row">
                   <h3>{order.orderCode}</h3>
-                  <span className={`admin-order-status status-${order.workflowStatus}`}>{order.workflowLabel}</span>
+                  <span className={`admin-order-status status-${order.workflowStatus}`}>{t(order.workflowLabel)}</span>
                 </div>
                 <p className="admin-order-meta">
-                  Customer: {order.customerName || 'N/A'} | Branch: {order.customerBranch || order.stockSourceBranch || 'N/A'}
+                  {t('Customer:')} {order.customerName || 'N/A'} | {t('Branch:')} {order.customerBranch || order.stockSourceBranch || 'N/A'}
                 </p>
-                <p className="admin-order-meta">Placed: {formatDateTime(order.createdAt)}</p>
+                <p className="admin-order-meta">{t('Placed:')} {formatDateTime(order.createdAt)}</p>
                 <p className="admin-order-meta">
-                  Delivery: {formatDeliveryAddress(order.address) || 'No delivery address'}
+                  {t('Delivery:')} {formatDeliveryAddress(order.address) || t('No delivery address')}
                 </p>
                 {order.address?.phone ? (
-                  <p className="admin-order-meta">Contact: {order.address.phone}</p>
+                  <p className="admin-order-meta">{t('Contact:')} {order.address.phone}</p>
                 ) : null}
                 <p className="admin-order-meta">
-                  Amount: PHP {Number(order.totalAmount || 0).toLocaleString()} | Payment: {getPaymentMethodLabel(order)}
-                  {order.paymentProvider === 'paymongo' ? ` | Online status: ${getPaymentStatus(order)}` : ''}
+                  {t('Amount:')} PHP {Number(order.totalAmount || 0).toLocaleString()} | {t('Payment:')} {t(getPaymentMethodLabel(order))}
+                  {order.paymentProvider === 'paymongo' ? ` | ${t('Online status:')} ${t(getPaymentStatus(order))}` : ''}
                 </p>
-                <div className="admin-order-workflow-summary" aria-label="Order service workflow">
-                  <span><b>Payment</b>{paymentStatus}</span>
-                  <span><b>Delivery</b>{deliveryStatus}</span>
-                  <span><b>Technician</b>{order.assignedTechnician || linkedTask?.assignedTechnicianName || 'Unassigned'}</span>
-                  <span><b>Installation / service</b>{installationStatus}</span>
+                <div className="admin-order-workflow-summary" aria-label={t('Order service workflow')}>
+                  <span><b>{t('Payment')}</b>{t(paymentStatus)}</span>
+                  <span><b>{t('Delivery')}</b>{t(deliveryStatus)}</span>
+                  <span><b>{t('Technician')}</b>{order.assignedTechnician || linkedTask?.assignedTechnicianName || t('Unassigned')}</span>
+                  <span><b>{t('Installation / service')}</b>{t(installationStatus)}</span>
                 </div>
                 {(order.assignedTechnician || linkedTask?.assignedTechnicianName || order.estimatedArrival || order.installationDate) ? (
                   <p className="admin-order-meta">
-                    Fulfillment: {order.assignedTechnician || linkedTask?.assignedTechnicianName || 'Unassigned'}
-                    {order.estimatedArrival ? ` | Delivery ${dateInputValue(order.estimatedArrival)}` : ''}
-                    {order.installationDate ? ` | Install ${dateInputValue(order.installationDate)}` : ''}
+                    {t('Fulfillment:')} {order.assignedTechnician || linkedTask?.assignedTechnicianName || t('Unassigned')}
+                    {order.estimatedArrival ? ` | ${t('Delivery')} ${dateInputValue(order.estimatedArrival)}` : ''}
+                    {order.installationDate ? ` | ${t('Install')} ${dateInputValue(order.installationDate)}` : ''}
                     {order.installationTimeSlot ? ` | ${order.installationTimeSlot}` : ''}
                   </p>
                 ) : null}
                 {order.refundReview?.required ? (
                   <div className={`admin-order-refund-note refund-${order.refundReview.status || 'needs_review'}`}>
-                    <strong>{refundStatusLabel(order.refundReview.status)}</strong>
-                    <span>{order.refundReview.reason || 'Manual PayMongo refund review required.'}</span>
+                    <strong>{t(refundStatusLabel(order.refundReview.status))}</strong>
+                    <span>{order.refundReview.reason || t('Manual PayMongo refund review required.')}</span>
                     {order.refundReview.reviewedAt ? (
-                      <small>Reviewed by {order.refundReview.reviewedByName || 'Admin'} on {formatDateTime(order.refundReview.reviewedAt)}</small>
+                      <small>{t('Reviewed by')} {order.refundReview.reviewedByName || 'Admin'} {t('on')} {formatDateTime(order.refundReview.reviewedAt)}</small>
                     ) : null}
                     {order.refundReview.completedAt ? (
-                      <small>Completed by {order.refundReview.completedByName || 'Admin'} on {formatDateTime(order.refundReview.completedAt)}</small>
+                      <small>{t('Completed by')} {order.refundReview.completedByName || 'Admin'} {t('on')} {formatDateTime(order.refundReview.completedAt)}</small>
                     ) : null}
                   </div>
                 ) : null}
                 {order.cancellationRequest?.requested ? (
                   <div className={`admin-order-cancel-request request-${order.cancellationRequest.status || 'requested'}`}>
                     <strong>
-                      {order.cancellationRequest.status === 'approved'
+                      {t(order.cancellationRequest.status === 'approved'
                         ? 'Cancellation approved'
-                        : 'Cancellation requested'}
+                        : 'Cancellation requested')}
                     </strong>
-                    <span>{order.cancellationRequest.reason || order.cancellationReason || 'Customer requested cancellation.'}</span>
+                    <span>{order.cancellationRequest.reason || order.cancellationReason || t('Customer requested cancellation.')}</span>
                     <small>
-                      Requested by {order.cancellationRequest.requestedByName || order.customerName || 'Customer'}
-                      {order.cancellationRequest.requestedAt ? ` on ${formatDateTime(order.cancellationRequest.requestedAt)}` : ''}
+                      {t('Requested by')} {order.cancellationRequest.requestedByName || order.customerName || t('Customer')}
+                      {order.cancellationRequest.requestedAt ? ` ${t('on')} ${formatDateTime(order.cancellationRequest.requestedAt)}` : ''}
                     </small>
                   </div>
                 ) : null}
                 {!awaitingVisitFollowUp && ['to_pay', 'to_deliver', 'to_dispatch', 'to_install', 'for_rescheduling'].includes(order.workflowStatus) ? (
                   <div className="admin-order-fulfillment">
                     <label>
-                      Technician
+                      {t('Technician')}
                       <select
                         value={getFulfillmentForm(order).assignedTechnicianId}
                         onChange={(event) => updateFulfillmentForm(order, { assignedTechnicianId: event.target.value })}
                       >
-                        <option value="">Auto / unassigned</option>
+                        <option value="">{t('Auto / unassigned')}</option>
                         {getOrderTechnicians(order).map((technician) => (
                           <option key={technician.id} value={technician.id}>
                             {getTechnicianName(technician)}
@@ -779,22 +783,22 @@ const AdminOrders = ({ embedded = false }) => {
                       </select>
                     </label>
                     <label>
-                      Installation &amp; delivery date
+                      {t('Installation & delivery date')}
                       <input
                         type="date"
                         min={getTodayDateInput()}
                         value={getFulfillmentForm(order).installationDate}
                         onChange={(event) => updateFulfillmentForm(order, { installationDate: event.target.value })}
                       />
-                      <small>Delivery automatically uses this same confirmed date.</small>
+                      <small>{t('Delivery automatically uses this same confirmed date.')}</small>
                     </label>
                     <label>
-                      Time Slot
+                      {t('Time Slot')}
                       <select
                         value={getFulfillmentForm(order).timeSlot}
                         onChange={(event) => updateFulfillmentForm(order, { timeSlot: event.target.value })}
                       >
-                        <option value="">Select time slot</option>
+                        <option value="">{t('Select time slot')}</option>
                         {TIME_SLOT_OPTIONS.map((slot) => (
                           <option key={slot} value={slot}>{slot}</option>
                         ))}
@@ -806,11 +810,11 @@ const AdminOrders = ({ embedded = false }) => {
                       onClick={() => handleAssignment(order)}
                       disabled={!getFulfillmentForm(order).assignedTechnicianId || processingId === `${order.id}:recovery-assign_technician`}
                     >
-                      {processingId === `${order.id}:recovery-assign_technician`
+                      {t(processingId === `${order.id}:recovery-assign_technician`
                         ? 'Assigning...'
                         : linkedTask?.assignedTechnicianId
                           ? 'Update Technician & Work Order'
-                          : 'Assign Technician & Create Work Order'}
+                          : 'Assign Technician & Create Work Order')}
                     </button>
                   </div>
                 ) : null}
@@ -824,7 +828,7 @@ const AdminOrders = ({ embedded = false }) => {
                           <strong>{item.name}</strong>
                           <span>x{item.quantity}</span>
                         </div>
-                        <div className="admin-order-item-horsepower">Horsepower: {formatHorsepower(item)}</div>
+                        <div className="admin-order-item-horsepower">{t('Horsepower:')} {t(formatHorsepower(item))}</div>
 
                         {units.length > 0 ? (
                           <div className="admin-order-unit-grid">
@@ -838,7 +842,7 @@ const AdminOrders = ({ embedded = false }) => {
                                   className="admin-order-unit-card"
                                   key={`${order.id}-${idx}-${unitKey}-${serialIdx}`}
                                 >
-                                  <div className="admin-order-unit-qr" aria-label={`QR code for serial number ${unit.serialNumber || serialIdx + 1}`}>
+                                  <div className="admin-order-unit-qr" aria-label={`${t('QR code for serial number')} ${unit.serialNumber || serialIdx + 1}`}>
                                     {qrValue ? (
                                       <QRCodeCanvas
                                         value={qrValue}
@@ -847,25 +851,25 @@ const AdminOrders = ({ embedded = false }) => {
                                         includeMargin
                                       />
                                     ) : (
-                                      <span>No QR</span>
+                                      <span>{t('No QR')}</span>
                                     )}
                                   </div>
                                   <div className="admin-order-unit-details">
-                                    <span>Inventory QR - Unit {serialIdx + 1}</span>
-                                    <small>Scan in the Cold Air mobile app</small>
-                                    <code>{unit.serialNumber || `Order unit ${serialIdx + 1}`}</code>
+                                    <span>{t('Inventory QR - Unit')} {serialIdx + 1}</span>
+                                    <small>{t('Scan in the Cold Air mobile app')}</small>
+                                    <code>{unit.serialNumber || `${t('Order unit')} ${serialIdx + 1}`}</code>
                                     {unit.productSku ? <small>SKU: {unit.productSku}</small> : null}
-                                    {unit.branch ? <small>Branch: {unit.branch}</small> : null}
-                                    {unit.status ? <small>Status: {unit.status}</small> : null}
-                                    {qrPayload ? <small>Payload: {qrPayload}</small> : null}
-                                    {unit.isOrderUnitFallback ? <small>Order-unit QR shown until serial syncs</small> : null}
+                                    {unit.branch ? <small>{t('Branch:')} {unit.branch}</small> : null}
+                                    {unit.status ? <small>{t('Status:')} {t(unit.status)}</small> : null}
+                                    {qrPayload ? <small>{t('Payload:')} {qrPayload}</small> : null}
+                                    {unit.isOrderUnitFallback ? <small>{t('Order-unit QR shown until serial syncs')}</small> : null}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="admin-order-no-serials">No serial numbers assigned yet.</p>
+                          <p className="admin-order-no-serials">{t('No serial numbers assigned yet.')}</p>
                         )}
                       </div>
                     );
@@ -873,19 +877,19 @@ const AdminOrders = ({ embedded = false }) => {
                 </div>
                 {hasAnyInstallationEvidence ? (
                   <div className="admin-order-proof">
-                    <strong>Proof of Installation</strong>
-                    <span>Technician: {proof.technicianName || detailedTask.assignedTechnicianName || 'Technician'}</span>
-                    <span>Submitted: {formatDateTime(proof.submittedAt || detailedTask.proofSubmittedAt)}</span>
-                    {detailedTask?.findings ? <span>Work completed: {detailedTask.findings}</span> : null}
-                    {detailedTask?.afterCondition ? <span>Final condition: {detailedTask.afterCondition}</span> : null}
+                    <strong>{t('Proof of Installation')}</strong>
+                    <span>{t('Technician:')} {proof.technicianName || detailedTask.assignedTechnicianName || t('Technician')}</span>
+                    <span>{t('Submitted:')} {formatDateTime(proof.submittedAt || detailedTask.proofSubmittedAt)}</span>
+                    {detailedTask?.findings ? <span>{t('Work completed:')} {detailedTask.findings}</span> : null}
+                    {detailedTask?.afterCondition ? <span>{t('Final condition:')} {detailedTask.afterCondition}</span> : null}
                     {ampRecords.length ? (
                       <div className="admin-order-amp-records">
-                        <strong>AMP registration record</strong>
+                        <strong>{t('AMP registration record')}</strong>
                         {ampRecords.map((registration) => (
                           <div className="admin-order-amp-record" key={registration.serialNumber}>
                             <b>{registration.serialNumber}</b>
                             <span>
-                              Room size: {registration.ampParameters?.roomSizeSqm ? `${registration.ampParameters.roomSizeSqm} m²` : 'Not recorded'} · Condition: {registration.ampParameters?.conditionRating || 'good'}
+                              {t('Room size:')} {registration.ampParameters?.roomSizeSqm ? `${registration.ampParameters.roomSizeSqm} m²` : t('Not recorded')} · {t('Condition:')} {t(registration.ampParameters?.conditionRating || 'good')}
                             </span>
                             {registration.ampParameters?.notes ? <small>{registration.ampParameters.notes}</small> : null}
                           </div>
@@ -895,14 +899,14 @@ const AdminOrders = ({ embedded = false }) => {
                     <div className="admin-order-proof-photos">
                       {(proof.beforePhotos || []).slice(0, 1).map((photo, index) => (
                         <a key={`before-${index}`} href={photo.uri} target="_blank" rel="noreferrer">
-                          <img src={photo.uri} alt={photo.label || 'Before service'} />
-                          <span>{photo.label || 'Before'}</span>
+                          <img src={photo.uri} alt={photo.label || t('Before service')} />
+                          <span>{photo.label || t('Before')}</span>
                         </a>
                       ))}
                       {(proof.afterPhotos || []).slice(0, 1).map((photo, index) => (
                         <a key={`after-${index}`} href={photo.uri} target="_blank" rel="noreferrer">
-                          <img src={photo.uri} alt={photo.label || 'After service'} />
-                          <span>{photo.label || 'After'}</span>
+                          <img src={photo.uri} alt={photo.label || t('After service')} />
+                          <span>{photo.label || t('After')}</span>
                         </a>
                       ))}
                     </div>
@@ -913,23 +917,23 @@ const AdminOrders = ({ embedded = false }) => {
                         onClick={() => loadTaskProof(linkedTask)}
                         disabled={proofLoadingId === String(taskDetailKey || '')}
                       >
-                        {proofLoadingId === String(taskDetailKey || '') ? 'Loading picture...' : 'View technician proof picture'}
+                        {t(proofLoadingId === String(taskDetailKey || '') ? 'Loading picture...' : 'View technician proof picture')}
                       </button>
                     ) : null}
                     {loadedTaskDetail && embeddedProofPhotos.length === 0 ? (
-                      <span className="admin-order-no-serials">No technician proof picture was saved for this work order.</span>
+                      <span className="admin-order-no-serials">{t('No technician proof picture was saved for this work order.')}</span>
                     ) : null}
                   </div>
                 ) : null}
                 <VisitFollowUpPanel task={linkedTask ? { ...detailedTask, ...linkedTask } : detailedTask} onUpdated={() => { setTaskDetailsById({}); return loadOrders(); }} />
                 {needsTaskActivation ? (
                   <p className="admin-order-recovery-note" role="alert">
-                    The order is dispatched, but its technician work order is not active. Use Activate Work Order below to synchronize it before field work.
+                    {t('The order is dispatched, but its technician work order is not active. Use Activate Work Order below to synchronize it before field work.')}
                   </p>
                 ) : null}
                 {isWaitingTechnician ? (
                   <p className="admin-order-recovery-note">
-                    Waiting for the technician to complete installation registration and submit all required proof.
+                    {t('Waiting for the technician to complete installation registration and submit all required proof.')}
                   </p>
                 ) : null}
                 {actionConfig || order.receipt?.receiptNumber || order.refundReview?.required || canRepairTask ? (
@@ -942,20 +946,20 @@ const AdminOrders = ({ embedded = false }) => {
                           onClick={() => handleProcess(order)}
                           disabled={isPaymongoPending || isWaitingTechnician || (actionConfig.action === 'dispatch' && !getFulfillmentForm(order).assignedTechnicianId) || processingId === `${order.id}:${actionConfig.action}`}
                         >
-                          {isPaymongoPending
+                          {t(isPaymongoPending
                             ? 'Waiting PayMongo'
                             : isWaitingTechnician
                               ? 'Waiting Technician'
                               : processingId === `${order.id}:${actionConfig.action}`
                                 ? 'Processing...'
-                                : actionConfig.label}
+                                : actionConfig.label)}
                         </button>
                         {canCancel ? (
                           <>
                             <input
                               className="admin-cancel-reason"
                               type="text"
-                              placeholder="Cancellation note"
+                              placeholder={t('Cancellation note')}
                               value={getFulfillmentForm(order).cancellationReason}
                               onChange={(event) => updateFulfillmentForm(order, { cancellationReason: event.target.value })}
                             />
@@ -965,7 +969,7 @@ const AdminOrders = ({ embedded = false }) => {
                               onClick={() => handleProcess(order, 'cancel')}
                               disabled={processingId === `${order.id}:cancel`}
                             >
-                              {processingId === `${order.id}:cancel` ? 'Cancelling...' : 'Cancel Order'}
+                              {t(processingId === `${order.id}:cancel` ? 'Cancelling...' : 'Cancel Order')}
                             </button>
                           </>
                         ) : null}
@@ -976,7 +980,7 @@ const AdminOrders = ({ embedded = false }) => {
                             onClick={() => handleVerifyPaymongo(order)}
                             disabled={processingId === `${order.id}:verify-paymongo`}
                           >
-                            {processingId === `${order.id}:verify-paymongo` ? 'Verifying...' : 'Verify PayMongo'}
+                            {t(processingId === `${order.id}:verify-paymongo` ? 'Verifying...' : 'Verify PayMongo')}
                           </button>
                         ) : null}
                       </>
@@ -988,9 +992,9 @@ const AdminOrders = ({ embedded = false }) => {
                         onClick={() => handleRecovery(order, 'recreate_task')}
                         disabled={processingId === `${order.id}:recovery-recreate_task`}
                       >
-                        {processingId === `${order.id}:recovery-recreate_task`
+                        {t(processingId === `${order.id}:recovery-recreate_task`
                           ? 'Repairing...'
-                          : needsTaskActivation ? 'Activate Work Order' : 'Repair Task'}
+                          : needsTaskActivation ? 'Activate Work Order' : 'Repair Task')}
                       </button>
                     ) : null}
                     {canSyncInstalledUnits ? (
@@ -1000,7 +1004,7 @@ const AdminOrders = ({ embedded = false }) => {
                         onClick={() => handleRecovery(order, 'sync_installed_units')}
                         disabled={processingId === `${order.id}:recovery-sync_installed_units`}
                       >
-                        {processingId === `${order.id}:recovery-sync_installed_units` ? 'Syncing...' : 'Sync Units'}
+                        {t(processingId === `${order.id}:recovery-sync_installed_units` ? 'Syncing...' : 'Sync Units')}
                       </button>
                     ) : null}
                     {order.refundReview?.required && order.refundReview.status !== 'completed' ? (
@@ -1012,7 +1016,7 @@ const AdminOrders = ({ embedded = false }) => {
                             onClick={() => handleRefundReview(order, 'reviewed')}
                             disabled={processingId === `${order.id}:refund-reviewed`}
                           >
-                            {processingId === `${order.id}:refund-reviewed` ? 'Saving...' : 'Mark Refund Reviewed'}
+                            {t(processingId === `${order.id}:refund-reviewed` ? 'Saving...' : 'Mark Refund Reviewed')}
                           </button>
                         ) : null}
                         <button
@@ -1021,7 +1025,7 @@ const AdminOrders = ({ embedded = false }) => {
                           onClick={() => handleRefundReview(order, 'completed')}
                           disabled={processingId === `${order.id}:refund-completed`}
                         >
-                          {processingId === `${order.id}:refund-completed` ? 'Saving...' : 'Refund Completed'}
+                          {t(processingId === `${order.id}:refund-completed` ? 'Saving...' : 'Refund Completed')}
                         </button>
                       </>
                     ) : null}
@@ -1031,7 +1035,7 @@ const AdminOrders = ({ embedded = false }) => {
                         className="admin-receipt-btn"
                         onClick={() => navigate(`/receipt/${encodeURIComponent(order.id)}`)}
                       >
-                        View Receipt
+                        {t('View Receipt')}
                       </button>
                     ) : null}
                   </div>
@@ -1041,17 +1045,17 @@ const AdminOrders = ({ embedded = false }) => {
           })}
         </div>
         {!loading && pendingOrders.length > 0 ? (
-          <div className="admin-orders-pagination" aria-label="Orders pagination">
+          <div className="admin-orders-pagination" aria-label={t('Orders pagination')}>
             <span>
-              Showing {(orderPage - 1) * ORDER_PAGE_SIZE + 1}-{Math.min(orderPage * ORDER_PAGE_SIZE, pendingOrders.length)} of {pendingOrders.length}
+              {t('Showing')} {(orderPage - 1) * ORDER_PAGE_SIZE + 1}-{Math.min(orderPage * ORDER_PAGE_SIZE, pendingOrders.length)} {t('of')} {pendingOrders.length}
             </span>
             <div>
               <button type="button" onClick={() => setOrderPage((page) => Math.max(1, page - 1))} disabled={orderPage === 1}>
-                Previous
+                {t('Previous')}
               </button>
-              <span>Page {orderPage} of {totalOrderPages}</span>
+              <span>{t('Page')} {orderPage} {t('of')} {totalOrderPages}</span>
               <button type="button" onClick={() => setOrderPage((page) => Math.min(totalOrderPages, page + 1))} disabled={orderPage === totalOrderPages}>
-                Next
+                {t('Next')}
               </button>
             </div>
           </div>

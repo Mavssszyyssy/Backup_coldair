@@ -9,12 +9,16 @@ import BoutiqueGrid from "./BoutiqueGrid";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "./BoutiqueTheme";
+import { useUser } from "../../../context/UserContext";
+import { translateText } from "../../../utils/customerI18n";
 
 /**
  * BOUTIQUE FOOTER
  */
 export default function BoutiqueFooter() {
   const currentYear = new Date().getFullYear();
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
 
   return (
     <BoutiqueBox
@@ -47,20 +51,19 @@ export default function BoutiqueFooter() {
             style={{ lineHeight: 1.7, maxWidth: "340px" }}
             className="bq-footer-text"
           >
-            The definitive boutique destination for premium air conditioning
-            solutions. Experience the art of perfect cooling.
+            {t("The definitive boutique destination for premium air conditioning solutions. Experience the art of perfect cooling.")}
           </BoutiqueText>
           <BoutiqueBox direction="row" gap={12} className="bq-social-links">
-            <button className="bq-social-btn">
+            <button className="bq-social-btn" aria-label="Facebook">
               <FacebookLogo size={20} weight="bold" />
             </button>
-            <button className="bq-social-btn">
+            <button className="bq-social-btn" aria-label="Twitter">
               <TwitterLogo size={20} weight="bold" />
             </button>
-            <button className="bq-social-btn">
+            <button className="bq-social-btn" aria-label="Instagram">
               <InstagramLogo size={20} weight="bold" />
             </button>
-            <button className="bq-social-btn">
+            <button className="bq-social-btn" aria-label="LinkedIn">
               <LinkedinLogo size={20} weight="bold" />
             </button>
           </BoutiqueBox>
@@ -73,7 +76,7 @@ export default function BoutiqueFooter() {
             weight={700}
             style={{ letterSpacing: "0.25em", opacity: 0.8 }}
           >
-            Collections
+            {t("Collections")}
           </BoutiqueText>
           <BoutiqueStack
             gap={16}
@@ -84,16 +87,16 @@ export default function BoutiqueFooter() {
             style={{ listStyle: "none" }}
           >
             <li>
-              <a href="/shop?cat=split">Split Type</a>
+              <a href="/shop?cat=split">{t("Split Type")}</a>
             </li>
             <li>
-              <a href="/shop?cat=window">Window Type</a>
+              <a href="/shop?cat=window">{t("Window Type")}</a>
             </li>
             <li>
-              <a href="/shop?cat=floor">Floor Type</a>
+              <a href="/shop?cat=floor">{t("Floor Type")}</a>
             </li>
             <li>
-              <a href="/shop?cat=portable">Portable Units</a>
+              <a href="/shop?cat=portable">{t("Portable Units")}</a>
             </li>
           </BoutiqueStack>
         </BoutiqueStack>
@@ -105,7 +108,7 @@ export default function BoutiqueFooter() {
             weight={700}
             style={{ letterSpacing: "0.25em", opacity: 0.8 }}
           >
-            Experience
+            {t("Experience")}
           </BoutiqueText>
           <BoutiqueStack
             gap={16}
@@ -116,16 +119,16 @@ export default function BoutiqueFooter() {
             style={{ listStyle: "none" }}
           >
             <li>
-              <a href="/services">Mobile Services</a>
+              <a href="/services">{t("Mobile Services")}</a>
             </li>
             <li>
-              <a href="/myunit">My Units</a>
+              <a href="/myunit">{t("My Units")}</a>
             </li>
             <li>
-              <a href="/contact">Support</a>
+              <a href="/contact">{t("Support")}</a>
             </li>
             <li>
-              <a href="/faq">FAQ</a>
+              <a href="/faq">{t("FAQ")}</a>
             </li>
           </BoutiqueStack>
         </BoutiqueStack>
@@ -137,7 +140,7 @@ export default function BoutiqueFooter() {
             weight={700}
             style={{ letterSpacing: "0.25em", opacity: 0.8 }}
           >
-            Legal
+            {t("Legal")}
           </BoutiqueText>
           <BoutiqueStack
             gap={16}
@@ -148,16 +151,16 @@ export default function BoutiqueFooter() {
             style={{ listStyle: "none" }}
           >
             <li>
-              <a href="/terms/app">App Terms</a>
+              <a href="/terms/app">{t("App Terms")}</a>
             </li>
             <li>
-              <a href="/terms/warranty">Warranty Terms</a>
+              <a href="/terms/warranty">{t("Warranty Terms")}</a>
             </li>
             <li>
-              <a href="/terms/service">Service Terms</a>
+              <a href="/terms/service">{t("Service Terms")}</a>
             </li>
             <li>
-              <a href="/privacy">Privacy Notice</a>
+              <a href="/privacy">{t("Privacy Notice")}</a>
             </li>
           </BoutiqueStack>
         </BoutiqueStack>
@@ -179,7 +182,7 @@ export default function BoutiqueFooter() {
           color={BQ_COLORS.inkFaint}
           style={{ textTransform: "uppercase", letterSpacing: "0.1em" }}
         >
-          © {currentYear} AeroPulse Boutique. All rights reserved.
+          © {currentYear} {t("AeroPulse Boutique. All rights reserved.")}
         </BoutiqueText>
       </BoutiqueBox>
 
@@ -194,7 +197,7 @@ export default function BoutiqueFooter() {
         .bq-footer-links a:hover { color: ${BQ_COLORS.accent}; transform: translateX(8px); }
 
         .bq-social-btn {
-          width: 48px; height: 48px; background: white;
+          width: 48px; height: 48px; background: ${BQ_COLORS.surface};
           border: 1px solid ${BQ_COLORS.border}; border-radius: 14px; color: ${BQ_COLORS.ink};
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);

@@ -111,7 +111,7 @@ describe("mobile customer readiness rules", () => {
     );
 
     expect(detailsSource).toContain("DETAIL_PAGES");
-    expect(detailsSource).toContain('label="Room size"');
+    expect(detailsSource).toContain('label={t("Room size")}');
     expect(detailsSource).not.toContain("Save Room Size");
     expect(detailsSource).toContain("Current Visit Check-in");
     expect(detailsSource).toContain("Latest Recorded Check-in");
@@ -123,7 +123,7 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain('["Assigned visits", history.linkedTasks.length]');
     expect(detailsSource).toContain('["Completed", history.completedServices.length]');
     expect(detailsSource).toContain('<CustomerRequestTimeline');
-    expect(detailsSource).toContain('label="Service visits" controlsPosition="top"');
+    expect(detailsSource).toContain('label={t("Service visits")} controlsPosition="top"');
     expect(detailsSource).not.toContain('label="Request timeline"');
     expect(detailsSource).toContain("Cancel Request");
     expect(detailsSource).toContain("cancelServiceRequest");
@@ -161,11 +161,11 @@ describe("mobile customer readiness rules", () => {
     expect(formatCartModel({ sku: "HSN24IPX3" })).toBe("HSN24IPX3");
     expect(formatCartModel({ serialUnits: [{ productSku: "HSN24IPX3" }] })).toBe("HSN24IPX3");
     expect(formatCartHorsepower({ specs: "2.5HP Inverter" })).toBe("2.5 HP");
-    expect(shopSource).toContain("Model: {formatCartModel(item)}");
-    expect(shopSource).toContain("Horsepower: {formatCartHorsepower(item)}");
-    expect(shopSource).toContain("Added to cart");
-    expect(checkoutSource).toContain("Model: {formatCartModel(item)}");
-    expect(ordersSource).toContain("Model: {formatCartModel(item)}");
+    expect(shopSource).toContain('{t("Model")}: {formatCartModel(item)}');
+    expect(shopSource).toContain('{t("Horsepower")}: {formatCartHorsepower(item)}');
+    expect(shopSource).toContain('{t("Added to cart")}');
+    expect(checkoutSource).toContain('{t("Model")}: {formatCartModel(item)}');
+    expect(ordersSource).toContain('{t("Model")}: {formatCartModel(item)}');
   });
 
   test("login uses clear email verification and account recovery wording", () => {
@@ -220,7 +220,7 @@ describe("mobile customer readiness rules", () => {
     );
     expect(settingsSource).toContain("Use as my default delivery address");
     expect(settingsSource).toContain("This choice will be applied when you save the address");
-    expect(settingsSource).toContain('label="ZIP Code *"');
+    expect(settingsSource).toContain('label={t("ZIP Code *")}');
     expect(settingsSource).toContain("showKeyboardDone");
     expect(settingsSource).not.toContain("Valid ZIP code range");
     expect(bottomSheetSource).toContain("searchInputRef.current?.blur?.()");
@@ -283,7 +283,7 @@ describe("mobile customer readiness rules", () => {
       "utf8",
     );
     expect(contactSource).toContain("startLiveRefresh(loadHistory)");
-    expect(contactSource).toContain('title="Selected Support Message"');
+    expect(contactSource).toContain("title={t('Selected Support Message')}");
     expect(contactSource).toContain("focusedMessageId");
   });
 
@@ -292,8 +292,8 @@ describe("mobile customer readiness rules", () => {
       path.join(__dirname, "..", "app", "customer", "units", "[id].jsx"),
       "utf8",
     );
-    expect(unitSource).toContain('label="Room size"');
-    expect(unitSource).toContain("Recorded by the technician during installation");
+    expect(unitSource).toContain('label={t("Room size")}');
+    expect(unitSource).toContain('t("Recorded by the technician during installation")');
     expect(unitSource).not.toContain("Save Room Size");
     expect(unitSource).not.toContain("updateAmpRoomSize");
   });
@@ -333,7 +333,7 @@ describe("mobile customer readiness rules", () => {
     expect(detailsSource).toContain('activePage.key === "service"');
     expect(detailsSource).toContain("!isInstallationWorkOrder(loadedTask)");
     expect(detailsSource).toContain("!installationTask ? <ServicePaymentCard");
-    expect(detailsSource.indexOf('title="Next Action"')).toBeLessThan(detailsSource.indexOf('title="Customer & Schedule"'));
+    expect(detailsSource.indexOf('title={t("Next Action")}')).toBeLessThan(detailsSource.indexOf('title={t("Customer & Schedule")}'));
     expect(detailsSource).toContain('activePage.key === "proof" && task?.visitAttempt?.id');
     expect(detailsSource).not.toContain("(detailPage === 0 || detailPage === 3) && task?.visitAttempt?.id");
     expect(detailsSource).not.toContain("DETAIL_PAGES");

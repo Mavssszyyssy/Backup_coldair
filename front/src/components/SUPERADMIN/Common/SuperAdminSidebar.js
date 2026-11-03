@@ -13,6 +13,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmLogout } from "../../../utils/dialog";
+import { translateText } from "../../../utils/customerI18n";
 import logo from "../../common/images/Cold Air Logo.jpg";
 
 const links = [
@@ -29,7 +30,8 @@ const links = [
 
 const SuperAdminSidebar = () => {
   const navigate = useNavigate();
-  const { logout } = useUser();
+  const { logout, currentLanguage } = useUser();
+  const t = (text) => translateText(text, currentLanguage);
 
   const handleLogout = () => confirmLogout(() => {
     logout();
@@ -41,7 +43,7 @@ const SuperAdminSidebar = () => {
       <div className="super-sidebar-top">
         <div className="super-sidebar-brand">
           <img src={logo} alt="" />
-          <span className="super-sidebar-brand-copy"><span>AeroPulse HQ</span><small>Company operations</small></span>
+          <span className="super-sidebar-brand-copy"><span>AeroPulse HQ</span><small>{t("Company operations")}</small></span>
         </div>
       </div>
       <nav className="super-nav" aria-label="Superadmin navigation">
@@ -56,7 +58,7 @@ const SuperAdminSidebar = () => {
             <span className="super-nav-icon-wrap">
               <link.icon size={20} weight="bold" className="inline-icon" />
             </span>
-            <span>{link.label}</span>
+            <span>{t(link.label)}</span>
           </NavLink>
         ))}
       </nav>
@@ -66,7 +68,7 @@ const SuperAdminSidebar = () => {
         onClick={handleLogout}
         style={{ display: "flex", alignItems: "center", gap: "8px" }}
       >
-        <SignOut size={20} weight="bold" className="inline-icon" /> Logout
+        <SignOut size={20} weight="bold" className="inline-icon" /> {t("Logout")}
       </button>
     </aside>
   );

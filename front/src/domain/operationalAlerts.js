@@ -1,5 +1,6 @@
 export function alertCategory(item = {}) {
   const target = item.targetType || item.category;
+  if (target === 'stock' || item.category === 'stock' || (['inventory', 'stock'].includes(item.type) && /(?:low|out of|shortage of)\s+stock/i.test(`${item.title || ''} ${item.message || ''}`))) return 'stock';
   if (['maintenance_pipeline', 'amp_pipeline', 'amp_due_soon', 'amp_overdue', 'maintenance_due'].includes(target) || item.type === 'technician') return 'maintenance';
   if (['order', 'payment', 'delivery'].includes(item.type) || target === 'order') return 'transactions';
   if (['service', 'warranty'].includes(item.type) || ['contact', 'contact_message', 'parts_request', 'reorder'].includes(target)) return 'requests';

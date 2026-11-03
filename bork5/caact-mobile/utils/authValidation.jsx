@@ -59,12 +59,20 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
     return `${fieldLabel} cannot contain numbers.`;
   }
 
-  if (!/^[A-Za-zÀ-ÖØ-öø-ÿÑñ .'-]+$/.test(text)) {
+  if (!/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(text)) {
     return `${fieldLabel} can only use letters, spaces, apostrophes, periods, and hyphens.`;
   }
 
   if (text.length < 2) {
     return `${fieldLabel} must be at least 2 characters.`;
+  }
+
+  if (text.length > 60) {
+    return `${fieldLabel} must be 60 characters or fewer.`;
+  }
+
+  if (/(.)\1{5,}/iu.test(text)) {
+    return `${fieldLabel} contains too many repeated characters.`;
   }
 
   return "";

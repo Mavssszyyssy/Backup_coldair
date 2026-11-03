@@ -5,6 +5,7 @@ import CustomerSectionHeader from "./CustomerSectionHeader";
 import DetailRow from "../ui/DetailRow";
 import { COLORS, SPACING } from "../../constants/theme";
 import { formatPeso } from "../../services/ecommerceService";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const configuredAmount = (service) => {
   const rawAmount = service?.pricing?.basePrice;
@@ -17,31 +18,32 @@ const configuredAmount = (service) => {
 };
 
 export default function ServiceRequestPaymentSummary({ mode = "service", service = null, payment = null }) {
+  const { t } = useInterfaceLanguage();
   const isWarranty = mode === "warranty";
   const recordedQuote = configuredAmount({ pricing: { basePrice: payment?.amount } });
   const amount = isWarranty ? 0 : recordedQuote ?? configuredAmount(service);
-  const amountLabel = amount === null ? "Awaiting Admin quote" : formatPeso(amount);
+  const amountLabel = amount === null ? t("Awaiting Admin quote") : formatPeso(amount);
 
   return <Card>
-    <CustomerSectionHeader title="Payment Summary" />
+    <CustomerSectionHeader title={t("Payment Summary")} />
     <View style={{ gap: SPACING.xs }}>
-      <DetailRow label={isWarranty ? "Claim submission" : recordedQuote !== null ? "Base service price" : "Service amount"} value={isWarranty ? amountLabel : recordedQuote !== null ? formatPeso(payment?.baseAmount ?? recordedQuote) : amountLabel} />
+      <DetailRow label={t(isWarranty ? "Claim submission" : recordedQuote !== null ? "Base service price" : "Service amount")} value={isWarranty ? amountLabel : recordedQuote !== null ? formatPeso(payment?.baseAmount ?? recordedQuote) : amountLabel} />
       <DetailRow
-        label="Labor"
-        value={isWarranty ? "Coverage review required" : amount === null ? "Not recorded yet" : formatPeso(payment?.laborCost || 0)}
+        label={t("Labor")}
+        value={isWarranty ? t("Coverage review required") : amount === null ? t("Not recorded yet") : formatPeso(payment?.laborCost || 0)}
       />
-      <DetailRow label="Parts" value={isWarranty ? "Coverage review required" : amount === null ? "Not recorded yet" : formatPeso(payment?.partsCost || 0)} />
-      <DetailRow label="Final service price" value={isWarranty ? formatPeso(0) : amountLabel} />
-      {!isWarranty && payment?.status ? <DetailRow label="Payment status" value={String(payment.status).replace(/_/g, " ")} /> : null}
+      <DetailRow label={t("Parts")} value={isWarranty ? t("Coverage review required") : amount === null ? t("Not recorded yet") : formatPeso(payment?.partsCost || 0)} />
+      <DetailRow label={t("Final service price")} value={isWarranty ? formatPeso(0) : amountLabel} />
+      {!isWarranty && payment?.status ? <DetailRow label={t("Payment status")} value={t(String(payment.status).replace(/_/g, " "))} /> : null}
     </View>
     <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
       {isWarranty
-        ? "No payment is collected when you submit a warranty claim. Admin reviews the coverage first and will show any payable amount before service."
+        ? t("No payment is collected when you submit a warranty claim. Admin reviews the coverage first and will show any payable amount before service.")
         : amount === null
-          ? "Admin must record the final quote before payment. The assigned technician may confirm cash only after GPS check-in."
+          ? t("Admin must record the final quote before payment. The assigned technician may confirm cash only after GPS check-in.")
           : recordedQuote !== null
-            ? "The final price includes the Admin base quote plus labor and parts saved by the technician. Payment is confirmed only after the updated total is shown."
-            : "This is the currently recorded service amount. The assigned technician may confirm cash only after GPS check-in."}
+            ? t("The final price includes the Admin base quote plus labor and parts saved by the technician. Payment is confirmed only after the updated total is shown.")
+            : t("This is the currently recorded service amount. The assigned technician may confirm cash only after GPS check-in.")}
     </Text>
   </Card>;
 }

@@ -508,6 +508,12 @@ export async function updateProfile(token, payload) {
   };
 }
 
+export async function updatePreferences(token, payload) {
+  const { ok, data } = await patch("/users/preferences", payload, token);
+  if (ok) return { success: true, user: data.user };
+  return { success: false, error: getErrorMessage(data, "Unable to save preferences.") };
+}
+
 export async function verifyLoginEmail(challengeToken, code) {
   const { ok, data } = await post("/auth/login/verify-email", { challengeToken, code });
   if (ok) return { success: true, token: data.token, user: data.user };
@@ -525,7 +531,7 @@ export async function resendLoginEmail(challengeToken) {
 
 export async function changeAccountPassword(token, payload) {
   const { ok, data } = await patch("/users/password", payload, token);
-  return ok ? { success: true, user: data.user, message: data.message }
+  return ok ? { success: true, user: data.user, token: data.token, message: data.message }
     : { success: false, error: getErrorMessage(data, "Unable to reset your password.") };
 }
 
@@ -723,6 +729,8 @@ export async function createOrder(token, payload) {
   return {
     success: false,
     status,
+    code: data?.code || "",
+    orderId: data?.orderId || "",
     error: getErrorMessage(data, "Unable to create the order."),
   };
 }
@@ -969,10 +977,16 @@ export async function createContactMessage(token, payload) {
   };
 }
 
-export async function getMyContactMessages(token) {
-  const { ok, data } = await get("/contact-messages/me", token);
-  if (ok) return { success: true, messages: Array.isArray(data.messages) ? data.messages : [] };
+export async function getMyContactMessages(token, before = "") {
+  const query = before ? `?before=${encodeURIComponent(before)}` : "";
+  const { ok, data } = await get(`/contact-messages/me${query}`, token);
+  if (ok) return { success: true, messages: Array.isArray(data.messages) ? data.messages : [], pagination: data.pagination || { hasMore: false, nextCursor: "" } };
   return { success: false, error: getErrorMessage(data, "Unable to load your support messages.") };
+}
+
+export async function getMyContactMessage(token, id) {
+  const { ok, data } = await get(`/contact-messages/me/${encodeURIComponent(id)}`, token);
+  return ok ? { success: true, message: data.message } : { success: false, error: getErrorMessage(data, "Unable to load this support message.") };
 }
 
 export async function patchServiceRequestStatus(token, requestId, payload) {
@@ -1067,6 +1081,16 @@ export async function registerPushToken(token, expoPushToken) {
     success: false,
     error: getErrorMessage(data, "Unable to enable push alerts."),
   };
+}
+
+export async function unregisterPushToken(token, expoPushToken) {
+  const { ok, data } = await request("DELETE", "/notifications/push-token", {
+    token,
+    body: { expoPushToken },
+  });
+  return ok
+    ? { success: true }
+    : { success: false, error: getErrorMessage(data, "Unable to disable push alerts for this device.") };
 }
 
 // ---------------------------------------------------------------------------

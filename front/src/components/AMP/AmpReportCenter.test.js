@@ -5,11 +5,12 @@ import ServiceHistory from "../myunit/ServiceHistory";
 import { apiRequest } from "../../config/api";
 import { exportHtmlToPdfViaPrint } from "../../utils/exporters";
 
+const { languageState } = vi.hoisted(() => ({ languageState: { value: "English" } }));
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
-vi.mock("../../context/UserContext", () => ({ useUser: () => ({ user: { role: "customer", name: "Customer Person" } }) }));
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ user: { role: "customer", name: "Customer Person" }, currentLanguage: languageState.value }) }));
 vi.mock("../../utils/exporters", () => ({ exportHtmlToPdfViaPrint: vi.fn() }));
 afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); languageState.value = "English"; });
 
 it("labels a persisted AI date even when the latest provider attempt fell back, and exports its basis", async () => {
   apiRequest.mockResolvedValue({ provider: "system-fallback", report: {
@@ -180,4 +181,24 @@ it("paginates long service history inside the report records page", async () => 
   fireEvent.click(screen.getByRole("button", { name: "Next records" }));
   expect(screen.getByText("Records 6-6 of 6")).toBeVisible();
   expect(screen.getByText(/Finding 6/)).toBeVisible();
+});
+
+it("localizes AMP report controls and PDF labels while preserving original technician findings", async () => {
+  languageState.value = "Filipino";
+  apiRequest.mockResolvedValue({ provider: "rules", report: {
+    reportId: "FIL-REPORT", reportType: "maintenance_summary", branch: "Cavite",
+    maintenance: { bestServicedBy: "2026-10-01", recommendationBasis: "Original assessment text." },
+    serviceHistory: [{ date: "2026-09-01", type: "repair", findings: "Compressor made a loud sound.", actionTaken: "Inspected the wiring." }],
+  } });
+  render(<AmpReportCenter units={[{ id: "unit-1", model: "CA-1" }]} />);
+  fireEvent.change(screen.getByLabelText("Uri ng ulat"), { target: { value: "maintenance_summary" } });
+  fireEvent.change(screen.getByLabelText("Naka-install na AC unit"), { target: { value: "unit-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Tingnan ang ulat" }));
+  expect(await screen.findByText("Naitalang kasaysayan ng serbisyo")).toBeVisible();
+  expect(screen.getByText(/Compressor made a loud sound/)).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "I-export ang PDF" }));
+  const { html } = exportHtmlToPdfViaPrint.mock.calls[0][0];
+  expect(html).toContain("Mga natuklasan ng technician");
+  expect(html).toContain("Compressor made a loud sound.");
+  expect(html).toContain("Inspected the wiring.");
 });

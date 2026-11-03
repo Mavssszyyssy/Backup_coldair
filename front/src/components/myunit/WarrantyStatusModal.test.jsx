@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import WarrantyStatusModal from "./WarrantyStatusModal";
 
+let language = "English";
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: language }) }));
+
 test("organizes warranty details without duplicating the brand name", () => {
+  language = "English";
   const onClose = vi.fn();
   render(
     <WarrantyStatusModal
@@ -34,4 +38,15 @@ test("organizes warranty details without duplicating the brand name", () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Close warranty details" }));
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+test("localizes warranty labels without rewriting the AC model or recorded notes", () => {
+  language = "Filipino";
+  render(<WarrantyStatusModal unit={{ model: "LG Premium Dual Inverter", warranty: {
+    serviceRecords: [{ serviceDate: "2026-09-24", visitType: "regular_cleaning", summary: "Original technician note." }],
+  } }} onClose={vi.fn()} />);
+  expect(screen.getByText("Mga detalye ng warranty")).toBeVisible();
+  expect(screen.getByText("LG Premium Dual Inverter")).toBeVisible();
+  expect(screen.getByText("Original technician note.")).toBeVisible();
+  language = "English";
 });

@@ -1,5 +1,6 @@
 import { Eye, EyeSlash, WarningDiamond } from "@phosphor-icons/react";
 import { useState } from "react";
+import { translateText } from "../../../utils/customerI18n";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
@@ -16,6 +17,7 @@ export default function BoutiqueInput({
   status = null, // null, 'error', 'success'
   errorMessage,
   hint,
+  language = "English",
   options = [], // For select type
   inlineAction, // For buttons inside the field (e.g., Verify)
   children, // For block content below the field (e.g., Strength Meter)
@@ -97,7 +99,7 @@ export default function BoutiqueInput({
               type="button"
               className="bq-input-pass-toggle"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={translateText(showPassword ? "Hide password" : "Show password", language)}
               aria-pressed={showPassword}
             >
               {showPassword ? <EyeSlash size={20} weight="bold" aria-hidden="true" /> : <Eye size={20} weight="bold" aria-hidden="true" />}
@@ -164,15 +166,15 @@ export default function BoutiqueInput({
         .bq-input-field.has-action { padding-right: 88px; }
         .bq-input-field.has-pass.has-action { padding-right: 120px; }
 
-        .bq-input-field:focus { background: white; box-shadow: ${BQ_SHADOWS.soft}; }
+        .bq-input-field:focus { background: ${BQ_COLORS.surface}; box-shadow: ${BQ_SHADOWS.soft}; }
 
         .bq-input-icon {
           position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
           color: var(--field-accent); z-index: 5; transition: color 0.3s ease;
         }
 
-        .bq-input--error .bq-input-field { background: #fffafb; }
-        .bq-input--success .bq-input-field { background: #fafffb; }
+        .bq-input--error .bq-input-field { background: ${BQ_COLORS.surfaceAlt}; }
+        .bq-input--success .bq-input-field { background: ${BQ_COLORS.surfaceAlt}; }
 
         .bq-input-field-area .bq-input-pass-toggle {
           appearance: none; background: transparent; border: none; cursor: pointer;

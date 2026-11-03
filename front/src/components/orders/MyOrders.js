@@ -6,6 +6,7 @@ import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import { resolveReorderCartProduct } from "../../domain/cart/catalogCartProduct";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
@@ -57,7 +58,8 @@ function MyOrders() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToCart } = useCart();
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
@@ -154,7 +156,7 @@ function MyOrders() {
         item.quantity,
       );
     });
-    alert("Items added to cart!");
+    alert(t("Items added to cart!"));
     setReorderingOrderId("");
     navigate("/shop");
   };
@@ -170,10 +172,10 @@ function MyOrders() {
         method: "POST",
       });
       const paymentUrl = response.payment?.checkoutUrl || response.order?.paymentUrl || response.order?.paymongo?.checkoutUrl || "";
-      if (!paymentUrl) throw new Error("A secure payment link was not returned.");
+      if (!paymentUrl) throw new Error(t("A secure payment link was not returned."));
       openOnlineCheckout(paymentUrl, order.id);
     } catch (error) {
-      alert(error?.message || "Unable to open secure payment.");
+      alert(error?.message || t("Unable to open secure payment."));
     } finally {
       setPayingOrderId("");
     }
@@ -192,7 +194,7 @@ function MyOrders() {
           current.map((item) => (String(item.id) === String(order.id) ? updated : item)),
         );
       }
-      alert(response.message || "Cancellation request submitted.");
+      alert(response.message || t("Cancellation request submitted."));
     } finally {
       setCancellingOrderId("");
     }
@@ -205,7 +207,7 @@ function MyOrders() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="My Orders"
+        title={t("My Orders")}
         leftAction="back"
         onLeftAction={handleBack}
         isAuthenticated={isAuthenticated}
@@ -225,9 +227,9 @@ function MyOrders() {
           margin="0 0 32px"
         >
           <BoutiqueStack gap={4}>
-            <BoutiqueText variant="h2">Order History</BoutiqueText>
+            <BoutiqueText variant="h2">{t("Order History")}</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} size="14px">
-              Check your orders, payments, and delivery updates.
+              {t("Check your orders, payments, and delivery updates.")}
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>
@@ -268,7 +270,7 @@ function MyOrders() {
                       : "none",
                 }}
               >
-                {({ all: "All Orders", to_pay: "Awaiting payment", to_deliver: "Delivery", to_dispatch: "To Dispatch", to_install: "Installation", for_rescheduling: "For Rescheduling", complete: "Completed", cancelled: "Cancelled" })[status]}
+                {t(({ all: "All Orders", to_pay: "Awaiting payment", to_deliver: "Delivery", to_dispatch: "To Dispatch", to_install: "Installation", for_rescheduling: "For Rescheduling", complete: "Completed", cancelled: "Cancelled" })[status])}
               </button>
             ),
           )}
@@ -292,20 +294,20 @@ function MyOrders() {
                   weight="bold"
                   color={BQ_COLORS.inkFaint}
                 />
-                <BoutiqueText variant="h3">No Orders Yet</BoutiqueText>
+                <BoutiqueText variant="h3">{t("No Orders Yet")}</BoutiqueText>
                 <BoutiqueText
                   color={BQ_COLORS.inkMuted}
                   align="center"
                   style={{ maxWidth: "320px" }}
                 >
-                  Browse our AC products to place your first order.
+                  {t("Browse our AC products to place your first order.")}
                 </BoutiqueText>
                 <BoutiqueButton
                   variant="primary"
                   onClick={() => navigate("/shop")}
                   style={{ width: "auto", marginTop: "12px" }}
                 >
-                  Start Shopping
+                  {t("Start Shopping")}
                 </BoutiqueButton>
               </BoutiqueStack>
             </BoutiqueBox>
@@ -318,10 +320,10 @@ function MyOrders() {
             >
               <WarningDiamond size={48} weight="bold" />
               <BoutiqueText variant="h3" margin="16px 0 8px">
-                No matching orders
+                {t("No matching orders")}
               </BoutiqueText>
               <BoutiqueText>
-                Try a different filter to see your other orders.
+                {t("Try a different filter to see your other orders.")}
               </BoutiqueText>
             </BoutiqueBox>
           ) : (

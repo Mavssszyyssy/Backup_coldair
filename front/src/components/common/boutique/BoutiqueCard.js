@@ -11,7 +11,7 @@ export default function BoutiqueCard({
   radius = BQ_GEOMETRY.radiusCard,
   shadow = BQ_SHADOWS.soft,
   border = `1px solid ${BQ_COLORS.border}`,
-  background = "white",
+  background = BQ_COLORS.surface,
   style = {},
   ...props
 }) {

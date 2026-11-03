@@ -4,6 +4,15 @@ import {
 } from "../passwordStrength";
 import { isValidEmailFormat } from "../emailPolicy";
 
+export const validatePersonName = (value, label = "Name") => {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (!text) return `${label} is required`;
+  if (text.length < 2 || text.length > 60) return `${label} must be 2–60 characters`;
+  if (!/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(text)) return `${label} may contain letters, spaces, apostrophes, periods, and hyphens only`;
+  if (/(.)\1{5,}/iu.test(text)) return `${label} contains too many repeated characters`;
+  return "";
+};
+
 /**
  * Validates profile fields for customer registration (step 1 / combined).
  * @param {Object} formData
@@ -16,24 +25,10 @@ export function validateRegistrationProfile(
 ) {
   const errors = {};
 
-  // Name Validation: Alphabets + Extended Latin + Spaces
-  const nameRegex = /^[a-zA-Z\u00C0-\u017F\s]*$/;
-
-  if (!formData.firstName?.trim()) {
-    errors.firstName = "First name is required";
-  } else if (formData.firstName.length < 2) {
-    errors.firstName = "First name must be at least 2 characters";
-  } else if (!nameRegex.test(formData.firstName)) {
-    errors.firstName = "First name can only contain letters";
-  }
-
-  if (!formData.lastName?.trim()) {
-    errors.lastName = "Last name is required";
-  } else if (formData.lastName.length < 2) {
-    errors.lastName = "Last name must be at least 2 characters";
-  } else if (!nameRegex.test(formData.lastName)) {
-    errors.lastName = "Last name can only contain letters";
-  }
+  errors.firstName = validatePersonName(formData.firstName, "First name");
+  errors.lastName = validatePersonName(formData.lastName, "Last name");
+  if (!errors.firstName) delete errors.firstName;
+  if (!errors.lastName) delete errors.lastName;
 
   if (!formData.email) {
     errors.email = "Email is required";
@@ -133,23 +128,10 @@ export function validateRegistrationProfile(
  */
 export function validateProfileAndSecurityStep(formData) {
   const errors = {};
-  const nameRegex = /^[a-zA-Z\u00C0-\u017F\s]*$/;
-
-  if (!formData.firstName?.trim()) {
-    errors.firstName = "First name is required";
-  } else if (formData.firstName.length < 2) {
-    errors.firstName = "First name must be at least 2 characters";
-  } else if (!nameRegex.test(formData.firstName)) {
-    errors.firstName = "First name can only contain letters";
-  }
-
-  if (!formData.lastName?.trim()) {
-    errors.lastName = "Last name is required";
-  } else if (formData.lastName.length < 2) {
-    errors.lastName = "Last name must be at least 2 characters";
-  } else if (!nameRegex.test(formData.lastName)) {
-    errors.lastName = "Last name can only contain letters";
-  }
+  errors.firstName = validatePersonName(formData.firstName, "First name");
+  errors.lastName = validatePersonName(formData.lastName, "Last name");
+  if (!errors.firstName) delete errors.firstName;
+  if (!errors.lastName) delete errors.lastName;
 
   // Alias optional
   // Constraint: Min 6, Max 36

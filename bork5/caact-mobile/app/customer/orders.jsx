@@ -1,8 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
-import { useCallback, useState } from "react";
-import { Alert, Linking, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Linking, View } from "react-native";
 
 import {
   BoutiqueButton,
@@ -17,13 +17,30 @@ import {
 import { formatCartModel } from "../../services/cartDisplayService";
 import { formatPeso } from "../../services/ecommerceService";
 import { getOrderById, getOrderPage, requestOrderCancellation, retryOrderPayment } from "../../services/orderStorage";
-import { resolveOrderTimelineEndState } from "../../services/orderStatusService";
+import { formatOrderDeliveryAddress, getOrderRecipient, getPaymentRetryState, orderPaymentMethodLabel, resolveOrderTimelineEndState } from "../../services/orderStatusService";
 import { confirmAction } from "../../utils/confirmAction";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
-function statusVariant(status = "") {
-  const value = status.toLowerCase();
-  if (value.includes("approved") || value.includes("released") || value.includes("delivered")) return "success";
-  if (value.includes("rejected") || value.includes("cancelled") || value.includes("failed")) return "danger";
+function orderStatusVariant(order = {}) {
+  const workflow = String(order.workflowStatus || "").toLowerCase();
+  const status = String(order.status || "").toLowerCase();
+  if (workflow === "complete") return "success";
+  if (workflow === "cancelled") return "danger";
+  if (["to_deliver", "to_dispatch", "to_install"].includes(workflow)) return "blue";
+  if (workflow) return "warning";
+  if (["completed", "released", "delivered"].includes(status)) return "success";
+  if (["cancelled", "rejected"].includes(status)) return "danger";
+  if (["approved", "paid", "processing", "dispatched"].includes(status)) return "blue";
+  return "warning";
+}
+
+function paymentStatusVariant(order = {}) {
+  if (String(order.paymentMethod || "").toLowerCase() === "cod") {
+    return order.codCollection?.collectedAt ? "success" : "warning";
+  }
+  const status = String(order.paymentStatus || "").toLowerCase();
+  if (["paid", "verified"].includes(status)) return "success";
+  if (["failed", "cancelled", "expired"].includes(status)) return "danger";
   return "warning";
 }
 
@@ -189,6 +206,7 @@ function OrderProgressRow({ icon, title, subtitle, color = BQ_COLORS.accent }) {
 }
 
 function OrderStepTimeline({ tracking = {}, activeStep = 0, workflowStatus = "" }) {
+  const { t } = useInterfaceLanguage();
   const steps = Array.isArray(tracking.timeline) && tracking.timeline.length
     ? tracking.timeline
     : ["Submitted", "Approved", "Installation", "Completed"].slice(0, Math.max(activeStep + 1, 1)).map((label) => ({ label }));
@@ -196,7 +214,7 @@ function OrderStepTimeline({ tracking = {}, activeStep = 0, workflowStatus = "" 
   return (
     <View style={{ padding: BQ_SPACING.md, borderRadius: 14, backgroundColor: BQ_COLORS.bgAlt }}>
       <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
-        ORDER PROGRESS
+        {t("ORDER PROGRESS")}
       </BoutiqueText>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
@@ -217,9 +235,9 @@ function OrderStepTimeline({ tracking = {}, activeStep = 0, workflowStatus = "" 
               {index < steps.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: BQ_COLORS.brand, opacity: 0.35 }} /> : null}
             </View>
             <View style={{ flex: 1, paddingLeft: BQ_SPACING.sm, paddingBottom: index < steps.length - 1 ? BQ_SPACING.md : 0 }}>
-              <BoutiqueText variant="h3">{step.label}</BoutiqueText>
+              <BoutiqueText variant="h3">{t(step.label)}</BoutiqueText>
               <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-                {isCurrent ? "Current order stage" : step.timestamp ? formatDate(step.timestamp) : endState === "cancelled" && isLast ? "Cancelled" : "Completed"}
+                {isCurrent ? t("Current order stage") : step.timestamp ? formatDate(step.timestamp) : endState === "cancelled" && isLast ? t("Cancelled") : t("Completed")}
               </BoutiqueText>
             </View>
           </View>
@@ -230,6 +248,7 @@ function OrderStepTimeline({ tracking = {}, activeStep = 0, workflowStatus = "" 
 }
 
 function OrderItemSummary({ item }) {
+  const { t } = useInterfaceLanguage();
   const serialNumbers = Array.isArray(item.serialNumbers) ? item.serialNumbers.filter(Boolean) : [];
   const unitText =
     serialNumbers.length > 0
@@ -250,13 +269,13 @@ function OrderItemSummary({ item }) {
         {item.name} x{item.quantity}
       </BoutiqueText>
       <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-        Model: {formatCartModel(item)}
+        {t("Model")}: {formatCartModel(item)}
       </BoutiqueText>
       <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-        Horsepower: {horsepower > 0 ? `${horsepower} HP` : "Not specified"}
+        {t("Horsepower")}: {horsepower > 0 ? `${horsepower} HP` : t("Not specified")}
       </BoutiqueText>
       <BoutiqueText variant="caption" color={BQ_COLORS.success}>
-        {unitText}
+        {serialNumbers.length > 0 ? unitText : t(unitText)}
       </BoutiqueText>
     </View>
   );
@@ -264,31 +283,42 @@ function OrderItemSummary({ item }) {
 
 export default function CustomerOrdersScreen() {
   const router = useRouter();
+  const { language, t } = useInterfaceLanguage();
   const { orderId } = useLocalSearchParams();
   const selectedOrderId = String(Array.isArray(orderId) ? orderId[0] || "" : orderId || "");
   const [orders, setOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [expandedOrderId, setExpandedOrderId] = useState("");
   const [cancellingId, setCancellingId] = useState("");
   const [payingId, setPayingId] = useState("");
+  const paymentInFlightRef = useRef(false);
 
   const refreshOrders = useCallback(async () => {
-    const result = await getOrderPage(page);
-    const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
-    setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
-    if (selected) setExpandedOrderId(String(selected.id));
-    setTotal(result.pagination.total);
-    setTotalPages(result.pagination.totalPages);
-    setLoadError("");
+    setLoading(true);
+    try {
+      const result = await getOrderPage(page);
+      const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
+      setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
+      if (selected) setExpandedOrderId(String(selected.id));
+      setTotal(result.pagination.total);
+      setTotalPages(result.pagination.totalPages);
+      setLoadError("");
+    } catch (error) {
+      setLoadError(error?.message || "Unable to load orders.");
+    } finally {
+      setLoading(false);
+    }
   }, [page, selectedOrderId]);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      const load = () => {
+      const load = ({ background } = {}) => {
+        if (!background) setLoading(true);
         return getOrderPage(page).then(async (result) => {
           if (active) {
             const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
@@ -301,6 +331,8 @@ export default function CustomerOrdersScreen() {
           }
         }).catch((error) => {
           if (active) setLoadError(error?.message || "Unable to load orders.");
+        }).finally(() => {
+          if (active && !background) setLoading(false);
         });
       };
       const stop = startLiveRefresh(load);
@@ -312,13 +344,13 @@ export default function CustomerOrdersScreen() {
   );
 
   const handleCancelRequest = (order) => confirmAction({
-      title: "Cancel Order?",
+      title: t("Cancel Order?"),
       message: order.paymentProvider === "paymongo" && order.paymentStatus === "paid"
-        ? "This paid order will be cancelled and sent to admin for refund review."
-        : "This order will be cancelled if it is still before dispatch.",
-      cancelText: "Keep Order",
-      confirmText: "Request Cancellation",
-      pendingText: "Submitting...",
+        ? t("This paid order will be cancelled and sent to admin for refund review.")
+        : t("This order will be cancelled if it is still before dispatch."),
+      cancelText: t("Keep Order"),
+      confirmText: t("Request Cancellation"),
+      pendingText: t("Submitting..."),
       destructive: true,
       onConfirm: async () => {
             setCancellingId(String(order.id));
@@ -330,9 +362,9 @@ export default function CustomerOrdersScreen() {
                   : "Customer requested cancellation.",
               );
               await refreshOrders();
-              Alert.alert("Cancellation submitted", result.message);
+              Alert.alert(t("Cancellation submitted"), t(result.message));
             } catch (error) {
-              Alert.alert("Unable to cancel order", error?.message || "Please try again.");
+              Alert.alert(t("Unable to cancel order"), t(error?.message || "Please try again."));
             } finally {
               setCancellingId("");
             }
@@ -340,6 +372,8 @@ export default function CustomerOrdersScreen() {
     });
 
   const handlePayNow = async (order) => {
+    if (paymentInFlightRef.current || !getPaymentRetryState(order).eligible) return;
+    paymentInFlightRef.current = true;
     setPayingId(String(order.id));
     try {
       const checkoutUrl = await retryOrderPayment(order.id);
@@ -349,43 +383,50 @@ export default function CustomerOrdersScreen() {
       await Linking.openURL(checkoutUrl);
       router.push(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (error) {
-      Alert.alert("Unable to open payment", error?.message || "Please try again.");
+      Alert.alert(t("Unable to open payment"), t(error?.message || "Please try again."));
     } finally {
+      paymentInFlightRef.current = false;
       setPayingId("");
     }
   };
 
   return (
     <>
-      <BoutiqueHeader title="Orders" subtitle="Purchases and delivery updates" />
+      <BoutiqueHeader title={t("Orders")} subtitle={t("Purchases and delivery updates")} />
       <BoutiqueScreen>
         <BoutiqueCard style={{ gap: BQ_SPACING.md, backgroundColor: BQ_COLORS.brand }}>
           <BoutiqueText variant="label" color="rgba(255,255,255,0.72)">
-            Order Center
+            {t("Order Center")}
           </BoutiqueText>
           <BoutiqueText variant="h1" color="#fff">
-            {total} order{total === 1 ? "" : "s"}
+            {loading && !orders.length ? "—" : language === "Filipino" ? `${total} order` : `${total} order${total === 1 ? "" : "s"}`}
           </BoutiqueText>
           <BoutiqueText color="rgba(255,255,255,0.76)">
-            Track your payment, delivery, and installation in one place.
+            {t("Track your payment, delivery, and installation in one place.")}
           </BoutiqueText>
         </BoutiqueCard>
 
-        {loadError ? <BoutiqueCard><BoutiqueText color={BQ_COLORS.danger}>{loadError}</BoutiqueText><BoutiqueButton title="Try again" onPress={refreshOrders} /></BoutiqueCard> : null}
-        {orders.length === 0 && !loadError ? (
+        {loadError ? <BoutiqueCard style={{ gap: BQ_SPACING.sm }}><BoutiqueText color={BQ_COLORS.danger}>{t(loadError)}</BoutiqueText><BoutiqueButton title={t("Try again")} disabled={loading} onPress={refreshOrders} /></BoutiqueCard> : null}
+        {loading ? (
+          <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
+            <ActivityIndicator size="large" color={BQ_COLORS.brand} accessibilityLabel={t("Loading orders...")} />
+            <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Loading orders...")}</BoutiqueText>
+          </BoutiqueCard>
+        ) : orders.length === 0 && !loadError ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={52} color={BQ_COLORS.inkFaint} />
             <BoutiqueText variant="h2" align="center">
-              No orders yet
+              {t("No orders yet")}
             </BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} align="center">
-              Browse our AC products. Your orders will appear here after checkout.
+              {t("Browse our AC products. Your orders will appear here after checkout.")}
             </BoutiqueText>
-            <BoutiqueButton title="Shop AC Units" onPress={() => router.push("/customer/shop")} />
+            <BoutiqueButton title={t("Shop AC Units")} onPress={() => router.push("/customer/shop")} />
           </BoutiqueCard>
         ) : (
           orders.map((order) => {
-            const variant = statusVariant(`${order.status} ${order.deliveryStatus}`);
+            const variant = orderStatusVariant(order);
+            const paymentVariant = paymentStatusVariant(order);
             const itemCount = order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
             const progress = workflowInfo(order);
             const canRequestCancel =
@@ -396,29 +437,39 @@ export default function CustomerOrdersScreen() {
 
             return (
               <BoutiqueCard key={order.id} style={{ gap: BQ_SPACING.md }}>
-                <View style={{ gap: BQ_SPACING.sm }} accessibilityLabel="Ordered items">
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
+                      {t("Order")} #{String(order.id).slice(-8).toUpperCase()}
+                    </BoutiqueText>
+                    <BoutiqueText variant="h2">{formatPeso(order.total)}</BoutiqueText>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: BQ_SPACING.md }}>
+                  <View style={{ gap: BQ_SPACING.xs, flexShrink: 1 }}>
+                    <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("Order status")}</BoutiqueText>
+                    <BoutiqueChip label={t(progress.label)} variant={variant} />
+                  </View>
+                  <View style={{ gap: BQ_SPACING.xs, flexShrink: 1 }}>
+                    <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("Payment status")}</BoutiqueText>
+                    <BoutiqueChip label={t(paymentStatusLabel(order))} variant={paymentVariant} />
+                  </View>
+                </View>
+
+                <View style={{ gap: BQ_SPACING.sm }} accessibilityLabel={t("Ordered items")}>
                   {order.items.map((item) => (
                     <OrderItemSummary key={item.id} item={item} />
                   ))}
                 </View>
 
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
-                  <View style={{ flex: 1 }}>
-                    <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
-                      Order #{String(order.id).slice(-8).toUpperCase()}
-                    </BoutiqueText>
-                    <BoutiqueText variant="h2">{formatPeso(order.total)}</BoutiqueText>
-                  </View>
-                  <BoutiqueChip label={progress.label} variant={variant} />
-                </View>
-
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
-                  {itemCount} item{itemCount === 1 ? "" : "s"} submitted{" "}
+                  {language === "Filipino" ? `${itemCount} produktong naisumite` : `${itemCount} item${itemCount === 1 ? "" : "s"} submitted`}{" "}
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ""}
                 </BoutiqueText>
 
                 <BoutiqueButton
-                  title={isExpanded ? "Hide details" : "View details"}
+                  title={isExpanded ? t("Hide details") : t("View details")}
                   variant="outline"
                   onPress={() => setExpandedOrderId(isExpanded ? "" : String(order.id))}
                 />
@@ -429,30 +480,38 @@ export default function CustomerOrdersScreen() {
                 <OrderStepTimeline tracking={order.tracking} activeStep={progress.activeStep} workflowStatus={order.workflowStatus} />
 
                 <BoutiqueText color={BQ_COLORS.inkMuted}>
-                  {progress.body}
+                  {progress.body === order.cancellationReason
+                    ? progress.body
+                    : order.workflowStatus === "cancelled" && order.refundReview?.required
+                      ? `${t(refundStatusLabel(order.refundReview.status))}.`
+                      : t(progress.body)}
                 </BoutiqueText>
 
                 <View style={{ gap: BQ_SPACING.md }}>
+                  <OrderProgressRow icon="person-sharp" title={t("Recipient")} subtitle={Object.values(getOrderRecipient(order)).filter(Boolean).join("\n") || t("Not available")} />
+                  <OrderProgressRow icon="location-sharp" title={t("Delivery address")} subtitle={formatOrderDeliveryAddress(order) || t("Not available")} />
+                  <OrderProgressRow icon="card-sharp" title={t("Payment method")} subtitle={t(orderPaymentMethodLabel(order))} />
+                  <OrderProgressRow icon="cash-sharp" title={t("Payment status")} subtitle={t(paymentStatusLabel(order))} color={BQ_COLORS[paymentVariant === "blue" ? "accent" : paymentVariant]} />
+                  <OrderProgressRow icon="wallet-sharp" title={t("Amount")} subtitle={formatPeso(order.total)} />
                   <OrderProgressRow
                     icon="receipt-sharp"
-                    title="Order stage"
-                    subtitle={order.tracking?.currentLabel || order.workflowLabel || progress.label}
+                    title={t("Order stage")}
+                    subtitle={t(order.tracking?.currentLabel || order.workflowLabel || progress.label)}
                   />
-                  <OrderProgressRow icon="bicycle-sharp" title="Delivery" subtitle={deliveryStatusLabel(order)} />
-                  <OrderProgressRow icon="card-sharp" title="Payment" subtitle={paymentStatusLabel(order)} color={BQ_COLORS.success} />
+                  <OrderProgressRow icon="bicycle-sharp" title={t("Delivery")} subtitle={t(deliveryStatusLabel(order))} />
                   {order.refundReview?.required ? (
                     <OrderProgressRow
                       icon="alert-circle-sharp"
-                      title="Refund Review"
-                      subtitle={refundStatusLabel(order.refundReview.status)}
+                      title={t("Refund Review")}
+                      subtitle={t(refundStatusLabel(order.refundReview.status))}
                       color={BQ_COLORS.warning}
                     />
                   ) : null}
                   {cancellationLabel ? (
                     <OrderProgressRow
                       icon="close-circle-sharp"
-                      title="Cancellation"
-                      subtitle={cancellationLabel}
+                      title={t("Cancellation")}
+                      subtitle={t(cancellationLabel)}
                       color={BQ_COLORS.warning}
                     />
                   ) : null}
@@ -460,41 +519,41 @@ export default function CustomerOrdersScreen() {
                     <>
                       <OrderProgressRow
                         icon="document-text-sharp"
-                        title="Receipt"
+                        title={t("Receipt")}
                         subtitle={`${order.receipt.receiptNumber} - ${formatPeso(order.receipt.amountPaid || order.total)}`}
                         color={BQ_COLORS.success}
                       />
                       <BoutiqueButton
-                        title="View Receipt"
+                        title={t("View Receipt")}
                         variant="outline"
                         onPress={() => router.push(`/customer/receipt/${order.id}`)}
                       />
                     </>
                   ) : null}
                   {order.assignedTechnician ? (
-                    <OrderProgressRow icon="construct-sharp" title="Technician" subtitle={order.assignedTechnician} color={BQ_COLORS.accent} />
+                    <OrderProgressRow icon="construct-sharp" title={t("Technician")} subtitle={order.assignedTechnician} color={BQ_COLORS.accent} />
                   ) : null}
                   {order.estimatedDelivery || order.estimatedArrival || order.installationDate ? (
                     <OrderProgressRow
                       icon="calendar-sharp"
-                      title="Schedule"
+                      title={t("Schedule")}
                       subtitle={[
-                        order.estimatedDelivery ? `Delivery ${formatDate(order.estimatedDelivery)}` : "",
-                        order.estimatedArrival ? `Arrival ${formatDate(order.estimatedArrival)}` : "",
-                        order.installationDate ? `Install ${formatDate(order.installationDate)}` : "",
+                        order.estimatedDelivery ? `${t("Delivery")} ${formatDate(order.estimatedDelivery)}` : "",
+                        order.estimatedArrival ? `${t("Arrival")} ${formatDate(order.estimatedArrival)}` : "",
+                        order.installationDate ? `${t("Install")} ${formatDate(order.installationDate)}` : "",
                         order.installationTimeSlot || "",
                       ].filter(Boolean).join(" - ")}
                       color={BQ_COLORS.warning}
                     />
                   ) : null}
                   {order.trackingNumber ? (
-                    <OrderProgressRow icon="navigate-sharp" title="Tracking" subtitle={order.trackingNumber} color={BQ_COLORS.warning} />
+                    <OrderProgressRow icon="navigate-sharp" title={t("Tracking")} subtitle={order.trackingNumber} color={BQ_COLORS.warning} />
                   ) : null}
                 </View>
 
                 {canRequestCancel ? (
                   <BoutiqueButton
-                    title={cancellingId === String(order.id) ? "Submitting..." : "Request Cancellation"}
+                    title={cancellingId === String(order.id) ? t("Submitting...") : t("Request Cancellation")}
                     variant="outline"
                     disabled={cancellingId === String(order.id)}
                     loading={cancellingId === String(order.id)}
@@ -505,22 +564,20 @@ export default function CustomerOrdersScreen() {
                 {order.paymentProvider === "paymongo" &&
                 order.paymentStatus !== "paid" &&
                 order.workflowStatus === "to_pay" ? (() => {
-                  const isGcash = String(order.paymentMethod || "").toLowerCase() === "gcash";
-                  const attempts = Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0);
-                  const limitReached = isGcash && attempts >= 3;
+                  const { isGcash, limitReached, eligible, resuming } = getPaymentRetryState(order);
                   return limitReached ? (
                     <BoutiqueText color={BQ_COLORS.danger} weight={700} align="center">
-                      Maximum payment attempts reached. You can no longer retry payment for this order.
+                      {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}
                     </BoutiqueText>
-                  ) : (
+                  ) : eligible ? (
                     <BoutiqueButton
-                      title={payingId === String(order.id) ? "Connecting…" : isGcash ? "Pay Again" : "Complete payment"}
+                      title={payingId === String(order.id) ? t("Connecting…") : isGcash && !resuming ? t("Pay Again") : t("Complete payment")}
                       variant="primary"
                       disabled={payingId === String(order.id)}
                       loading={payingId === String(order.id)}
                       onPress={() => handlePayNow(order)}
                     />
-                  );
+                  ) : null;
                 })() : null}
                   </>
                 ) : null}
@@ -530,9 +587,9 @@ export default function CustomerOrdersScreen() {
         )}
         {totalPages > 1 ? (
           <BoutiqueCard style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: BQ_SPACING.sm }}>
-            <BoutiqueButton title="Previous" variant="outline" disabled={page <= 1} onPress={() => { setExpandedOrderId(""); setPage((value) => Math.max(1, value - 1)); }} />
-            <BoutiqueText variant="caption" align="center">Page {page} of {totalPages}</BoutiqueText>
-            <BoutiqueButton title="Next" variant="outline" disabled={page >= totalPages} onPress={() => { setExpandedOrderId(""); setPage((value) => value + 1); }} />
+            <BoutiqueButton title={t("Previous")} variant="outline" disabled={page <= 1} onPress={() => { setExpandedOrderId(""); setPage((value) => Math.max(1, value - 1)); }} />
+            <BoutiqueText variant="caption" align="center">{t("Page")} {page} {t("of")} {totalPages}</BoutiqueText>
+            <BoutiqueButton title={t("Next")} variant="outline" disabled={page >= totalPages} onPress={() => { setExpandedOrderId(""); setPage((value) => value + 1); }} />
           </BoutiqueCard>
         ) : null}
       </BoutiqueScreen>

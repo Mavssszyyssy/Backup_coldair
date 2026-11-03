@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { apiRequest } from "../config/api";
 
 const CartContext = createContext();
@@ -14,13 +14,24 @@ export const useCart = () => {
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const sessionGeneration = useRef(0);
+
+  useEffect(() => {
+    const clearOnLogout = () => {
+      sessionGeneration.current += 1;
+      setCart([]);
+    };
+    window.addEventListener("auth:session-ended", clearOnLogout);
+    return () => window.removeEventListener("auth:session-ended", clearOnLogout);
+  }, []);
 
   // Load cart from server session on mount
   useEffect(() => {
     const fetchSession = async () => {
+      const generation = sessionGeneration.current;
       try {
         const response = await apiRequest("/auth/session");
-        if (response.session && Array.isArray(response.session.cart)) {
+        if (generation === sessionGeneration.current && response.session && Array.isArray(response.session.cart)) {
           setCart(response.session.cart);
         }
       } catch (err) {
@@ -36,7 +47,9 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     if (isInitialLoad) return;
 
+    const generation = sessionGeneration.current;
     const syncTimeout = setTimeout(async () => {
+      if (generation !== sessionGeneration.current) return;
       try {
         await apiRequest("/auth/session/cart", {
           method: "POST",
@@ -61,12 +74,15 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product, quantity = 1) => {
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) return;
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
+        const desired = Number(existingItem.quantity || 0) + quantity;
+        if (Number.isSafeInteger(product.stock) && desired > product.stock) return prevCart;
         const nextQuantity = clampToAvailableStock(
-          { ...existingItem, stock: existingItem.stock ?? product.stock },
-          (existingItem.quantity || 1) + quantity,
+          { ...existingItem, stock: product.stock ?? existingItem.stock },
+          desired,
         );
         if (nextQuantity <= 0) return prevCart;
         return prevCart.map((item) =>
@@ -75,6 +91,7 @@ export const CartProvider = ({ children }) => {
             : item,
         );
       }
+      if (Number.isSafeInteger(product.stock) && quantity > product.stock) return prevCart;
       const nextQuantity = clampToAvailableStock(product, quantity);
       if (nextQuantity <= 0) return prevCart;
       return [...prevCart, { ...product, quantity: nextQuantity }];
@@ -86,18 +103,16 @@ export const CartProvider = ({ children }) => {
   };
 
   const updateQuantity = (id, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(id);
-    } else {
-      setCart((prevCart) => {
-        const next = prevCart.map((item) => {
-          if (item.id !== id) return item;
-          const clamped = clampToAvailableStock(item, newQuantity);
-          return { ...item, quantity: clamped };
-        });
-        return next.filter((item) => (item.quantity || 0) > 0);
+    if (!/^\d+$/.test(String(newQuantity).trim()) || !Number.isSafeInteger(Number(newQuantity)) || Number(newQuantity) <= 0) return;
+    setCart((prevCart) => {
+      const next = prevCart.map((item) => {
+        if (item.id !== id) return item;
+        if (Number.isSafeInteger(item.stock) && Number(newQuantity) > item.stock) return item;
+        const clamped = clampToAvailableStock(item, Number(newQuantity));
+        return { ...item, quantity: clamped };
       });
-    }
+      return next.filter((item) => (item.quantity || 0) > 0);
+    });
   };
 
   const clearCart = () => {

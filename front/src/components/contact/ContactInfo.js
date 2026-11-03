@@ -5,8 +5,12 @@ import {
   Phone,
 } from "@phosphor-icons/react";
 import { COMPANY_CONTACT } from "../../config/company";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 function ContactInfo() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const contactItems = [
     {
       icon: Phone,
@@ -39,11 +43,10 @@ function ContactInfo() {
   return (
     <section className="info-section" aria-labelledby="contact-info-heading">
       <div className="contact-section-heading">
-        <span className="contact-section-eyebrow">Contact details</span>
-        <h2 id="contact-info-heading">Contact Information</h2>
+        <span className="contact-section-eyebrow">{t("Contact details")}</span>
+        <h2 id="contact-info-heading">{t("Contact Information")}</h2>
         <p>
-          Reach out through any of these channels. Our team is ready to assist
-          you.
+          {t("Reach out through any of these channels. Our team is ready to assist you.")}
         </p>
       </div>
 
@@ -57,9 +60,9 @@ function ContactInfo() {
                 <Icon size={25} weight="regular" />
               </span>
               <div className="contact-detail-content">
-                <dt>{item.title}</dt>
+                <dt>{t(item.title)}</dt>
                 {item.details.map((detail) => (
-                  <dd key={detail}>{detail}</dd>
+                  <dd key={detail}>{detail === "Main office: Plaridel, Bulacan" ? <>{t("Main office")}: Plaridel, Bulacan</> : t(detail)}</dd>
                 ))}
               </div>
             </div>

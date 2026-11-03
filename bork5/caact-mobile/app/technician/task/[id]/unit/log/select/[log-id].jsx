@@ -10,9 +10,11 @@ import PageHeader from "../../../../../../../components/ui/PageHeader";
 import { COLORS, FONT, SPACING } from "../../../../../../../constants/theme";
 import { getTaskById, TASK_STATUS } from "../../../../../../../services/taskStorage";
 import { getServiceLogById } from "../../../../../../../services/unitServiceLogStorage";
+import { useInterfaceLanguage } from "../../../../../../../hooks/useInterfaceLanguage";
 
 export default function LogDetailScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { id: taskId, "log-id": logId } = useLocalSearchParams();
   const [task, setTask] = useState(null);
   const [log, setLog] = useState(null);
@@ -49,16 +51,16 @@ export default function LogDetailScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ padding: SPACING.md }}>
         <PageHeader
-          title={log?.label || "Service Note"}
+          title={log?.label || t("Service Note")}
           subtitle={log?.createdAt ? new Date(log.createdAt).toLocaleString() : ""}
           color={COLORS.tech}
           onBack={() => router.back()}
         />
-        {loading ? <Text>Loading service note...</Text> : error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{error}</Text> : log ? <ServiceNoteDetails log={log} unitName={task?.unitName} /> : null}
+        {loading ? <Text>{t("Loading service note...")}</Text> : error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{t(error)}</Text> : log ? <ServiceNoteDetails log={log} unitName={task?.unitName} /> : null}
         {canEdit && (
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             <TechButton
-              title="Update"
+              title={t("Update")}
               onPress={() =>
                 router.push({
                   pathname: `/technician/task/${taskId}/unit/log/update`,
@@ -72,7 +74,7 @@ export default function LogDetailScreen() {
               style={{ flex: 1 }}
             />
             <TechButton
-              title="Delete"
+              title={t("Delete")}
               onPress={() =>
                 router.push({
                   pathname: `/technician/task/${taskId}/unit/log/delete`,
@@ -92,7 +94,7 @@ export default function LogDetailScreen() {
               textAlign: "center",
             }}
           >
-            Service note not found.
+            {t("Service note not found.")}
           </Text>
         )}
       </ScrollView>

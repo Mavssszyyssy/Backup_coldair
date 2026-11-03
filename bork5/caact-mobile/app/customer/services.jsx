@@ -9,7 +9,8 @@ import CustomerSectionHeader from "../../components/customer/CustomerSectionHead
 import ServiceRequestPaymentSummary from "../../components/customer/ServiceRequestPaymentSummary";
 import BottomSheetSelect from "../../components/ui/BottomSheetSelect";
 import Button from "../../components/ui/Button";
-import CalendarDatePicker, { getTodayDateKey, isPastCalendarDate } from "../../components/ui/CalendarDatePicker";
+import CalendarDatePicker from "../../components/ui/CalendarDatePicker";
+import { getManilaDateKey, getServiceBookingMaxDateKey, serviceBookingDateError } from "../../services/serviceBookingDate";
 import Card from "../../components/ui/Card";
 import DetailRow from "../../components/ui/DetailRow";
 import EmptyState from "../../components/ui/EmptyState";
@@ -25,6 +26,7 @@ import { getCustomerServiceHistory } from "../../services/customerHistoryService
 import { createServiceRequest } from "../../services/serviceRequestStorage";
 import { cacheUnitUpdate, getUnitsByUser } from "../../services/unitStorage";
 import { canonicalizePhMobile, validatePhone } from "../../utils/authValidation";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const getServiceAddress = (user = {}) => {
   const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
@@ -39,6 +41,7 @@ const getServiceAddress = (user = {}) => {
 
 const ACTIVE_REQUEST_STATUSES = new Set(["pending", "submitted", "reviewed", "assigned", "in progress", "on hold"]);
 const ACTIVE_CLAIM_STATUSES = new Set(["submitted", "under_review", "approved"]);
+const MAX_SERVICE_CONCERN_LENGTH = 500;
 
 const readableStatus = (value = "") => String(value || "").replace(/_/g, " ");
 
@@ -58,6 +61,7 @@ export default function CustomerServicesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { current } = useUserContext();
+  const { language, t } = useInterfaceLanguage();
   const [units, setUnits] = useState([]);
   const [serviceOfferings, setServiceOfferings] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -66,6 +70,7 @@ export default function CustomerServicesScreen() {
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
+  const [concernInputKey, setConcernInputKey] = useState(0);
   const [notes, setNotes] = useState("");
   const [requestMode, setRequestMode] = useState("service");
   const [dateError, setDateError] = useState("");
@@ -175,20 +180,23 @@ export default function CustomerServicesScreen() {
   };
 
   const handleSubmit = async () => {
-    if (requestMode === "service" && !selectedService) return Alert.alert("Required", "Choose a service offering.");
-    if (!selectedUnit) return Alert.alert("AC unit required", "Choose the registered AC unit that needs service.");
+    if (requestMode === "service" && !selectedService) return Alert.alert(t("Required"), t("Choose a service offering."));
+    if (!selectedUnit) return Alert.alert(t("AC unit required"), t("Choose the registered AC unit that needs service."));
     if (selectedActiveRequest) {
-      return Alert.alert("Request already open", "This AC unit already has a service request in progress. You do not need to submit another one.");
+      return Alert.alert(t("Request already open"), t("This AC unit already has a service request in progress. You do not need to submit another one."));
     }
     if (activeWarrantyClaim) {
-      return Alert.alert("Warranty claim in progress", `Your warranty claim is already ${readableStatus(activeWarrantyClaim.status)}. We will notify you when it changes.`);
+      return Alert.alert(t("Warranty claim in progress"), language === "Filipino"
+        ? `Ang iyong warranty claim ay ${t(readableStatus(activeWarrantyClaim.status))} na. Aabisuhan ka namin kapag nagbago ang status nito.`
+        : `Your warranty claim is already ${readableStatus(activeWarrantyClaim.status)}. We will notify you when it changes.`);
     }
-    if (!issueDescription.trim()) return Alert.alert("Required", "Describe the request or concern.");
+    if (!issueDescription.trim()) return Alert.alert(t("Required"), t("Describe the request or concern."));
+    if (issueDescription.trim().length > MAX_SERVICE_CONCERN_LENGTH) return Alert.alert(t("Required"), t("Service concern must be 500 characters or fewer."));
 
     if (requestMode === "warranty") {
-      if (!warrantyEligible) return Alert.alert("Warranty unavailable", "This AC does not currently have active warranty coverage. You can choose a standard service request instead.");
+      if (!warrantyEligible) return Alert.alert(t("Warranty unavailable"), t("This AC does not currently have active warranty coverage. You can choose a standard service request instead."));
       const token = await getStoredToken();
-      if (!token) return Alert.alert("Sign in required", "Please sign in again before submitting warranty support.");
+      if (!token) return Alert.alert(t("Sign in required"), t("Please sign in again before submitting warranty support."));
       setSubmitting(true);
       try {
         const result = await createWarrantyClaim(token, selectedUnit.id, {
@@ -207,34 +215,29 @@ export default function CustomerServicesScreen() {
           warrantyStatus: nextUnit.warrantyStatus,
         }).catch(() => null);
         setIssueDescription("");
+        setConcernInputKey((value) => value + 1);
         setNotes("");
-        Alert.alert("Warranty support submitted", "Your claim is now under review. A service visit will be arranged after approval, so no appointment date is needed yet.");
+        Alert.alert(t("Warranty support submitted"), t("Your claim is now under review. A service visit will be arranged after approval, so no appointment date is needed yet."));
       } catch (error) {
-        Alert.alert("Claim not submitted", error?.message || "Unable to submit warranty support.");
+        Alert.alert(t("Claim not submitted"), t(error?.message || "Unable to submit warranty support."));
       } finally {
         setSubmitting(false);
       }
       return;
     }
 
-    if (!preferredDate) {
-      setDateError("Choose your preferred appointment date.");
-      return;
-    }
-    if (isPastCalendarDate(preferredDate)) {
-      setDateError("Please choose today or a future date.");
-      return;
-    }
+    const bookingError = serviceBookingDateError(preferredDate);
+    if (bookingError) { setDateError(bookingError); return; }
     const serviceAddress = getServiceAddress(current);
     const contactPhone = canonicalizePhMobile(serviceAddress.phone || current?.phone || "");
     const contactError = validatePhone(contactPhone);
     if (contactError) {
       return Alert.alert(
-        "Valid contact number required",
-        `${contactError} Add or update your delivery address before requesting service.`,
+        t("Valid contact number required"),
+        `${t(contactError)} ${t("Add or update your delivery address before requesting service.")}`,
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open Account", onPress: () => router.push("/customer/settings") },
+          { text: t("Cancel"), style: "cancel" },
+          { text: t("Open Account"), onPress: () => router.push("/customer/settings") },
         ],
       );
     }
@@ -267,12 +270,13 @@ export default function CustomerServicesScreen() {
         deliveryInstructions: current?.deliveryInstructions || "",
       });
       setRequests((items) => [createdRequest, ...items.filter((item) => String(item.id) !== String(createdRequest.id))]);
-      Alert.alert("Request Submitted", "Your preferred date was recorded. We will notify you once a technician and time slot are assigned.");
+      Alert.alert(t("Request Submitted"), t("Your preferred date was recorded. We will notify you once a technician and time slot are assigned."));
       setIssueDescription("");
+      setConcernInputKey((value) => value + 1);
       setPreferredDate("");
       setNotes("");
     } catch (error) {
-      Alert.alert("Request Failed", error?.message || "Unable to create your service request.");
+      Alert.alert(t("Request Failed"), t(error?.message || "Unable to create your service request."));
     } finally {
       setSubmitting(false);
     }
@@ -287,61 +291,63 @@ export default function CustomerServicesScreen() {
         : "Submit Service Request";
 
   return (
-    <CustomerScreen title="Service Request" subtitle="Arrange AC cleaning, request a repair, or submit a warranty claim" contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={loadingUnits ? "Loading AC Units..." : submitting ? "Submitting..." : submitTitle} onPress={handleSubmit} loading={submitting} disabled={loadingUnits || submitting || !selectedUnit || (requestMode === "service" ? !selectedService : !warrantyEligible) || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
-      {loadingUnits ? <Card><View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}><ActivityIndicator color={COLORS.primary} /><Text style={{ color: COLORS.textSecondary }}>Loading registered AC units and open requests...</Text></View></Card> : null}
-      {!loadingUnits && units.length === 0 ? <Card><EmptyState title="Register a unit first" message="Service requests need a registered AC unit. Buy from the website and add your AC unit before booking." action={<Button title="Visit Website" onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
+    <CustomerScreen title={t("Service Request")} subtitle={t("Arrange AC cleaning, request a repair, or submit a warranty claim")} contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={t(loadingUnits ? "Loading AC Units..." : submitting ? "Submitting..." : submitTitle)} onPress={handleSubmit} loading={submitting} disabled={loadingUnits || submitting || !selectedUnit || (requestMode === "service" ? !selectedService : !warrantyEligible) || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
+      {loadingUnits ? <Card><View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}><ActivityIndicator color={COLORS.primary} /><Text style={{ color: COLORS.textSecondary }}>{t("Loading registered AC units and open requests...")}</Text></View></Card> : null}
+      {!loadingUnits && units.length === 0 ? <Card><EmptyState title={t("Register a unit first")} message={t("Service requests need a registered AC unit. Buy from the website and add your AC unit before booking.")} action={<Button title={t("Visit Website")} onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
-        <CustomerSectionHeader title="What do you need?" />
+        <CustomerSectionHeader title={t("What do you need?")} />
         {hasRequestedUnit ? (
-          <DetailRow label="AC unit selected for this request" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
+          <DetailRow label={t("AC unit selected for this request")} value={`${selectedUnit.unitName || t("Unnamed AC Unit")}\n${t("Serial")}: ${selectedUnit.serialNumber || t("Not recorded")}`} multiline />
         ) : (
-          <BottomSheetSelect
-            label="AC unit"
-            value={selectedUnit ? `${selectedUnit.unitName || "AC Unit"} · ${selectedUnit.serialNumber || "Serial not recorded"}` : ""}
-            placeholder="Choose a registered AC"
+          <BottomSheetSelect translate={t}
+            label={t("AC unit")}
+            value={selectedUnit ? `${selectedUnit.unitName || t("AC Unit")} · ${selectedUnit.serialNumber || t("Serial not recorded")}` : ""}
+            placeholder={t("Choose a registered AC")}
             items={units}
             itemIcon="snow-sharp"
-            searchPlaceholder="Search model or serial number"
+            searchPlaceholder={t("Search model or serial number")}
             getKey={(unit) => String(unit.id)}
-            getLabel={(unit) => `${unit.unitName || "AC Unit"} · ${unit.serialNumber || "Serial not recorded"}`}
+            getLabel={(unit) => `${unit.unitName || t("AC Unit")} · ${unit.serialNumber || t("Serial not recorded")}`}
             onSelect={(unit) => setSelectedUnitId(String(unit.id))}
           />
         )}
-        <BottomSheetSelect label="Request type" value={requestMode === "warranty" ? "Warranty Claim" : "Cleaning or Service"} items={[{ id:"service", title:"Cleaning or Service" }, { id:"warranty", title:"Warranty Claim" }]} getKey={item => item.id} getLabel={item => item.title} onSelect={item => setRequestMode(item.id)} />
+        <BottomSheetSelect translate={t} label={t("Request type")} value={t(requestMode === "warranty" ? "Warranty Claim" : "Cleaning or Service")} items={[{ id:"service", title:"Cleaning or Service" }, { id:"warranty", title:"Warranty Claim" }]} getKey={item => item.id} getLabel={item => t(item.title)} onSelect={item => setRequestMode(item.id)} />
         {selectedUnit && !hasRequestedUnit ? <View style={{ marginTop: SPACING.sm }}>
-          <DetailRow label="Selected AC" value={`${selectedUnit.unitName || "Unnamed AC Unit"}\nSerial: ${selectedUnit.serialNumber || "Not recorded"}`} multiline />
-          <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>The request will be linked to this exact registered unit. Use the AC unit dropdown above to change it.</Text>
-        </View> : hasRequestedUnit ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>This request is locked to the AC unit you opened. Return to My AC Units to choose a different unit.</Text> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>Choose one registered AC unit before completing the request.</Text>}
+          <DetailRow label={t("Selected AC")} value={`${selectedUnit.unitName || t("Unnamed AC Unit")}\n${t("Serial")}: ${selectedUnit.serialNumber || t("Not recorded")}`} multiline />
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{t("The request will be linked to this exact registered unit. Use the AC unit dropdown above to change it.")}</Text>
+        </View> : hasRequestedUnit ? <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>{t("This request is locked to the AC unit you opened. Return to My AC Units to choose a different unit.")}</Text> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>{t("Choose one registered AC unit before completing the request.")}</Text>}
         {requestMode === "service" ? <>
-        <BottomSheetSelect label="Service" value={selectedService?.title} placeholder="Choose service" items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
+        <BottomSheetSelect translate={t} label={t("Service")} value={selectedService?.title} placeholder={t("Choose service")} items={serviceOfferings} itemIcon="construct-sharp" getKey={(item) => item.id} getLabel={(item) => item.title} onSelect={(service) => setSelectedServiceId(service.id)} />
         <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{selectedService?.summary}</Text>
-        {selectedService?.pricing?.label ? <Text style={{ color: COLORS.primary, fontWeight: "700", marginTop: SPACING.xs }}>Service price: {selectedService.pricing.label}</Text> : null}
-        {serviceCatalogError ? <Text style={{ color: COLORS.danger, marginTop: SPACING.xs }}>{serviceCatalogError}</Text> : null}
-        {serviceCatalogError ? <Button title="Retry services" variant="secondary" onPress={loadServiceCatalog} /> : null}
-        <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>Regular and deep cleaning are the two cleaning options. If you are unsure when the AC was last cleaned, describe it below so our team can advise you.</Text>
-        </> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>Describe the fault below. Our team will review your coverage before arranging a visit. Submitting a claim does not mean it has been approved.</Text>}
-        <Button title="Browse FAQs" variant="secondary" onPress={() => router.push("/customer/faq")} />
+        {selectedService?.pricing?.label ? <Text style={{ color: COLORS.primary, fontWeight: "700", marginTop: SPACING.xs }}>{t("Service price")}: {selectedService.pricing.label}</Text> : null}
+        {serviceCatalogError ? <Text style={{ color: COLORS.danger, marginTop: SPACING.xs }}>{t(serviceCatalogError)}</Text> : null}
+        {serviceCatalogError ? <Button title={t("Retry services")} variant="secondary" onPress={loadServiceCatalog} /> : null}
+        <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>{t("Regular and deep cleaning are the two cleaning options. If you are unsure when the AC was last cleaned, describe it below so our team can advise you.")}</Text>
+        </> : <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }}>{t("Describe the fault below. Our team will review your coverage before arranging a visit. Submitting a claim does not mean it has been approved.")}</Text>}
+        <Button title={t("Browse FAQs")} variant="secondary" onPress={() => router.push("/customer/faq")} />
       </Card>
       {selectedUnit ? <Card>
-        <CustomerSectionHeader title="Coverage & Request Status" />
-        <DetailRow label="Warranty" value={readableStatus(selectedUnit.warrantyStatus || selectedUnit.warranty?.status || "pending activation")} />
-        <DetailRow label="Coverage expires" value={formatDate(selectedUnit.warrantyExpirationDate || selectedUnit.warranty?.expirationDate)} />
+        <CustomerSectionHeader title={t("Coverage & Request Status")} />
+        <DetailRow label={t("Warranty")} value={t(readableStatus(selectedUnit.warrantyStatus || selectedUnit.warranty?.status || "pending activation"))} />
+        <DetailRow label={t("Coverage expires")} value={selectedUnit.warrantyExpirationDate || selectedUnit.warranty?.expirationDate ? formatDate(selectedUnit.warrantyExpirationDate || selectedUnit.warranty?.expirationDate) : t("Not recorded")} />
         {selectedActiveRequest ? <>
-          <StatusChip label={selectedActiveRequest.status || "Submitted"} color={COLORS.warning} />
+          <StatusChip label={t(selectedActiveRequest.status || "Submitted")} color={COLORS.warning} />
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
-            {selectedActiveRequest.serviceType || selectedActiveRequest.issueType || "Service"} is already being handled. You can follow updates here and in your notifications.
+            {language === "Filipino"
+              ? `Pinoproseso na ang ${selectedActiveRequest.serviceType || selectedActiveRequest.issueType || t("Service")}. Maaari mong subaybayan ang mga update rito at sa iyong mga notification.`
+              : `${selectedActiveRequest.serviceType || selectedActiveRequest.issueType || "Service"} is already being handled. You can follow updates here and in your notifications.`}
           </Text>
         </> : null}
         {activeWarrantyClaim ? <View style={selectedActiveRequest ? { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border } : undefined}>
-          <StatusChip label={`Claim ${readableStatus(activeWarrantyClaim.status)}`} color={COLORS.warning} />
+          <StatusChip label={`${t("Claim")} ${t(readableStatus(activeWarrantyClaim.status))}`} color={COLORS.warning} />
           <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.sm }}>
             {String(activeWarrantyClaim.status).toLowerCase() === "approved"
-              ? "Your claim was approved and a service request was created. The branch will notify you when a technician and schedule are assigned."
-              : "No duplicate request is needed. Your claim is being reviewed, and you will be notified when its status changes."}
+              ? t("Your claim was approved and a service request was created. The branch will notify you when a technician and schedule are assigned.")
+              : t("No duplicate request is needed. Your claim is being reviewed, and you will be notified when its status changes.")}
           </Text>
         </View> : null}
         {selectedActiveRequest ? <Button
-          title="View Request Details"
+          title={t("View Request Details")}
           variant="secondary"
           style={{ marginTop: SPACING.md }}
           onPress={() => router.push({
@@ -349,15 +355,15 @@ export default function CustomerServicesScreen() {
             params: { id: selectedUnit.id, page: "service" },
           })}
         /> : null}
-        {requestMode === "warranty" && !warrantyEligible && !activeWarrantyClaim ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, lineHeight: 20 }}>This AC does not currently have active warranty coverage. Choose Cleaning or Service for a standard request, or contact our team about your coverage.</Text> : null}
+        {requestMode === "warranty" && !warrantyEligible && !activeWarrantyClaim ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, lineHeight: 20 }}>{t("This AC does not currently have active warranty coverage. Choose Cleaning or Service for a standard request, or contact our team about your coverage.")}</Text> : null}
       </Card> : null}
       <ServiceRequestPaymentSummary mode={requestMode} service={selectedService} payment={selectedActiveRequest?.servicePayment} />
-      <Card>
-        <CustomerSectionHeader title={requestMode === "warranty" ? "Warranty Claim Details" : "Visit Details"} />
-        {requestMode === "service" ? <CalendarDatePicker label="Preferred Date" value={preferredDate} onChange={selectDate} minimumDate={getTodayDateKey()} required error={dateError} /> : null}
-        <TextField label={requestMode === "warranty" ? "AC problem" : "Service Concern"} value={issueDescription} onChangeText={setIssueDescription} placeholder={requestMode === "warranty" ? "Describe the fault you want us to review" : "Tell us about the cleaning or service needed"} multiline style={{ minHeight: 100, textAlignVertical: "top" }} />
-        <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} placeholder="Additional site instructions or preferences" multiline style={{ minHeight: 80, textAlignVertical: "top" }} />
-      </Card>
+      {!selectedActiveRequest && !activeWarrantyClaim ? <Card>
+        <CustomerSectionHeader title={t(requestMode === "warranty" ? "Warranty Claim Details" : "Visit Details")} />
+        {requestMode === "service" ? <CalendarDatePicker label={t("Preferred Date")} value={preferredDate} onChange={selectDate} minimumDate={getManilaDateKey()} maximumDate={getServiceBookingMaxDateKey()} required error={t(dateError)} /> : null}
+        <TextField key={concernInputKey} label={t(requestMode === "warranty" ? "AC problem" : "Service Concern")} value={issueDescription} onChangeText={setIssueDescription} placeholder={t(requestMode === "warranty" ? "Describe the fault you want us to review" : "Tell us about the cleaning or service needed")} maxLength={MAX_SERVICE_CONCERN_LENGTH} helperText={`${issueDescription.length}/${MAX_SERVICE_CONCERN_LENGTH}`} multiline style={{ minHeight: 100, textAlignVertical: "top" }} />
+        <TextField label={t("Notes (optional)")} value={notes} onChangeText={setNotes} placeholder={t("Additional site instructions or preferences")} multiline style={{ minHeight: 80, textAlignVertical: "top" }} />
+      </Card> : null}
     </CustomerScreen>
   );
 }

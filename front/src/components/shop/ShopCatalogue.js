@@ -1,4 +1,6 @@
 import { WarningDiamond } from "@phosphor-icons/react";
+import { useUser } from "../../context/UserContext";
+import { isFilipino, translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueSelect from "../common/boutique/BoutiqueSelect";
@@ -17,13 +19,15 @@ export default function ShopCatalogue({
   sortBy,
   onSortChange,
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const sortOptions = [
-    { value: "default", label: "Sort by: Default" },
-    { value: "price_asc", label: "Price: Low to High" },
-    { value: "price_desc", label: "Price: High to Low" },
-    { value: "hp_asc", label: "Horsepower: Low to High" },
-    { value: "hp_desc", label: "Horsepower: High to Low" },
-    { value: "name_asc", label: "Name: A to Z" },
+    { value: "default", label: t("Sort by: Default") },
+    { value: "price_asc", label: t("Price: Low to High") },
+    { value: "price_desc", label: t("Price: High to Low") },
+    { value: "hp_asc", label: t("Horsepower: Low to High") },
+    { value: "hp_desc", label: t("Horsepower: High to Low") },
+    { value: "name_asc", label: t("Name: A to Z") },
   ];
   const availableProducts = products.filter((product) => product.inStock !== false);
   const unavailableProducts = products.filter((product) => product.inStock === false);
@@ -75,7 +79,7 @@ export default function ShopCatalogue({
               opacity: 0.6,
             }}
           >
-            {loading ? "Loading products..." : `Found ${products.length} products`}
+            {loading ? t("Loading products...") : isFilipino(currentLanguage) ? `${products.length} produktong nakita` : `Found ${products.length} products`}
           </BoutiqueText>
           <BoutiqueSelect
             options={sortOptions}
@@ -93,7 +97,7 @@ export default function ShopCatalogue({
             color={BQ_COLORS.inkFaint}
             aria-live="polite"
           >
-            <BoutiqueText variant="h3">Loading the latest available AC units...</BoutiqueText>
+            <BoutiqueText variant="h3">{t("Loading the latest available AC units...")}</BoutiqueText>
           </BoutiqueBox>
         ) : products.length === 0 ? (
           <BoutiqueBox
@@ -105,17 +109,17 @@ export default function ShopCatalogue({
           >
             <WarningDiamond size={64} weight="bold" />
             <BoutiqueText variant="h3" margin="16px 0 0">
-              {error || "No products found matching your filters."}
+              {error || t("No products found matching your filters.")}
             </BoutiqueText>
             {error && onRetry ? (
-              <button type="button" className="bq-catalogue-retry" onClick={onRetry}>Try again</button>
+              <button type="button" className="bq-catalogue-retry" onClick={onRetry}>{t("Try again")}</button>
             ) : null}
           </BoutiqueBox>
         ) : (
           <BoutiqueBox>
             {availableProducts.length > 0 ? (
               <BoutiqueBox tag="section" margin="0 0 36px">
-                <BoutiqueText variant="h3" margin="0 0 18px">Available now ({availableProducts.length})</BoutiqueText>
+                <BoutiqueText variant="h3" margin="0 0 18px">{t("Available now")} ({availableProducts.length})</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
                   {availableProducts.map((product) => (
                     <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />
@@ -124,9 +128,9 @@ export default function ShopCatalogue({
               </BoutiqueBox>
             ) : null}
             {unavailableProducts.length > 0 ? (
-              <BoutiqueBox tag="section" aria-label="Out of stock products">
-                <BoutiqueText variant="h3" margin="0 0 6px">Out of stock ({unavailableProducts.length})</BoutiqueText>
-                <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">You can view these AC units, but they cannot be ordered until stock returns.</BoutiqueText>
+              <BoutiqueBox tag="section" aria-label={t("Out of stock products")}>
+                <BoutiqueText variant="h3" margin="0 0 6px">{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
+                <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">{t("You can view these AC units, but they cannot be ordered until stock returns.")}</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
                   {unavailableProducts.map((product) => (
                     <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />

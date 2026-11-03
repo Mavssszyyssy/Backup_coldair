@@ -5,6 +5,7 @@ import AdminMaintenance from './AdminMaintenance';
 import { apiRequest } from '../../../config/api';
 
 vi.mock('../Common/AdminLayout', () => ({ default: ({ children }) => <main>{children}</main> }));
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: 'English' }) }));
 vi.mock('./RequestDetails', () => ({ default: () => null }));
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 

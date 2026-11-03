@@ -22,7 +22,7 @@ export default function BoutiqueBadge({
     muted: { bg: BQ_COLORS.bg, text: BQ_COLORS.inkMuted },
     ink: { bg: BQ_COLORS.brand, text: "white" },
     outline: {
-      bg: "white",
+      bg: BQ_COLORS.surface,
       text: BQ_COLORS.ink,
       border: `1px solid ${BQ_COLORS.border}`,
     },

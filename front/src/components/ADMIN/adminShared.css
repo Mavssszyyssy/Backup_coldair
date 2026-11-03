@@ -295,9 +295,12 @@
 .admin-card .admin-settings-toggle input {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   padding: 0;
   accent-color: var(--admin-primary);
 }
+
+.admin-card .admin-settings-toggle span { min-width: 0; overflow-wrap: anywhere; }
 
 .admin-settings-save-row {
   display: flex;

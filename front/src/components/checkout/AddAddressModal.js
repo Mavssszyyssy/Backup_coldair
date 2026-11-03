@@ -1,19 +1,17 @@
-import { useId, useState } from 'react';
-import {
-  getRegions,
-  getProvincesByRegion,
-  getCitiesByProvince,
-  getBarangaysByCity,
-} from '../../domain/location/addressSelectors';
+import { useEffect, useId, useState } from 'react';
+import { psgcRegions, psgcProvinces, psgcLocalities, psgcBarangays, resolveSavedAddressCodes } from '../../domain/location/psgcAddressService';
 import {
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
 } from '../../domain/location/postalCodeValidation';
+import { translateText } from '../../utils/customerI18n';
 import './AddAddressModal.css';
 
 const PHONE_MAX_DIGITS = 11;
 
 const sanitizePhone = (value) => value.replace(/\D/g, '').slice(0, PHONE_MAX_DIGITS);
+const includeSavedLocation = (options, savedValue) =>
+  savedValue && !options.some((item) => item.name === savedValue) ? [{ name: savedValue, code: '' }, ...options] : options;
 
 const validateAddress = (address) => {
   const errors = [];
@@ -43,44 +41,87 @@ function AddAddressModal({
   title = 'Add New Address',
   saveLabel = 'Save Address',
   isSaving = false,
-  backendErrors = {}
+  backendErrors = {},
+  language = 'English',
 }) {
+  const t = (value) => translateText(value, language);
   const titleId = useId();
   const [address, setAddress] = useState({
     type: initialAddress?.type || 'home',
     label: initialAddress?.label || '',
     name: initialAddress?.name || '',
     region: initialAddress?.region || '',
+    regionCode: initialAddress?.regionCode || '',
     province: initialAddress?.province || '',
+    provinceCode: initialAddress?.provinceCode || '',
     barangay: initialAddress?.barangay || '',
+    submunicipalityCode: initialAddress?.submunicipalityCode || '',
     street: initialAddress?.street || '',
     city: initialAddress?.city || '',
+    municipalityCode: initialAddress?.municipalityCode || '',
     postalCode: initialAddress?.postalCode || '',
     phone: initialAddress?.phone || '',
     isDefault: Boolean(initialAddress?.isDefault)
   });
   
   const [serverMessage, setServerMessage] = useState('');
+  const [regionsLoaded, setRegionsLoaded] = useState([]);
+  const [provincesLoaded, setProvincesLoaded] = useState([]);
+  const [citiesLoaded, setCitiesLoaded] = useState([]);
+  const [barangaysLoaded, setBarangaysLoaded] = useState([]);
+  const regions = includeSavedLocation(regionsLoaded, address.region);
+  const provinces = includeSavedLocation(provincesLoaded, address.province);
+  const cities = includeSavedLocation(citiesLoaded, address.city);
+  const barangays = includeSavedLocation(barangaysLoaded, address.barangay);
 
-  const regions = getRegions();
-  const provinces = getProvincesByRegion(address.region);
-  const cities = getCitiesByProvince(address.region, address.province);
-  const barangays = getBarangaysByCity(address.region, address.province, address.city);
+  useEffect(() => {
+    let active = true;
+    psgcRegions().then((items) => { if (active) setRegionsLoaded(items); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    setProvincesLoaded([]);
+    if (address.region) psgcProvinces(address.regionCode, address.region).then((items) => { if (active) setProvincesLoaded(items); });
+    return () => { active = false; };
+  }, [address.region, address.regionCode]);
+  useEffect(() => {
+    let active = true;
+    setCitiesLoaded([]);
+    if (address.province) psgcLocalities(address.provinceCode, address.regionCode, address.region, address.province).then((items) => { if (active) setCitiesLoaded(items); });
+    return () => { active = false; };
+  }, [address.province, address.provinceCode, address.region, address.regionCode]);
+  useEffect(() => {
+    let active = true;
+    setBarangaysLoaded([]);
+    if (address.city) psgcBarangays(address.municipalityCode, address.region, address.province, address.city).then((items) => { if (active) setBarangaysLoaded(items); });
+    return () => { active = false; };
+  }, [address.city, address.municipalityCode, address.region, address.province]);
+  useEffect(() => {
+    if (!initialAddress || (initialAddress.regionCode && initialAddress.provinceCode && initialAddress.municipalityCode)) return undefined;
+    let active = true;
+    resolveSavedAddressCodes(initialAddress).then((codes) => {
+      if (active) setAddress((previous) => previous.region === initialAddress.region && previous.province === initialAddress.province && previous.city === initialAddress.city
+        ? { ...previous, ...Object.fromEntries(Object.entries(codes).filter(([, code]) => code)) }
+        : previous);
+    });
+    return () => { active = false; };
+  }, [initialAddress]);
 
   const setAddressField = (field, value) => {
     if (serverMessage) setServerMessage('');
     setAddress((prev) => {
       if (field === 'region') {
-        return { ...prev, region: value, province: '', city: '', barangay: '', postalCode: '' };
+        return { ...prev, region: value, regionCode: regions.find((item) => item.name === value)?.code || '', province: '', provinceCode: '', city: '', municipalityCode: '', barangay: '', submunicipalityCode: '', postalCode: '' };
       }
       if (field === 'province') {
-        return { ...prev, province: value, city: '', barangay: '', postalCode: '' };
+        return { ...prev, province: value, provinceCode: provinces.find((item) => item.name === value)?.code || '', city: '', municipalityCode: '', barangay: '', submunicipalityCode: '', postalCode: '' };
       }
       if (field === 'city') {
-        const nextAddress = { ...prev, city: value, barangay: '', postalCode: '' };
+        const nextAddress = { ...prev, city: value, municipalityCode: cities.find((item) => item.name === value)?.code || '', barangay: '', submunicipalityCode: '', postalCode: '' };
         return { ...nextAddress, postalCode: getSuggestedPostalCode(nextAddress) };
       }
-      return { ...prev, [field]: value };
+      return { ...prev, [field]: value, ...(field === 'barangay' ? { submunicipalityCode: barangays.find((item) => item.name === value)?.code || '' } : {}) };
     });
   };
   const handleSubmit = () => {
@@ -117,15 +158,15 @@ function AddAddressModal({
       >
         <header className="address-editor-header">
           <div>
-            <span className="address-editor-eyebrow">Delivery address</span>
-            <h2 id={titleId}>{title}</h2>
+            <span className="address-editor-eyebrow">{t('Delivery address')}</span>
+            <h2 id={titleId}>{t(title)}</h2>
           </div>
           <button
             type="button"
             className="address-editor-close"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Close address form"
+            aria-label={t('Close address form')}
           >
             ×
           </button>
@@ -135,14 +176,14 @@ function AddAddressModal({
             <div className="address-editor-error" role="alert">
               <span className="address-editor-error-icon" aria-hidden="true">!</span>
               <div className="address-editor-error-copy">
-                <strong>Please check this address</strong>
-                <span>{serverMessage}</span>
+                <strong>{t('Please check this address')}</strong>
+                <span>{t(serverMessage)}</span>
               </div>
               <button
                 type="button"
                 className="address-editor-error-dismiss"
                 onClick={() => setServerMessage('')}
-                aria-label="Dismiss address error"
+                aria-label={t('Dismiss address error')}
               >
                 ×
               </button>
@@ -151,7 +192,7 @@ function AddAddressModal({
         </div>
         <div className="address-editor-body">
           <div className="address-editor-field">
-            <label>Label</label>
+            <label>{t('Label')}</label>
             <input
               type="text"
               placeholder="Home, Office, Condo"
@@ -160,15 +201,15 @@ function AddAddressModal({
             />
           </div>
           <div className="address-editor-field">
-            <label>Address Type</label>
+            <label>{t('Address Type')}</label>
             <select value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
-              <option value="home">Home</option>
-              <option value="office">Office</option>
-              <option value="other">Other</option>
+              <option value="home">{t('Home')}</option>
+              <option value="office">{t('Office')}</option>
+              <option value="other">{t('Other')}</option>
             </select>
           </div>
           <div className="address-editor-field">
-            <label>Recipient Name *</label>
+            <label>{t('Recipient Name')} *</label>
             <input
               type="text"
               placeholder="Full name"
@@ -178,20 +219,20 @@ function AddAddressModal({
           </div>
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>Region *</label>
-              <select value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
-                <option value="">Select Region</option>
+              <label>{t('Region')} *</label>
+              <select aria-label={t('Region')} value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
+                <option value="">{t('Select Region')}</option>
                 {regions.map((region) => (
-                  <option key={region} value={region}>{region}</option>
+                  <option key={region.code || region.name} value={region.name}>{region.name}</option>
                 ))}
               </select>
             </div>
             <div className="address-editor-field">
-              <label>Province *</label>
-              <select value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
-                <option value="">Select Province</option>
+              <label>{t('Province')} *</label>
+              <select aria-label={t('Province')} value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
+                <option value="">{t('Select Province')}</option>
                 {provinces.map((province) => (
-                  <option key={province} value={province}>{province}</option>
+                  <option key={province.code || province.name} value={province.name}>{province.name}</option>
                 ))}
               </select>
             </div>
@@ -199,27 +240,27 @@ function AddAddressModal({
 
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>City / Municipality *</label>
-              <select value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
-                <option value="">Select City / Municipality</option>
+              <label>{t('City / Municipality')} *</label>
+              <select aria-label={t('City / Municipality')} value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
+                <option value="">{t('Select City / Municipality')}</option>
                 {cities.map((city) => (
-                  <option key={city} value={city}>{city}</option>
+                  <option key={city.code || city.name} value={city.name}>{city.name}</option>
                 ))}
               </select>
             </div>
             <div className="address-editor-field">
-              <label>Barangay *</label>
-              <select value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
-                <option value="">Select Barangay</option>
+              <label>{t('Barangay')} *</label>
+              <select aria-label={t('Barangay')} value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
+                <option value="">{t('Select Barangay')}</option>
                 {barangays.map((barangay) => (
-                  <option key={barangay} value={barangay}>{barangay}</option>
+                  <option key={barangay.code || barangay.name} value={barangay.name}>{barangay.name}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div className="address-editor-field">
-            <label>Street Address *</label>
+            <label>{t('Street Address')} *</label>
             <input
               type="text"
               placeholder="House/Block/Lot No., Street"
@@ -229,7 +270,7 @@ function AddAddressModal({
           </div>
           <div className="address-editor-grid">
             <div className="address-editor-field">
-              <label>ZIP Code *</label>
+              <label>{t('ZIP Code')} *</label>
               <input
                 type="text"
                 placeholder="4-digit ZIP code"
@@ -241,7 +282,7 @@ function AddAddressModal({
               />
             </div>
             <div className="address-editor-field">
-              <label>Phone Number *</label>
+              <label>{t('Phone Number')} *</label>
               <input
                 type="tel"
                 placeholder="09XXXXXXXXX"
@@ -259,7 +300,7 @@ function AddAddressModal({
                 checked={address.isDefault}
                 onChange={(e) => setAddressField('isDefault', e.target.checked)}
               />
-              Set as default delivery address
+              {t('Set as default delivery address')}
             </label>
           </div>
         </div>
@@ -270,7 +311,7 @@ function AddAddressModal({
             onClick={onClose}
             disabled={isSaving}
           >
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             type="button"
@@ -278,7 +319,7 @@ function AddAddressModal({
             onClick={handleSubmit}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving...' : saveLabel}
+            {isSaving ? t('Saving...') : t(saveLabel)}
           </button>
         </footer>
       </section>

@@ -4,8 +4,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VisitFollowUpPanel from './VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
+let language = 'English';
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language }) }));
 const task = { id: 'task-1', status: 'on-hold', visitAttempt: { id: 'attempt-1', outcome: 'close', note: 'No one answered at the entrance.', submittedAt: '2026-09-10T02:00:00Z', awaitingAdmin: true } };
-beforeEach(() => { vi.clearAllMocks(); apiRequest.mockResolvedValue({ attempt: { photo: { uri: 'data:image/jpeg;base64,test' }, checkIn: { latitude: 14.4, longitude: 120.9 }, technicianName: 'Test technician' } }); });
+beforeEach(() => { language = 'English'; vi.clearAllMocks(); apiRequest.mockResolvedValue({ attempt: { photo: { uri: 'data:image/jpeg;base64,test' }, checkIn: { latitude: 14.4, longitude: 120.9 }, technicianName: 'Test technician' } }); });
 test('renders visit proof and requires Admin date and dropdown time before confirming', async () => {
   const updated = vi.fn(); render(<VisitFollowUpPanel task={task} onUpdated={updated} />);
   await screen.findByAltText('Technician proof of unattended visit');
@@ -28,4 +30,12 @@ test('shows a confirmed online payment as paid when its saved status is stale', 
   await screen.findByAltText('Technician proof of unattended visit');
   expect(screen.getByText('Payment on ticket: Paid')).toBeTruthy();
   expect(screen.queryByText('Payment on ticket: pending')).toBeNull();
+});
+
+test('localizes Admin follow-up controls while preserving the technician note', async () => {
+  language = 'Filipino';
+  render(<VisitFollowUpPanel task={task} />);
+  expect(await screen.findByText('Follow-up sa pagbisita')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Kumpirmahin ang susunod na pagbisita' })).toBeTruthy();
+  expect(screen.getByText('No one answered at the entrance.')).toBeTruthy();
 });

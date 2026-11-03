@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { confirmLogout } from "../../../utils/dialog";
+import { translateText } from "../../../utils/customerI18n";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueStack from "./BoutiqueStack";
@@ -26,6 +27,7 @@ export default function BoutiqueSideMenu({
   const navigate = useNavigate();
   const location = useLocation();
   const [avatarBroken, setAvatarBroken] = useState(false);
+  const t = (value) => translateText(value, user?.preferences?.language);
 
   const menuItems = [
     { id: "shop", label: "Shop Catalog", icon: ShoppingBag, path: "/shop" },
@@ -97,7 +99,7 @@ export default function BoutiqueSideMenu({
               color={BQ_COLORS.inkMuted}
               className="bq-greeting"
             >
-              {isAuthenticated ? "Welcome back," : "Hello,"}
+              {isAuthenticated ? t("Welcome back,") : t("Hello,")}
             </BoutiqueText>
             <BoutiqueText variant="h3" weight={800} className="bq-username">
               {getUserDisplayName()}
@@ -121,7 +123,7 @@ export default function BoutiqueSideMenu({
                 onClick={() => handleNavigation(item.path)}
               >
                 <item.icon size={24} weight={active ? "fill" : "bold"} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}
@@ -142,7 +144,7 @@ export default function BoutiqueSideMenu({
               })}
             >
               <SignOut size={24} weight="bold" />
-              <span>Sign Out</span>
+              <span>{t("Sign Out")}</span>
             </button>
           ) : (
             <button
@@ -153,7 +155,7 @@ export default function BoutiqueSideMenu({
               }}
             >
               <SignOut size={24} weight="bold" />
-              <span>Sign In</span>
+              <span>{t("Sign In")}</span>
             </button>
           )}
         </BoutiqueStack>

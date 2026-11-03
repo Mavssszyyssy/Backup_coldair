@@ -26,40 +26,8 @@ import { validatePhone } from "../../utils/authValidation";
 import { validatePostalCodeForAddress } from "../../services/postalCodeValidation";
 import { formatCartModel } from "../../services/cartDisplayService";
 import { subscribeBackendRecovery } from "../../services/backendConnectionState";
-
-const getProfileAddress = (user = {}) => {
-  const billing = user?.billingAddress || user?.billing_address || {};
-  const location = user?.location?.address || {};
-  const street =
-    [
-      user?.apartment_unit || user?.apartmentUnit,
-      user?.property_block_lot || user?.propertyBlockLot,
-      user?.thoroughfare,
-    ]
-      .filter(Boolean)
-      .join(", ") ||
-    billing.street ||
-    location.street ||
-    user?.address ||
-    "";
-
-  return {
-    name: user?.name || [user?.name_first, user?.name_last].filter(Boolean).join(" "),
-    phone: user?.phone || "",
-    street,
-    barangay: user?.submunicipality || billing.barangay || location.barangay || "",
-    city: user?.municipality || billing.city || location.city || "",
-    province: billing.province || location.province || "",
-    region: billing.region || location.region || "",
-    postalCode: location.postalCode || billing.postalCode || "",
-    isDefault: true,
-  };
-};
-
-const getDefaultAddress = (user = {}) =>
-  user?.addresses?.find((item) => item?.isDefault) ||
-  user?.addresses?.[0] ||
-  getProfileAddress(user);
+import { checkoutFingerprint, getAddressForOrder, validateBranchCart } from "../../services/checkoutAddressSelection";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const DELIVERY_FEE_BY_BRANCH = {
   Bulacan: 380,
@@ -71,7 +39,7 @@ const DELIVERY_FEE_BY_BRANCH = {
 };
 
 const PAYMENT_CONNECTION_TIMEOUT_MS = 30000;
-const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "aeropulse_mobile_checkout_idempotency_v1";
+const CHECKOUT_IDEMPOTENCY_STORAGE_KEY = "aeropulse_mobile_checkout_idempotency_v2";
 const CHECKOUT_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
 
 const formatHorsepower = (item = {}) => {
@@ -79,19 +47,6 @@ const formatHorsepower = (item = {}) => {
   return parsed > 0 ? `${parsed} HP` : "Not specified";
 };
 
-const checkoutFingerprint = ({ cartItems = [], address = {}, paymentMethod = "" }) =>
-  JSON.stringify({
-    paymentMethod: String(paymentMethod || "").toLowerCase(),
-    addressId: String(address.id || address._id || ""),
-    address: [address.street, address.barangay, address.city, address.province, address.postalCode]
-      .map((value) => String(value || "").trim().toLowerCase()),
-    items: cartItems
-      .map((item) => ({
-        id: String(item.id || item.productId || item.sku || ""),
-        quantity: Number(item.quantity || 0),
-      }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
-  });
 
 const getCheckoutIdempotencyKey = async (fingerprint) => {
   try {
@@ -136,18 +91,30 @@ const calculateCheckoutTotals = (items = [], branch = "") => {
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const { language, t } = useInterfaceLanguage();
+  const localizeIssue = (message) => {
+    const zipMismatch = String(message || "").match(/^ZIP code does not match (.+)\.$/);
+    return zipMismatch && language === "Filipino"
+      ? `Hindi tumutugma ang ZIP code sa ${zipMismatch[1]}.`
+      : t(message);
+  };
   const { cart, clearCart, replaceCart, updateQuantity, removeFromCart } = useCart();
   const { current, token } = useUserContext();
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [inventoryBranch, setInventoryBranch] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [showAddressChoices, setShowAddressChoices] = useState(false);
   const [branchStockById, setBranchStockById] = useState({});
   const [stockIssues, setStockIssues] = useState([]);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [connectionRecoveryRevision, setConnectionRecoveryRevision] = useState(0);
   const orderRequestKeyRef = useRef("");
-  const address = useMemo(() => getDefaultAddress(current), [current]);
+  const submissionInFlightRef = useRef(false);
+  const stockRefreshRef = useRef(0);
+  const savedAddresses = useMemo(() => Array.isArray(current?.addresses) ? current.addresses : [], [current?.addresses]);
+  const address = useMemo(() => getAddressForOrder(current, selectedAddressId), [current, selectedAddressId]);
   const addressIssue = useMemo(() => {
     const missingField = ["region", "province", "city", "barangay", "street"]
       .some((field) => !String(address?.[field] || "").trim());
@@ -165,6 +132,10 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     let active = true;
+    stockRefreshRef.current += 1;
+    setInventoryBranch("");
+    setBranchStockById({});
+    setStockIssues([]);
     resolveConfiguredInventoryBranch(address)
       .then((branch) => { if (active) setInventoryBranch(branch); })
       .catch(() => { if (active) setInventoryBranch(""); });
@@ -172,6 +143,7 @@ export default function CheckoutScreen() {
   }, [address, connectionRecoveryRevision]);
 
   const refreshCheckoutStock = useCallback(async () => {
+    const refreshId = ++stockRefreshRef.current;
     if (!inventoryBranch || cart.length === 0) {
       setBranchStockById({});
       setStockIssues([]);
@@ -185,13 +157,16 @@ export default function CheckoutScreen() {
         .map((product) => [`sku:${String(product.sku)}`, Number(product.stock || 0)]));
       const nextIssues = cart.flatMap((item) => {
         const stock = stockById[String(item.id)] ?? stockBySku[`sku:${String(item.sku || "")}`];
+        if (!Number.isSafeInteger(Number(item.quantity)) || Number(item.quantity) <= 0) return [{ id: String(item.id), name: item.name || "This item", available: stock || 0, code: "invalid_quantity" }];
         if (!Number.isFinite(stock)) return [{ id: String(item.id), name: item.name || "This item", available: 0, code: "out_of_stock" }];
         if (stock <= 0) return [{ id: String(item.id), name: item.name || "This item", available: 0, code: "out_of_stock" }];
         if (Number(item.quantity || 0) > stock) return [{ id: String(item.id), name: item.name || "This item", available: stock, code: "insufficient_stock" }];
         return [];
       });
-      setBranchStockById(stockById);
-      setStockIssues(nextIssues);
+      if (refreshId === stockRefreshRef.current) {
+        setBranchStockById(stockById);
+        setStockIssues(nextIssues);
+      }
       return nextIssues;
     } catch (_error) {
       // The order submission performs the same authoritative check. Do not
@@ -205,22 +180,24 @@ export default function CheckoutScreen() {
   }, [refreshCheckoutStock, connectionRecoveryRevision]);
 
   const submitOrder = async () => {
-    if (submitting) return;
-    if (!cart.length) return Alert.alert("Cart is empty", "Add an item before checking out.");
-    if (!token) return Alert.alert("Sign in required", "Please sign in again before checking out.");
+    if (submissionInFlightRef.current) return;
+    if (!cart.length) return Alert.alert(t("Cart is empty"), t("Add an item before checking out."));
+    if (!token) return Alert.alert(t("Sign in required"), t("Please sign in again before checking out."));
+    if (addressIssue) return Alert.alert(t("Complete delivery address"), localizeIssue(addressIssue));
+
+    // Lock before the first network request; React state alone cannot stop a
+    // second tap while the stock refresh is still in flight.
+    submissionInFlightRef.current = true;
+    setSubmitting(true);
+    try {
 
     const currentStockIssues = await refreshCheckoutStock();
     if (currentStockIssues.length) {
-      const hasOutOfStockItem = currentStockIssues.some((issue) => issue.code === "out_of_stock");
-      return Alert.alert(
-        "Review your order",
-        hasOutOfStockItem
-          ? "This branch currently has no stock of this item"
-          : "This branch does not have enough stock for the requested quantity.",
-      );
+      // The stock card below already explains the issue and stays visible for
+      // correction. A second native alert would stack the same message.
+      return;
     }
 
-    setSubmitting(true);
     setCheckoutMessage("Checking the latest stock and prices…");
 
     // Cart contents can persist between app updates. Resolve every line back
@@ -229,7 +206,7 @@ export default function CheckoutScreen() {
     let checkoutCart = cart;
     let liveBranch = "";
     try {
-      liveBranch = await resolveConfiguredInventoryBranch(getDefaultAddress(current));
+      liveBranch = await resolveConfiguredInventoryBranch(address);
       if (!liveBranch) {
         throw new Error("This delivery address is outside the current service areas. Choose another address before checkout.");
       }
@@ -237,45 +214,13 @@ export default function CheckoutScreen() {
       const catalogue = await fetchShopProducts(
         liveBranch,
       );
-      let branchOutOfStock = false;
-      const activeItems = cart
-        .map((cartItem) => {
-          const product = catalogue.find(
-            (candidate) =>
-              String(candidate.id) === String(cartItem.id) ||
-              (cartItem.sku && String(candidate.sku) === String(cartItem.sku)),
-          );
-          if (!product) {
-            return null;
-          }
-          if (!product.inStock) {
-            branchOutOfStock = true;
-            return null;
-          }
-          return {
-            ...product,
-            quantity: Math.min(
-              Math.max(1, Number(cartItem.quantity || 1)),
-              Math.max(1, Number(product.stock || 1)),
-            ),
-          };
-        })
-        .filter(Boolean);
-
-      if (activeItems.length !== cart.length) {
-        replaceCart(activeItems);
-        throw new Error(
-          branchOutOfStock
-            ? "This branch currently has no stock of this item"
-            : "One or more older cart items are no longer available. Your cart was updated to the active catalogue; please review it and place the order again.",
-        );
-      }
+      const activeItems = validateBranchCart(cart, catalogue, liveBranch);
       checkoutCart = activeItems;
       replaceCart(activeItems);
     } catch (error) {
       setSubmitting(false);
       setCheckoutMessage("");
-      Alert.alert("Review your cart", error?.message || "Unable to verify the current catalogue.");
+      Alert.alert(t("Review your cart"), t(error?.message || "Unable to verify the current catalogue."));
       return;
     }
 
@@ -290,7 +235,15 @@ export default function CheckoutScreen() {
     } catch (_error) {
       // The current session remains a safe fallback if the refresh is unavailable.
     }
-    const checkoutAddress = getDefaultAddress(checkoutUser);
+    const selectedSavedAddress = selectedAddressId
+      ? checkoutUser?.addresses?.find((item) => String(item.id || item._id) === String(selectedAddressId))
+      : null;
+    if (selectedAddressId && !selectedSavedAddress) {
+      setSubmitting(false);
+      setCheckoutMessage("");
+      return Alert.alert(t("Address changed"), t("That saved address is no longer available. Select another delivery address for this order."));
+    }
+    const checkoutAddress = getAddressForOrder(checkoutUser, selectedAddressId);
     const missingAddressField = ["region", "province", "city", "barangay", "street"]
       .some((field) => !String(checkoutAddress?.[field] || "").trim());
     const phoneError = checkoutAddress?.phone ? validatePhone(checkoutAddress.phone) : "Phone number is required.";
@@ -299,28 +252,34 @@ export default function CheckoutScreen() {
       setSubmitting(false);
       setCheckoutMessage("");
       return Alert.alert(
-        "Complete delivery address",
-        phoneError || postalCodeError || "Choose Region, Province, City/Municipality, Barangay, and Street in Account before checking out.",
+        t("Complete delivery address"),
+        localizeIssue(phoneError || postalCodeError || "Choose Region, Province, City/Municipality, Barangay, and Street in Account before checking out."),
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open Account", onPress: () => router.push("/customer/settings") },
+          { text: t("Cancel"), style: "cancel" },
+          { text: t("Open Account"), onPress: () => router.push("/customer/settings") },
         ],
       );
     }
 
-    const latestBranch = await resolveConfiguredInventoryBranch(checkoutAddress);
-    if (!latestBranch) {
+    let latestBranch;
+    try {
+      latestBranch = await resolveConfiguredInventoryBranch(checkoutAddress);
+      if (!latestBranch) throw new Error("This delivery address is outside the current service areas. Choose another address before checkout.");
+      if (latestBranch !== liveBranch) {
+        const latestCatalogue = await fetchShopProducts(latestBranch);
+        checkoutCart = validateBranchCart(checkoutCart, latestCatalogue, latestBranch);
+        replaceCart(checkoutCart);
+      }
+    } catch (error) {
       setSubmitting(false);
       setCheckoutMessage("");
-      return Alert.alert("Address not serviceable", "This delivery address is outside the current service areas. Choose another address before checkout.");
+      return Alert.alert(t("Review your order"), t(error?.message || "Unable to verify stock for this delivery branch."));
     }
     setInventoryBranch(latestBranch);
     const latestTotals = calculateCheckoutTotals(checkoutCart, latestBranch);
-    if (!orderRequestKeyRef.current) {
-      orderRequestKeyRef.current = await getCheckoutIdempotencyKey(
-        checkoutFingerprint({ cartItems: checkoutCart, address: checkoutAddress, paymentMethod }),
-      );
-    }
+    orderRequestKeyRef.current = await getCheckoutIdempotencyKey(
+      checkoutFingerprint({ cartItems: checkoutCart, address: checkoutAddress, paymentMethod, customerId: checkoutUser?.id || checkoutUser?._id, branch: latestBranch }),
+    );
     setCheckoutMessage(
       paymentMethod === "cod"
         ? "Submitting your order…"
@@ -359,6 +318,17 @@ export default function CheckoutScreen() {
         ),
       ]);
       if (!result.success) {
+        if (result.code === "ORDER_PAYMENT_RETRY_REQUIRED" && result.orderId) {
+          clearCart();
+          orderRequestKeyRef.current = "";
+          await clearCheckoutIdempotencyKey();
+          router.replace(`/customer/order-confirmation/${result.orderId}?payment=returned`);
+          return;
+        }
+        if (result.code === "ORDER_CHECKOUT_FAILED") {
+          orderRequestKeyRef.current = "";
+          await clearCheckoutIdempotencyKey();
+        }
         const error = new Error(result.error);
         error.status = result.status;
         throw error;
@@ -390,11 +360,13 @@ export default function CheckoutScreen() {
     } catch (error) {
       Alert.alert(
         error?.code === "PAYMENT_CONNECTION_TIMEOUT"
-          ? "Connection timed out"
-          : "Payment connection failed",
-        error?.message || "Unable to connect to secure payment.",
+          ? t("Connection timed out")
+          : t("Payment connection failed"),
+        t(error?.message || "Unable to connect to secure payment."),
       );
+    }
     } finally {
+      submissionInFlightRef.current = false;
       setSubmitting(false);
       setCheckoutMessage("");
     }
@@ -402,56 +374,79 @@ export default function CheckoutScreen() {
 
   return (
     <>
-      <BoutiqueHeader title="Checkout" subtitle="Review and place your order" onBack={() => router.back()} />
+      <BoutiqueHeader title={t("Checkout")} subtitle={t("Review and place your order")} onBack={() => { if (!submissionInFlightRef.current) router.back(); }} />
       <BoutiqueScreen>
         {cart.length === 0 ? (
           <BoutiqueCard style={{ gap: BQ_SPACING.md }}>
-            <BoutiqueText variant="h2">Your cart is empty</BoutiqueText>
-            <BoutiqueButton title="Browse products" onPress={() => router.replace("/customer/shop")} />
+            <BoutiqueText variant="h2">{t("Your cart is empty")}</BoutiqueText>
+            <BoutiqueButton title={t("Browse products")} onPress={() => router.replace("/customer/shop")} />
           </BoutiqueCard>
         ) : (
           <>
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: BQ_SPACING.sm }}>
-                <BoutiqueText variant="h3">Delivery address</BoutiqueText>
-                <BoutiqueButton title="Change" size="sm" variant="outline" onPress={() => router.push("/customer/settings")} />
+                <BoutiqueText variant="h3">{t("Delivery address")}</BoutiqueText>
+                <BoutiqueButton title={showAddressChoices ? t("Done") : t("Change")} size="sm" variant="outline" disabled={submitting} onPress={() => setShowAddressChoices((value) => !value)} />
               </View>
+              {showAddressChoices ? (
+                <View style={{ gap: BQ_SPACING.xs }}>
+                  {savedAddresses.length ? savedAddresses.map((item) => {
+                    const id = String(item.id || item._id || "");
+                    const selected = String(address.id || address._id || "") === id;
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        disabled={submitting}
+                        accessibilityLabel={`${item.label || t("Saved address")}: ${[item.street, item.barangay, item.city, item.province].filter(Boolean).join(", ")}`}
+                        onPress={() => { if (submissionInFlightRef.current) return; setSelectedAddressId(id); setShowAddressChoices(false); orderRequestKeyRef.current = ""; }}
+                        style={{ padding: BQ_SPACING.sm, borderWidth: 1, borderColor: selected ? BQ_COLORS.brand : BQ_COLORS.border, borderRadius: 10, gap: BQ_SPACING.xs }}
+                      >
+                        <BoutiqueText variant="label">{item.label || t("Saved address")}{item.isDefault ? ` · ${t("Account default")}` : ""}{selected ? ` · ${t("Selected for this order")}` : ""}</BoutiqueText>
+                        <BoutiqueText color={BQ_COLORS.inkMuted}>{[item.street, item.barangay, item.city, item.province, item.postalCode].filter(Boolean).join(", ")}</BoutiqueText>
+                      </TouchableOpacity>
+                    );
+                  }) : <BoutiqueText color={BQ_COLORS.inkMuted}>{t("No saved addresses yet. Add one in Account settings.")}</BoutiqueText>}
+                  <BoutiqueButton title={t("Manage saved addresses")} size="sm" variant="outline" disabled={submitting} onPress={() => router.push("/customer/settings")} />
+                </View>
+              ) : null}
               <BoutiqueText color={BQ_COLORS.inkMuted}>
-                {[address.street, address.barangay, address.city, address.province].filter(Boolean).join(", ") || current?.address || "No saved address"}
+                {[address.street, address.barangay, address.city, address.province, address.postalCode].filter(Boolean).join(", ") || current?.address || t("No saved address")}
               </BoutiqueText>
               <BoutiqueText variant="caption" color={addressIssue || !inventoryBranch ? BQ_COLORS.danger : BQ_COLORS.success}>
                 {addressIssue
-                  ? `Address needs review: ${addressIssue}`
+                  ? `${t("Address needs review")}: ${localizeIssue(addressIssue)}`
                   : inventoryBranch
-                    ? `Assigned branch: ${inventoryBranch}`
-                    : "Choose a delivery address within a configured service area."}
+                    ? `${t("Assigned branch")}: ${inventoryBranch}`
+                    : t("Choose a delivery address within a configured service area.")}
               </BoutiqueText>
             </BoutiqueCard>
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
-              <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={showOrderDetails ? "Hide order details" : "View order details"} accessibilityState={{ expanded: showOrderDetails }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={showOrderDetails ? t("Hide order details") : t("View order details")} accessibilityState={{ expanded: showOrderDetails }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View>
-                  <BoutiqueText variant="h3">Order summary</BoutiqueText>
-                  <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{cart.reduce((count, item) => count + Number(item.quantity || 0), 0)} item(s)</BoutiqueText>
+                  <BoutiqueText variant="h3">{t("Order summary")}</BoutiqueText>
+                  <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{cart.reduce((count, item) => count + Number(item.quantity || 0), 0)} {t("item(s)")}</BoutiqueText>
                 </View>
-                <BoutiqueText variant="label" color={BQ_COLORS.brand}>{showOrderDetails ? "Hide details" : "View details"}</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.brand}>{showOrderDetails ? t("Hide details") : t("View details")}</BoutiqueText>
               </TouchableOpacity>
               {showOrderDetails ? cart.map((item) => {
                 const branchStock = branchStockById[String(item.id)];
-                const maximumQuantity = Number.isFinite(branchStock)
-                  ? Math.max(1, branchStock)
-                  : Math.max(1, Number(item.stock || 99));
+                  const maximumQuantity = Number.isFinite(branchStock)
+                    ? branchStock
+                    : Number(item.stock ?? 99);
                 return (
                 <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.sm, paddingBottom: BQ_SPACING.sm, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }}>
                   <View style={{ flex: 1 }}>
                     <BoutiqueText variant="label">{item.name}</BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Model: {formatCartModel(item)}</BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Horsepower: {formatHorsepower(item)}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Model")}: {formatCartModel(item)}</BoutiqueText>
+                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Horsepower")}: {t(formatHorsepower(item))}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: BQ_SPACING.sm, gap: BQ_SPACING.sm }}>
-                      <BoutiqueQuantityStepper value={item.quantity} max={maximumQuantity} onChange={(quantity) => updateQuantity(item.id, quantity)} />
-                      <TouchableOpacity onPress={() => removeFromCart(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.name} from order`}>
-                        <BoutiqueText variant="caption" color={BQ_COLORS.danger} style={{ fontWeight: "800" }}>Remove</BoutiqueText>
+                      <BoutiqueQuantityStepper value={item.quantity} max={maximumQuantity} disabled={submitting} onChange={(quantity) => { if (!submissionInFlightRef.current) updateQuantity(item.id, quantity); }} />
+                      <TouchableOpacity disabled={submitting} onPress={() => { if (!submissionInFlightRef.current) removeFromCart(item.id); }} accessibilityRole="button" accessibilityState={{ disabled: submitting }} accessibilityLabel={`${t("Remove")} ${item.name} ${t("from order")}`}>
+                        <BoutiqueText variant="caption" color={BQ_COLORS.danger} style={{ fontWeight: "800" }}>{t("Remove")}</BoutiqueText>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -464,39 +459,41 @@ export default function CheckoutScreen() {
             {stockIssues.length ? (
               <BoutiqueCard style={{ gap: BQ_SPACING.xs, borderWidth: 1, borderColor: BQ_COLORS.danger, backgroundColor: "#fff7f7" }}>
                 <BoutiqueText variant="h3" color={BQ_COLORS.danger}>
-                  {stockIssues.some((issue) => issue.code === "out_of_stock")
-                    ? "This branch currently has no stock of this item"
-                    : "This branch does not have enough stock for the requested quantity"}
+                  {stockIssues.some((issue) => issue.code === "invalid_quantity")
+                    ? t("Each cart quantity must be a positive whole number.")
+                    : stockIssues.some((issue) => issue.code === "out_of_stock")
+                      ? t("This branch currently has no stock of this item")
+                      : t("This branch does not have enough stock for the requested quantity")}
                 </BoutiqueText>
-                <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>Remove the unavailable item or reduce its quantity to continue.</BoutiqueText>
+                <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Remove the unavailable item or reduce its quantity to continue.")}</BoutiqueText>
               </BoutiqueCard>
             ) : null}
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
-              <BoutiqueText variant="h3">Payment method</BoutiqueText>
-              <BoutiqueSegmented value={paymentMethod} onChange={setPaymentMethod} options={[
-                { value: "card", label: "Card" },
+              <BoutiqueText variant="h3">{t("Payment method")}</BoutiqueText>
+              <BoutiqueSegmented value={paymentMethod} disabled={submitting} onChange={(value) => { if (!submissionInFlightRef.current) setPaymentMethod(value); }} options={[
+                { value: "card", label: t("Card") },
                 { value: "gcash", label: "GCash" },
                 { value: "maya", label: "Maya" },
-                { value: "cod", label: "Cash on delivery" },
+                { value: "cod", label: t("Cash on delivery") },
               ]} />
             </BoutiqueCard>
 
             <BoutiqueCard style={{ gap: BQ_SPACING.xs }}>
-              <BoutiqueText variant="h3">Price details</BoutiqueText>
+              <BoutiqueText variant="h3">{t("Price details")}</BoutiqueText>
               {[
-                ["Items subtotal", checkoutTotals.subtotal],
-                ["VAT", checkoutTotals.vatAmount],
-                ["Delivery fee", checkoutTotals.shippingFee],
+                [t("Items subtotal"), checkoutTotals.subtotal],
+                [t("VAT"), checkoutTotals.vatAmount],
+                [t("Delivery fee"), checkoutTotals.shippingFee],
               ].map(([label, amount]) => <View key={label} style={{ flexDirection: "row", justifyContent: "space-between" }}><BoutiqueText color={BQ_COLORS.inkMuted}>{label}</BoutiqueText><BoutiqueText>{formatPeso(amount)}</BoutiqueText></View>)}
               <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, marginTop: BQ_SPACING.sm, paddingTop: BQ_SPACING.sm, flexDirection: "row", justifyContent: "space-between" }}>
-                <BoutiqueText variant="h2">Final total</BoutiqueText><BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
+                <BoutiqueText variant="h2">{t("Final total")}</BoutiqueText><BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
               </View>
             </BoutiqueCard>
 
             <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
-              {checkoutMessage ? <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{checkoutMessage}</BoutiqueText> : null}
-              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? "Submitting order..." : "Connecting...") : paymentMethod === "cod" ? "Place order" : "Continue to payment"} disabled={submitting || Boolean(addressIssue) || !inventoryBranch || stockIssues.length > 0} fullWidth onPress={() => void submitOrder()} />
+              {checkoutMessage ? <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{t(checkoutMessage)}</BoutiqueText> : null}
+              <BoutiqueButton title={submitting ? (paymentMethod === "cod" ? t("Submitting order...") : t("Connecting...")) : paymentMethod === "cod" ? t("Place order") : t("Continue to payment")} disabled={submitting || Boolean(addressIssue) || !inventoryBranch || stockIssues.length > 0} fullWidth onPress={() => void submitOrder()} />
             </BoutiqueCard>
           </>
         )}

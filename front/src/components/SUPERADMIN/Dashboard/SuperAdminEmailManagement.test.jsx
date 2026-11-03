@@ -14,6 +14,7 @@ vi.mock('../../../context/UserContext', () => ({ useUser: vi.fn() }));
 beforeEach(() => {
   apiRequest.mockReset();
   useUser.mockReset();
+  useUser.mockReturnValue({ currentLanguage: 'English' });
 });
 
 test('superadmin profile submits the edited contact email and refreshes through context', async () => {

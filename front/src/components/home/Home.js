@@ -32,7 +32,7 @@ function Home() {
     getCartCount,
     clearCart,
   } = useCart();
-  const { user, logout, isAuthenticated } = useUser();
+  const { user, logout, isAuthenticated, currentLanguage } = useUser();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -206,6 +206,7 @@ function Home() {
       />
 
       <BoutiqueCart
+        currentLanguage={currentLanguage}
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
@@ -216,6 +217,7 @@ function Home() {
       />
 
       <BoutiqueNotifications
+        currentLanguage={currentLanguage}
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}

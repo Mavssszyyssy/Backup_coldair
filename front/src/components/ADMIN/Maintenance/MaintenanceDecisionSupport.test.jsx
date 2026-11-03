@@ -4,9 +4,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { apiRequest } from '../../../config/api';
 import MaintenanceDecisionSupport from './MaintenanceDecisionSupport';
 
+const { language } = vi.hoisted(() => ({ language: { value: 'English' } }));
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language.value }) }));
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); language.value = 'English'; });
 
 it('generates and displays a pre-visit assessment without replacing the reported issue', async () => {
   const request = { id: 'request-1', status: 'Submitted', issue: 'Hindi lumalamig' };
@@ -43,4 +45,17 @@ it('shows the possible next issue from a completed visit without an open request
   fireEvent.click(screen.getByText('Interpretation and supporting details'));
   expect(screen.getAllByText('Okay na ang lamig, pero may ingay sa fan.')[0]).toBeVisible();
   expect(screen.getByText('Cooling is restored, but the fan remains noisy.')).toBeVisible();
+});
+
+it('localizes assessment controls while keeping saved technical findings unchanged', async () => {
+  language.value = 'Filipino';
+  const finding = 'Maingay ang fan kapag mataas ang lamig.';
+  const prediction = { status: 'completed', generatedAt: '2026-10-12T00:00:00.000Z',
+    evidence: [{ id: 'current_findings', label: 'Original findings', text: finding }],
+    assessment: { possible_future_issue: 'Fan may need inspection.' } };
+  render(<MaintenanceDecisionSupport task={{ id: 'task-1', status: 'completed' }} initialPost={prediction} />);
+  expect(screen.getByText('Pagkatapos ng maintenance · susunod na babantayan')).toBeVisible();
+  fireEvent.click(screen.getByText('Interpretasyon at mga sumusuportang detalye'));
+  expect(screen.getAllByText(finding)[0]).toBeVisible();
+  expect(screen.getByText('Fan may need inspection.')).toBeVisible();
 });

@@ -14,9 +14,13 @@ import ContactForm from "./ContactForm";
 import ContactHistory from "./ContactHistory";
 import ContactInfo from "./ContactInfo";
 import ServicesSupport from "./ServicesSupport";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
 function Contact() {
   const navigate = useNavigate();
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [searchParams] = useSearchParams();
   const messageId = searchParams.get("messageId") || "";
 
@@ -27,7 +31,7 @@ function Contact() {
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
       <BoutiqueHeader
-        title="Customer Support"
+        title={t("Customer Support")}
         leftAction="back"
         onLeftAction={handleBack}
       />
@@ -37,7 +41,7 @@ function Contact() {
           {/* HERO SECTION */}
           <BoutiqueBox align="center" margin="0 0 16px">
             <BoutiqueText variant="h1" align="center">
-              We're Here to Help
+              {t("We're Here to Help")}
             </BoutiqueText>
             <BoutiqueText
               color={BQ_COLORS.inkMuted}
@@ -46,9 +50,7 @@ function Contact() {
               margin="8px 0 0"
               style={{ maxWidth: "600px", lineHeight: 1.6 }}
             >
-              Have questions about our services or need technical assistance
-              with your AC? Our support team is here to help with your
-              comfort.
+              {t("Have questions about our services or need technical assistance with your AC? Our support team is here to help with your comfort.")}
             </BoutiqueText>
           </BoutiqueBox>
 
@@ -67,15 +69,14 @@ function Contact() {
               <BoutiqueStack gap={24} flex={1} style={{ maxWidth: "600px" }}>
                 <BoutiqueStack gap={12}>
                   <BoutiqueText variant="h2" color="white">
-                    Need Maintenance or Warranty Support?
+                    {t("Need Maintenance or Warranty Support?")}
                   </BoutiqueText>
                   <BoutiqueText
                     color="rgba(255,255,255,0.8)"
                     size="15px"
                     style={{ lineHeight: 1.6 }}
                   >
-                    All maintenance, cleaning, repair, technician, and warranty
-                    requests are handled in the AeroPulse Mobile App.
+                    {t("All maintenance, cleaning, repair, technician, and warranty requests are handled in the AeroPulse Mobile App.")}
                   </BoutiqueText>
                 </BoutiqueStack>
                 <BoutiqueBox direction="row" gap={32} wrap="wrap">
@@ -92,7 +93,7 @@ function Contact() {
                     >
                       <feat.icon size={20} weight="bold" />
                       <BoutiqueText size="13px" weight={700} color="white">
-                        {feat.text}
+                        {t(feat.text)}
                       </BoutiqueText>
                     </BoutiqueBox>
                   ))}
@@ -109,7 +110,7 @@ function Contact() {
                   padding: "16px 32px",
                 }}
               >
-                Mobile App Services
+                {t("Mobile App Services")}
               </BoutiqueButton>
             </BoutiqueBox>
           </BoutiqueCard>

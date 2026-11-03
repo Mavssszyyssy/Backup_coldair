@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
-import { BRANCHES } from '../../../domain/branches/branches';
+import useActiveBranches from '../../../domain/branches/useActiveBranches';
 import PersistentErrorNotice from '../../common/PersistentErrorNotice';
 import './RestockOrderModal.css';
 
 const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
+  const branchNames = useActiveBranches();
   const [supplierName, setSupplierName] = useState('');
   const [supplierContact, setSupplierContact] = useState('');
   const [supplierEmail, setSupplierEmail] = useState('');
@@ -196,7 +197,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="form-section">
               <h4>Branches to Restock *</h4>
               <div className="branches-grid">
-                {BRANCHES.map((branch) => (
+                {branchNames.map((branch) => (
                   <label key={branch} className="checkbox-label">
                     <input
                       type="checkbox"

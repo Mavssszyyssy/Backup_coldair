@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { AppState } from "react-native";
 
 import * as api from "../services/api";
+import { disablePushNotifications } from "../services/pushNotificationService";
 import { clearOperationalSessionCache } from "../services/sessionCache";
 import { requiredSetupRoute } from "../services/accountSetupRoute";
 import { subscribeBackendRecovery } from "../services/backendConnectionState";
@@ -266,6 +267,7 @@ export function UserProvider({ children }) {
    * Logout — clears session server-side and locally.
    */
   const logout = async () => {
+    await disablePushNotifications(token).catch(() => {});
     try {
       await api.logout(token);
     } catch {
@@ -423,11 +425,30 @@ export function UserProvider({ children }) {
     }
   };
 
+  const updateLanguage = async (language) => {
+    if (!token) return { success: false, error: "Please sign in again." };
+    if (!["English", "Filipino"].includes(language)) {
+      return { success: false, error: "Choose a supported language." };
+    }
+    try {
+      const result = await api.updatePreferences(token, { language });
+      if (!result.success || !result.user) return result;
+      const normalized = normalizeUser(result.user);
+      setCurrent(normalized);
+      return { success: true, user: normalized };
+    } catch (error) {
+      return { success: false, error: error?.message || "Unable to save preferences." };
+    }
+  };
+
   const changeMyPassword = async (payload) => {
     if (!token) return { success: false, error: "Please sign in again." };
     try {
       const result = await api.changeAccountPassword(token, payload);
-      if (result.success && result.user) setCurrent(normalizeUser(result.user));
+      if (result.success) {
+        if (result.token) await storeToken(result.token);
+        if (result.user) setCurrent(normalizeUser(result.user));
+      }
       return result;
     } catch (error) {
       return { success: false, error: error?.message || "Unable to reset your password." };
@@ -462,8 +483,9 @@ export function UserProvider({ children }) {
         ? await api.updateAddress(token, addressId, address)
         : await api.addAddress(token, address);
       if (!result.success) return result;
+        setCurrent((previous) => normalizeUser({ ...previous, addresses: result.addresses }));
       const refreshed = await refreshCurrentUser();
-      return refreshed.success ? { success: true, user: refreshed.user } : refreshed;
+        return { success: true, user: refreshed.success ? refreshed.user : null };
     } catch (error) {
       return { success: false, error: error?.message || "Unable to save the delivery address." };
     }
@@ -548,6 +570,7 @@ export function UserProvider({ children }) {
       removeProfilePhoto,
       refreshCurrentUser,
       updateMyAccount,
+      updateLanguage,
       completeTechnicianOnboarding,
       changeMyPassword,
       saveDeliveryAddress,

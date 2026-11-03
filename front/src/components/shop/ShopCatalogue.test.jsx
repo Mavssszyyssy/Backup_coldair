@@ -2,6 +2,9 @@ import { expect, test, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import ShopCatalogue from "./ShopCatalogue";
 
+const languageState = vi.hoisted(() => ({ value: "English" }));
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: languageState.value }) }));
+
 const product = (id, inStock) => ({
   id,
   name: `Cold Air ${id}`,
@@ -15,6 +18,7 @@ const product = (id, inStock) => ({
 });
 
 test("keeps unavailable products visible after available products without purchase actions", () => {
+  languageState.value = "English";
   const onAddToCart = vi.fn();
   const onBuyNow = vi.fn();
   render(
@@ -38,4 +42,24 @@ test("keeps unavailable products visible after available products without purcha
   expect(within(sections[1]).getByRole("button", { name: "Unavailable" })).toBeDisabled();
   expect(onAddToCart).not.toHaveBeenCalled();
   expect(onBuyNow).not.toHaveBeenCalled();
+});
+
+test("switches shop labels while preserving product names and stock order", () => {
+  languageState.value = "Filipino";
+  const props = {
+    products: [product("sold-out", false), product("ready", true)],
+    onProductClick: vi.fn(),
+    sortBy: "default",
+    onSortChange: vi.fn(),
+  };
+  const { rerender } = render(<ShopCatalogue {...props} />);
+  expect(screen.getByText("Available ngayon (1)")).toBeInTheDocument();
+  expect(screen.getByText("Ubos ang stock (1)")).toBeInTheDocument();
+  expect(screen.getAllByText("ready").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("sold-out").length).toBeGreaterThan(0);
+  expect(screen.getByText("2 produktong nakita")).toBeInTheDocument();
+  languageState.value = "English";
+  rerender(<ShopCatalogue {...props} />);
+  expect(screen.getByText("Available now (1)")).toBeInTheDocument();
+  expect(screen.getByText("Out of stock (1)")).toBeInTheDocument();
 });

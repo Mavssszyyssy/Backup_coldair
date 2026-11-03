@@ -5,6 +5,7 @@ import { apiRequest } from "../../config/api";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
+import { isFilipino, translateText } from "../../utils/customerI18n";
 import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 import { validatePostalCodeForAddress } from "../../domain/location/postalCodeValidation";
 import { consumePostRegistrationCheckoutIntent } from "../../domain/checkout/postRegistrationIntent";
@@ -118,7 +119,8 @@ const findBestSelectedAddress = (items, currentId = "") => {
 function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart, getCartTotal, updateQuantity, removeFromCart } = useCart();
-  const { synchronizeAddresses } = useUser();
+  const { synchronizeAddresses, currentLanguage } = useUser();
+  const t = useCallback((value) => translateText(value, currentLanguage), [currentLanguage]);
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState("cod");
@@ -146,14 +148,14 @@ function Checkout() {
     resolveAddressBranch(selectedAddress)
       .then((branch) => {
         if (!active) return;
-        if (!branch) setBranchError("This address is outside the current service areas. Choose another delivery address.");
+        if (!branch) setBranchError(t("This address is outside the current service areas. Choose another delivery address."));
         setAssignedBranch(branch);
       })
       .catch((error) => {
-        if (active) setBranchError(error.message || "Unable to determine the service branch.");
+        if (active) setBranchError(error.message || t("Unable to determine the service branch."));
       });
     return () => { active = false; };
-  }, [selectedAddress, resolveAddressBranch]);
+  }, [selectedAddress, resolveAddressBranch, t]);
 
   const serviceAreaId = useMemo(() => {
     if (!assignedBranch) return DEFAULT_SERVICE_AREA_ID;
@@ -236,6 +238,10 @@ function Checkout() {
         const normalizedAvailable = Number.isFinite(available)
           ? Math.max(0, Math.floor(available))
           : 0;
+        if (!Number.isSafeInteger(desired) || desired <= 0) {
+          issues.push({ id: idKey, name: item.name, desired, available: normalizedAvailable, code: "invalid_quantity" });
+          continue;
+        }
         if (normalizedAvailable <= 0) {
           issues.push({
             id: idKey,
@@ -312,10 +318,10 @@ function Checkout() {
       selectedAddress?.id || "",
     );
     if (latestSelectedAddress) return latestSelectedAddress;
-    alert("No delivery address found. Please add an address to proceed.");
+    alert(t("No delivery address found. Please add an address to proceed."));
     redirectToAddressForm();
     return null;
-  }, [loadAddresses, redirectToAddressForm, selectedAddress?.id]);
+  }, [loadAddresses, redirectToAddressForm, selectedAddress?.id, t]);
 
   const closeAddressModal = useCallback(() => {
     setShowAddressModal(false);
@@ -345,15 +351,15 @@ function Checkout() {
           const newest = normalized[normalized.length - 1];
           if (newest)
             setSelectedAddress(findBestSelectedAddress(normalized, newest.id));
-          setAddressNotice("Delivery address saved and ready for checkout.");
+          setAddressNotice(t("Delivery address saved and ready for checkout."));
         }
         closeAddressModal();
         void alertDialog({
-          title: isEditingAddress ? "Delivery address updated" : "Delivery address added",
+          title: isEditingAddress ? t("Delivery address updated") : t("Delivery address added"),
           message: isEditingAddress
-            ? "Your delivery address was updated successfully."
-            : "Your delivery address was added successfully and is ready for checkout.",
-          confirmText: "Done",
+            ? t("Your delivery address was updated successfully.")
+            : t("Your delivery address was added successfully and is ready for checkout."),
+          confirmText: t("Done"),
         });
       } catch (error) {
         if (error?.fieldErrors) {
@@ -361,22 +367,22 @@ function Checkout() {
           console.error("Address validation errors:", error.fieldErrors);
           // Re-open modal so user can see errors (modal will display them)
         } else {
-          alert(error?.message || "Unable to save address right now.");
+          alert(error?.message || t("Unable to save address right now."));
         }
       } finally {
         setAddressBusy(false);
       }
     },
-    [editingAddress?.id, syncAddresses, closeAddressModal],
+    [editingAddress?.id, syncAddresses, closeAddressModal, t],
   );
 
   const handleDeleteAddress = useCallback(
     async (address) => {
       if (!address?.id) return;
       const confirmed = await confirmDialog({
-        title: "Delete Address?",
-        message: "This saved address will no longer be available during checkout.",
-        confirmText: "Delete Address",
+        title: t("Delete Address?"),
+        message: t("This saved address will no longer be available during checkout."),
+        confirmText: t("Delete Address"),
         destructive: true,
       });
       if (!confirmed) return;
@@ -387,12 +393,12 @@ function Checkout() {
         });
         syncAddresses(response.addresses || []);
       } catch (error) {
-        alert(error?.message || "Unable to delete address right now.");
+        alert(error?.message || t("Unable to delete address right now."));
       } finally {
         setAddressBusy(false);
       }
     },
-    [syncAddresses],
+    [syncAddresses, t],
   );
 
   const handleSetDefaultAddress = useCallback(
@@ -408,12 +414,12 @@ function Checkout() {
         );
         syncAddresses(response.addresses || [], address.id);
       } catch (error) {
-        alert(error?.message || "Unable to update default address right now.");
+        alert(error?.message || t("Unable to update default address right now."));
       } finally {
         setAddressBusy(false);
       }
     },
-    [syncAddresses],
+    [syncAddresses, t],
   );
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -427,31 +433,39 @@ function Checkout() {
     try {
       const confirmedBranch = await resolveAddressBranch(checkoutAddress);
       if (!confirmedBranch) {
-        alert("This delivery address is outside the current service areas. Choose another address before checkout.");
+        alert(t("This delivery address is outside the current service areas. Choose another address before checkout."));
         return;
       }
       setAssignedBranch(confirmedBranch);
       const latestStock = await refreshStock(confirmedBranch);
+      if (!latestStock.ok) {
+        alert(t("We could not confirm your delivery branch's current stock. Please try again before placing this order."));
+        return;
+      }
       if (latestStock.ok && latestStock.issues.length > 0) {
+        if (latestStock.issues.some((issue) => issue.code === "invalid_quantity")) {
+          alert(t("Each cart quantity must be a positive whole number."));
+          return;
+        }
         if (latestStock.issues.some((issue) => issue.code === "out_of_stock")) {
-          alert("This branch currently has no stock of this item");
+          alert(t("This branch currently has no stock of this item"));
           return;
         }
         const message = latestStock.issues
           .map(
-            (issue) => `${issue.name}: requested ${issue.desired}, available ${issue.available}`)
+            (issue) => `${issue.name}: ${t("requested")} ${issue.desired}, ${t("available")} ${issue.available}`)
           .join("\n");
-        alert(`Some items are no longer available.\n\n${message}\n\nPlease update your cart and try again.`);
+        alert(`${t("Some items are no longer available.")}\n\n${message}\n\n${t("Please update your cart and try again.")}`);
         return;
       }
     } catch (error) {
-      alert(error.message || "Unable to determine the service branch. Please try again.");
+      alert(error.message || t("Unable to determine the service branch. Please try again."));
       return;
     }
 
     if (!isValidCheckoutAddress(checkoutAddress)) {
       alert(
-        "Please provide a valid address. Phone must be 11 digits (09XXXXXXXXX) and ZIP code must be 4 digits.",
+        t("Please provide a valid address. Phone must be 11 digits (09XXXXXXXXX) and ZIP code must be 4 digits."),
       );
       return;
     }
@@ -493,7 +507,7 @@ function Checkout() {
       const created = response.order;
       const orderId = created?._id || created?.id;
       if (!orderId) {
-        const error = new Error("The order response did not include a reference. Check My Orders before trying again.");
+        const error = new Error(t("The order response did not include a reference. Check My Orders before trying again."));
         error.code = "ORDER_REFERENCE_MISSING";
         throw error;
       }
@@ -508,7 +522,7 @@ function Checkout() {
       clearCart();
       if (selectedPayment !== "cod") {
         if (!paymentUrl) {
-          alert("The secure payment link is unavailable. Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.");
+          alert(t("The secure payment link is unavailable. Your order was saved, but payment has not started. Check My Orders before placing another order or contact support."));
           setIsProcessingPayment(false);
           navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
           return;
@@ -516,7 +530,7 @@ function Checkout() {
         try {
           openOnlineCheckout(paymentUrl, orderId);
         } catch (openError) {
-          alert(`${openError?.message || "Unable to open secure payment."} Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.`);
+          alert(`${openError?.message || t("Unable to open secure payment.")} ${t("Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.")}`);
           setIsProcessingPayment(false);
           navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
         }
@@ -535,12 +549,12 @@ function Checkout() {
         return;
       }
       if (!error?.status) {
-        alert("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected.");
+        alert(t("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected."));
         return;
       }
       alert(
         error?.message ||
-          "Unable to place order right now. Please review your cart and try again.",
+          t("Unable to place order right now. Please review your cart and try again."),
       );
     }
   }, [
@@ -554,26 +568,27 @@ function Checkout() {
     clearCart,
     navigate,
     isProcessingPayment,
+    t,
   ]);
 
   if (cart.length === 0) {
     return (
       <BoutiqueScreen withHeader={false} background="white">
         <BoutiqueHeader
-          title="Checkout"
+          title={t("Checkout")}
           leftAction="back"
           onLeftAction={() => navigate("/shop")}
           hideCart
         />
         <BoutiqueBox flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={20} align="center">
-            <BoutiqueText variant="h2">Your cart is empty</BoutiqueText>
+            <BoutiqueText variant="h2">{t("Your cart is empty")}</BoutiqueText>
             <BoutiqueButton
               onClick={() => navigate("/shop")}
               size="lg"
               style={{ width: "auto", padding: "12px 40px" }}
             >
-              Continue Shopping
+              {t("Continue Shopping")}
             </BoutiqueButton>
           </BoutiqueStack>
         </BoutiqueBox>
@@ -615,19 +630,18 @@ function Checkout() {
             />
             <BoutiqueText variant="h2">
               {selectedPayment === "gcash" || selectedPayment === "credit"
-                ? "Connecting to secure payment..."
-                : "Submitting your order..."}
+                ? t("Connecting to secure payment...")
+                : t("Submitting your order...")}
             </BoutiqueText>
             <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>
-              Please wait. Do not click the payment button again while we
-              connect your order to the secure payment page.
+              {t("Please wait. Do not click the payment button again while we connect your order to the secure payment page.")}
             </BoutiqueText>
           </BoutiqueBox>
         </BoutiqueBox>
       )}
 
       <BoutiqueHeader
-        title="Checkout"
+        title={t("Checkout")}
         leftAction="back"
         onLeftAction={() => navigate("/shop")}
         hideCart
@@ -646,7 +660,7 @@ function Checkout() {
               <div className="checkout-address-notice" role="status">
                 <CheckCircle size={20} weight="fill" aria-hidden="true" />
                 <span>{addressNotice}</span>
-                <button type="button" onClick={() => setAddressNotice("")} aria-label="Dismiss address alert">×</button>
+                <button type="button" onClick={() => setAddressNotice("")} aria-label={t("Dismiss address alert")}>×</button>
               </div>
             ) : null}
             <DeliveryAddress
@@ -682,14 +696,14 @@ function Checkout() {
                   margin="0 0 16px"
                 >
                   <Buildings size={20} weight="fill" color={BQ_COLORS.accent} />
-                  <BoutiqueText variant="label">Your delivery branch</BoutiqueText>
+                  <BoutiqueText variant="label">{t("Your delivery branch")}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueStack gap={4}>
                   <BoutiqueText variant="h3">
-                    {assignedBranch} Branch
+                    {assignedBranch} {t("Branch")}
                   </BoutiqueText>
                   <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-                    Chosen for your delivery address in{" "}
+                    {t("Chosen for your delivery address in")}{" "}
                     <strong>{selectedAddress?.city}</strong>.
                   </BoutiqueText>
                 </BoutiqueStack>
@@ -702,8 +716,8 @@ function Checkout() {
               onSelectMethod={setSelectedPayment}
               branchHint={
                 assignedBranch
-                  ? `This order will be routed from the ${assignedBranch} branch based on the selected delivery address.`
-                  : "The branch assignment will be determined once you choose a delivery address."
+                  ? (isFilipino(currentLanguage) ? `Ipapadala ang order mula sa sangay ng ${assignedBranch} batay sa napiling address ng paghahatid.` : `This order will be routed from the ${assignedBranch} branch based on the selected delivery address.`)
+                  : t("The branch assignment will be determined once you choose a delivery address.")
               }
             />
           </BoutiqueStack>
@@ -734,8 +748,8 @@ function Checkout() {
           onClose={closeAddressModal}
           onSave={handleSaveAddress}
           initialAddress={editingAddress}
-          title={editingAddress ? "Edit Address" : "Add New Address"}
-          saveLabel={editingAddress ? "Save Changes" : "Save Address"}
+          title={editingAddress ? t("Edit Address") : t("Add New Address")}
+          saveLabel={editingAddress ? t("Save Changes") : t("Save Address")}
           isSaving={addressBusy}
         />
       )}

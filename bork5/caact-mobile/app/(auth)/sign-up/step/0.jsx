@@ -10,8 +10,10 @@ import MobileLegalConsent from "../../../../components/legal/MobileLegalConsent"
 import { COLORS, SPACING } from "../../../../constants/theme";
 import { useRegistrationDraft } from "../../../../context/RegistrationDraftContext";
 import { hasAllLegalConsents } from "../../../../services/legalConsent";
+import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
 
 export default function SignUpStep0() {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   const { draft, updateDraft, resetDraft } = useRegistrationDraft();
   const [showErrors, setShowErrors] = useState(false);
@@ -24,7 +26,7 @@ export default function SignUpStep0() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={126}>
-        <PageHeader title="Create Account" subtitle="Step 1 of 4: Terms & Privacy" color={COLORS.primary} onBack={() => { resetDraft(); router.replace("/sign-in"); }} />
+        <PageHeader title={t("Create Account")} subtitle={t("Step 1 of 4: Terms & Privacy")} color={COLORS.primary} onBack={() => { resetDraft(); router.replace("/sign-in"); }} />
         <MobileLegalConsent
           value={draft.legalConsent}
           onChange={(legalConsent) => updateDraft({ legalConsent })}
@@ -32,7 +34,7 @@ export default function SignUpStep0() {
         />
       </KeyboardAwareScrollView>
       <StickyActionBar>
-        <Button title="Continue to email verification" onPress={continueRegistration} variant="primary" />
+        <Button title={t("Continue to email verification")} onPress={continueRegistration} variant="primary" />
       </StickyActionBar>
     </SafeAreaView>
   );

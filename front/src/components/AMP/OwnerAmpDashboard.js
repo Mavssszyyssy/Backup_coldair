@@ -13,6 +13,8 @@ import { apiRequest } from "../../config/api";
 import AmpDashboardShell from "./AmpDashboardShell";
 import AmpReportCenter from "./AmpReportCenter";
 import AmpPurposeGuide from "./AmpPurposeGuide";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 import "./styles.css";
 
 const peso = new Intl.NumberFormat("en-PH", {
@@ -27,16 +29,16 @@ const serviceLabel = (value) => {
   return normalized.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
-function ForecastBars({ forecast }) {
+function ForecastBars({ forecast, t }) {
   const maxVolume = Math.max(1, ...forecast.map((item) => item.serviceVolume));
 
   return (
-    <div className="amp-forecast-chart" aria-label="12 month service volume forecast">
+    <div className="amp-forecast-chart" role="list" aria-label={t("12 month suggested service volume and estimated value")}>
       {forecast.map((item) => {
         const height = Math.max(6, Math.round((item.serviceVolume / maxVolume) * 100));
         return (
-          <div className="amp-bar-column" key={item.month}>
-            <div className="amp-bar-track">
+          <div className="amp-bar-column" role="listitem" aria-label={`${item.label}: ${item.serviceVolume} ${t("suggested services")}; ${t("estimated value")} ${peso.format(item.projectedRevenue)}`} key={item.month}>
+            <div className="amp-bar-track" title={`${item.label}: ${item.serviceVolume} ${t("suggested services")}; ${t("estimated value")} ${peso.format(item.projectedRevenue)}`}>
               <span style={{ height: `${height}%` }} />
             </div>
             <strong>{item.serviceVolume}</strong>
@@ -49,6 +51,8 @@ function ForecastBars({ forecast }) {
 }
 
 function OwnerAmpDashboard() {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [forecast, setForecast] = useState([]);
   const [summary, setSummary] = useState({
     totalForecastedServices: 0,
@@ -145,87 +149,85 @@ function OwnerAmpDashboard() {
       item.serviceVolume > peak.serviceVolume ? item : peak,
     forecast[0]);
   }, [forecast]);
+  const monthsWithSuggestedServices = forecast.filter((item) => item.serviceVolume > 0);
 
   return (
     <AmpDashboardShell
-      title="12-month service outlook"
-      subtitle="Prepare staff and supplies for upcoming maintenance across all branches. These are not confirmed bookings."
+      title={t("12-month service outlook")}
+      subtitle={t("Prepare staff and supplies for upcoming maintenance across all branches. These are not confirmed bookings.")}
     >
       <AmpPurposeGuide planning />
       <div className="amp-metrics amp-owner-metrics">
         <article className="amp-owner-metric services">
           <span className="amp-owner-metric-icon"><CalendarCheck size={24} weight="duotone" aria-hidden="true" /></span>
-          <div><span>Units due in this period</span><strong>{loading ? "…" : error ? "Unavailable" : summary.totalForecastedServices}</strong><small>Suggested services in the next 12 months</small></div>
+          <div><span>{t("Units due in this period")}</span><strong>{loading ? "…" : error ? t("Unavailable") : summary.totalForecastedServices}</strong><small>{t("Suggested services in the next 12 months")}</small></div>
         </article>
         <article className="amp-owner-metric peak">
           <span className="amp-owner-metric-icon"><TrendUp size={24} weight="duotone" aria-hidden="true" /></span>
-          <div><span>Busiest month</span><strong>{loading ? "…" : error ? "Unavailable" : peakMonth ? peakMonth.label : "No services due"}</strong><small>{peakMonth ? `${peakMonth.serviceVolume} suggested service${peakMonth.serviceVolume === 1 ? "" : "s"}` : "No busy month yet"}</small></div>
+          <div><span>{t("Busiest month")}</span><strong>{loading ? "…" : error ? t("Unavailable") : peakMonth ? peakMonth.label : t("No services due")}</strong><small>{peakMonth ? `${peakMonth.serviceVolume} ${t(peakMonth.serviceVolume === 1 ? "suggested service" : "suggested services")}` : t("No busy month yet")}</small></div>
         </article>
       </div>
 
       <section className="amp-card amp-owner-section">
         <div className="amp-card-header amp-owner-section-heading">
-          <div className="amp-section-title"><span className="amp-section-icon"><ChartBar size={23} weight="duotone" aria-hidden="true" /></span><div><h2>Suggested services by month</h2></div></div>
-          {loading ? <span>Loading...</span> : null}
+          <div className="amp-section-title"><span className="amp-section-icon"><ChartBar size={23} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Suggested services by month")}</h2></div></div>
+          {loading ? <span>{t("Loading...")}</span> : null}
         </div>
 
-        {error ? <p className="amp-error">{error}</p> : null}
-        <p className="amp-muted">Each unit appears in the month of its next suggested service date. These are not booked appointments.</p>
-        {forecast.length > 0 ? <ForecastBars forecast={forecast} /> : null}
+        {error ? <p className="amp-error">{t(error)}</p> : null}
+        <p className="amp-muted">{t("Each unit appears in the month of its next suggested service date. These are not booked appointments.")}</p>
+        {forecast.length > 0 ? <ForecastBars forecast={forecast} t={t} /> : null}
       </section>
 
       <section className="amp-card amp-owner-section amp-owner-branch-workload">
-        <div className="amp-section-title"><span className="amp-section-icon"><Buildings size={23} weight="duotone" aria-hidden="true" /></span><div><h2>Upcoming services by branch</h2><p className="amp-muted">Open Branch maintenance to review overdue units and contact customers.</p></div></div>
-        <div className="amp-owner-branch-grid">{branchDemand.map((item) => <article key={item.branch}><span><Buildings size={19} weight="duotone" aria-hidden="true" />{item.branch}</span><strong>{item.upcomingServices}</strong><small>upcoming service{item.upcomingServices === 1 ? "" : "s"}</small><i aria-hidden="true"><i style={{ width: `${summary.totalForecastedServices ? Math.min(100, Math.round((item.upcomingServices / summary.totalForecastedServices) * 100)) : 0}%` }} /></i></article>)}</div>
-        {!branchDemand.length && !loading && !error ? <p className="amp-empty">No upcoming branch services are recorded.</p> : null}
+        <div className="amp-section-title"><span className="amp-section-icon"><Buildings size={23} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Upcoming services by branch")}</h2><p className="amp-muted">{t("Open Branch maintenance to review overdue units and contact customers.")}</p></div></div>
+        <div className="amp-owner-branch-grid">{branchDemand.map((item) => <article key={item.branch}><span><Buildings size={19} weight="duotone" aria-hidden="true" />{item.branch}</span><strong>{item.upcomingServices}</strong><small>{t(item.upcomingServices === 1 ? "upcoming service" : "upcoming services")}</small><i aria-hidden="true"><i style={{ width: `${summary.totalForecastedServices ? Math.min(100, Math.round((item.upcomingServices / summary.totalForecastedServices) * 100)) : 0}%` }} /></i></article>)}</div>
+        {!branchDemand.length && !loading && !error ? <p className="amp-empty">{t("No upcoming branch services are recorded.")}</p> : null}
       </section>
-      <div id="amp-service-plan"><AmpReportCenter unitsLoading={reportUnitsLoading} onPlanGenerated={() => setRefreshRevision(value => value + 1)} units={reportUnits} title="Service planner" subtitle="Choose a unit to review its suggested date, service history, and next steps." /></div>
-
-      <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}><summary><span className="amp-details-summary-icon"><Wrench size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Service and parts summary</strong><small>Service needs and parts used</small></span></summary>
-      {historyLoading ? <p className="amp-muted" role="status">Loading recorded maintenance history…</p> : null}
-      {historyError ? <p className="amp-error" role="alert">{historyError} <button type="button" onClick={loadHistoricalInsights}>Retry</button></p> : null}
-      <div className="amp-report-grid">
-        <section className="amp-insight-card">
-          <div className="amp-section-title compact"><span className="amp-section-icon"><Wrench size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Current service needs</h2></div></div>
-          <p className="amp-muted">Includes all active units. These are suggestions, not customer requests.</p>
+      <section className="amp-card amp-owner-section">
+          <div className="amp-section-title compact"><span className="amp-section-icon"><Wrench size={20} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Current service needs")}</h2></div></div>
+          <p className="amp-muted">{t("Includes all active units. These are suggestions, not customer requests.")}</p>
           <div className="amp-table-wrap">
             <table className="amp-table compact">
-              <thead><tr><th>Recommended Service</th><th>Units</th></tr></thead>
-              <tbody>{serviceDemand.map((item) => <tr key={item.serviceType}><td>{serviceLabel(item.serviceType)}</td><td>{item.count}</td></tr>)}</tbody>
+              <thead><tr><th>{t("Recommended Service")}</th><th>{t("Units")}</th></tr></thead>
+              <tbody>{serviceDemand.map((item) => <tr key={item.serviceType}><td>{t(serviceLabel(item.serviceType))}</td><td>{item.count}</td></tr>)}</tbody>
             </table>
           </div>
-          {!serviceDemand.length && !loading && !error ? <p className="amp-empty">No maintenance demand is recorded yet.</p> : null}
-        </section>
+          {!serviceDemand.length && !loading && !error ? <p className="amp-empty">{t("No maintenance demand is recorded yet.")}</p> : null}
+      </section>
+
+      <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}><summary><span className="amp-details-summary-icon"><Package size={19} weight="duotone" aria-hidden="true" /></span><span><strong>{t("Recorded parts history")}</strong><small>{t("Optional completed-service breakdown")}</small></span></summary>
+      {historyLoading ? <p className="amp-muted" role="status">{t("Loading recorded maintenance history…")}</p> : null}
+      {historyError ? <p className="amp-error" role="alert">{t(historyError)} <button type="button" onClick={loadHistoricalInsights}>{t("Retry")}</button></p> : null}
         <section className="amp-insight-card">
-          <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>Parts used in past services</h2></div></div>
-          <p className="amp-muted">Shows how often compressor, motor, and control-board parts were recorded in completed services.</p>
+          <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Parts used in past services")}</h2></div></div>
+          <p className="amp-muted">{t("Shows how often compressor, motor, and control-board parts were recorded in completed services.")}</p>
           <div className="amp-table-wrap">
             <table className="amp-table compact">
-              <thead><tr><th>Major Component</th><th>Recorded Uses</th></tr></thead>
+              <thead><tr><th>{t("Major Component")}</th><th>{t("Recorded Uses")}</th></tr></thead>
               <tbody>{partsTrend.map((item) => <tr key={item.component}><td>{item.component}</td><td>{item.count}</td></tr>)}</tbody>
             </table>
           </div>
-          {!partsTrend.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">No past part use is recorded.</p> : null}
+          {!partsTrend.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">{t("No past part use is recorded.")}</p> : null}
         </section>
-      </div>
-
       </details>
-      <details className="amp-card amp-details amp-insight-details">
-        <summary><span className="amp-details-summary-icon"><Coins size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Estimated service value</strong><small>Estimated amounts by month</small></span></summary>
-        <p>Estimated value of suggested services: {loading ? "…" : error ? "Unavailable" : peso.format(summary.totalProjectedRevenue)} · Estimated amount for each service: {loading ? "…" : error ? "Unavailable" : peso.format(summary.averageServiceRevenue)}</p>
-        <p className="amp-muted">This is an estimate, not earned revenue.</p>
-        <p className="amp-muted">{summary.revenueDisclaimer || "The amount is the number of suggested services multiplied by the estimated value of each service."}</p>
-        <div className="amp-table-wrap">
+      <details className="amp-card amp-details amp-insight-details" open>
+        <summary><span className="amp-details-summary-icon"><Coins size={19} weight="duotone" aria-hidden="true" /></span><span><strong>{t("Estimated service value")}</strong><small>{t("Estimated amounts by month")}</small></span></summary>
+        <div className="amp-estimate-summary"><div><span>{t("Projected 12-month value")}</span><strong>{loading ? "…" : error ? t("Unavailable") : peso.format(summary.totalProjectedRevenue)}</strong></div><div><span>{t("Planning amount per suggested service")}</span><strong>{loading ? "…" : error ? t("Unavailable") : peso.format(summary.averageServiceRevenue)}</strong></div></div>
+        <p className="amp-muted">{t("This is an estimate, not earned revenue.")}</p>
+        <p className="amp-muted">{summary.revenueDisclaimer || t("The amount is the number of suggested services multiplied by the estimated value of each service.")}</p>
+        {monthsWithSuggestedServices.length ? <div className="amp-table-wrap">
           <table className="amp-table compact">
+            <caption>{t("Months with suggested services; amounts are estimates, not collected revenue")}</caption>
             <thead>
               <tr>
-                <th>Month</th>
-                <th>Suggested Services</th>
-                <th>Estimated Value</th>
+                <th>{t("Month")}</th>
+                <th>{t("Suggested Services")}</th>
+                <th>{t("Estimated Value")}</th>
               </tr>
             </thead>
             <tbody>
-              {forecast.map((item) => (
+              {monthsWithSuggestedServices.map((item) => (
                 <tr key={item.month}>
                   <td><strong>{item.label}</strong></td>
                   <td>{item.serviceVolume}</td>
@@ -234,13 +236,16 @@ function OwnerAmpDashboard() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div> : !loading && !error ? <p className="amp-empty">{t("No suggested services have an estimated value in this period.")}</p> : null}
       </details>
-        <details className="amp-card amp-details amp-insight-details">
-          <summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>Service records by model and brand</strong><small>Completed services by unit type</small></span></summary>
-          <p className="amp-muted">This shows completed service visits only. It does not rate a model or predict a breakdown.</p>
-          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>AC model or brand</th><th>Completed services</th><th>Average services per unit</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} (brand)</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
-          {!modelTrends.length && !brandTrends.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">No completed service records are available for comparison yet.</p> : null}
+      <div id="amp-service-plan"><AmpReportCenter unitsLoading={reportUnitsLoading} onPlanGenerated={() => setRefreshRevision(value => value + 1)} units={reportUnits} title={t("Service planner")} subtitle={t("Choose a unit to review its suggested date, service history, and next steps.")} /></div>
+        <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}>
+          <summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>{t("Service records by model and brand")}</strong><small>{t("Completed services by unit type")}</small></span></summary>
+          {historyLoading ? <p className="amp-muted" role="status">{t("Loading recorded maintenance history…")}</p> : null}
+          {historyError ? <p className="amp-error" role="alert">{t(historyError)} <button type="button" onClick={loadHistoricalInsights}>{t("Retry")}</button></p> : null}
+          <p className="amp-muted">{t("This shows completed service visits only. It does not rate a model or predict a breakdown.")}</p>
+          <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>{t("AC model or brand")}</th><th>{t("Completed services")}</th><th>{t("Average services per unit")}</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} ({t("brand")})</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>
+          {!modelTrends.length && !brandTrends.length && historyLoaded && !historyLoading && !historyError ? <p className="amp-empty">{t("No completed service records are available for comparison yet.")}</p> : null}
         </details>
     </AmpDashboardShell>
   );

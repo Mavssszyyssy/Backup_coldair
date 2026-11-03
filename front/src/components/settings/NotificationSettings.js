@@ -1,5 +1,6 @@
 import { Bell } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -12,6 +13,7 @@ function NotificationSettings({
   onUpdateNotifications,
   onUpdateSettings,
 }) {
+  const t = (value) => translateText(value, user?.preferences?.language);
   const [notifications, setNotifications] = useState({
     email: true,
     inApp: true,
@@ -118,7 +120,7 @@ function NotificationSettings({
           >
             <Bell size={20} weight="bold" />
           </BoutiqueBox>
-          <BoutiqueText variant="h2">Alert Settings</BoutiqueText>
+          <BoutiqueText variant="h2">{t("Alert Settings")}</BoutiqueText>
         </BoutiqueBox>
 
         <BoutiqueStack gap={12}>
@@ -132,9 +134,9 @@ function NotificationSettings({
               style={{ borderBottom: `1px solid ${BQ_COLORS.border}` }}
             >
               <BoutiqueStack gap={4}>
-                <BoutiqueText weight={700}>{row.label}</BoutiqueText>
+                <BoutiqueText weight={700}>{t(row.label)}</BoutiqueText>
                 <BoutiqueText size="13px" color={BQ_COLORS.inkMuted}>
-                  {row.description}
+                  {t(row.description)}
                 </BoutiqueText>
               </BoutiqueStack>
               <label className="bq-toggle">
@@ -155,7 +157,7 @@ function NotificationSettings({
             loading={saving}
             style={{ width: "auto", minWidth: "250px" }}
           >
-            Save Alert Settings
+            {t("Save Alert Settings")}
           </BoutiqueButton>
         </BoutiqueBox>
       </BoutiqueStack>

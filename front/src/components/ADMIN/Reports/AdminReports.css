@@ -5,7 +5,8 @@
 .company-report-brand p { margin: 0; color: #0f4c81; font-size: 12px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .company-report-brand h2 { margin: 0; color: #111827; font-size: clamp(22px, 3vw, 34px); text-transform: uppercase; }
 .company-report-brand span { color: #475569; font-size: 13px; line-height: 1.45; }
-.company-report-tabs { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px; overflow-x: auto; }
+.company-report-tabs { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px; overflow-x: auto; max-width:100%; }
+.company-report-tabs button { min-width:0; white-space:normal; overflow-wrap:anywhere; }
 .company-report-tabs button, .company-report-controls button { border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; padding: 10px 14px; font-weight: 800; cursor: pointer; }
 .company-report-tabs button.active { background: #0f4c81; border-color: #0f4c81; color: #fff; }
 .company-report-controls { display: grid; gap: 12px; padding: 16px; background: #eaf2f9; border: 1px solid #b7cee1; border-radius: 12px; }

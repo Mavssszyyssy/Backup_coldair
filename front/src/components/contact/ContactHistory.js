@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 
-const statusLabel = (value = "new") => String(value).replace(/_/g, " ");
+const STATUS_LABELS = { new: "New", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
+const statusLabel = (value = "new") => STATUS_LABELS[value] || String(value).replace(/_/g, " ");
 
-const dateTime = (value) => {
+const dateTime = (value, language) => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString([], {
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString(language === "Filipino" ? "fil-PH" : "en-PH", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -15,6 +18,8 @@ const dateTime = (value) => {
 };
 
 export default function ContactHistory({ messageId = "" }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -79,15 +84,15 @@ export default function ContactHistory({ messageId = "" }) {
     <section className="contact-history" aria-labelledby="contact-history-title">
       <div className="contact-history__heading">
         <div>
-          <span className="contact-section-eyebrow">Support history</span>
-          <h2 id="contact-history-title">My Support Messages</h2>
-          <p>Replies update automatically while this page is open.</p>
+          <span className="contact-section-eyebrow">{t("Support history")}</span>
+          <h2 id="contact-history-title">{t("My Support Messages")}</h2>
+          <p>{t("Replies update automatically while this page is open.")}</p>
         </div>
-        <button type="button" onClick={() => load()} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button>
+        <button type="button" onClick={() => load()} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button>
       </div>
 
-      {error ? <div className="contact-history__error" role="alert">{error}</div> : null}
-      {loading && messages.length === 0 ? <p className="contact-history__empty">Loading your messages…</p> : null}
+      {error ? <div className="contact-history__error" role="alert">{t(error)}</div> : null}
+      {loading && messages.length === 0 ? <p className="contact-history__empty">{t("Loading your messages…")}</p> : null}
       <div className="contact-history__list">
         {orderedMessages.map((item) => {
           const id = String(item.id || item._id);
@@ -101,17 +106,17 @@ export default function ContactHistory({ messageId = "" }) {
             >
               <div className="contact-history__meta">
                 <strong>{item.subject}</strong>
-                <span>{item.ticketCode} · {statusLabel(item.status)}</span>
+                <span>{item.ticketCode} · {t(statusLabel(item.status))}</span>
               </div>
               <p>{item.message}</p>
-              <small>Sent {dateTime(item.createdAt)}</small>
+              <small>{t("Sent")} {dateTime(item.createdAt, currentLanguage)}</small>
               {item.adminReply ? (
                 <div className="contact-history__reply">
-                  <strong>Support reply</strong>
+                  <strong>{t("Support reply")}</strong>
                   <p>{item.adminReply}</p>
-                  {item.repliedAt ? <small>Replied {dateTime(item.repliedAt)}</small> : null}
+                  {item.repliedAt ? <small>{t("Replied")} {dateTime(item.repliedAt, currentLanguage)}</small> : null}
                 </div>
-              ) : <div className="contact-history__waiting">Waiting for a support reply.</div>}
+              ) : <div className="contact-history__waiting">{t("Waiting for a support reply.")}</div>}
             </article>
           );
         })}

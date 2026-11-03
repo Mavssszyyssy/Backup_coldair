@@ -2,6 +2,11 @@ import React from "react";
 import { render, screen } from "@testing-library/react-native";
 import { CustomerRecommendationPanel } from "../components/customer/CustomerMaintenancePanels";
 
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
+
 test("unit overview gives one recommendation with its basis, urgency and booking guidance", async () => {
   await render(<CustomerRecommendationPanel
     recommendation={{ bestServicedBy: "2027-06-03", recommendedService: "regular_cleaning", recommendationBasis: "Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.", capacityAssessment: { status: "suitable" } }}

@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import { alertDialog } from '../../../utils/dialog';
+import { formatBusinessDateTime } from '../../../utils/dateTime';
 export default function ServicePaymentPanel({ request, onUpdated }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,19 +24,19 @@ export default function ServicePaymentPanel({ request, onUpdated }) {
         ? savedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : String(amount);
       void alertDialog({
-        title: 'Service quote saved',
-        message: `The service quote of PHP ${savedAmountLabel} was saved successfully.`,
-        confirmText: 'Done',
+        title: t('Service quote saved'),
+        message: `${t('The service quote of PHP')} ${savedAmountLabel} ${t('was saved successfully.')}`,
+        confirmText: t('Done'),
       });
     } catch (err) { setError(err.message || 'Unable to save quote.'); }
     finally { setBusy(false); }
   };
   return <section className="maintenance-detail-section">
-    <h3>Service payment</h3>
-    <p>{payment?.status === 'warranty_covered' ? 'Approved warranty coverage — no cash due.' : payment?.amount == null ? closed ? 'Payment amount not recorded for this closed visit.' : 'Admin quote required. The technician cannot collect or finish a paid visit until its amount is set.' : `Final service price: PHP ${Number(payment.amount).toFixed(2)} · ${payment.status === 'paid' ? 'Cash collected' : payment.status === 'no_charge' ? 'No charge' : closed ? 'No collection recorded' : 'Cash due after GPS arrival'}`}</p>
-    {payment?.amount != null ? <p>Base service: PHP {Number(payment.baseAmount || 0).toFixed(2)} · Labor: PHP {Number(payment.laborCost || 0).toFixed(2)} · Parts: PHP {Number(payment.partsCost || 0).toFixed(2)}</p> : null}
-    {payment?.collectedAt ? <p>Collected: {new Date(payment.collectedAt).toLocaleString()}</p> : null}
-    {!locked ? <><label className="maintenance-assignment-field">Base service quote (PHP)<input inputMode="decimal" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} disabled={busy} /></label><button className="maintenance-button" type="button" disabled={busy || amount.trim() === ''} onClick={save}>{busy ? 'Saving quote…' : 'Save service quote'}</button><p>Labor and parts recorded by the technician are added to this base quote before payment. Enter 0 only for an explicitly free base service.</p></> : null}
-    {error ? <p role="alert">{error}</p> : null}
+    <h3>{t("Service payment")}</h3>
+    <p>{payment?.status === 'warranty_covered' ? t('Approved warranty coverage — no cash due.') : payment?.amount == null ? t(closed ? 'Payment amount not recorded for this closed visit.' : 'Admin quote required. The technician cannot collect or finish a paid visit until its amount is set.') : `${t('Final service price: PHP')} ${Number(payment.amount).toFixed(2)} · ${t(payment.status === 'paid' ? 'Cash collected' : payment.status === 'no_charge' ? 'No charge' : closed ? 'No collection recorded' : 'Cash due after GPS arrival')}`}</p>
+    {payment?.amount != null ? <p>{t("Base service: PHP")} {Number(payment.baseAmount || 0).toFixed(2)} {t("· Labor: PHP")} {Number(payment.laborCost || 0).toFixed(2)} {t("· Parts: PHP")} {Number(payment.partsCost || 0).toFixed(2)}</p> : null}
+    {payment?.collectedAt ? <p>{t("Collected:")} {formatBusinessDateTime(payment.collectedAt)}</p> : null}
+    {!locked ? <><label className="maintenance-assignment-field">{t("Base service quote (PHP)")}<input inputMode="decimal" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} disabled={busy} /></label><button className="maintenance-button" type="button" disabled={busy || amount.trim() === ''} onClick={save}>{t(busy ? 'Saving quote…' : 'Save service quote')}</button><p>{t("Labor and parts recorded by the technician are added to this base quote before payment. Enter 0 only for an explicitly free base service.")}</p></> : null}
+    {error ? <p role="alert">{t(error)}</p> : null}
   </section>;
 }

@@ -2,7 +2,6 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { apiRequest } from "../../config/api";
-import { alertDialog } from "../../utils/dialog";
 import MyAddressesSettings from "./MyAddressesSettings";
 
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
@@ -32,7 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-test("uses Delivery Addresses and confirms a successful address update", async () => {
+test("uses Delivery Addresses and shows screen-scoped feedback after an address update", async () => {
   apiRequest.mockImplementation(async (path) => {
     if (path === "/users/addresses") return { addresses: [address] };
     return {};
@@ -48,14 +47,10 @@ test("uses Delivery Addresses and confirms a successful address update", async (
     "/users/addresses/a1",
     expect.objectContaining({ method: "PATCH" }),
   ));
-  expect(alertDialog).toHaveBeenCalledWith({
-    title: "Delivery address updated",
-    message: "Your delivery address was updated successfully.",
-    confirmText: "Done",
-  });
+  expect(await screen.findByRole("status")).toHaveTextContent("Delivery address updated successfully.");
 });
 
-test("confirms a newly added delivery address after the save succeeds", async () => {
+test("shows dismissible feedback after a newly added delivery address", async () => {
   apiRequest.mockImplementation(async (path, options = {}) => {
     if (path === "/users/addresses" && options.method === "POST") return {};
     if (path === "/users/addresses") return { addresses: [] };
@@ -71,9 +66,7 @@ test("confirms a newly added delivery address after the save succeeds", async ()
     "/users/addresses",
     expect.objectContaining({ method: "POST" }),
   ));
-  expect(alertDialog).toHaveBeenCalledWith({
-    title: "Delivery address added",
-    message: "Your delivery address was added successfully.",
-    confirmText: "Done",
-  });
+  expect(await screen.findByRole("status")).toHaveTextContent("New delivery address saved.");
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });

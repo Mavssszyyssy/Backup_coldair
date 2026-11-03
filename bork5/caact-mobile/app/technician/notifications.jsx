@@ -1,50 +1,27 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert, ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import NotificationFeed from "../../components/notifications/NotificationFeed";
 import TechnicianScreen from "../../components/technician/TechnicianScreen";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import {
   getNotificationsForUser,
   markNotificationsReadForUser,
   markNotificationRead,
 } from "../../services/notificationService";
 
-function NotificationRow({ item, onPress }) {
-  const unread = item.unread && !item.read;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${item.title}. Open alert`}
-      onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, marginBottom: SPACING.sm })}
-    >
-      <View style={{ backgroundColor: unread ? "#f0f9ff" : COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: unread ? "#7dd3fc" : COLORS.border, padding: SPACING.md, flexDirection: "row", gap: SPACING.sm }}>
-        <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name={unread ? "notifications-sharp" : "notifications-outline"} size={20} color={COLORS.tech} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", gap: SPACING.xs, alignItems: "center" }}>
-            <Text style={{ flex: 1, color: COLORS.textPrimary, fontSize: FONT.md, fontWeight: FONT.black }}>{item.title || "Update"}</Text>
-            {unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.tech }} /> : null}
-          </View>
-          <Text style={{ color: COLORS.textSecondary, marginTop: 4, lineHeight: 20 }}>{item.message || "Open to review this update."}</Text>
-        </View>
-        <Ionicons name="chevron-forward-sharp" size={20} color={COLORS.textMuted} />
-      </View>
-    </Pressable>
-  );
-}
-
 export default function TechnicianNotificationsScreen() {
   const router = useRouter();
   const { current } = useUserContext();
+  const { t } = useInterfaceLanguage();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const openingRef = useRef(false);
 
   const loadNotifications = useCallback(async ({ background, isCurrent }) => {
     if (!background) setLoading(true);
@@ -56,14 +33,23 @@ export default function TechnicianNotificationsScreen() {
     }
   }, [current]);
 
-  useFocusEffect(useCallback(() => startLiveRefresh(loadNotifications), [loadNotifications]));
+  useFocusEffect(useCallback(() => {
+    openingRef.current = false;
+    return startLiveRefresh(loadNotifications);
+  }, [loadNotifications]));
 
   const openNotification = async (item) => {
+    if (openingRef.current) return;
+    openingRef.current = true;
     try {
-    await markNotificationRead(item.id);
-    setNotifications((items) => items.map((entry) => entry.id === item.id ? { ...entry, read: true, unread: false } : entry));
-    if (item.route) router.push(item.route);
-    } catch (error) { Alert.alert("Alert not updated", error?.message || "Please try again."); }
+      await markNotificationRead(item.id);
+      setNotifications((items) => items.map((entry) => entry.id === item.id ? { ...entry, read: true, unread: false } : entry));
+      if (item.route) router.push(item.route);
+      else openingRef.current = false;
+    } catch (error) {
+      openingRef.current = false;
+      Alert.alert(t('Alert not updated'), t(error?.message || 'Please try again.'));
+    }
   };
 
   const markAllRead = async () => {
@@ -72,16 +58,16 @@ export default function TechnicianNotificationsScreen() {
     try {
       await markNotificationsReadForUser(current);
       setNotifications((items) => items.map((item) => ({ ...item, read: true, unread: false })));
-    } catch (error) { Alert.alert("Alerts not updated", error?.message || "Please try again."); }
+    } catch (error) { Alert.alert(t('Alerts not updated'), t(error?.message || 'Please try again.')); }
     finally { setMarkingAll(false); }
   };
 
   return (
-    <TechnicianScreen title="Alerts" subtitle="Assignments and service updates" icon="notifications-sharp">
-      {notifications.some((item) => item.unread && !item.read) ? <Pressable accessibilityRole="button" disabled={markingAll} onPress={markAllRead} style={{ alignSelf: "flex-end", padding: SPACING.sm, marginBottom: SPACING.sm }}><Text style={{ color: COLORS.tech, fontWeight: FONT.bold }}>{markingAll ? "Updating…" : "Mark all as read"}</Text></Pressable> : null}
+    <TechnicianScreen title={t('Alerts')} subtitle={t('Assignments and service updates')} icon="notifications-sharp">
+      {notifications.some((item) => item.unread && !item.read) ? <Pressable accessibilityRole="button" disabled={markingAll} onPress={markAllRead} style={{ alignSelf: "flex-end", padding: SPACING.sm, marginBottom: SPACING.sm }}><Text style={{ color: COLORS.tech, fontWeight: FONT.bold }}>{t(markingAll ? 'Updating…' : 'Mark all as read')}</Text></Pressable> : null}
       {loading ? <ActivityIndicator color={COLORS.tech} /> : notifications.length === 0 ? (
-        <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md }}><Text style={{ color: COLORS.textSecondary }}>You are all caught up.</Text></View>
-      ) : notifications.map((item) => <NotificationRow key={item.id} item={item} onPress={() => openNotification(item)} />)}
+        <View style={{ backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md }}><Text style={{ color: COLORS.textSecondary }}>{t('You are all caught up.')}</Text></View>
+      ) : <NotificationFeed notifications={notifications} onOpen={openNotification} t={t} technician />}
     </TechnicianScreen>
   );
 }

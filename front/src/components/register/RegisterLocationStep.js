@@ -20,6 +20,7 @@ import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import PersistentErrorNotice from "../common/PersistentErrorNotice";
+import { translateText } from "../../utils/customerI18n";
 
 const INITIAL_ADDRESS = {
   region: "",
@@ -41,12 +42,14 @@ const INITIAL_LOCATION = {
 };
 
 export default function RegisterLocationStep({
+  currentLanguage = "English",
   formData,
   onFieldChange,
   onNext,
   onBack,
   loading = false,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
   // Defensive guard for locations array
   const locations = formData.locations || [];
 
@@ -115,7 +118,7 @@ export default function RegisterLocationStep({
           className="bq-flow-title"
           style={{ letterSpacing: "-0.02em" }}
         >
-          Save Location
+          {t("Save Location")}
         </BoutiqueText>
         <BoutiqueText
           variant="body"
@@ -125,7 +128,7 @@ export default function RegisterLocationStep({
           weight={500}
           style={{ opacity: 0.8 }}
         >
-          Add a delivery address now, or skip this step and add it later.
+          {t("Add a delivery address now, or skip this step and add it later.")}
         </BoutiqueText>
       </BoutiqueBox>
 
@@ -187,7 +190,7 @@ export default function RegisterLocationStep({
               className="bq-add-another-btn"
               onClick={() => setShowAddForm(true)}
             >
-              <Plus size={16} weight="bold" /> Add Another Location
+              <Plus size={16} weight="bold" /> {t("Add Another Location")}
             </button>
           )}
         </BoutiqueStack>
@@ -206,50 +209,50 @@ export default function RegisterLocationStep({
           }}
         >
           <PersistentErrorNotice
-            title="Please check the address"
-            message={error}
+            title={t("Please check the address")}
+            message={t(error)}
             onDismiss={() => setError("")}
           />
           <BoutiqueGrid columns="1fr 1fr" gap={20} className="bq-address-grid">
             <BoutiqueInput
-              label="Region"
+              label={t("Region")}
               type="select"
               value={currentLoc.address.region}
               onChange={(e) => updateField("region", e.target.value)}
               options={regions.map((r) => ({ value: r, label: r }))}
-              placeholder="Select Region"
+              placeholder={t("Select Region")}
             />
             <BoutiqueInput
-              label="Province"
+              label={t("Province")}
               type="select"
               value={currentLoc.address.province}
               onChange={(e) => updateField("province", e.target.value)}
               disabled={!currentLoc.address.region}
               options={provinces.map((p) => ({ value: p, label: p }))}
-              placeholder="Select Province"
+              placeholder={t("Select Province")}
             />
             <BoutiqueInput
-              label="City"
+              label={t("City")}
               type="select"
               value={currentLoc.address.city}
               onChange={(e) => updateField("city", e.target.value)}
               disabled={!currentLoc.address.province}
               options={cities.map((c) => ({ value: c, label: c }))}
-              placeholder="Select City"
+              placeholder={t("Select City")}
             />
             <BoutiqueInput
-              label="Barangay"
+              label={t("Barangay")}
               type="select"
               value={currentLoc.address.barangay}
               onChange={(e) => updateField("barangay", e.target.value)}
               disabled={!currentLoc.address.city}
               options={barangays.map((b) => ({ value: b, label: b }))}
-              placeholder="Select Barangay"
+              placeholder={t("Select Barangay")}
             />
             <BoutiqueBox style={{ gridColumn: "span 2" }}>
               <BoutiqueInput
-                label="Street Address"
-                placeholder="House No., Building, Street"
+                label={t("Street Address")}
+                placeholder={t("House No., Building, Street")}
                 value={currentLoc.address.street}
                 onChange={(e) => updateField("street", e.target.value)}
               />
@@ -270,10 +273,10 @@ export default function RegisterLocationStep({
               onClick={() => setShowAddForm(false)}
               disabled={locations.length === 0}
             >
-              Cancel
+              {t("Cancel")}
             </BoutiqueButton>
             <BoutiqueButton type="button" size="sm" onClick={addLocation}>
-              Save Location
+              {t("Save Location")}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>
@@ -296,7 +299,7 @@ export default function RegisterLocationStep({
           disabled={loading}
           style={{ flex: 1 }}
         >
-          <ArrowLeft size={18} weight="bold" /> Back
+          <ArrowLeft size={18} weight="bold" /> {t("Back")}
         </BoutiqueButton>
 
         <BoutiqueButton
@@ -306,7 +309,7 @@ export default function RegisterLocationStep({
           loading={loading}
           style={{ flex: 2 }}
         >
-          {locations.length === 0 ? "Skip for now" : "Complete Setup"}{" "}
+          {t(locations.length === 0 ? "Skip for now" : "Complete Setup")}{" "}
           <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
       </BoutiqueBox>

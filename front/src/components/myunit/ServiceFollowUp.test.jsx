@@ -1,5 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import ServiceFollowUp from './ServiceFollowUp';
+
+let language = 'English';
+vi.mock('../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language }) }));
 
 test('shows a component concern separately from normal AC performance', () => {
   render(<ServiceFollowUp interpretation={{

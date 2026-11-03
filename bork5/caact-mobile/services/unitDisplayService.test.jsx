@@ -18,13 +18,15 @@ describe("mobile customer AC unit organization", () => {
 
   test("searches only recorded customer-visible unit information", () => {
     const units = [
-      { id: "one", brand: "TCL", productSku: "TAC09", serialNumber: "SERIAL-001", orderCode: "ORD-100", serviceBranch: "Cavite" },
+      { id: "one", brand: "TCL", productSku: "TAC09", serialNumber: "SERIAL-001", orderCode: "ORD-100", serviceBranch: "Cavite", installationAddress: "Bacoor Street" },
       { id: "two", brand: "LG", model: "Premium Dual Inverter", serialNumber: "SERIAL-002", placementArea: "Bedroom" },
     ];
 
     expect(filterCustomerUnits(units, "serial-002").map((unit) => unit.id)).toEqual(["two"]);
     expect(filterCustomerUnits(units, "cavite").map((unit) => unit.id)).toEqual(["one"]);
     expect(filterCustomerUnits(units, "ord-100").map((unit) => unit.id)).toEqual(["one"]);
+    expect(filterCustomerUnits(units, "bacoor").map((unit) => unit.id)).toEqual(["one"]);
+    expect(filterCustomerUnits(units, "not-found")).toEqual([]);
   });
 
   test("does not invent an installation date", () => {

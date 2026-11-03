@@ -1,6 +1,7 @@
 import { EnvelopeSimple, Phone, User, UserCircle } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
+import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -8,8 +9,10 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { validatePersonName } from "../../domain/register/validateRegistrationProfile";
 
 function GeneralProfileSettings({ user, onUpdateProfile }) {
+  const t = (value) => translateText(value, user?.preferences?.language);
   const [formData, setFormData] = useState({
     name_first: "",
     name_last: "",
@@ -69,8 +72,14 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setErrors({});
+    const firstNameError = validatePersonName(formData.name_first, "First name");
+    const lastNameError = validatePersonName(formData.name_last, "Last name");
+    if (firstNameError || lastNameError) {
+      setErrors({ name_first: firstNameError, name_last: lastNameError });
+      return;
+    }
+    setSaving(true);
     try {
       if (aliasStatus === "taken") {
         setErrors({ alias: "This username is already taken." });
@@ -105,56 +114,60 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
           >
             <UserCircle size={20} weight="bold" />
           </BoutiqueBox>
-          <BoutiqueText variant="h2">General Profile</BoutiqueText>
+          <BoutiqueText variant="h2">{t("General Profile")}</BoutiqueText>
         </BoutiqueBox>
 
         <BoutiqueStack gap={24}>
           <BoutiqueBox direction="row" gap={20}>
             <BoutiqueInput
-              label="First Name"
+              label={t("First Name")}
               icon={User}
               value={formData.name_first}
               onChange={(e) => handleChange("name_first", e.target.value)}
               placeholder="Juan"
+              status={errors.name_first ? "error" : null}
+              errorMessage={errors.name_first}
               flex={1}
             />
             <BoutiqueInput
-              label="Last Name"
+              label={t("Last Name")}
               icon={User}
               value={formData.name_last}
               onChange={(e) => handleChange("name_last", e.target.value)}
               placeholder="Dela Cruz"
+              status={errors.name_last ? "error" : null}
+              errorMessage={errors.name_last}
               flex={1}
             />
           </BoutiqueBox>
 
           <BoutiqueInput
-            label="Username"
+            label={t("Username")}
             icon={UserCircle}
             value={formData.alias}
             onChange={(e) => handleChange("alias", e.target.value)}
             onBlur={handleAliasBlur}
             placeholder="juan.dc"
             status={aliasStatus === "taken" || errors.alias ? "error" : aliasStatus === "available" ? "success" : null}
-            errorMessage={errors.alias || (aliasStatus === "taken" ? "This username is unavailable" : null)}
-            hint="Use this name to sign in to your account."
+            errorMessage={t(errors.alias || (aliasStatus === "taken" ? "This username is unavailable" : null))}
+            hint={t("Use this name to sign in to your account.")}
           />
 
           <BoutiqueInput
-            label="Phone Number"
+            label={t("Phone Number")}
             icon={Phone}
             value={formData.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="09XXXXXXXXX"
-            hint="Used to contact you about deliveries and service visits."
+            hint={t("Used to contact you about deliveries and service visits.")}
           />
 
           <BoutiqueInput
-            label="Email Address"
+            label={t("Email Address")}
             icon={EnvelopeSimple}
             value={formData.email}
             disabled
-            hint="Email cannot be changed directly for security reasons."
+            hint={t("Email cannot be changed directly for security reasons.")}
           />
 
           {errors.submit && (
@@ -170,7 +183,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               disabled={aliasStatus === "checking" || aliasStatus === "taken"}
               style={{ width: "auto", minWidth: "200px" }}
             >
-              Save Profile Changes
+              {t("Save Profile Changes")}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>

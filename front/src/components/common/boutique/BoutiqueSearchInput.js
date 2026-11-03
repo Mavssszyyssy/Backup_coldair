@@ -55,7 +55,7 @@ export default function BoutiqueSearchInput({
           width: 100%;
           padding: 14px 18px;
           padding-left: 48px;
-          background: white;
+          background: ${BQ_COLORS.surface};
           border: 1px solid ${BQ_COLORS.border};
           border-radius: ${BQ_GEOMETRY.radiusPill};
           font-family: ${BQ_FONTS.body};

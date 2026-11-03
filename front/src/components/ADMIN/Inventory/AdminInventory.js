@@ -6,7 +6,9 @@ import AdminSerialQr from '../SerialQr/AdminSerialQr';
 import InventoryList from './InventoryList';
 import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
-import { BRANCHES } from '../../../domain/branches/branches';
+import useActiveBranches from '../../../domain/branches/useActiveBranches';
+import { inventoryStockState } from '../../../domain/stockAlerts';
+import { translateText } from '../../../utils/customerI18n';
 import '../adminShared.css';
 import './styles.css';
 
@@ -16,16 +18,18 @@ const getBranchStock = (product, branch) => {
   return Number(product?.stock ?? 0);
 };
 
-const InventoryTabs = ({ activeTab, onSelect }) => (
-  <div className="module-tabs" role="tablist" aria-label="Inventory management sections">
-    <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'active' : ''} onClick={() => onSelect('inventory')}>Inventory / Stock</button>
-    <button type="button" role="tab" aria-selected={activeTab === 'reorder'} className={activeTab === 'reorder' ? 'active' : ''} onClick={() => onSelect('reorder')}>Reorder Management</button>
-    <button type="button" role="tab" aria-selected={activeTab === 'serial-qr'} className={activeTab === 'serial-qr' ? 'active' : ''} onClick={() => onSelect('serial-qr')}>Serial / QR Management</button>
+const InventoryTabs = ({ activeTab, onSelect, t }) => (
+  <div className="module-tabs" role="tablist" aria-label={t('Inventory management sections')}>
+    <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'active' : ''} onClick={() => onSelect('inventory')}>{t('Inventory / Stock')}</button>
+    <button type="button" role="tab" aria-selected={activeTab === 'reorder'} className={activeTab === 'reorder' ? 'active' : ''} onClick={() => onSelect('reorder')}>{t('Reorder Management')}</button>
+    <button type="button" role="tab" aria-selected={activeTab === 'serial-qr'} className={activeTab === 'serial-qr' ? 'active' : ''} onClick={() => onSelect('serial-qr')}>{t('Serial / QR Management')}</button>
   </div>
 );
 
 const AdminInventory = () => {
-  const { user } = useUser();
+  const branchNames = useActiveBranches();
+  const { user, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') === 'reorder'
     ? 'reorder'
@@ -37,14 +41,14 @@ const AdminInventory = () => {
   const [error, setError] = useState('');
   const assignedBranch = useMemo(() => {
     const currentBranch = user?.activeBranch || user?.assignedBranch || '';
-    return BRANCHES.includes(currentBranch) ? currentBranch : '';
-  }, [user?.activeBranch, user?.assignedBranch]);
+    return branchNames.includes(currentBranch) ? currentBranch : '';
+  }, [branchNames, user?.activeBranch, user?.assignedBranch]);
   const [branch, setBranch] = useState(assignedBranch);
   const branchOptions = useMemo(
     () => assignedBranch
-      ? [assignedBranch, ...BRANCHES.filter((item) => item !== assignedBranch)]
-      : BRANCHES,
-    [assignedBranch],
+      ? [assignedBranch, ...branchNames.filter((item) => item !== assignedBranch)]
+      : branchNames,
+    [assignedBranch, branchNames],
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
@@ -86,39 +90,37 @@ const AdminInventory = () => {
     };
   }, [activeTab, load]);
 
-  const zeroStockCount = useMemo(
-    () => products.filter((product) => getBranchStock(product, branch) === 0).length,
-    [branch, products],
-  );
+  const stockStates = useMemo(() => products.filter((product) => product.isActive !== false).map((product) => inventoryStockState(product, branch, getBranchStock(product, branch))), [products, branch]);
+  const zeroStockCount = stockStates.filter((state) => state === 'out').length;
+  const lowStockCount = stockStates.filter((state) => state === 'low').length;
+  const healthyStockCount = stockStates.filter((state) => state === 'available').length;
 
   const selectTab = (tab) => setSearchParams(tab === 'inventory' ? {} : { tab }, { replace: true });
 
   return (
-    <AdminLayout title="Inventory Management" subtitle="Manage inventory, replenishment requests, and AC unit serial / QR records in one workspace.">
-      <InventoryTabs activeTab={activeTab} onSelect={selectTab} />
+    <AdminLayout title={t('Inventory Management')} subtitle={t('Manage inventory, replenishment requests, and AC unit serial / QR records in one workspace.')}>
+      <InventoryTabs activeTab={activeTab} onSelect={selectTab} t={t} />
       {activeTab === 'inventory' ? (
         <>
           <div className="inventory-toolbar">
-            <div className="admin-card" style={{ margin: 0, padding: '12px 16px' }}>
-              <strong>Monitoring access</strong><br />
-              <span style={{ color: '#64748b', fontSize: 13 }}>Stock changes are managed by SuperAdmin.</span>
-            </div>
-            {zeroStockCount > 0 ? <div className="admin-card" style={{ margin: 0, padding: '12px 16px', borderColor: '#fecaca', background: '#fef2f2', color: '#b91c1c' }}><strong>{zeroStockCount} out-of-stock item{zeroStockCount === 1 ? '' : 's'}</strong><br /><span style={{ fontSize: 13 }}>SuperAdmin has been notified.</span></div> : null}
+            <div className="admin-card inventory-stock-summary-card is-healthy"><strong>{healthyStockCount}</strong><span>{t('Items in stock')}</span></div>
+            <div className="admin-card inventory-stock-summary-card is-low"><strong>{lowStockCount}</strong><span>{t(lowStockCount === 1 ? 'Item is low on stock' : 'Items are low on stock')}</span></div>
+            <div className="admin-card inventory-stock-summary-card is-out"><strong>{zeroStockCount}</strong><span>{t(zeroStockCount === 1 ? 'Item is out of stock' : 'Items are out of stock')}</span></div>
           </div>
           <div className="branch-filter-section">
-            <label htmlFor="admin-inventory-branch">View stock for branch</label>
+            <label htmlFor="admin-inventory-branch">{t('View stock for branch')}</label>
             <select id="admin-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
               {branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-            <input className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search name, SKU, brand, category…" aria-label="Search inventory" />
-            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label="Filter by stock status">
-              <option value="all">All stock states</option>
-              <option value="out">Out of stock</option>
-              <option value="low">Low stock</option>
-              <option value="available">In stock</option>
+            <input className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('Search name, SKU, brand, category…')} aria-label={t('Search inventory')} />
+            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label={t('Filter by stock status')}>
+              <option value="all">{t('All stock states')}</option>
+              <option value="out">{t('Out of stock')}</option>
+              <option value="low">{t('Low stock')}</option>
+              <option value="available">{t('In stock')}</option>
             </select>
           </div>
-          {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+          {error ? <p style={{ color: '#b91c1c' }}>{t(error)}</p> : null}
           <InventoryList products={products} loading={loading} onRefresh={load} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} searchQuery={searchQuery} stockFilter={stockFilter} />
         </>
       ) : null}

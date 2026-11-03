@@ -1267,3 +1267,19 @@
     white-space: normal;
   }
 }
+
+.contact-page .form-section,
+.contact-page .info-section,
+.contact-page .contact-history__item,
+.contact-page .support-card,
+.contact-page .service-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.contact-page .submit-btn,
+.contact-page .support-link,
+.contact-page .contact-history__heading button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

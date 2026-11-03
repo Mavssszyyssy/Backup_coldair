@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import OrderConfirmation from "./OrderConfirmation";
 import { apiRequest } from "../../config/api";
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: "English" }) }));
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
 const pending = { id: "order123", orderCode: "ORD-123", paymentProvider: "paymongo", paymentStatus: "pending", workflowStatus: "to_pay", items: [] };
 const show = (state = "returned") => render(
@@ -13,10 +14,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   apiRequest.mockResolvedValue({ order: pending });
 });
-test("browser Back verifies pending checkout and displays Transaction Failed, not Order Success", async () => {
+test("browser Back verifies pending checkout and does not claim a failed or successful payment", async () => {
   show();
-  await screen.findByRole("heading", { name: "Transaction Failed", level: 1 });
-  expect(screen.getAllByText("Transaction Failed")).toHaveLength(1);
+  await screen.findByRole("heading", { name: "Payment pending", level: 1 });
+  expect(screen.queryByText("Transaction Failed")).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Order payment", level: 2 })).toBeInTheDocument();
   expect(apiRequest).toHaveBeenCalledWith("/orders/order123/paymongo/verify", { method: "POST" });
   expect(screen.queryByText("Order Success")).not.toBeInTheDocument();
@@ -41,7 +42,7 @@ test("verification outage is not success; a later recheck displays the confirmed
 });
 test("returning to an existing page rechecks delayed payment", async () => {
   show();
-  await screen.findByRole("heading", { name: "Transaction Failed", level: 1 });
+  await screen.findByRole("heading", { name: "Payment pending", level: 1 });
   apiRequest.mockResolvedValue({ order: { ...pending, paymentStatus: "paid" } });
   await act(async () => window.dispatchEvent(new Event("pageshow")));
   await screen.findByRole("heading", { name: "Payment successful", level: 1 });

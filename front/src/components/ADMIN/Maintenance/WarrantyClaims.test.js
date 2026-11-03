@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import WarrantyClaims from './WarrantyClaims';
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: 'English' }) }));
 
 describe('component-specific warranty approval', () => {
   it('requires active component selection and sends the selected component', () => {

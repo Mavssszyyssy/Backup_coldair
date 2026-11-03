@@ -76,3 +76,18 @@ test('Superadmin manages the system-wide email whitelist through a multi-select 
   ]));
   expect(await screen.findByText(/saved and applied system-wide/i)).toBeInTheDocument();
 });
+
+test('Filipino preference translates the settings content while preserving saved values', async () => {
+  useUser.mockReturnValue({
+    user: { preferences: { theme: 'dark', language: 'Filipino' } },
+    currentLanguage: 'Filipino',
+    updatePreferences,
+    updateSettings: vi.fn().mockResolvedValue({}),
+  });
+  apiRequest.mockResolvedValue({ domains: [] });
+  render(<MemoryRouter><SuperAdminSettings /></MemoryRouter>);
+  expect(screen.getByText('Mga setting ng executive workspace')).toBeInTheDocument();
+  expect(screen.getByLabelText('Tema')).toHaveValue('dark');
+  expect(screen.getByLabelText('Wika')).toHaveValue('Filipino');
+  expect(screen.getByText('Mga kagustuhan sa alerto')).toBeInTheDocument();
+});

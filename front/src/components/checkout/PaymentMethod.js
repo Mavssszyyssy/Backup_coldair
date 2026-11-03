@@ -1,31 +1,35 @@
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 // import icons from '../common/icons';
 const icons = {}; // BOUTIQUE MIGRATION STUB
 
 function PaymentMethod({ selectedMethod, onSelectMethod, branchHint }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const paymentMethods = [
     {
       id: "cod",
-      name: "Cash on Delivery",
-      description: "Processing until you pay on delivery",
+      name: t("Cash on Delivery"),
+      description: t("Processing until you pay on delivery"),
       iconSrc: icons.cartShoppingFast,
     },
     {
       id: "gcash",
       name: "GCash",
-      description: "Pay securely with your GCash account",
+      description: t("Pay securely with your GCash account"),
       iconSrc: icons.customize,
     },
     {
       id: "credit",
-      name: "Credit / debit card",
-      description: "Pay securely with Visa or Mastercard",
+      name: t("Credit / debit card"),
+      description: t("Pay securely with Visa or Mastercard"),
       iconSrc: icons.shieldKeyhole,
     },
   ];
 
   return (
     <div className="checkout-section">
-      <h2 style={{ marginBottom: "20px" }}>Payment Method</h2>
+      <h2 style={{ marginBottom: "20px" }}>{t("Payment Method")}</h2>
       {branchHint ? (
         <p
           className="payment-branch-hint"

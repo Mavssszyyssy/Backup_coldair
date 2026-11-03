@@ -5,10 +5,11 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../../services/liveRefresh";
 import React, { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TechButton from "../../../../components/technician/TechButton";
+import ProofPhotoList from "../../../../components/technician/ProofPhotoList";
 import ServiceReportQuickChoices from "../../../../components/technician/ServiceReportQuickChoices";
 import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
 import TechnicianStatusSelector from "../../../../components/technician/TechnicianStatusSelector";
@@ -24,6 +25,7 @@ import { getTaskById, TASK_STATUS, updateTaskStatus } from "../../../../services
 import { getTaskSerialNumbers, isInstallationWorkOrder, suggestedServiceType } from "../../../../services/technicianTaskLogic";
 import { serviceReportError } from "../../../../services/serviceReportValidation";
 import { confirmAction } from "../../../../utils/confirmAction";
+import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
 
 const MAX_PROOF_DATA_URI_LENGTH = 3_200_000;
 const SERVICE_TYPES = [
@@ -35,6 +37,7 @@ const SERVICE_TYPES = [
 const CONDITIONS = ["excellent", "good", "fair", "poor"];
 
 function InstallationPhotoCapture({ photos, onChange, installation = true }) {
+  const { t } = useInterfaceLanguage();
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [open, setOpen] = useState(false);
@@ -44,7 +47,7 @@ function InstallationPhotoCapture({ photos, onChange, installation = true }) {
     if (!permission?.granted) {
       const nextPermission = await requestPermission();
       if (!nextPermission?.granted) {
-        Alert.alert("Camera access needed", "Allow camera access to capture the AC unit as proof.");
+        Alert.alert(t("Camera access needed"), t("Allow camera access to capture the AC unit as proof."));
         return;
       }
     }
@@ -64,7 +67,7 @@ function InstallationPhotoCapture({ photos, onChange, installation = true }) {
       onChange([{ uri, label: installation ? "Installed AC unit" : "After service", capturedAt: new Date().toISOString() }]);
       setOpen(false);
     } catch (error) {
-      Alert.alert("Photo not captured", error?.message || "Please try again.");
+      Alert.alert(t("Photo not captured"), t(error?.message || "Please try again."));
     } finally {
       setCapturing(false);
     }
@@ -74,15 +77,15 @@ function InstallationPhotoCapture({ photos, onChange, installation = true }) {
     <Card>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}><Ionicons name="camera-sharp" size={21} color={COLORS.tech} /></View>
-        <View style={{ flex: 1 }}><Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{installation ? "Installed-unit photo" : "After-service photo"}</Text><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>Required proof. Keep the serviced AC unit clearly in frame.</Text></View>
+        <View style={{ flex: 1 }}><Text style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black }}>{t(installation ? "Installed-unit photo" : "After-service photo")}</Text><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{t("Required proof. Keep the serviced AC unit clearly in frame.")}</Text></View>
       </View>
-      {photos[0]?.uri ? <View style={{ marginTop: SPACING.md }}><Image source={{ uri: photos[0].uri }} style={{ width: "100%", height: 210, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }} /><TouchableOpacity onPress={() => onChange([])} accessibilityLabel="Remove proof photo" style={{ alignItems: "center", marginTop: 7 }}><Text style={{ color: COLORS.danger, fontSize: FONT.sm, fontWeight: FONT.bold }}>Retake photo</Text></TouchableOpacity></View> : null}
-      <TechButton title={photos[0]?.uri ? "Capture another photo" : installation ? "Capture installation photo" : "Capture after-service photo"} onPress={openCamera} variant={photos[0]?.uri ? "secondary" : "primary"} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name="camera-sharp" size={18} color={photos[0]?.uri ? COLORS.tech : COLORS.surface} />} />
+      {photos[0]?.uri ? <View style={{ marginTop: SPACING.md }}><ProofPhotoList photos={photos} height={210} /><TouchableOpacity onPress={() => onChange([])} accessibilityLabel={t("Remove proof photo")} style={{ alignItems: "center", marginTop: 7 }}><Text style={{ color: COLORS.danger, fontSize: FONT.sm, fontWeight: FONT.bold }}>{t("Retake photo")}</Text></TouchableOpacity></View> : null}
+      <TechButton title={t(photos[0]?.uri ? "Capture another photo" : installation ? "Capture installation photo" : "Capture after-service photo")} onPress={openCamera} variant={photos[0]?.uri ? "secondary" : "primary"} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name="camera-sharp" size={18} color={photos[0]?.uri ? COLORS.tech : COLORS.surface} />} />
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: SPACING.md }}><View><Text style={{ color: COLORS.surface, fontWeight: FONT.black, fontSize: FONT.lg }}>{installation ? "Capture installation proof" : "Capture after-service proof"}</Text><Text style={{ color: "#cbd5e1", fontSize: FONT.sm, marginTop: 2 }}>Keep the serviced AC unit clearly in frame.</Text></View><TouchableOpacity onPress={() => setOpen(false)} hitSlop={12} accessibilityLabel="Close camera"><Ionicons name="close-sharp" size={28} color={COLORS.surface} /></TouchableOpacity></View>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: SPACING.md }}><View style={{ flex: 1 }}><Text style={{ color: COLORS.surface, fontWeight: FONT.black, fontSize: FONT.lg }}>{t(installation ? "Capture installation proof" : "Capture after-service proof")}</Text><Text style={{ color: "#cbd5e1", fontSize: FONT.sm, marginTop: 2 }}>{t("Keep the serviced AC unit clearly in frame.")}</Text></View><TouchableOpacity onPress={() => setOpen(false)} hitSlop={12} accessibilityLabel={t("Close camera")}><Ionicons name="close-sharp" size={28} color={COLORS.surface} /></TouchableOpacity></View>
           <View style={{ flex: 1, margin: SPACING.md, borderRadius: RADIUS.xl, overflow: "hidden", backgroundColor: "#000" }}><CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" /></View>
-          <View style={{ padding: SPACING.md }}><TechButton title={capturing ? "Capturing…" : "Use this photo"} onPress={capture} loading={capturing} leftIcon={<Ionicons name="camera-sharp" size={18} color={COLORS.surface} />} /></View>
+          <View style={{ padding: SPACING.md }}><TechButton title={t(capturing ? "Capturing…" : "Use this photo")} onPress={capture} loading={capturing} leftIcon={<Ionicons name="camera-sharp" size={18} color={COLORS.surface} />} /></View>
         </SafeAreaView>
       </Modal>
     </Card>
@@ -91,6 +94,7 @@ function InstallationPhotoCapture({ photos, onChange, installation = true }) {
 
 export default function CompleteServiceScreen() {
   const router = useRouter();
+  const { language, t } = useInterfaceLanguage();
   const { id } = useLocalSearchParams();
   const { current } = useUserContext();
   const [task, setTask] = useState(null);
@@ -163,10 +167,10 @@ export default function CompleteServiceScreen() {
       if (!background && isCurrent()) {
         const message = error?.message || "Please try again.";
         setLoadError(message);
-        Alert.alert("Unable to load work order", message);
+        Alert.alert(t("Unable to load work order"), t(message));
       }
     } finally { if (isCurrent()) setLoading(false); }
-  }, [id]);
+  }, [id, t]);
 
   useFocusEffect(React.useCallback(() => startLiveRefresh(load), [load]));
 
@@ -177,19 +181,19 @@ export default function CompleteServiceScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl }} keyboardShouldPersistTaps="handled">
-          <PageHeader title="Complete work order" subtitle="Preparing the correct completion steps" color={COLORS.tech} onBack={() => router.back()} />
+          <PageHeader title={t("Complete work order")} subtitle={t("Preparing the correct completion steps")} color={COLORS.tech} onBack={() => router.back()} />
           <Card>
             {loading ? (
               <View style={{ minHeight: 180, alignItems: "center", justifyContent: "center" }}>
                 <ActivityIndicator color={COLORS.tech} size="large" />
-                <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.md, textAlign: "center" }}>Loading the current work order…</Text>
+                <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.md, textAlign: "center" }}>{t("Loading the current work order…")}</Text>
               </View>
             ) : (
               <View>
-                <Text style={{ color: COLORS.danger, fontWeight: FONT.black, fontSize: FONT.lg }}>Work order could not be loaded</Text>
-                <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>{loadError || "Return to Work Orders and try again."}</Text>
-                <TechButton title="Retry" onPress={() => void load()} style={{ marginTop: SPACING.md }} />
-                <TechButton title="Back to Work Orders" onPress={() => router.replace("/technician/tasks")} variant="secondary" style={{ marginTop: SPACING.sm }} />
+                <Text style={{ color: COLORS.danger, fontWeight: FONT.black, fontSize: FONT.lg }}>{t("Work order could not be loaded")}</Text>
+                <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>{t(loadError || "Return to Work Orders and try again.")}</Text>
+                <TechButton title={t("Retry")} onPress={() => void load()} style={{ marginTop: SPACING.md }} />
+                <TechButton title={t("Back to Work Orders")} onPress={() => router.replace("/technician/tasks")} variant="secondary" style={{ marginTop: SPACING.sm }} />
               </View>
             )}
           </Card>
@@ -211,10 +215,10 @@ export default function CompleteServiceScreen() {
     const change = () => { setServiceType(nextType); setFindings(""); setResolution(""); setChoiceError(""); setReportSaved(false); };
     if (findings.trim() || resolution.trim()) {
       confirmAction({
-        title: "Change service method?",
-        message: "This clears the current findings and work selections so you can record the correct method. Your photo and additional notes will stay.",
-        cancelText: "Keep current",
-        confirmText: "Change method",
+        title: t("Change service method?"),
+        message: t("This clears the current findings and work selections so you can record the correct method. Your photo and additional notes will stay."),
+        cancelText: t("Keep current"),
+        confirmText: t("Change method"),
         destructive: true,
         onConfirm: change,
       });
@@ -227,10 +231,10 @@ export default function CompleteServiceScreen() {
   };
 
   const saveServiceReport = async () => {
-    if (!technicianStatus) return Alert.alert("Technician status required", "Choose For Repair, For Further Inspection, or Completed for this visit.");
+    if (!technicianStatus) return Alert.alert(t("Technician status required"), t("Choose For Repair, For Further Inspection, or Completed for this visit."));
     const reportError = partsError || choiceError || serviceReportError(findings, resolution);
-    if (reportError) return Alert.alert("Service report incomplete", reportError);
-    if (!task?.checkIn?.checkedInAt) return Alert.alert("Check-in required", "Record your GPS arrival before saving the service report.");
+    if (reportError) return Alert.alert(t("Service report incomplete"), t(reportError));
+    if (!task?.checkIn?.checkedInAt) return Alert.alert(t("Check-in required"), t("Record your GPS arrival before saving the service report."));
     const technicianName = getDisplayName(current) || task?.assignedTechnicianName || "Technician";
     const latestLog = Array.isArray(task?.serviceLogs) ? task.serviceLogs[0] : null;
     setSavingReport(true);
@@ -259,9 +263,9 @@ export default function CompleteServiceScreen() {
       const updated = await getTaskById(id, { requireOnline: true });
       setTask(updated);
       setReportSaved(true);
-      Alert.alert("Service report saved", "The payment total now includes the saved labor and parts costs. Collect and confirm the exact cash amount before completing the visit.");
+      Alert.alert(t("Service report saved"), t("The payment total now includes the saved labor and parts costs. Collect and confirm the exact cash amount before completing the visit."));
     } catch (error) {
-      Alert.alert("Service report not saved", error?.message || "Please try again. Your entries are still here.");
+      Alert.alert(t("Service report not saved"), t(error?.message || "Please try again. Your entries are still here."));
     } finally {
       setSavingReport(false);
     }
@@ -269,13 +273,13 @@ export default function CompleteServiceScreen() {
 
   const submit = async () => {
     if (isAlreadyComplete) return router.replace("/technician/tasks");
-    if (formError) return Alert.alert(installationTask ? "Cannot complete installation" : "Service report incomplete", formError);
+    if (formError) return Alert.alert(t(installationTask ? "Cannot complete installation" : "Service report incomplete"), t(formError));
     const confirmed = await confirmAction({
-      title: installationTask ? "Complete Installation?" : "Complete Service Visit?",
-      message: installationTask
+      title: t(installationTask ? "Complete Installation?" : "Complete Service Visit?"),
+      message: t(installationTask
         ? "This sends the verified QR record and installed-unit photo to the customer order."
-        : "This saves the report to the AC service history and closes the maintenance work order.",
-      confirmText: "Complete",
+        : "This saves the report to the AC service history and closes the maintenance work order."),
+      confirmText: t("Complete"),
     });
     if (!confirmed) return;
     const submittedAt = new Date().toISOString();
@@ -327,7 +331,7 @@ export default function CompleteServiceScreen() {
       // The completion response is authoritative. Re-reading the task here
       // held the completed screen open behind another network request.
       setTask(updated);
-      Alert.alert(installationTask ? "Installation completed" : "Service visit completed", installationTask ? "The verified AC unit, photo proof, customer order, warranty, and AMP record are now synchronized." : "The service report, AC history, warranty record, customer request, and next AMP servicing recommendation are now synchronized.", [{ text: "Back to Work Orders", onPress: () => router.replace("/technician/tasks") }]);
+      Alert.alert(t(installationTask ? "Installation completed" : "Service visit completed"), t(installationTask ? "The verified AC unit, photo proof, customer order, warranty, and AMP record are now synchronized." : "The service report, AC history, warranty record, customer request, and next AMP servicing recommendation are now synchronized."), [{ text: t("Back to Work Orders"), onPress: () => router.replace("/technician/tasks") }]);
     } catch (error) {
       // The response can be interrupted after the server commits the visit.
       // Verify the authoritative task before asking the technician to submit
@@ -337,11 +341,11 @@ export default function CompleteServiceScreen() {
         const proofSaved = (recovered?.proof?.afterPhotos || []).some((photo) => photo?.uri);
         if (recovered?.status === TASK_STATUS.COMPLETED && recovered?.completionSynchronized !== false && proofSaved) {
           setTask(recovered);
-          Alert.alert(installationTask ? "Installation completed" : "Service visit completed", "The completion was saved and verified. You do not need to submit the proof again.", [{ text: "Back to Work Orders", onPress: () => router.replace("/technician/tasks") }]);
+          Alert.alert(t(installationTask ? "Installation completed" : "Service visit completed"), t("The completion was saved and verified. You do not need to submit the proof again."), [{ text: t("Back to Work Orders"), onPress: () => router.replace("/technician/tasks") }]);
           return;
         }
       } catch {}
-      Alert.alert("Unable to complete", error?.message || (installationTask ? "Could not submit the installation proof." : "Could not save the service report."));
+      Alert.alert(t("Unable to complete"), t(error?.message || (installationTask ? "Could not submit the installation proof." : "Could not save the service report.")));
     }
     finally {
       completionInFlight.current = false;
@@ -349,16 +353,16 @@ export default function CompleteServiceScreen() {
     }
   };
 
-  return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}><KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl }} keyboardShouldPersistTaps="handled"><PageHeader title={installationTask ? "Complete installation" : "Complete service visit"} subtitle={installationTask ? "Verified AC unit + one installed-unit photo" : "Written report + one after-service photo"} color={COLORS.tech} onBack={() => router.back()} />
+  return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}><KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: SPACING.xxl }} keyboardShouldPersistTaps="handled"><PageHeader title={t(installationTask ? "Complete installation" : "Complete service visit")} subtitle={t(installationTask ? "Verified AC unit + one installed-unit photo" : "Written report + one after-service photo")} color={COLORS.tech} onBack={() => router.back()} />
     {!installationTask && !isAlreadyComplete && !loading ? <InstallationPhotoCapture photos={afterPhotos} onChange={setAfterPhotos} installation={false} /> : null}
-    <Card><InfoCard label="Work order" value={task?.taskCode || task?.title || "Loading…"} /><InfoCard label="Customer" value={task?.customerName || task?.customer || "Not provided"} />{installationTask ? <><InfoCard label="AMP registration" value={loading ? "Loading…" : `${progress?.totalRegistered || 0} of ${requiredCount} assigned units verified`} />{!canComplete && !loading ? <TechButton title="Verify assigned AC unit" onPress={() => router.replace(`/technician/task/${id}/amp-registration`)} size="sm" variant="secondary" leftIcon={<Ionicons name="qr-code-sharp" size={16} color={COLORS.tech} />} /> : null}</> : <InfoCard label="AC unit" value={task?.unit?.unitName || task?.unitName || "Linked customer unit"} />}</Card>
-    {installationTask && ampRecords.length ? <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Verified AC unit</Text><PagedItems label="Verified AC units" items={ampRecords} renderItem={(record) => <View key={record.serialNumber} style={{ marginTop: SPACING.sm, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>{record.serialNumber}</Text><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{record.registrationSource === "manual_serial" ? "Verified by manual serial entry" : "Verified from the assigned QR label"}</Text></View>} /></Card> : null}
-    {completionNeedsSync ? <Card style={{ borderColor: COLORS.warning, backgroundColor: COLORS.warningLight }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>Finish synchronizing this visit</Text><Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>The proof was saved, but the linked Admin record still needs to be synchronized. Tap complete once to safely resume; the saved proof will be reused.</Text></Card> : null}
-    {isAlreadyComplete ? <Card><Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.lg }}>This {installationTask ? "installation" : "service visit"} is already complete.</Text><TechButton title="Back to Work Orders" onPress={() => router.replace("/technician/tasks")} style={{ marginTop: SPACING.md }} /></Card> : installationTask ? <><InstallationPhotoCapture photos={afterPhotos} onChange={setAfterPhotos} /><Card><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>Customer details are automatically taken from the assigned order. No customer name or signature is required.</Text>{formError ? <Text style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{formError}</Text> : null}<TechButton title={submitting ? "Completing…" : completionNeedsSync ? "Finish synchronization" : "Complete installation"} onPress={submit} loading={submitting} disabled={loading} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} /></Card></> : <>
-      <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>1. Record the completed service</Text><View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs }}>{serviceTypeOptions.map((option) => <TouchableOpacity key={option.id} onPress={() => changeServiceType(option.id)} style={{ paddingHorizontal: SPACING.sm + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: serviceType === option.id ? COLORS.tech : COLORS.surfaceAlt }}><Text style={{ color: serviceType === option.id ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold, fontSize: FONT.sm }}>{option.label}</Text></TouchableOpacity>)}</View><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginTop: SPACING.md, marginBottom: SPACING.xs }}>Condition after service</Text><View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs }}>{CONDITIONS.map((option) => <TouchableOpacity key={option} onPress={() => { setConditionRating(option); setReportSaved(false); }} style={{ paddingHorizontal: SPACING.sm + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: conditionRating === option ? COLORS.tech : COLORS.surfaceAlt }}><Text style={{ color: conditionRating === option ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold, fontSize: FONT.sm }}>{option.replace(/^./, (letter) => letter.toUpperCase())}</Text></TouchableOpacity>)}</View><View style={{ marginTop: SPACING.md }}><TechnicianStatusSelector value={technicianStatus} onChange={(value) => { setTechnicianStatus(value); setReportSaved(false); }} /></View></Card>
-      <Card><ServiceReportQuickChoices key={serviceType} serviceType={serviceType} findings={findings} resolution={resolution} onFindingsChange={editReportField(setFindings)} onResolutionChange={editReportField(setResolution)} onValidationChange={setChoiceError} /><TextField label="Additional Notes (Optional)" value={additionalNotes} onChangeText={editReportField(setAdditionalNotes)} placeholder="Customer advice or follow-up details" multiline numberOfLines={3} /><ServiceResourcesFields hoursSpent={hoursSpent} onHoursChange={editReportField(setHoursSpent)} partsUsed={partsUsed} onPartsChange={editReportField(setPartsUsed)} laborCost={laborCost} onLaborChange={editReportField(setLaborCost)} partsCost={partsCost} onPartsCostChange={editReportField(setPartsCost)} onValidationChange={setPartsError} /><TechButton title={savingReport ? "Saving report…" : reportSaved ? "Service report saved" : "Save report and update payment total"} onPress={saveServiceReport} loading={savingReport} disabled={loading || savingReport || reportSaved} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={reportSaved ? "checkmark-circle-sharp" : "save-sharp"} size={18} color={COLORS.surface} />} /></Card>
-      <View><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>2. Confirm the customer payment</Text><ServicePaymentCard task={task} onUpdated={setTask} /></View>
-      <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>3. Complete the visit</Text>{formError ? <Text style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{formError}</Text> : <Text style={{ color: COLORS.success, fontWeight: FONT.bold, marginBottom: SPACING.sm }}>{completionNeedsSync ? "Saved visit ready to synchronize" : "Report ready to submit"}</Text>}<TechButton title={submitting ? "Completing…" : completionNeedsSync ? "Finish synchronization" : "Complete service visit"} onPress={submit} loading={submitting} disabled={loading} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} /></Card>
+    <Card><InfoCard label={t("Work order")} value={task?.taskCode || task?.title || t("Loading…")} /><InfoCard label={t("Customer")} value={task?.customerName || task?.customer || t("Not provided")} />{installationTask ? <><InfoCard label={t("AMP registration")} value={loading ? t("Loading…") : language === "Filipino" ? `${progress?.totalRegistered || 0} sa ${requiredCount} na nakatalagang unit ang na-verify` : `${progress?.totalRegistered || 0} of ${requiredCount} assigned units verified`} />{!canComplete && !loading ? <TechButton title={t("Verify assigned AC unit")} onPress={() => router.replace(`/technician/task/${id}/amp-registration`)} size="sm" variant="secondary" leftIcon={<Ionicons name="qr-code-sharp" size={16} color={COLORS.tech} />} /> : null}</> : <InfoCard label={t("AC unit")} value={task?.unit?.unitName || task?.unitName || t("Linked customer unit")} />}</Card>
+    {installationTask && ampRecords.length ? <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>{t("Verified AC unit")}</Text><PagedItems label={t("Verified AC units")} items={ampRecords} renderItem={(record) => <View key={record.serialNumber} style={{ marginTop: SPACING.sm, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold }}>{record.serialNumber}</Text><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{t(record.registrationSource === "manual_serial" ? "Verified by manual serial entry" : "Verified from the assigned QR label")}</Text></View>} /></Card> : null}
+    {completionNeedsSync ? <Card style={{ borderColor: COLORS.warning, backgroundColor: COLORS.warningLight }}><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg }}>{t("Finish synchronizing this visit")}</Text><Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginTop: SPACING.xs }}>{t("The proof was saved, but the linked Admin record still needs to be synchronized. Tap complete once to safely resume; the saved proof will be reused.")}</Text></Card> : null}
+    {isAlreadyComplete ? <Card><Text style={{ color: COLORS.success, fontWeight: FONT.black, fontSize: FONT.lg }}>{t(installationTask ? "This installation is already complete." : "This service visit is already complete.")}</Text><TechButton title={t("Back to Work Orders")} onPress={() => router.replace("/technician/tasks")} style={{ marginTop: SPACING.md }} /></Card> : installationTask ? <><InstallationPhotoCapture photos={afterPhotos} onChange={setAfterPhotos} /><Card><Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>{t("Customer details are automatically taken from the assigned order. No customer name or signature is required.")}</Text>{formError ? <Text style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{t(formError)}</Text> : null}<TechButton title={t(submitting ? "Completing…" : completionNeedsSync ? "Finish synchronization" : "Complete installation")} onPress={submit} loading={submitting} disabled={loading} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} /></Card></> : <>
+      <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("1. Record the completed service")}</Text><View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs }}>{serviceTypeOptions.map((option) => <TouchableOpacity key={option.id} onPress={() => changeServiceType(option.id)} style={{ paddingHorizontal: SPACING.sm + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: serviceType === option.id ? COLORS.tech : COLORS.surfaceAlt }}><Text style={{ color: serviceType === option.id ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold, fontSize: FONT.sm }}>{t(option.label)}</Text></TouchableOpacity>)}</View><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginTop: SPACING.md, marginBottom: SPACING.xs }}>{t("Condition after service")}</Text><View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs }}>{CONDITIONS.map((option) => <TouchableOpacity key={option} onPress={() => { setConditionRating(option); setReportSaved(false); }} style={{ paddingHorizontal: SPACING.sm + 2, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: conditionRating === option ? COLORS.tech : COLORS.surfaceAlt }}><Text style={{ color: conditionRating === option ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold, fontSize: FONT.sm }}>{t(option.replace(/^./, (letter) => letter.toUpperCase()))}</Text></TouchableOpacity>)}</View><View style={{ marginTop: SPACING.md }}><TechnicianStatusSelector value={technicianStatus} onChange={(value) => { setTechnicianStatus(value); setReportSaved(false); }} /></View></Card>
+      <Card><ServiceReportQuickChoices key={serviceType} serviceType={serviceType} findings={findings} resolution={resolution} onFindingsChange={editReportField(setFindings)} onResolutionChange={editReportField(setResolution)} onValidationChange={setChoiceError} /><TextField label={t("Additional Notes (Optional)")} value={additionalNotes} onChangeText={editReportField(setAdditionalNotes)} placeholder={t("Customer advice or follow-up details")} multiline numberOfLines={3} /><ServiceResourcesFields hoursSpent={hoursSpent} onHoursChange={editReportField(setHoursSpent)} partsUsed={partsUsed} onPartsChange={editReportField(setPartsUsed)} laborCost={laborCost} onLaborChange={editReportField(setLaborCost)} partsCost={partsCost} onPartsCostChange={editReportField(setPartsCost)} onValidationChange={setPartsError} /><TechButton title={t(savingReport ? "Saving report…" : reportSaved ? "Service report saved" : "Save report and update payment total")} onPress={saveServiceReport} loading={savingReport} disabled={loading || savingReport || reportSaved} style={{ marginTop: SPACING.md }} leftIcon={<Ionicons name={reportSaved ? "checkmark-circle-sharp" : "save-sharp"} size={18} color={COLORS.surface} />} /></Card>
+      <View><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("2. Confirm the customer payment")}</Text><ServicePaymentCard task={task} onUpdated={setTask} /></View>
+      <Card><Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("3. Complete the visit")}</Text>{formError ? <Text style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{t(formError)}</Text> : <Text style={{ color: COLORS.success, fontWeight: FONT.bold, marginBottom: SPACING.sm }}>{t(completionNeedsSync ? "Saved visit ready to synchronize" : "Report ready to submit")}</Text>}<TechButton title={t(submitting ? "Completing…" : completionNeedsSync ? "Finish synchronization" : "Complete service visit")} onPress={submit} loading={submitting} disabled={loading} leftIcon={<Ionicons name="checkmark-circle-sharp" size={18} color={COLORS.surface} />} /></Card>
     </>}
   </KeyboardAwareScrollView></SafeAreaView>;
 }

@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const BOTTOM_NAV_ROUTES = new Set([
   "/technician",
@@ -116,6 +117,7 @@ export default function TechnicianScreen({
   contentContainerStyle,
   stickyAction,
 }) {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -170,7 +172,7 @@ export default function TechnicianScreen({
             style={{ width: 40, height: 40, borderRadius: RADIUS.md }}
           />
         ) : (
-          <Pressable onPress={handleBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Go back">
+          <Pressable onPress={handleBack} hitSlop={12} accessibilityRole="button" accessibilityLabel={t("Go back")}>
             <View
               style={{
                 width: 38,

@@ -3,8 +3,12 @@ import HistoryPagination from './HistoryPagination';
 import ServiceHistoryFilters from './ServiceHistoryFilters';
 import ServiceFollowUp from './ServiceFollowUp';
 import { serviceLabel, serviceDateLabel, serviceDetails, servicePriceLabel } from '../../domain/myunit/serviceHistoryDisplay';
+import { useUser } from '../../context/UserContext';
+import { translateText } from '../../utils/customerI18n';
 
 function ServiceHistory({ unit, onClose }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [sortBy, setSortBy] = useState('newest');
   const [filterType, setFilterType] = useState('all');
   const [historyPage, setHistoryPage] = useState(1);
@@ -60,27 +64,27 @@ function ServiceHistory({ unit, onClose }) {
       >
         <header className="modal-header service-history-header">
           <div>
-            <span className="service-history-eyebrow">Complete AC unit history</span>
-            <h3 id="service-history-title">Service history</h3>
+            <span className="service-history-eyebrow">{t("Complete AC unit history")}</span>
+            <h3 id="service-history-title">{t("Service history")}</h3>
             <p>{unitName}</p>
           </div>
           <button
             type="button"
             className="close-modal service-history-close"
             onClick={onClose}
-            aria-label="Close service history"
+            aria-label={t("Close service history")}
           >
             ×
           </button>
         </header>
         <div className="modal-body service-history-body">
-          <section className="service-history-toolbar" aria-label="Service history filters">
+          <section className="service-history-toolbar" aria-label={t("Service history filters")}>
             <div className="service-history-toolbar-heading">
               <div>
-                <h4>Service records</h4>
-                <p>Review completed visits and technician findings for this unit.</p>
+                <h4>{t("Service records")}</h4>
+                <p>{t("Review completed visits and technician findings for this unit.")}</p>
               </div>
-              <span>{filteredSorted.length} {filteredSorted.length === 1 ? 'record' : 'records'}</span>
+              <span>{filteredSorted.length} {t(filteredSorted.length === 1 ? 'record' : 'records')}</span>
             </div>
             <ServiceHistoryFilters
               sortBy={sortBy}
@@ -92,7 +96,7 @@ function ServiceHistory({ unit, onClose }) {
           </section>
 
           {filteredSorted.length > 0 ? (
-            <section className="service-history-results" aria-label="Filtered service records">
+            <section className="service-history-results" aria-label={t("Filtered service records")}>
               <HistoryPagination
                 currentPage={historyPage}
                 totalPages={historyPages}
@@ -104,11 +108,11 @@ function ServiceHistory({ unit, onClose }) {
                     <header className="service-history-record-header">
                       <div>
                         <time className="history-date" dateTime={service.date}>{serviceDateLabel(service.date)}</time>
-                        <h4 className="history-service">{serviceLabel(service.serviceType)}</h4>
+                        <h4 className="history-service">{t(serviceLabel(service.serviceType))}</h4>
                       </div>
                       {service.technicianStatus ? (
                         <span className="service-history-status">
-                          {String(service.technicianStatus).replaceAll('_', ' ')}
+                          {t(String(service.technicianStatus).replaceAll('_', ' '))}
                         </span>
                       ) : null}
                     </header>
@@ -119,7 +123,7 @@ function ServiceHistory({ unit, onClose }) {
                       {(servicePriceLabel(service) || service.evidence?.eligible === false || service.technician) && (
                         <footer className="service-history-record-meta">
                           {servicePriceLabel(service) ? <strong className="history-price">{servicePriceLabel(service)}</strong> : null}
-                          {service.technician && <span>Technician: {service.technician}</span>}
+                          {service.technician && <span>{t("Technician")}: {service.technician}</span>}
                           {service.evidence?.eligible === false ? <p>{service.evidence.reason}</p> : null}
                         </footer>
                       )}
@@ -130,14 +134,14 @@ function ServiceHistory({ unit, onClose }) {
             </section>
           ) : (
             <div className="service-history-empty">
-              <strong>No matching service records</strong>
-              No service history matches these filters.
+              <strong>{t("No matching service records")}</strong>
+              {t("No service history matches these filters.")}
             </div>
           )}
         </div>
         <footer className="modal-footer service-history-footer">
           <button type="button" className="confirm-btn service-history-done" onClick={onClose}>
-            Close
+            {t("Close")}
           </button>
         </footer>
       </section>

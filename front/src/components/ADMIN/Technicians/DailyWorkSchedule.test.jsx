@@ -8,7 +8,8 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return { ...actual, useNavigate: () => vi.fn() };
 });
-vi.mock("../../../context/UserContext", () => ({ useUser: () => ({ user: { role: "admin", assignedBranch: "Cavite" } }) }));
+let language = "English";
+vi.mock("../../../context/UserContext", () => ({ useUser: () => ({ user: { role: "admin", assignedBranch: "Cavite" }, currentLanguage: language }) }));
 vi.mock("../../../config/api", () => ({ apiRequest: vi.fn() }));
 
 const task = {
@@ -20,6 +21,7 @@ const task = {
 };
 
 beforeEach(() => {
+  language = "English";
   apiRequest.mockReset().mockImplementation(async (path, options) => {
     if (options?.method === "PATCH") return { task: { ...task, schedule: JSON.parse(options.body).schedule } };
     if (path.startsWith("/users")) return { users: [
@@ -28,6 +30,16 @@ beforeEach(() => {
     ] };
     return { tasks: [task] };
   });
+});
+
+test("Filipino schedule localizes controls while preserving saved notes and customer details", async () => {
+  language = "Filipino";
+  render(<DailyWorkSchedule />);
+  expect(await screen.findByText("ORD-1")).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Pang-araw-araw na iskedyul ng gawain" })).toBeVisible();
+  expect(screen.getByText("Bring ladder")).toBeVisible();
+  expect(screen.getByText("Customer One")).toBeVisible();
+  expect(screen.getByRole("button", { name: "I-edit ang iskedyul" })).toBeVisible();
 });
 
 test("shows linked operational data and saves schedule changes on the existing task", async () => {

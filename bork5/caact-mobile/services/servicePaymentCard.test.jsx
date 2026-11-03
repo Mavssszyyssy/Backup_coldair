@@ -5,6 +5,11 @@ import ServicePaymentCard from "../components/technician/ServicePaymentCard";
 import { collectServicePayment } from "./taskStorage";
 import { paymentMethodLabel } from "./paymentMethodLabel";
 
+jest.mock('../hooks/useInterfaceLanguage', () => {
+  const translate = (value) => value;
+  return { useInterfaceLanguage: () => ({ language: 'English', t: translate }) };
+});
+
 jest.mock("./taskStorage", () => ({ collectServicePayment: jest.fn() }));
 jest.mock("./ecommerceService", () => ({ formatPeso: amount => `PHP ${Number(amount).toFixed(2)}` }));
 afterEach(() => { cleanup(); jest.restoreAllMocks(); jest.clearAllMocks(); });

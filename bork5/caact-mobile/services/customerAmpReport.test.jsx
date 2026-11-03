@@ -2,6 +2,10 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 import CustomerAmpReport from "../components/customer/CustomerAmpReport";
 
+jest.mock("../hooks/useInterfaceLanguage", () => ({
+  useInterfaceLanguage: () => ({ language: "English", t: (value) => value }),
+}));
+
 const report = {
   reportId: "QA-REPORT", reportType: "predictive_maintenance",
   maintenance: { bestServicedBy: "2027-06-02", recommendedService: "regular_cleaning", recommendationBasis: "Insufficient service history. Default recommended cleaning interval: 6 months (180 days). This baseline is replaced when enough verified cleaning intervals become available.", interpretation: "Your completed visits explain this suggestion.", aiAssessment: "Your completed visits explain this suggestion.", whyThisDate: "There are not enough completed cleaning visits to personalize this date yet. For now, we suggest your next cleaning 6 calendar months after the latest recorded cleaning or installation.", dataQuality: { message: "One incomplete record is excluded." } },

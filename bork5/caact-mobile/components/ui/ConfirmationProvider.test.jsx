@@ -29,6 +29,7 @@ test("the mobile confirmation provider cancels without running the action", asyn
 
   fireEvent.press(screen.getByText("Open Confirmation"));
   expect(await screen.findByText("Delete Address?")).toBeTruthy();
+  expect(screen.queryByLabelText("Close confirmation")).toBeNull();
   fireEvent.press(screen.getByText("Cancel"));
 
   await waitFor(() => expect(screen.queryByText("Delete Address?")).toBeNull());

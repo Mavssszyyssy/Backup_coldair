@@ -11,6 +11,7 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
 import { getRoleHomePath } from "../../domain/webRoleHome";
+import { translateText } from "../../utils/customerI18n";
 
 const getCustomerLoginDestination = (location) => {
   const from = location.state?.from;
@@ -26,7 +27,8 @@ const getCustomerLoginDestination = (location) => {
 };
 
 function Login() {
-  const { login, verifyLoginEmail, resendLoginEmail } = useUser();
+  const { login, verifyLoginEmail, resendLoginEmail, currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,7 +57,7 @@ function Login() {
   const authenticateUser = async () => {
     setErrors({});
     if (!user.identifier || !user.password) {
-      alert("Please fill in all fields.");
+      alert(t("Please fill in all fields."));
       return;
     }
 
@@ -107,14 +109,14 @@ function Login() {
       <button
         className="bq-login-back-btn"
         onClick={() => navigate("/home")}
-        title="Back to Home"
+        title={t("Back to Home")}
       >
         <ArrowLeft size={20} weight="bold" />
       </button>
 
       <BoutiqueAuthHeader
-        title="Sign in"
-        subtitle="Sign in to your Cold Air account"
+        title={t("Sign in")}
+        subtitle={t("Sign in to your Cold Air account")}
       />
 
       <BoutiqueStack gap={24} className="bq-login-form-inner">
@@ -129,12 +131,13 @@ function Login() {
           >
             <Info size={18} weight="bold" />
             <BoutiqueText weight={600} size="14px">
-              {authMessage}
+              {t(authMessage)}
             </BoutiqueText>
           </BoutiqueBox>
         )}
 
         {!challengeToken ? <LoginForm
+          currentLanguage={currentLanguage}
           identifier={user.identifier}
           password={user.password}
           errors={errors}
@@ -147,10 +150,10 @@ function Login() {
         /> : (
           <form className="bq-login-step" onSubmit={(event) => { event.preventDefault(); authenticateUser(); }}>
             <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>
-              Enter the six-digit code sent to {maskedEmail}.
+              {t("Enter the six-digit code sent to")} {maskedEmail}.
             </BoutiqueText>
             <BoutiqueInput
-              label="Email verification code"
+              label={t("Email verification code")}
               icon={Key}
               inputMode="numeric"
               maxLength="6"
@@ -161,20 +164,20 @@ function Login() {
                 setErrors({});
               }}
               status={errors.verificationCode ? "error" : null}
-              errorMessage={errors.verificationCode}
+              errorMessage={t(errors.verificationCode)}
               required
             />
             <button type="submit" className="bq-login-btn bq-login-btn--primary" disabled={loading || verificationCode.length !== 6}>
-              {loading ? "Verifying..." : "Verify and Sign In"}
+              {t(loading ? "Verifying..." : "Verify and Sign In")}
             </button>
             <div className="bq-auth-secondary-actions">
-              <button type="button" className="bq-auth-action bq-auth-action--outline" onClick={resendCode} disabled={loading}>Resend code</button>
+              <button type="button" className="bq-auth-action bq-auth-action--outline" onClick={resendCode} disabled={loading}>{t("Resend code")}</button>
               <button
                 type="button"
                 className="bq-auth-action bq-auth-action--ghost"
                 onClick={() => { setChallengeToken(""); setVerificationCode(""); setMaskedEmail(""); setErrors({}); }}
               >
-                Use a different account
+                {t("Use a different account")}
               </button>
             </div>
           </form>
@@ -182,12 +185,12 @@ function Login() {
 
         <BoutiqueBox align="center" margin="8px 0 0">
           <BoutiqueText color={BQ_COLORS.inkMuted} weight={500}>
-            New to AeroPulse?{" "}
+            {t("New to AeroPulse?")}{" "}
             <button
               className="bq-signup-link"
               onClick={() => navigate("/register")}
             >
-              Create Account
+              {t("Create Account")}
             </button>
           </BoutiqueText>
         </BoutiqueBox>
@@ -207,7 +210,7 @@ function Login() {
             margin="0 0 16px"
           >
             <ShieldCheck size={20} weight="fill" />
-            <BoutiqueText variant="label">Boutique Security</BoutiqueText>
+            <BoutiqueText variant="label">{t("Boutique Security")}</BoutiqueText>
           </BoutiqueBox>
           <BoutiqueStack gap={10} tag="ul" className="bq-tips-list">
             <BoutiqueText
@@ -216,7 +219,7 @@ function Login() {
               color={BQ_COLORS.inkMuted}
               weight={600}
             >
-              Secure sign-in and encrypted session management
+              {t("Secure sign-in and encrypted session management")}
             </BoutiqueText>
             <BoutiqueText
               tag="li"
@@ -224,7 +227,7 @@ function Login() {
               color={BQ_COLORS.inkMuted}
               weight={600}
             >
-              Encrypted session management
+              {t("Encrypted session management")}
             </BoutiqueText>
             <BoutiqueText
               tag="li"
@@ -232,7 +235,7 @@ function Login() {
               color={BQ_COLORS.inkMuted}
               weight={600}
             >
-              Assigned branch auto-routing enabled
+              {t("Assigned branch auto-routing enabled")}
             </BoutiqueText>
           </BoutiqueStack>
         </BoutiqueBox>

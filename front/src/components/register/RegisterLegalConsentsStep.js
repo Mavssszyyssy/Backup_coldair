@@ -13,6 +13,7 @@ import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCheckbox from "../common/boutique/BoutiqueCheckbox";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { translateText } from "../../utils/customerI18n";
 
 const CONSENTS = [
   {
@@ -42,12 +43,14 @@ const CONSENTS = [
 ];
 
 export default function RegisterLegalConsentsStep({
+  currentLanguage = "English",
   formData,
   errors,
   onFieldChange,
   onNext,
   onBack,
 }) {
+  const t = (value) => translateText(value, currentLanguage);
   const [submitted, setSubmitted] = useState(false);
   const [activeConsent, setActiveConsent] = useState(null);
   const allChecked = CONSENTS.every((consent) => !!formData[consent.id]);
@@ -89,7 +92,7 @@ export default function RegisterLegalConsentsStep({
     >
       <BoutiqueBox margin="0 0 14px" className="bq-reg-header">
         <BoutiqueText variant="h2" className="bq-reg-title">
-          Terms & Privacy
+          {t("Terms & Privacy")}
         </BoutiqueText>
         <BoutiqueText
           variant="body"
@@ -97,7 +100,7 @@ export default function RegisterLegalConsentsStep({
           margin="7px 0 0"
           style={{ opacity: 0.8 }}
         >
-          Review each required document. Opening it marks that review complete automatically.
+          {t("Review each required document. Opening it marks that review complete automatically.")}
         </BoutiqueText>
       </BoutiqueBox>
 
@@ -112,7 +115,7 @@ export default function RegisterLegalConsentsStep({
         >
           <ShieldCheck size={18} weight="fill" aria-hidden="true" />
           <BoutiqueText size="13px" weight={700}>
-            Please accept {missingCount} remaining required {missingCount === 1 ? "policy" : "policies"}.
+            {t("Please accept")} {missingCount} {t("remaining required")} {t(missingCount === 1 ? "policy" : "policies")}.
           </BoutiqueText>
         </BoutiqueBox>
       ) : null}
@@ -125,8 +128,8 @@ export default function RegisterLegalConsentsStep({
               checked={!!formData[consent.id]}
               onChange={(value) => onFieldChange(consent.id, value)}
               error={
-                (submitted && !formData[consent.id] ? consent.error : "") ||
-                errors[consent.id]
+                t((submitted && !formData[consent.id] ? consent.error : "") ||
+                errors[consent.id])
               }
               showErrorMessage={false}
               aria-describedby={
@@ -136,16 +139,16 @@ export default function RegisterLegalConsentsStep({
               }
             >
               <BoutiqueText size="14px" weight={700}>
-                {consent.linkText}
+                {t(consent.linkText)}
               </BoutiqueText>
             </BoutiqueCheckbox>
             <button
               type="button"
               className="bq-reg-link"
-              aria-label={`Review ${consent.linkText}`}
+              aria-label={`${t("Review")} ${t(consent.linkText)}`}
               onClick={() => setActiveConsent(consent)}
             >
-              {formData[consent.id] ? "Reviewed" : "Review"}
+              {t(formData[consent.id] ? "Reviewed" : "Review")}
               <ArrowRight size={14} weight="bold" aria-hidden="true" />
             </button>
           </div>
@@ -163,15 +166,15 @@ export default function RegisterLegalConsentsStep({
             <header className="bq-reg-policy-header">
               <div>
                 <BoutiqueText size="12px" weight={800}>
-                  {activePolicy.category}
+                  {t(activePolicy.category)}
                 </BoutiqueText>
-                <h2 id="bq-reg-policy-title">{activePolicy.title}</h2>
-                <p>Effective and last updated: {LEGAL_LAST_UPDATED}</p>
+                <h2 id="bq-reg-policy-title">{t(activePolicy.title)}</h2>
+                <p>{t("Effective and last updated:")} {LEGAL_LAST_UPDATED}</p>
               </div>
               <button
                 type="button"
                 className="bq-reg-policy-close"
-                aria-label={`Close ${activePolicy.title}`}
+                aria-label={`${t("Close")} ${activePolicy.title}`}
                 onClick={finishPolicyReview}
               >
                 <X size={20} weight="bold" aria-hidden="true" />
@@ -213,7 +216,7 @@ export default function RegisterLegalConsentsStep({
 
             <footer className="bq-reg-policy-footer">
               <BoutiqueButton type="button" onClick={finishPolicyReview}>
-                Finish review
+                {t("Finish review")}
               </BoutiqueButton>
             </footer>
           </section>
@@ -228,10 +231,10 @@ export default function RegisterLegalConsentsStep({
         className="bq-reg-actions"
       >
         <BoutiqueButton type="button" variant="cancel" onClick={onBack}>
-          <X size={18} weight="bold" /> Cancel
+          <X size={18} weight="bold" /> {t("Cancel")}
         </BoutiqueButton>
         <BoutiqueButton type="submit">
-          Continue <ArrowRight size={18} weight="bold" />
+          {t("Continue")} <ArrowRight size={18} weight="bold" />
         </BoutiqueButton>
       </BoutiqueBox>
 

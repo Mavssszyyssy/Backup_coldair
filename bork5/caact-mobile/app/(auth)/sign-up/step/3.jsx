@@ -28,8 +28,10 @@ import { validateRequired } from "../../../../utils/authValidation";
 import { hasAllLegalConsents, LEGAL_VERSION } from "../../../../services/legalConsent";
 import { useRegistrationDraft } from "../../../../context/RegistrationDraftContext";
 import { useUserContext } from "../../../../context/UserContext";
+import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
 
 export default function SignUpStep3() {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   const { draft, updateDraft } = useRegistrationDraft();
   const { register } = useUserContext();
@@ -206,12 +208,12 @@ export default function SignUpStep3() {
       }));
 
       if (snapshot.plusCode) {
-        Alert.alert("Location Found", `Plus Code: ${snapshot.plusCode}`);
+        Alert.alert(t("Location Found"), `Plus Code: ${snapshot.plusCode}`);
       }
     } catch (error) {
       Alert.alert(
-        "Location Error",
-        error?.message || "Unable to get location.",
+        t("Location Error"),
+        t(error?.message || "Unable to get location."),
       );
     } finally {
       setLocationLoading(false);
@@ -263,7 +265,7 @@ export default function SignUpStep3() {
         ["thoroughfare", "Street address"],
       ].forEach(([field, label]) => {
         const error = validateRequired(form[field], label);
-        if (error) nextErrors[field] = error;
+        if (error) nextErrors[field] = t(error);
       });
     }
 
@@ -278,7 +280,7 @@ export default function SignUpStep3() {
   const submitRegistration = async (includeAddress) => {
     if (submittingAction || !validateAddress(includeAddress)) return;
     if (!hasAllLegalConsents(draft.legalConsent) || !draft.emailVerified || !draft.registrationVerificationToken || !draft.name_first || !draft.name_last || !draft.password) {
-      Alert.alert("Registration incomplete", "Please finish the earlier account steps before creating your account.");
+      Alert.alert(t("Registration incomplete"), t("Please finish the earlier account steps before creating your account."));
       router.replace("/sign-up/step/0");
       return;
     }
@@ -311,12 +313,12 @@ export default function SignUpStep3() {
         registrationVerificationToken: draft.registrationVerificationToken,
       });
       if (!result.success) {
-        Alert.alert("Registration Failed", result.error || "Unable to create account.");
+        Alert.alert(t("Registration Failed"), t(result.error || "Unable to create account."));
         return;
       }
       router.replace({ pathname: "/customer/oobe", params: { registered: "1" } });
     } catch (error) {
-      Alert.alert("Registration Failed", error?.message || "Unable to create account right now.");
+      Alert.alert(t("Registration Failed"), t(error?.message || "Unable to create account right now."));
     } finally {
       setSubmittingAction(null);
     }
@@ -334,8 +336,8 @@ export default function SignUpStep3() {
         minBottomPadding={148}
       >
         <PageHeader
-          title="Create Account"
-          subtitle="Step 4 of 4: Optional delivery address"
+          title={t("Create Account")}
+          subtitle={t("Step 4 of 4: Optional delivery address")}
           color={COLORS.primary}
           onBack={() => router.back()}
         />
@@ -343,83 +345,83 @@ export default function SignUpStep3() {
         <Card>
           <View style={{ marginBottom: SPACING.sm }}>
             <Text style={{ color: COLORS.textPrimary, fontSize: FONT.base, fontWeight: FONT.bold }}>
-              Delivery Address (Optional)
+              {t("Delivery Address (Optional)")}
             </Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
-              Add this now for faster checkout, or skip it and add it when you are ready to order.
+              {t("Add this now for faster checkout, or skip it and add it when you are ready to order.")}
             </Text>
           </View>
-          <BottomSheetSelect
-            label="Region (optional)"
+          <BottomSheetSelect translate={t}
+            label={t("Region (optional)")}
             value={form.region}
-            placeholder="Select region"
+            placeholder={t("Select region")}
             items={regions}
             loading={regionsLoading}
             error={errors.region}
-            emptyMessage="No regions found. Check your connection and try again."
+            emptyMessage={t("No regions found. Check your connection and try again.")}
             onSelect={handleRegionSelect}
           />
-          <BottomSheetSelect
-            label="Province (optional)"
+          <BottomSheetSelect translate={t}
+            label={t("Province (optional)")}
             value={form.province}
-            placeholder="Select province"
+            placeholder={t("Select province")}
             items={provinces}
             loading={provincesLoading}
             disabled={!form.regionCode}
             error={errors.province}
-            emptyMessage={form.regionCode ? "No provinces found." : "Select a region first."}
+            emptyMessage={t(form.regionCode ? "No provinces found." : "Select a region first.")}
             onSelect={handleProvinceSelect}
           />
-          <BottomSheetSelect
-            label="City or municipality (optional)"
+          <BottomSheetSelect translate={t}
+            label={t("City or municipality (optional)")}
             value={form.municipality}
-            placeholder="City or municipality"
+            placeholder={t("City or municipality")}
             items={localities}
             loading={localitiesLoading}
             disabled={!form.provinceCode}
             error={errors.municipality}
-            emptyMessage={form.provinceCode ? "No city or municipality matched your search." : "Select a province first."}
+            emptyMessage={t(form.provinceCode ? "No city or municipality matched your search." : "Select a province first.")}
             onSelect={handleMunicipalitySelect}
           />
-          <BottomSheetSelect
-            label="Barangay or district (optional)"
+          <BottomSheetSelect translate={t}
+            label={t("Barangay or district (optional)")}
             value={form.submunicipality}
-            placeholder="Barangay or district"
+            placeholder={t("Barangay or district")}
             items={barangays}
             loading={barangaysLoading}
             disabled={!form.municipalityCode}
             error={errors.submunicipality}
             emptyMessage={
-              form.municipalityCode
+              t(form.municipalityCode
                 ? "No barangays matched your search."
-                : "Select a city or municipality first."
+                : "Select a city or municipality first.")
             }
             onSelect={handleBarangaySelect}
           />
           <TextField
-            label="Street address (optional)"
+            label={t("Street address (optional)")}
             value={form.thoroughfare}
             onChangeText={(value) => updateField("thoroughfare", value)}
-            placeholder="Street name"
+            placeholder={t("Street name")}
             error={errors.thoroughfare}
           />
           <TextField
-            label="Property, Block, or Lot"
+            label={t("Property, Block, or Lot")}
             value={form.propertyBlockLot}
             onChangeText={(value) => updateField("propertyBlockLot", value)}
-            placeholder="Block 5, Lot 12"
+            placeholder={t("Block 5, Lot 12")}
           />
           <TextField
-            label="Apartment Unit"
+            label={t("Apartment Unit")}
             value={form.apartmentUnit}
             onChangeText={(value) => updateField("apartmentUnit", value)}
-            placeholder="Unit 101"
+            placeholder={t("Unit 101")}
           />
           <TextField
-            label="Landmark(s) (optional)"
+            label={t("Landmark(s) (optional)")}
             value={form.landmark}
             onChangeText={(value) => updateField("landmark", value)}
-            placeholder="Near the church"
+            placeholder={t("Near the church")}
           />
 
           {form.plusCode ? (
@@ -451,7 +453,7 @@ export default function SignUpStep3() {
                 </Text>
               </View>
               <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>
-                {form.locationAddress || "Location found"}
+                {form.locationAddress || t("Location found")}
               </Text>
               <TouchableOpacity
                 onPress={handleGetLocation}
@@ -476,13 +478,13 @@ export default function SignUpStep3() {
                     marginLeft: SPACING.xs,
                   }}
                 >
-                  Refresh Location
+                  {t("Refresh Location")}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
             <Button
-              title={locationLoading ? "Getting location..." : "Get Location"}
+              title={t(locationLoading ? "Getting location..." : "Get Location")}
               onPress={handleGetLocation}
               variant="secondary"
               loading={locationLoading}
@@ -503,14 +505,14 @@ export default function SignUpStep3() {
       <StickyActionBar>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <Button
-            title={submittingAction === "skip" ? "Creating account..." : "Skip for now"}
+            title={t(submittingAction === "skip" ? "Creating account..." : "Skip for now")}
             onPress={() => submitRegistration(false)}
             variant="secondary"
             disabled={Boolean(submittingAction)}
             style={{ flex: 1 }}
           />
           <Button
-            title={submittingAction === "save" ? "Creating account..." : "Save Location"}
+            title={t(submittingAction === "save" ? "Creating account..." : "Save Location")}
             onPress={() => submitRegistration(true)}
             variant="primary"
             disabled={Boolean(submittingAction)}

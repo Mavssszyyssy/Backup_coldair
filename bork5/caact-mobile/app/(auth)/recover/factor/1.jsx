@@ -1,7 +1,7 @@
 // app/(auth)/recover/factor/1.jsx
 // Password recovery — send an email code, then enter it with a new password.
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,6 +12,8 @@ import PasswordField from "../../../../components/ui/PasswordField";
 import TextField from "../../../../components/ui/TextField";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, SPACING } from "../../../../constants/theme";
+import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
+import { useOtpResendCooldown } from "../../../../hooks/useOtpResendCooldown";
 import {
   forgotPassword,
   resetPassword,
@@ -25,6 +27,7 @@ import {
 const SHARED_DEMO_EMAIL = "lanlords2025@gmail.com";
 
 export default function RecoverPasswordScreen() {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   const params = useLocalSearchParams();
   const rawIdentifier = params.identifier || params.email || "";
@@ -38,32 +41,41 @@ export default function RecoverPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
+  const requestInFlight = useRef(false);
+  const { secondsRemaining, useServerDeadline } = useOtpResendCooldown();
 
   const handleSendCode = async () => {
+    if (requestInFlight.current || (phase === "verify" && secondsRemaining > 0)) return;
     const selectedAccountLoginId = accountLoginId.trim().toLowerCase();
     if (usesSharedDemoEmail && !selectedAccountLoginId) {
       setErrors({ accountLoginId: "Enter the unique login ID for the demo account you want to recover." });
       return;
     }
+    requestInFlight.current = true;
     setLoading(true);
     try {
       const result = await forgotPassword(identifier, "email", selectedAccountLoginId);
       if (result.success) {
         setPhase("verify");
+        setVerificationCode("");
+        useServerDeadline(result.resendAvailableAt, 60);
       } else {
+        if (result.retryAfterSeconds) useServerDeadline("", result.retryAfterSeconds);
         Alert.alert(
-          "Unable to Send Code",
-          result.error || "The email verification code could not be sent. Please try again.",
+          t("Unable to Send Code"),
+          t(result.error || "The email verification code could not be sent. Please try again."),
         );
       }
     } catch {
-      Alert.alert("Error", "Unable to reach the server. Please try again.");
+      Alert.alert(t("Error"), t("Unable to reach the server. Please try again."));
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };
 
   const handleReset = async () => {
+    if (requestInFlight.current) return;
     const nextErrors = {};
     if (!verificationCode.trim() || !/^\d{6}$/.test(verificationCode.trim())) {
       nextErrors.verificationCode = "Enter the 6-digit reset code sent to your email.";
@@ -83,6 +95,7 @@ export default function RecoverPasswordScreen() {
       return;
     }
 
+    requestInFlight.current = true;
     setLoading(true);
     try {
       // Reset validates and consumes the email code in one request. Verifying it in
@@ -105,15 +118,16 @@ export default function RecoverPasswordScreen() {
               : "";
         if (field) setErrors({ [field]: message });
         Alert.alert(
-          "Reset Failed",
-          message,
+          t("Reset Failed"),
+          t(message),
         );
         return;
       }
       setPhase("done");
     } catch {
-      Alert.alert("Error", "Unable to reach the server. Please try again.");
+      Alert.alert(t("Error"), t("Unable to reach the server. Please try again."));
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };
@@ -129,13 +143,13 @@ export default function RecoverPasswordScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <PageHeader
-          title="Reset Password"
+          title={t("Reset Password")}
           subtitle={
             phase === "send"
-              ? "Request a reset code"
+              ? t("Request a reset code")
               : phase === "verify"
-                ? "Enter code and new password"
-                : "Password reset complete"
+                ? t("Enter code and new password")
+                : t("Password reset complete")
           }
           color={COLORS.primary}
           onBack={() => router.back()}
@@ -143,7 +157,7 @@ export default function RecoverPasswordScreen() {
 
         <Card>
           <TextField
-            label="Email or Account Login ID"
+            label={t("Email or Account Login ID")}
             value={identifier}
             onChangeText={() => {}}
             editable={false}
@@ -151,7 +165,7 @@ export default function RecoverPasswordScreen() {
           />
           {usesSharedDemoEmail && (
             <TextField
-              label="Demo Account Login ID"
+              label={t("Demo Account Login ID")}
               value={accountLoginId}
               onChangeText={(value) => {
                 setAccountLoginId(value);
@@ -160,15 +174,15 @@ export default function RecoverPasswordScreen() {
               placeholder="admin.cavite or tech.main"
               autoCapitalize="none"
               editable={phase === "send"}
-              error={errors.accountLoginId}
-              helperText="Required because this demo inbox belongs to six separate accounts."
+              error={t(errors.accountLoginId)}
+              helperText={t("Required because this demo inbox belongs to six separate accounts.")}
             />
           )}
         </Card>
 
         {phase === "send" && (
           <Button
-            title={loading ? "Sending..." : "Send Reset Code"}
+            title={t(loading ? "Sending..." : "Send Reset Code")}
             onPress={handleSendCode}
             variant="primary"
             loading={loading}
@@ -180,51 +194,51 @@ export default function RecoverPasswordScreen() {
           <>
             <Card>
               <TextField
-                label="Reset Code"
+                label={t("Reset Code")}
                 value={verificationCode}
                 onChangeText={(v) => {
                   setVerificationCode(v.replace(/\D/g, "").slice(0, 6));
                   setErrors((prev) => ({ ...prev, verificationCode: "" }));
                 }}
-                placeholder="6-digit code from your email"
+                placeholder={t("6-digit code from your email")}
                 keyboardType="number-pad"
                 maxLength={6}
-                error={errors.verificationCode}
+                error={t(errors.verificationCode)}
               />
             </Card>
             <Card>
               <PasswordField
-                label="New Password"
+                label={t("New Password")}
                 value={newPassword}
                 maxLength={25}
                 onChangeText={(v) => {
                   setNewPassword(v);
                   setErrors((prev) => ({ ...prev, newPassword: "" }));
                 }}
-                error={errors.newPassword}
+                error={t(errors.newPassword)}
               />
               <PasswordField
-                label="Confirm New Password"
+                label={t("Confirm New Password")}
                 value={confirmPassword}
                 maxLength={25}
                 onChangeText={(v) => {
                   setConfirmPassword(v);
                   setErrors((prev) => ({ ...prev, confirmPassword: "" }));
                 }}
-                error={errors.confirmPassword}
+                error={t(errors.confirmPassword)}
               />
             </Card>
             <Button
-              title={loading ? "Resetting..." : "Reset Password"}
+              title={t(loading ? "Resetting..." : "Reset Password")}
               onPress={handleReset}
               variant="primary"
               loading={loading}
               disabled={loading}
             />
             <Button
-              title={loading ? "Sending…" : "Resend Code"}
+              title={loading ? t("Sending…") : secondsRemaining > 0 ? `${t("Resend Code")} (${secondsRemaining}s)` : t("Resend Code")}
               onPress={handleSendCode}
-              disabled={loading}
+              disabled={loading || secondsRemaining > 0}
               loading={loading}
               variant="secondary"
               size="sm"
@@ -248,18 +262,17 @@ export default function RecoverPasswordScreen() {
                 marginBottom: SPACING.xs,
               }}
             >
-              Password Reset
+              {t("Password Reset")}
             </Text>
             <Text style={{ color: COLORS.success }}>
-              Your password has been updated. You can now sign in with your new
-              password.
+              {t("Your password has been updated. You can now sign in with your new password.")}
             </Text>
           </Card>
         )}
 
         {phase === "done" && (
           <Button
-            title="Go to Sign In"
+            title={t("Go to Sign In")}
             onPress={() => router.replace("/sign-in")}
             variant="primary"
             style={{ marginTop: SPACING.sm }}
@@ -267,7 +280,7 @@ export default function RecoverPasswordScreen() {
         )}
 
         <Button
-          title="Back to Login"
+          title={t("Back to Login")}
           onPress={() => router.push("/sign-in")}
           variant="ghost"
           size="sm"

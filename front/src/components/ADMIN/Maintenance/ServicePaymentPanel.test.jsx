@@ -5,6 +5,7 @@ import ServicePaymentPanel from './ServicePaymentPanel';
 import GlobalDialog from '../../common/GlobalDialog';
 import { apiRequest } from '../../../config/api';
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: 'English' }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it('does not invent a price and saves the explicit admin quote', async () => {
   const onUpdated = vi.fn();

@@ -1,3 +1,5 @@
+import { useUser } from "../../context/UserContext";
+import { translateText } from "../../utils/customerI18n";
 // import icons from '../common/icons';
 const icons = {}; // BOUTIQUE MIGRATION STUB
 
@@ -11,15 +13,17 @@ function DeliveryAddress({
   onSetDefaultAddress,
   isBusy,
 }) {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const formatAddressOption = (address) => {
     const tag =
       address.label?.trim() ||
       (address.type === "home"
-        ? "Home"
+        ? t("Home")
         : address.type === "office"
-          ? "Office"
-          : "Address");
-    const city = address.city?.trim() || "No city";
+          ? t("Office")
+          : t("Address"));
+    const city = address.city?.trim() || t("No city");
     return `${tag} - ${city}`;
   };
 
@@ -33,21 +37,21 @@ function DeliveryAddress({
   return (
     <div className="checkout-section">
       <div className="section-header">
-        <h2>Delivery Address</h2>
+        <h2>{t("Delivery Address")}</h2>
         <button type="button" className="add-btn" onClick={onAddAddress}>
-          + Add New Address
+          + {t("Add New Address")}
         </button>
       </div>
       {addresses.length === 0 && (
         <div style={{ textAlign: "center", padding: "30px", color: "#999" }}>
-          No saved addresses. Click &quot;Add New Address&quot; to continue.
+          {t('No saved addresses. Click "Add New Address" to continue.')}
         </div>
       )}
 
       {addresses.length > 0 && (
         <>
           <div className="address-select-wrap">
-            <label htmlFor="saved-address-select">Saved Address</label>
+            <label htmlFor="saved-address-select">{t("Saved Address")}</label>
             <select
               id="saved-address-select"
               value={selectedValue}
@@ -71,7 +75,7 @@ function DeliveryAddress({
                   {formatAddressOption(selectedAddress)}
                 </span>
                 {selectedAddress.isDefault && (
-                  <span className="default-tag">Default</span>
+                  <span className="default-tag">{t("Default")}</span>
                 )}
               </div>
               <div className="address-details">
@@ -96,7 +100,7 @@ function DeliveryAddress({
                     onClick={() => onSetDefaultAddress(selectedAddress)}
                     disabled={isBusy}
                   >
-                    Set Default
+                    {t("Set Default")}
                   </button>
                 )}
                 <button
@@ -105,7 +109,7 @@ function DeliveryAddress({
                   onClick={() => onEditAddress(selectedAddress)}
                   disabled={isBusy}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
                 <button
                   type="button"
@@ -113,7 +117,7 @@ function DeliveryAddress({
                   onClick={() => onDeleteAddress(selectedAddress)}
                   disabled={isBusy}
                 >
-                  Delete
+                  {t("Delete")}
                 </button>
               </div>
             </div>

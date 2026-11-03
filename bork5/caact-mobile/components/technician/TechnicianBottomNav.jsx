@@ -5,15 +5,17 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const ITEMS = [
-  { href: "/technician/dashboard", label: "Today", icon: "speedometer-sharp" },
+  { href: "/technician/dashboard", label: "Dashboard", icon: "speedometer-sharp" },
   { href: "/technician/tasks", label: "Work Orders", icon: "clipboard-sharp" },
   { href: "/technician/notifications", label: "Alerts", icon: "notifications-sharp" },
-  { href: "/technician/profile", label: "Profile", icon: "person-sharp" },
+  { href: "/technician/profile", label: "Account", icon: "person-sharp" },
 ];
 
 function NavItem({ item }) {
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -24,13 +26,14 @@ function NavItem({ item }) {
       onPress={() => router.replace(item.href)}
       activeOpacity={0.78}
       accessibilityRole="tab"
-      accessibilityLabel={item.label}
+      accessibilityLabel={t(item.label)}
       accessibilityState={{ selected: active }}
       style={{
         flex: 1,
+        minWidth: 0,
         alignItems: "center",
         justifyContent: "center",
-        minHeight: 58,
+        minHeight: 64,
       }}
     >
       <View
@@ -58,9 +61,13 @@ function NavItem({ item }) {
           fontSize: 11,
           fontWeight: active ? FONT.black : FONT.bold,
           marginTop: 3,
+          textAlign: "center",
+          width: "100%",
+          lineHeight: 14,
         }}
+        numberOfLines={2}
       >
-        {item.label}
+        {t(item.label)}
       </Text>
     </TouchableOpacity>
   );

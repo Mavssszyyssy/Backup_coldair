@@ -57,7 +57,7 @@ export default function BoutiqueSelect({
           font-family: ${BQ_FONTS.heading};
           font-size: 13px;
           font-weight: ${BQ_WEIGHTS.semibold};
-          background: white;
+          background: ${BQ_COLORS.surface};
           box-shadow: ${BQ_SHADOWS.soft};
           cursor: pointer;
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);

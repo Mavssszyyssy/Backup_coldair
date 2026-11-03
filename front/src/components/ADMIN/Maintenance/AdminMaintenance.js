@@ -4,12 +4,17 @@ import ServiceRequests from './ServiceRequests';
 import RequestDetails from './RequestDetails';
 import WarrantyClaims from './WarrantyClaims';
 import { apiRequest } from '../../../config/api';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
+import { serviceRequestSummary } from '../../../domain/serviceRequestSummary';
 import '../adminShared.css';
 import './styles.css';
 
 const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
 
 const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [selected, setSelected] = useState(null);
   const [requests, setRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -93,13 +98,7 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
     });
   }, [requests, search, statusFilter, technicianFilter]);
 
-  const summary = useMemo(() => ({
-    total: requests.length,
-    unassigned: requests.filter((request) => !request.assignedTechnicianId && !['Completed', 'Cancelled'].includes(request.status)).length,
-    active: requests.filter((request) => ['Assigned', 'In Progress'].includes(request.status)).length,
-    onHold: requests.filter((request) => request.status === 'On Hold').length,
-    completed: requests.filter((request) => request.status === 'Completed').length,
-  }), [requests]);
+  const summary = useMemo(() => serviceRequestSummary(requests), [requests]);
 
   const resetFilters = () => {
     setSearch('');
@@ -139,27 +138,30 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   };
 
   return (
-    <AdminLayout title="Maintenance Operations" subtitle="Review service requests, assign technicians, and monitor proof of work" embedded={embedded}>
+    <AdminLayout title={t("Maintenance Operations")} subtitle={t("Review service requests, assign technicians, and monitor proof of work")} embedded={embedded}>
       <section className="maintenance-page">
-        <div className="maintenance-overview" aria-label="Maintenance summary">
+        <div className="maintenance-overview" aria-label={t("Maintenance summary")}>
           <div className="maintenance-summary-card">
-            <span>All requests</span><strong>{summary.total}</strong><small>Recorded service requests</small>
+            <span>{t("All requests")}</span><strong>{summary.total}</strong><small>{t("Recorded service requests")}</small>
           </div>
           <div className="maintenance-summary-card maintenance-summary-card--attention">
-            <span>Needs assignment</span><strong>{summary.unassigned}</strong><small>Waiting for a technician</small>
+            <span>{t("Needs assignment")}</span><strong>{summary.unassigned}</strong><small>{t("Waiting for a technician")}</small>
           </div>
           <div className="maintenance-summary-card maintenance-summary-card--active">
-            <span>In progress</span><strong>{summary.active}</strong><small>Technician work underway</small>
+            <span>{t("In progress")}</span><strong>{summary.active}</strong><small>{t("Technician work underway")}</small>
           </div>
           <div className="maintenance-summary-card maintenance-summary-card--hold">
-            <span>On hold</span><strong>{summary.onHold}</strong><small>Admin follow-up needed</small>
+            <span>{t("On hold")}</span><strong>{summary.onHold}</strong><small>{t("Admin follow-up needed")}</small>
           </div>
           <div className="maintenance-summary-card maintenance-summary-card--complete">
-            <span>Completed</span><strong>{summary.completed}</strong><small>Work and proof finalized</small>
+            <span>{t("Completed")}</span><strong>{summary.completed}</strong><small>{t("Work and proof finalized")}</small>
+          </div>
+          <div className="maintenance-summary-card maintenance-summary-card--cancelled">
+            <span>{t("Cancelled work")}</span><strong>{summary.cancelled}</strong><small>{t("Cancelled service requests")}</small>
           </div>
         </div>
 
-        {error ? <div className="maintenance-alert" role="alert">{error}<button type="button" onClick={load}>Try again</button></div> : null}
+        {error ? <div className="maintenance-alert" role="alert">{t(error)}<button type="button" onClick={load}>{t("Try again")}</button></div> : null}
 
         <WarrantyClaims claims={warrantyClaims} busyClaimId={busyClaimId} onReview={openClaimReview} />
 
@@ -168,18 +170,18 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
             if (event.key === 'Escape' && !busyClaimId) setClaimDecision(null);
           }}>
             <div className="maintenance-decision-heading">
-              <div><p className="maintenance-eyebrow">Warranty claim</p><h2 id="maintenance-decision-title">{claimDecision.status === 'approved' ? 'Approve repair' : claimDecision.status === 'rejected' ? 'Reject claim' : 'Mark for review'}</h2></div>
-              <button type="button" className="maintenance-decision-close" aria-label="Close claim decision" disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>×</button>
+              <div><p className="maintenance-eyebrow">{t("Warranty claim")}</p><h2 id="maintenance-decision-title">{t(claimDecision.status === 'approved' ? 'Approve repair' : claimDecision.status === 'rejected' ? 'Reject claim' : 'Mark for review')}</h2></div>
+              <button type="button" className="maintenance-decision-close" aria-label={t("Close claim decision")} disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>×</button>
             </div>
-            <p className="maintenance-decision-copy">{claimDecision.claim.unitName || 'AC unit'} · {claimDecision.claim.claimId}</p>
-            {claimDecision.coveredComponent ? <p className="maintenance-decision-component">Covered component: <strong>{claimDecision.coveredComponent}</strong></p> : null}
+            <p className="maintenance-decision-copy">{claimDecision.claim.unitName || t('AC unit')} · {claimDecision.claim.claimId}</p>
+            {claimDecision.coveredComponent ? <p className="maintenance-decision-component">{t("Covered component:")} <strong>{claimDecision.coveredComponent}</strong></p> : null}
             <form onSubmit={reviewWarrantyClaim}>
-              <label htmlFor="maintenance-decision-note">Decision note <span>(optional)</span></label>
-              <textarea id="maintenance-decision-note" autoFocus value={decisionNote} maxLength={500} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Add context for the claim record" disabled={Boolean(busyClaimId)} />
-              {decisionError ? <p className="maintenance-decision-error" role="alert">{decisionError}</p> : null}
+              <label htmlFor="maintenance-decision-note">{t("Decision note")} <span>{t("(optional)")}</span></label>
+              <textarea id="maintenance-decision-note" autoFocus value={decisionNote} maxLength={500} onChange={(event) => setDecisionNote(event.target.value)} placeholder={t("Add context for the claim record")} disabled={Boolean(busyClaimId)} />
+              {decisionError ? <p className="maintenance-decision-error" role="alert">{t(decisionError)}</p> : null}
               <div className="maintenance-decision-actions">
-                <button type="button" className="maintenance-button maintenance-button--secondary" disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>Cancel</button>
-                <button type="submit" className="maintenance-button" disabled={Boolean(busyClaimId)}>{busyClaimId ? 'Saving…' : 'Save decision'}</button>
+                <button type="button" className="maintenance-button maintenance-button--secondary" disabled={Boolean(busyClaimId)} onClick={() => setClaimDecision(null)}>{t("Cancel")}</button>
+                <button type="submit" className="maintenance-button" disabled={Boolean(busyClaimId)}>{t(busyClaimId ? 'Saving…' : 'Save decision')}</button>
               </div>
             </form>
           </section>
@@ -188,18 +190,18 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
         <div className="maintenance-workspace">
           <div className="maintenance-queue-panel">
             <div className="maintenance-panel-heading">
-              <div><p className="maintenance-eyebrow">Service queue</p><h2>Requests</h2></div>
+              <div><p className="maintenance-eyebrow">{t("Service queue")}</p><h2>{t("Requests")}</h2></div>
               <button type="button" className="maintenance-button maintenance-button--secondary" onClick={load} disabled={loading}>
-                {loading ? 'Refreshing…' : 'Refresh'}
+                {t(loading ? 'Refreshing…' : 'Refresh')}
               </button>
             </div>
             <div className="maintenance-filters">
-              <label className="maintenance-search-field"><span>Search</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Customer, unit, issue, address" /></label>
-              <label><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-              <label><span>Technician</span><select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">All technicians</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</select></label>
-              <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>Clear filters</button>
+              <label className="maintenance-search-field"><span>{t("Search")}</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Customer, unit, issue, address")} /></label>
+              <label><span>{t("Status")}</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(status)}</option>)}</select></label>
+              <label><span>{t("Technician")}</span><select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</select></label>
+              <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>{t("Clear filters")}</button>
             </div>
-            {loading ? <div className="maintenance-loading">Loading service requests…</div> : <ServiceRequests requests={filteredRequests} selectedId={selected?.id} onSelect={setSelected} />}
+            {loading ? <div className="maintenance-loading">{t("Loading service requests…")}</div> : <ServiceRequests requests={filteredRequests} selectedId={selected?.id} onSelect={setSelected} />}
           </div>
           <RequestDetails request={selected} onUpdated={handleUpdated} />
         </div>

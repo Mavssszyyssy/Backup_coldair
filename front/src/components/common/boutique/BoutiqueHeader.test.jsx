@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import BoutiqueHeader from "./BoutiqueHeader";
 
+let currentLanguage = "English";
+vi.mock("../../../context/UserContext", () => ({ useUser: () => ({ currentLanguage }) }));
+
+beforeEach(() => { currentLanguage = "English"; });
+
 test("customer header hides a cart control when the page has no cart action", () => {
   render(<BoutiqueHeader title="Settings" onLeftAction={() => {}} />);
   expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument();
@@ -27,4 +32,15 @@ test("customer header names its menu and alert controls", () => {
   );
   expect(screen.getByRole("button", { name: "Open menu" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Open alerts" })).toBeInTheDocument();
+});
+
+test("customer header switches action labels in both directions", () => {
+  currentLanguage = "Filipino";
+  const view = render(<BoutiqueHeader title="Shop AC Units" onLeftAction={() => {}} onCartClick={() => {}} />);
+  expect(screen.getByRole("button", { name: "Bumalik" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Buksan ang cart" })).toBeInTheDocument();
+  view.unmount();
+  currentLanguage = "English";
+  render(<BoutiqueHeader title="Shop AC Units" onLeftAction={() => {}} onCartClick={() => {}} />);
+  expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument();
 });

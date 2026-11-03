@@ -6,9 +6,11 @@ import TechButton from "../../../../../../components/technician/TechButton";
 import Card from "../../../../../../components/ui/Card";
 import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
 import { deleteServiceLog } from "../../../../../../services/unitServiceLogStorage";
+import { useInterfaceLanguage } from "../../../../../../hooks/useInterfaceLanguage";
 
 export default function LogDeleteScreen() {
   const router = useRouter();
+  const { t } = useInterfaceLanguage();
   const { id: taskId, logId } = useLocalSearchParams();
   const [deleting, setDeleting] = useState(false);
 
@@ -18,7 +20,7 @@ export default function LogDeleteScreen() {
       await deleteServiceLog(taskId, logId);
       router.replace(`/technician/task/${taskId}/unit/log/select`);
     } catch (error) {
-      Alert.alert("Delete Failed", error?.message || "Unable to delete this service note.");
+      Alert.alert(t("Delete Failed"), t(error?.message || "Unable to delete this service note."));
       setDeleting(false);
     }
   };
@@ -43,20 +45,20 @@ export default function LogDeleteScreen() {
             marginBottom: SPACING.xs,
           }}
         >
-          Delete Service Note
+          {t("Delete Service Note")}
         </Text>
         <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>
-          Delete this service note? This action cannot be undone.
+          {t("Delete this service note? This action cannot be undone.")}
         </Text>
         <TechButton
-          title={deleting ? "Deleting..." : "Delete"}
+          title={deleting ? t("Deleting...") : t("Delete")}
           variant="danger"
           onPress={handleDelete}
           loading={deleting}
           disabled={deleting}
         />
         <TechButton
-          title="Cancel"
+          title={t("Cancel")}
           variant="secondary"
           onPress={() => router.back()}
           disabled={deleting}

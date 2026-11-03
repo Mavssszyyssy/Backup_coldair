@@ -5,6 +5,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { formatUnitHorsepower, formatUnitInstallationDate, formatUnitPurchaseDate } from "../../services/unitDisplayService";
 import CustomerUnitImage from "./CustomerUnitImage";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 export default function CustomerUnitRow({
   unit,
@@ -14,10 +15,11 @@ export default function CustomerUnitRow({
   position,
   isNewest = false,
 }) {
+  const { t } = useInterfaceLanguage();
   const [expanded, setExpanded] = useState(false);
   const modelLabel = [unit?.brand, unit?.productSku || unit?.model]
     .filter(Boolean)
-    .join(" · ") || "Model not recorded";
+    .join(" · ") || t("Model not recorded");
 
   return (
     <View style={{ paddingVertical: SPACING.sm, minHeight: 104, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
@@ -25,16 +27,16 @@ export default function CustomerUnitRow({
         onPress={onPress}
         activeOpacity={0.72}
         accessibilityRole="button"
-        accessibilityLabel={`View details for ${unit?.unitName || "AC unit"}`}
+        accessibilityLabel={`${t("View details for")} ${unit?.unitName || t("AC unit")}`}
         style={{ minHeight: 86 }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs, marginBottom: SPACING.sm }}>
           <View style={{ backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 4 }}>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.black }}>AC UNIT {position}</Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.black }}>{t("AC UNIT")} {position}</Text>
           </View>
           {isNewest ? (
             <View style={{ backgroundColor: COLORS.successLight, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 4 }}>
-              <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: FONT.black }}>NEWEST PURCHASE</Text>
+              <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: FONT.black }}>{t("NEWEST PURCHASE")}</Text>
             </View>
           ) : null}
         </View>
@@ -42,50 +44,50 @@ export default function CustomerUnitRow({
           <CustomerUnitImage unit={unit} size={68} style={{ marginRight: SPACING.sm }} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }} numberOfLines={2}>
-              {unit?.unitName || "Unnamed AC Unit"}
+              {unit?.unitName || t("Unnamed AC Unit")}
             </Text>
             <Text style={{ color: COLORS.primary, fontSize: FONT.sm, fontWeight: FONT.bold, marginTop: 3 }} numberOfLines={1}>
               {modelLabel}
             </Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} numberOfLines={1}>
-              Horsepower: {formatUnitHorsepower(unit)}
+              {t("Horsepower")}: {formatUnitHorsepower(unit)}
             </Text>
           </View>
           <Ionicons name="chevron-forward-sharp" size={19} color={COLORS.textMuted} />
         </View>
       </TouchableOpacity>
-      {expanded ? <View accessibilityLabel="Additional AC unit details" style={{ paddingTop: SPACING.xs }}>
+      {expanded ? <View accessibilityLabel={t("Additional AC unit details")} style={{ paddingTop: SPACING.xs }}>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
-          Serial: {unit?.serialNumber || "Not recorded"}
+          {t("Serial")}: {unit?.serialNumber || t("Not recorded")}
         </Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }} selectable>
-          Order: {unit?.orderCode || "Not recorded"}
+          {t("Order")}: {unit?.orderCode || t("Not recorded")}
         </Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
-          Ordered: {formatUnitPurchaseDate(unit)} · Installed: {formatUnitInstallationDate(unit)}
+          {t("Ordered")}: {formatUnitPurchaseDate(unit)} · {t("Installed")}: {formatUnitInstallationDate(unit)}
         </Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 3 }}>
-          {[unit?.serviceBranch ? `${unit.serviceBranch} Branch` : "", unit?.placementArea].filter(Boolean).join(" · ") || "Branch and location not recorded"}
+          {[unit?.serviceBranch ? `${unit.serviceBranch} ${t("Branch")}` : "", unit?.placementArea].filter(Boolean).join(" · ") || t("Branch and location not recorded")}
         </Text>
         {recommendation ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginTop: SPACING.sm, padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt }}>
             <Ionicons name="calendar-sharp" size={17} color={maintenance?.color || COLORS.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.bold }}>RECOMMENDED SERVICE</Text>
-              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.sm, fontWeight: FONT.bold }} numberOfLines={1}>{maintenance?.date || maintenance?.label || "Not scheduled"}</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: FONT.bold }}>{t("RECOMMENDED SERVICE")}</Text>
+              <Text style={{ color: COLORS.textPrimary, fontSize: FONT.sm, fontWeight: FONT.bold }} numberOfLines={2}>{maintenance?.date || t(maintenance?.label || "Not scheduled")}</Text>
             </View>
-            <Text style={{ color: maintenance?.color || COLORS.primary, fontWeight: FONT.black, fontSize: FONT.sm }}>{maintenance?.urgency || "Scheduled"}</Text>
+            <Text style={{ color: maintenance?.color || COLORS.primary, fontWeight: FONT.black, fontSize: FONT.sm }}>{t(maintenance?.urgency || "Scheduled")}</Text>
           </View>
         ) : null}
       </View> : null}
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={expanded ? "View less AC unit information" : "View more AC unit information"}
+        accessibilityLabel={t(expanded ? "View less AC unit information" : "View more AC unit information")}
         accessibilityState={{ expanded }}
         onPress={() => setExpanded((current) => !current)}
         style={{ minHeight: 44, marginTop: SPACING.xs, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: SPACING.xs }}
       >
-        <Text style={{ color: COLORS.primary, fontWeight: FONT.black }}>{expanded ? "View Less" : "View More"}</Text>
+        <Text style={{ color: COLORS.primary, fontWeight: FONT.black }}>{t(expanded ? "View Less" : "View More")}</Text>
         <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={17} color={COLORS.primary} />
       </TouchableOpacity>
     </View>

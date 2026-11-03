@@ -10,15 +10,17 @@ import { getCustomerServiceHistory } from './customerHistoryService';
 import { notifyNotificationsChanged } from './notificationEvents';
 
 let mockParams;
-jest.mock('expo-router', () => ({ useRouter: () => ({push:jest.fn()}), useLocalSearchParams: () => mockParams, useFocusEffect: cb => require('react').useEffect(cb, [cb]) }));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ useRouter: () => ({push:mockPush}), useLocalSearchParams: () => mockParams, useFocusEffect: cb => require('react').useEffect(cb, [cb]) }));
 jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: {id:'customer',name:'Customer',phone:'09123456789',addresses:[{isDefault:true,phone:'09123456789',street:'Test address',city:'Bacoor'}]} }) }));
 jest.mock('./api', () => ({getStoredToken:jest.fn(async () => 'token'),fetchServiceCatalog:jest.fn(),createWarrantyClaim:jest.fn()}));
 jest.mock('./unitStorage', () => ({getUnitsByUser:jest.fn(),cacheUnitUpdate:jest.fn(async () => {})}));
 jest.mock('./serviceRequestStorage', () => ({createServiceRequest:jest.fn()}));
 jest.mock('./customerHistoryService', () => ({getCustomerServiceHistory:jest.fn(async () => ({requests:[]}))}));
+jest.mock('./liveRefresh', () => ({startLiveRefresh: (load) => { void load({background:false,isCurrent:()=>true}); return () => {}; }}));
 jest.mock('../components/customer/CustomerScreen', () => ({children,stickyAction}) => {const {View}=require('react-native');return <View>{children}{stickyAction}</View>;});
 jest.mock('../components/ui/BottomSheetSelect', () => ({label,value,items,getLabel,onSelect}) => {const {View,Text,Pressable}=require('react-native');return <View><Text testID={label}>{value}</Text>{items.map((item,i)=><Pressable key={i} accessibilityLabel={`${label}: ${getLabel(item)}`} onPress={()=>onSelect(item)}><Text>{getLabel(item)}</Text></Pressable>)}</View>;});
-jest.mock('../components/ui/CalendarDatePicker', () => ({__esModule:true,default:({onChange})=>{const {Pressable,Text}=require('react-native');return <Pressable onPress={()=>onChange('2099-01-01')}><Text>Choose test date</Text></Pressable>;},getTodayDateKey:()=> '2026-09-10',isPastCalendarDate:()=>false}));
+jest.mock('../components/ui/CalendarDatePicker', () => ({__esModule:true,default:({onChange})=>{const {Pressable,Text}=require('react-native');return <Pressable onPress={()=>onChange(require('./serviceBookingDate').addCalendarDays(require('./serviceBookingDate').getManilaDateKey(), 1))}><Text>Choose test date</Text></Pressable>;},getTodayDateKey:()=> '2026-09-10',isPastCalendarDate:()=>false}));
 
 const units = [{id:'ac1',unitName:'First AC',serialNumber:'S1',warrantyStatus:'active',warranty:{claims:[]}}, {id:'ac2',unitName:'Second AC',serialNumber:'S2',warrantyStatus:'expired',warranty:{claims:[]}}];
 const offerings = [{id:'delivery',title:'Delivery'}, {id:'installation',title:'Installation'}, {id:'maintenance',title:'Maintenance',pricing:{basePrice:800,label:'PHP 800.00'}}, {id:'cleaning',title:'Cleaning',pricing:{basePrice:1500,label:'PHP 1,500.00'}}, {id:'repair',title:'Repair'}];
@@ -99,7 +101,7 @@ test.each([['maintenance','Regular Cleaning'],['cleaning','Deep Cleaning']])('%s
  await fireEvent.changeText(screen.getByLabelText('Service Concern'),'Please clean my AC');
  await fireEvent.press(screen.getByText('Submit Service Request'));
  await screen.findByText('Request Already Open');
- expect(createServiceRequest).toHaveBeenCalledWith(expect.objectContaining({unitId:'ac1',serviceId:id,serviceType:title,issueType:title,preferredDate:'2099-01-01'}));
+ expect(createServiceRequest).toHaveBeenCalledWith(expect.objectContaining({unitId:'ac1',serviceId:id,serviceType:title,issueType:title,preferredDate:require('./serviceBookingDate').addCalendarDays(require('./serviceBookingDate').getManilaDateKey(), 1)}));
  expect(createWarrantyClaim).not.toHaveBeenCalled();
 });
 
@@ -125,4 +127,33 @@ test('the AC dropdown changes the exact unit used by a service request',async()=
  await fireEvent.changeText(screen.getByLabelText('Service Concern'),'Please inspect this unit');
  await fireEvent.press(screen.getByText('Submit Service Request'));
  expect(createServiceRequest).toHaveBeenCalledWith(expect.objectContaining({unitId:'ac2'}));
+});
+
+test('concern counter and backend-facing length guard prevent oversized submissions', async () => {
+  mockParams = { unitId: 'ac1' };
+  await render(<CustomerServicesScreen />);
+  await screen.findByText('Submit Service Request');
+  await fireEvent.press(screen.getByText('Choose test date'));
+  await fireEvent.changeText(screen.getByLabelText('Service Concern'), 'x'.repeat(501));
+  expect(screen.getByText('501/500')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Submit Service Request'));
+  expect(createServiceRequest).not.toHaveBeenCalled();
+  expect(Alert.alert).toHaveBeenCalledWith('Required', 'Service concern must be 500 characters or fewer.');
+});
+
+test('successful request collapses the form and history route remains available after returning', async () => {
+  mockParams = { unitId: 'ac1' };
+  const first = await render(<CustomerServicesScreen />);
+  await screen.findByText('Submit Service Request');
+  await fireEvent.press(screen.getByText('Choose test date'));
+  await fireEvent.changeText(screen.getByLabelText('Service Concern'), 'x'.repeat(480));
+  await fireEvent.press(screen.getByText('Submit Service Request'));
+  await screen.findByText('Request Already Open');
+  expect(screen.queryByLabelText('Service Concern')).toBeNull();
+  first.unmount();
+  getCustomerServiceHistory.mockResolvedValue({ requests: [{ id: 'request', unitId: 'ac1', status: 'Submitted', issueDescription: 'x'.repeat(480) }] });
+  await render(<CustomerServicesScreen />);
+  await screen.findByText('View Request Details');
+  await fireEvent.press(screen.getByText('View Request Details'));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: '/customer/units/[id]', params: { id: 'ac1', page: 'service' } });
 });

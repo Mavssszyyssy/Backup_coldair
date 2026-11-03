@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
+import { formatBusinessDate } from '../../../utils/dateTime';
 import './IncomingRestockModal.css';
 
 const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
@@ -31,8 +32,8 @@ const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
   };
 
   const formatDateRange = (start, end) => {
-    const s = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const e = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const s = formatBusinessDate(start);
+    const e = formatBusinessDate(end);
     return `${s} - ${e}`;
   };
 

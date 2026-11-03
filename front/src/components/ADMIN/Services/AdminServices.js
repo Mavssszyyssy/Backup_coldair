@@ -5,6 +5,8 @@ import AdminMaintenance from '../Maintenance/AdminMaintenance';
 import AdminOrders from '../Orders/AdminOrders';
 import AdminTechnician from '../Technicians/AdminTechnician';
 import AdminContactMessages from '../ContactMessages/AdminContactMessages';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import '../Inventory/styles.css';
 
 const TABS = [
@@ -15,6 +17,8 @@ const TABS = [
 ];
 
 const AdminServices = () => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const recordId = searchParams.get('recordId') || '';
@@ -27,11 +31,11 @@ const AdminServices = () => {
   };
 
   return (
-    <AdminLayout title="Services" subtitle="Manage customer orders, service requests, customer messages, and field technicians in one operational workspace.">
-      <div className="module-tabs" role="tablist" aria-label="Service management sections">
+    <AdminLayout title={t("Services")} subtitle={t("Manage customer orders, service requests, customer messages, and field technicians in one operational workspace.")}>
+      <div className="module-tabs" role="tablist" aria-label={t("Service management sections")}>
         {TABS.map((tab) => (
           <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>

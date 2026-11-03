@@ -6,6 +6,8 @@ import AdminTechnician from '../../ADMIN/Technicians/AdminTechnician';
 import AdminContactMessages from '../../ADMIN/ContactMessages/AdminContactMessages';
 import '../../ADMIN/Inventory/styles.css';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 
 const TABS = [
   { id: 'orders', label: 'Customer Orders' },
@@ -15,6 +17,8 @@ const TABS = [
 ];
 
 const SuperAdminServices = () => {
+  const { currentLanguage } = useUser();
+  const t = (value) => translateText(value, currentLanguage);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const recordId = searchParams.get('recordId') || '';
@@ -28,11 +32,11 @@ const SuperAdminServices = () => {
 
   return (
     <SuperAdminLayout
-      title="Services"
-      subtitle="Monitor customer orders, service requests, customer messages, and technician operations in one executive workspace."
+      title={t('Services')}
+      subtitle={t('Monitor customer orders, service requests, customer messages, and technician operations in one executive workspace.')}
       mainClassName="super-services-layout-main"
     >
-      <div className="module-tabs" role="tablist" aria-label="Super Admin service management sections">
+      <div className="module-tabs" role="tablist" aria-label={t('Super Admin service management sections')}>
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -42,7 +46,7 @@ const SuperAdminServices = () => {
             className={activeTab === tab.id ? 'active' : ''}
             onClick={() => selectTab(tab.id)}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>

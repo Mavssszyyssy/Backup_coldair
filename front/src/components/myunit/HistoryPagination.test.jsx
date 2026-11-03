@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import HistoryPagination from "./HistoryPagination";
 
+vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: "English" }) }));
+
 test("pagination controls do not trigger a clickable parent", () => {
   const onPageChange = vi.fn();
   const onParentClick = vi.fn();

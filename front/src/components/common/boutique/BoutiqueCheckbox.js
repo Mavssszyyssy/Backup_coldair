@@ -50,7 +50,7 @@ export default function BoutiqueCheckbox({
         dangerouslySetInnerHTML={{
           __html: `
         .bq-checkbox-field { width: 100%; }
-        .bq-checkbox-field.has-error .bq-checkbox-container { border-color: ${BQ_COLORS.danger}; background: #fff7f7; }
+        .bq-checkbox-field.has-error .bq-checkbox-container { border-color: ${BQ_COLORS.danger}; background: ${BQ_COLORS.surfaceAlt}; }
         .bq-checkbox-error { display: block; margin: 6px 16px 0 52px; color: ${BQ_COLORS.danger}; font-family: ${BQ_FONTS.body}; font-size: 13px; font-weight: ${BQ_WEIGHTS.semibold}; line-height: 1.35; }
 
         .bq-checkbox-container {
@@ -61,8 +61,8 @@ export default function BoutiqueCheckbox({
           user-select: none;
           width: 100%;
         }
-        .bq-checkbox-container:hover { background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateX(4px); }
-        .bq-checkbox-container.active { background: white; border-color: ${BQ_COLORS.accent}; }
+        .bq-checkbox-container:hover { background: ${BQ_COLORS.surface}; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateX(4px); }
+        .bq-checkbox-container.active { background: ${BQ_COLORS.surface}; border-color: ${BQ_COLORS.accent}; }
         .bq-checkbox-container:has(input:focus-visible) { outline: 3px solid rgba(37, 99, 235, 0.25); outline-offset: 2px; }
 
         .bq-checkbox-wrapper { position: relative; width: 22px; height: 22px; flex-shrink: 0; }
@@ -70,7 +70,7 @@ export default function BoutiqueCheckbox({
 
         .bq-checkbox-indicator {
           position: absolute; top: 0; left: 0; height: 22px; width: 22px;
-          background-color: white; border: 2.5px solid ${BQ_COLORS.border};
+          background-color: ${BQ_COLORS.surface}; border: 2.5px solid ${BQ_COLORS.border};
           border-radius: 7px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex; align-items: center; justify-content: center;
           pointer-events: none;

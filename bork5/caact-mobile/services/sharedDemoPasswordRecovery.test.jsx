@@ -3,6 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import RecoverPasswordScreen from "../app/(auth)/recover/factor/1";
 import { forgotPassword, resetPassword } from "./api";
 
+let mockLanguage = "English";
+jest.mock("../hooks/useInterfaceLanguage", () => ({
+  useInterfaceLanguage: () => ({ language: mockLanguage, t: value => require("./interfaceI18n").translateText(value, mockLanguage) }),
+}));
+
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ identifier: "lanlords2025@gmail.com" }),
   useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
@@ -14,6 +19,7 @@ jest.mock("./api", () => ({
 }));
 
 test("shared demo email recovery sends and resets for one explicit account login ID", async () => {
+  mockLanguage = "English";
   forgotPassword.mockResolvedValue({ success: true });
   resetPassword.mockResolvedValue({ success: true });
   await render(<RecoverPasswordScreen />);
@@ -43,4 +49,13 @@ test("shared demo email recovery sends and resets for one explicit account login
     "tech.cavite.carl",
   ));
   expect(await screen.findByText("Password reset complete")).toBeTruthy();
+});
+
+test("recovery labels follow Filipino preference without changing the account identifier", async () => {
+  mockLanguage = "Filipino";
+  await render(<RecoverPasswordScreen />);
+  expect(screen.getByText("Humiling ng code para sa pag-reset")).toBeTruthy();
+  expect(screen.getByLabelText("Email o Login ID ng Account").props.value).toBe("lanlords2025@gmail.com");
+  expect(screen.getByText("Ipadala ang Code sa Pag-reset")).toBeTruthy();
+  mockLanguage = "English";
 });
