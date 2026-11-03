@@ -375,7 +375,7 @@
   right: 16px;
   bottom: 16px;
   left: auto;
-  width: min(390px, calc(100vw - 36px));
+  width: min(440px, calc(100vw - 36px));
   max-height: min(440px, calc(100vh - 32px));
   overflow-y: auto;
   padding: 14px;
@@ -438,13 +438,13 @@
 
 .inventory-serial-preview-heading strong {
   color: #0f172a;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .inventory-serial-preview-heading > div > span {
   margin-top: 3px;
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -464,7 +464,7 @@
   gap: 4px;
   margin-bottom: 12px;
   color: #475569;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -495,7 +495,7 @@
 .inventory-serial-details > span {
   margin-top: 5px;
   color: #64748b;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -508,14 +508,14 @@
   border-radius: 6px;
   background: #f1f5f9;
   color: #0f172a;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   user-select: text;
 }
 
 .inventory-serial-details strong {
   color: #334155;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .admin-card .inventory-serial-copy {
@@ -530,7 +530,7 @@
   border-radius: 6px;
   background: #fff;
   color: #334155;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -695,3 +695,64 @@
   }
 
 }
+
+/* Keep inventory controls, catalog cards, and the serial preview on the same
+   surface palette as the Admin and Superadmin shells. The QR canvas stays white
+   so printed/scanned codes retain their contrast. */
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .module-tabs,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .branch-filter-section,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.super-catalog-intro, .super-catalog-section) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .module-tabs button:not(.active) {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .module-tabs button:not(.active):hover,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-archive-controls > div button.active {
+  background: #29476a;
+  color: #e3f2ff;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.branch-filter-section label, .super-catalog-grid label, .super-catalog-archive-controls > label, .super-catalog-intro h2, .super-catalog-section h3) {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.super-catalog-intro p, .super-catalog-section-heading p, .super-catalog-note, .super-catalog-grid label span, .super-catalog-pagination span, .inventory-pagination, .inventory-empty-cell, .inventory-serial-empty) {
+  color: var(--ops-muted);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-eyebrow { color: #7dd3fc; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-rule {
+  background: #203d57;
+  color: #bfe7ff;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.branch-select, .inventory-search, .inventory-page-size select, .super-catalog-grid input, .super-catalog-grid select, .super-catalog-grid textarea, .super-catalog-archive-controls input, .super-catalog-archive-controls select, .super-catalog-archive-controls > div button, .super-catalog-product-row button, .super-catalog-pagination button, .btn-action-secondary) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.inventory-search, .super-catalog-grid input, .super-catalog-grid textarea, .super-catalog-archive-controls input)::placeholder { color: #aebed1; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.super-catalog-product-list, .super-catalog-product-row + .super-catalog-product-row) { border-color: var(--ops-border); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-product-row { background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-product-row strong { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-product-row small { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-success { background: #153d32; border-color: #2a8f68; color: #e5fff3; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-success p { color: #c5e8d8; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-serial-list article { background: #204b3b; border-color: #3c8969; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-serial-list strong { color: #e5fff3; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-serial-list :is(span, small) { color: #c5e8d8; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-error { background: #57282b; color: #ffe4e6; border-color: #a7484f; }
+:root[data-theme='dark'] .admin-card .inventory-page-controls button,
+:root[data-theme='dark'] .admin-card :is(.inventory-serial-preview-close, .inventory-serial-copy) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] .inventory-serial-preview :is(.inventory-serial-preview-heading strong, .inventory-serial-details strong) { color: var(--ops-text); }
+:root[data-theme='dark'] .inventory-serial-preview :is(.inventory-serial-preview-heading > div > span, .inventory-serial-picker, .inventory-serial-details > span) { color: var(--ops-muted); }
+:root[data-theme='dark'] .inventory-serial-preview :is(.inventory-serial-picker select, .inventory-serial-details code) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] .inventory-serial-preview .inventory-serial-qr { border-color: var(--ops-border); background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] .inventory-serial-preview .inventory-serial-qr small { color: var(--ops-muted); }

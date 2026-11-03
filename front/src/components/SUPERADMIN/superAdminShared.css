@@ -517,6 +517,18 @@
   border-color: #bfdbfe;
 }
 
+:root[data-theme='dark'] .super-layout .super-list-item,
+:root[data-theme='dark'] .super-layout .super-list button {
+  border-color: #4a5b72;
+  background: #243347;
+  color: #e8edf5;
+}
+:root[data-theme='dark'] .super-layout .super-list-item:hover,
+:root[data-theme='dark'] .super-layout .super-list button:hover {
+  border-color: #6d91be;
+  background: #2b4059;
+}
+
 .super-table-wrap {
   overflow-x: auto;
   margin-top: 16px;

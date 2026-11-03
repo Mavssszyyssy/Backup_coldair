@@ -67,6 +67,36 @@
 .reorder-pagination button:hover:not(:disabled) { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
 .reorder-pagination button:disabled { opacity: .45; cursor: not-allowed; }
 
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-panel, .reorder-form, .reorder-history, .reorder-request-card) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  box-shadow: var(--ops-shadow-sm);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-panel-heading h2, .reorder-form h2, .reorder-request-header strong, .reorder-form label, .reorder-decision-field > label) { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-panel-heading p, .reorder-helper, .reorder-request-summary, .reorder-item small, .reorder-history-item small, .reorder-history-item span:not(.reorder-status), .reorder-form label span, .reorder-product-summary span, .reorder-request-meta small, .reorder-request-note small, .reorder-review-result small, .reorder-pagination, .reorder-overview span, .reorder-filter) { color: var(--ops-muted) !important; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-section-eyebrow { color: #8ab9fa; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-overview > div, .reorder-item, .reorder-empty, .reorder-product-summary, .reorder-request-meta, .reorder-history-item) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-overview strong { color: #9ec5ff; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-item:is(:hover, .is-selected) { border-color: #86b7fa; background: #2a425f; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-request-meta > span { color: var(--ops-text) !important; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-request-note, .reorder-review-result) { background: #28405d; border-color: #86b7fa; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-request-note p, .reorder-review-result p) { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-decision-field > label span { background: #344962; color: #d4e2f3; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-form input, .reorder-form textarea, .reorder-history select, .reorder-decision-field textarea, .reorder-pagination button, .reorder-secondary-action) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.reorder-form input, .reorder-form textarea, .reorder-decision-field textarea)::placeholder { color: #aebed1; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-secondary-action { color: #ffb4bd; border-color: #9a5960; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-stock { color: #fcd68a; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .reorder-stock.is-zero { color: #ffadb3; }
+
 @media (max-width: 820px) {
   .reorder-management-grid { grid-template-columns: 1fr; }
   .reorder-overview > div { flex: 1; }

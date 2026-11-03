@@ -51,6 +51,28 @@
   opacity: 0.45;
 }
 
+:root[data-theme='dark'] .admin-layout .admin-orders-filter-panel {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: var(--ops-shadow-sm);
+}
+:root[data-theme='dark'] .admin-layout .admin-orders-filter-heading strong { color: var(--ops-text); }
+:root[data-theme='dark'] .admin-layout :is(.admin-orders-filter-heading span, .admin-orders-filter-grid label, .admin-orders-filterbar > b, .admin-orders-filter-summary, .admin-orders-pagination) { color: var(--ops-muted); }
+:root[data-theme='dark'] .admin-layout :is(.admin-orders-refresh, .admin-orders-filter-summary button, .admin-orders-filter-grid input, .admin-orders-filter-grid select, .admin-orders-filterbar button, .admin-orders-pagination button) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] .admin-layout .admin-orders-filter-grid input::placeholder { color: #aebed1; }
+:root[data-theme='dark'] .admin-layout .admin-orders-filterbar button.active {
+  border-color: #86b7fa;
+  background: #244b75;
+  color: #eaf4ff;
+}
+:root[data-theme='dark'] .admin-layout .admin-orders-filterbar button span { background: #37506d; color: #f1f5f9; }
+:root[data-theme='dark'] .admin-layout .admin-orders-filter-summary { border-color: var(--ops-border); }
+:root[data-theme='dark'] .admin-layout .admin-orders-empty { border-color: var(--ops-border-strong); background: var(--ops-surface); color: var(--ops-muted); }
+
 .admin-orders-filter-panel {
   display: grid;
   gap: 14px;
@@ -632,6 +654,27 @@
 :root[data-theme='dark'] .admin-order-workflow-summary b { color: #b5c0cf; }
 :root[data-theme='dark'] .admin-order-meta,
 :root[data-theme='dark'] .admin-order-fulfillment label { color: #cbd5e1; }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-item-summary, .admin-order-unit-details code, .admin-order-proof > strong, .admin-order-amp-record b) { color: var(--ops-text); }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-item-summary span, .admin-order-unit-details span, .admin-order-no-serials, .admin-order-amp-record small) { color: var(--ops-muted); }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-item, .admin-order-proof, .admin-order-amp-record) { border-color: var(--ops-border); }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-unit-card, .admin-order-amp-records) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] .admin-layout .admin-order-amp-records > strong { color: #9ed8ff; }
+:root[data-theme='dark'] .admin-layout .admin-order-proof { color: var(--ops-text); }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-fulfillment select, .admin-order-fulfillment input, .admin-cancel-reason) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] .admin-layout .admin-order-unit-details small { color: #86efac; }
+:root[data-theme='dark'] .admin-layout .admin-order-unit-qr span { color: #475569; }
+:root[data-theme='dark'] .admin-layout .admin-order-refund-note { background: #56391c; border-color: #a0692c; color: #ffdfac; }
+:root[data-theme='dark'] .admin-layout .admin-order-cancel-request { background: #203d57; border-color: #5b8dc2; color: #d6ebff; }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-refund-note.refund-completed, .admin-order-cancel-request.request-approved) { background: #153d32; border-color: #398362; color: #dcfce7; }
+:root[data-theme='dark'] .admin-layout :is(.admin-order-refund-note, .admin-order-cancel-request) small { color: #d0d9e6; }
 
 .admin-assign-technician-btn:disabled {
   cursor: not-allowed;

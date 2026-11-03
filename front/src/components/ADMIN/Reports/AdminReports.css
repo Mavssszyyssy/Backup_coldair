@@ -78,6 +78,42 @@
 .company-bi-trend-list strong { color: #0f172a; text-align: right; }
 .company-bi-trend-track { display: block; height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #e8eef6; }
 .company-bi-trend-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1594d0, #225ccc); }
+
+/* The on-screen report follows the selected theme. PDF/Excel exports are
+   generated separately by the exporter and keep their document styling. */
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-brand, .company-report-controls, .company-report-filter-panel, .company-report-document, .company-report-empty, .company-bi-insights > section, .company-bi-trend) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-controls { background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-brand h2, .company-report-table-section h3, .company-bi-page-heading h3, .company-bi-insights h3, .company-bi-trend h3, .company-bi-trend-list strong, .company-report-summary strong) { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-brand span, .company-report-filter-heading span, .company-report-summary span, .company-report-pagination, .company-bi-metrics span, .company-bi-trend-list article > div, .company-bi-page-heading span) { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-brand p, .company-report-filter-heading strong, .company-bi-metrics strong, .company-bi-insights article p:last-child) { color: #91c9ff; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-controls label, .company-bi-insights p) { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-tabs button:not(.active), .company-report-controls button:not(.company-report-generate), .company-report-controls input, .company-report-controls select, .company-report-pagination button:not(.is-current)) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-controls input::placeholder { color: #aebed1; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-document-heading { background: #174875; color: #fff; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-summary, .company-report-summary > div, .company-report-pagination, .company-bi-insights article) { border-color: var(--ops-border); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.company-report-basis, .company-bi-page-heading, .company-bi-metrics article) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-bi-metrics article { background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table-wrap { border-color: var(--ops-border-strong); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table :is(th, td) { border-color: var(--ops-border); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table th { background: #344962; color: #f1f5f9; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table td { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table tbody tr:nth-child(even) { background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table .stock-cell--ok { background: #14532d; color: #dcfce7; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table .stock-cell--low { background: #78350f; color: #fef3c7; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-table .stock-cell--out { background: #7f1d1d; color: #fee2e2; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-bi-trend-track { background: #344962; }
 @media (max-width: 1180px) {
   .company-report-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .company-report-filter-grid--compact { grid-template-columns: minmax(260px, 2fr) minmax(220px, 1fr); }

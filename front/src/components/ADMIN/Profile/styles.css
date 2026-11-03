@@ -449,6 +449,25 @@ button.admin-profile-btn {
   box-shadow: none;
 }
 
+:root[data-theme='dark'] .admin-layout .admin-profile-page {
+  --surface-page: var(--ops-canvas);
+  --surface-card: var(--ops-surface);
+  --surface-input: var(--ops-surface-subtle);
+  --surface-hover: #2d4057;
+  --text-primary: var(--ops-text);
+  --text-secondary: #c5d0de;
+  --text-muted: #a9b8cc;
+  --border-light: var(--ops-border);
+  --border-medium: var(--ops-border-strong);
+  --brand-50: #26354a;
+  --brand-100: #3b5070;
+  --brand-700: #d5d4ff;
+}
+:root[data-theme='dark'] .admin-layout .admin-profile-card p { border-color: var(--ops-border); }
+:root[data-theme='dark'] .admin-layout .admin-profile-form input:is(:hover, :focus),
+:root[data-theme='dark'] .admin-layout .admin-profile-modal-card input:focus { background: var(--surface-input); }
+:root[data-theme='dark'] .admin-layout .admin-profile-phone-error { color: #fda4af; }
+
 /* ===== ChangePassword.css ===== */
 
 /*
