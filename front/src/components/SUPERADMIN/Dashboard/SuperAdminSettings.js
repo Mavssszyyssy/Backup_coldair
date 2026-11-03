@@ -4,6 +4,7 @@ import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { useUser } from '../../../context/UserContext';
 import { apiRequest } from '../../../config/api';
 import { translateText } from '../../../utils/customerI18n';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import {
   clearEmailPolicyCache,
   isValidDomainFormat,
@@ -33,6 +34,9 @@ const SuperAdminSettings = () => {
   const [policySaving, setPolicySaving] = useState(false);
   const [policyNotice, setPolicyNotice] = useState('');
   const [policyError, setPolicyError] = useState('');
+  useAutoDismissMessage(notice, setNotice);
+  useAutoDismissMessage(preferencesNotice, setPreferencesNotice);
+  useAutoDismissMessage(policyNotice, setPolicyNotice);
 
   useEffect(() => {
     const savedPreferences = user?.preferences || {};

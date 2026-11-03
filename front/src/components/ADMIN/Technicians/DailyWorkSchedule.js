@@ -6,6 +6,7 @@ import { TECHNICIAN_TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { formatBusinessDateKey } from "../../../utils/dateTime";
 import { translateText } from "../../../utils/customerI18n";
+import useAutoDismissMessage from "../../../hooks/useAutoDismissMessage";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import "./dailySchedule.css";
 
@@ -56,6 +57,7 @@ const DailyWorkSchedule = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  useAutoDismissMessage(notice, setNotice);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState(null);
   const [conflictTasks, setConflictTasks] = useState([]);

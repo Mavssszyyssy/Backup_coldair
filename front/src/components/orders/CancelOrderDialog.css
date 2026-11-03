@@ -27,6 +27,24 @@
 .cancel-order-dialog .cancel-order-dialog__submit:hover:not(:disabled) { background: #991b1b; }
 .cancel-order-dialog .cancel-order-dialog__keep:hover:not(:disabled) { background: #f8fafc; }
 .cancel-order-dialog button:disabled { opacity: .6; cursor: wait; }
+:root[data-theme='dark'] .cancel-order-dialog {
+  border-color: var(--bq-color-border);
+  background: var(--bq-color-surface);
+  color: var(--bq-color-ink);
+}
+:root[data-theme='dark'] .cancel-order-dialog :is(h2, label) { color: var(--bq-color-ink); }
+:root[data-theme='dark'] .cancel-order-dialog :is(.cancel-order-dialog__eyebrow, .cancel-order-dialog__description, .cancel-order-dialog__count) { color: var(--bq-color-ink-muted); }
+:root[data-theme='dark'] .cancel-order-dialog :is(.cancel-order-dialog__order, .cancel-order-dialog__close) {
+  background: var(--bq-color-surface-alt);
+  color: var(--bq-color-ink);
+}
+:root[data-theme='dark'] .cancel-order-dialog :is(textarea, .cancel-order-dialog__keep) {
+  border-color: var(--bq-color-border);
+  background: var(--bq-color-bg-alt);
+  color: var(--bq-color-ink);
+}
+:root[data-theme='dark'] .cancel-order-dialog .cancel-order-dialog__actions { border-color: var(--bq-color-border); }
+:root[data-theme='dark'] .cancel-order-dialog .cancel-order-dialog__error { background: #48292d; color: #fecaca; }
 @media (max-width: 480px) {
   .cancel-order-dialog { border-radius: 20px; }
   .cancel-order-dialog .cancel-order-dialog__content { padding: 22px; }

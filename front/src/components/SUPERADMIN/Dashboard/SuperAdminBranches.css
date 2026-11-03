@@ -19,3 +19,13 @@
   .branch-create-form button, .branch-admin-form button, .branch-owner-form button { width: 100%; }
 }
 .branch-workspace,.branch-directory,.branch-workspace-heading>div,.branch-assignment-form label{min-width:0}.branch-assignment-form input,.branch-assignment-form select{box-sizing:border-box;width:100%;min-width:0}.branch-workspace-heading span,.branch-success,.branch-error,.branch-coverage-list,.branch-email-directory article small{overflow-wrap:anywhere}.branch-assignment-form button:disabled{opacity:.55;cursor:not-allowed}
+
+:root[data-theme='dark'] .super-layout :is(.branch-summary > div, .branch-workspace, .branch-directory, .branch-directory article) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: none;
+}
+:root[data-theme='dark'] .super-layout .branch-directory article { background: var(--ops-surface-subtle); }
+:root[data-theme='dark'] .super-layout :is(.branch-summary strong, .branch-workspace-heading h2, .branch-directory h2, .branch-directory article strong, .branch-admin-detail b) { color: var(--ops-text); }
+:root[data-theme='dark'] .super-layout :is(.branch-summary span, .branch-workspace-heading span, .branch-directory article p, .branch-admin-detail small, .branch-coverage-list, .branch-coverage-help, .branch-empty, .branch-assignment-form label, .branch-email-directory article label, .branch-email-directory header span) { color: var(--ops-muted); }
+:root[data-theme='dark'] .super-layout .branch-directory article span { background: #303d67; color: #d4d8ff; }

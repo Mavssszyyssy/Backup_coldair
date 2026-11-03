@@ -63,3 +63,44 @@
   .daily-schedule__table .daily-schedule__editor-row td { display: block; padding: 0; }
   .daily-schedule__table .daily-schedule__editor-row td::before { content: none; }
 }
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__header, .daily-schedule__filters, .daily-schedule__branch-group) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: none;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__header h2, .daily-schedule__branch-title h3, .daily-schedule__date, .daily-schedule__table td strong, .daily-schedule__readonly-field > strong, .daily-schedule__empty strong) {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__header p, .daily-schedule__filters label, .daily-schedule__branch, .daily-schedule__table td, .daily-schedule__table td small, .daily-schedule__editor label, .daily-schedule__editor fieldset, .daily-schedule__readonly-field, .daily-schedule__readonly-field > span, .daily-schedule__readonly-field > small, .daily-schedule__editor label > small, .daily-schedule__empty) {
+  color: var(--ops-muted);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__branch-title, .daily-schedule__readonly-field) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-subtle);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__table td, .daily-schedule__editor fieldset) { border-color: var(--ops-border); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__editor-row td, .daily-schedule__empty) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-subtle);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__date-navigation > button, .daily-schedule__today, .daily-schedule__today:disabled) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__today small { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__branch-title span,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__edit { color: #93c5fd; }
+@media (max-width: 760px) {
+  :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__table-wrap {
+    background: var(--ops-canvas);
+  }
+  :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__table tr {
+    border-color: var(--ops-border);
+    background: var(--ops-surface);
+  }
+  :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__table td::before {
+    color: var(--ops-muted);
+  }
+}

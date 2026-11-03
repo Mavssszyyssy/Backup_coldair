@@ -10,6 +10,7 @@ import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime } fro
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
+import useAutoDismissMessage from "../../../hooks/useAutoDismissMessage";
 import DailyWorkSchedule from "./DailyWorkSchedule";
 import "../adminShared.css";
 import "./styles.css";
@@ -203,6 +204,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  useAutoDismissMessage(notice, setNotice);
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState("active");
   const [workloadFilter, setWorkloadFilter] = useState("all");

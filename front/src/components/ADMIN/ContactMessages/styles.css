@@ -52,5 +52,55 @@
 .contact-detail__timeline span { color: #2563eb; font-size: 11px; font-weight: 900; text-transform: uppercase; }
 .contact-detail__timeline p { margin: 4px 0; color: #334155; font-size: 13px; }
 .contact-detail__timeline small { color: #94a3b8; font-size: 11px; }
+
+/* The inbox is shared by Admin and Superadmin. Keep every nested surface on
+   the same theme as the surrounding workspace. */
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-inbox {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-inbox__summary article, .contact-inbox__toolbar, .contact-inbox__workspace, .contact-message-card) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: none;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-inbox__queue {
+  border-color: var(--ops-border);
+  background: var(--ops-canvas);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-message-card:hover,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-message-card.is-selected {
+  border-color: #7daffa;
+  background: #253c58;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-detail__customer div, .contact-detail__message) {
+  background: var(--ops-surface-subtle);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-detail__heading, .contact-detail__timeline) {
+  border-color: var(--ops-border);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-inbox__summary strong, .contact-message-card strong, .contact-detail__heading h2, .contact-detail__customer dd, .contact-detail__message p, .contact-detail__timeline h3, .contact-detail__timeline p) {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-inbox__summary span, .contact-inbox__summary small, .contact-inbox__toolbar label, .contact-message-card > span:not(.contact-status), .contact-message-card small, .contact-message-card p, .contact-inbox__empty, .contact-detail__heading p, .contact-detail__customer dt, .contact-detail__message span, .contact-detail__message small, .contact-detail__reply, .contact-detail__reply small, .contact-detail__timeline small) {
+  color: var(--ops-muted);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-inbox__toolbar button, .contact-detail__actions button:not(.primary)) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-detail__heading > div > span,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-detail__timeline span {
+  color: #93c5fd;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-inbox__alert {
+  border-color: #a65b64;
+  background: #48292d;
+  color: #fecaca;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--new { background: #513c22; color: #fcd69a; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--in_progress { background: #263f62; color: #bfdbfe; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--resolved { background: #203c34; color: #bbf7d0; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--closed { background: #344459; color: #e2e8f0; }
 @media (max-width: 1000px) { .contact-inbox__summary { grid-template-columns: repeat(2,1fr); } .contact-inbox__workspace { grid-template-columns: 1fr; } .contact-inbox__queue { max-height: 400px; border-right: 0; border-bottom: 1px solid #e2e8f0; } }
 @media (max-width: 650px) { .contact-inbox__summary, .contact-detail__customer { grid-template-columns: 1fr; } .contact-inbox__toolbar { grid-template-columns: 1fr; } .contact-inbox__detail { padding: 17px; } .contact-detail__heading { flex-direction: column; } }

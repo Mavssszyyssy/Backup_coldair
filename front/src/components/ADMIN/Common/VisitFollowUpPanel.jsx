@@ -4,6 +4,7 @@ import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
 import { formatBusinessDateKey, formatBusinessDateTime } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import './VisitFollowUpPanel.css';
 
 export default function VisitFollowUpPanel({ task, onUpdated }) {
@@ -16,6 +17,7 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
   const [time, setTime] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  useAutoDismissMessage(message.startsWith('Next visit confirmed and synchronized.') ? message : '', setMessage);
   const [confirmed, setConfirmed] = useState(false);
   const [reload, setReload] = useState(0);
   useEffect(() => {

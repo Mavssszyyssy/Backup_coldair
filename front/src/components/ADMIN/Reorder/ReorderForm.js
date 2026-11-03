@@ -3,6 +3,7 @@ import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import './styles.css';
 
 const ReorderForm = ({ item, onSubmitted }) => {
@@ -11,6 +12,7 @@ const ReorderForm = ({ item, onSubmitted }) => {
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
+  useAutoDismissMessage(message, setMessage);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 

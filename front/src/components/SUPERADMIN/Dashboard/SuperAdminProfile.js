@@ -6,6 +6,7 @@ import { validateEmailForSubmission } from '../../../domain/emailPolicy';
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
 import { translateText } from '../../../utils/customerI18n';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import './SuperAdminAccount.css';
 
 const SuperAdminProfile = () => {
@@ -15,6 +16,7 @@ const SuperAdminProfile = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileNotice, setProfileNotice] = useState('');
   const [error, setError] = useState('');
+  useAutoDismissMessage(profileNotice, setProfileNotice);
 
   useEffect(() => setProfile({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' }), [user]);
   const saveProfile = async (event) => {

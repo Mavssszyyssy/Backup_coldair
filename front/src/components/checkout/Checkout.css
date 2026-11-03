@@ -602,3 +602,9 @@
   font-size: 22px;
   line-height: 1;
 }
+
+:root[data-theme='dark'] .checkout-address-notice {
+  border-color: #3d866b;
+  background: #203c34;
+  color: #bbf7d0;
+}

@@ -33,6 +33,12 @@ const RequestDetails = ({ request, onUpdated }) => {
   const [scheduledTasks, setScheduledTasks] = useState([]);
 
   useEffect(() => {
+    if (message?.type !== 'success') return undefined;
+    const timer = window.setTimeout(() => setMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
     setCurrent(request);
     setSelectedTechnicianId(request?.assignedTechnicianId || '');
     setMessage(null);

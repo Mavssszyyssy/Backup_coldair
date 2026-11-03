@@ -73,3 +73,17 @@
   border-color: #2563eb;
   color: #fff;
 }
+
+:root[data-theme='dark'] .service-area-selector {
+  border-color: var(--bq-color-border);
+  background: linear-gradient(135deg, var(--bq-color-bg-alt), var(--bq-color-surface));
+}
+:root[data-theme='dark'] .service-area-header h3 { color: var(--bq-color-ink); }
+:root[data-theme='dark'] :is(.service-area-header p, .service-area-gps-note) { color: var(--bq-color-ink-muted); }
+:root[data-theme='dark'] .service-area-chip {
+  border-color: var(--bq-color-border);
+  background: var(--bq-color-surface-alt);
+  color: var(--bq-color-ink);
+}
+:root[data-theme='dark'] .service-area-chip:hover { border-color: var(--bq-color-accent); color: var(--bq-color-accent); }
+:root[data-theme='dark'] .service-area-chip.active { border-color: #2563eb; background: #2563eb; color: #fff; }

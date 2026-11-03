@@ -13,3 +13,16 @@
 .visit-follow-up-payment { display: grid; gap: 3px; margin: 12px 0; padding: 12px; border: 1px solid #bbf7d0; border-radius: 10px; background: #f0fdf4; color: #166534; }
 .visit-follow-up-payment strong { text-transform: capitalize; }
 .visit-follow-up-payment small { color: #4b5563; }
+
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .visit-follow-up {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .visit-follow-up-meta { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .visit-follow-up-payment {
+  border-color: #3d866b;
+  background: #203c34;
+  color: #b4e7ce;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .visit-follow-up-payment small { color: #bbd7ca; }

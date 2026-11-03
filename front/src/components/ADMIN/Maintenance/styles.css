@@ -53,6 +53,57 @@
 .maintenance-decision-dialog textarea:focus { outline: 3px solid rgba(37, 99, 235, .16); border-color: #2563eb; }
 .maintenance-decision-error { margin: 0; color: #b91c1c; font-size: 13px; }
 .maintenance-decision-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 10px; }
+
+/* Service requests are rendered in both operations roles. */
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-page { color: var(--ops-text); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-summary-card, .maintenance-queue-panel, .maintenance-details, .maintenance-request-list .maintenance-request-item, .maintenance-decision-dialog) {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  box-shadow: none;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-summary-card--attention, .maintenance-summary-card--active, .maintenance-summary-card--complete, .maintenance-summary-card--hold, .maintenance-summary-card--cancelled) {
+  background: var(--ops-surface-subtle);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-summary-card--attention { border-color: #aa783f; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-summary-card--active { border-color: #4f78ae; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-summary-card--complete { border-color: #3d866b; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-summary-card--hold { border-color: #7864ab; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-summary-card--cancelled { border-color: #a65b64; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-alert, .maintenance-message--error) { border-color: #a65b64; background: #48292d; color: #fecaca; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-message--success { border-color: #3d866b; background: #203c34; color: #bbf7d0; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-task-chip { background: #344459; color: #e2e8f0; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-request-list .maintenance-request-item:hover,
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-request-list .maintenance-request-item.is-selected {
+  border-color: #7daffa;
+  background: #253c58;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-locked-field, .maintenance-completion-note, .maintenance-ai-card, .maintenance-decision-component) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-assignment-lock {
+  border-color: #3d866b;
+  background: #203c34;
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-panel-heading h2, .maintenance-detail-header h2, .maintenance-detail-section h3, .maintenance-summary-card strong, .maintenance-request-main strong, .maintenance-empty strong, .maintenance-detail-grid dd, .maintenance-timeline-item strong, .maintenance-locked-field strong, .maintenance-assignment-lock span, .maintenance-ai-heading h4, .maintenance-ai-row strong, .maintenance-ai-group strong, .maintenance-decision-heading h2) {
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-summary-card span, .maintenance-summary-card small, .maintenance-filters label, .maintenance-assignment-field, .maintenance-request-main span, .maintenance-request-main small, .maintenance-request-meta small, .maintenance-empty, .maintenance-loading, .maintenance-pagination, .maintenance-details--empty p, .maintenance-section-heading p, .maintenance-detail-grid dt, .maintenance-timeline-item span, .maintenance-timeline-item small, .maintenance-muted, .maintenance-locked-field span, .maintenance-locked-field small, .maintenance-assignment-lock small, .maintenance-ai-heading small, .maintenance-ai-meta, .maintenance-ai-evidence, .maintenance-decision-copy, .maintenance-decision-dialog label, .maintenance-decision-dialog label span) {
+  color: var(--ops-muted);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-detail-header, .maintenance-detail-section, .maintenance-ai-row, .maintenance-ai-group) {
+  border-color: var(--ops-border);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.maintenance-button--secondary, .maintenance-filter-reset, .maintenance-pagination button, .maintenance-decision-close) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+}
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-filter-reset:hover:not(:disabled),
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .maintenance-button--secondary:hover:not(:disabled) {
+  background: #30425b;
+}
 @media (max-width: 1100px) { .maintenance-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 820px) { .maintenance-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .maintenance-ai-row { grid-template-columns: 1fr; gap: 4px; } }

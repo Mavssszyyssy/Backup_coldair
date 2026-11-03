@@ -4,6 +4,7 @@ import { useUser } from '../../../context/UserContext';
 import { COMPANY_CONTACT, COMPANY_PROFILE, getCompanyBranch } from '../../../config/company';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import { translateText } from '../../../utils/customerI18n';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import '../adminShared.css';
 
 const DEFAULT_NOTIFICATIONS = {
@@ -35,6 +36,7 @@ function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  useAutoDismissMessage(notice, setNotice);
 
   useEffect(() => {
     setLanguage(user?.preferences?.language || 'English');

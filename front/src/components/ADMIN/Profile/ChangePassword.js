@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useUser } from '../../../context/UserContext';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import './styles.css';
 
 const ChangePassword = () => {
   const { changePassword } = useUser();
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
   const [message, setMessage] = useState('');
+  useAutoDismissMessage(message === 'Password updated successfully.' ? message : '', setMessage);
   const [loading, setLoading] = useState(false);
 
   const updateField = (event) => {

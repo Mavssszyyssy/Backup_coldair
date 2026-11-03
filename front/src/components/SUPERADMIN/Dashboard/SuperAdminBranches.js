@@ -6,6 +6,7 @@ import { validateEmailForSubmission } from '../../../domain/emailPolicy';
 import { formatBusinessDate } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import '../superAdminShared.css';
 import './SuperAdminBranches.css';
 
@@ -23,6 +24,7 @@ const SuperAdminBranches = () => {
   const [saving, setSaving] = useState(false);
   const [savingEmailId, setSavingEmailId] = useState('');
   const [message, setMessage] = useState('');
+  useAutoDismissMessage(message, setMessage);
   const [error, setError] = useState('');
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchCoverage, setNewBranchCoverage] = useState('');
@@ -126,7 +128,8 @@ const SuperAdminBranches = () => {
       const result = await apiRequest('/users/staff', { method: 'POST', body: JSON.stringify({ ...adminDraft, role: 'admin' }) });
       setAdmins((current) => [...current, result.user]);
       setOneTimePassword(result.tempPassword || '');
-      setMessage(result.deliveryWarning || `${result.user.name || t('Administrator')} ${t('was assigned to')} ${adminDraft.branch}.`);
+      if (result.deliveryWarning) setError(result.deliveryWarning);
+      else setMessage(`${result.user.name || t('Administrator')} ${t('was assigned to')} ${adminDraft.branch}.`);
       setAdminDraft({ name_first: '', name_last: '', email: '', branch: '' });
     } catch (requestError) { setError(requestError.message || 'Unable to create administrator.'); }
     finally { setSaving(false); }
