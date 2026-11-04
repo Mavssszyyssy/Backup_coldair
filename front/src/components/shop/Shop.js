@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { useCart } from "../../context/CartContext";
@@ -57,6 +57,8 @@ const Shop = () => {
   const [cartNotice, setCartNotice] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const catalogRequestRef = useRef(null);
+  const catalogGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!cartNotice) return undefined;
@@ -102,7 +104,10 @@ const Shop = () => {
     }
 
     let active = true;
+    let loadingNotifications = false;
     const loadNotifications = async () => {
+      if (loadingNotifications) return;
+      loadingNotifications = true;
       try {
         const response = await apiRequest("/notifications/me", { silentConnection: true });
         const normalized = (response.notifications || []).map((item) => ({
@@ -114,10 +119,14 @@ const Shop = () => {
         if (active) setNotifications(normalized);
       } catch {
         if (active) setNotifications([]);
+      } finally {
+        loadingNotifications = false;
       }
     };
     loadNotifications();
-    const pollId = window.setInterval(loadNotifications, 20000);
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadNotifications();
+    }, 20000);
     const handleVisibility = () => {
       if (document.visibilityState === "visible") loadNotifications();
     };
@@ -137,37 +146,56 @@ const Shop = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchProducts = useCallback(async () => {
-    try {
-      let branch = "";
-      if (isAuthenticated) {
-        const addressResult = await apiRequest("/users/addresses", { silentConnection: true });
-        const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
-        const address = addresses.find((entry) => entry.isDefault) || addresses[0];
-        if (address) branch = await resolveConfiguredBranch(address);
-      }
-      const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, { silentConnection: true });
-      const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
-      setBackendProducts(mapped);
-      setFulfillmentBranch(branch);
-      setCatalogError("");
-    } catch (error) {
-      // Keep the last confirmed server catalogue visible rather than showing
-      // static demo items with incorrect inventory.
-      console.error("Failed to fetch products:", error);
-      setCatalogError("The product catalogue could not be refreshed. Please try again.");
-    } finally {
-      setCatalogLoading(false);
+    // A slow branch lookup or server wake-up must not start overlapping reads.
+    // A changed auth session gets its own request; older results cannot replace it.
+    if (catalogRequestRef.current?.authenticated === isAuthenticated) {
+      return catalogRequestRef.current.promise;
     }
+    const generation = ++catalogGenerationRef.current;
+    const promise = (async () => {
+      try {
+        let branch = "";
+        if (isAuthenticated) {
+          const addressResult = await apiRequest("/users/addresses", { silentConnection: true });
+          const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
+          const address = addresses.find((entry) => entry.isDefault) || addresses[0];
+          if (address) branch = await resolveConfiguredBranch(address);
+        }
+        const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, { silentConnection: true });
+        const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
+        if (generation === catalogGenerationRef.current) {
+          setBackendProducts(mapped);
+          setFulfillmentBranch(branch);
+          setCatalogError("");
+        }
+      } catch (error) {
+        // Keep the last confirmed server catalogue visible rather than showing
+        // static demo items with incorrect inventory.
+        console.error("Failed to fetch products:", error);
+        if (generation === catalogGenerationRef.current) {
+          setCatalogError("The product catalogue could not be refreshed. Please try again.");
+        }
+      } finally {
+        if (generation === catalogGenerationRef.current) setCatalogLoading(false);
+        if (catalogRequestRef.current?.generation === generation) catalogRequestRef.current = null;
+      }
+    })();
+    catalogRequestRef.current = { authenticated: isAuthenticated, generation, promise };
+    return promise;
   }, [isAuthenticated]);
 
   useEffect(() => {
     fetchProducts();
-    const pollId = window.setInterval(fetchProducts, 20000);
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchProducts();
+    }, 20000);
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") fetchProducts();
     };
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
+      catalogGenerationRef.current += 1;
+      catalogRequestRef.current = null;
       window.clearInterval(pollId);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };

@@ -1,5 +1,6 @@
 // app/index.jsx
-// Entry point: show backend reachability before routing into the app.
+// Route as soon as session restoration finishes. Screen requests and the
+// app-wide connection banner handle reachability after navigation.
 import { Redirect } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -30,7 +31,7 @@ const STATUS_COPY = {
 };
 
 export default function Index() {
-  const { current, initialized, resolveHomeRoute } = useUserContext();
+  const { current, token, initialized, refreshCurrentUser, resolveHomeRoute } = useUserContext();
   const [connection, setConnection] = useState({
     state: "checking",
     message: STATUS_COPY.checking.detail,
@@ -44,17 +45,20 @@ export default function Index() {
   const refreshConnection = async () => {
     setConnection((prev) => ({ ...prev, state: "checking" }));
     const result = await checkBackendConnection();
+    const restored = result.connected ? await refreshCurrentUser() : null;
     setConnection({
-      state: result.connected ? "connected" : "offline",
-      message: result.message,
+      state: result.connected && restored?.success ? "connected" : "offline",
+      message: restored?.error || result.message,
     });
   };
 
   useEffect(() => {
-    refreshConnection();
-  }, []);
+    // A saved token with no restored user means the first /auth/me attempt
+    // failed transiently. Only that recovery case needs a second probe.
+    if (initialized && token && !current) void refreshConnection();
+  }, [initialized, token, current]);
 
-  if (connection.state === "connected" && initialized) {
+  if (initialized && (current || !token)) {
     return <Redirect href={targetHref} />;
   }
 
