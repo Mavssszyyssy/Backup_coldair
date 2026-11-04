@@ -27,6 +27,7 @@ const getOrderCodeFromAlert = (alert = {}) => {
 
 const formatDate = (value) => value ? formatBusinessDateTime(value) : 'Not recorded';
 const CATEGORY_LABELS = { transactions: 'Transactions', requests: 'Requests & warranty', maintenance: 'Maintenance & technician work', stock: 'Stock alerts', other: 'Other alerts' };
+const ALERTS_PER_PAGE = 10;
 const getPurchaseBranch = (order) => order?.stockSourceBranch || order?.customerBranch || 'Not recorded';
 const paymentSummary = (order = {}, t = (value) => value) => {
   const method = String(order.paymentMethod || '').trim().toLowerCase();
@@ -57,6 +58,7 @@ const SuperAdminAlerts = () => {
   const [branchFilter, setBranchFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [page, setPage] = useState(1);
   const loadInFlightRef = useRef(false);
 
   const load = useCallback(async ({ showLoading = false } = {}) => {
@@ -66,7 +68,7 @@ const SuperAdminAlerts = () => {
     setError('');
     try {
       const [notificationResult, orderResult, productResult] = await Promise.all([
-        apiRequest('/notifications/me'),
+        apiRequest('/notifications/me?scope=operations'),
         apiRequest('/orders?view=compact&limit=200').catch(() => ({ orders: [] })),
         apiRequest('/products/stock-status'),
       ]);
@@ -120,6 +122,13 @@ const SuperAdminAlerts = () => {
 
   const branches = useMemo(() => Array.from(new Set(detailedAlerts.map((alert) => alert.branch).filter((branch) => branch && branch !== 'Not recorded'))).sort(), [detailedAlerts]);
   const visibleAlerts = useMemo(() => detailedAlerts.filter((alert) => (branchFilter === 'all' || alert.branch === branchFilter) && (severityFilter === 'all' || alert.severity === severityFilter) && (categoryFilter === 'all' || alert.alertCategory === categoryFilter)), [branchFilter, detailedAlerts, severityFilter, categoryFilter]);
+  const totalPages = Math.max(1, Math.ceil(visibleAlerts.length / ALERTS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageAlerts = visibleAlerts.slice((currentPage - 1) * ALERTS_PER_PAGE, currentPage * ALERTS_PER_PAGE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <SuperAdminLayout title={t('Operations Alerts')} subtitle={t('Transactions, service requests, warranty claims, and maintenance across all branches')}>
@@ -132,20 +141,20 @@ const SuperAdminAlerts = () => {
       <section className="alert-workspace">
         <div className="alert-heading"><div><p className="alert-eyebrow">{t('Executive inbox')}</p><h2>{t('Transactions, requests, maintenance & stock')}</h2><p>{t('Review events and current inventory shortages across branches.')}</p></div></div>
         <div className="alert-filters">
-          <label>{t('Branch')}<select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">{t('All branches')}</option>{branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
-          <label>{t('Activity')}<select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">{t('All activities')}</option><option value="transactions">{t('Transactions')}</option><option value="requests">{t('Requests & warranty')}</option><option value="maintenance">{t('Maintenance & technician work')}</option><option value="stock">{t('Stock alerts')}</option><option value="other">{t('Other alerts')}</option></select></label>
-          <label>{t('Priority')}<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}><option value="all">{t('All priorities')}</option><option value="high">{t('High priority')}</option><option value="medium">{t('Medium priority')}</option><option value="low">{t('Low priority')}</option></select></label>
-          <button type="button" className="alert-reset" onClick={() => { setBranchFilter('all'); setSeverityFilter('all'); setCategoryFilter('all'); }} disabled={branchFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all'}>{t('Clear filters')}</button>
+          <label>{t('Branch')}<select value={branchFilter} onChange={(event) => { setBranchFilter(event.target.value); setPage(1); }}><option value="all">{t('All branches')}</option>{branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+          <label>{t('Activity')}<select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPage(1); }}><option value="all">{t('All activities')}</option><option value="transactions">{t('Transactions')}</option><option value="requests">{t('Requests & warranty')}</option><option value="maintenance">{t('Maintenance & technician work')}</option><option value="stock">{t('Stock alerts')}</option><option value="other">{t('Other alerts')}</option></select></label>
+          <label>{t('Priority')}<select value={severityFilter} onChange={(event) => { setSeverityFilter(event.target.value); setPage(1); }}><option value="all">{t('All priorities')}</option><option value="high">{t('High priority')}</option><option value="medium">{t('Medium priority')}</option><option value="low">{t('Low priority')}</option></select></label>
+          <button type="button" className="alert-reset" onClick={() => { setBranchFilter('all'); setSeverityFilter('all'); setCategoryFilter('all'); setPage(1); }} disabled={branchFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all'}>{t('Clear filters')}</button>
         </div>
         {loading ? <div className="alert-empty">{t('Loading operations alerts…')}</div> : null}
         {error ? <div className="alert-error">{t(error)}</div> : null}
         {!loading && !error && visibleAlerts.length === 0 ? <div className="alert-empty">{t('No operations alerts match these filters.')}</div> : null}
         <div className="alert-list">
-          {visibleAlerts.map((alert) => {
+          {pageAlerts.map((alert) => {
             const order = alert.order;
             const itemSummary = order?.items?.map((item) => `${item.name} ×${item.quantity}`).join(', ') || t('Order details are not available for this legacy alert.');
             return <article key={alert.id} className="alert-card">
-              <div className="alert-card-top"><div><p className="alert-reference">{order?.orderCode || alert.id}</p><h3>{alert.title || t('Customer support alert')}</h3></div><span className={`alert-severity alert-severity--${alert.severity}`}>{t(`${alert.severity} priority`)}</span></div>
+              <div className="alert-card-top"><div><p className="alert-reference">{alert.currentCondition ? t('Stock alerts') : order?.orderCode || alert.id}</p><h3>{alert.title || t('Customer support alert')}</h3></div><span className={`alert-severity alert-severity--${alert.severity}`}>{t(`${alert.severity} priority`)}</span></div>
               <p className="alert-concern">{alert.message || t('No message provided.')}</p>
               <dl className="alert-detail-grid">
                 {order ? <><div><dt>{t('Customer')}</dt><dd>{order?.customerName || t('Not linked to a customer order')}</dd></div>
@@ -160,6 +169,11 @@ const SuperAdminAlerts = () => {
             </article>;
           })}
         </div>
+        {!loading && !error && totalPages > 1 ? <nav className="alert-pagination" aria-label={t('Operations alert pages')}>
+          <button type="button" disabled={currentPage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>{t('Previous')}</button>
+          <span aria-live="polite">{t('Page')} {currentPage} {t('of')} {totalPages}</span>
+          <button type="button" disabled={currentPage === totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>{t('Next')}</button>
+        </nav> : null}
       </section>
     </SuperAdminLayout>
   );

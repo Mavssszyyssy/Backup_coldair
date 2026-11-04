@@ -90,6 +90,12 @@
   color: var(--ops-text);
 }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__today small { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.daily-schedule__branch strong, .daily-schedule__filters input, .daily-schedule__filters select, .daily-schedule__editor input, .daily-schedule__editor select, .daily-schedule__editor textarea) {
+  border-color: var(--ops-border-strong);
+  background: var(--ops-surface-subtle);
+  color: var(--ops-text);
+  color-scheme: dark;
+}
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__branch-title span,
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .daily-schedule__edit { color: #93c5fd; }
 @media (max-width: 760px) {

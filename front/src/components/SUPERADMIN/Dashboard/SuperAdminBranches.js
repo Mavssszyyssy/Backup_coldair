@@ -30,6 +30,7 @@ const SuperAdminBranches = () => {
   const [newBranchCoverage, setNewBranchCoverage] = useState('');
   const [adminDraft, setAdminDraft] = useState({ name_first: '', name_last: '', email: '', branch: '' });
   const [oneTimePassword, setOneTimePassword] = useState('');
+  const [createdLoginId, setCreatedLoginId] = useState('');
   const branchNames = useMemo(() => coverage.length ? coverage.map((item) => item.name) : BRANCHES, [coverage]);
 
   const load = useCallback(async () => {
@@ -119,7 +120,7 @@ const SuperAdminBranches = () => {
 
   const createAdministrator = async (event) => {
     event.preventDefault();
-    setMessage(''); setError(''); setOneTimePassword('');
+    setMessage(''); setError(''); setOneTimePassword(''); setCreatedLoginId('');
     if (assignmentByBranch[adminDraft.branch]) { setError('This branch already has an active administrator.'); return; }
     const emailError = await validateEmailForSubmission(adminDraft.email);
     if (emailError) { setError(emailError); return; }
@@ -128,6 +129,7 @@ const SuperAdminBranches = () => {
       const result = await apiRequest('/users/staff', { method: 'POST', body: JSON.stringify({ ...adminDraft, role: 'admin' }) });
       setAdmins((current) => [...current, result.user]);
       setOneTimePassword(result.tempPassword || '');
+      setCreatedLoginId(result.loginIdentifier || '');
       if (result.deliveryWarning) setError(result.deliveryWarning);
       else setMessage(`${result.user.name || t('Administrator')} ${t('was assigned to')} ${adminDraft.branch}.`);
       setAdminDraft({ name_first: '', name_last: '', email: '', branch: '' });
@@ -179,6 +181,7 @@ const SuperAdminBranches = () => {
         <button type="submit" disabled={saving || loading || !adminDraft.branch}>{t(saving ? 'Creating…' : 'Create administrator')}</button>
       </form>
       {oneTimePassword ? <p className="branch-success" role="status">{t('Invitation email was unavailable. Share this one-time temporary password securely:')} <strong>{oneTimePassword}</strong>. {t('It will disappear when you leave this page.')}</p> : null}
+      {createdLoginId ? <p className="branch-success" role="status">{t('Account Login ID:')} <strong>{createdLoginId}</strong>. {t('Use this Login ID to sign in with the shared demo email account.')}</p> : null}
     </section>
     <section className="branch-workspace">
       <div className="branch-workspace-heading"><div><p>{t('HQ branch control')}</p><h2>{t('Assign branch accountability')}</h2><span>{t('Only unassigned administrators can take an open branch. Existing ownership is not changed silently.')}</span></div><button type="button" onClick={load} disabled={loading}>{t(loading ? 'Loading…' : 'Refresh')}</button></div>

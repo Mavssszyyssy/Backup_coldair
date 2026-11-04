@@ -17,3 +17,13 @@
   color: var(--ops-text);
 }
 :root[data-theme='dark'] .super-layout :is(.alert-eyebrow, .alert-reference) { color: #a5b4fc !important; }
+
+.alert-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.alert-pagination span { color: #475569; font-size: 13px; font-weight: 700; }
+.alert-pagination button { min-height: 40px; padding: 8px 14px; border: 1px solid #c7d2fe; border-radius: 9px; background: #eef2ff; color: #3730a3; font: inherit; font-weight: 800; cursor: pointer; }
+.alert-pagination button:hover:not(:disabled) { background: #e0e7ff; }
+.alert-pagination button:disabled { opacity: .48; cursor: not-allowed; }
+:root[data-theme='dark'] .super-layout .alert-pagination span { color: var(--ops-muted); }
+:root[data-theme='dark'] .super-layout .alert-pagination button { border-color: var(--ops-border-strong); background: var(--ops-surface-subtle); color: #c7d2fe; }
+:root[data-theme='dark'] .super-layout .alert-pagination button:hover:not(:disabled) { background: #344459; }
+:root[data-theme='dark'] .super-layout .alert-error { background: #3b222b; color: #fecaca; }

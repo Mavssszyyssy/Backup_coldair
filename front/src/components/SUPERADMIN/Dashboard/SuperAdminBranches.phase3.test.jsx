@@ -41,3 +41,20 @@ test('branch creation labels are localized without changing branch names', async
   expect(screen.getByRole('button', { name: 'Magdagdag ng sangay' })).toBeInTheDocument();
   expect(screen.getAllByText('Bulacan').length).toBeGreaterThan(0);
 });
+
+test('shared demo admin creation displays the account-specific login ID', async () => {
+  apiRequest.mockImplementation(async (path) => {
+    if (path === '/users?role=admin') return { users: [] };
+    if (path === '/branches') return { branches: [{ name: 'Laguna', coverageAreas: [] }] };
+    if (path === '/users/staff') return { user: { id: 'admin-laguna-id', name: 'New Admin', email: 'lanlords2025@gmail.com', assignedBranch: 'Laguna' }, loginIdentifier: 'admin.laguna', tempPassword: 'temporary' };
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  render(<SuperAdminBranches />);
+  await screen.findByText('Current ownership');
+  fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'New' } });
+  fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Admin' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'lanlords2025@gmail.com' } });
+  fireEvent.change(screen.getByLabelText('Eligible branch'), { target: { value: 'Laguna' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create administrator' }));
+  expect(await screen.findByText('admin.laguna')).toBeInTheDocument();
+});
