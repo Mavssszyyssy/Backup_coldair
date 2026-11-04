@@ -73,4 +73,11 @@ describe("catalogue cart product details", () => {
       "/catalog/ac/lg-hsn30ipc.jpg",
     );
   });
+
+  it("does not request a catalog advertising click-through as an image", () => {
+    const invalid = { ...catalogProduct, sku: "ULTRAMEKASUS", image: "https://www.google.com/aclk?adurl=" };
+    expect(getCatalogProductImageUrl(invalid)).toBe("");
+    expect(mapCatalogProductToCartProduct(invalid).imageUrl).toBe("/catalog/ac/generic-ac.jpg");
+    expect(getCatalogProductImageUrl(catalogProduct)).toBe("/api/products/product-1/image");
+  });
 });

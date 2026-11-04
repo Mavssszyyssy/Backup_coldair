@@ -1,5 +1,14 @@
 const text = (value) => String(value ?? "").trim();
 
+const usableImageUrl = (value) => {
+  const url = text(value);
+  if (!url) return "";
+  // An advertising click-through URL returned by catalog data is an HTML
+  // destination, not an image. Loading it in <img> produces a browser error.
+  if (/^https:\/\/www\.google\.com\/aclk(?:[/?#]|$)/i.test(url)) return "";
+  return url;
+};
+
 const parseHorsepower = (value) => {
   const match = text(value).match(/\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : 0;
@@ -18,7 +27,7 @@ export const getCatalogProductImageUrl = (product = {}) => {
   if (sku.startsWith("53CNV")) return "/catalog/ac/carrier-opus-53cnv.jpg";
   if (sku.startsWith("53CLV")) return "/catalog/ac/carrier-slim-53clv.jpg";
 
-  return text(product.imageUrl || product.image);
+  return usableImageUrl(product.imageUrl || product.image);
 };
 
 export const mapCatalogProductToCartProduct = (product = {}) => {
