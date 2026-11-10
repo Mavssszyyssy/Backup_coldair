@@ -125,8 +125,8 @@ export default function SignUpStep2() {
 
         <Card>
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>{t("Verified email:")} {normalizedEmail}</Text>
-          <TextField label={t("First Name")} value={form.name_first} onChangeText={(value) => updateField("name_first", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("First name")} error={errors.name_first} />
-          <TextField label={t("Last Name")} value={form.name_last} onChangeText={(value) => updateField("name_last", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("Last name")} error={errors.name_last} />
+          <TextField label={t("First Name")} value={form.name_first} maxLength={30} helperText={`${form.name_first?.length || 0}/30`} onChangeText={(value) => updateField("name_first", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("First name")} error={errors.name_first} />
+          <TextField label={t("Last Name")} value={form.name_last} maxLength={30} helperText={`${form.name_last?.length || 0}/30`} onChangeText={(value) => updateField("name_last", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("Last name")} error={errors.name_last} />
           <TextField label={t("Suffix (optional)")} value={form.suffix} onChangeText={(value) => updateField("suffix", value)} placeholder="Jr., Sr., III, etc." />
           <TextField label={t("Username")} value={form.alias} onChangeText={(value) => updateField("alias", value.toLowerCase().trim())} onBlur={checkAlias} placeholder={aliasPlaceholder} error={errors.alias} autoCapitalize="none" />
           {aliasStatus === "checking" ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{t("Checking username...")}</Text> : null}

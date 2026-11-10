@@ -174,8 +174,8 @@ const SuperAdminBranches = () => {
       </form>
       <div className="branch-workspace-heading"><div><h2>{t('Create branch administrator')}</h2><span>{t('Only branches without an active administrator can be assigned.')}</span></div></div>
       <form className="branch-assignment-form branch-admin-form" onSubmit={createAdministrator}>
-        <label>{t('First name')}<input value={adminDraft.name_first} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_first: event.target.value }))} /></label>
-        <label>{t('Last name')}<input value={adminDraft.name_last} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_last: event.target.value }))} /></label>
+        <label>{t('First name')}<input value={adminDraft.name_first} maxLength={30} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_first: event.target.value }))} /></label>
+        <label>{t('Last name')}<input value={adminDraft.name_last} maxLength={30} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_last: event.target.value }))} /></label>
         <label>{t('Email')}<input type="email" value={adminDraft.email} required onChange={(event) => setAdminDraft((current) => ({ ...current, email: event.target.value }))} /></label>
         <label>{t('Eligible branch')}<select value={adminDraft.branch} required onChange={(event) => setAdminDraft((current) => ({ ...current, branch: event.target.value }))}><option value="">{t('Select branch')}</option>{branchNames.filter((name) => !assignmentByBranch[name]).map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
         <button type="submit" disabled={saving || loading || !adminDraft.branch}>{t(saving ? 'Creating…' : 'Create administrator')}</button>

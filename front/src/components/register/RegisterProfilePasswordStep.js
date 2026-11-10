@@ -45,7 +45,7 @@ export default function RegisterProfilePasswordStep({
   // Combine external and local errors
   const errors = { ...externalErrors, ...localErrors };
 
-  const nameRegex = /^[a-zA-Z\u00C0-\u017F\s]*$/;
+  const nameRegex = /^[\p{L}\p{M} .'-]*$/u;
 
   const handleNameChange = (field, value) => {
     if (nameRegex.test(value)) {
@@ -178,6 +178,8 @@ export default function RegisterProfilePasswordStep({
           icon={User}
           placeholder="Juan"
           value={formData.firstName}
+          maxLength={30}
+          hint={`${formData.firstName?.length || 0}/30`}
           onChange={(e) => handleNameChange("firstName", e.target.value)}
           status={errors.firstName ? "error" : null}
           errorMessage={t(errors.firstName)}
@@ -189,6 +191,8 @@ export default function RegisterProfilePasswordStep({
           icon={User}
           placeholder="Dela Cruz"
           value={formData.lastName}
+          maxLength={30}
+          hint={`${formData.lastName?.length || 0}/30`}
           onChange={(e) => handleNameChange("lastName", e.target.value)}
           status={errors.lastName ? "error" : null}
           errorMessage={t(errors.lastName)}

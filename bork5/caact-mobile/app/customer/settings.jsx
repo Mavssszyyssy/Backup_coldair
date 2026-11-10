@@ -81,7 +81,7 @@ function editableAddress(address, user) {
 
 function validateAddressForm(form) {
   const errors = {};
-  const nameError = validatePersonName(form.name, "Recipient name");
+  const nameError = validatePersonName(form.name, "Recipient name", { maxLength: 60 });
   const phoneError = validatePhone(form.phone);
   const regionError = validateRequired(form.region, "Region");
   const provinceError = validateRequired(form.province, "Province");
@@ -530,8 +530,8 @@ export default function CustomerSettingsScreen() {
           {addressId(addressForm) ? <Button title={t("Delete this address")} variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
         </Section>
       </> : <Section title={t("Account details")}>
-        <TextField translate={t} label={t("First name")} value={profileForm.name_first} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={profileErrors.name_first} />
-        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={profileErrors.name_last} />
+        <TextField translate={t} label={t("First name")} value={profileForm.name_first} maxLength={30} helperText={`${profileForm.name_first?.length || 0}/30`} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_first)} />
+        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} maxLength={30} helperText={`${profileForm.name_last?.length || 0}/30`} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_last)} />
         <TextField translate={t} label={t("Suffix (optional)")} value={profileForm.suffix} onChangeText={(value) => updateProfileField("suffix", value)} />
         <TextField translate={t} label={t("Username")} value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField translate={t} label={t("Email")} value={profileForm.email} editable={false} />

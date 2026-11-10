@@ -7,9 +7,9 @@ import { isValidEmailFormat } from "../emailPolicy";
 export const validatePersonName = (value, label = "Name") => {
   const text = String(value || "").trim().replace(/\s+/g, " ");
   if (!text) return `${label} is required`;
-  if (text.length < 2 || text.length > 60) return `${label} must be 2–60 characters`;
+  if (text.length < 2 || text.length > 30) return `${label} must be 2–30 characters`;
   if (!/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(text)) return `${label} may contain letters, spaces, apostrophes, periods, and hyphens only`;
-  if (/(.)\1{5,}/iu.test(text)) return `${label} contains too many repeated characters`;
+  if (/(.)\1{4,}/iu.test(text)) return `${label} contains too many repeated characters`;
   return "";
 };
 

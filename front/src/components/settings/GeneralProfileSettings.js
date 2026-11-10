@@ -123,20 +123,24 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               label={t("First Name")}
               icon={User}
               value={formData.name_first}
+              maxLength={30}
+              hint={`${formData.name_first?.length || 0}/30`}
               onChange={(e) => handleChange("name_first", e.target.value)}
               placeholder="Juan"
               status={errors.name_first ? "error" : null}
-              errorMessage={errors.name_first}
+              errorMessage={t(errors.name_first)}
               flex={1}
             />
             <BoutiqueInput
               label={t("Last Name")}
               icon={User}
               value={formData.name_last}
+              maxLength={30}
+              hint={`${formData.name_last?.length || 0}/30`}
               onChange={(e) => handleChange("name_last", e.target.value)}
               placeholder="Dela Cruz"
               status={errors.name_last ? "error" : null}
-              errorMessage={errors.name_last}
+              errorMessage={t(errors.name_last)}
               flex={1}
             />
           </BoutiqueBox>

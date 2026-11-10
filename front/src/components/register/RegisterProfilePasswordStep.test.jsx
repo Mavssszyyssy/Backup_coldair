@@ -20,6 +20,8 @@ it("localizes profile controls without translating account data", () => {
 
   expect(screen.getByText("Profile at Seguridad")).toBeInTheDocument();
   expect(screen.getByDisplayValue("Maria")).toBeInTheDocument();
+  expect(screen.getByDisplayValue("Maria")).toHaveAttribute("maxlength", "30");
+  expect(screen.getByDisplayValue("Santos")).toHaveAttribute("maxlength", "30");
   expect(screen.getByDisplayValue("maria.santos")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /magpatuloy/i })).toBeInTheDocument();
 });

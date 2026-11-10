@@ -48,7 +48,7 @@ export function validateRequired(value, fieldLabel = "This field") {
   return "";
 }
 
-export function validatePersonName(value, fieldLabel = "Name", { required = true } = {}) {
+export function validatePersonName(value, fieldLabel = "Name", { required = true, maxLength = 30 } = {}) {
   const text = String(value || "").trim();
 
   if (!text) {
@@ -67,11 +67,11 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
     return `${fieldLabel} must be at least 2 characters.`;
   }
 
-  if (text.length > 60) {
-    return `${fieldLabel} must be 60 characters or fewer.`;
+  if (text.length > maxLength) {
+    return `${fieldLabel} must be ${maxLength} characters or fewer.`;
   }
 
-  if (/(.)\1{5,}/iu.test(text)) {
+  if (/(.)\1{4,}/iu.test(text)) {
     return `${fieldLabel} contains too many repeated characters.`;
   }
 
