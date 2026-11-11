@@ -188,6 +188,21 @@
   overflow-wrap: anywhere;
 }
 .serialqr-card-body { overflow-wrap: anywhere; }
+.serialqr-unit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.serialqr-card-body .serialqr-unit-meta .serialqr-unit-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--unit-status-bg, #e2e8f0);
+  color: var(--unit-status-text, #334155);
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.serialqr-unit-status[data-status="available"] { --unit-status-bg: #dcfce7; --unit-status-text: #166534; }
+.serialqr-unit-status[data-status="assigned"] { --unit-status-bg: #dbeafe; --unit-status-text: #1e40af; }
+.serialqr-unit-status[data-status="sold"] { --unit-status-bg: #f3e8ff; --unit-status-text: #6b21a8; }
+.serialqr-unit-status[data-status="service"] { --unit-status-bg: #fef3c7; --unit-status-text: #92400e; }
+.serialqr-unit-status[data-status="retired"] { --unit-status-bg: #fee2e2; --unit-status-text: #991b1b; }
 .serialqr-card-body .serialqr-editor, .serialqr-card-body button { max-width: 100%; }
 
 .serialqr-card-body small {
@@ -274,7 +289,7 @@
   color: var(--ops-text);
 }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .serialqr-card-body strong { color: var(--ops-text); }
-:root[data-theme='dark'] :is(.admin-layout, .super-layout) .serialqr-card-body :is(small, span) { color: var(--ops-muted); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .serialqr-card-body :is(small, span:not(.serialqr-unit-status)) { color: var(--ops-muted); }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .serialqr-card-body code {
   background: #344962;
   color: #f1f5f9;

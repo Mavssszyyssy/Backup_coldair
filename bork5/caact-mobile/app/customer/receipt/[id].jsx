@@ -30,8 +30,8 @@ const formatDateTime = (value = "") => {
 
 const statusVariant = (status = "") => {
   const value = String(status).toLowerCase();
-  if (["paid", "verified", "complete", "completed"].some((state) => value.includes(state))) return "success";
-  if (["failed", "cancelled", "expired"].some((state) => value.includes(state))) return "danger";
+  if (["paid", "verified", "complete", "completed"].some((state) => new RegExp(`\\b${state}\\b`).test(value))) return "success";
+  if (["failed", "cancelled", "expired"].some((state) => new RegExp(`\\b${state}\\b`).test(value))) return "danger";
   return "warning";
 };
 
@@ -44,13 +44,17 @@ const receiptDetails = (order = {}) => {
   const normalizedMethod = String(rawMethod).toLowerCase();
   const isCod = normalizedMethod === "cod" || normalizedMethod.includes("cash on delivery");
   const orderComplete = Boolean(order.codCollection?.collectedAt);
+  const paymentStatus = isCod
+    ? (orderComplete ? "Paid on Delivery" : "Payment Due on Delivery")
+    : readablePaymentValue(order.invoice?.payment?.status || order.paymentStatus || order.receipt?.paymentStatus || "Pending");
+  const isPaid = isCod
+    ? orderComplete
+    : ["paid", "verified", "complete", "completed"].some((state) => new RegExp(`\\b${state}\\b`).test(paymentStatus.toLowerCase()));
 
   return {
     receiptNumber: order.invoice?.invoiceNumber || order.receipt?.receiptNumber || order.orderCode || order.id,
     issuedAt: order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt,
-    paymentStatus: isCod
-      ? (orderComplete ? "Paid on Delivery" : "Payment Due on Delivery")
-      : readablePaymentValue(order.paymentStatus || order.receipt?.paymentStatus || "Pending"),
+    paymentStatus,
     paymentMethod: paymentMethodLabel(order.paymentMethod || order.receipt?.paymentMethod),
     paymentReference: isCod
       ? (orderComplete ? "Cash collected upon delivery" : "No reference needed")
@@ -60,7 +64,7 @@ const receiptDetails = (order = {}) => {
     delivery: Number(order.shippingFee || order.receipt?.shippingFee || 0),
     discount: Number(order.discountAmount || order.receipt?.discountAmount || 0),
     total: Number(order.total || order.receipt?.amountPaid || 0),
-    totalLabel: isCod && !orderComplete ? "Amount Due" : "Total Paid",
+    totalLabel: isPaid ? "Total Paid" : "Amount Due",
   };
 };
 
@@ -250,9 +254,6 @@ export default function ReceiptScreen() {
                 <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("OFFICIAL E-RECEIPT")}</BoutiqueText>
                 <BoutiqueText variant="h2">Coldair ACT</BoutiqueText>
               </View>
-              <View style={{ alignItems: "flex-start", gap: BQ_SPACING.xs }}>
-                <BoutiqueChip label={t(String(receipt.paymentStatus)).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
-              </View>
             </View>
 
             <View style={{ paddingHorizontal: BQ_SPACING.lg, paddingVertical: BQ_SPACING.md, backgroundColor: BQ_COLORS.bgAlt, borderTopWidth: 1, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
@@ -260,25 +261,34 @@ export default function ReceiptScreen() {
               <BoutiqueText variant="h3" style={{ marginTop: BQ_SPACING.xs }}>{orderName}</BoutiqueText>
             </View>
 
-            <View style={{ backgroundColor: "#0f172a" }}>
+            <View style={{ padding: BQ_SPACING.lg, gap: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
+              <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("PAYMENT SUMMARY")}</BoutiqueText>
+              <BoutiqueText variant="h1" style={{ fontSize: 28 }}>{formatPeso(receipt.total)}</BoutiqueText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: BQ_SPACING.sm }}>
+                <BoutiqueChip label={t(String(receipt.paymentStatus)).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
+                <BoutiqueText variant="body" color={BQ_COLORS.inkMuted}>{t(receipt.paymentMethod)}</BoutiqueText>
+              </View>
+              <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t(receipt.totalLabel)}</BoutiqueText>
+            </View>
+
+            <View style={{ backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
               <View style={{ padding: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">{t("Receipt number")}</BoutiqueText>
-                <BoutiqueText variant="body" selectable color="#fff" style={{ fontWeight: "600" }}>{references.receiptNumber}</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("Receipt number")}</BoutiqueText>
+                <BoutiqueText variant="body" selectable style={{ fontWeight: "700" }}>{references.receiptNumber}</BoutiqueText>
                 {references.orderNumber ? <>
-                  <BoutiqueText variant="label" color="#94a3b8" style={{ marginTop: BQ_SPACING.sm }}>{t("Order number")}</BoutiqueText>
-                  <BoutiqueText variant="body" selectable color="#fff">{references.orderNumber}</BoutiqueText>
+                  <BoutiqueText variant="label" color={BQ_COLORS.inkMuted} style={{ marginTop: BQ_SPACING.sm }}>{t("Order number")}</BoutiqueText>
+                  <BoutiqueText variant="body" selectable>{references.orderNumber}</BoutiqueText>
                 </> : null}
               </View>
               <View style={{ paddingHorizontal: BQ_SPACING.md, paddingBottom: BQ_SPACING.md, gap: BQ_SPACING.xs }}>
-                <BoutiqueText variant="label" color="#94a3b8">{t("Date issued")}</BoutiqueText>
-                <BoutiqueText variant="body" color="#fff">{receipt.issuedAt ? formatDateTime(receipt.issuedAt) : t("Pending")}</BoutiqueText>
+                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("Date issued")}</BoutiqueText>
+                <BoutiqueText variant="body">{receipt.issuedAt ? formatDateTime(receipt.issuedAt) : t("Pending")}</BoutiqueText>
               </View>
             </View>
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: BQ_COLORS.border }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", backgroundColor: BQ_COLORS.surface }}>
               <DetailCell label={t("CUSTOMER")} value={[invoice.customer?.name || order.customerName || order.address?.name || t("Customer"), invoice.customer?.email, invoice.customer?.phone].filter(Boolean).join("\n")} />
               <DetailCell label={t("BRANCH")} value={invoice.branch || order.stockSourceBranch || order.customerBranch || t("Pending")} />
-              <DetailCell label={t("PAYMENT METHOD")} value={t(receipt.paymentMethod)} />
               <DetailCell label={t("PAYMENT REFERENCE")} value={t(receipt.paymentReference)} />
               <DeliveryAddressDetails address={deliveryAddress} />
               <DetailCell label={t("BILLING ADDRESS")} value={formatAddress(invoice.billingAddress || order.address) || t("Same as delivery")} />

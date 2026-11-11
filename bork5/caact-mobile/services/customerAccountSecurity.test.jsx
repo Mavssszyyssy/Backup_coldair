@@ -6,6 +6,7 @@ import { translateText } from "./interfaceI18n";
 const mockChangePassword = jest.fn();
 const mockUpdateAccount = jest.fn();
 const mockSaveAddress = jest.fn();
+const mockLanguageUpdate = jest.fn();
 const mockLogout = jest.fn();
 const mockConfirmAction = jest.fn();
 const mockReplace = jest.fn();
@@ -20,7 +21,10 @@ const mockCustomer = {
   addresses: [],
 };
 
-jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }) }));
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+  useNavigation: () => ({ addListener: () => () => {}, dispatch: jest.fn() }),
+}));
 jest.mock("../context/UserContext", () => ({
   useUserContext: () => ({
     current: mockCustomer,
@@ -29,6 +33,7 @@ jest.mock("../context/UserContext", () => ({
     changeMyPassword: mockChangePassword,
     saveDeliveryAddress: mockSaveAddress,
     deleteDeliveryAddress: jest.fn(),
+    updateLanguage: mockLanguageUpdate,
   }),
 }));
 jest.mock('../utils/confirmAction', () => ({ confirmAction: (...args) => mockConfirmAction(...args) }));
@@ -46,6 +51,14 @@ beforeEach(() => {
   mockCustomer.addresses = [];
   mockCustomer.phone = "09123456789";
   mockChangePassword.mockResolvedValue({ success: true });
+  mockLanguageUpdate.mockResolvedValue({ success: true });
+});
+
+test("customer language selection shows a brief confirmation in the selected language", async () => {
+  await render(<CustomerSettingsScreen />);
+  await fireEvent.press(screen.getByRole("radio", { name: "Filipino" }));
+  expect(await screen.findByText("Matagumpay na napalitan ang wika.")).toBeTruthy();
+  expect(mockLanguageUpdate).toHaveBeenCalledWith("Filipino");
 });
 
 test("saved address count and eight-address cap leave existing addresses editable", async () => {

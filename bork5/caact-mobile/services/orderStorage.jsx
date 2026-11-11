@@ -218,12 +218,16 @@ export async function getOrderById(orderId) {
   }
 }
 
-export async function getOrderPage(page = 1, limit = 10) {
+export async function getOrderPage(page = 1, limit = 10, filters = {}) {
   const token = await getStoredToken();
   if (!token) throw new Error("Please sign in again to view your orders.");
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
   const safeLimit = Math.min(25, Math.max(1, Math.floor(Number(limit) || 10)));
-  const response = await apiFetch(`/orders/me?page=${safePage}&limit=${safeLimit}&sort=updated`, {
+  const query = new URLSearchParams({ page: String(safePage), limit: String(safeLimit), sort: "updated" });
+  for (const key of ["search", "orderStatus", "paymentStatus", "dateRange"]) {
+    if (filters[key]) query.set(key, String(filters[key]));
+  }
+  const response = await apiFetch(`/orders/me?${query.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error("Unable to load orders. Please try again.");

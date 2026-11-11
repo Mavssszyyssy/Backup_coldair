@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
 import GlobalDialog from '../../common/GlobalDialog';
 import InventoryList from './InventoryList';
@@ -9,7 +10,7 @@ vi.mock('../../../context/UserContext', () => ({
   useUser: () => ({ user: { email: 'superadmin@example.com' }, currentLanguage: languageState.current }),
 }));
 vi.mock('../../../utils/auditLogs', () => ({ appendAuditLog: vi.fn() }));
-vi.mock('./InventorySerialQrPreview', () => ({ default: () => null }));
+const InventoryRouter = ({ children }) => <MemoryRouter initialEntries={['/admin/inventory']}>{children}</MemoryRouter>;
 
 const product = {
   id: 'product-1',
@@ -40,6 +41,7 @@ test('shows a success popup after stock is added to the selected branch', async 
         canManageStock
       />
     </>,
+    { wrapper: InventoryRouter },
   );
 
   fireEvent.change(screen.getByLabelText('Quantity to add for Samsung Windfree'), {
@@ -76,6 +78,7 @@ test('does not show a success popup when the stock update fails', async () => {
         canManageStock
       />
     </>,
+    { wrapper: InventoryRouter },
   );
 
   fireEvent.change(screen.getByLabelText('Quantity to add for Samsung Windfree'), {
@@ -94,7 +97,7 @@ test('labels low and empty stock using the selected branch threshold', () => {
     { ...product, id: 'healthy', name: 'Healthy unit', branchStock: { Cavite: 7, Bulacan: 0 }, branchThresholds: { Cavite: 3 } },
   ];
   const getProductStock = (item) => item.branchStock.Cavite;
-  const view = render(<InventoryList products={products} loading={false} branch="Cavite" getProductStock={getProductStock} />);
+  const view = render(<InventoryList products={products} loading={false} branch="Cavite" getProductStock={getProductStock} />, { wrapper: InventoryRouter });
   expect(screen.getByText('Low stock · 3')).toHaveClass('stock-badge--low');
   expect(screen.getByText('Out of stock · 0')).toHaveClass('stock-badge--out');
   expect(screen.getByText('In stock · 7')).not.toHaveClass('stock-badge--low', 'stock-badge--out');
@@ -105,9 +108,17 @@ test('labels low and empty stock using the selected branch threshold', () => {
 
 test('localizes inventory controls without translating product and branch names', () => {
   languageState.current = 'Filipino';
-  render(<InventoryList products={[product]} loading={false} branch="Cavite" getProductStock={() => 4} canManageStock />);
+  render(<InventoryList products={[product]} loading={false} branch="Cavite" getProductStock={() => 4} canManageStock />, { wrapper: InventoryRouter });
   expect(screen.getByRole('heading', { name: 'Listahan ng imbentaryo' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Magdagdag ng stock' })).toBeInTheDocument();
   expect(screen.getByLabelText('Daming idaragdag para sa Samsung Windfree')).toBeInTheDocument();
   expect(screen.getByText('Samsung Windfree')).toBeInTheDocument();
+});
+
+test('shows readable prices and links each inventory row to the selected product and branch in the registry', () => {
+  render(<InventoryList products={[product]} loading={false} branch="Cavite" />, { wrapper: InventoryRouter });
+  expect(screen.queryByRole('columnheader', { name: 'Serial / QR' })).not.toBeInTheDocument();
+  expect(screen.getByText('PHP 38,895')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /View unit records: Samsung Windfree/ }))
+    .toHaveAttribute('href', '/admin/inventory?tab=serial-qr&productId=product-1&branch=Cavite');
 });

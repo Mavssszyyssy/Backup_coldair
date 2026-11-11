@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyNotificationsChanged } from "./notificationEvents";
 import {
   fetchNotifications,
+  archiveNotification as archiveRemoteNotification,
   getStoredToken,
   markAllNotificationsRead,
   markNotificationRead as markRemoteNotificationRead,
@@ -13,6 +14,7 @@ export { resolveNotificationRoute } from "./notificationRouteService";
 
 const STORAGE_KEY = "local_notifications_v1";
 let activeNotificationRead = null;
+let archiveVersion = 0;
 
 const fetchNotificationsOnce = async (token) => {
   // The side menu, header badge, and notification screen can refresh at the
@@ -82,19 +84,25 @@ export async function createNotification(payload = {}) {
   return created;
 }
 
-export async function getNotificationsForUser(user = {}, { strict = false } = {}) {
+export async function getNotificationsForUser(user = {}, { strict = false, limit = 0, withMetadata = false } = {}) {
   const token = await getStoredToken();
   if (token) {
     try {
-      const result = await fetchNotificationsOnce(token);
+      let result;
+      let version;
+      do {
+        version = archiveVersion;
+        result = limit ? await fetchNotifications(token, { limit }) : await fetchNotificationsOnce(token);
+      } while (version !== archiveVersion);
       if (result.success) {
-        return result.notifications.map((item) => {
+        const items = result.notifications.filter((item) => !item.archivedAt).map((item) => {
           const normalized = normalizeNotification(item);
           return {
             ...normalized,
             route: resolveNotificationRoute(item, user?.role),
           };
         });
+        return withMetadata ? { items, hasMore: Boolean(result.hasMore) } : items;
       }
     } catch (error) {
       if (strict) throw error;
@@ -103,7 +111,7 @@ export async function getNotificationsForUser(user = {}, { strict = false } = {}
   }
 
   const items = await getAllNotifications();
-  return items
+  const localItems = items
     .filter((item) => {
       if (item.userId && String(item.userId) === String(user.id)) return true;
       if (item.role && String(item.role) === String(user.role)) return true;
@@ -114,6 +122,26 @@ export async function getNotificationsForUser(user = {}, { strict = false } = {}
       ...item,
       route: resolveNotificationRoute(item, user?.role),
     }));
+  return withMetadata ? { items: localItems.slice(0, limit || 30), hasMore: localItems.length > (limit || 30) } : localItems;
+}
+
+export async function archiveNotificationForUser(notificationId) {
+  const token = await getStoredToken();
+  if (token) {
+    const result = await archiveRemoteNotification(token, notificationId);
+    if (!result.success) throw new Error(result.error || "Unable to archive alert.");
+    // A poll started before the archive may still return the old inbox.
+    archiveVersion += 1;
+    if (activeNotificationRead?.token === token) activeNotificationRead = null;
+  }
+  try {
+    const items = await getAllNotifications();
+    await saveAllNotifications(items.filter((item) => String(item.id) !== String(notificationId)));
+  } catch (error) {
+    if (!token) throw error;
+    // The server already saved the archive, even if local cleanup failed.
+    notifyNotificationsChanged();
+  }
 }
 
 export async function markNotificationRead(notificationId) {

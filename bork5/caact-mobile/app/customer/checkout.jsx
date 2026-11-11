@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -91,6 +91,7 @@ const calculateCheckoutTotals = (items = [], branch = "") => {
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const { addressId } = useLocalSearchParams();
   const { language, t } = useInterfaceLanguage();
   const localizeIssue = (message) => {
     const zipMismatch = String(message || "").match(/^ZIP code does not match (.+)\.$/);
@@ -104,7 +105,7 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [inventoryBranch, setInventoryBranch] = useState("");
-  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState(String(Array.isArray(addressId) ? addressId[0] || "" : addressId || ""));
   const [showAddressChoices, setShowAddressChoices] = useState(false);
   const [branchStockById, setBranchStockById] = useState({});
   const [stockIssues, setStockIssues] = useState([]);

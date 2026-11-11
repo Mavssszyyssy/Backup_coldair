@@ -74,12 +74,13 @@ export default function OrderConfirmationScreen() {
     try {
       const checkoutUrl = await retryOrderPayment(order.id);
       if (!checkoutUrl || !(await Linking.canOpenURL(checkoutUrl))) {
-        throw new Error("A secure GCash payment link was not returned.");
+        throw new Error("A secure payment link was not returned.");
       }
       await Linking.openURL(checkoutUrl);
       router.replace(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (paymentError) {
       Alert.alert(t("Unable to open payment"), t(paymentError?.message || "Please try again."));
+      setRefresh((value) => value + 1);
     } finally {
       paymentInFlightRef.current = false;
       setPaying(false);

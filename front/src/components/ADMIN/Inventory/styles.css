@@ -197,6 +197,20 @@
   gap: 8px;
 }
 
+.admin-card .inventory-pagination .inventory-page-size {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.admin-card .inventory-page-size select { width: auto; }
+.inventory-unit-link { display: block; width: fit-content; margin-top: 4px; color: var(--ops-accent, #1d4ed8); text-decoration: underline; text-underline-offset: 2px; }
+:root[data-theme='dark'] .inventory-unit-link { color: #93c5fd; }
+.inventory-price { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
 .inventory-page-size select {
   min-height: 34px;
   padding: 5px 8px;
@@ -250,6 +264,9 @@
 .super-catalog-wide { grid-column: 1 / -1; }
 .super-catalog-stock-grid { max-width: 620px; }
 .super-catalog-note { font-size: 13px; }
+.super-catalog-image-preview { display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 10px; border: 1px solid #dbe5f0; border-radius: 10px; background: #f8fafc; }
+.super-catalog-image-preview img { display: block; width: 112px; height: 88px; flex: none; object-fit: contain; }
+.super-catalog-image-preview p { margin: 0; color: #475569; font-size: 13px; line-height: 1.45; }
 .super-catalog-submit { display: inline-flex; align-items: center; justify-content: center; justify-self: start; gap: 8px; min-height: 45px; padding: 11px 16px; border: 0; border-radius: 10px; color: #fff; background: var(--role-primary, #1e88e5); font: inherit; font-weight: 900; cursor: pointer; }
 .super-catalog-submit:disabled { cursor: not-allowed; opacity: .6; }
 .super-catalog-error { margin: 0; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 10px; color: #b91c1c; background: #fef2f2; font-weight: 750; }
@@ -285,6 +302,7 @@
 :root[data-theme='dark'] .super-catalog-archive-controls > div button { border-color: #64748b; background: #1e293b; color: #e2e8f0; }
 :root[data-theme='dark'] .super-catalog-archive-controls > div button.active { border-color: #60a5fa; background: #1e3a5f; color: #bfdbfe; }
 @media (max-width: 680px) { .super-catalog-intro { display: grid; } .super-catalog-rule { white-space: normal; } .super-catalog-grid { grid-template-columns: 1fr; } .super-catalog-wide { grid-column: auto; } .super-catalog-serial-list article { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 480px) { .super-catalog-image-preview { align-items: flex-start; flex-direction: column; } }
 
 .admin-card .inventory-page-controls button:disabled {
   cursor: not-allowed;
@@ -301,11 +319,6 @@
 :root[data-theme='dark'] .stock-badge--low { background: #78350f; color: #fef3c7; border-color: #d97706; }
 :root[data-theme='dark'] .stock-badge--out { background: #7f1d1d; color: #fee2e2; border-color: #dc2626; }
 
-.inventory-serial-cell {
-  min-width: 128px;
-  position: relative;
-}
-
 .inventory-table-scroll {
   width: 100%;
   overflow-x: auto;
@@ -313,11 +326,11 @@
 }
 
 .inventory-table {
-  min-width: 1320px;
+  min-width: 780px;
 }
+.inventory-table--with-actions { min-width: 1000px; }
 
 .inventory-table th, .inventory-table td { vertical-align: middle; }
-.inventory-table td:nth-child(8) { white-space: nowrap; }
 
 .inventory-serial-preview-wrap {
   position: relative;
@@ -690,8 +703,8 @@
   }
 
   .inventory-pagination {
-    align-items: flex-start;
-    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px 12px;
   }
 
 }
@@ -741,6 +754,8 @@
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-serial-list strong { color: #e5fff3; }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-serial-list :is(span, small) { color: #c5e8d8; }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-error { background: #57282b; color: #ffe4e6; border-color: #a7484f; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-image-preview { background: var(--ops-surface-subtle); border-color: var(--ops-border); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .super-catalog-image-preview p { color: var(--ops-muted); }
 :root[data-theme='dark'] .admin-card .inventory-page-controls button,
 :root[data-theme='dark'] .admin-card :is(.inventory-serial-preview-close, .inventory-serial-copy) {
   border-color: var(--ops-border-strong);
@@ -756,3 +771,7 @@
 }
 :root[data-theme='dark'] .inventory-serial-preview .inventory-serial-qr { border-color: var(--ops-border); background: var(--ops-surface-subtle); }
 :root[data-theme='dark'] .inventory-serial-preview .inventory-serial-qr small { color: var(--ops-muted); }
+:root[data-theme='dark'] .inventory-serial-preview .inventory-serial-qr-empty {
+  border-color: var(--ops-border-strong);
+  color: var(--ops-muted);
+}

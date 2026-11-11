@@ -47,6 +47,7 @@ function OrderSummary({
   onUpdateQuantity,
   onRemoveItem,
   stockIssues = [],
+  deliveryUnavailable = false,
   stockCheckedAt = "",
   isProcessing = false,
 }) {
@@ -138,8 +139,7 @@ function OrderSummary({
           <div style={{ fontSize: "13px", lineHeight: 1.35 }}>
             {stockIssues.slice(0, 4).map((issue) => (
               <div key={issue.id || issue.name}>
-                {issue.name}: {t("requested")} {issue.desired}, {t("available")}{" "}
-                {issue.available}
+                {issue.name}: {t("Please reduce the requested quantity or choose another item.")}
               </div>
             ))}
             {stockIssues.length > 4 ? (
@@ -158,10 +158,12 @@ function OrderSummary({
         type="button"
         className="place-order-btn"
         onClick={onPlaceOrder}
-        disabled={hasStockIssues || isProcessing}
+        disabled={hasStockIssues || deliveryUnavailable || isProcessing}
         aria-busy={isProcessing}
       >
-        {hasStockIssues
+        {deliveryUnavailable
+          ? t("Choose a serviceable delivery address")
+          : hasStockIssues
           ? t("Update cart to continue")
           : isProcessing
             ? t("Connecting...")

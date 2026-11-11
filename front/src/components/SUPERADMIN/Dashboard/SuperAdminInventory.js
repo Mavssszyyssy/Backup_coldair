@@ -92,7 +92,7 @@ const SuperAdminInventory = () => {
           <InventoryList products={products} loading={loading} onRefresh={load} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} canManageStock searchQuery={searchQuery} stockFilter={stockFilter} />
         </>
       ) : null}
-      {activeTab === 'serial-qr' ? <AdminSerialQr embedded /> : null}
+      {activeTab === 'serial-qr' ? <AdminSerialQr embedded productId={searchParams.get('productId') || ''} initialBranch={searchParams.get('branch') || 'all'} onClearProduct={() => selectTab('serial-qr')} /> : null}
       {activeTab === 'reorders' ? <SuperAdminReorders embedded /> : null}
     </SuperAdminLayout>
   );

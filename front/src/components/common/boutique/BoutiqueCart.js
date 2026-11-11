@@ -218,7 +218,7 @@ export default function BoutiqueCart({
                       strict
                       width="120px"
                     />
-                    {quantityErrors[item.id] ? <small role="alert" style={{ color: "#b91c1c" }}>{quantityErrors[item.id] === "invalid" ? t("Enter a positive whole number.") : `${t("Only")} ${item.stock} ${t(item.stock === 1 ? "unit" : "units")} ${t("available at your delivery branch.")}`}</small> : null}
+                    {quantityErrors[item.id] ? <small role="alert" style={{ color: "#b91c1c" }}>{quantityErrors[item.id] === "invalid" ? t("Enter a positive whole number.") : t("The requested quantity exceeds this branch's available stock. Reduce the quantity and try again.")}</small> : null}
                     <button
                       className="bq-item-remove"
                       type="button"

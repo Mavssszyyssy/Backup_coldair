@@ -30,6 +30,23 @@ test('mobile receipt shows one receipt identifier and preserves the separate ord
  expect(screen.getAllByText('LG Premium Dual Inverter')).toHaveLength(2);
 });
 
+test('mobile receipt presents a clear amount and payment method summary for COD orders',async()=>{
+ getOrderById.mockResolvedValueOnce({id:'order1',orderCode:'ORD-1',receiptAvailable:true,paymentMethod:'cod',paymentStatus:'pending',total:1234,receipt:{receiptNumber:'RCP-1'},items:[]});
+ await render(<ReceiptScreen/>);
+ expect(await screen.findByText('PAYMENT SUMMARY')).toBeTruthy();
+ expect(screen.getByText('PAYMENT DUE ON DELIVERY')).toBeTruthy();
+ expect(screen.getAllByText('Amount Due')).toHaveLength(2);
+ expect(screen.getByText('Cash on Delivery')).toBeTruthy();
+ expect(screen.getAllByText(/1,234/)).toHaveLength(2);
+});
+
+test('mobile receipt does not label an unpaid online transaction as paid',async()=>{
+ getOrderById.mockResolvedValueOnce({id:'order1',orderCode:'ORD-1',receiptAvailable:true,paymentMethod:'gcash',paymentStatus:'unpaid',total:1234,receipt:{receiptNumber:'RCP-1'},items:[]});
+ await render(<ReceiptScreen/>);
+ expect(await screen.findAllByText('Amount Due')).toHaveLength(2);
+ expect(screen.queryByText('Total Paid')).toBeNull();
+});
+
 test('receipt updates in place when a payment/delivery notification arrives', async () => {
  const order = {id:'order1',orderCode:'ORD-1',receiptAvailable:true,paymentMethod:'cod',receipt:{receiptNumber:'RCP-1'},items:[],tracking:{currentLabel:'Preparing for delivery'}};
  getOrderById.mockResolvedValueOnce(order);

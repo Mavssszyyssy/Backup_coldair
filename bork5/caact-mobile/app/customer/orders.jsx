@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, View } from "react-native";
 
 import {
@@ -9,6 +9,8 @@ import {
   BoutiqueCard,
   BoutiqueChip,
   BoutiqueHeader,
+  BoutiqueSearchInput,
+  BoutiqueSegmented,
   BoutiqueScreen,
   BoutiqueText,
   BQ_COLORS,
@@ -35,6 +37,7 @@ function orderStatusVariant(order = {}) {
 }
 
 function paymentStatusVariant(order = {}) {
+  if (String(order.workflowStatus || "").toLowerCase() === "cancelled" && String(order.paymentStatus || "").toLowerCase() !== "paid") return "danger";
   if (String(order.paymentMethod || "").toLowerCase() === "cod") {
     return order.codCollection?.collectedAt ? "success" : "warning";
   }
@@ -160,6 +163,10 @@ function deliveryStatusLabel(order = {}) {
 
 function paymentStatusLabel(order = {}) {
   const status = String(order.paymentStatus || "").toLowerCase();
+  if (String(order.workflowStatus || "").toLowerCase() === "cancelled") {
+    if (order.refundReview?.required) return refundStatusLabel(order.refundReview.status);
+    if (status !== "paid") return "Cancelled before payment";
+  }
   const method = String(order.paymentMethod || "").toLowerCase();
   if (method === "cod") return order.codCollection?.collectedAt ? "Paid on delivery" : "Payment due on delivery";
   if (status === "not_required") {
@@ -288,6 +295,11 @@ export default function CustomerOrdersScreen() {
   const selectedOrderId = String(Array.isArray(orderId) ? orderId[0] || "" : orderId || "");
   const [orders, setOrders] = useState([]);
   const [page, setPage] = useState(1);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [orderStatus, setOrderStatus] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("");
+  const [dateRange, setDateRange] = useState("");
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -296,33 +308,45 @@ export default function CustomerOrdersScreen() {
   const [cancellingId, setCancellingId] = useState("");
   const [payingId, setPayingId] = useState("");
   const paymentInFlightRef = useRef(false);
+  const orderLoadGenerationRef = useRef(0);
+  const filters = useMemo(() => ({ search: searchTerm, orderStatus, paymentStatus, dateRange }), [searchTerm, orderStatus, paymentStatus, dateRange]);
+  const filtersActive = Boolean(searchTerm || orderStatus || paymentStatus || dateRange);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchDraft.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
+  useEffect(() => setPage(1), [filters]);
 
   const refreshOrders = useCallback(async () => {
+    const generation = ++orderLoadGenerationRef.current;
     setLoading(true);
     try {
-      const result = await getOrderPage(page);
-      const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
+      const result = await getOrderPage(page, 10, filters);
+      const selected = selectedOrderId && !filtersActive ? await getOrderById(selectedOrderId) : null;
+      if (generation !== orderLoadGenerationRef.current) return;
       setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
       if (selected) setExpandedOrderId(String(selected.id));
       setTotal(result.pagination.total);
       setTotalPages(result.pagination.totalPages);
       setLoadError("");
     } catch (error) {
-      setLoadError(error?.message || "Unable to load orders.");
+      if (generation === orderLoadGenerationRef.current) setLoadError(error?.message || "Unable to load orders.");
     } finally {
-      setLoading(false);
+      if (generation === orderLoadGenerationRef.current) setLoading(false);
     }
-  }, [page, selectedOrderId]);
+  }, [page, selectedOrderId, filters, filtersActive]);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       const load = ({ background } = {}) => {
+        const generation = ++orderLoadGenerationRef.current;
         if (!background) setLoading(true);
-        return getOrderPage(page).then(async (result) => {
-          if (active) {
-            const selected = selectedOrderId ? await getOrderById(selectedOrderId) : null;
-            if (!active) return;
+        return getOrderPage(page, 10, filters).then(async (result) => {
+          if (active && generation === orderLoadGenerationRef.current) {
+            const selected = selectedOrderId && !filtersActive ? await getOrderById(selectedOrderId) : null;
+            if (!active || generation !== orderLoadGenerationRef.current) return;
             setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
             if (selected) setExpandedOrderId(String(selected.id));
             setTotal(result.pagination.total);
@@ -330,17 +354,18 @@ export default function CustomerOrdersScreen() {
             setLoadError("");
           }
         }).catch((error) => {
-          if (active) setLoadError(error?.message || "Unable to load orders.");
+          if (active && generation === orderLoadGenerationRef.current) setLoadError(error?.message || "Unable to load orders.");
         }).finally(() => {
-          if (active && !background) setLoading(false);
+          if (active && generation === orderLoadGenerationRef.current && !background) setLoading(false);
         });
       };
       const stop = startLiveRefresh(load);
       return () => {
         active = false;
+        orderLoadGenerationRef.current += 1;
         stop();
       };
-    }, [page, selectedOrderId]),
+    }, [page, selectedOrderId, filters, filtersActive]),
   );
 
   const handleCancelRequest = (order) => confirmAction({
@@ -384,6 +409,7 @@ export default function CustomerOrdersScreen() {
       router.push(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (error) {
       Alert.alert(t("Unable to open payment"), t(error?.message || "Please try again."));
+      void refreshOrders();
     } finally {
       paymentInFlightRef.current = false;
       setPayingId("");
@@ -406,6 +432,40 @@ export default function CustomerOrdersScreen() {
           </BoutiqueText>
         </BoutiqueCard>
 
+        <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
+          <BoutiqueText variant="h3">{t("Find orders")}</BoutiqueText>
+          <BoutiqueSearchInput value={searchDraft} onChangeText={setSearchDraft} placeholder={t("Search order code or AC unit")} />
+          <BoutiqueText variant="label">{t("Order status")}</BoutiqueText>
+          <BoutiqueSegmented value={orderStatus} onChange={setOrderStatus} options={[
+            { value: "", label: t("All orders") },
+            { value: "to_pay", label: t("To pay") },
+            { value: "to_deliver", label: t("To deliver") },
+            { value: "to_install", label: t("To install") },
+            { value: "complete", label: t("Completed") },
+            { value: "cancelled", label: t("Cancelled") },
+          ]} />
+          <BoutiqueText variant="label">{t("Payment status")}</BoutiqueText>
+          <BoutiqueSegmented value={paymentStatus} onChange={setPaymentStatus} options={[
+            { value: "", label: t("All payments") },
+            { value: "pending", label: t("Pending") },
+            { value: "paid", label: t("Paid") },
+            { value: "failed", label: t("Failed") },
+            { value: "cancelled", label: t("Cancelled") },
+            { value: "expired", label: t("Expired") },
+          ]} />
+          <BoutiqueText variant="label">{t("Order date")}</BoutiqueText>
+          <BoutiqueSegmented value={dateRange} onChange={setDateRange} options={[
+            { value: "", label: t("Any date") },
+            { value: "30d", label: t("Last 30 days") },
+            { value: "90d", label: t("Last 90 days") },
+          ]} />
+          <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
+            {loading ? "—" : language === "Filipino"
+              ? `${total ? (page - 1) * 10 + 1 : 0}–${Math.min(page * 10, total)} sa ${total} tugmang order`
+              : `Showing ${total ? (page - 1) * 10 + 1 : 0}–${Math.min(page * 10, total)} of ${total} matching order${total === 1 ? "" : "s"}`}
+          </BoutiqueText>
+        </BoutiqueCard>
+
         {loadError ? <BoutiqueCard style={{ gap: BQ_SPACING.sm }}><BoutiqueText color={BQ_COLORS.danger}>{t(loadError)}</BoutiqueText><BoutiqueButton title={t("Try again")} disabled={loading} onPress={refreshOrders} /></BoutiqueCard> : null}
         {loading ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
@@ -415,11 +475,9 @@ export default function CustomerOrdersScreen() {
         ) : orders.length === 0 && !loadError ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={52} color={BQ_COLORS.inkFaint} />
-            <BoutiqueText variant="h2" align="center">
-              {t("No orders yet")}
-            </BoutiqueText>
+            <BoutiqueText variant="h2" align="center">{t(filtersActive ? "No matching orders" : "No orders yet")}</BoutiqueText>
             <BoutiqueText color={BQ_COLORS.inkMuted} align="center">
-              {t("Browse our AC products. Your orders will appear here after checkout.")}
+              {t(filtersActive ? "Try a different search or filter." : "Browse our AC products. Your orders will appear here after checkout.")}
             </BoutiqueText>
             <BoutiqueButton title={t("Shop AC Units")} onPress={() => router.push("/customer/shop")} />
           </BoutiqueCard>

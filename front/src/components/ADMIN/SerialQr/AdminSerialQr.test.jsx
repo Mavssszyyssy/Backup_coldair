@@ -47,3 +47,22 @@ test('keeps a long product name and each existing QR value with its correct unit
   expect(screen.getByText('SERIAL-A')).toBeInTheDocument();
   expect(screen.getByText('SERIAL-B')).toBeInTheDocument();
 });
+
+test('opens an exact model and branch with labeled unit statuses', async () => {
+  apiRequest.mockResolvedValue({ products: [
+    { id: 'p1', name: 'Selected AC', serialUnits: [
+      { serialNumber: 'S1', branch: 'Cavite', status: 'sold' },
+      { serialNumber: 'S2', branch: 'Cavite', status: 'available' },
+      { serialNumber: 'S3', branch: 'Bulacan', status: 'assigned' },
+    ] },
+    { id: 'p2', name: 'Other AC', serialUnits: [{ serialNumber: 'S4', branch: 'Cavite' }] },
+  ] });
+  render(<AdminSerialQr productId="p1" initialBranch="Cavite" />);
+  const heading = await screen.findByRole('heading', { name: 'Selected AC' });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(apiRequest).toHaveBeenCalledWith('/products?branch=Cavite');
+  expect(screen.getByText('sold', { selector: '.serialqr-unit-status' })).toHaveAttribute('data-status', 'sold');
+  expect(screen.getByText('available', { selector: '.serialqr-unit-status' })).toHaveAttribute('data-status', 'available');
+  expect(screen.queryByText('S3')).not.toBeInTheDocument();
+  expect(screen.queryByText('S4')).not.toBeInTheDocument();
+});

@@ -89,15 +89,14 @@ function ProductModal({ product, onClose, onAddToCart }) {
     setQuantityError("");
   }, [product?.id]);
 
-  const availableStock = product?.stock;
   const maxQuantity = product?.stock || 0;
   const isOutOfStock = maxQuantity <= 0;
 
   const validQuantity = /^\d+$/.test(String(quantity).trim()) && Number.isSafeInteger(Number(quantity)) && Number(quantity) >= 1 && Number(quantity) <= maxQuantity;
   const addSelectedQuantity = async () => {
     if (isOutOfStock) return false;
-    if (!validQuantity) {
-      setQuantityError(`${t("Enter a whole number between 1 and")} ${maxQuantity}.`);
+    if (!validQuantity || quantityError) {
+      setQuantityError(t("Choose a valid quantity within availability."));
       return false;
     }
     setSubmitting(true);
@@ -195,9 +194,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
                       variant={isOutOfStock ? "danger" : "success"}
                       size="sm"
                     >
-                      {isOutOfStock
-                        ? t("Temporarily Unavailable")
-                        : (product.stockLabel?.replace(/ Units available$/, ` ${t("Units available")}`) || `${availableStock} ${t("Units available")}`)}
+                      {t(product.stockLabel || (isOutOfStock ? "Out of stock" : "In stock"))}
                     </BoutiqueTechnicalCard>
                   </div>
                   {!isOutOfStock ? (
@@ -205,6 +202,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
                     <BoutiqueNumberInput
                       value={quantity}
                       onChange={(value) => { setQuantity(value); setQuantityError(""); }}
+                      onInvalid={() => setQuantityError(t("Choose a valid quantity within availability."))}
                       min={1}
                       max={maxQuantity}
                       width="180px"

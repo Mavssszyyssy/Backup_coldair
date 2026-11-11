@@ -460,6 +460,13 @@ export default function TaskInformationScreen() {
             }} />}
           </Card> : null}
           {activePage.key === "overview" ? <>
+            {!installationTask ? <Card>
+              <SectionHeading icon="document-text-sharp" title={t("Reports & activity")} subtitle={t("Find AI maintenance guidance, service reports, and visit history for this work order.")} />
+              <View style={{ gap: SPACING.sm }}>
+                <TechButton title={t("AI maintenance guidance & report")} onPress={() => changePage(detailPages.findIndex((page) => page.key === "service"))} leftIcon={<Ionicons name="analytics-sharp" size={17} color={COLORS.surface} />} />
+                {!!task?.unitId ? <TechButton title={t("Service activity & history")} variant="secondary" onPress={() => router.push(`/technician/task/${task.id}/unit/log/select`)} leftIcon={<Ionicons name="reader-sharp" size={17} color={COLORS.tech} />} /> : null}
+              </View>
+            </Card> : null}
             <Card>
               <SectionHeading icon="person-sharp" title={t("Customer & Schedule")} subtitle={t("Essential visit details")} />
               <DetailItem icon="calendar-sharp" label={t("Schedule")} value={[task?.scheduledDate, task?.timeSlot].filter(Boolean).join(" · ") || t("Unscheduled")} accent={COLORS.warning} emphasis />
@@ -532,10 +539,10 @@ export default function TaskInformationScreen() {
               <ServiceCostSummary task={task} />
             </Card>
             <Card>
-              <SectionHeading icon="time-sharp" title={t("Service History")} subtitle={language === "Filipino" ? `${logs.length} tala para sa work order na ito · ${requests.length} kaugnay na kahilingan` : `${logs.length} note(s) for this work order · ${requests.length} related request(s)`} />
+              <SectionHeading icon="time-sharp" title={t("Visit activity & service history")} subtitle={language === "Filipino" ? `${logs.length} tala para sa work order na ito · ${requests.length} kaugnay na kahilingan` : `${logs.length} note(s) for this work order · ${requests.length} related request(s)`} />
               {!task?.unitId ? <Text style={{ color: COLORS.textSecondary }}>{t("No linked AC unit is available for service notes.")}</Text> : null}
               <View style={{ gap: SPACING.sm }}>
-                {!!task?.unitId ? <TechButton title={t("View Service Notes")} onPress={() => router.push(`/technician/task/${task.id}/unit/log/select`)} size="sm" leftIcon={<Ionicons name="reader-sharp" size={17} color={COLORS.surface} />} /> : null}
+                {!!task?.unitId ? <TechButton title={t("Open service activity & history")} onPress={() => router.push(`/technician/task/${task.id}/unit/log/select`)} size="sm" leftIcon={<Ionicons name="reader-sharp" size={17} color={COLORS.surface} />} /> : null}
                 {[TASK_STATUS.INSTALLING, TASK_STATUS.IN_PROGRESS].includes(task?.status) && !!task?.unitId ? <TechButton title={t("Add Service Note")} onPress={() => router.push(`/technician/task/${task.id}/unit/log/insert`)} size="sm" variant="secondary" leftIcon={<Ionicons name="add-circle-sharp" size={17} color={COLORS.tech} />} /> : null}
               </View>
             </Card>

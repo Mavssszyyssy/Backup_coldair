@@ -33,6 +33,9 @@ const isCurrencyField = (label = '') => {
 
 const toSpreadsheetCell = (value, label = '') => {
   if (typeof value === 'number' && Number.isFinite(value)) {
+    if (label === 'onTimeRate') {
+      return `<Cell ss:StyleID="percent"><Data ss:Type="Number">${value / 100}</Data></Cell>`;
+    }
     const style = isCurrencyField(label) ? 'currency' : 'number';
     return `<Cell ss:StyleID="${style}"><Data ss:Type="Number">${value}</Data></Cell>`;
   }
@@ -41,6 +44,9 @@ const toSpreadsheetCell = (value, label = '') => {
 
 export const formatReportValue = (value, label = '') => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return String(value ?? '—');
+  if (label === 'onTimeRate') {
+    return (value / 100).toLocaleString('en-PH', { style: 'percent', maximumFractionDigits: 2 });
+  }
   if (isCurrencyField(label)) {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
@@ -89,6 +95,7 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
     <Style ss:ID="header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F4C81" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/></Style>
     <Style ss:ID="label"><Font ss:Bold="1" ss:Color="#0F172A"/><Interior ss:Color="#E8F0F8" ss:Pattern="Solid"/></Style>
     <Style ss:ID="number"><NumberFormat ss:Format="#,##0.00"/><Alignment ss:Horizontal="Right"/></Style>
+    <Style ss:ID="percent"><NumberFormat ss:Format="0.00%"/><Alignment ss:Horizontal="Right"/></Style>
     <Style ss:ID="currency"><NumberFormat ss:Format="&quot;₱&quot;#,##0.00"/><Alignment ss:Horizontal="Right"/></Style>
   </Styles>
   <Worksheet ss:Name="Report"><Table>
@@ -204,9 +211,6 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       .report-table--financial th, .report-table--financial td { text-align: right; white-space: nowrap; }
       .report-table--financial th:first-child, .report-table--financial td:first-child { text-align: left; white-space: normal; overflow-wrap: anywhere; }
       .report-table--products { font-size: 8.5px; }
-      .report-page { break-after: page; page-break-after: always; }
-      .report-page:last-child { break-after: auto; page-break-after: auto; }
-      .report-page-heading { display: flex; justify-content: space-between; gap: 14px; margin: 14px 0 4px; padding-bottom: 6px; border-bottom: 1px solid #cbd5e1; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
       .meta { color: #64748b; font-size: 9px; margin: 9px 0 0; }
       .report-watermark { position: fixed; top: 43%; left: 8%; right: 8%; transform: rotate(-28deg); text-align: center; font-size: 68px; font-weight: 800; letter-spacing: .12em; color: rgba(15, 76, 129, .035); pointer-events: none; z-index: 0; }
       .report-content, .report-header, .report-title, .signature-section, .report-footer { position: relative; z-index: 1; }

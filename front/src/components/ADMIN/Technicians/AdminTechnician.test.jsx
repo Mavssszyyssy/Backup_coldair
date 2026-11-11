@@ -33,6 +33,7 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   expect(screen.getByLabelText('Last name')).toBeRequired();
   expect(screen.getByLabelText('First name')).toHaveAttribute('maxlength', '30');
   expect(screen.getByLabelText('Last name')).toHaveAttribute('maxlength', '30');
+  expect(screen.getByLabelText(/^Username/)).toHaveAttribute('maxlength', '30');
   expect(screen.getByLabelText('Assigned branch')).toHaveValue('Cavite');
   expect(within(screen.getByLabelText('Assigned branch')).getByRole('option', { name: 'Bulacan' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Fixture' } });
@@ -57,6 +58,34 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   expect(screen.getByText('Close')).toBeDisabled();
   await act(async () => finish({ loginIdentifier: 'tech.cavite.j.delacruz', tempPassword: 'cavite.j.delacruz' }));
   expect(screen.getByText(/was added/)).toBeInTheDocument();
+});
+
+test('rejects oversized service quotas before technician creation', async () => {
+  render(<AdminTechnician />);
+  fireEvent.click(await screen.findByText('Add technician'));
+  fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Fixture' } });
+  fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Technician' } });
+  fireEvent.change(screen.getByLabelText(/^Username/), { target: { value: 'fixture' } });
+  const quota = screen.getByLabelText(/^Service Quota/);
+  expect(quota).toHaveAttribute('max', '50');
+  fireEvent.change(quota, { target: { value: '51' } });
+  fireEvent.submit(screen.getByText('Create technician account').closest('form'));
+  expect(screen.getByRole('alert')).toHaveTextContent('from 1 to 50');
+  expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+});
+
+test('blocks saving an oversized quota for an existing technician', async () => {
+  apiRequest.mockImplementation(async (path) => path === '/users?role=technician'
+    ? { users: [{ id: 'tech-1', name: 'Carl Ramos', assignedBranch: 'Cavite', accountStatus: 'active', serviceQuota: 3 }] }
+    : { tasks: [] });
+  render(<AdminTechnician />);
+  fireEvent.click(await screen.findByRole('button', { name: 'See more details for Carl Ramos' }));
+  const quota = screen.getByLabelText(/^Service Quota/);
+  expect(quota).toHaveAttribute('max', '50');
+  fireEvent.change(quota, { target: { value: '51' } });
+  expect(screen.getByRole('button', { name: 'Save quota' })).toBeDisabled();
+  expect(screen.getByText('Enter a Service Quota as a whole number from 1 to 50.')).toBeInTheDocument();
+  expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'PATCH')).toHaveLength(0);
 });
 
 test('superadmin can update a technician contact email without changing the login ID', async () => {

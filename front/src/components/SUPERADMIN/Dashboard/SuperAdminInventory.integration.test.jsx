@@ -82,6 +82,24 @@ it("renders the real checker, serial registry, and reorder panels", async () => 
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/reorders"));
 });
 
+it("takes an inventory row directly to its unit records in the selected branch", async () => {
+  apiRequest.mockImplementation(async (path) => path === "/products" ? { products: [
+    { id: "p1", name: "Selected AC", sku: "AC-1", branchStock: { Bulacan: 1 }, serialUnits: [
+      { serialNumber: "SERIAL-B", branch: "Bulacan", status: "available" },
+      { serialNumber: "SERIAL-C", branch: "Cavite", status: "sold" },
+    ] },
+    { id: "p2", name: "Other AC", sku: "AC-2", branchStock: { Bulacan: 1 }, serialUnits: [
+      { serialNumber: "OTHER-B", branch: "Bulacan", status: "available" },
+    ] },
+  ] } : {});
+  renderInventory("/superadmin/inventory?tab=checker");
+  fireEvent.click(await screen.findByRole("link", { name: /View unit records: Selected AC/ }));
+  expect(await screen.findByRole("heading", { name: "Selected AC" })).toHaveFocus();
+  expect(screen.getByText("SERIAL-B")).toBeInTheDocument();
+  expect(screen.queryByText("SERIAL-C")).not.toBeInTheDocument();
+  expect(screen.queryByText("OTHER-B")).not.toBeInTheDocument();
+});
+
 it("presents a pending reorder as a structured review card", async () => {
   apiRequest.mockImplementation(async (path) => {
     if (path === "/products") return { products: [] };

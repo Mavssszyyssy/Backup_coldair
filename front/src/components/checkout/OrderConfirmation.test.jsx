@@ -60,3 +60,20 @@ test("the third unsuccessful GCash attempt blocks another retry", async () => {
   expect(await screen.findByText("Maximum payment attempts reached. You can no longer retry payment for this order.")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Pay Again" })).not.toBeInTheDocument();
 });
+
+test("COD payment record shows the amount due and does not invent an online payment reference", async () => {
+  apiRequest.mockResolvedValue({
+    order: {
+      id: "order123", orderCode: "ORD-123", paymentMethod: "cod", paymentStatus: "pending",
+      workflowStatus: "to_deliver", totalAmount: 100, items: [], address: {},
+    },
+  });
+  show();
+  expect(await screen.findByText("Payment record")).toBeInTheDocument();
+  expect(screen.getByText("To be paid on delivery")).toBeInTheDocument();
+  expect(screen.getByText("Not applicable for cash on delivery")).toBeInTheDocument();
+  expect(screen.getByText("Amount Due")).toBeInTheDocument();
+  expect(screen.getByText("Amount Due").parentElement.textContent).toContain("100");
+  const deliveryHeading = screen.getByRole("heading", { name: "Delivery" });
+  expect(deliveryHeading.closest(".bq-card-primitive").parentElement.style.gridColumn).toBe("1 / -1");
+});

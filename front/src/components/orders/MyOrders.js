@@ -1,5 +1,5 @@
 import { ShoppingBag, WarningDiamond } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
@@ -18,6 +18,7 @@ import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import OrderCard from "./OrderCard";
 import TrackOrderModal from "./TrackOrderModal";
 import CancelOrderDialog from "./CancelOrderDialog";
+import "./MyOrders.css";
 
 const VALID_ORDER_STATUSES = [
   "all",
@@ -29,6 +30,11 @@ const VALID_ORDER_STATUSES = [
   "complete",
   "cancelled",
 ];
+
+const orderStatusFromSearch = (search) => {
+  const status = new URLSearchParams(search).get("status");
+  return VALID_ORDER_STATUSES.includes(status) ? status : "all";
+};
 
 const normalizeCustomerOrder = (order = {}) => ({
   ...order,
@@ -61,23 +67,43 @@ function MyOrders() {
   const { isAuthenticated, currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const [orders, setOrders] = useState([]);
+  const [settledQuery, setSettledQuery] = useState(null);
+  const [ordersError, setOrdersError] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => orderStatusFromSearch(location.search));
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 10 });
   const [cancellingOrderId, setCancellingOrderId] = useState("");
   const [cancelOrder, setCancelOrder] = useState(null);
   const [payingOrderId, setPayingOrderId] = useState("");
   const [reorderingOrderId, setReorderingOrderId] = useState("");
 
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === "all") return orders;
-    return orders.filter((order) => order.status === statusFilter);
-  }, [orders, statusFilter]);
+  const limit = pagination.limit;
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (statusFilter !== "all") params.set("orderStatus", statusFilter);
+  if (paymentFilter) params.set("paymentStatus", paymentFilter);
+  if (dateFilter) params.set("dateRange", dateFilter);
+  if (search) params.set("search", search);
+  const orderQuery = params.toString();
+  const ordersLoading = settledQuery !== orderQuery;
+  const hasFilters = statusFilter !== "all" || Boolean(paymentFilter || dateFilter || search);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const status = params.get("status") || "all";
-    setStatusFilter(VALID_ORDER_STATUSES.includes(status) ? status : "all");
+    const timer = window.setTimeout(() => {
+      setSearch(searchDraft.trim().slice(0, 80));
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchDraft]);
+
+  useEffect(() => {
+    setStatusFilter(orderStatusFromSearch(location.search));
+    setPage(1);
   }, [location.search]);
 
   useEffect(() => {
@@ -99,22 +125,30 @@ function MyOrders() {
 
   useEffect(() => {
     let mounted = true;
+    let requestId = 0;
+    let hasLoaded = false;
 
     const loadOrders = async () => {
+      const currentRequest = ++requestId;
       try {
-        // apiRequest already sends read requests with cache disabled. Keeping a
-        // stable URL lets simultaneous focus/poll refreshes share one request.
-        const response = await apiRequest("/orders/me");
-        if (!mounted) return;
-        const normalized = (response.orders || []).map(normalizeCustomerOrder);
+        const response = await apiRequest(`/orders/me?${orderQuery}`);
+        if (!mounted || currentRequest !== requestId) return;
+        if (!Array.isArray(response?.orders)) throw new Error("Missing order history");
+        const normalized = response.orders.map(normalizeCustomerOrder);
+        hasLoaded = true;
         setOrders(normalized);
+        setPagination(response.pagination || { total: normalized.length, totalPages: 1, limit });
+        setOrdersError(false);
         setSelectedOrder((current) => current ? normalized.find((order) => String(order.id) === String(current.id)) || current : null);
       } catch (_error) {
-        if (!mounted) return;
+        if (!mounted || currentRequest !== requestId) return;
         // Orders are always sourced from the backend. Falling back to a
         // browser copy can show an outdated or duplicate transaction after
         // payments, cancellations, dispatch, or installation updates.
-        setOrders([]);
+        if (!hasLoaded) setOrders([]);
+        setOrdersError(true);
+      } finally {
+        if (mounted && currentRequest === requestId) setSettledQuery(orderQuery);
       }
     };
 
@@ -128,10 +162,16 @@ function MyOrders() {
 
     return () => {
       mounted = false;
+      requestId += 1;
       window.clearInterval(pollId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [limit, orderQuery]);
+
+  const updateOrderFilter = (setter, value) => {
+    setter(value);
+    setPage(1);
+  };
 
   const handleTrack = (order) => {
     setSelectedOrder(order);
@@ -250,7 +290,7 @@ function MyOrders() {
                 key={status}
                 type="button"
                 className={`bq-filter-pill ${statusFilter === status ? "active" : ""}`}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => updateOrderFilter(setStatusFilter, status)}
                 style={{
                   padding: "10px 24px",
                   border: "none",
@@ -277,8 +317,48 @@ function MyOrders() {
           )}
         </BoutiqueBox>
 
+        <section className="customer-orders-filter-panel" aria-label={t("Filter orders")}>
+          <label className="customer-orders-search">
+            <span>{t("Search orders")}</span>
+            <input
+              type="search"
+              value={searchDraft}
+              maxLength={80}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder={t("Search order code or AC unit")}
+            />
+          </label>
+          <label>
+            <span>{t("Payment status")}</span>
+            <select value={paymentFilter} onChange={(event) => updateOrderFilter(setPaymentFilter, event.target.value)}>
+              <option value="">{t("All payment statuses")}</option>
+              {["pending", "paid", "failed", "cancelled", "expired", "not_required"].map((value) => (
+                <option key={value} value={value}>{t(({ pending: "Pending", paid: "Paid", failed: "Failed", cancelled: "Cancelled", expired: "Expired", not_required: "No payment required" })[value])}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("Order date")}</span>
+            <select value={dateFilter} onChange={(event) => updateOrderFilter(setDateFilter, event.target.value)}>
+              <option value="">{t("Any date")}</option>
+              <option value="30d">{t("Last 30 days")}</option>
+              <option value="90d">{t("Last 90 days")}</option>
+            </select>
+          </label>
+        </section>
+        {!ordersLoading && !ordersError ? <div className="customer-orders-result-count" aria-live="polite">
+          {`${pagination.total ? (page - 1) * pagination.limit + 1 : 0}–${Math.min(page * pagination.limit, pagination.total)} ${t("of")} ${pagination.total} ${t("orders")}`}
+        </div> : null}
+
         <BoutiqueStack gap={24} className="orders-main">
-          {orders.length === 0 ? (
+          {ordersLoading ? (
+            <div role="status" className="orders-loading-skeleton">
+              <span>{t("Loading orders...")}</span>
+              {[1, 2, 3].map((row) => <div key={row} className="orders-skeleton-card" aria-hidden="true"><i /><i /><i /></div>)}
+            </div>
+          ) : ordersError && orders.length === 0 ? (
+            <BoutiqueBox padding={32} role="alert">{t("Unable to load orders. Please try again.")}</BoutiqueBox>
+          ) : orders.length === 0 && !hasFilters ? (
             <BoutiqueBox
               align="center"
               justify="center"
@@ -312,7 +392,7 @@ function MyOrders() {
                 </BoutiqueButton>
               </BoutiqueStack>
             </BoutiqueBox>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <BoutiqueBox
               align="center"
               justify="center"
@@ -328,7 +408,7 @@ function MyOrders() {
               </BoutiqueText>
             </BoutiqueBox>
           ) : (
-            filteredOrders.map((order) => (
+            orders.map((order) => (
               <OrderCard
                 key={order.id}
                 order={order}
@@ -344,6 +424,13 @@ function MyOrders() {
             ))
           )}
         </BoutiqueStack>
+        {pagination.totalPages > 1 ? (
+          <nav className="customer-orders-pagination" aria-label={t("Order pages")}>
+            <BoutiqueButton variant="outline" disabled={page <= 1 || ordersLoading} onClick={() => setPage((current) => Math.max(1, current - 1))}>{t("Previous")}</BoutiqueButton>
+            <BoutiqueText aria-live="polite">{t("Page")} {page} {t("of")} {pagination.totalPages}</BoutiqueText>
+            <BoutiqueButton variant="outline" disabled={page >= pagination.totalPages || ordersLoading} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}>{t("Next")}</BoutiqueButton>
+          </nav>
+        ) : null}
       </BoutiqueBox>
 
       {showTrackModal && selectedOrder && (

@@ -55,8 +55,8 @@ export default function BoutiqueSideMenu({
   };
 
   const getUserInitial = () => {
-    const name = getUserDisplayName();
-    return name.charAt(0).toUpperCase();
+    const name = getUserDisplayName().trim().split(/\s+/).filter(Boolean);
+    return (name.length > 1 ? `${name[0][0]}${name[name.length - 1][0]}` : (name[0] || "?").slice(0, 2)).toUpperCase();
   };
 
   return (
@@ -92,7 +92,7 @@ export default function BoutiqueSideMenu({
               <User size={32} weight="bold" />
             )}
           </BoutiqueBox>
-          <BoutiqueStack gap={0} className="bq-user-info">
+          <BoutiqueStack gap={0} className="bq-user-info" style={{ minWidth: 0, maxWidth: "100%" }}>
             <BoutiqueText
               size="13px"
               weight={600}
@@ -101,7 +101,7 @@ export default function BoutiqueSideMenu({
             >
               {isAuthenticated ? t("Welcome back,") : t("Hello,")}
             </BoutiqueText>
-            <BoutiqueText variant="h3" weight={800} className="bq-username">
+            <BoutiqueText variant="h3" weight={800} className="bq-username" style={{ overflowWrap: "anywhere", lineHeight: 1.3 }}>
               {getUserDisplayName()}
             </BoutiqueText>
           </BoutiqueStack>

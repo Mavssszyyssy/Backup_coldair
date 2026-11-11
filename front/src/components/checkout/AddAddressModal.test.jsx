@@ -104,3 +104,20 @@ test('uses the mobile PSGC location identities for a newly selected address', as
     municipalityCode: '137607000', submunicipalityCode: '137607005',
   }));
 });
+
+test('rejects an overlong phone paste instead of silently truncating it', () => {
+  const onSave = vi.fn();
+  render(<AddAddressModal onClose={vi.fn()} onSave={onSave} initialAddress={{
+    name: 'Customer', phone: '09123456789', region: 'Central Luzon', province: 'Bulacan',
+    city: 'Taguig', barangay: 'Central Signal Village', street: 'Test street', postalCode: '1630',
+  }} />);
+
+  const phone = screen.getByRole('textbox', { name: /Phone Number/ });
+  expect(phone).toHaveAttribute('maxlength', '20');
+  fireEvent.change(phone, { target: { value: '091234567891234' } });
+  expect(phone).toHaveValue('091234567891234');
+  fireEvent.click(screen.getByRole('button', { name: 'Save Address' }));
+
+  expect(screen.getByRole('alert')).toHaveTextContent('Phone number must be a valid PH mobile format');
+  expect(onSave).not.toHaveBeenCalled();
+});

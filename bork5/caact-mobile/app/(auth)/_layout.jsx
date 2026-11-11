@@ -7,6 +7,9 @@ import LoadingLogo from "../../components/LoadingLogo";
 import { COLORS } from "../../constants/theme";
 import { useGuestGuard } from "../../hooks/useGuestGuard";
 import { RegistrationDraftProvider } from "../../context/RegistrationDraftContext";
+import { AUTH_STACK_OPTIONS } from "../../utils/authStackOptions";
+
+export { AUTH_STACK_OPTIONS };
 
 export default function AuthLayout() {
   const { current, initialized, redirectHref } = useGuestGuard();
@@ -32,7 +35,7 @@ export default function AuthLayout() {
 
   return (
     <RegistrationDraftProvider>
-    <Stack screenOptions={{ headerShown: false }} initialRouteName="sign-in">
+    <Stack screenOptions={AUTH_STACK_OPTIONS} initialRouteName="sign-in">
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="login" />
       <Stack.Screen name="sign-up" />

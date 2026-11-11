@@ -22,6 +22,19 @@ beforeEach(() => {
   });
 });
 
+it("provides one password visibility control and preserves the input value when toggled", () => {
+  render(<MemoryRouter><Login /></MemoryRouter>);
+  const password = screen.getByLabelText("Password");
+  fireEvent.change(password, { target: { value: "StrongPass1." } });
+  const show = screen.getByRole("button", { name: "Show password" });
+  expect(password).toHaveAttribute("type", "password");
+  fireEvent.click(show);
+  expect(password).toHaveAttribute("type", "text");
+  expect(password).toHaveValue("StrongPass1.");
+  fireEvent.click(screen.getByRole("button", { name: "Hide password" }));
+  expect(password).toHaveAttribute("type", "password");
+});
+
 it("keeps polished secondary actions when the login form switches to email verification", async () => {
   render(<MemoryRouter><Login /></MemoryRouter>);
 

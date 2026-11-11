@@ -143,6 +143,7 @@ export default function BoutiqueInput({
         dangerouslySetInnerHTML={{
           __html: `
         .bq-input-group:focus-within { --field-accent: ${BQ_COLORS.brand}; }
+        .bq-input-field.has-pass::-ms-reveal { display: none; }
         .bq-input--error { --field-accent: ${BQ_COLORS.danger} !important; }
         .bq-input--success { --field-accent: ${BQ_COLORS.success} !important; }
 

@@ -21,6 +21,17 @@ const INITIAL_FORM = {
 };
 const CATALOG_PAGE_SIZE = 10;
 
+const isValidImageLink = (value) => {
+  if (!value || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password
+      && !(/^(?:www\.)?google\.com$/i.test(url.hostname) && url.pathname.startsWith("/aclk"));
+  } catch {
+    return false;
+  }
+};
+
 const productSerials = (product) =>
   (Array.isArray(product?.serialUnits) ? product.serialUnits : [])
     .filter((unit) => unit?.serialNumber)
@@ -37,6 +48,7 @@ export default function SuperAdminCatalog({ onCreated }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [imagePreviewStatus, setImagePreviewStatus] = useState("idle");
   const [createdProduct, setCreatedProduct] = useState(null);
   const [copied, setCopied] = useState("");
   const [allProducts, setAllProducts] = useState([]);
@@ -79,6 +91,7 @@ export default function SuperAdminCatalog({ onCreated }) {
   const serials = useMemo(() => productSerials(createdProduct), [createdProduct]);
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
+    if (field === "image") setImagePreviewStatus(value.trim() ? "loading" : "idle");
     setError("");
   };
 
@@ -110,6 +123,10 @@ export default function SuperAdminCatalog({ onCreated }) {
       return;
     }
     if (!branchNames.includes(form.branch)) { setError(t('Select an active branch.')); return; }
+    if (form.image.trim() && (!isValidImageLink(form.image.trim()) || imagePreviewStatus !== "ready")) {
+      setError(t("Enter a working direct HTTPS image link and wait for its preview."));
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -180,7 +197,17 @@ export default function SuperAdminCatalog({ onCreated }) {
             <label>{t('AC specification')}<input value={form.specs} onChange={(event) => updateField("specs", event.target.value)} placeholder={t('Example: 1.5 HP')} required /></label>
             <label>{t('Price (PHP)')}<input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField("price", event.target.value)} required /></label>
             <label>{t('Low-stock alert level')}<input type="number" min="0" step="1" value={form.threshold} onChange={(event) => updateField("threshold", event.target.value)} placeholder={t('Optional')} /></label>
-            <label>{t('Image URL')} <span>{t('(optional)')}</span><input type="url" value={form.image} onChange={(event) => updateField("image", event.target.value)} placeholder="https://…" /></label>
+            <label>{t('Image URL')} <span>{t('(optional)')}</span><input type="url" maxLength={2048} value={form.image} onChange={(event) => updateField("image", event.target.value)} placeholder={t('Paste a direct HTTPS image link')} /></label>
+            <div className="super-catalog-image-preview super-catalog-wide" aria-live="polite">
+              {form.image.trim() && isValidImageLink(form.image.trim()) ? (
+                <img key={form.image.trim()} src={form.image.trim()} alt={t('Product image preview')} onLoad={() => setImagePreviewStatus('ready')} onError={() => setImagePreviewStatus('error')} />
+              ) : null}
+              <p>{!form.image.trim() ? t('Optional: use a direct photo link. Product images are shown without cropping.')
+                : !isValidImageLink(form.image.trim()) ? t('Use a direct HTTPS image link, not a webpage or advertising link.')
+                : imagePreviewStatus === 'ready' ? t('Image loaded. The shop will show it without cropping.')
+                : imagePreviewStatus === 'error' ? t('This link did not load an image. Check the address or use another link.')
+                : t('Checking image preview…')}</p>
+            </div>
             <label className="super-catalog-wide">{t('Customer description')} <span>{t('(optional)')}</span><textarea rows="3" value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder={t('Describe this AC unit in customer-friendly language')} /></label>
             <label className="super-catalog-wide">{t('Features')} <span>{t('(optional, separated by commas)')}</span><input value={form.features} onChange={(event) => updateField("features", event.target.value)} placeholder={t('Inverter, quiet operation, energy saving')} /></label>
           </div>

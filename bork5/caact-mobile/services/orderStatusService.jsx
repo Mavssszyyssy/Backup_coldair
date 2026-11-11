@@ -26,7 +26,7 @@ export function getPaymentRetryState(order = {}) {
   const attemptCount = Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0);
   const activeOrder = onlineMethod && String(order.paymentProvider || "").toLowerCase() === "paymongo" &&
     String(order.workflowStatus || "").toLowerCase() === "to_pay";
-  const resuming = activeOrder && isGcash && status === "pending" && !order.paymongo?.retryInProgress &&
+  const resuming = activeOrder && status === "pending" && !order.paymongo?.retryInProgress &&
     Boolean(order.paymongo?.checkoutSessionId && (order.paymentUrl || order.paymongo?.checkoutUrl));
   const limitReached = activeOrder && isGcash && status !== "paid" && attemptCount >= 3 && !resuming;
   const retryableFailure = ["failed", "cancelled", "expired"].includes(status);

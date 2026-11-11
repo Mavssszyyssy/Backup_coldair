@@ -6,16 +6,17 @@ import AdminReports from "./AdminReports";
 import { exportHtmlToPdfViaPrint, exportToExcel } from "../../../utils/exporters";
 
 const apiRequest = vi.fn();
+let role = "admin";
 vi.mock("../../../config/api", () => ({ apiRequest: (...args) => apiRequest(...args) }));
 vi.mock("../../../utils/exporters", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, exportHtmlToPdfViaPrint: vi.fn(), exportToExcel: vi.fn() };
 });
 vi.mock("../../../context/UserContext", () => ({
-  useUser: () => ({ user: { name: "Cavite Admin", email: "admin@test.local", role: "admin", activeBranch: "Cavite", assignedBranch: "Cavite" } }),
+  useUser: () => ({ user: { name: "Cavite Admin", email: "admin@test.local", role, activeBranch: "Cavite", assignedBranch: "Cavite" } }),
 }));
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); role = "admin"; vi.clearAllMocks(); });
 const renderReport = () => render(<MemoryRouter><AdminReports /></MemoryRouter>);
 
 it("shows the default Sales Report first and switches without loading other reports automatically", async () => {
@@ -98,7 +99,7 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   }
 });
 
-it("paginates inventory rows in the screen and preserves those pages in the PDF", async () => {
+it("paginates inventory rows on screen and exports all rows without embedded page markers", async () => {
   const rows = Array.from({ length: 23 }, (_, index) => ({
     branch: "Cavite", sku: `AC-${String(index + 1).padStart(2, "0")}`,
     product: `AC Unit ${index + 1}`, currentStock: index + 1,
@@ -121,26 +122,28 @@ it("paginates inventory rows in the screen and preserves those pages in the PDF"
 
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   const exportedHtml = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0].html;
-  expect((exportedHtml.match(/class="report-page"/g) || []).length).toBe(3);
-  expect(exportedHtml).toContain("Page 1 of 3");
-  expect(exportedHtml).toContain("Page 3 of 3");
+  expect(exportedHtml).not.toMatch(/\bPage\s+\d+/i);
+  expect(exportedHtml.match(/<table\b/g)).toHaveLength(1);
+  expect(exportedHtml).not.toContain('class="report-page"');
   expect(exportedHtml).toContain("AC-01");
   expect(exportedHtml).toContain("AC-23");
 });
 
-it("requests active technician performance for the selected date range and search", async () => {
+it.each(["admin", "superadmin"])("requests technician performance for the selected date range and search as %s", async (reportRole) => {
+  role = reportRole;
   const report = {
     summary: { technicianCount: 1, completedInPeriod: 3 },
     basis: "Completed work orders in the period.",
     updatedAt: "2026-09-10T15:00:00.000Z",
-    rows: [{ technician: "Active Technician", branch: "Cavite", completedWorkOrders: 3 }],
+    rows: [{ technician: "Active Technician", branch: "Cavite", completedWorkOrders: 3, averageCompletionHours: 2.5, onTimeRate: 66.67 }],
   };
   apiRequest.mockImplementation(async (path) => path.startsWith("/reports/filter-options?")
     ? { customers: [], technicians: [{ value: "507f1f77bcf86cd799439011", label: "Active Technician", branch: "Cavite" }], skus: [], brands: [] }
     : report);
   renderReport();
   fireEvent.click(screen.getByRole("button", { name: "Technician Performance" }));
-  await screen.findByRole("option", { name: "Active Technician" });
+  const technicianOption = reportRole === "superadmin" ? "Active Technician · Cavite" : "Active Technician";
+  await screen.findByRole("option", { name: technicianOption });
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
   fireEvent.change(screen.getByLabelText("Search"), { target: { value: "Active" } });
@@ -154,6 +157,10 @@ it("requests active technician performance for the selected date range and searc
   expect(requested).toContain("technician=507f1f77bcf86cd799439011");
   expect(screen.getAllByText("Active Technician").length).toBeGreaterThan(0);
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
+  expect(screen.getByRole("columnheader", { name: "Average completion time (hours)" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "On-time rate" })).toBeInTheDocument();
+  expect(screen.getByText("2.5")).toBeInTheDocument();
+  expect(screen.getByText("66.67%")).toBeInTheDocument();
 });
 
 it("renders grounded sales, service, inventory, and AMP business intelligence", async () => {
@@ -202,7 +209,7 @@ it("renders grounded sales, service, inventory, and AMP business intelligence", 
   expect(exportToExcel).toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   const exportedHtml = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0].html;
-  expect((exportedHtml.match(/class="report-page"/g) || []).length).toBe(4);
+  expect(exportedHtml).not.toMatch(/Page \d+ of \d+/);
 });
 
 it("paginates the sales transaction register", async () => {
@@ -224,10 +231,12 @@ it("paginates the sales transaction register", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
   const exported = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
-  expect((exported.html.match(/class="report-page report-page--sales"/g) || []).length).toBe(3);
+  expect(exported.html).toContain('class="report-section report-section--splittable report-page--sales"');
   expect(exported.html).toContain('class="report-table report-table--operations"');
   expect(exported.html).toContain('class="report-table report-table--financial"');
-  expect(exported.html).toContain("Page 3 of 3");
+  expect(exported.html).not.toMatch(/Page \d+ of \d+/);
+  expect(exported.html).toContain("ORD-01");
+  expect(exported.html).toContain("ORD-12");
   expect(exported.metadata).toMatchObject({ pageOrientation: "landscape", documentStyle: "tabular" });
 });
 

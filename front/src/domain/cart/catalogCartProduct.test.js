@@ -28,7 +28,7 @@ describe("catalogue cart product details", () => {
       horsepower: 1.5,
       price: 38895,
       stock: 4,
-      imageUrl: "/api/products/product-1/image",
+      imageUrl: "/catalog/ac/samsung-windfree-wallmount.png",
     });
   });
 
@@ -47,7 +47,7 @@ describe("catalogue cart product details", () => {
       id: "product-1",
       model: "12345678",
       brand: "Samsung",
-      imageUrl: "/api/products/product-1/image",
+      imageUrl: "/catalog/ac/samsung-windfree-wallmount.png",
       horsepower: 1.5,
       price: 38895,
       stock: 4,
@@ -67,10 +67,10 @@ describe("catalogue cart product details", () => {
       id: "legacy-product",
       model: "TAC12-CWI-UJE2",
       horsepower: 1.5,
-      imageUrl: "/catalog/ac/tcl-uje-window.jpg",
+      imageUrl: "/catalog/ac/tcl-uje-window.png",
     });
     expect(getCatalogProductImageUrl({ sku: "HSN30IPC" })).toBe(
-      "/catalog/ac/lg-hsn30ipc.jpg",
+      "/catalog/ac/lg-hsn30ipc.png",
     );
   });
 
@@ -78,6 +78,8 @@ describe("catalogue cart product details", () => {
     const invalid = { ...catalogProduct, sku: "ULTRAMEKASUS", image: "https://www.google.com/aclk?adurl=" };
     expect(getCatalogProductImageUrl(invalid)).toBe("");
     expect(mapCatalogProductToCartProduct(invalid).imageUrl).toBe("/catalog/ac/generic-ac.jpg");
-    expect(getCatalogProductImageUrl(catalogProduct)).toBe("/api/products/product-1/image");
+    expect(getCatalogProductImageUrl(catalogProduct)).toBe("/catalog/ac/samsung-windfree-wallmount.png");
+    expect(getCatalogProductImageUrl({ sku: "WA70F13E4LTC" })).toBe("/catalog/ac/samsung-bespoke-ai.png");
+    expect(getCatalogProductImageUrl({ sku: "OTHER", image: "/api/products/other/image" })).toBe("/api/products/other/image");
   });
 });

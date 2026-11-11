@@ -50,3 +50,33 @@ test('catalog actions switch to Filipino while product names remain unchanged', 
   expect(screen.getByRole('button', { name: 'Mga Aktibong Produkto' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'I-archive' })).toBeInTheDocument();
 });
+
+test('new catalog photo links require a loadable HTTPS image before saving', async () => {
+  apiRequest.mockImplementation(async (path) => path === '/products?includeArchived=true'
+    ? { products: [] }
+    : { product: { id: 'new-product', name: 'New AC', serialUnits: [] } });
+  render(<SuperAdminCatalog />);
+  await screen.findByText('No active products match this search.');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'New AC' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'SKU' }), { target: { value: 'NEW-AC-1' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Brand' }), { target: { value: 'New Brand' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'AC specification' }), { target: { value: '1.5 HP' } });
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Price (PHP)' }), { target: { value: '20000' } });
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Starting stock' }), { target: { value: '1' } });
+  const imageInput = screen.getByRole('textbox', { name: /Image URL/ });
+  const submit = screen.getByRole('button', { name: 'Add product and generate serials' });
+
+  fireEvent.change(imageInput, { target: { value: 'https://www.google.com/aclk?ad=1' } });
+  fireEvent.click(submit);
+  expect(screen.getByRole('alert')).toHaveTextContent('Enter a working direct HTTPS image link');
+  expect(apiRequest).not.toHaveBeenCalledWith('/products', expect.anything());
+
+  fireEvent.change(imageInput, { target: { value: 'https://images.example.com/ac?id=1' } });
+  fireEvent.click(submit);
+  expect(apiRequest).not.toHaveBeenCalledWith('/products', expect.anything());
+  fireEvent.load(screen.getByRole('img', { name: 'Product image preview' }));
+  fireEvent.click(submit);
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/products', expect.objectContaining({ method: 'POST' })));
+  const sent = JSON.parse(apiRequest.mock.calls.find(([path]) => path === '/products')[1].body);
+  expect(sent.image).toBe('https://images.example.com/ac?id=1');
+});

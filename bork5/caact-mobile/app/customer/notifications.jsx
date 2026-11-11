@@ -16,6 +16,7 @@ import { useUserContext } from "../../context/UserContext";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import {
   getNotificationsForUser,
+  archiveNotificationForUser,
   markNotificationsReadForUser,
   markNotificationRead,
 } from "../../services/notificationService";
@@ -27,17 +28,19 @@ export default function CustomerNotificationsScreen() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(30);
+  const [hasMore, setHasMore] = useState(false);
   const openingRef = useRef(false);
 
   const loadNotifications = useCallback(async ({ background, isCurrent }) => {
     if (!background) setLoading(true);
     try {
-      const items = await getNotificationsForUser(current, { strict: true });
-      if (isCurrent()) setNotifications(items);
+      const page = await getNotificationsForUser(current, { strict: true, limit: visibleLimit, withMetadata: true });
+      if (isCurrent()) { setNotifications(Array.isArray(page) ? page : page.items || []); setHasMore(Array.isArray(page) ? false : Boolean(page.hasMore)); }
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [current]);
+  }, [current, visibleLimit]);
 
   useFocusEffect(useCallback(() => {
     openingRef.current = false;
@@ -68,6 +71,16 @@ export default function CustomerNotificationsScreen() {
     finally { setMarkingAll(false); }
   };
 
+  const archiveAlert = (item) => Alert.alert(t("Archive alert?"), t("You can remove this alert from your inbox."), [
+    { text: t("Cancel"), style: "cancel" },
+    { text: t("Archive"), onPress: async () => {
+      try {
+        await archiveNotificationForUser(item.id);
+        setNotifications((items) => items.filter((entry) => entry.id !== item.id));
+      } catch (error) { Alert.alert(t("Alert not updated"), t(error?.message || "Please try again.")); }
+    } },
+  ]);
+
   return (
     <>
       <BoutiqueHeader title={t("Alerts")} subtitle={t("Tap an update to continue")} onBack={() => router.back()} />
@@ -75,7 +88,7 @@ export default function CustomerNotificationsScreen() {
         {notifications.some((item) => item.unread && !item.read) ? <BoutiqueButton title={t(markingAll ? "Updating…" : "Mark all as read")} variant="outline" disabled={markingAll} onPress={markAllRead} /> : null}
         {loading ? <ActivityIndicator color={BQ_COLORS.brand} /> : notifications.length === 0 ? (
           <BoutiqueCard><BoutiqueText color={BQ_COLORS.inkMuted}>{t("You are all caught up.")}</BoutiqueText></BoutiqueCard>
-        ) : <NotificationFeed notifications={notifications} onOpen={openNotification} t={t} />}
+        ) : <><NotificationFeed notifications={notifications} onOpen={openNotification} onArchive={archiveAlert} t={t} />{hasMore ? <BoutiqueButton title={t("Load more alerts")} variant="outline" onPress={() => setVisibleLimit((limit) => Math.min(200, limit + 30))} /> : null}</>}
       </BoutiqueScreen>
     </>
   );

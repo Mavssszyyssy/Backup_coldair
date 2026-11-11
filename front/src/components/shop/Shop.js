@@ -140,7 +140,8 @@ const Shop = () => {
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedBrand, setSelectedBrand] = useState("all");
+  const [selectedBrands, setSelectedBrands] = useState([]);
+  const [selectedHorsepowers, setSelectedHorsepowers] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 100000 });
   const [sortBy, setSortBy] = useState("default");
   const [searchTerm, setSearchTerm] = useState("");
@@ -227,14 +228,15 @@ const Shop = () => {
       .filter((p) => {
         const catMatch =
           selectedCategory === "all" || p.category === selectedCategory;
-        const brandMatch = selectedBrand === "all" || p.brand === selectedBrand;
+        const brandMatch = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
+        const horsepowerMatch = selectedHorsepowers.length === 0 || selectedHorsepowers.includes(Number(p.horsepower));
         const priceMatch =
           p.price >= priceRange.min && p.price <= priceRange.max;
         const searchMatch =
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (p.model && p.model.toLowerCase().includes(searchTerm.toLowerCase()));
-        return catMatch && brandMatch && priceMatch && searchMatch;
+        return catMatch && brandMatch && horsepowerMatch && priceMatch && searchMatch;
       })
       .sort((a, b) => {
         if (sortBy === "price_asc") return a.price - b.price;
@@ -253,7 +255,8 @@ const Shop = () => {
   }, [
     products,
     selectedCategory,
-    selectedBrand,
+    selectedBrands,
+    selectedHorsepowers,
     searchTerm,
     priceRange,
     sortBy,
@@ -277,6 +280,7 @@ const Shop = () => {
     const unique = [...new Set(products.map((p) => p.brand).filter(Boolean))];
     return ["all", ...unique];
   }, [products]);
+  const horsepowers = useMemo(() => [...new Set(products.map((product) => Number(product.horsepower)).filter((value) => value > 0))].sort((a, b) => a - b), [products]);
 
   const handleAddToCart = async (product, qty = 1) => {
     setStockNotice("");
@@ -309,7 +313,7 @@ const Shop = () => {
       if (!Number.isSafeInteger(available) || available < requested) {
         throw new Error(available <= 0
           ? (isFilipino(currentLanguage) ? `Hindi available ang AC unit na ito sa sangay ng ${branch}.` : `This AC unit is unavailable at the ${branch} branch.`)
-          : (isFilipino(currentLanguage) ? `Ang sangay ng ${branch} ay may ${available} available na unit lamang; magiging ${requested} ang unit sa iyong cart.` : `The ${branch} branch has only ${available} unit${available === 1 ? "" : "s"} available; your cart would contain ${requested}.`));
+          : t("The requested quantity exceeds this branch's available stock. Reduce the quantity and try again."));
       }
       addToCart({ ...mapCatalogProductToCartProduct(availableProduct), fulfillmentBranch: branch }, Number(qty));
       setFulfillmentBranch(branch);
@@ -400,8 +404,11 @@ const Shop = () => {
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           brands={brands}
-          selectedBrand={selectedBrand}
-          onSelectBrand={setSelectedBrand}
+          selectedBrands={selectedBrands}
+          onSelectBrand={(brand) => setSelectedBrands((current) => brand === "all" ? [] : current.includes(brand) ? current.filter((entry) => entry !== brand) : [...current, brand])}
+          horsepowers={horsepowers}
+          selectedHorsepowers={selectedHorsepowers}
+          onSelectHorsepower={(horsepower) => setSelectedHorsepowers((current) => current.includes(horsepower) ? current.filter((entry) => entry !== horsepower) : [...current, horsepower])}
           priceRange={priceRange}
           onPriceChange={(key, val) =>
             setPriceRange((prev) => ({ ...prev, [key]: parseInt(val) || 0 }))
@@ -410,7 +417,8 @@ const Shop = () => {
           onSearchChange={setSearchTerm}
           onClearFilters={() => {
             setSelectedCategory("all");
-            setSelectedBrand("all");
+            setSelectedBrands([]);
+            setSelectedHorsepowers([]);
             setPriceRange({ min: 0, max: 100000 });
             setSearchTerm("");
           }}

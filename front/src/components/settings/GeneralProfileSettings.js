@@ -9,13 +9,32 @@ import BoutiqueInput from "../common/boutique/BoutiqueInput";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-import { validatePersonName } from "../../domain/register/validateRegistrationProfile";
+import {
+  ACCOUNT_SUFFIX_MAX_LENGTH,
+  validateAccountSuffix,
+  validatePersonName,
+} from "../../domain/register/validateRegistrationProfile";
+import {
+  validateLocalPhMobile,
+} from "../../utils/phMobileValidation";
+
+function sanitizeAccountPhone(value, previousValue = "") {
+  const text = String(value ?? "").trim();
+  if (!/^[+\d\s()-]*$/.test(text)) return previousValue;
+  const digits = text.replace(/\D/g, "");
+  if (/^\+?639\d{9}$/.test(text.replace(/[\s()-]/g, ""))) {
+    return `09${digits.slice(-9)}`;
+  }
+  if (/^9\d{9}$/.test(digits)) return `0${digits}`;
+  return digits.length <= 11 ? digits : previousValue;
+}
 
 function GeneralProfileSettings({ user, onUpdateProfile }) {
   const t = (value) => translateText(value, user?.preferences?.language);
   const [formData, setFormData] = useState({
     name_first: "",
     name_last: "",
+    suffix: "",
     alias: "",
     phone: "",
     email: "", // Usually read-only or handled specially
@@ -29,9 +48,16 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
       setFormData({
         name_first: user.name_first || "",
         name_last: user.name_last || "",
+        suffix: user.suffix || "",
         alias: user.alias || "",
-        phone: user.phone || "",
+        phone: sanitizeAccountPhone(user.phone || "", user.phone || ""),
         email: user.email || "",
+      });
+      setErrors({
+        name_first: user.name_first ? validatePersonName(user.name_first, "First name") : "",
+        name_last: user.name_last ? validatePersonName(user.name_last, "Last name") : "",
+        suffix: validateAccountSuffix(user.suffix || ""),
+        phone: validateLocalPhMobile(sanitizeAccountPhone(user.phone || "", user.phone || "")),
       });
     }
   }, [user]);
@@ -48,6 +74,10 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
     if (field === "alias" && aliasStatus !== null) {
       setAliasStatus(null);
     }
+  };
+
+  const handlePhoneChange = (value) => {
+    handleChange("phone", sanitizeAccountPhone(value, formData.phone));
   };
 
   const handleAliasBlur = async () => {
@@ -75,8 +105,15 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
     setErrors({});
     const firstNameError = validatePersonName(formData.name_first, "First name");
     const lastNameError = validatePersonName(formData.name_last, "Last name");
-    if (firstNameError || lastNameError) {
-      setErrors({ name_first: firstNameError, name_last: lastNameError });
+    const suffixError = validateAccountSuffix(formData.suffix);
+    const phoneError = validateLocalPhMobile(formData.phone);
+    if (firstNameError || lastNameError || suffixError || phoneError) {
+      setErrors({
+        name_first: firstNameError,
+        name_last: lastNameError,
+        suffix: suffixError,
+        phone: phoneError,
+      });
       return;
     }
     setSaving(true);
@@ -90,6 +127,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
       await onUpdateProfile({
         name_first: formData.name_first,
         name_last: formData.name_last,
+        suffix: formData.suffix.trim(),
         alias: formData.alias,
         phone: formData.phone,
       });
@@ -146,6 +184,17 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
           </BoutiqueBox>
 
           <BoutiqueInput
+            label={t("Suffix (optional)")}
+            value={formData.suffix}
+            maxLength={ACCOUNT_SUFFIX_MAX_LENGTH}
+            hint={`${formData.suffix?.length || 0}/${ACCOUNT_SUFFIX_MAX_LENGTH}`}
+            onChange={(e) => handleChange("suffix", e.target.value)}
+            placeholder={t("Jr. or III")}
+            status={errors.suffix ? "error" : null}
+            errorMessage={t(errors.suffix)}
+          />
+
+          <BoutiqueInput
             label={t("Username")}
             icon={UserCircle}
             value={formData.alias}
@@ -161,9 +210,14 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             label={t("Phone Number")}
             icon={Phone}
             value={formData.phone}
-            onChange={(e) => handleChange("phone", e.target.value)}
+            maxLength={16}
+            type="tel"
+            inputMode="numeric"
+            onChange={(e) => handlePhoneChange(e.target.value)}
             placeholder="09XXXXXXXXX"
-            hint={t("Used to contact you about deliveries and service visits.")}
+            status={errors.phone ? "error" : null}
+            errorMessage={t(errors.phone)}
+            hint={t("Enter 11 digits starting with 09. Used for delivery and service contact; account verification codes are sent to your email.")}
           />
 
           <BoutiqueInput
@@ -172,6 +226,11 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             value={formData.email}
             disabled
             hint={t("Email cannot be changed directly for security reasons.")}
+            style={{
+              backgroundColor: BQ_COLORS.bg,
+              color: BQ_COLORS.inkMuted,
+              cursor: "not-allowed",
+            }}
           />
 
           {errors.submit && (

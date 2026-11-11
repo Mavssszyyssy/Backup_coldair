@@ -5,7 +5,7 @@ import { useUser } from "../../../context/UserContext";
 import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { exportHtmlToPdfViaPrint, exportToExcel, formatReportValue } from "../../../utils/exporters";
 import { getSessionActiveBranch } from "../../../utils/authSession";
-import { formatBusinessDate, formatBusinessDateTime } from "../../../utils/dateTime";
+import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime } from "../../../utils/dateTime";
 import { translateText } from "../../../utils/customerI18n";
 import AdminLayout from "../Common/AdminLayout";
 import SuperAdminLayout from "../../SUPERADMIN/Common/SuperAdminLayout";
@@ -52,8 +52,6 @@ const INVENTORY_CATEGORY_OPTIONS = [
   ["floor", "Floor Type"],
 ];
 const REPORT_PAGE_SIZE = 10;
-const SALES_PDF_FIRST_PAGE_SIZE = 4;
-const SALES_PDF_PAGE_SIZE = 6;
 const BUSINESS_INTELLIGENCE_PAGES = ["Sales intelligence", "Service intelligence", "Inventory intelligence", "AMP intelligence"];
 const SALES_FINANCIAL_FIELDS = new Set([
   "unitPrice", "subtotal", "vat", "deliveryFee", "discount", "total", "amountCollected",
@@ -101,6 +99,8 @@ const COLUMN_LABELS = {
   stockStatus: "Stock status",
   merchandiseSales: "Merchandise sales",
   completedWorkOrders: "Completed work orders",
+  averageCompletionHours: "Average completion time (hours)",
+  onTimeRate: "On-time rate",
 };
 
 const OMITTED_INVENTORY_FIELDS = new Set([
@@ -116,9 +116,8 @@ const inventoryReportSummary = (summary = {}) => Object.fromEntries(
 const toIsoDate = (date) => date.toISOString().split("T")[0];
 const defaultRange = () => {
   const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
+  const from = new Date(to.getTime() - 30 * 86_400_000);
+  return { from: formatBusinessDateKey(from), to: formatBusinessDateKey(to) };
 };
 const humanize = (value) => COLUMN_LABELS[value] || SUMMARY_LABELS[value] || String(value).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/^./, (letter) => letter.toUpperCase());
 const displayValue = (value, key) => {
@@ -135,51 +134,17 @@ const reportTableHtml = (rows, { title = "Report details", className = "" } = {}
 };
 
 const salesReportHtml = (rows, summaryHtml, secondaryRows = []) => {
-  const transactionPagesData = [];
-  if (!rows.length) {
-    transactionPagesData.push([]);
-  } else {
-    transactionPagesData.push(rows.slice(0, SALES_PDF_FIRST_PAGE_SIZE));
-    const remainingRows = rows.slice(SALES_PDF_FIRST_PAGE_SIZE);
-    const remainingPageCount = Math.ceil(remainingRows.length / SALES_PDF_PAGE_SIZE);
-    const balancedPageSize = remainingPageCount ? Math.ceil(remainingRows.length / remainingPageCount) : 0;
-    for (let offset = 0; offset < remainingRows.length; offset += balancedPageSize) {
-      transactionPagesData.push(remainingRows.slice(offset, offset + balancedPageSize));
-    }
-  }
-  const transactionPageCount = transactionPagesData.length;
-  const hasProductSummary = secondaryRows.length > 0;
-  const totalPageCount = transactionPageCount + (hasProductSummary ? 1 : 0);
-  const transactionPages = transactionPagesData.map((pageRows, index) => {
-    const operationalRows = pageRows.map((row) => Object.fromEntries(
+  const operationalRows = rows.map((row) => Object.fromEntries(
       Object.entries(row || {}).filter(([key]) => !SALES_FINANCIAL_FIELDS.has(key)),
-    ));
-    const financialRows = pageRows.map((row) => Object.fromEntries(
+  ));
+  const financialRows = rows.map((row) => Object.fromEntries(
       Object.entries(row || {}).filter(([key]) => key === "orderCode" || SALES_FINANCIAL_FIELDS.has(key)),
-    ));
-
-    return `<section class="report-page report-page--sales">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>Transaction register</strong><span>Page ${index + 1} of ${totalPageCount}</span></div>${reportTableHtml(operationalRows, { title: "Order and payment details", className: "report-table--operations" })}${reportTableHtml(financialRows, { title: "Transaction amounts", className: "report-table--financial" })}</section>`;
-  }).join("");
-
-  if (!hasProductSummary) return transactionPages;
-
-  return `${transactionPages}<section class="report-page report-page--sales"><div class="report-page-heading"><strong>Product sales summary</strong><span>Page ${totalPageCount} of ${totalPageCount}</span></div>${reportTableHtml(secondaryRows, { title: "Product sales summary", className: "report-table--products" })}</section>`;
+  ));
+  return `${summaryHtml}<section class="report-section report-section--splittable report-page--sales">${reportTableHtml(operationalRows, { title: "Order and payment details", className: "report-table--operations" })}${reportTableHtml(financialRows, { title: "Transaction amounts", className: "report-table--financial" })}</section>${secondaryRows.length ? `<section class="report-section report-section--splittable">${reportTableHtml(secondaryRows, { title: "Product sales summary", className: "report-table--products" })}</section>` : ""}`;
 };
 
 const inventoryReportHtml = (rows, summaryHtml) => {
-  const pageCount = Math.max(1, Math.ceil(rows.length / REPORT_PAGE_SIZE));
-  return Array.from({ length: pageCount }, (_, index) => {
-    const pageRows = rows.slice(index * REPORT_PAGE_SIZE, (index + 1) * REPORT_PAGE_SIZE);
-    return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>Branch stock register</strong><span>Page ${index + 1} of ${pageCount}</span></div>${reportTableHtml(pageRows, { title: `Inventory records · Page ${index + 1}` })}</section>`;
-  }).join("");
-};
-
-const paginatedReportHtml = (rows, { summaryHtml = "", title = "Report details", secondaryHtml = "" } = {}) => {
-  const pageCount = Math.max(1, Math.ceil(rows.length / REPORT_PAGE_SIZE));
-  return Array.from({ length: pageCount }, (_, index) => {
-    const pageRows = rows.slice(index * REPORT_PAGE_SIZE, (index + 1) * REPORT_PAGE_SIZE);
-    return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>${escapeHtml(title)}</strong><span>Page ${index + 1} of ${pageCount}</span></div>${reportTableHtml(pageRows, { title: `${title} · Page ${index + 1}` })}${index === pageCount - 1 ? secondaryHtml : ""}</section>`;
-  }).join("");
+  return `${summaryHtml}<section class="report-section report-section--splittable">${reportTableHtml(rows, { title: "Inventory records" })}</section>`;
 };
 
 const businessIntelligenceRows = (intelligence = {}) => {
@@ -222,11 +187,11 @@ const businessIntelligenceSummary = (summary = {}) => ({
   conditionFollowUps: summary.amp?.conditionFollowUps || 0,
 });
 
-const businessIntelligenceReportHtml = (intelligence = {}, summaryHtml = "") => BUSINESS_INTELLIGENCE_PAGES.map((label, index) => {
+const businessIntelligenceReportHtml = (intelligence = {}, summaryHtml = "") => `${summaryHtml}${BUSINESS_INTELLIGENCE_PAGES.map((label, index) => {
   const category = ["sales", "service", "inventory", "amp"][index];
   const categoryRows = businessIntelligenceRows(intelligence).filter((row) => row.section.toLowerCase().startsWith(category) || (category === "sales" && row.section.includes("selling")) || (category === "inventory" && row.section.toLowerCase().includes("inventory")) || (category === "service" && ["Serviced", "Service"].some((word) => row.section.startsWith(word))));
-  return `<section class="report-page">${index === 0 ? summaryHtml : ""}<div class="report-page-heading"><strong>${escapeHtml(label)}</strong><span>Page ${index + 1} of ${BUSINESS_INTELLIGENCE_PAGES.length}</span></div>${reportTableHtml(categoryRows, { title: label })}</section>`;
-}).join("");
+  return `<section class="report-section report-section--splittable">${reportTableHtml(categoryRows, { title: label })}</section>`;
+}).join("")}`;
 
 function ReportTable({ title, rows, inventory = false, t = (value) => value }) {
   if (!rows.length) return null;

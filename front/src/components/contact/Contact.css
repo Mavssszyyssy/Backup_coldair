@@ -1154,6 +1154,26 @@
   overflow-wrap: anywhere;
 }
 
+.contact-page .contact-history__expand {
+  margin: 2px 0 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #0b6ca8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.contact-page .contact-history__expand:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+:root[data-theme='dark'] .contact-page .contact-history__expand {
+  color: #8bd4ff;
+}
+
 .contact-page .contact-history__item small {
   color: #718096;
 }

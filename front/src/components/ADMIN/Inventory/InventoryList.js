@@ -1,13 +1,15 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
 import { appendAuditLog } from '../../../utils/auditLogs';
 import { alertDialog } from '../../../utils/dialog';
-import InventorySerialQrPreview from './InventorySerialQrPreview';
 import { sortInventoryProducts } from '../../../domain/inventorySort';
 import { inventoryStockState } from '../../../domain/stockAlerts';
 import { isFilipino, translateText } from '../../../utils/customerI18n';
 import './styles.css';
+
+const priceFormat = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
 
 const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock, canManageStock = false, searchQuery = '', stockFilter = 'all' }) => {
   const { user, currentLanguage } = useUser();
@@ -50,7 +52,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
   const firstProductIndex = (page - 1) * pageSize;
   const pageProducts = visibleProducts.slice(firstProductIndex, firstProductIndex + pageSize);
-  const columnCount = 8 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
+  const columnCount = 7 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
 
   React.useEffect(() => {
     setPage(1);
@@ -109,7 +111,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
       ) : null}
       <label className="inventory-sort-control">{t('Sort products')} <select aria-label={t('Sort inventory')} value={sort} onChange={(event) => setSort(event.target.value)}><option value="recent">{t('Newest first')}</option><option value="name-asc">{t('Product Name — A to Z')}</option><option value="name-desc">{t('Product Name — Z to A')}</option></select></label>
       <div className="inventory-table-scroll">
-        <table className="admin-table inventory-table">
+        <table className={`admin-table inventory-table${canManageStock || onRequestChange ? ' inventory-table--with-actions' : ''}`}>
         <thead>
           <tr>
             <th>{t('Name')}</th>
@@ -118,16 +120,24 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
             <th>{t('HP / Specs')}</th>
             <th>SKU</th>
             <th>{t('Stock')}</th>
-            <th>{t('Serial / QR')}</th>
             <th>{t('Price')}</th>
             {canManageStock && <th>{t('Stock Adjustment')}</th>}
             {onRequestChange && <th>{t('Manager Actions')}</th>}
           </tr>
         </thead>
         <tbody>
-          {pageProducts.map((product, rowIndex) => (
+          {pageProducts.map((product) => (
             <tr key={product.id}>
-              <td>{product.name}</td>
+              <td>
+                {product.name}
+                <Link
+                  className="inventory-unit-link"
+                  to={`?${new URLSearchParams({ tab: 'serial-qr', productId: product.id, ...(branch ? { branch } : {}) })}`}
+                  aria-label={`${t('View unit records')}: ${product.name}${product.sku ? ` (${product.sku})` : ''}`}
+                >
+                  {t('View unit records')}
+                </Link>
+              </td>
               <td>{product.brand || '-'}</td>
               <td>{product.category || '-'}</td>
               <td>{product.specs || '-'}</td>
@@ -137,14 +147,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                   {t(inventoryStockState(product, branch, getStockDisplay(product)) === 'out' ? 'Out of stock' : inventoryStockState(product, branch, getStockDisplay(product)) === 'low' ? 'Low stock' : 'In stock')} · {getStockDisplay(product)}
                 </span>
               </td>
-              <td className="inventory-serial-cell">
-                <InventorySerialQrPreview
-                  product={product}
-                  branch={branch}
-                  placement={rowIndex >= Math.max(0, pageProducts.length - 2) ? 'top' : 'bottom'}
-                />
-              </td>
-              <td>PHP {product.price}</td>
+              <td className="inventory-price">{product.price != null && product.price !== '' && Number.isFinite(Number(product.price)) ? `PHP ${priceFormat.format(Number(product.price))}` : '—'}</td>
               {canManageStock && (
                 <td className="inventory-stock-adjustment-cell">
                   <div className="inventory-stock-adjustment">

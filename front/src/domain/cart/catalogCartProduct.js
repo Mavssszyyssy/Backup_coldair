@@ -17,15 +17,17 @@ const parseHorsepower = (value) => {
 export const getCatalogProductImageUrl = (product = {}) => {
   const sku = text(product.sku || product.model || product.productSku).toUpperCase();
 
-  if (sku.startsWith("AHAC-MINV")) return "/catalog/ac/american-home-ahac-minv.jpg";
-  if (sku.includes("CWI")) return "/catalog/ac/tcl-uje-window.jpg";
-  if (sku.startsWith("TAC-")) return "/catalog/ac/tcl-breezein-kei2.jpg";
-  if (sku.startsWith("MSCE-")) return "/catalog/ac/midea-celest-msce.jpg";
+  if (sku === "12345678" || sku === "123456789") return "/catalog/ac/samsung-windfree-wallmount.png";
+  if (sku === "WA70F13E4LTC") return "/catalog/ac/samsung-bespoke-ai.png";
+  if (sku.startsWith("AHAC-MINV")) return "/catalog/ac/american-home-ahac-minv.png";
+  if (sku.includes("CWI")) return "/catalog/ac/tcl-uje-window.png";
+  if (sku.startsWith("TAC-")) return "/catalog/ac/tcl-breezein-kei2.png";
+  if (sku.startsWith("MSCE-")) return "/catalog/ac/midea-celest-msce.png";
   if (/^AR(?:09|12|18|24)TY/.test(sku)) return "/catalog/ac/samsung-ar9500t.png";
-  if (sku.startsWith("HSN30")) return "/catalog/ac/lg-hsn30ipc.jpg";
-  if (sku.startsWith("HSN")) return "/catalog/ac/lg-hsn-ipx.jpg";
-  if (sku.startsWith("53CNV")) return "/catalog/ac/carrier-opus-53cnv.jpg";
-  if (sku.startsWith("53CLV")) return "/catalog/ac/carrier-slim-53clv.jpg";
+  if (sku.startsWith("HSN30")) return "/catalog/ac/lg-hsn30ipc.png";
+  if (sku.startsWith("HSN")) return "/catalog/ac/lg-hsn-ipx.png";
+  if (sku.startsWith("53CNV")) return "/catalog/ac/carrier-opus-53cnv.png";
+  if (sku.startsWith("53CLV")) return "/catalog/ac/carrier-slim-53clv.png";
 
   return usableImageUrl(product.imageUrl || product.image);
 };
@@ -53,7 +55,8 @@ export const mapCatalogProductToCartProduct = (product = {}) => {
     description: cleanDescription || "Energy efficient unit.",
     inStock: Number.isFinite(stock) ? stock > 0 : true,
     stock: Number.isFinite(stock) ? Math.max(0, stock) : undefined,
-    stockLabel: `${Number(product.totalStock ?? product.stock) || 0} Units available`,
+    availability: product.availability || (stock <= 0 ? "out_of_stock" : "in_stock"),
+    stockLabel: product.availability === "low_stock" ? "Low stock" : stock <= 0 ? "Out of stock" : "In stock",
     model,
     sku: model,
     warranty: text(product.warranty) || "1 year parts, 5 years compressor",

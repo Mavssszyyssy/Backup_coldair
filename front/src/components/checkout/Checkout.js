@@ -133,6 +133,7 @@ function Checkout() {
   const [stockCheckedAt, setStockCheckedAt] = useState("");
   const [assignedBranch, setAssignedBranch] = useState("");
   const [branchError, setBranchError] = useState("");
+  const [checkingBranch, setCheckingBranch] = useState(false);
   const orderRequestKeyRef = useRef("");
 
   const resolveAddressBranch = useCallback(async (address) => {
@@ -144,15 +145,20 @@ function Checkout() {
     let active = true;
     setAssignedBranch("");
     setBranchError("");
+    setCheckingBranch(Boolean(selectedAddress));
     if (!selectedAddress) return () => { active = false; };
     resolveAddressBranch(selectedAddress)
       .then((branch) => {
         if (!active) return;
         if (!branch) setBranchError(t("This address is outside the current service areas. Choose another delivery address."));
         setAssignedBranch(branch);
+        setCheckingBranch(false);
       })
       .catch((error) => {
-        if (active) setBranchError(error.message || t("Unable to determine the service branch."));
+        if (active) {
+          setBranchError(error.message || t("Unable to determine the service branch."));
+          setCheckingBranch(false);
+        }
       });
     return () => { active = false; };
   }, [selectedAddress, resolveAddressBranch, t]);
@@ -453,7 +459,7 @@ function Checkout() {
         }
         const message = latestStock.issues
           .map(
-            (issue) => `${issue.name}: ${t("requested")} ${issue.desired}, ${t("available")} ${issue.available}`)
+            (issue) => `${issue.name}: ${t("Please reduce the requested quantity or choose another item.")}`)
           .join("\n");
         alert(`${t("Some items are no longer available.")}\n\n${message}\n\n${t("Please update your cart and try again.")}`);
         return;
@@ -740,6 +746,7 @@ function Checkout() {
             stockIssues={stockIssues}
             stockCheckedAt={stockCheckedAt}
             isProcessing={isProcessingPayment}
+            deliveryUnavailable={!selectedAddress || checkingBranch || Boolean(branchError) || !assignedBranch}
           />
         </BoutiqueBox>
       </BoutiqueBox>

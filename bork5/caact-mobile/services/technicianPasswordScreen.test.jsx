@@ -6,10 +6,25 @@ import TechProfile from '../app/technician/profile';
 import { validateAccountPassword } from '../utils/authValidation';
 const mockChange = jest.fn();
 const mockUpdate = jest.fn();
+const mockLanguageUpdate = jest.fn();
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace, push: mockPush }), usePathname: () => '/technician/profile' }));
-jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate }) }));
+const mockPreventRemove = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+  usePathname: () => '/technician/profile',
+  useFocusEffect: (callback) => require('react').useEffect(callback, [callback]),
+  usePreventRemove: (...args) => mockPreventRemove(...args),
+}));
+jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate, updateLanguage: mockLanguageUpdate }) }));
+
+test('technician language selection confirms successful save in the selected language', async () => {
+  mockLanguageUpdate.mockReset().mockResolvedValue({ success: true });
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+  await fireEvent.press(screen.getByRole('radio', { name: 'Filipino' }));
+  await waitFor(() => expect(screen.getByText('Matagumpay na napalitan ang wika.')).toBeTruthy());
+  expect(mockLanguageUpdate).toHaveBeenCalledWith('Filipino');
+});
 
 test('technician profile groups account details and explains email sign-in without a verification claim', async () => {
   await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 320, height: 640 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
@@ -108,8 +123,36 @@ test('password fields preserve input, allow visibility checks, and report failed
   expect(screen.getByLabelText('New Password').props.value).toBe('NewPass123.');
   mockChange.mockResolvedValue({ success: true });
   await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
-  await waitFor(() => expect(alert).toHaveBeenCalledWith('Password changed', expect.any(String)));
+  expect(await screen.findByText('Password changed successfully.')).toBeTruthy();
+  expect(screen.queryByLabelText('New Password')).toBeNull();
   alert.mockRestore();
+});
+
+test('password edits can be kept or discarded from Cancel and when navigating away', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  try {
+    await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+    await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    expect(alert).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
+    await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    expect(alert.mock.calls.at(-1)[0]).toBe('Discard changes?');
+    await act(() => alert.mock.calls.at(-1)[2][0].onPress());
+    expect(screen.getByLabelText('Current Password').props.value).toBe('OldPass123!');
+    const [blocked, onRemove] = mockPreventRemove.mock.calls.at(-1);
+    const repeat = jest.fn();
+    expect(blocked).toBe(true);
+    await act(() => onRemove({ repeat }));
+    expect(repeat).not.toHaveBeenCalled();
+    await act(() => alert.mock.calls.at(-1)[2][1].onPress());
+    expect(repeat).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Reset Password' }));
+    expect(screen.getByLabelText('Current Password').props.value).toBe('');
+  } finally {
+    alert.mockRestore();
+  }
 });
 
 test('a pending password save cannot be cancelled while the server may still apply it', async () => {

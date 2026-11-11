@@ -197,6 +197,7 @@ export function LoginScreen() {
           onPress={() => router.push("/recover")}
           variant="ghost"
           size="sm"
+          disabled={submitting}
           style={{ marginTop: SPACING.md }}
         />
 
@@ -205,6 +206,7 @@ export function LoginScreen() {
           onPress={() => router.push("/sign-up")}
           variant="ghost"
           size="sm"
+          disabled={submitting}
           style={{ marginTop: 0 }}
         />
       </KeyboardAwareScrollView>

@@ -27,7 +27,8 @@ export const formatCurrency = (value) =>
   new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
 const shortCurrency = (value) => {
@@ -37,12 +38,12 @@ const shortCurrency = (value) => {
   return `PHP ${Math.round(amount)}`;
 };
 
-const labelForPeriod = (item, period) => {
+const labelForPeriod = (item, period, showYear = false) => {
   if (period === "daily") {
     return new Date(`${item.date}T00:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
   }
   if (period === "monthly") {
-    return new Date(`${item.month}-01T00:00:00`).toLocaleDateString("en-PH", { month: "short", year: "2-digit" });
+    return new Date(`${item.month}-01T00:00:00`).toLocaleDateString("en-PH", { month: "short", ...(showYear ? { year: "numeric" } : {}) });
   }
   return item.quarter || "-";
 };
@@ -50,6 +51,7 @@ const labelForPeriod = (item, period) => {
 export function SalesTrendChart({ data = [], period = "monthly", t = (value) => value }) {
   const limit = period === "daily" ? 14 : period === "monthly" ? 12 : 8;
   const values = data.slice(-limit);
+  const spansYears = period === "monthly" && new Set(values.map(({ month }) => month?.slice(0, 4)).filter(Boolean)).size > 1;
   const maxValue = Math.max(1, ...values.map((item) => Number(item.sales || 0)));
 
   if (!values.length) return <EmptyAnalytics text={t("No paid sales have been recorded for this period.")} />;
@@ -63,10 +65,10 @@ export function SalesTrendChart({ data = [], period = "monthly", t = (value) => 
           const height = Math.max(sales > 0 ? 5 : 0, Math.round((sales / maxValue) * 100));
           return (
             <div className="commerce-bar-column" key={`${labelForPeriod(item, period)}-${index}`}>
-              <div className="commerce-bar-track" title={`${labelForPeriod(item, period)}: ${formatCurrency(sales)} from ${item.orders || 0} paid order${item.orders === 1 ? "" : "s"}`}>
+              <div className="commerce-bar-track" title={`${labelForPeriod(item, period, true)}: ${formatCurrency(sales)} from ${item.orders || 0} paid order${item.orders === 1 ? "" : "s"}`}>
                 <div className="commerce-bar-fill" style={{ height: `${height}%` }} />
               </div>
-              <span>{labelForPeriod(item, period)}</span>
+              <span>{labelForPeriod(item, period, spansYears)}</span>
             </div>
           );
         })}
@@ -80,9 +82,14 @@ export function DonutChart({ title, caption, canonicalTitle = title, data = [], 
     ? "Other recorded signup source"
     : item.label || item.branch || item.source);
   const values = data
-    .map((item) => ({ ...item, value: Math.max(0, Number(item[valueKey] || 0)) }))
+    .map((item) => {
+      const value = Math.max(0, Number(item[valueKey] || 0));
+      return { ...item, value: valueKey === "revenue" ? Math.round(value * 100) / 100 : value };
+    })
     .filter((item) => item.value > 0);
-  const total = values.reduce((sum, item) => sum + item.value, 0);
+  const total = valueKey === "revenue"
+    ? values.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100
+    : values.reduce((sum, item) => sum + item.value, 0);
   if (!total) return <EmptyAnalytics text={emptyText || `${t("No data is available yet for")} ${title.toLowerCase()}.`} />;
 
   let cursor = 0;
@@ -133,15 +140,23 @@ export function ProductPerformance({ products = [], t = (value) => value }) {
 export function BranchPerformance({ branches = [], t = (value) => value }) {
   const [openBranch, setOpenBranch] = useState('');
   if (!branches.length) return <EmptyAnalytics text={t("No branch sales have been recorded yet.")} />;
+  const totals = branches.reduce((sum, branch) => ({
+    all: sum.all + Number(branch.allOrders ?? branch.orders ?? 0),
+    nonCancelled: sum.nonCancelled + Number(branch.orders || 0),
+    cancelled: sum.cancelled + Number(branch.cancelledOrders || 0),
+    paid: sum.paid + Number(branch.paidOrders || 0),
+    revenue: sum.revenue + Number(branch.revenue || 0),
+  }), { all: 0, nonCancelled: 0, cancelled: 0, paid: 0, revenue: 0 });
   return (
     <div className="commerce-table-wrap">
       <table className="commerce-table">
-        <thead><tr><th>{t("Branch")}</th><th>{t("Orders")}</th><th>{t("Paid orders")}</th><th>{t("Paid revenue")}</th></tr></thead>
+        <thead><tr><th>{t("Branch")}</th><th>{t("All orders")}</th><th>{t("Non-cancelled orders")}</th><th>{t("Cancelled orders")}</th><th>{t("Paid orders")}</th><th>{t("Paid revenue")}</th></tr></thead>
         <tbody>
           {branches.map((branch) => (
             <FragmentBranch key={branch.branch} branch={branch} open={openBranch === branch.branch} onToggle={() => setOpenBranch((current) => current === branch.branch ? '' : branch.branch)} t={t} />
           ))}
         </tbody>
+        <tfoot><tr className="commerce-table-total"><th scope="row">{t("Total")}</th><td>{totals.all.toLocaleString()}</td><td>{totals.nonCancelled.toLocaleString()}</td><td>{totals.cancelled.toLocaleString()}</td><td>{totals.paid.toLocaleString()}</td><td>{formatCurrency(totals.revenue)}</td></tr></tfoot>
       </table>
     </div>
   );
@@ -149,15 +164,15 @@ export function BranchPerformance({ branches = [], t = (value) => value }) {
 
 function FragmentBranch({ branch, open, onToggle, t }) {
   return <>
-    <tr><td><button type="button" className="commerce-branch-drilldown" aria-expanded={open} onClick={onToggle}>{branch.branch} {open ? '−' : '+'}</button></td><td>{Number(branch.orders || 0).toLocaleString()}</td><td>{Number(branch.paidOrders || 0).toLocaleString()}</td><td>{formatCurrency(branch.revenue)}</td></tr>
-    {open ? <tr><td colSpan={4}><div className="commerce-branch-details"><strong>{t("Products in paid orders")}</strong>{branch.products?.length ? <><ul>{branch.products.map((item, index) => <li key={item.productId || `${item.product}-${index}`}><span>{item.product} · {Number(item.quantity || 0).toLocaleString()} {t("units")}</span><strong>{formatCurrency(item.revenue)} {t("item subtotal")}</strong></li>)}</ul><small>{t("Item subtotals can differ from paid order revenue after discounts and delivery charges.")}</small></> : <p>{t("No paid product sales recorded for this branch.")}</p>}</div></td></tr> : null}
+    <tr><td><button type="button" className="commerce-branch-drilldown" aria-expanded={open} aria-label={`${open ? t('Hide') : t('Show')} ${branch.branch} ${t('products in paid orders')}`} onClick={onToggle}><span>{branch.branch}</span><span className={`commerce-branch-menu-icon${open ? ' is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span></button></td><td>{Number(branch.allOrders ?? branch.orders ?? 0).toLocaleString()}</td><td>{Number(branch.orders || 0).toLocaleString()}</td><td>{Number(branch.cancelledOrders || 0).toLocaleString()}</td><td>{Number(branch.paidOrders || 0).toLocaleString()}</td><td>{formatCurrency(branch.revenue)}</td></tr>
+    {open ? <tr><td colSpan={6}><div className="commerce-branch-details"><strong>{t("Products in paid orders")}</strong>{branch.products?.length ? <><ul>{branch.products.map((item, index) => <li key={item.productId || `${item.product}-${index}`}><span>{item.product} · {Number(item.quantity || 0).toLocaleString()} {t("units")}</span><strong>{formatCurrency(item.revenue)} {t("item subtotal")}</strong></li>)}</ul><small>{t("Item subtotals can differ from paid order revenue after discounts and delivery charges.")}</small></> : <p>{t("No paid product sales recorded for this branch.")}</p>}</div></td></tr> : null}
   </>;
 }
 
 export function TechnicianPerformance({ technicians = [], t = (value) => value }) {
   if (!technicians.length) return <EmptyAnalytics text={t("No technician performance data is available yet.")} />;
   return (
-    <div className="commerce-ranked-list">
+    <div className="commerce-ranked-list commerce-tech-list">
       {technicians.slice(0, 5).map((technician, index) => (
         <div className="commerce-tech-row" key={`${technician.name}-${index}`}>
           <span className="commerce-rank">{index + 1}</span>

@@ -10,13 +10,13 @@ test('customer display preferences save and reload from the account record', asy
   const view = render(<PreferencesSettings user={initialUser} onUpdateSettings={updateSettings} />);
   fireEvent.change(screen.getByRole('combobox', { name: 'Theme' }), { target: { value: 'dark' } });
   fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'Filipino' } });
-  fireEvent.change(screen.getByRole('combobox', { name: 'Timezone' }), { target: { value: 'UTC' } });
+  expect(screen.queryByRole('combobox', { name: 'Timezone' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Auto-booking' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
   await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
-  expect(savedPreferences).toEqual({ theme: 'dark', darkMode: true, language: 'Filipino', timezone: 'UTC', autoBook: false });
+  expect(savedPreferences).toEqual({ theme: 'dark', darkMode: true, language: 'Filipino', autoBook: false });
   view.unmount();
   render(<PreferencesSettings user={{ preferences: savedPreferences }} onUpdateSettings={updateSettings} />);
-  expect(screen.getAllByRole('combobox').map((input) => input.value)).toEqual(['dark', 'Filipino', 'UTC']);
+  expect(screen.getAllByRole('combobox').map((input) => input.value)).toEqual(['dark', 'Filipino']);
   expect(screen.getByRole('checkbox')).not.toBeChecked();
 });

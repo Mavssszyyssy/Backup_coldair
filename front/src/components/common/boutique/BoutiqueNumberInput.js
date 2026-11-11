@@ -22,6 +22,7 @@ export default function BoutiqueNumberInput({
   width = "auto",
   placeholder = "",
   strict = false,
+  onInvalid,
   ariaLabel,
 }) {
   const accessibleName = ariaLabel || placeholder || "Quantity";
@@ -43,6 +44,8 @@ export default function BoutiqueNumberInput({
   const handleTextChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
     if (strict) {
+      if (rawValue !== "" && !/^\d+$/.test(rawValue)) { onInvalid?.(); return; }
+      if (rawValue !== "" && (!Number.isSafeInteger(Number(rawValue)) || (max !== null && Number(rawValue) > max))) { onInvalid?.(); return; }
       onChange(rawValue);
       return;
     }

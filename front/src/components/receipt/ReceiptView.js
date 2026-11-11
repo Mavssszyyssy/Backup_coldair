@@ -1,11 +1,11 @@
 import { DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
 import { receiptOrderName, receiptReferences, customerStatus } from "../../domain/customerLanguage";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { apiRequest } from "../../config/api";
-import { downloadElementPdf } from "../../utils/pdfDownload";
+import { downloadReceiptPdf } from "../../utils/receiptPdf";
 import { translateText } from "../../utils/customerI18n";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
@@ -15,6 +15,8 @@ const money = (value) => `PHP ${Number(value || 0).toLocaleString("en-PH", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })}`;
+const isConfirmedPaymentStatus = (status = "") =>
+  ["paid", "verified", "complete", "completed"].some((value) => new RegExp(`\\b${value}\\b`).test(String(status).toLowerCase()));
 
 const formatDateTime = (value) => {
   if (!value) return "Pending";
@@ -104,7 +106,6 @@ function ReceiptView() {
   const [error, setError] = useState("");
   const [exportError, setExportError] = useState("");
   const [exporting, setExporting] = useState(false);
-  const receiptRef = useRef(null);
   const backDestination = user?.role === "superadmin"
     ? "/superadmin/services"
     : user?.role === "admin"
@@ -135,8 +136,14 @@ function ReceiptView() {
     setExportError("");
     setExporting(true);
     try {
-      await downloadElementPdf({
-        element: receiptRef.current,
+      await downloadReceiptPdf({
+        order,
+        address: resolveDeliveryAddress(order),
+        paymentMethod: paymentMethodLabel,
+        paymentStatus: paymentStatusLabel,
+        totalLabel,
+        reference: references.receiptNumber,
+        t,
         fileName: `cold-air-receipt-${String(order?.receipt?.receiptNumber || order?.orderCode || orderId).replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf`,
       });
     } catch (downloadError) {
@@ -155,6 +162,11 @@ function ReceiptView() {
   const paymentStatusLabel = isCashOnDelivery
     ? isCompleted ? "Paid on delivery" : "Payment due on delivery"
     : String(order?.invoice?.payment?.status || order?.paymentStatus || "pending").replaceAll("_", " ");
+  const isPaymentConfirmed = isCashOnDelivery
+    ? isCompleted
+    : isConfirmedPaymentStatus(paymentStatusLabel);
+  const totalLabel = isPaymentConfirmed ? "Total Paid" : "Amount Due";
+  const statusTone = isPaymentConfirmed ? "success" : ["failed", "cancelled", "expired"].some((status) => paymentStatusLabel.toLowerCase().includes(status)) ? "danger" : "pending";
 
   if (loading || error || !order || !order.receiptAvailable) {
     return (
@@ -181,17 +193,26 @@ function ReceiptView() {
 
           {exportError ? <p role="alert" className="receipt-export-error">{t(exportError)}</p> : null}
 
-          <article ref={receiptRef} className="receipt-paper">
+          <article className="receipt-paper">
             <div className="receipt-brand">
               <img className="receipt-icon" src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" style={{ objectFit: "contain", background: "white" }} />
               <div>
                 <p className="receipt-eyebrow">{t("Official E-Receipt")}</p>
                 <h1>Coldair ACT</h1>
               </div>
-              <div className="receipt-status">
-                <span>{t(paymentStatusLabel).toUpperCase()}</span>
-              </div>
             </div>
+
+            <section className="receipt-payment-summary" aria-label={t("Payment summary")}>
+              <div>
+                <span>{t(totalLabel)}</span>
+                <strong>{money(order.totalAmount)}</strong>
+              </div>
+              <div className="receipt-payment-method">
+                <span>{t("Payment method")}</span>
+                <strong>{t(paymentMethodLabel)}</strong>
+              </div>
+              <span className={`receipt-payment-state receipt-payment-state-${statusTone}`}>{t(paymentStatusLabel)}</span>
+            </section>
 
             <div className="receipt-order-name">
               <span>{t("Order")}</span>
@@ -219,11 +240,6 @@ function ReceiptView() {
               <div>
                 <span>{t("Branch")}</span>
                 <strong>{order.invoice?.branch || t("Branch pending")}</strong>
-              </div>
-              <div>
-                <span>{t("Payment Method")}</span>
-                <strong>{t(paymentMethodLabel)}</strong>
-                <small>{t(paymentStatusLabel)}</small>
               </div>
               <div>
                 <span>{t("Payment Reference")}</span>
@@ -279,7 +295,7 @@ function ReceiptView() {
                 <p><span>{t("VAT")}</span><strong>{money(order.vatAmount)}</strong></p>
                 <p><span>{t("Delivery")}</span><strong>{money(order.shippingFee)}</strong></p>
                 <p><span>{t("Discount")}</span><strong>-{money(order.discountAmount)}</strong></p>
-                <p className="receipt-grand-total"><span>{t(isCashOnDelivery && !isCompleted ? "Amount Due" : "Total Paid")}</span><strong>{money(order.totalAmount)}</strong></p>
+                <p className="receipt-grand-total"><span>{t(totalLabel)}</span><strong>{money(order.totalAmount)}</strong></p>
               </div>
             </div>
           </article>
@@ -289,29 +305,38 @@ function ReceiptView() {
       <style>{`
         @page { size: A4; margin: 14mm; }
         .receipt-page { max-width: 1000px; margin: 0 auto; padding: 30px 20px 72px; color: #0f172a; }
-        .receipt-shell { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; }
+        .receipt-shell { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
         .receipt-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; }
         .receipt-action-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-        .receipt-paper { background: #fff; border: 1px solid #dbe4ee; border-radius: 10px; overflow: hidden; box-shadow: 0 18px 50px rgba(15,23,42,.08); }
+        .receipt-paper { background: #fff; border: 1px solid #dbe4ee; border-radius: 4px; overflow: hidden; box-shadow: none; }
         .receipt-brand { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 26px; border-bottom: 1px solid #e2e8f0; }
         .receipt-icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: #eff6ff; color: #2563eb; }
         .receipt-eyebrow { margin: 0 0 4px; color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .receipt-brand h1 { margin: 0; font-size: 30px; line-height: 1; }
         .receipt-status { display: grid; gap: 6px; justify-items: end; text-align: right; }
-        .receipt-status span { background: #ecfdf5; color: #047857; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; }
+        .receipt-status span { padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; }
+        .receipt-status-success, .receipt-payment-state-success { background: #ecfdf5; color: #047857; }
+        .receipt-status-pending, .receipt-payment-state-pending { background: #fff7ed; color: #9a3412; }
+        .receipt-status-danger, .receipt-payment-state-danger { background: #fef2f2; color: #b91c1c; }
+        .receipt-payment-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px 24px; padding: 20px 26px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+        .receipt-payment-summary > div { display: grid; gap: 5px; }
+        .receipt-payment-summary span { color: #475569; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .receipt-payment-summary > div:first-child strong { color: #0f172a; font-size: 26px; line-height: 1.2; }
+        .receipt-payment-method strong { color: #0f172a; font-size: 16px; }
+        .receipt-payment-state { padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .receipt-status strong { font-size: 18px; }
-        .receipt-order-name { display: grid; gap: 4px; padding: 16px 26px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .receipt-order-name { display: grid; gap: 4px; padding: 16px 26px; background: #fff; border-bottom: 1px solid #e2e8f0; }
         .receipt-order-name span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .receipt-order-name strong { color: #0f172a; font-size: 18px; overflow-wrap: anywhere; }
-        .receipt-band { display: grid; grid-template-columns: 1fr 1fr; background: #0f172a; color: #fff; }
+        .receipt-band { display: grid; grid-template-columns: 1fr 1fr; background: #fff; color: #0f172a; border-bottom: 1px solid #cbd5e1; }
         .receipt-band div { padding: 18px 26px; display: grid; gap: 5px; }
-        .receipt-band span, .receipt-grid span { color: #94a3b8; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-        .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #e2e8f0; }
-        .receipt-grid > div { background: #fff; padding: 18px 26px; display: grid; gap: 6px; min-width: 0; }
+        .receipt-band span, .receipt-grid span { color: #475569; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; background: #fff; }
+        .receipt-grid > div { background: #fff; padding: 18px 26px; display: grid; gap: 6px; min-width: 0; border-bottom: 1px solid #e2e8f0; }
         .receipt-grid strong { overflow-wrap: anywhere; }
         .receipt-grid small, .receipt-table small { color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
         .receipt-address-details { grid-column: 1 / -1; background: #fff; padding: 20px 26px; display: grid; gap: 12px; }
-        .receipt-address-details > span { color: #94a3b8; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .receipt-address-details > span { color: #475569; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .receipt-address-details dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 26px; }
         .receipt-address-details dl div { display: grid; grid-template-columns: minmax(110px, 150px) 1fr; gap: 12px; align-items: baseline; }
         .receipt-address-details dt { color: #64748b; font-size: 12px; font-weight: 700; }
@@ -319,7 +344,7 @@ function ReceiptView() {
         .receipt-table-wrap { padding: 24px 26px 0; overflow-x: auto; }
         .receipt-table { width: 100%; border-collapse: collapse; min-width: 640px; }
         .receipt-table th, .receipt-table td { padding: 13px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        .receipt-table th { color: #475569; background: #f8fafc; font-size: 12px; text-transform: uppercase; }
+        .receipt-table th { color: #475569; background: #fff; font-size: 12px; text-transform: uppercase; }
         .receipt-table td:nth-child(n+3), .receipt-table th:nth-child(n+3) { text-align: right; }
         .receipt-bottom { display: grid; grid-template-columns: 1fr minmax(280px, 380px); gap: 28px; padding: 24px 26px 28px; align-items: end; }
         .receipt-bottom > div > p { color: #64748b; line-height: 1.55; margin: 0; }
@@ -340,6 +365,7 @@ function ReceiptView() {
         }
         @media (max-width: 700px) {
           .receipt-actions, .receipt-brand, .receipt-bottom { grid-template-columns: 1fr; display: grid; }
+          .receipt-payment-summary { align-items: flex-start; }
           .receipt-status { justify-items: start; text-align: left; }
           .receipt-band, .receipt-grid { grid-template-columns: 1fr; }
           .receipt-address-details dl { grid-template-columns: 1fr; }

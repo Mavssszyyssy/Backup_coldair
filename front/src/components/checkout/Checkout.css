@@ -279,6 +279,7 @@
 
 .summary-item-details {
     flex: 1;
+    min-width: 0;
 }
 
 .summary-item-name {
@@ -336,7 +337,7 @@
 .summary-item-controls .summary-item-remove {
     width: auto;
     padding: 0 8px;
-    margin-left: 4px;
+    margin-left: 0;
     border-color: #fecaca;
     color: #b91c1c;
     font-size: 12px;

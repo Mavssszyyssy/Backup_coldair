@@ -1021,14 +1021,21 @@ export async function patchServiceRequestStatus(token, requestId, payload) {
 // Notifications
 // ---------------------------------------------------------------------------
 
-export async function fetchNotifications(token) {
-  const { ok, data } = await get("/notifications/me", token);
-  if (ok) return { success: true, notifications: data.notifications || [] };
+export async function fetchNotifications(token, { limit = 0 } = {}) {
+  const path = limit ? `/notifications/me?scope=mobile&limit=${Math.min(200, Math.max(30, Math.floor(limit)))}` : "/notifications/me";
+  const { ok, data } = await get(path, token);
+  if (ok) return { success: true, notifications: data.notifications || [], ...(limit ? { hasMore: Boolean(data.hasMore) } : {}) };
   return {
     success: false,
     error: getErrorMessage(data, "Failed to fetch alerts."),
     notifications: [],
   };
+}
+
+export async function archiveNotification(token, notificationId) {
+  const { ok, data } = await patch(`/notifications/${encodeURIComponent(notificationId)}/archive`, {}, token);
+  if (ok) return { success: true, notification: data.notification };
+  return { success: false, error: getErrorMessage(data, "Failed to archive alert.") };
 }
 
 export async function markNotificationRead(token, notificationId) {

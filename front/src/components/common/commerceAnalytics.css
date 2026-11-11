@@ -29,6 +29,7 @@
 .commerce-legend-label { min-width:0; overflow-wrap:anywhere; line-height:1.35; }
 .commerce-legend-item strong { color:#172033; font-size:12px; }
 .commerce-ranked-list { display:grid; gap:13px; min-height:250px; }
+.commerce-tech-list { align-content:start; min-height:0; }
 .commerce-ranked-row { display:flex; align-items:flex-start; gap:10px; }
 .commerce-rank { width:26px; height:26px; border-radius:8px; background:#eff6ff; color:#1d4ed8; display:grid; place-items:center; font-size:12px; font-weight:800; flex:0 0 auto; }
 .commerce-ranked-detail { flex:1; min-width:0; }
@@ -43,7 +44,14 @@
 .commerce-table th,.commerce-table td { padding:12px 10px; text-align:left; border-bottom:1px solid #e2e8f0; color:#475569; font-size:12px; }
 .commerce-table th { color:#64748b; font-size:10px; letter-spacing:.06em; text-transform:uppercase; background:#f8fafc; }
 .commerce-table td:first-child { color:#172033; font-weight:700; }
-.commerce-branch-drilldown { border:0; background:transparent; color:#1d4ed8; padding:4px 0; text-align:left; font:inherit; font-weight:700; cursor:pointer; }
+.commerce-table .commerce-table-total :is(th,td) { background:#eef4ff; color:#172033; font-weight:700; border-top:2px solid #94a3b8; }
+.commerce-branch-drilldown { border:0; background:transparent; color:#1d4ed8; padding:4px 0; text-align:left; font:inherit; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-width:120px; }
+.commerce-branch-menu-icon { width:20px; height:18px; display:flex; flex-direction:column; justify-content:space-around; flex-shrink:0; }
+.commerce-branch-menu-icon i { display:block; height:2px; width:100%; background:currentColor; border-radius:2px; transition:transform .2s ease, opacity .2s ease; }
+.commerce-branch-menu-icon.is-open i:first-child { transform:translateY(6px) rotate(45deg); }
+.commerce-branch-menu-icon.is-open i:nth-child(2) { opacity:0; }
+.commerce-branch-menu-icon.is-open i:last-child { transform:translateY(-6px) rotate(-45deg); }
+.commerce-branch-drilldown:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:3px; }
 .commerce-branch-details { display:grid; gap:8px; padding:8px 12px; background:#f8fafc; border-radius:8px; }
 .commerce-branch-details ul { list-style:none; padding:0; margin:0; display:grid; gap:5px; }
 .commerce-branch-details li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
@@ -83,6 +91,7 @@
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-tabs button.active{border-color:#2563eb;background:#2563eb;color:#fff}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table th{border-bottom-color:#2a3a50;background:#162236;color:#b9c6d8}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table td{border-bottom-color:#26364c}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-table .commerce-table-total :is(th,td){background:#253750;color:#f1f5f9;border-top-color:#6482a6}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-empty{border-color:#3a4d66;background:#162236;color:#a8b7c9}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--red{color:#f87171}
 
@@ -113,3 +122,17 @@
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--green { color: #34d399; }
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--violet { color: #a78bfa; }
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-kpi--amber { color: #fbbf24; }
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-error {
+  border-color: #a7484f;
+  background: #57282b;
+  color: #ffe4e6;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-date-filter [role="alert"] {
+  color: #fda4af;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-branch-drilldown, .commerce-rank) {
+  color: #93c5fd;
+}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-bar-column span {
+  color: #b5c0cf;
+}

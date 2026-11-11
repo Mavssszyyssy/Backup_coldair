@@ -85,6 +85,10 @@ const AdminDashboard = () => {
   const sales = analytics.sales?.[period === 'custom' ? 'daily' : period] || [];
   const stageData = analytics.orderStages || [];
   const paymentData = analytics.paymentMethods || [];
+  const pipelineTotal = stageData.reduce((sum, stage) => sum + Number(stage.count || 0), 0);
+  const pipelineCancelled = Number(stageData.find((stage) => stage.key === 'cancelled')?.count || 0);
+  const branchTotal = (analytics.branches || []).reduce((sum, branch) => sum + Number(branch.allOrders ?? branch.orders ?? 0), 0);
+  const dashboardMismatch = scopedDashboard?.stats && (stats.cancelledOrders == null || pipelineCancelled !== Number(stats.cancelledOrders) || pipelineTotal !== branchTotal || pipelineTotal !== Number(stats.totalOrders || 0) + Number(stats.cancelledOrders || 0));
 
   return (
     <AdminLayout title={t("Commerce analytics")} subtitle={t("Paid revenue, sales performance, and branch operations for your active scope.")}>
@@ -99,6 +103,7 @@ const AdminDashboard = () => {
         </div>
 
         {error ? <div className="commerce-error">{error}</div> : null}
+        {dashboardMismatch ? <div className="commerce-error" role="alert">{t('Analytics totals do not match the breakdown for this branch and date range. Refresh or contact support before using these figures for a decision.')}</div> : null}
         {period === 'custom' ? <form className="commerce-date-filter" onSubmit={applyDateRange}><label>{t("From Date")}<input type="date" max={today} value={dateDraft.from} onChange={(event) => setDateDraft((current) => ({ ...current, from: event.target.value }))} /></label><label>{t("To Date")}<input type="date" max={today} value={dateDraft.to} onChange={(event) => setDateDraft((current) => ({ ...current, to: event.target.value }))} /></label><button type="submit">{t("Apply range")}</button>{dateError ? <span role="alert">{t(dateError)}</span> : null}</form> : null}
 
         <section className="commerce-panel commerce-actions-panel">
@@ -126,7 +131,7 @@ const AdminDashboard = () => {
           >
             <SalesTrendChart data={sales} period={period === 'custom' ? 'daily' : period} t={t} />
           </Panel>
-          <Panel title={t("Order pipeline")} description={t("All orders by current fulfillment stage.")}>
+          <Panel title={t("Order pipeline")} description={t("All orders in the selected branch and date range, including cancelled orders, by current fulfillment stage.")}>
             <DonutChart title={t("Order pipeline")} canonicalTitle="Order pipeline" caption={t("orders")} data={stageData} t={t} />
           </Panel>
         </div>
@@ -137,7 +142,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="commerce-analytics-grid">
-          <Panel title={t("Branch performance")} description={t("Orders and paid revenue by stock source branch.")}><BranchPerformance branches={analytics.branches} t={t} /></Panel>
+          <Panel title={t("Branch performance")} description={t("All orders include cancelled orders; paid revenue excludes them. Grouped by stock source branch.")}><BranchPerformance branches={analytics.branches} t={t} /></Panel>
           <Panel title={t("Technician output")} description={t("Completed work orders for the current month.")}><TechnicianPerformance technicians={analytics.technicianKPIs} t={t} /></Panel>
         </div>
         </> : !error ? <div className="commerce-empty" role="status">{t("Loading analytics for the selected scope…")}</div> : null}

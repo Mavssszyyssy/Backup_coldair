@@ -5,6 +5,10 @@ import { translateText } from "../../utils/customerI18n";
 
 const STATUS_LABELS = { new: "New", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
 const statusLabel = (value = "new") => STATUS_LABELS[value] || String(value).replace(/_/g, " ");
+const PREVIEW_LENGTH = 180;
+const preview = (value, expanded) => expanded || value.length <= PREVIEW_LENGTH
+  ? value
+  : `${value.slice(0, PREVIEW_LENGTH).trimEnd()}…`;
 
 const dateTime = (value, language) => {
   const date = new Date(value);
@@ -23,6 +27,7 @@ export default function ContactHistory({ messageId = "" }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedIds, setExpandedIds] = useState({});
   const loadingRef = useRef(false);
   const mountedRef = useRef(true);
   const selectedRef = useRef(null);
@@ -97,6 +102,8 @@ export default function ContactHistory({ messageId = "" }) {
         {orderedMessages.map((item) => {
           const id = String(item.id || item._id);
           const selected = Boolean(messageId) && id === String(messageId);
+          const expanded = Boolean(expandedIds[id]) || selected;
+          const longMessage = String(item.message || "").length > PREVIEW_LENGTH;
           return (
             <article
               key={id}
@@ -108,7 +115,8 @@ export default function ContactHistory({ messageId = "" }) {
                 <strong>{item.subject}</strong>
                 <span>{item.ticketCode} · {t(statusLabel(item.status))}</span>
               </div>
-              <p>{item.message}</p>
+              <p>{preview(String(item.message || ""), expanded)}</p>
+              {longMessage && !selected ? <button type="button" className="contact-history__expand" aria-expanded={expanded} onClick={() => setExpandedIds((previous) => ({ ...previous, [id]: !previous[id] }))}>{t(expanded ? "See Less" : "See More")}</button> : null}
               <small>{t("Sent")} {dateTime(item.createdAt, currentLanguage)}</small>
               {item.adminReply ? (
                 <div className="contact-history__reply">

@@ -51,6 +51,9 @@ export default function LoginForm({
         <BoutiqueInput
           icon={LockKey}
           type="password"
+          language={currentLanguage}
+          autoComplete="current-password"
+          aria-label={t("Password")}
           placeholder="••••••••"
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}

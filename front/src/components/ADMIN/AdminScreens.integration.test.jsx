@@ -19,6 +19,7 @@ let language = "English";
 vi.mock("../../config/api", () => ({
   apiRequest: (...args) => apiRequest(...args),
 }));
+vi.mock("qrcode.react", () => ({ QRCodeCanvas: () => null }));
 
 vi.mock("../../context/UserContext", () => ({
   useUser: () => ({
@@ -156,6 +157,23 @@ it("defaults inventory stock to the signed-in Admin branch and keeps cross-branc
 
   fireEvent.change(branchSelect, { target: { value: "Bulacan" } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Bulacan"));
+});
+
+it("opens an Admin inventory product in Serial/QR Management for the branch being viewed", async () => {
+  apiRequest.mockImplementation(async (path) => path.startsWith("/products?branch=") ? { products: [
+    { id: "chosen", name: "Selected AC", sku: "AC-1", stock: 1, serialUnits: [
+      { serialNumber: "LAGUNA-SERIAL", branch: "Laguna", status: "available" },
+      { serialNumber: "CAVITE-SERIAL", branch: "Cavite", status: "available" },
+    ] },
+    { id: "other", name: "Other AC", sku: "AC-2", stock: 1 },
+  ] } : {});
+  renderScreen(AdminInventory, "/admin/inventory");
+  fireEvent.change(screen.getByLabelText("View stock for branch"), { target: { value: "Laguna" } });
+  fireEvent.click(await screen.findByRole("link", { name: /View unit records: Selected AC/ }));
+  expect(await screen.findByRole("heading", { name: "Selected AC" })).toHaveFocus();
+  expect(screen.getByText("LAGUNA-SERIAL")).toBeInTheDocument();
+  expect(screen.queryByText("CAVITE-SERIAL")).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Other AC" })).not.toBeInTheDocument();
 });
 
 it.each([

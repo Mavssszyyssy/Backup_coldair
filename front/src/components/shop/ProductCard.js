@@ -213,7 +213,7 @@ export default function ProductCard({
                 variant={outOfStock ? "danger" : "success"}
                 size="sm"
               >
-                {outOfStock ? t("Currently unavailable") : (product.stockLabel?.replace(/ Units available$/, ` ${t("Units available")}`) || `${product.stock} ${t("Units available")}`)}
+                {t(product.stockLabel || (outOfStock ? "Out of stock" : "In stock"))}
               </BoutiqueTechnicalCard>
             </BoutiqueBox>
 

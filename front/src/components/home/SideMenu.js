@@ -56,7 +56,8 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   const getUserInitial = () => {
     const name = getUserDisplayName();
     if (name && name !== 'Guest User') {
-      return name.charAt(0).toUpperCase();
+      const parts = name.trim().split(/\s+/).filter(Boolean);
+      return `${parts[0]?.[0] || ''}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`.toUpperCase();
     }
     return null;
   };

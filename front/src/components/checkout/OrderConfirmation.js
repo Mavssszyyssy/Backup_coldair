@@ -13,6 +13,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { paymentOutcome } from "../../domain/checkout/paymentOutcome";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
+import { paymentMethodLabel } from "../../domain/paymentMethodLabel";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueCard from "../common/boutique/BoutiqueCard";
@@ -109,6 +110,8 @@ function OrderConfirmation() {
 
   const outcome = paymentOutcome(order, paymentReturnState);
   const normalizedPaymentStatus = String(order?.paymentStatus || "").toLowerCase();
+  const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
+  const paymentStatusLabel = isCashOnDelivery && normalizedPaymentStatus !== "paid" ? "To be paid on delivery" : (order?.receipt?.paymentStatus || order?.paymentStatus || "pending");
   const paymentNeedsAction =
     order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
   const canRetryPayment =
@@ -398,25 +401,41 @@ function OrderConfirmation() {
               </BoutiqueBox>
               <BoutiqueStack gap={12}>
                 <BoutiqueBox direction="row" justify="space-between">
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Payment method")}</BoutiqueText>
+                  <BoutiqueText size="14px" weight={700}>{t(paymentMethodLabel(order.paymentMethod))}</BoutiqueText>
+                </BoutiqueBox>
+                <BoutiqueBox direction="row" justify="space-between">
                   <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{order.receiptAvailable ? t("Receipt No.") : t("Official receipt")}</BoutiqueText>
                   <BoutiqueText size="14px" weight={700}>{order.receiptAvailable ? order.receipt?.receiptNumber : t("Issued after payment confirmation")}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
                   <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Payment Status")}</BoutiqueText>
-                  <BoutiqueText size="14px" weight={700}>{t(order.receipt?.paymentStatus || order.paymentStatus || "pending")}</BoutiqueText>
+                  <BoutiqueText size="14px" weight={700}>{t(paymentStatusLabel)}</BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
                   <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Payment Ref.")}</BoutiqueText>
-                  <BoutiqueText size="14px" weight={700}>{order.receipt?.paymentReference || order.paymongo?.paymentId || "Pending"}</BoutiqueText>
+                  <BoutiqueText
+                    size="14px"
+                    weight={700}
+                    style={{ minWidth: 0, maxWidth: "65%", overflowWrap: "anywhere", textAlign: "right" }}
+                  >
+                    {isCashOnDelivery
+                      ? t("Not applicable for cash on delivery")
+                      : order.receipt?.paymentReference || order.paymongo?.paymentId || t("Not yet issued")}
+                  </BoutiqueText>
                 </BoutiqueBox>
                 <BoutiqueBox direction="row" justify="space-between">
-                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>{t("Amount Paid")}</BoutiqueText>
-                  <BoutiqueText size="14px" weight={800}>PHP {Number(order.receipt?.amountPaid || 0).toLocaleString()}</BoutiqueText>
+                  <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>
+                    {t(normalizedPaymentStatus === "paid" ? "Amount Paid" : "Amount Due")}
+                  </BoutiqueText>
+                  <BoutiqueText size="14px" weight={800}>
+                    PHP {Number(normalizedPaymentStatus === "paid" ? (order.receipt?.amountPaid || order.total) : order.total || 0).toLocaleString()}
+                  </BoutiqueText>
                 </BoutiqueBox>
               </BoutiqueStack>
             </BoutiqueCard>
 
-            <BoutiqueCard padding={32}>
+            <div style={{ gridColumn: "1 / -1" }}><BoutiqueCard padding={32}>
               <BoutiqueBox
                 direction="row"
                 align="center"
@@ -446,7 +465,7 @@ function OrderConfirmation() {
                   {t("Phone")}: {order.address?.phone}
                 </BoutiqueText>
               </BoutiqueStack>
-            </BoutiqueCard>
+            </BoutiqueCard></div>
           </BoutiqueGrid>
 
           <BoutiqueBox direction="row" gap={16} margin="16px 0 0" wrap="wrap">

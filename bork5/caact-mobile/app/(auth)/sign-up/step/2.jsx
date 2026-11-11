@@ -17,6 +17,7 @@ import { hasAllLegalConsents } from "../../../../services/legalConsent";
 import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
 import {
   normalizeEmail,
+  validateAccountSuffix,
   validateConfirmPassword,
   validatePersonName,
   validatePasswordStrength,
@@ -64,10 +65,12 @@ export default function SignUpStep2() {
     const nextErrors = {};
     const firstNameError = validatePersonName(form.name_first, "First name");
     const lastNameError = validatePersonName(form.name_last, "Last name");
+    const suffixError = validateAccountSuffix(form.suffix);
     const aliasError = validateAlias(form.alias);
     const confirmPasswordError = validateConfirmPassword(form.password, form.confirmPassword);
     if (firstNameError) nextErrors.name_first = t(firstNameError);
     if (lastNameError) nextErrors.name_last = t(lastNameError);
+    if (suffixError) nextErrors.suffix = t(suffixError);
     if (aliasError) nextErrors.alias = t(aliasError);
     if (!form.password) nextErrors.password = t("Password is required.");
     else if (form.password.length < 8) nextErrors.password = t("Password must be at least 8 characters.");
@@ -127,7 +130,7 @@ export default function SignUpStep2() {
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginBottom: SPACING.sm }}>{t("Verified email:")} {normalizedEmail}</Text>
           <TextField label={t("First Name")} value={form.name_first} maxLength={30} helperText={`${form.name_first?.length || 0}/30`} onChangeText={(value) => updateField("name_first", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("First name")} error={errors.name_first} />
           <TextField label={t("Last Name")} value={form.name_last} maxLength={30} helperText={`${form.name_last?.length || 0}/30`} onChangeText={(value) => updateField("name_last", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("Last name")} error={errors.name_last} />
-          <TextField label={t("Suffix (optional)")} value={form.suffix} onChangeText={(value) => updateField("suffix", value)} placeholder="Jr., Sr., III, etc." />
+          <TextField label={t("Suffix (optional)")} value={form.suffix} maxLength={12} helperText={`${form.suffix?.length || 0}/12`} onChangeText={(value) => updateField("suffix", value)} placeholder="Jr., Sr., III, etc." error={errors.suffix} />
           <TextField label={t("Username")} value={form.alias} onChangeText={(value) => updateField("alias", value.toLowerCase().trim())} onBlur={checkAlias} placeholder={aliasPlaceholder} error={errors.alias} autoCapitalize="none" />
           {aliasStatus === "checking" ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{t("Checking username...")}</Text> : null}
           {aliasStatus === "available" ? <Text style={{ color: COLORS.success, fontSize: FONT.sm }}>{t("Username available")}</Text> : null}

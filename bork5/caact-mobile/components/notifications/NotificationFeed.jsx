@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 
-export default function NotificationFeed({ notifications, onOpen, t, technician = false }) {
+export default function NotificationFeed({ notifications, onOpen, onArchive, t, technician = false }) {
   const accent = technician ? COLORS.tech : COLORS.primary;
   const groups = [
     { label: t("New"), items: notifications.filter((item) => item.unread && !item.read) },
@@ -23,14 +23,15 @@ export default function NotificationFeed({ notifications, onOpen, t, technician 
         const maintenance = ["maintenance_due", "amp_due_soon", "amp_overdue"].includes(item.category);
         const severityColor = item.severity === "critical" ? COLORS.danger : item.severity === "warning" ? COLORS.warning : accent;
         return (
+          <View key={item.id} style={{ marginBottom: SPACING.sm, flexDirection: "row", alignItems: "stretch", gap: SPACING.xs }}>
           <Pressable
-            key={item.id}
             accessibilityRole="button"
             accessibilityLabel={`${item.title || t("Update")}. ${t("Open alert")}`}
             onPress={() => onOpen(item)}
             style={({ pressed }) => ({
               opacity: pressed ? 0.82 : 1,
-              marginBottom: SPACING.sm,
+              flex: 1,
+              minWidth: 0,
               borderRadius: RADIUS.lg,
               borderWidth: 1,
               borderColor: unread ? accent : COLORS.border,
@@ -54,6 +55,8 @@ export default function NotificationFeed({ notifications, onOpen, t, technician 
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
           </Pressable>
+          {onArchive ? <Pressable accessibilityRole="button" accessibilityLabel={`${t("Archive alert")}: ${item.title || t("Update")}`} onPress={() => onArchive(item)} style={{ width: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface }}><Ionicons name="archive-outline" size={20} color={COLORS.textSecondary} /></Pressable> : null}
+          </View>
         );
       })}
     </View>

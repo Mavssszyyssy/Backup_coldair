@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import CustomerShopScreen, { CartModal } from "../app/customer/shop";
 import { apiFetch } from "../constants/config";
 import { me } from "./api";
-import { fetchShopProducts, paginateProducts, partitionProductsByAvailability } from "./ecommerceService";
+import { fetchShopProducts, getShopDeliveryAddress, paginateProducts, partitionProductsByAvailability } from "./ecommerceService";
 
 const mockPush = jest.fn();
 const mockRemove = jest.fn();
@@ -46,6 +46,16 @@ test("pagination covers available and out-of-stock products without dropping any
   expect([...first.items, ...second.items].map((item) => item.id)).toEqual(ordered.map((item) => item.id));
   expect(second.items.filter((item) => !item.inStock)).toHaveLength(3);
   expect(paginateProducts(ordered, 99, 8).page).toBe(2);
+});
+
+test("shop delivery address uses saved delivery addresses and never falls back to billing address", () => {
+  expect(getShopDeliveryAddress({ billingAddress: { city: "Malolos" } })).toBeNull();
+  const user = { billingAddress: { city: "Malolos" }, addresses: [
+    { id: "saved-1", city: "Bocaue" },
+    { id: "saved-2", city: "Malolos", isDefault: true },
+  ] };
+  expect(getShopDeliveryAddress(user).id).toBe("saved-2");
+  expect(getShopDeliveryAddress(user, "saved-1").city).toBe("Bocaue");
 });
 
 test("cart keeps its item list scrollable while checkout actions remain outside it", async () => {

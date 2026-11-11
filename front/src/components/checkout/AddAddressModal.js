@@ -7,9 +7,9 @@ import {
 import { translateText } from '../../utils/customerI18n';
 import './AddAddressModal.css';
 
-const PHONE_MAX_DIGITS = 11;
-
-const sanitizePhone = (value) => value.replace(/\D/g, '').slice(0, PHONE_MAX_DIGITS);
+// Keep all entered digits so an overlong paste is rejected instead of silently
+// becoming a different, apparently valid phone number.
+const sanitizePhone = (value) => String(value || '').replace(/\D/g, '');
 const includeSavedLocation = (options, savedValue) =>
   savedValue && !options.some((item) => item.name === savedValue) ? [{ name: savedValue, code: '' }, ...options] : options;
 
@@ -293,7 +293,7 @@ function AddAddressModal({
                 placeholder="09XXXXXXXXX"
                 value={address.phone}
                 inputMode="numeric"
-                maxLength={PHONE_MAX_DIGITS}
+                maxLength={20}
                 onChange={(e) => setAddressField('phone', sanitizePhone(e.target.value))}
               />
             </div>

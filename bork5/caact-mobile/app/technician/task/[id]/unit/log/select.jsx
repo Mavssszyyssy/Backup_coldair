@@ -126,7 +126,7 @@ export default function LogSelectScreen() {
         }}
       >
         <PageHeader
-          title={t("Service Notes")}
+          title={t("Service activity & history")}
           subtitle={task?.unitName || `${t("Work Order")} #${String(taskId).slice(0, 8)}`}
           color={COLORS.tech}
           onBack={() => router.back()}

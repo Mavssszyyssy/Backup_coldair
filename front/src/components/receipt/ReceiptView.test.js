@@ -3,18 +3,18 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import ReceiptView from './ReceiptView';
 import { apiRequest } from '../../config/api';
-import { downloadElementPdf } from '../../utils/pdfDownload';
+import { downloadReceiptPdf } from '../../utils/receiptPdf';
 const session = vi.hoisted(() => ({ user: { role: 'admin' } }));
 vi.mock('../../context/UserContext', () => ({ useUser: () => session }));
 vi.mock('../../config/api', () => ({ apiRequest: vi.fn() }));
-vi.mock('../../utils/pdfDownload', () => ({ downloadElementPdf: vi.fn(async () => true) }));
+vi.mock('../../utils/receiptPdf', () => ({ downloadReceiptPdf: vi.fn(async () => true) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const mount = () => render(<MemoryRouter initialEntries={['/receipt/order1']}><Routes><Route path="/receipt/:orderId" element={<ReceiptView />} /></Routes></MemoryRouter>);
 for (const role of ['admin', 'superadmin', 'customer']) it(role + ' reads a receipt using the correct endpoint without claiming unpaid COD was paid', async () => {
   session.user = { role };
   apiRequest.mockResolvedValue({ order: { id: 'order1', receiptAvailable: true, paymentMethod: 'cod', status: 'paid', workflowStatus: 'to_install', totalAmount: 100, receipt: { receiptNumber: 'RCP-1' } } });
   mount();
-  await screen.findByText('Amount Due');
+  expect(await screen.findAllByText('Amount Due')).toHaveLength(2);
   expect(screen.getByText('Payment due on delivery')).toBeInTheDocument();
   expect(apiRequest).toHaveBeenCalledWith(role === 'customer' ? '/orders/me/order1' : '/orders/order1');
   expect(screen.queryByText('Total Paid')).not.toBeInTheDocument();
@@ -23,11 +23,29 @@ it('shows paid COD only with recorded collection', async () => {
   session.user = { role: 'admin' };
   apiRequest.mockResolvedValue({ order: { id: 'order1', receiptAvailable: true, paymentMethod: 'cod', totalAmount: 100, codCollection: { collectedAt: '2026-09-08' }, receipt: { receiptNumber: 'RCP-1' } } });
   mount();
-  await screen.findByText('Total Paid');
+  expect(await screen.findAllByText('Total Paid')).toHaveLength(2);
   expect(screen.getAllByText('RCP-1')).toHaveLength(1);
   expect(screen.getByText('Receipt Number')).toBeInTheDocument();
   expect(screen.getByText('Paid on delivery')).toBeInTheDocument();
   expect(screen.getAllByRole('button', { name: /back/i })).toHaveLength(1);
+});
+
+it('shows a clear Shopee-style paid confirmation with amount and payment method', async () => {
+  session.user = { role: 'customer' };
+  apiRequest.mockResolvedValue({ order: { id: 'order1', orderCode: 'ORD-1', receiptAvailable: true, paymentMethod: 'gcash', paymentStatus: 'paid', totalAmount: 1234, receipt: { receiptNumber: 'RCP-1' } } });
+  mount();
+  expect(await screen.findByRole('region', { name: 'Payment summary' })).toBeInTheDocument();
+  expect(screen.getAllByText('Total Paid')).toHaveLength(2);
+  expect(screen.getByText('paid')).toBeInTheDocument();
+  expect(screen.getByText('GCash')).toBeInTheDocument();
+});
+
+it('never labels an unpaid card transaction as paid', async () => {
+  session.user = { role: 'customer' };
+  apiRequest.mockResolvedValue({ order: { id: 'order1', receiptAvailable: true, paymentMethod: 'credit', paymentStatus: 'unpaid', totalAmount: 1234, receipt: { receiptNumber: 'RCP-1' } } });
+  mount();
+  expect(await screen.findAllByText('Amount Due')).toHaveLength(2);
+  expect(screen.queryByText('Total Paid')).not.toBeInTheDocument();
 });
 
 it.each([['gcash', 'GCash'], ['credit', 'Credit / debit card']])('shows the actual %s method and Cold Air logo, not the processor', async (method, label) => {
@@ -64,9 +82,11 @@ it('downloads a named PDF without invoking browser print', async () => {
   const print = vi.spyOn(window, 'print');
   mount();
   fireEvent.click(await screen.findByRole('button', { name: 'Save as PDF' }));
-  await waitFor(() => expect(downloadElementPdf).toHaveBeenCalledWith(expect.objectContaining({
+  await waitFor(() => expect(downloadReceiptPdf).toHaveBeenCalledWith(expect.objectContaining({
     fileName: 'cold-air-receipt-RCP-1.pdf',
-    element: expect.any(HTMLElement),
+    order: expect.objectContaining({ orderCode: 'ORD-1' }),
+    paymentStatus: 'paid',
+    totalLabel: 'Total Paid',
   })));
   expect(print).not.toHaveBeenCalled();
   print.mockRestore();

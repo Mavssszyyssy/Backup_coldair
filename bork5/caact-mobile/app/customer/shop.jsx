@@ -30,6 +30,7 @@ import {
   fallbackProducts,
   fetchShopProducts,
   filterAndSortProducts,
+  getShopDeliveryAddress,
   partitionProductsByAvailability,
   formatPeso,
   mergeProducts,
@@ -152,7 +153,7 @@ function ProductCard({ product, onPress, onAddToCart, onBuyNow }) {
   );
 }
 
-export function CartModal({ visible, onClose }) {
+export function CartModal({ visible, onClose, addressId = "" }) {
   const { language, t } = useInterfaceLanguage();
   const router = useRouter();
   const { cart, cartTotal, updateQuantity, removeFromCart } = useCart();
@@ -169,7 +170,6 @@ export function CartModal({ visible, onClose }) {
               borderTopRightRadius: BQ_RADIUS.card,
               padding: BQ_SPACING.lg,
               gap: BQ_SPACING.md,
-              ...(cart.length ? { height: "82%" } : {}),
             },
             BQ_SHADOW.float,
           ]}
@@ -193,7 +193,7 @@ export function CartModal({ visible, onClose }) {
             </View>
           ) : (
             <>
-              <ScrollView testID="cart-items-scroll" style={{ flex: 1 }} contentContainerStyle={{ gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.sm }} nestedScrollEnabled>
+              <ScrollView testID="cart-items-scroll" style={{ flexGrow: 0, maxHeight: "60%" }} contentContainerStyle={{ gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.sm }} nestedScrollEnabled>
               {cart.map((item) => (
                 <View
                   key={item.id}
@@ -244,7 +244,7 @@ export function CartModal({ visible, onClose }) {
                 fullWidth
                 onPress={() => {
                   onClose();
-                  router.push("/customer/checkout");
+                  router.push(addressId ? { pathname: "/customer/checkout", params: { addressId } } : "/customer/checkout");
                 }}
               />
             </>
@@ -308,6 +308,7 @@ export default function CustomerShopScreen() {
   const { cart, addToCart, cartCount } = useCart();
   const [backendProducts, setBackendProducts] = useState([]);
   const [inventoryBranch, setInventoryBranch] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartNotice, setCartNotice] = useState(null);
@@ -333,7 +334,7 @@ export default function CustomerShopScreen() {
       const loadCatalogue = async ({ background }) => {
         if (!background) setLoading(true);
         try {
-          const address = current?.addresses?.find((entry) => entry.isDefault) || current?.addresses?.[0] || current?.billingAddress;
+          const address = getShopDeliveryAddress(current, selectedAddressId);
           const branch = address ? await resolveConfiguredInventoryBranch(address) : "";
           const products = await fetchShopProducts(branch);
           if (active) { setBackendProducts(products); setInventoryBranch(branch); }
@@ -348,7 +349,7 @@ export default function CustomerShopScreen() {
         active = false;
         stop();
       };
-    }, [current]),
+    }, [current, selectedAddressId]),
   );
 
   const products = useMemo(() => mergeProducts(fallbackProducts, backendProducts), [backendProducts]);
@@ -386,10 +387,10 @@ export default function CustomerShopScreen() {
       const session = await me(token);
       if (!session?.success || !session.user) throw new Error(t("Unable to confirm your account. Please try again before adding to cart."));
       const user = session.user;
-      const address = user?.addresses?.find((entry) => entry.isDefault) || user?.addresses?.[0] || user?.billingAddress;
-      if (!address) throw new Error(t("Save a delivery address in Account before adding AC units to your cart."));
+      const address = getShopDeliveryAddress(user, selectedAddressId);
+      if (!address) throw new Error(t("Please add a delivery address to continue."));
       const branch = await resolveConfiguredInventoryBranch(address);
-      if (!branch) throw new Error(t("Your delivery address is outside our service areas. Update it in Account first."));
+      if (!branch) throw new Error(t("Your saved delivery address is outside our service areas. Choose a different address in Account first."));
       const latest = await fetchShopProducts(branch);
       const currentProduct = latest.find((entry) => String(entry.id) === String(product.id));
       const available = Number(currentProduct?.stock || 0);
@@ -415,7 +416,7 @@ export default function CustomerShopScreen() {
   };
 
   const handleBuyNow = async (product) => {
-    if (await handleAddToCart(product)) router.push("/customer/checkout");
+    if (await handleAddToCart(product)) router.push({ pathname: "/customer/checkout", params: { addressId: selectedAddressId } });
   };
 
   return (
@@ -457,6 +458,19 @@ export default function CustomerShopScreen() {
         </View>
       ) : null}
       <BoutiqueScreen contentContainerStyle={{ gap: BQ_SPACING.md }}>
+        {Array.isArray(current?.addresses) && current.addresses.length > 0 ? (
+          <BoutiqueCard style={{ gap: BQ_SPACING.sm }}>
+            <BoutiqueText variant="label">{t("Delivery address for local stock")}</BoutiqueText>
+            <BoutiqueSegmented
+              options={current.addresses.map((entry, index) => ({
+                value: String(entry.id || entry._id),
+                label: entry.label || entry.name || `${t("Address")} ${index + 1}`,
+              }))}
+              value={selectedAddressId || String((current.addresses.find((entry) => entry.isDefault) || current.addresses[0]).id || (current.addresses.find((entry) => entry.isDefault) || current.addresses[0])._id)}
+              onChange={setSelectedAddressId}
+            />
+          </BoutiqueCard>
+        ) : null}
         <BoutiqueCard
           elevated={false}
           padding={BQ_SPACING.sm + 4}
@@ -559,7 +573,7 @@ export default function CustomerShopScreen() {
         ) : null}
       </BoutiqueScreen>
 
-      <CartModal visible={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartModal visible={cartOpen} onClose={() => setCartOpen(false)} addressId={selectedAddressId} />
       <ProductModal
         product={selectedProduct}
         visible={Boolean(selectedProduct)}

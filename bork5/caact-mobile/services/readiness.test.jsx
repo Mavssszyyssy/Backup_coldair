@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { filterAndSortProducts, getProductImageAssetKey, partitionProductsByAvailability } from "./ecommerceService";
+import { filterAndSortProducts, getProductImageAssetKey, normalizeProduct, partitionProductsByAvailability } from "./ecommerceService";
 import {
   getSuggestedPostalCode,
   validatePostalCodeForAddress,
@@ -74,16 +74,36 @@ describe("mobile customer readiness rules", () => {
   });
 
   test("mobile shop uses bundled catalog images for each seeded model family", () => {
+    expect(getProductImageAssetKey({ sku: "12345678", brand: "Samsung" })).toBe(
+      "samsung-windfree-wallmount.png",
+    );
+    expect(getProductImageAssetKey({ sku: "123456789", brand: "Samsung" })).toBe(
+      "samsung-windfree-wallmount.png",
+    );
+    expect(getProductImageAssetKey({ sku: "WA70F13E4LTC", brand: "Samsung" })).toBe(
+      "samsung-bespoke-ai.png",
+    );
     expect(getProductImageAssetKey({ sku: "TAC-10CSD-KEI-S-2" })).toBe(
-      "tcl-breezein-kei2.jpg",
+      "tcl-breezein-kei2.png",
     );
     expect(getProductImageAssetKey({ sku: "53CNV030WTHP" })).toBe(
-      "carrier-opus-53cnv.jpg",
+      "carrier-opus-53cnv.png",
     );
     expect(getProductImageAssetKey({ sku: "AR12TYHYE" })).toBe(
       "samsung-ar9500t.png",
     );
     expect(getProductImageAssetKey({ sku: "unknown-model" })).toBe("generic-ac.jpg");
+  });
+
+  test("new catalog products show their linked photo instead of a bundled generic model", () => {
+    const linked = normalizeProduct({ id: "new", sku: "NEW-AC-1", brand: "Samsung", name: "New AC", image: "https://images.example.com/new-ac.webp" });
+    expect(linked.imageSource).toBeNull();
+    expect(linked.imageUrl).toBe("https://images.example.com/new-ac.webp");
+    const unlinked = normalizeProduct({ id: "fallback", sku: "NEW-AC-2" });
+    expect(unlinked.imageSource).toBeTruthy();
+    expect(unlinked.imageUrl).toBe("");
+    const known = normalizeProduct({ id: "known", sku: "12345678", image: "https://images.example.com/old.jpg" });
+    expect(known.imageSource).toBeTruthy();
   });
 
   test("mobile credentials apply phone and password limits", () => {

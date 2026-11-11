@@ -5,6 +5,16 @@ import zxcvbn from "zxcvbn";
 export const EMAIL_REGEX = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE = "This email domain is not allowed. Please use a valid and supported email provider.";
 export const PASSWORD_MAX_LENGTH = 25;
+export const ACCOUNT_SUFFIX_MAX_LENGTH = 12;
+
+export function validateAccountSuffix(value = "") {
+  const suffix = String(value ?? "").trim();
+  if (!suffix) return "";
+  if (suffix.length > ACCOUNT_SUFFIX_MAX_LENGTH || !/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(suffix) || /(.)\1{4,}/iu.test(suffix)) {
+    return "Suffix must be 12 characters or fewer and use letters, spaces, periods, apostrophes, or hyphens.";
+  }
+  return "";
+}
 
 export function normalizeEmail(value = "") {
   return String(value).trim().toLowerCase();
@@ -74,6 +84,12 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
   if (/(.)\1{4,}/iu.test(text)) {
     return `${fieldLabel} contains too many repeated characters.`;
   }
+
+  const words = text.toLocaleLowerCase().match(/[\p{L}\p{M}]+/gu) || [];
+  if (words.some((word, index) => (
+    (index >= 2 && word === words[index - 1] && word === words[index - 2]) ||
+    (index >= 3 && word === words[index - 2] && words[index - 1] === words[index - 3])
+  ))) return `${fieldLabel} contains repeated words.`;
 
   return "";
 }

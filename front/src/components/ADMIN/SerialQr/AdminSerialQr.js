@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import AdminLayout from "../Common/AdminLayout";
 import { apiRequest } from "../../../config/api";
@@ -38,7 +38,9 @@ const getInstallationStatus = (unit = {}) => {
 const getTechnicianQrValue = (unit) =>
   unit.qrCode || `QR_UNIT:${unit.qrUnitId || unit.serialNumber || ""}`;
 
-const AdminSerialQr = ({ embedded = false }) => {
+const UNIT_STATUSES = new Set(["available", "assigned", "sold", "service", "retired"]);
+
+const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all", onClearProduct }) => {
   const { user, currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const installationStatusLabel = (unit) => {
@@ -56,21 +58,27 @@ const AdminSerialQr = ({ embedded = false }) => {
   const [error, setError] = useState("");
   const [refreshNotice, setRefreshNotice] = useState("");
   const [query, setQuery] = useState("");
-  const [branchFilter, setBranchFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState(initialBranch);
   const [statusFilter, setStatusFilter] = useState("all");
   const [serialKindFilter, setSerialKindFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [editingSerial, setEditingSerial] = useState(null);
   const [serialDraft, setSerialDraft] = useState("");
   const [savingSerial, setSavingSerial] = useState(false);
+  const productHeading = useRef(null);
+  const focusedProduct = useRef("");
+  const loadVersion = useRef(0);
   const pageSize = 12;
+  const requestedBranch = !isSuperAdmin && initialBranch !== "all" ? initialBranch : "";
 
-  const load = async (manual = false) => {
+  const load = useCallback(async (manual = false) => {
+    const version = ++loadVersion.current;
     setError("");
     setRefreshNotice("");
     setLoading(true);
     try {
-      const result = await apiRequest("/products");
+      const result = await apiRequest(requestedBranch ? `/products?branch=${encodeURIComponent(requestedBranch)}` : "/products");
+      if (version !== loadVersion.current) return;
       const nextProducts = result.products || [];
       setProducts(nextProducts);
       if (manual) {
@@ -80,15 +88,20 @@ const AdminSerialQr = ({ embedded = false }) => {
         else setRefreshNotice(`QR registry refreshed: ${ids.length} unique Unit IDs. Existing labels were not changed.`);
       }
     } catch (err) {
-      setError(err.message || "Unable to load product serial numbers.");
+      if (version === loadVersion.current) setError(err.message || "Unable to load product serial numbers.");
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
-  };
+  }, [requestedBranch]);
 
   useEffect(() => {
     load();
-  }, []);
+    return () => { loadVersion.current += 1; };
+  }, [load]);
+
+  useEffect(() => {
+    setBranchFilter(initialBranch);
+  }, [initialBranch]);
 
   const branchOptions = useMemo(
     () => Array.from(new Set(products.flatMap((product) =>
@@ -108,6 +121,7 @@ const AdminSerialQr = ({ embedded = false }) => {
     const needle = query.trim().toLowerCase();
     const hasUnitFilter = branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all";
     return products.map((product) => {
+      if (productId && String(product.id || product._id) !== productId) return null;
       const modelMatches = !needle || [
         product.name,
         product.brand,
@@ -131,12 +145,12 @@ const AdminSerialQr = ({ embedded = false }) => {
           (statusFilter === "all" || status === statusFilter) &&
           (serialKindFilter === "all" || serialKind === serialKindFilter);
       });
-      const includeEmptyModel = !hasUnitFilter && (product.serialUnits || []).length === 0 && modelMatches;
+      const includeEmptyModel = modelMatches && (Boolean(productId) || (!hasUnitFilter && (product.serialUnits || []).length === 0));
       return filteredSerialUnits.length || includeEmptyModel
         ? { ...product, filteredSerialUnits }
         : null;
     }).filter(Boolean);
-  }, [branchFilter, products, query, serialKindFilter, statusFilter]);
+  }, [branchFilter, productId, products, query, serialKindFilter, statusFilter]);
 
   const totalSerials = products.reduce(
     (sum, product) => sum + (product.serialUnits?.length || 0),
@@ -181,7 +195,15 @@ const AdminSerialQr = ({ embedded = false }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [branchFilter, query, serialKindFilter, statusFilter]);
+  }, [branchFilter, productId, query, serialKindFilter, statusFilter]);
+
+  useEffect(() => {
+    if (!productId) focusedProduct.current = "";
+    else if (!loading && productHeading.current && focusedProduct.current !== productId) {
+      focusedProduct.current = productId;
+      productHeading.current.focus();
+    }
+  }, [loading, productId, pageProducts]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -238,11 +260,11 @@ const AdminSerialQr = ({ embedded = false }) => {
           {isSuperAdmin ? (
             <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
               <option value="all">{t("All branches")}</option>
-              {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+              {(branchFilter !== "all" && !branchOptions.includes(branchFilter) ? [...branchOptions, branchFilter] : branchOptions).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
             </select>
           ) : (
             <span className="serialqr-branch-scope" aria-label={t("QR records assigned branch")}>
-              {assignedBranch} {t("branch")}
+              {requestedBranch || assignedBranch} {t("branch")}
             </span>
           )}
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
@@ -254,8 +276,8 @@ const AdminSerialQr = ({ embedded = false }) => {
             <option value="manufacturer">{t("Manufacturer serial")}</option>
             <option value="temporary">{t("Temporary serial")}</option>
           </select>
-          {(query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
-            <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); }}>
+          {(productId || query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
+            <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); onClearProduct?.(); }}>
               {t("Clear filters")}
             </button>
           ) : null}
@@ -276,7 +298,7 @@ const AdminSerialQr = ({ embedded = false }) => {
             <section className="admin-card serialqr-model" key={product.id}>
               <header className="serialqr-model-header">
                 <div>
-                  <h3>{product.name}</h3>
+                  <h3 ref={productId ? productHeading : undefined} tabIndex={productId ? -1 : undefined}>{product.name}</h3>
                   <p>
                     {[product.brand, product.specs, product.sku]
                       .filter(Boolean)
@@ -294,7 +316,7 @@ const AdminSerialQr = ({ embedded = false }) => {
               </header>
 
               {serialUnits.length === 0 ? (
-                <p>{t("No serial numbers generated for this model yet.")}</p>
+                <p>{t(productId ? "No unit records match these filters." : "No serial numbers generated for this model yet.")}</p>
               ) : (
                 <div className="serialqr-grid">
                   {serialUnits.map((unit, index) => (
@@ -314,10 +336,12 @@ const AdminSerialQr = ({ embedded = false }) => {
                         <code title={unit.qrUnitId || unit.qrCode}>{unit.qrUnitId || t("Legacy QR identity")}</code>
                         <small>{t(getSerialLabel(unit))}</small>
                         <code title={unit.serialNumber}>{unit.serialNumber || t("Serial pending")}</code>
-                        <span>
-                          {t(unit.status || "available")}
-                          {unit.branch ? ` · ${unit.branch}` : ""}
-                        </span>
+                        <div className="serialqr-unit-meta">
+                          <span className="serialqr-unit-status" data-status={UNIT_STATUSES.has(unit.status) ? unit.status : unit.status ? "unknown" : "available"}>
+                            {t(unit.status || "available")}
+                          </span>
+                          {unit.branch ? <span>{unit.branch}</span> : null}
+                        </div>
                         <small>{t("Current owner ·")} {t(getUnitOwner(unit))}</small>
                          <small>{t("Installation ·")} {installationStatusLabel(unit)}</small>
                         {canManageSerials && (unit.status || "available") === "available" ? (

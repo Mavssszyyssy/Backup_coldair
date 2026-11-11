@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect, usePreventRemove, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, BackHandler, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
 import TechnicianScreen, {
   TechHero,
@@ -17,6 +17,10 @@ import { confirmAction } from "../../utils/confirmAction";
 import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
 import PasswordField from "../../components/ui/PasswordField";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
+import { translateText } from "../../services/interfaceI18n";
+
+const LANGUAGE_NOTICE_DURATION_MS = 3000;
+const PASSWORD_NOTICE_DURATION_MS = 4000;
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
   return (
@@ -112,6 +116,8 @@ export default function TechProfile() {
   const router = useRouter();
   const { language, t, updateLanguage } = useInterfaceLanguage();
   const [savingLanguage, setSavingLanguage] = useState(false);
+  const [notice, setNotice] = useState("");
+  const noticeTimeout = useRef(null);
   const { current, logout, updateMyAccount, changeMyPassword } = useUserContext();
   const displayName = getDisplayName(current);
   const [alias, setAlias] = useState(current?.alias || "");
@@ -123,13 +129,70 @@ export default function TechProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
+  const discardPromptOpen = useRef(false);
+  const hasPasswordDraft = Boolean(currentPassword || password || confirmPassword);
+
+  useEffect(() => () => {
+    if (noticeTimeout.current !== null) clearTimeout(noticeTimeout.current);
+  }, []);
+
+  const showNotice = (message, duration) => {
+    if (noticeTimeout.current !== null) clearTimeout(noticeTimeout.current);
+    setNotice(message);
+    noticeTimeout.current = setTimeout(() => {
+      setNotice("");
+      noticeTimeout.current = null;
+    }, duration);
+  };
+
+  const closePasswordEditor = useCallback(() => {
+    Keyboard.dismiss();
+    setCurrentPassword("");
+    setPassword("");
+    setConfirmPassword("");
+    setIsChangingPassword(false);
+  }, []);
+
+  const requestPasswordExit = useCallback((exit = closePasswordEditor) => {
+    if (saveInFlight.current || discardPromptOpen.current) return;
+    if (!hasPasswordDraft) {
+      exit();
+      return;
+    }
+    discardPromptOpen.current = true;
+    Alert.alert(t("Discard changes?"), t("Your unsaved changes will be lost."), [
+      { text: t("Keep editing"), style: "cancel", onPress: () => { discardPromptOpen.current = false; } },
+      { text: t("Discard"), style: "destructive", onPress: () => {
+        discardPromptOpen.current = false;
+        exit();
+      } },
+    ], { cancelable: false });
+  }, [closePasswordEditor, hasPasswordDraft, t]);
+
+  usePreventRemove(isChangingPassword && (hasPasswordDraft || saving), ({ repeat }) => {
+    requestPasswordExit(() => {
+      closePasswordEditor();
+      repeat();
+    });
+  });
+
+  useFocusEffect(useCallback(() => {
+    if (!isChangingPassword) return undefined;
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      requestPasswordExit();
+      return true;
+    });
+    return () => back.remove();
+  }, [isChangingPassword, requestPasswordExit]));
 
   const selectLanguage = async (nextLanguage) => {
     if (savingLanguage || nextLanguage === language) return;
     setSavingLanguage(true);
     const result = await updateLanguage(nextLanguage);
     setSavingLanguage(false);
-    if (!result.success) Alert.alert(t("Unable to save preferences."), result.error || t("Please try again."));
+    if (result.success) {
+      showNotice(translateText("Language changed successfully.", nextLanguage), LANGUAGE_NOTICE_DURATION_MS);
+    } else Alert.alert(t("Unable to save preferences."), result.error || t("Please try again."));
   };
 
   const handleSave = async () => {
@@ -177,7 +240,7 @@ export default function TechProfile() {
       return;
     }
     if (password === currentPassword) {
-      Alert.alert(t("Check your password"), t("New password must be different from current password."));
+      Alert.alert(t("Check your password"), t("New password must be different from your current password."));
       return;
     }
     saveInFlight.current = true;
@@ -185,9 +248,8 @@ export default function TechProfile() {
     try {
       const result = await changeMyPassword({ currentPassword, newPassword: password });
       if (!result.success) { Alert.alert(t("Password not changed"), t(result.error || "Please try again.")); return; }
-      setCurrentPassword(""); setPassword(""); setConfirmPassword("");
-      setIsChangingPassword(false);
-      Alert.alert(t("Password changed"), t("Use your new password the next time you sign in."));
+      closePasswordEditor();
+      showNotice(t("Password changed successfully."), PASSWORD_NOTICE_DURATION_MS);
     } catch (error) {
       Alert.alert(t("Password not changed"), t(error.message || "Please try again."));
     } finally { saveInFlight.current = false; setSaving(false); }
@@ -211,6 +273,7 @@ export default function TechProfile() {
       title={t("Account")}
       subtitle={t(isChangingPassword ? "Reset your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings")}
       icon="person-sharp"
+      onBack={isChangingPassword ? () => requestPasswordExit() : undefined}
       contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : SPACING.lg }}
       stickyAction={
         isEditing || isChangingPassword ? (
@@ -226,19 +289,29 @@ export default function TechProfile() {
             <TechButton
               title={t("Cancel")}
               disabled={saving}
-              onPress={() => { if (saveInFlight.current) return; setIsEditing(false); setIsChangingPassword(false); setAlias(current?.alias || ""); setPhone(canonicalizePhMobile(current?.phone || "")); setPassword(""); setConfirmPassword(""); setCurrentPassword(""); }}
+              onPress={isChangingPassword ? () => requestPasswordExit() : () => {
+                if (saveInFlight.current) return;
+                setIsEditing(false);
+                setAlias(current?.alias || "");
+                setPhone(canonicalizePhMobile(current?.phone || ""));
+              }}
               variant="secondary"
             />
           </StickyActionBar>
         ) : null
       }
     >
-      <TechHero
+      {!isChangingPassword ? <TechHero
         eyebrow={t("Technician account")}
         title={displayName}
         subtitle={t("Manage your contact details, password, and sign-in session.")}
         icon="id-card-sharp"
-      />
+      /> : null}
+
+      {notice && !isChangingPassword ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", padding: SPACING.md, marginBottom: SPACING.sm, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}>
+        <Ionicons name="checkmark-circle" size={20} color={COLORS.success} style={{ marginRight: SPACING.sm }} />
+        <Text style={{ flex: 1, color: "#166534", fontWeight: FONT.bold }}>{notice}</Text>
+      </View> : null}
 
       {isChangingPassword ? <Card>
         <ProfileSectionHeader title={t("Reset Password")} description={t("Verify your current password and choose a new one.")} />

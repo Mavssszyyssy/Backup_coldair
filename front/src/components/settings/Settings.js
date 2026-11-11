@@ -82,15 +82,18 @@ function Settings() {
 
   const formattedUser = useMemo(() => {
     if (!user) return null;
+    const accountName = [user.name_first, user.name_last, user.suffix]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
     return {
       ...user,
       name:
-        user.name ||
-        `${user.name_first || ""} ${user.name_last || ""}`.trim() ||
+        accountName || user.name ||
         user.email?.split("@")[0] ||
         "User",
       fullName:
-        user.name || `${user.name_first || ""} ${user.name_last || ""}`.trim(),
+        accountName || user.name || "",
       username: user.username || "",
       role: user.role || "customer",
       preferences: user.preferences || {},
@@ -198,11 +201,11 @@ function Settings() {
                   {(formattedUser?.name || "U").charAt(0).toUpperCase()}
                 </BoutiqueText>
               </BoutiqueBox>
-              <BoutiqueStack gap={0}>
-                <BoutiqueText weight={800} size="16px">
+              <BoutiqueStack gap={0} style={{ minWidth: 0 }}>
+                <BoutiqueText weight={800} size="16px" style={{ overflowWrap: "anywhere" }}>
                   {formattedUser?.name}
                 </BoutiqueText>
-                <BoutiqueText size="12px" color={BQ_COLORS.inkMuted}>
+                <BoutiqueText size="12px" color={BQ_COLORS.inkMuted} style={{ overflowWrap: "anywhere" }}>
                   {formattedUser?.email}
                 </BoutiqueText>
               </BoutiqueStack>

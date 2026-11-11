@@ -12,7 +12,6 @@ import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
   const [preferences, setPreferences] = useState({
     language: "English",
-    timezone: "Asia/Manila",
     theme: "light",
     autoBook: true,
   });
@@ -24,7 +23,6 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
     const source = user?.preferences || {};
     setPreferences({
       language: source.language || "English",
-      timezone: source.timezone || "Asia/Manila",
       theme: source.theme || (source.darkMode ? "dark" : "light"),
       autoBook: source.autoBook !== false,
     });
@@ -39,7 +37,6 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
     try {
       const payload = {
         language: preferences.language,
-        timezone: preferences.timezone,
         theme: preferences.theme,
         darkMode: preferences.theme === "dark",
         autoBook: preferences.autoBook,
@@ -96,21 +93,6 @@ function PreferencesSettings({ user, onUpdatePreferences, onUpdateSettings }) {
               { value: "Filipino", label: "Filipino" },
             ]}
             hint={t("Choose your preferred language.")}
-          />
-
-          <BoutiqueInput
-            label={t("Timezone")}
-            aria-label={t("Timezone")}
-            type="select"
-            value={preferences.timezone}
-            onChange={(e) => updateField("timezone", e.target.value)}
-            options={[
-              { value: "Asia/Manila", label: "Asia/Manila" },
-              { value: "UTC", label: "UTC" },
-              { value: "America/New_York", label: "America/New_York" },
-              { value: "Europe/London", label: "Europe/London" },
-            ]}
-            hint={t("Use your locale for schedules and logs.")}
           />
 
           <BoutiqueBox

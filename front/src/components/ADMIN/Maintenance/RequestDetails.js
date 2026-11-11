@@ -156,7 +156,7 @@ const RequestDetails = ({ request, onUpdated }) => {
     if (assignmentLocked) { setMessage({ type: 'error', text: 'This technician assignment is already saved and permanently locked.' }); return; }
     const technician = technicians.find((item) => String(item.id) === String(selectedTechnicianId));
     if (!technician) { setMessage({ type: 'error', text: 'Choose a technician before assigning this request.' }); return; }
-    if (current?.warrantyClaimId && (!Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1)) {
+    if (current?.warrantyClaimId && (!Number.isSafeInteger(Number(technician.serviceQuota)) || Number(technician.serviceQuota) < 1 || Number(technician.serviceQuota) > 50)) {
       setMessage({ type: 'error', text: SERVICE_QUOTA_REQUIRED_MESSAGE });
       return;
     }

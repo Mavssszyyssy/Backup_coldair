@@ -113,9 +113,10 @@ function SuperAdminDashboard() {
   const completedOrders = Number(analytics.orderStages?.find((item) => item.key === 'complete')?.count || 0);
   const pipelineCancelled = Number(analytics.orderStages?.find((item) => item.key === 'cancelled')?.count || 0);
   const pipelineTotal = Array.isArray(analytics.orderStages) ? analytics.orderStages.reduce((sum, item) => sum + Number(item.count || 0), 0) : 0;
+  const branchTotal = Array.isArray(analytics.branches) ? analytics.branches.reduce((sum, item) => sum + Number(item.allOrders ?? item.orders ?? 0), 0) : 0;
   const acquisitionChartTotal = Array.isArray(analytics.customerAcquisition) ? analytics.customerAcquisition.reduce((sum, item) => sum + Number(item.count || 0), 0) : 0;
   const cancelledMismatch = scopedDashboard?.stats && Number.isFinite(Number(stats.cancelledOrders)) && pipelineCancelled !== Number(stats.cancelledOrders);
-  const pipelineMismatch = scopedDashboard?.stats && Number.isFinite(Number(stats.cancelledOrders)) && pipelineTotal !== Number(stats.totalOrders || 0) + Number(stats.cancelledOrders);
+  const pipelineMismatch = scopedDashboard?.stats && Number.isFinite(Number(stats.cancelledOrders)) && (pipelineTotal !== Number(stats.totalOrders || 0) + Number(stats.cancelledOrders) || pipelineTotal !== branchTotal);
   const acquisitionMismatch = scopedDashboard?.stats && Number.isFinite(Number(stats.customerAcquisitionTotal)) && acquisitionChartTotal !== Number(stats.customerAcquisitionTotal);
   const incompleteApi = scopedDashboard?.stats && (stats.cancelledOrders == null || stats.customerAcquisitionTotal == null);
   const pendingOrders = Math.max(0, Number(stats.totalOrders || 0) - completedOrders);
@@ -181,7 +182,7 @@ function SuperAdminDashboard() {
         </div>
 
         <div className="commerce-analytics-grid">
-          <Panel title={t("Branch performance")} description={t("Revenue and completed payments by stock source branch.")}><BranchPerformance branches={analytics.branches} t={t} /></Panel>
+          <Panel title={t("Branch performance")} description={t("All orders include cancelled orders; paid revenue excludes them. Grouped by stock source branch.")}><BranchPerformance branches={analytics.branches} t={t} /></Panel>
           <Panel title={t("Customer acquisition")} description={`${t("New customer accounts in")} ${dateRange ? `${formatBusinessDate(dateRange.from)} ${t('to')} ${formatBusinessDate(dateRange.to)}` : t('all recorded dates')} · ${acquisitionChartTotal.toLocaleString()} ${t("customers in the chart. Link tags are recorded, not independently verified; untracked signups are not attributed to marketing.")}`}><DonutChart title={t("Customer acquisition")} canonicalTitle="Customer acquisition" caption={t("customers")} data={analytics.customerAcquisition} emptyText={t("No customer registrations match this branch and date range.")} t={t} /></Panel>
         </div>
 

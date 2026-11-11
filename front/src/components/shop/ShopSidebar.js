@@ -38,8 +38,11 @@ export default function ShopSidebar({
   selectedCategory,
   onSelectCategory,
   brands,
-  selectedBrand,
+  selectedBrands = [],
   onSelectBrand,
+  horsepowers = [],
+  selectedHorsepowers = [],
+  onSelectHorsepower,
   priceRange,
   onPriceChange,
   searchTerm,
@@ -174,14 +177,19 @@ export default function ShopSidebar({
             {brands.map((brand) => (
               <BoutiqueCheckbox
                 key={brand}
-                type="radio"
+                type="checkbox"
                 label={brand === "all" ? t("All Brands") : brand}
-                checked={selectedBrand === brand}
+                checked={brand === "all" ? selectedBrands.length === 0 : selectedBrands.includes(brand)}
                 onChange={() => onSelectBrand(brand)}
               />
             ))}
           </BoutiqueStack>
         </BoutiqueStack>
+
+        {horsepowers.length > 0 ? <BoutiqueStack gap={12} className="bq-sidebar-section">
+          <BoutiqueText variant="label" className="bq-sidebar-title" color={BQ_COLORS.inkMuted}>{t("Horsepower")}</BoutiqueText>
+          <BoutiqueStack gap={4}>{horsepowers.map((horsepower) => <BoutiqueCheckbox key={horsepower} label={`${horsepower} HP`} checked={selectedHorsepowers.includes(horsepower)} onChange={() => onSelectHorsepower(horsepower)} />)}</BoutiqueStack>
+        </BoutiqueStack> : null}
 
         <BoutiqueStack gap={16} className="bq-sidebar-section">
           <BoutiqueText

@@ -20,7 +20,7 @@ import {
 } from "../../../../services/api";
 import {
   validateConfirmPassword,
-  validatePassword,
+  validateAccountPassword,
   validatePasswordStrength,
 } from "../../../../utils/authValidation";
 
@@ -80,7 +80,7 @@ export default function RecoverPasswordScreen() {
     if (!verificationCode.trim() || !/^\d{6}$/.test(verificationCode.trim())) {
       nextErrors.verificationCode = "Enter the 6-digit reset code sent to your email.";
     }
-    const passwordError = validatePassword(newPassword);
+    const passwordError = validateAccountPassword(newPassword);
     if (passwordError) {
       nextErrors.newPassword = passwordError;
     } else if ((validatePasswordStrength(newPassword).score ?? 0) < 65) {

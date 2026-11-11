@@ -1,15 +1,17 @@
 import { apiFetch } from "../constants/config";
 
 const CATALOG_IMAGE_SOURCES = {
-  "american-home-ahac-minv.jpg": require("../assets/catalog/ac/american-home-ahac-minv.jpg"),
-  "tcl-uje-window.jpg": require("../assets/catalog/ac/tcl-uje-window.jpg"),
-  "tcl-breezein-kei2.jpg": require("../assets/catalog/ac/tcl-breezein-kei2.jpg"),
-  "midea-celest-msce.jpg": require("../assets/catalog/ac/midea-celest-msce.jpg"),
+  "samsung-windfree-wallmount.png": require("../assets/catalog/ac/samsung-windfree-wallmount.png"),
+  "samsung-bespoke-ai.png": require("../assets/catalog/ac/samsung-bespoke-ai.png"),
+  "american-home-ahac-minv.png": require("../assets/catalog/ac/american-home-ahac-minv.png"),
+  "tcl-uje-window.png": require("../assets/catalog/ac/tcl-uje-window.png"),
+  "tcl-breezein-kei2.png": require("../assets/catalog/ac/tcl-breezein-kei2.png"),
+  "midea-celest-msce.png": require("../assets/catalog/ac/midea-celest-msce.png"),
   "samsung-ar9500t.png": require("../assets/catalog/ac/samsung-ar9500t.png"),
-  "lg-hsn30ipc.jpg": require("../assets/catalog/ac/lg-hsn30ipc.jpg"),
-  "lg-hsn-ipx.jpg": require("../assets/catalog/ac/lg-hsn-ipx.jpg"),
-  "carrier-opus-53cnv.jpg": require("../assets/catalog/ac/carrier-opus-53cnv.jpg"),
-  "carrier-slim-53clv.jpg": require("../assets/catalog/ac/carrier-slim-53clv.jpg"),
+  "lg-hsn30ipc.png": require("../assets/catalog/ac/lg-hsn30ipc.png"),
+  "lg-hsn-ipx.png": require("../assets/catalog/ac/lg-hsn-ipx.png"),
+  "carrier-opus-53cnv.png": require("../assets/catalog/ac/carrier-opus-53cnv.png"),
+  "carrier-slim-53clv.png": require("../assets/catalog/ac/carrier-slim-53clv.png"),
   "generic-ac.jpg": require("../assets/catalog/ac/generic-ac.jpg"),
 };
 
@@ -18,17 +20,23 @@ export const getProductImageAssetKey = (product = {}) => {
   const description = [product.brand, product.name, product.model, product.unitName]
     .map((value) => String(value || "").toUpperCase())
     .join(" ");
+  if (sku === "12345678" || sku === "123456789") {
+    return "samsung-windfree-wallmount.png";
+  }
+  if (sku === "WA70F13E4LTC") {
+    return "samsung-bespoke-ai.png";
+  }
   if (sku.startsWith("AHAC-MINV")) {
-    return "american-home-ahac-minv.jpg";
+    return "american-home-ahac-minv.png";
   }
   if (sku.includes("CWI")) {
-    return "tcl-uje-window.jpg";
+    return "tcl-uje-window.png";
   }
   if (sku.startsWith("TAC-")) {
-    return "tcl-breezein-kei2.jpg";
+    return "tcl-breezein-kei2.png";
   }
   if (sku.startsWith("MSCE-")) {
-    return "midea-celest-msce.jpg";
+    return "midea-celest-msce.png";
   }
   if (/^AR(?:09|12|18|24)TY/.test(sku)) {
     return "samsung-ar9500t.png";
@@ -37,28 +45,44 @@ export const getProductImageAssetKey = (product = {}) => {
     return "samsung-ar9500t.png";
   }
   if (sku.startsWith("HSN30")) {
-    return "lg-hsn30ipc.jpg";
+    return "lg-hsn30ipc.png";
   }
   if (sku.startsWith("HSN")) {
-    return "lg-hsn-ipx.jpg";
+    return "lg-hsn-ipx.png";
   }
   if (sku.startsWith("53CNV")) {
-    return "carrier-opus-53cnv.jpg";
+    return "carrier-opus-53cnv.png";
   }
   if (sku.startsWith("53CLV")) {
-    return "carrier-slim-53clv.jpg";
+    return "carrier-slim-53clv.png";
   }
   return "generic-ac.jpg";
 };
 
 export const getProductImageSource = (product = {}) => CATALOG_IMAGE_SOURCES[getProductImageAssetKey(product)];
 
+const usableLinkedImage = (value) => {
+  const image = String(value || "").trim();
+  if (!/^https:\/\//i.test(image) || /^https:\/\/(?:www\.)?google\.com\/aclk(?:[/?#]|$)/i.test(image)) return "";
+  return image;
+};
+
+const getDisplayImageSource = (product) => {
+  const assetKey = getProductImageAssetKey(product);
+  const sku = String(product.sku || product.model || "").toUpperCase();
+  const linkedImage = usableLinkedImage(product.imageUrl || product.image);
+  // A newly added model must show its own linked photo, not a generic or
+  // brand-only bundled image intended for a different AC model.
+  if (linkedImage && (assetKey === "generic-ac.jpg" || (assetKey === "samsung-ar9500t.png" && !/^AR(?:09|12|18|24)TY/.test(sku)))) return null;
+  return CATALOG_IMAGE_SOURCES[assetKey];
+};
+
 // Products must come from the API so every item shown in the mobile shop has
 // a real inventory record and can be checked out. Do not expose placeholder
 // products here: they cannot be resolved by the order service.
 export const fallbackProducts = [];
 
-const normalizeProduct = (product = {}) => ({
+export const normalizeProduct = (product = {}) => ({
   id: String(product.id || product._id || product.productId || product.sku || ""),
   sku: String(product.sku || product.productSku || ""),
   name: product.name || product.productName || "AC Product",
@@ -79,11 +103,8 @@ const normalizeProduct = (product = {}) => ({
       : `${Number(product.totalStock ?? product.stock ?? 0)} units across branches`,
   description: product.description || "",
   warranty: product.warranty || "Standard warranty",
-  imageSource: getProductImageSource(product),
-  imageUrl:
-    product.imageUrl ||
-    product.image ||
-    "",
+  imageSource: getDisplayImageSource(product),
+  imageUrl: usableLinkedImage(product.imageUrl || product.image),
 });
 
 export { formatPeso } from "../utils/currency";
@@ -122,6 +143,14 @@ export async function resolveConfiguredInventoryBranch(address = {}) {
   if (!response.ok) throw new Error("Unable to determine the service branch.");
   const body = await response.json().catch(() => ({}));
   return body?.serviceable ? String(body.branch || "") : "";
+}
+
+export function getShopDeliveryAddress(user = {}, selectedAddressId = "") {
+  const addresses = Array.isArray(user?.addresses) ? user.addresses : [];
+  const selected = selectedAddressId
+    ? addresses.find((entry) => String(entry.id || entry._id) === String(selectedAddressId))
+    : null;
+  return selected || addresses.find((entry) => entry.isDefault) || addresses[0] || null;
 }
 
 export async function fetchShopProducts(branch = "") {

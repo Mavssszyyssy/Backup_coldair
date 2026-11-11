@@ -28,7 +28,8 @@ test("payment retry controls match the server's eligible states", () => {
   expect(getPaymentRetryState({ ...base, paymentRetryCount: 3 })).toMatchObject({ eligible: true, limitReached: false, resuming: true });
   expect(getPaymentRetryState({ ...base, paymentRetryCount: 3, paymentStatus: "failed" })).toMatchObject({ eligible: false, limitReached: true });
   expect(getPaymentRetryState({ ...base, paymentStatus: "paid" }).eligible).toBe(false);
-  expect(getPaymentRetryState({ ...base, paymentMethod: "card", paymentStatus: "pending" }).eligible).toBe(false);
+  expect(getPaymentRetryState({ ...base, paymentMethod: "card", paymentStatus: "pending" })).toMatchObject({ eligible: true, resuming: true });
+  expect(getPaymentRetryState({ ...base, paymentMethod: "card", paymentStatus: "pending", paymongo: null }).eligible).toBe(false);
   expect(getPaymentRetryState({ ...base, paymentMethod: "card", paymentStatus: "failed" }).eligible).toBe(true);
   expect(getPaymentRetryState({ ...base, workflowStatus: "cancelled" }).eligible).toBe(false);
   expect(getPaymentRetryState({ ...base, paymentMethod: "cod", paymentStatus: "failed" }).eligible).toBe(false);

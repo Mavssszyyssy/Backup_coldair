@@ -101,7 +101,7 @@ describe("cross-surface readiness gaps", () => {
     const registry = source("src/components/ADMIN/SerialQr/AdminSerialQr.js");
     expect(registry).toContain('const isSuperAdmin = user?.role === "superadmin"');
     expect(registry).toContain('className="serialqr-branch-scope"');
-    expect(registry).toContain('{assignedBranch} {t("branch")}');
+    expect(registry).toContain('{requestedBranch || assignedBranch} {t("branch")}');
     expect(registry).toContain('<option value="all">{t("All branches")}</option>');
   });
 });

@@ -15,7 +15,7 @@ test("typed decimal, zero and over-stock quantities cannot be added", async () =
   for (const value of ["1.5", "0", "3", "letters"]) {
     fireEvent.change(input, { target: { value } });
     fireEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("whole number between 1 and 2");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a valid quantity within availability.");
     expect(onAddToCart).not.toHaveBeenCalled();
   }
   fireEvent.change(input, { target: { value: "2" } });

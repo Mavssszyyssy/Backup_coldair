@@ -125,7 +125,7 @@ const AdminInventory = () => {
         </>
       ) : null}
       {activeTab === 'reorder' ? <AdminReoder embedded /> : null}
-      {activeTab === 'serial-qr' ? <AdminSerialQr embedded /> : null}
+      {activeTab === 'serial-qr' ? <AdminSerialQr embedded productId={searchParams.get('productId') || ''} initialBranch={searchParams.get('branch') || 'all'} onClearProduct={() => selectTab('serial-qr')} /> : null}
     </AdminLayout>
   );
 };
