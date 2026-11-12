@@ -152,7 +152,7 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
     <style>
       @page { size: A4 ${pageOrientation}; margin: 14mm 14mm 18mm; }
       * { box-sizing: border-box; }
-      html { background: #fff; color-scheme: light; }
+      html { overflow: hidden; background: #fff; color-scheme: light; }
       body { margin: 0; padding: 28px; background: #fff; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.48; }
       .report-document { width: min(100%, ${pageOrientation === 'portrait' ? '840px' : '1120px'}); margin: 0 auto; padding: 26px 30px 0; background: #fff; box-shadow: none; }
       .report-document--narrative { max-width: 860px; }
