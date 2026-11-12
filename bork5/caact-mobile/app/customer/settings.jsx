@@ -30,6 +30,7 @@ import {
   sanitizeLocalPhMobileInput,
   validateAccountSuffix,
   validateAccountPassword,
+  PERSON_NAME_MAX_LENGTH,
   validatePersonName,
   validatePhone,
   validateRequired,
@@ -568,8 +569,8 @@ export default function CustomerSettingsScreen() {
           {addressId(addressForm) ? <Button title={t("Delete this address")} variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
         </Section>
       </> : <Section title={t("Account details")}>
-        <TextField translate={t} label={t("First name")} value={profileForm.name_first} maxLength={30} helperText={`${profileForm.name_first?.length || 0}/30`} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_first)} />
-        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} maxLength={30} helperText={`${profileForm.name_last?.length || 0}/30`} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_last)} />
+        <TextField translate={t} label={t("First name")} value={profileForm.name_first} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_first)} />
+        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_last)} />
         <TextField translate={t} label={t("Suffix (optional)")} value={profileForm.suffix} maxLength={12} helperText={`${profileForm.suffix?.length || 0}/12`} onChangeText={(value) => updateProfileField("suffix", value)} error={t(profileErrors.suffix)} />
         <TextField translate={t} label={t("Username")} value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField translate={t} label={t("Email")} value={profileForm.email} editable={false} helperText={t("Email cannot be changed here. Contact support if you need to update it.")} style={{ backgroundColor: COLORS.bg, color: COLORS.textMuted }} />

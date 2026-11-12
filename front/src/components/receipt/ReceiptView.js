@@ -178,7 +178,7 @@ function ReceiptView() {
   }
 
   return (
-    <BoutiqueScreen withHeader={false}>
+    <BoutiqueScreen withHeader={false} className="bq-screen receipt-print-screen">
       <BoutiqueHeader headingLevel={2} title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
       <main className="receipt-page">
         <section className="receipt-shell">
@@ -303,7 +303,6 @@ function ReceiptView() {
       </main>
 
       <style>{`
-        @page { size: A4; margin: 14mm; }
         .receipt-page { max-width: 1000px; margin: 0 auto; padding: 30px 20px 72px; color: #0f172a; }
         .receipt-shell { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
         .receipt-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; }
@@ -355,15 +354,39 @@ function ReceiptView() {
         .receipt-totals span { color: #64748b; }
         .receipt-grand-total { border-top: 2px solid #0f172a; padding-top: 12px; color: #2563eb; font-size: 20px; font-weight: 900; }
         @media print {
-          html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .receipt-actions, header, .chat-widget, .customer-chatbot { display: none !important; }
-          .receipt-page, .receipt-shell { padding: 0; max-width: none; border: 0; background: #fff; }
-          .receipt-paper { border: 0; border-radius: 0; box-shadow: none; }
-          .receipt-brand, .receipt-band, .receipt-grid, .receipt-table-wrap, .receipt-bottom { break-inside: avoid; }
-          .receipt-table tr { break-inside: avoid; }
+          @page { size: A4; margin: 14mm; }
+          html, body, #root, .App { background: #fff !important; color-scheme: light !important; }
+          .receipt-print-screen, .receipt-print-screen > .bq-box {
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: #fff !important;
+          }
+          .receipt-print-screen header, .receipt-actions, .receipt-export-error,
+          .customer-chatbot-root, .backend-connection-banner, .app-modal-overlay { display: none !important; }
+          .receipt-page, .receipt-shell, .receipt-paper {
+            margin: 0;
+            padding: 0;
+            max-width: none;
+            border: 0;
+            border-radius: 0;
+            background: #fff;
+            box-shadow: none;
+            overflow: visible;
+          }
+          .receipt-paper { font-size: 10pt; }
+          .receipt-brand, .receipt-payment-summary, .receipt-order-name, .receipt-band div,
+          .receipt-grid > div, .receipt-address-details, .receipt-bottom { padding: 10px 14px; }
+          .receipt-address-details dl div { grid-template-columns: minmax(75px, 34%) minmax(0, 1fr); }
+          .receipt-table-wrap { padding: 10px 14px 0; overflow: visible; }
           .receipt-table { min-width: 0; }
+          .receipt-table thead { display: table-header-group; }
+          .receipt-table th, .receipt-table td { padding: 8px; overflow-wrap: anywhere; }
+          .receipt-brand, .receipt-payment-summary, .receipt-band, .receipt-grid > div,
+          .receipt-address-details dl div, .receipt-table tr, .receipt-bottom { break-inside: avoid; }
         }
-        @media (max-width: 700px) {
+        @media screen and (max-width: 700px) {
           .receipt-actions, .receipt-brand, .receipt-bottom { grid-template-columns: 1fr; display: grid; }
           .receipt-payment-summary { align-items: flex-start; }
           .receipt-status { justify-items: start; text-align: left; }

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
 import useActiveBranches from "../../domain/branches/useActiveBranches";
 import { defaultAliasFromEmail } from "../../domain/register/defaultAliasFromEmail";
+import { PERSON_NAME_MAX_LENGTH } from "../../domain/personNameValidation";
 import { validateProfileAndSecurityStep } from "../../domain/register/validateRegistrationProfile";
 import {
   calculatePasswordStrength,
@@ -178,8 +179,8 @@ export default function RegisterProfilePasswordStep({
           icon={User}
           placeholder="Juan"
           value={formData.firstName}
-          maxLength={30}
-          hint={`${formData.firstName?.length || 0}/30`}
+          maxLength={PERSON_NAME_MAX_LENGTH}
+          hint={`${formData.firstName?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
           onChange={(e) => handleNameChange("firstName", e.target.value)}
           status={errors.firstName ? "error" : null}
           errorMessage={t(errors.firstName)}
@@ -191,8 +192,8 @@ export default function RegisterProfilePasswordStep({
           icon={User}
           placeholder="Dela Cruz"
           value={formData.lastName}
-          maxLength={30}
-          hint={`${formData.lastName?.length || 0}/30`}
+          maxLength={PERSON_NAME_MAX_LENGTH}
+          hint={`${formData.lastName?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
           onChange={(e) => handleNameChange("lastName", e.target.value)}
           status={errors.lastName ? "error" : null}
           errorMessage={t(errors.lastName)}

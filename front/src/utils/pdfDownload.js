@@ -9,7 +9,9 @@ export const pdfPageSlices = (height, pagePixels, breakpoints = []) => {
   const slices = [];
   for (let top = 0; top < height;) {
     const limit = Math.min(height, top + pagePixels);
-    const safeBreak = breakpoints.filter((point) => point > top + pagePixels * 0.72 && point <= limit).at(-1);
+    const safeBreak = limit < height
+      ? breakpoints.filter((point) => point > top + pagePixels * 0.72 && point <= limit).at(-1)
+      : undefined;
     const next = safeBreak || limit;
     slices.push({ top, height: next - top });
     top = next;

@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "../../config/api";
 import { getBrandLogo } from "../../config/brandLogos";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
@@ -14,8 +13,7 @@ import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-import { getNotificationId } from "../../domain/notifications/notificationIdentity";
-import { resolveCustomerNotificationRoute } from "../../domain/notifications/resolveCustomerNotificationRoute";
+import useCustomerAlerts from "../../hooks/useCustomerAlerts";
 
 // Home Specific Modular Sections
 import HomeBrands from "./HomeBrands";
@@ -33,43 +31,11 @@ function Home() {
     clearCart,
   } = useCart();
   const { user, logout, isAuthenticated, currentLanguage } = useUser();
+  const { unreadCount, openAlerts, drawerProps } = useCustomerAlerts(isAuthenticated, user?.id || user?._id);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const previousNotificationIdsRef = useRef(new Set());
-
-  // Mark single notification as read
-  const handleNotificationClick = async (notification) => {
-    const id = getNotificationId(notification);
-    if (notification?.unread && id) {
-      try {
-        await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
-        setNotifications((prev) =>
-          prev.map((n) => (
-            getNotificationId(n) === id ? { ...n, unread: false } : n
-          )),
-        );
-      } catch (err) {
-        console.error("Failed to mark notification as read", err);
-      }
-    }
-    const route = resolveCustomerNotificationRoute(notification);
-    setShowNotifications(false);
-    navigate(route);
-  };
-
-  // Mark all as read
-  const handleMarkAllAsRead = async () => {
-    try {
-      await apiRequest("/notifications/me/read-all", { method: "PATCH" });
-      setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-    } catch (err) {
-      console.error("Failed to mark all notifications as read", err);
-    }
-  };
 
   // Track scroll for header effects
   useEffect(() => {
@@ -77,45 +43,6 @@ function Home() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // Fetch Notifications
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setNotifications([]);
-      previousNotificationIdsRef.current = new Set();
-      return;
-    }
-
-    let active = true;
-    const loadNotifications = async () => {
-      try {
-        const response = await apiRequest("/notifications/me");
-        const normalized = (response.notifications || []).map((item) => ({
-          ...item,
-          id: getNotificationId(item),
-          unread: Boolean(item.unread),
-          time: new Date(item.createdAt).toLocaleString(),
-        }));
-        const currentIds = new Set(normalized.map((n) => n.id));
-        if (!active) return;
-        setNotifications(normalized);
-        previousNotificationIdsRef.current = currentIds;
-      } catch {
-        if (active) setNotifications([]);
-      }
-    };
-    loadNotifications();
-    const pollId = window.setInterval(loadNotifications, 20000);
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") loadNotifications();
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      active = false;
-      window.clearInterval(pollId);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [isAuthenticated]);
 
   // Brand Data (Modularized)
   const brands = [
@@ -181,15 +108,13 @@ function Home() {
     navigate("/home");
   };
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-
   return (
     <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg} padding={0}>
       <BoutiqueHeader
         variant="logo"
         leftAction="menu"
         onLeftAction={() => setIsMenuOpen(true)}
-        onNotificationClick={() => setShowNotifications(true)}
+        onNotificationClick={openAlerts}
         onCartClick={() => setIsCartOpen(true)}
         notificationCount={unreadCount}
         cartCount={getCartCount()}
@@ -216,14 +141,7 @@ function Home() {
         getCartTotal={getCartTotal}
       />
 
-      <BoutiqueNotifications
-        currentLanguage={currentLanguage}
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        notifications={notifications}
-        onNotificationClick={handleNotificationClick}
-        onMarkAllAsRead={handleMarkAllAsRead}
-      />
+      <BoutiqueNotifications currentLanguage={currentLanguage} {...drawerProps} />
 
       <BoutiqueBox
         tag="main"

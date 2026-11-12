@@ -1,4 +1,5 @@
-import { Bell, CheckCircle } from "@phosphor-icons/react";
+import { Archive, ArrowCounterClockwise, Bell, CheckCircle } from "@phosphor-icons/react";
+import { useRef } from "react";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueText from "./BoutiqueText";
@@ -15,9 +16,20 @@ export default function BoutiqueNotifications({
   notifications = [],
   onNotificationClick,
   onMarkAllAsRead,
+  folder = "active",
+  onChangeFolder,
+  status = "ready",
+  pendingAction = false,
+  actionError,
+  onMoveAlert,
+  onRetry,
   currentLanguage = "English",
 }) {
   const t = (value) => translateText(value, currentLanguage);
+  const folderControls = useRef(null);
+  const archived = folder === "archived";
+  const moveLabel = t(archived ? "Restore" : "Archive");
+  const MoveIcon = archived ? ArrowCounterClockwise : Archive;
   const hasNotifications = notifications.length > 0;
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -26,7 +38,7 @@ export default function BoutiqueNotifications({
       isOpen={isOpen}
       onClose={onClose}
       side="right"
-      width="440px"
+      width="min(440px, 100vw)"
       title={t("Alerts")}
       currentLanguage={currentLanguage}
     >
@@ -36,7 +48,13 @@ export default function BoutiqueNotifications({
         height="100%"
         style={{ overflow: "hidden" }}
       >
-        {hasNotifications && (
+        {onChangeFolder && (
+          <div ref={folderControls} className="bq-notif-folders" role="group" aria-label={t("Alert folders")}>
+            <button type="button" aria-pressed={!archived} onClick={() => onChangeFolder("active")}>{t("Current")}</button>
+            <button type="button" aria-pressed={archived} onClick={() => onChangeFolder("archived")}>{t("Archived")}</button>
+          </div>
+        )}
+        {!archived && hasNotifications && (
           <BoutiqueBox
             direction="row"
             align="center"
@@ -77,19 +95,28 @@ export default function BoutiqueNotifications({
               )}
             </BoutiqueBox>
             {unreadCount > 0 && (
-              <button className="bq-mark-all-btn" onClick={onMarkAllAsRead}>
+              <button type="button" className="bq-mark-all-btn" onClick={onMarkAllAsRead} disabled={pendingAction}>
                 <CheckCircle size={18} weight="bold" /> {t("Mark all read")}
               </button>
             )}
           </BoutiqueBox>
         )}
 
+        {actionError && <p role="alert" className="bq-notif-feedback">{t(actionError)}</p>}
+        {status === "error" && (
+          <div className="bq-notif-feedback">
+            <span role="alert">{t("Unable to load alerts.")}</span>
+            <button type="button" onClick={onRetry}>{t("Try again")}</button>
+          </div>
+        )}
         <BoutiqueBox
+          key={folder}
           flex={1}
           className="bq-notif-list"
           style={{ overflowY: "auto" }}
         >
-          {notifications.length === 0 ? (
+          {!hasNotifications && status === "loading" && <p role="status" className="bq-notif-feedback">{t("Loading…")}</p>}
+          {!hasNotifications && status === "ready" && (
             <BoutiqueBox
               align="center"
               justify="center"
@@ -100,15 +127,17 @@ export default function BoutiqueNotifications({
             >
               <Bell size={64} weight="bold" />
               <BoutiqueText variant="h3" margin="16px 0 0" weight={700}>
-                {t("Your inbox is empty.")}
+                {t(archived ? "No archived alerts." : "Your inbox is empty.")}
               </BoutiqueText>
             </BoutiqueBox>
-          ) : (
-            notifications.map((notif) => (
+          )}
+          {notifications.map((notif) => (
+            <div className={`bq-notif-entry ${notif.unread ? "unread" : ""}`} key={notif.id}>
               <button
-                key={notif.id}
-                className={`bq-notif-item ${notif.unread ? "unread" : ""}`}
-                aria-label={`${t(notif.unread ? "Unread" : "Read")} ${t("alert:")} ${notif.title}`}
+                type="button"
+                className="bq-notif-item"
+                aria-label={`${t(archived ? "Archived" : notif.unread ? "Unread" : "Read")} ${t("alert:")} ${notif.title}`}
+                disabled={pendingAction}
                 onClick={() => onNotificationClick?.(notif)}
               >
                 <div className="bq-notif-dot" />
@@ -152,8 +181,25 @@ export default function BoutiqueNotifications({
                   </BoutiqueText>
                 </BoutiqueBox>
               </button>
-            ))
-          )}
+              {onMoveAlert && notif.id && (
+                <button
+                  type="button"
+                  className="bq-notif-move"
+                  aria-label={`${moveLabel}: ${notif.title}`}
+                  disabled={pendingAction}
+                  onClick={async (event) => {
+                    const button = event.currentTarget;
+                    const moved = await onMoveAlert(notif);
+                    if (moved && (document.activeElement === button || document.activeElement === document.body)) {
+                      folderControls.current?.querySelector('[aria-pressed="true"]')?.focus();
+                    }
+                  }}
+                >
+                  <MoveIcon size={16} aria-hidden="true" /> {moveLabel}
+                </button>
+              )}
+            </div>
+          ))}
         </BoutiqueBox>
       </BoutiqueBox>
 
@@ -167,33 +213,52 @@ export default function BoutiqueNotifications({
             transition: color 0.2s;
         }
         .bq-mark-all-btn:hover { color: ${BQ_COLORS.ink}; }
+        .bq-notif-wrapper button:disabled { cursor: wait; }
+        .bq-notif-folders {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+            padding: 12px clamp(12px, 5vw, 32px); border-bottom: 1px solid ${BQ_COLORS.border};
+        }
+        .bq-notif-folders button, .bq-notif-move, .bq-notif-feedback button {
+            min-height: 44px; padding: 6px 12px; border: 1px solid ${BQ_COLORS.border};
+            border-radius: 8px; background: ${BQ_COLORS.surface}; color: ${BQ_COLORS.ink};
+            font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; overflow-wrap: anywhere;
+        }
+        .bq-notif-folders button[aria-pressed="true"] {
+            background: ${BQ_COLORS.bgAlt}; border-color: ${BQ_COLORS.accent};
+            box-shadow: inset 0 -2px ${BQ_COLORS.accent};
+        }
+        .bq-notif-feedback { padding: 12px clamp(12px, 5vw, 32px); color: ${BQ_COLORS.ink}; }
+        .bq-notif-feedback button { margin-inline-start: 8px; }
+        .bq-notif-header-extra { flex-wrap: wrap; gap: 8px; }
 
         .bq-notif-list::-webkit-scrollbar { display: none; }
         .bq-notif-list { scrollbar-width: none; }
 
-        .bq-notif-item {
-            display: flex; gap: 16px; padding: 24px 32px; background: ${BQ_COLORS.surface};
-            border: none; border-bottom: 1px solid ${BQ_COLORS.border};
-            text-align: left; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative; width: 100%;
+        .bq-notif-entry {
+            display: flex; flex-direction: column; align-items: flex-end;
+            border-inline-start: 4px solid transparent; border-bottom: 1px solid ${BQ_COLORS.border};
+            background: ${BQ_COLORS.surface};
         }
-        .bq-notif-item:hover { background: ${BQ_COLORS.bg}; }
+        .bq-notif-entry.unread { background: #f8fbff; border-inline-start-color: ${BQ_COLORS.accent}; }
+        :root[data-theme="dark"] .bq-notif-entry.unread { background: ${BQ_COLORS.bgAlt}; }
+        .bq-notif-item {
+            display: flex; gap: 12px; padding: 16px clamp(12px, 5vw, 28px); background: transparent;
+            border: none; text-align: left; cursor: pointer; width: 100%;
+        }
+        .bq-notif-item:hover, .bq-notif-move:hover { background: ${BQ_COLORS.bg}; }
+        .bq-notif-content { min-width: 0; overflow-wrap: anywhere; }
+        .bq-notif-row { flex-wrap: wrap; }
+        .bq-notif-move {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin: 0 clamp(12px, 5vw, 28px) 12px;
+        }
 
         .bq-notif-dot {
             width: 8px; height: 8px; border-radius: 50%; background: ${BQ_COLORS.accent};
             margin-top: 6px; flex-shrink: 0; opacity: 0; transform: scale(0);
             transition: all 0.3s ease;
         }
-        .bq-notif-item.unread .bq-notif-dot { opacity: 1; transform: scale(1); }
-
-        .bq-notif-item.unread {
-            background: #f8fbff; border-left: 4px solid ${BQ_COLORS.accent};
-            padding-left: 28px; opacity: 1; visibility: visible;
-        }
-        .bq-notif-item.unread .bq-notif-title { color: ${BQ_COLORS.ink} !important; opacity: 1 !important; }
-        .bq-notif-item.unread .bq-notif-msg { color: ${BQ_COLORS.inkMuted} !important; opacity: 1 !important; }
-        .bq-notif-item.unread .bq-notif-time { color: ${BQ_COLORS.inkFaint} !important; opacity: 1 !important; }
-        .bq-notif-item.unread:hover { background: #eff6ff; }
+        .bq-notif-entry.unread .bq-notif-dot { opacity: 1; transform: scale(1); }
         .bq-notif-category {
             display: inline-flex; width: fit-content; margin-bottom: 7px; padding: 3px 8px;
             border-radius: 999px; background: #dbeafe; color: #1d4ed8;

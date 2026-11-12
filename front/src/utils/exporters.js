@@ -152,9 +152,9 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
     <style>
       @page { size: A4 ${pageOrientation}; margin: 14mm 14mm 18mm; }
       * { box-sizing: border-box; }
-      html { background: #eef2f7; }
-      body { margin: 0; padding: 28px; background: #eef2f7; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.48; }
-      .report-document { width: min(100%, ${pageOrientation === 'portrait' ? '840px' : '1120px'}); margin: 0 auto; padding: 26px 30px; background: #fff; box-shadow: none; }
+      html { background: #fff; color-scheme: light; }
+      body { margin: 0; padding: 28px; background: #fff; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.48; }
+      .report-document { width: min(100%, ${pageOrientation === 'portrait' ? '840px' : '1120px'}); margin: 0 auto; padding: 26px 30px 0; background: #fff; box-shadow: none; }
       .report-document--narrative { max-width: 860px; }
       .report-header { border-bottom: 3px solid #0f4c81; padding-bottom: 14px; margin-bottom: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
       .company-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -221,7 +221,7 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       .report-footer { margin-top: 24px; color: #64748b; font-size: 8px; border-top: 1px solid #cbd5e1; padding-top: 6px; display: flex; justify-content: space-between; gap: 12px; }
       @media (max-width: 700px) {
         body { padding: 0; }
-        .report-document { padding: 22px 18px; box-shadow: none; }
+        .report-document { padding: 22px 18px 0; box-shadow: none; }
         .report-header { flex-direction: column; }
         .generated { flex-basis: auto; text-align: left; }
         .summary, .report-grid { grid-template-columns: 1fr; }

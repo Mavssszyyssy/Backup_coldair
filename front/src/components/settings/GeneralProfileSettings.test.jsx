@@ -6,7 +6,7 @@ import GeneralProfileSettings from "./GeneralProfileSettings";
 test("a legacy repeated name is flagged and cannot be saved until corrected", async () => {
   const onUpdateProfile = vi.fn().mockResolvedValue({});
   render(<GeneralProfileSettings user={{
-    name_first: "Limit Testing Limit Testing",
+    name_first: "Test Name Test Name",
     name_last: "Reynaldo",
     alias: "zoereynaldo",
     phone: "09393883413",
@@ -23,6 +23,26 @@ test("a legacy repeated name is flagged and cannot be saved until corrected", as
     name_first: "Zoe",
     name_last: "Reynaldo",
   })));
+});
+
+test("both name fields use a 20-character limit and flag existing overlong values", async () => {
+  const onUpdateProfile = vi.fn();
+  render(<GeneralProfileSettings user={{
+    name_first: "Alexandra-Maria-Lynne",
+    name_last: "Reynaldo",
+    alias: "zoereynaldo",
+    phone: "09393883413",
+    email: "zoe@example.com",
+  }} onUpdateProfile={onUpdateProfile} />);
+
+  expect(await screen.findByText("First name must be 2–20 characters")).toBeInTheDocument();
+  const firstName = screen.getByDisplayValue("Alexandra-Maria-Lynne");
+  expect(firstName).toHaveAttribute("maxlength", "20");
+  expect(screen.getByDisplayValue("Reynaldo")).toHaveAttribute("maxlength", "20");
+  expect(screen.getByText("21/20")).toBeInTheDocument();
+  expect(screen.getByText("8/20")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Save Profile Changes" }));
+  expect(onUpdateProfile).not.toHaveBeenCalled();
 });
 
 test("phone field has a bounded input and explains verification uses email", () => {

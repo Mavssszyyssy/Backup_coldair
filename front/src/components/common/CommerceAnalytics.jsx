@@ -98,22 +98,27 @@ export function DonutChart({ title, caption, canonicalTitle = title, data = [], 
     cursor += (item.value / total) * 100;
     return `${segmentColor(canonicalTitle, item, index)} ${start}% ${cursor}%`;
   });
+  const isRevenue = valueKey === "revenue";
+  const totalLabel = <><strong>{valueFormatter(total)}</strong><span>{caption}</span></>;
 
   return (
-    <div className="commerce-donut-layout">
-      <div className="commerce-donut" style={{ background: `conic-gradient(${segments.join(", ")})` }} role="img" aria-label={`${title}: ${values.map((item) => `${labelForItem(item)}, ${valueFormatter(item.value)}`).join("; ")}`}>
-        <div className="commerce-donut-center"><strong>{valueFormatter(total)}</strong><span>{caption}</span></div>
+    <>
+      {isRevenue ? <div className="commerce-donut-total">{totalLabel}</div> : null}
+      <div className={`commerce-donut-layout${isRevenue ? " commerce-donut-layout--revenue" : ""}`}>
+        <div className="commerce-donut" style={{ background: `conic-gradient(${segments.join(", ")})` }} role="img" aria-label={`${title}: ${values.map((item) => `${labelForItem(item)}, ${valueFormatter(item.value)}`).join("; ")}`}>
+          <div className="commerce-donut-center" aria-hidden={isRevenue || undefined}>{isRevenue ? null : totalLabel}</div>
+        </div>
+        <div className="commerce-legend">
+          {values.map((item, index) => (
+            <div className="commerce-legend-item" key={item.key || item.label || index} title={`${labelForItem(item)}: ${valueFormatter(item.value)} ${caption}`}>
+              <span className="commerce-legend-dot" style={{ backgroundColor: segmentColor(canonicalTitle, item, index) }} />
+              <span className="commerce-legend-label">{labelForItem(item)}</span>
+              <strong>{valueFormatter(item.value)}</strong>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="commerce-legend">
-        {values.map((item, index) => (
-          <div className="commerce-legend-item" key={item.key || item.label || index} title={`${labelForItem(item)}: ${valueFormatter(item.value)} ${caption}`}>
-            <span className="commerce-legend-dot" style={{ backgroundColor: segmentColor(canonicalTitle, item, index) }} />
-            <span className="commerce-legend-label">{labelForItem(item)}</span>
-            <strong>{valueFormatter(item.value)}</strong>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 }
 

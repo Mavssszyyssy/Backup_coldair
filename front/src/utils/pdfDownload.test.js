@@ -13,3 +13,10 @@ test('PDF pagination prefers a nearby row boundary over cutting a table row', ()
     { top: 0, height: 930 }, { top: 930, height: 970 },
   ]);
 });
+
+test('a row boundary does not split content that fits on the last page', () => {
+  expect(pdfPageSlices(980, 1000, [930])).toEqual([{ top: 0, height: 980 }]);
+  expect(pdfPageSlices(1900, 1000, [930, 1820])).toEqual([
+    { top: 0, height: 930 }, { top: 930, height: 970 },
+  ]);
+});

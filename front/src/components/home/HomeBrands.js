@@ -72,7 +72,7 @@ export default function HomeBrands({ brands }) {
           align-items: center;
           gap: 24px;
           padding: 32px;
-          background: white;
+          background: ${BQ_COLORS.surfaceAlt};
           border-radius: ${BQ_GEOMETRY.radiusCard};
           transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
           cursor: pointer;
@@ -94,7 +94,11 @@ export default function HomeBrands({ brands }) {
           flex-shrink: 0;
           transition: transform 0.5s ease;
         }
-        .brand-card:hover .brand-logo-wrap { transform: scale(1.1); background: white; }
+        .brand-card:hover .brand-logo-wrap { transform: scale(1.1); background: ${BQ_COLORS.surface}; }
+        :root[data-theme='dark'] .home-brands .brand-logo-wrap {
+          /* Some supplied logos have white backgrounds or dark lettering. */
+          background: #fff;
+        }
         .brand-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
 
         .brand-info { display: flex; flex-direction: column; }
@@ -102,7 +106,14 @@ export default function HomeBrands({ brands }) {
         .brand-desc { font-size: 14px; color: ${BQ_COLORS.inkMuted}; margin-top: 4px; font-weight: 500; }
 
         @media (max-width: 768px) {
-          .brands-grid { grid-template-columns: 1fr; }
+          .brands-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+          .home-brands { padding-inline: 24px; }
+          .brand-card { padding: 16px; gap: 14px; }
+          .brand-logo-wrap { width: 64px; height: 64px; padding: 10px; }
+          .brand-info { min-width: 0; overflow-wrap: anywhere; }
         }
       `,
         }}

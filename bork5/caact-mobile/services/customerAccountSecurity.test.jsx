@@ -79,8 +79,8 @@ test("saved address count and eight-address cap leave existing addresses editabl
 test("customer profile rejects invalid fields without claiming they were saved", async () => {
   await render(<CustomerSettingsScreen />);
   await fireEvent.press(screen.getByRole("button", { name: "Edit" }));
-  expect(screen.getByLabelText("First name").props.maxLength).toBe(30);
-  expect(screen.getByLabelText("Last name").props.maxLength).toBe(30);
+  expect(screen.getByLabelText("First name").props.maxLength).toBe(20);
+  expect(screen.getByLabelText("Last name").props.maxLength).toBe(20);
   await fireEvent.changeText(screen.getByLabelText("First name"), "123");
   await fireEvent.changeText(screen.getByLabelText("Username"), "a");
   await fireEvent.press(screen.getByRole("button", { name: "Save Account" }));

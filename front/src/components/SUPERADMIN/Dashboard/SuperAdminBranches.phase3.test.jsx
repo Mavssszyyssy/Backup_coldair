@@ -20,8 +20,8 @@ test('new branch appears for administrator onboarding without fabricated records
   });
   render(<SuperAdminBranches />);
   await screen.findByText('Current ownership');
-  expect(screen.getByLabelText('First name')).toHaveAttribute('maxlength', '30');
-  expect(screen.getByLabelText('Last name')).toHaveAttribute('maxlength', '30');
+  expect(screen.getByLabelText('First name')).toHaveAttribute('maxlength', '20');
+  expect(screen.getByLabelText('Last name')).toHaveAttribute('maxlength', '20');
   fireEvent.change(screen.getByLabelText('Branch name'), { target: { value: 'Pampanga' } });
   fireEvent.change(screen.getByLabelText('Service areas (comma-separated)'), { target: { value: 'Angeles' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add branch' }));

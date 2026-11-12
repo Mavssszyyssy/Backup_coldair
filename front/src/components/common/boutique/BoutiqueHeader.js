@@ -214,6 +214,11 @@ export default function BoutiqueHeader({
           .bq-header-center { display: none !important; }
           .bq-logo-sub { display: none !important; }
         }
+
+        @media (max-width: 480px) {
+          .bq-header-content { padding-inline: 12px !important; }
+          .bq-header-left, .bq-header-right { gap: 8px !important; }
+        }
       `,
         }}
       />

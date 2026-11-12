@@ -19,8 +19,7 @@ import BoutiqueCart from "../common/boutique/BoutiqueCart";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
-import { getNotificationId } from "../../domain/notifications/notificationIdentity";
-import { resolveCustomerNotificationRoute } from "../../domain/notifications/resolveCustomerNotificationRoute";
+import useCustomerAlerts from "../../hooks/useCustomerAlerts";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import ShopCatalogue from "./ShopCatalogue";
 import ShopSidebar from "./ShopSidebar";
@@ -42,6 +41,7 @@ const Shop = () => {
     getCartTotal,
   } = useCart();
   const { user, isAuthenticated, logout, showAuthRequiredPrompt, currentLanguage } = useUser();
+  const { unreadCount, openAlerts, drawerProps } = useCustomerAlerts(isAuthenticated, user?.id || user?._id);
   const t = (value) => translateText(value, currentLanguage);
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,8 +55,6 @@ const Shop = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartNotice, setCartNotice] = useState(null);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const catalogRequestRef = useRef(null);
   const catalogGenerationRef = useRef(0);
 
@@ -65,78 +63,6 @@ const Shop = () => {
     const timeoutId = window.setTimeout(() => setCartNotice(null), 2200);
     return () => window.clearTimeout(timeoutId);
   }, [cartNotice]);
-
-  // Mark single notification as read
-  const handleNotificationClick = async (notification) => {
-    const id = getNotificationId(notification);
-    if (notification?.unread && id) {
-      try {
-        await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
-        setNotifications((prev) =>
-          prev.map((n) => (
-            getNotificationId(n) === id ? { ...n, unread: false } : n
-          )),
-        );
-      } catch (err) {
-        console.error("Failed to mark notification as read", err);
-      }
-    }
-    const route = resolveCustomerNotificationRoute(notification);
-    setShowNotifications(false);
-    navigate(route);
-  };
-
-  // Mark all as read
-  const handleMarkAllAsRead = async () => {
-    try {
-      await apiRequest("/notifications/me/read-all", { method: "PATCH" });
-      setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-    } catch (err) {
-      console.error("Failed to mark all notifications as read", err);
-    }
-  };
-
-  // Fetch Notifications
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setNotifications([]);
-      return;
-    }
-
-    let active = true;
-    let loadingNotifications = false;
-    const loadNotifications = async () => {
-      if (loadingNotifications) return;
-      loadingNotifications = true;
-      try {
-        const response = await apiRequest("/notifications/me", { silentConnection: true });
-        const normalized = (response.notifications || []).map((item) => ({
-          ...item,
-          id: getNotificationId(item),
-          unread: Boolean(item.unread),
-          time: new Date(item.createdAt).toLocaleString(),
-        }));
-        if (active) setNotifications(normalized);
-      } catch {
-        if (active) setNotifications([]);
-      } finally {
-        loadingNotifications = false;
-      }
-    };
-    loadNotifications();
-    const pollId = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadNotifications();
-    }, 20000);
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") loadNotifications();
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      active = false;
-      window.clearInterval(pollId);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [isAuthenticated]);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -337,8 +263,6 @@ const Shop = () => {
     setIsCartOpen(false);
   };
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-
   return (
     <BoutiqueScreen withHeader={false} padding={0}>
       <BoutiqueHeader
@@ -348,7 +272,7 @@ const Shop = () => {
         leftAction="menu"
         cartCount={getCartCount()}
         notificationCount={unreadCount}
-        onNotificationClick={() => setShowNotifications(true)}
+        onNotificationClick={openAlerts}
         isAuthenticated={isAuthenticated}
         onCartClick={() => setIsCartOpen(true)}
       />
@@ -383,14 +307,7 @@ const Shop = () => {
       ) : null}
       {stockNotice ? <div role="alert" style={{ margin: "12px 24px", padding: "12px", borderRadius: "8px", color: "#991b1b", background: "#fee2e2" }}>{stockNotice}</div> : null}
 
-      <BoutiqueNotifications
-        currentLanguage={currentLanguage}
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        notifications={notifications}
-        onNotificationClick={handleNotificationClick}
-        onMarkAllAsRead={handleMarkAllAsRead}
-      />
+      <BoutiqueNotifications currentLanguage={currentLanguage} {...drawerProps} />
 
       <BoutiqueBox
         tag="main"

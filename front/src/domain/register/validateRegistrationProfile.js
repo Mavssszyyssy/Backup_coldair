@@ -3,20 +3,7 @@ import {
   calculatePasswordStrength,
 } from "../passwordStrength";
 import { isValidEmailFormat } from "../emailPolicy";
-
-export const validatePersonName = (value, label = "Name") => {
-  const text = String(value || "").trim().replace(/\s+/g, " ");
-  if (!text) return `${label} is required`;
-  if (text.length < 2 || text.length > 30) return `${label} must be 2–30 characters`;
-  if (!/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(text)) return `${label} may contain letters, spaces, apostrophes, periods, and hyphens only`;
-  if (/(.)\1{4,}/iu.test(text)) return `${label} contains too many repeated characters`;
-  const words = text.toLocaleLowerCase().match(/[\p{L}\p{M}]+/gu) || [];
-  if (words.some((word, index) => (
-    (index >= 2 && word === words[index - 1] && word === words[index - 2]) ||
-    (index >= 3 && word === words[index - 2] && words[index - 1] === words[index - 3])
-  ))) return `${label} contains repeated words`;
-  return "";
-};
+import { validatePersonName } from "../personNameValidation";
 
 export const ACCOUNT_SUFFIX_MAX_LENGTH = 12;
 

@@ -12,8 +12,8 @@ import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import {
   ACCOUNT_SUFFIX_MAX_LENGTH,
   validateAccountSuffix,
-  validatePersonName,
 } from "../../domain/register/validateRegistrationProfile";
+import { PERSON_NAME_MAX_LENGTH, validatePersonName } from "../../domain/personNameValidation";
 import {
   validateLocalPhMobile,
 } from "../../utils/phMobileValidation";
@@ -161,8 +161,8 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               label={t("First Name")}
               icon={User}
               value={formData.name_first}
-              maxLength={30}
-              hint={`${formData.name_first?.length || 0}/30`}
+              maxLength={PERSON_NAME_MAX_LENGTH}
+              hint={`${formData.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
               onChange={(e) => handleChange("name_first", e.target.value)}
               placeholder="Juan"
               status={errors.name_first ? "error" : null}
@@ -173,8 +173,8 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               label={t("Last Name")}
               icon={User}
               value={formData.name_last}
-              maxLength={30}
-              hint={`${formData.name_last?.length || 0}/30`}
+              maxLength={PERSON_NAME_MAX_LENGTH}
+              hint={`${formData.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
               onChange={(e) => handleChange("name_last", e.target.value)}
               placeholder="Dela Cruz"
               status={errors.name_last ? "error" : null}

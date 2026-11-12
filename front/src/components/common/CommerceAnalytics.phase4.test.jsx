@@ -90,7 +90,8 @@ it('sums payment-method revenue in cents so the donut total matches its displaye
     { label: 'CARD', revenue: 400.25 },
   ];
   const { container } = render(<DonutChart title="Payment mix" caption="paid revenue" data={data} valueKey="revenue" valueFormatter={formatCurrency} />);
-  expect(container.querySelector('.commerce-donut-center')).toHaveTextContent('₱1,001.00');
+  expect(container.querySelector('.commerce-donut-total')).toHaveTextContent('₱1,001.00');
+  expect(container.querySelector('.commerce-donut-center')).toBeEmptyDOMElement();
   expect(container.querySelectorAll('.commerce-legend-item')).toHaveLength(4);
   expect(screen.getByText('GCASH').closest('.commerce-legend-item')).toHaveTextContent('₱100.25');
   expect(screen.getByText('COD').closest('.commerce-legend-item')).toHaveTextContent('₱200.25');

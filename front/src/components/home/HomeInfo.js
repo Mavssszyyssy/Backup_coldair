@@ -101,6 +101,7 @@ export default function HomeInfo() {
           transition: all 0.4s ease;
         }
         .feat-item:hover .feat-icon { transform: scale(1.1) rotate(5deg); background: ${BQ_COLORS.accent}; }
+        :root[data-theme='dark'] .home-info .feat-item:hover .feat-icon { background: ${BQ_COLORS.brandHover}; }
 
         .feat-content h3 {
           font-family: ${BQ_FONTS.heading}; font-size: 22px; font-weight: 900;
@@ -111,7 +112,7 @@ export default function HomeInfo() {
         .info-visual { display: flex; justify-content: center; position: relative; }
 
         .stat-blob {
-          width: 380px; height: 380px; background: white;
+          width: 380px; height: 380px; background: ${BQ_COLORS.surface};
           border-radius: 80px; display: flex; flex-direction: column;
           align-items: center; justify-content: center;
           box-shadow: ${BQ_SHADOWS.hover};
@@ -122,11 +123,18 @@ export default function HomeInfo() {
         .stat-blob:hover { transform: rotate(0deg) scale(1.05); box-shadow: ${BQ_SHADOWS.float}; }
 
         .stat-num { font-family: ${BQ_FONTS.heading}; font-size: 88px; font-weight: 950; color: ${BQ_COLORS.brand}; letter-spacing: -0.06em; line-height: 1; }
+        :root[data-theme='dark'] .home-info .stat-num { color: ${BQ_COLORS.accent}; }
         .stat-label { font-family: ${BQ_FONTS.heading}; font-size: 15px; font-weight: 900; color: ${BQ_COLORS.inkMuted}; text-transform: uppercase; letter-spacing: 0.15em; margin-top: 10px; }
 
         @media (max-width: 1024px) {
-          .info-container { grid-template-columns: 1fr; gap: 64px; }
+          .info-container { grid-template-columns: minmax(0, 1fr); gap: 64px; }
           .info-visual { display: none; }
+        }
+
+        @media (max-width: 480px) {
+          .home-info { padding-inline: 24px; }
+          .info-title { font-size: clamp(36px, 10vw, 48px); }
+          .feat-item { gap: 16px; }
         }
       `,
         }}

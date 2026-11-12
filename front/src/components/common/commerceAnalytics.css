@@ -28,6 +28,13 @@
 .commerce-legend-dot { width:9px; height:9px; border-radius:50%; }
 .commerce-legend-label { min-width:0; overflow-wrap:anywhere; line-height:1.35; }
 .commerce-legend-item strong { color:#172033; font-size:12px; }
+.commerce-donut-total { display:grid; gap:4px; padding-bottom:12px; margin-bottom:18px; border-bottom:1px solid #e2e8f0; }
+.commerce-donut-total strong { color:#172033; font-size:clamp(20px, 2vw, 26px); font-variant-numeric:tabular-nums; line-height:1.2; overflow-wrap:anywhere; }
+.commerce-donut-total span { color:#64748b; font-size:12px; }
+.commerce-donut-layout--revenue { min-height:0; flex-flow:row wrap; justify-content:center; align-items:center; }
+.commerce-donut-layout--revenue .commerce-legend { flex:1 1 160px; }
+.commerce-donut-layout--revenue .commerce-legend-item { grid-template-columns:10px minmax(0, 1fr) minmax(0, max-content); }
+.commerce-donut-layout--revenue .commerce-legend-item strong { text-align:right; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .commerce-ranked-list { display:grid; gap:13px; min-height:250px; }
 .commerce-tech-list { align-content:start; min-height:0; }
 .commerce-ranked-row { display:flex; align-items:flex-start; gap:10px; }
@@ -80,12 +87,15 @@
 .commerce-action-grid button:hover { background:#dbeafe; transform:translateY(-1px); }
 @media (max-width:900px) { .commerce-analytics-grid { grid-template-columns:1fr; } }
 @media (max-width:1024px) { .commerce-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.commerce-action-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:520px) { .commerce-panel { padding:16px; } .commerce-panel-header { flex-direction:column; } .commerce-trend { gap:7px; } .commerce-trend-scale { display:none; } .commerce-bars { gap:5px; } .commerce-bar-column { min-width:14px; } .commerce-bar-column span { font-size:9px; } .commerce-donut-layout { flex-direction:column; align-items:flex-start; } .commerce-legend { width:100%; } .commerce-dashboard-intro { align-items:flex-start; flex-direction:column; } .commerce-kpi-grid,.commerce-action-grid { grid-template-columns:1fr; } }
+@media (max-width:520px) { .commerce-panel { padding:16px; } .commerce-panel-header { flex-direction:column; } .commerce-trend { gap:7px; } .commerce-trend-scale { display:none; } .commerce-bars { gap:5px; } .commerce-bar-column { min-width:14px; } .commerce-bar-column span { font-size:9px; } .commerce-donut-layout:not(.commerce-donut-layout--revenue) { flex-direction:column; align-items:flex-start; } .commerce-legend { width:100%; } .commerce-dashboard-intro { align-items:flex-start; flex-direction:column; } .commerce-kpi-grid,.commerce-action-grid { grid-template-columns:1fr; } }
 
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel,.commerce-kpi){border-color:#2a3a50;background:#111c2e;box-shadow:0 8px 22px rgba(0,0,0,.24)}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel-header h2,.commerce-dashboard-intro h2,.commerce-donut-center strong,.commerce-legend-item strong,.commerce-ranked-title strong,.commerce-table td:first-child,.commerce-tech-name,.commerce-tech-row strong){color:#e5edf7}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-panel-header p,.commerce-dashboard-intro p:not(.commerce-eyebrow),.commerce-kpi span,.commerce-kpi small,.commerce-donut-center span,.commerce-legend-item,.commerce-ranked-title,.commerce-ranked-detail small,.commerce-table td,.commerce-tech-row,.commerce-tech-row small){color:#a8b7c9}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-donut-center{background:#111c2e}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-donut-total{border-color:#2a3a50}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-donut-total strong{color:#e5edf7}
+:root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-donut-total span{color:#a8b7c9}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-bars{border-bottom-color:#3a4d66;background:repeating-linear-gradient(to bottom,transparent 0,transparent 59px,#26364c 60px)}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) :is(.commerce-tabs button,.commerce-action-grid button){border-color:#3a4d66;background:#162236;color:#bfdbfe}
 :root[data-theme='dark'] :is(.admin-layout,.super-layout) .commerce-tabs button.active{border-color:#2563eb;background:#2563eb;color:#fff}

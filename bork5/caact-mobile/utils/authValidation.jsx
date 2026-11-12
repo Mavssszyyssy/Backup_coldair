@@ -58,7 +58,9 @@ export function validateRequired(value, fieldLabel = "This field") {
   return "";
 }
 
-export function validatePersonName(value, fieldLabel = "Name", { required = true, maxLength = 30 } = {}) {
+export const PERSON_NAME_MAX_LENGTH = 20;
+
+export function validatePersonName(value, fieldLabel = "Name", { required = true, maxLength = PERSON_NAME_MAX_LENGTH } = {}) {
   const text = String(value || "").trim();
 
   if (!text) {

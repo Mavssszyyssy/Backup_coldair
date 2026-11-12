@@ -126,7 +126,7 @@ export default function HomeHero({ onBookNow, onShop }) {
         }
 
         .hero-btn-secondary {
-          background: white;
+          background: ${BQ_COLORS.surface};
           color: ${BQ_COLORS.ink};
           box-shadow: ${BQ_SHADOWS.soft};
           border: 1px solid ${BQ_COLORS.border};
@@ -134,6 +134,7 @@ export default function HomeHero({ onBookNow, onShop }) {
         .hero-btn-secondary:hover {
           transform: translateY(-6px) scale(1.02);
           box-shadow: ${BQ_SHADOWS.float};
+          background: ${BQ_COLORS.surfaceAlt};
         }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

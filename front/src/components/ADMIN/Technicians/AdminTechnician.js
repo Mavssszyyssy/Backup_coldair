@@ -9,6 +9,7 @@ import { apiRequest } from "../../../config/api";
 import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime } from "../../../utils/dateTime";
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
+import { PERSON_NAME_MAX_LENGTH } from "../../../domain/personNameValidation";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import useAutoDismissMessage from "../../../hooks/useAutoDismissMessage";
 import DailyWorkSchedule from "./DailyWorkSchedule";
@@ -729,8 +730,8 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
           </div>
           {showAddStaff ? <form className="tech-add-staff-form" onSubmit={createTechnician}>
             <div className="tech-form-row">
-              <label><span>{t("First name")}</span><input value={staffDraft.firstName} maxLength={30} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
-              <label><span>{t("Last name")}</span><input value={staffDraft.lastName} maxLength={30} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
+              <label><span>{t("First name")}</span><input value={staffDraft.firstName} maxLength={PERSON_NAME_MAX_LENGTH} onChange={(event) => updateStaffDraft("firstName", event.target.value)} autoComplete="given-name" required /></label>
+              <label><span>{t("Last name")}</span><input value={staffDraft.lastName} maxLength={PERSON_NAME_MAX_LENGTH} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
             </div>
             <label><span>{t("Username")}</span><input value={staffDraft.loginName} maxLength={30} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder={t("e.g. j.delacruz")} autoComplete="off" required /><small>{t("Use a short, unique username. Check the generated Login ID below.")}</small></label>
             <label><span>{t("Assigned branch")}</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>

@@ -31,8 +31,8 @@ test('staff form preserves dotted names, checks minimum length, and prevents dup
   fireEvent.click(screen.getByText('Add technician'));
   expect(screen.getByLabelText('First name')).toBeRequired();
   expect(screen.getByLabelText('Last name')).toBeRequired();
-  expect(screen.getByLabelText('First name')).toHaveAttribute('maxlength', '30');
-  expect(screen.getByLabelText('Last name')).toHaveAttribute('maxlength', '30');
+  expect(screen.getByLabelText('First name')).toHaveAttribute('maxlength', '20');
+  expect(screen.getByLabelText('Last name')).toHaveAttribute('maxlength', '20');
   expect(screen.getByLabelText(/^Username/)).toHaveAttribute('maxlength', '30');
   expect(screen.getByLabelText('Assigned branch')).toHaveValue('Cavite');
   expect(within(screen.getByLabelText('Assigned branch')).getByRole('option', { name: 'Bulacan' })).toBeInTheDocument();

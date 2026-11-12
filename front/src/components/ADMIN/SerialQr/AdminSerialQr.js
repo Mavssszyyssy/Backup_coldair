@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowsClockwise } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
 import AdminLayout from "../Common/AdminLayout";
 import { apiRequest } from "../../../config/api";
@@ -245,45 +246,59 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
       embedded={embedded}
     >
       <div className="serialqr-toolbar admin-card">
-        <div>
-          <h3>{t("AC Unit QR Registry")}</h3>
-          <p>
-            {products.length} {t("models ·")} {availableSerials} {t("available QR labels ·")} {totalSerials} {t("QR records (including sold and assigned units)")}
-          </p>
+        <div className="serialqr-toolbar-heading">
+          <div className="serialqr-toolbar-title">
+            <h3>{t("AC Unit QR Registry")}</h3>
+            {!isSuperAdmin ? (
+              <span className="serialqr-branch-scope">
+                {requestedBranch || assignedBranch} {t("branch")}
+              </span>
+            ) : null}
+          </div>
+          <button type="button" className="serialqr-refresh" onClick={() => load(true)} disabled={loading}>
+            <ArrowsClockwise size={18} aria-hidden="true" />
+            {t(loading ? "Refreshing..." : "Refresh QR registry")}
+          </button>
         </div>
+        <dl className="serialqr-summary">
+          <div><dt>{t("Models")}</dt><dd>{products.length}</dd></div>
+          <div><dt>{t("Available QR labels")}</dt><dd>{availableSerials}</dd></div>
+          <div title={t("QR records (including sold and assigned units)")}><dt>{t("QR records")}</dt><dd>{totalSerials}</dd></div>
+        </dl>
         <div className="serialqr-actions">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("Search model, SKU, branch, or serial")}
-          />
+          <label className="serialqr-search">
+            {t("Search")}
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search model, SKU, branch, or serial")} />
+          </label>
           {isSuperAdmin ? (
-            <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
-              <option value="all">{t("All branches")}</option>
-              {(branchFilter !== "all" && !branchOptions.includes(branchFilter) ? [...branchOptions, branchFilter] : branchOptions).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+            <label>
+              {t("Branch")}
+              <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
+                <option value="all">{t("All branches")}</option>
+                {(branchFilter !== "all" && !branchOptions.includes(branchFilter) ? [...branchOptions, branchFilter] : branchOptions).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+              </select>
+            </label>
+          ) : null}
+          <label>
+            {t("Status")}
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
+              <option value="all">{t("All statuses")}</option>
+              {statusOptions.map((status) => <option key={status} value={status}>{t(status.replace(/-/g, " "))}</option>)}
             </select>
-          ) : (
-            <span className="serialqr-branch-scope" aria-label={t("QR records assigned branch")}>
-              {requestedBranch || assignedBranch} {t("branch")}
-            </span>
-          )}
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
-            <option value="all">{t("All statuses")}</option>
-            {statusOptions.map((status) => <option key={status} value={status}>{t(status.replace(/-/g, " "))}</option>)}
-          </select>
-          <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label={t("Filter QR records by serial type")}>
-            <option value="all">{t("All serial types")}</option>
-            <option value="manufacturer">{t("Manufacturer serial")}</option>
-            <option value="temporary">{t("Temporary serial")}</option>
-          </select>
+          </label>
+          <label>
+            {t("Serial type")}
+            <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label={t("Filter QR records by serial type")}>
+              <option value="all">{t("All serial types")}</option>
+              <option value="manufacturer">{t("Manufacturer serial")}</option>
+              <option value="temporary">{t("Temporary serial")}</option>
+            </select>
+          </label>
           {(productId || query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
             <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); onClearProduct?.(); }}>
               {t("Clear filters")}
             </button>
           ) : null}
-          <button type="button" onClick={() => load(true)} disabled={loading}>
-            {t(loading ? "Refreshing..." : "Refresh QR registry")}
-          </button>
         </div>
       </div>
 

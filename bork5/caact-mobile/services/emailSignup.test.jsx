@@ -88,8 +88,8 @@ test("profile requires verified email and never infers staff role from email", a
     legalConsent: { app: true, service: true, warranty: true, privacy: true },
     email: "superadmin@example.com", emailVerified: true, registrationVerificationToken: "proof",
   }));
-  expect(view.getByPlaceholderText("First name").props.maxLength).toBe(30);
-  expect(view.getByPlaceholderText("Last name").props.maxLength).toBe(30);
+  expect(view.getByPlaceholderText("First name").props.maxLength).toBe(20);
+  expect(view.getByPlaceholderText("Last name").props.maxLength).toBe(20);
   await fireEvent.changeText(view.getByPlaceholderText("First name"), "Test");
   await fireEvent.changeText(view.getByPlaceholderText("Last name"), "Customer");
   await fireEvent.changeText(view.getByLabelText("Username"), "customer.alias");

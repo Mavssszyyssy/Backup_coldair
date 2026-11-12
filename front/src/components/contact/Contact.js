@@ -73,7 +73,7 @@ function Contact() {
                     {t("Need Maintenance or Warranty Support?")}
                   </BoutiqueText>
                   <BoutiqueText
-                    color="rgba(255,255,255,0.8)"
+                    color="white"
                     size="15px"
                     style={{ lineHeight: 1.6 }}
                   >
@@ -105,8 +105,8 @@ function Contact() {
                 size="lg"
                 onClick={() => navigate("/services")}
                 style={{
-                  background: "white",
-                  color: BQ_COLORS.brand,
+                  background: BQ_COLORS.surface,
+                  color: BQ_COLORS.ink,
                   border: "none",
                   padding: "16px 32px",
                 }}
