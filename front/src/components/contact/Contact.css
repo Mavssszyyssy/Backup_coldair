@@ -38,8 +38,8 @@
 }
 
 .contact-title {
-    font-size: 24px;
-    font-weight: bold;
+    font-size: var(--app-type-page);
+    font-weight: var(--app-weight-heading);
     color: #333;
     margin: 0;
 }
@@ -847,7 +847,7 @@
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 36px 28px 48px;
+  padding: 20px clamp(14px, 3vw, 24px) 24px;
 }
 
 :root[data-theme='dark'] .contact-page {
@@ -865,7 +865,7 @@
 .contact-page .contact-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
-  gap: 28px;
+  gap: 18px;
   align-items: start;
 }
 
@@ -1241,10 +1241,6 @@
 }
 
 @media (max-width: 900px) {
-  .contact-page {
-    padding: 28px 20px 40px;
-  }
-
   .contact-page .contact-content-grid {
     grid-template-columns: 1fr;
   }
@@ -1257,10 +1253,6 @@
 }
 
 @media (max-width: 640px) {
-  .contact-page {
-    padding: 22px 14px 32px;
-  }
-
   .contact-page .form-section,
   .contact-page .info-section,
   .contact-page .services-section,

@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Key, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowLeft, Info, Key } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
@@ -145,8 +145,6 @@ function Login() {
           onPasswordChange={handlePasswordChange}
           onSubmit={authenticateUser}
           loading={loading}
-          disabled={false}
-          onForgotPassword={() => navigate("/forgot-password")}
         /> : (
           <form className="bq-login-step" onSubmit={(event) => { event.preventDefault(); authenticateUser(); }}>
             <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>
@@ -194,42 +192,6 @@ function Login() {
             </button>
           </BoutiqueText>
         </BoutiqueBox>
-
-        <BoutiqueBox
-          padding={24}
-          background={BQ_COLORS.bgAlt}
-          style={{
-            borderRadius: "20px",
-            border: `1.5px dashed ${BQ_COLORS.border}`,
-          }}
-        >
-          <BoutiqueBox
-            direction="row"
-            align="center"
-            gap={10}
-            margin="0 0 16px"
-          >
-            <ShieldCheck size={20} weight="fill" />
-            <BoutiqueText variant="label">{t("Boutique Security")}</BoutiqueText>
-          </BoutiqueBox>
-          <BoutiqueStack gap={10} tag="ul" className="bq-tips-list">
-            <li>
-              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
-                {t("Secure sign-in and encrypted session management")}
-              </BoutiqueText>
-            </li>
-            <li>
-              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
-                {t("Encrypted session management")}
-              </BoutiqueText>
-            </li>
-            <li>
-              <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} weight={600}>
-                {t("Assigned branch auto-routing enabled")}
-              </BoutiqueText>
-            </li>
-          </BoutiqueStack>
-        </BoutiqueBox>
       </BoutiqueStack>
 
       <style
@@ -249,9 +211,20 @@ function Login() {
         .bq-signup-link { background: none; border: none; color: ${BQ_COLORS.brand}; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0 4px; font-size: 15px; }
 
         .bq-login-step { display: flex; flex-direction: column; gap: 24px; width: 100%; }
-        .bq-login-btn { width: 100%; padding: 18px; border-radius: 999px; font-family: inherit; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; border: none; }
-        .bq-login-btn--primary { background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .bq-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bq-login-password-field { display: flex; flex-direction: column; gap: 4px; }
+        .bq-login-forgot {
+          align-self: flex-end; display: inline-flex; align-items: center;
+          min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 600;
+          color: ${BQ_COLORS.accent}; text-decoration: underline;
+        }
+        .bq-login-form-inner .bq-login-btn--primary {
+          width: 100%; padding: 18px; border-radius: 999px; border: none;
+          font-family: inherit; font-weight: 700; font-size: var(--app-type-body); cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .bq-login-form-inner .bq-login-btn--primary:hover:not(:disabled) { background: ${BQ_COLORS.brandHover}; }
+        .bq-login-form-inner .bq-login-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .bq-auth-secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .bq-auth-action {
@@ -265,10 +238,6 @@ function Login() {
         .bq-auth-action--ghost:hover:not(:disabled) { transform: translateY(-1px); border-color: #d4d4d8; color: ${BQ_COLORS.ink}; }
         .bq-auth-action:focus-visible { outline: 3px solid rgba(37, 99, 235, .22); outline-offset: 2px; }
         .bq-auth-action:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-        .bq-tips-list { list-style: none; padding: 0; margin: 0; }
-        .bq-tips-list li { position: relative; padding-left: 18px; }
-        .bq-tips-list li::before { content: "•"; position: absolute; left: 0; color: ${BQ_COLORS.accent}; font-weight: 900; }
 
         @media (max-width: 1024px) {
           .bq-login-back-btn { top: 20px; left: 20px; width: 40px; height: 40px; }

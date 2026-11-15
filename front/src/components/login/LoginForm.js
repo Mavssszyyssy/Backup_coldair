@@ -1,6 +1,6 @@
 import { ArrowRight, LockKey, UserCircle } from "@phosphor-icons/react";
+import { Link } from "react-router-dom";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
-import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import { translateText } from "../../utils/customerI18n";
 
 export default function LoginForm({
@@ -12,8 +12,6 @@ export default function LoginForm({
   onPasswordChange,
   onSubmit,
   loading,
-  disabled,
-  onForgotPassword,
 }) {
   const t = (value) => translateText(value, currentLanguage);
   const handleSubmit = (e) => {
@@ -24,92 +22,46 @@ export default function LoginForm({
   return (
     <form className="bq-login-step" onSubmit={handleSubmit}>
       <BoutiqueInput
-        label={t("Sign-In Alias")}
+        maxLength={254}
+        label={t("Sign-in alias")}
         icon={UserCircle}
         placeholder="juan.dc"
+        autoComplete="username"
         value={identifier}
         onChange={(e) => onIdentifierChange(e.target.value)}
-        disabled={disabled}
         status={errors.identifier ? "error" : null}
         errorMessage={t(errors.identifier)}
         required
       />
 
       <div className="bq-login-password-field">
-        <div className="bq-login-pass-header">
-          <label className="bq-input-label">{t("Password")}</label>
-          <button
-            type="button"
-            className="bq-login-forgot"
-            onClick={onForgotPassword}
-            tabIndex="-1"
-          >
-            {t("Reset Password")}
-          </button>
-        </div>
-
         <BoutiqueInput
+          maxLength={128}
+          label={t("Password")}
           icon={LockKey}
           type="password"
           language={currentLanguage}
           autoComplete="current-password"
-          aria-label={t("Password")}
-          placeholder="••••••••"
+          placeholder={t("Enter your password")}
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
-          disabled={disabled}
           status={errors.password ? "error" : null}
           errorMessage={t(errors.password)}
-          style={{ fontFamily: "monospace" }}
           required
         />
+        <Link to="/forgot-password" className="bq-login-forgot">
+          {t("Reset password")}
+        </Link>
       </div>
 
       <button
         type="submit"
         className="bq-login-btn bq-login-btn--primary"
-        disabled={disabled || loading}
+        disabled={loading}
       >
-        {t(loading ? "Signing in..." : "Sign In")}{" "}
-        {!loading && <ArrowRight size={18} weight="bold" />}
+        {t(loading ? "Signing in..." : "Sign in")}
+        {!loading && <ArrowRight size={18} weight="bold" aria-hidden="true" />}
       </button>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-login-step { display: flex; flex-direction: column; gap: 24px; width: 100%; }
-
-        .bq-login-password-field { display: flex; flex-direction: column; gap: 8px; }
-
-        .bq-login-pass-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .bq-login-forgot {
-          background: none; border: none; font-size: 11px; font-weight: 800;
-          color: ${BQ_COLORS.brand}; cursor: pointer; text-transform: uppercase;
-          letter-spacing: 0.1em;
-          transition: all 0.2s;
-        }
-        .bq-login-forgot:hover { text-decoration: underline; opacity: 0.8; }
-
-        .bq-login-btn {
-          width: 100%; padding: 18px; border-radius: ${BQ_GEOMETRY.radiusPill};
-          font-family: inherit; font-weight: 800; font-size: 15px;
-          text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          gap: 10px; transition: all 0.3s; border: none;
-          margin-top: 8px;
-        }
-
-        .bq-login-btn--primary { background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .bq-login-btn--primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
-        .bq-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      `,
-        }}
-      />
     </form>
   );
 }

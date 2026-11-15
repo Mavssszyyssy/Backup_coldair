@@ -73,7 +73,7 @@
   --r-pill: 9999px;
 
   /* — Typography — */
-  --font-body:  'DM Sans', system-ui, sans-serif;
+  --font-body: var(--app-font-family);
   --font-mono:  'DM Mono', ui-monospace, monospace;
 
   /* — Transitions — */

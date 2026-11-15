@@ -4,8 +4,8 @@
 */
 
 :root {
-    --bq-font-heading: "Outfit", sans-serif;
-    --bq-font-body: "Outfit", sans-serif;
+    --bq-font-heading: var(--app-font-family);
+    --bq-font-body: var(--app-font-family);
 
     --bq-color-brand: #000000;
     --bq-color-accent: #2563eb;
@@ -27,12 +27,14 @@
     border-radius: 999px;
     font-family: var(--bq-font-heading);
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    line-height: var(--app-leading-label);
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     border: none;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .bq-btn--primary {
@@ -73,19 +75,19 @@
 }
 
 .bq-btn--sm {
-    height: 44px;
-    padding: 0 20px;
-    font-size: 12px;
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: var(--app-type-label);
 }
 .bq-btn--md {
-    height: 56px;
-    padding: 0 28px;
-    font-size: 14px;
+    min-height: 52px;
+    padding: 10px 22px;
+    font-size: var(--app-type-body);
 }
 .bq-btn--lg {
-    height: 64px;
-    padding: 0 32px;
-    font-size: 15px;
+    min-height: 60px;
+    padding: 12px 26px;
+    font-size: var(--app-type-body);
 }
 
 .bq-btn:disabled {

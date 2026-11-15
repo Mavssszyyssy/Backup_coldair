@@ -30,8 +30,8 @@
 }
 
 .checkout-title {
-    font-size: 24px;
-    font-weight: bold;
+    font-size: var(--app-type-page);
+    font-weight: var(--app-weight-heading);
     color: #333;
     margin: 0;
 }
@@ -67,8 +67,8 @@
     border-bottom: 1px solid #eee;
 }
 
-.section-header h2 {
-    font-size: 18px;
+.checkout-section .section-header h2 {
+    font-size: var(--app-type-section);
     color: #333;
     margin: 0;
 }
@@ -81,8 +81,8 @@
 }
 
 .address-select-wrap label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--app-type-label);
+    font-weight: var(--app-weight-label);
     color: #333;
 }
 

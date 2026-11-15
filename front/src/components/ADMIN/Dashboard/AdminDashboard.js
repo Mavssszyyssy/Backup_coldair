@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -57,15 +58,27 @@ const AdminDashboard = () => {
   useEffect(() => {
     let mounted = true;
     setError("");
+    let snapshot;
+    const showDashboard = (result, loadedAt = Date.now()) => {
+      if (!mounted) return;
+      setDashboard({ stats: result.stats || null, analytics: result.analytics || null, scopeKey });
+      setUpdatedAt(new Date(loadedAt));
+    };
     const load = async () => {
       try {
-        const result = await apiRequest(dashboardFilterQuery(dateRange || {}));
+        const result = await apiRequest(dashboardFilterQuery(dateRange || {}), {
+          onCached: (result, loadedAt) => {
+            snapshot = result;
+            showDashboard(result, loadedAt);
+          },
+        });
         if (!mounted) return;
-        setDashboard({ stats: result.stats || null, analytics: result.analytics || null, scopeKey });
-        setUpdatedAt(new Date());
+        if (result !== snapshot) showDashboard(result);
         setError("");
       } catch (loadError) {
-        if (mounted) setError(loadError?.message || "Unable to load live analytics.");
+        if (!mounted) return;
+        if ([401, 403].includes(loadError?.status)) setDashboard({ stats: null, analytics: null });
+        setError(loadError?.message || "Unable to load live analytics.");
       }
     };
     load();
@@ -145,7 +158,7 @@ const AdminDashboard = () => {
           <Panel title={t("Branch performance")} description={t("All orders include cancelled orders; paid revenue excludes them. Grouped by stock source branch.")}><BranchPerformance branches={analytics.branches} t={t} /></Panel>
           <Panel title={t("Technician output")} description={t("Completed work orders for the current month.")}><TechnicianPerformance technicians={analytics.technicianKPIs} t={t} /></Panel>
         </div>
-        </> : !error ? <div className="commerce-empty" role="status">{t("Loading analytics for the selected scope…")}</div> : null}
+        </> : !error ? <LoadingSkeleton label={t("Loading analytics for the selected scope…")} variant="cards" /> : null}
 
       </div>
     </AdminLayout>

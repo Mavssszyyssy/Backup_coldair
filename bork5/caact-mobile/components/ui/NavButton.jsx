@@ -6,7 +6,7 @@
 //   onPress      – function (optional override — skips router.push when provided)
 //   active       – boolean (optional; auto-detected from pathname when omitted)
 //   color        – string (active tint color, default COLORS.primary)
-//   inactiveColor– string (default COLORS.textMuted)
+//   inactiveColor– string (default COLORS.textSecondary)
 //   size         – number (icon size, default 24)
 //   badge        – number (optional badge count overlay, shown when > 0)
 //   elevated     – boolean (raised circle button — for Shop centre button)
@@ -16,7 +16,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 
-import { COLORS, FONT, RADIUS } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING, TYPE } from "../../constants/theme";
 
 export default function NavButton({
   iconName,
@@ -25,7 +25,7 @@ export default function NavButton({
   onPress,
   active,
   color = COLORS.primary,
-  inactiveColor = COLORS.textMuted,
+  inactiveColor = COLORS.textSecondary,
   size = 22,
   badge,
   flex = 1,
@@ -62,9 +62,10 @@ export default function NavButton({
       style={{
         flex,
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         minHeight: 64,
         minWidth: 0,
+        paddingVertical: SPACING.xs,
       }}
     >
       <View
@@ -82,7 +83,7 @@ export default function NavButton({
             </View>
           ) : null}
         </View>
-        <Text numberOfLines={2} style={{ fontSize: 11, color: labelColor, marginTop: 3, lineHeight: 14, textAlign: "center", width: "100%", fontWeight: isActive ? FONT.black : FONT.bold }}>
+        <Text style={[TYPE.tab, { color: labelColor, marginTop: 3, textAlign: "center", width: "100%", fontWeight: isActive ? FONT.bold : TYPE.tab.fontWeight }]}>
           {label}
         </Text>
       </View>

@@ -23,6 +23,11 @@ test('inbox uses backend-filtered results and server counts rather than counting
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('search=specific+ticket')));
   fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'in_progress' } });
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('status=in_progress')));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(apiRequest).toHaveBeenLastCalledWith(
+    expect.stringContaining('status=in_progress'), { fresh: true },
+  ));
 });
 
 test('Filipino inbox keeps the original customer message and subject', async () => {

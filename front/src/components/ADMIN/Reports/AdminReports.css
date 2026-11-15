@@ -10,7 +10,7 @@
 .company-report-tabs button, .company-report-controls button { border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; padding: 10px 14px; font-weight: 800; cursor: pointer; }
 .company-report-tabs button.active { background: #0f4c81; border-color: #0f4c81; color: #fff; }
 .company-report-controls { display: grid; gap: 12px; padding: 16px; background: #eaf2f9; border: 1px solid #b7cee1; border-radius: 12px; }
-.company-report-controls label { display: grid; gap: 5px; color: #334155; font-size: 12px; font-weight: 800; }
+.company-report-controls label { display: grid; gap: 5px; color: #334155; font-size: var(--app-type-label); font-weight: var(--app-weight-label); }
 .company-report-controls input, .company-report-controls select { min-height: 40px; min-width: 150px; border: 1px solid #94a3b8; border-radius: 8px; background: #fff; padding: 8px 10px; color: #0f172a; }
 .company-report-period-row { display: grid; grid-template-columns: repeat(3, minmax(160px, 210px)); align-items: end; gap: 10px; }
 .company-report-controls .company-report-search { min-width: 220px; }
@@ -19,8 +19,8 @@
 .company-report-controls button:disabled { cursor: not-allowed; opacity: .48; }
 .company-report-filter-panel { min-width: 0; padding: 12px; border: 1px solid #b7cee1; border-radius: 10px; background: rgba(255, 255, 255, .78); }
 .company-report-filter-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.company-report-filter-heading strong { color: #0f4c81; font-size: 12px; font-weight: 900; }
-.company-report-filter-heading span { color: #64748b; font-size: 11px; font-weight: 650; text-align: right; }
+.company-report-filter-heading strong { color: #0f4c81; font-size: var(--app-type-label); font-weight: 700; }
+.company-report-filter-heading span { color: #64748b; font-size: var(--app-type-meta); font-weight: var(--app-weight-label); text-align: right; }
 .company-report-filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; gap: 10px; }
 .company-report-filter-grid--compact { grid-template-columns: minmax(260px, 2fr) minmax(220px, 1fr); max-width: 860px; }
 .company-report-filter-grid input, .company-report-filter-grid select { width: 100%; min-width: 0; }
@@ -38,6 +38,15 @@
 .company-report-summary > div { display: grid; gap: 4px; min-height: 84px; padding: 16px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
 .company-report-summary span { color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .company-report-summary strong { color: #0f172a; font-size: 18px; }
+.company-report-kpis { padding: 16px 20px; }
+.company-report-kpis > h3, .company-report-interpretation > h3 { margin: 0 0 8px; font-size: var(--app-type-card); }
+.company-report-kpis .company-report-summary { gap: 10px; border: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr)); }
+.company-report-kpis .company-report-summary > div { min-width: 0; border: 1px solid #cbd5e1; border-top: 3px solid #0f4c81; border-radius: 8px; }
+.company-report-kpis .company-report-summary strong { font-size: var(--app-type-section); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.company-report-interpretation { margin: 16px 20px 0; padding: 12px 14px; border-left: 4px solid #0f4c81; background: #f1f6fb; color: #334155; overflow-wrap: anywhere; }
+.company-report-interpretation p { margin: 0 0 6px; }
+.company-report-interpretation p:last-child { margin-bottom: 0; font-size: var(--app-type-label); font-weight: 600; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .company-report-interpretation { background: var(--ops-surface-subtle); color: var(--ops-text); }
 .company-report-basis { margin: 16px 20px 0; padding: 11px 13px; background: #f8fafc; border-left: 4px solid #0f4c81; color: #475569; font-size: 12px; line-height: 1.55; }
 .company-report-table-section { padding: 18px 20px 4px; }
 .company-report-table-section h3 { margin: 0 0 10px; color: #0f172a; font-size: 17px; }

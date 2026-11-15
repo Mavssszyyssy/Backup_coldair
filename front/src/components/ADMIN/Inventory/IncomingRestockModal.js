@@ -1,10 +1,14 @@
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
 import { formatBusinessDate } from '../../../utils/dateTime';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import './IncomingRestockModal.css';
 
 const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
+  const { currentLanguage } = useUser();
   const [restocks, setRestocks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,7 +89,7 @@ const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
           {error && <p className="error-message">{error}</p>}
 
           {loading ? (
-            <p className="loading-state">Loading deliveries...</p>
+            <LoadingSkeleton label={translateText("Loading…", currentLanguage)} />
           ) : restocks.length === 0 ? (
             <p className="empty-state">No incoming deliveries</p>
           ) : (

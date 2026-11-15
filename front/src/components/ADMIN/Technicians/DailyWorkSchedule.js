@@ -1,10 +1,12 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { useUser } from "../../../context/UserContext";
 import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { TECHNICIAN_TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
-import { formatBusinessDateKey } from "../../../utils/dateTime";
+import { formatBusinessDateKey, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from "../../../utils/dateTime";
 import { translateText } from "../../../utils/customerI18n";
 import useAutoDismissMessage from "../../../hooks/useAutoDismissMessage";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
@@ -63,15 +65,15 @@ const DailyWorkSchedule = () => {
   const [conflictTasks, setConflictTasks] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async ({ quiet = false } = {}) => {
+  const load = useCallback(async ({ quiet = false, fresh = false } = {}) => {
     if (!quiet) setLoading(true);
     setError("");
     try {
       const query = new URLSearchParams({ scheduled_date: date, limit: "200" });
       if (isSuperAdmin && branch !== "all") query.set("branch", branch);
       const [taskResult, userResult] = await Promise.all([
-        apiRequest(`/tasks?${query}`),
-        apiRequest("/users?role=technician"),
+        apiRequest(`/tasks?${query}`, fresh ? { fresh } : undefined),
+        apiRequest("/users?role=technician", fresh ? { fresh } : undefined),
       ]);
       setTasks(taskResult.tasks || []);
       setTechnicians((userResult.users || []).map((item) => ({
@@ -100,7 +102,7 @@ const DailyWorkSchedule = () => {
     }
     const query = new URLSearchParams({ scheduled_date: draft.scheduledDate, limit: "200" });
     if (isSuperAdmin && branch !== "all") query.set("branch", branch);
-    apiRequest(`/tasks?${query}`)
+    apiRequest(`/tasks?${query}`, { fresh: true })
       .then((result) => { if (!cancelled) setConflictTasks(result.tasks || []); })
       .catch(() => { if (!cancelled) setConflictTasks([]); });
     return () => { cancelled = true; };
@@ -140,6 +142,10 @@ const DailyWorkSchedule = () => {
 
   const saveSchedule = async (task) => {
     if (!draft?.assignedTechnicianId) return setError("Choose the assigned technician for this work order.");
+    if (!task.requestId) {
+      const dateError = getWorkOrderDateSelectionError(draft.scheduledDate);
+      if (dateError) return setError(dateError);
+    }
     const assignedTechnician = technicians.find((item) => item.id === draft.assignedTechnicianId);
     if (assignedTechnician && technicianBusy(task, assignedTechnician.id)) {
       return setError(`${assignedTechnician.name} ${t("already has an overlapping work order on this date and time.")}`);
@@ -178,7 +184,7 @@ const DailyWorkSchedule = () => {
   return <section className="daily-schedule" aria-label={t("Daily work schedule")}>
     <header className="daily-schedule__header">
       <div><p className="daily-schedule__eyebrow">{t("Field operations")}</p><h2>{t("Daily work schedule")}</h2><p>{t("One live view of existing orders and service work. Changes here update the same technician work order.")}</p></div>
-      <div className="daily-schedule__actions"><button type="button" className="tech-secondary-button" onClick={() => load()} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button></div>
+      <div className="daily-schedule__actions"><button type="button" className="tech-secondary-button" onClick={() => load({ fresh: true })} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button></div>
     </header>
 
     <div className="daily-schedule__filters">
@@ -188,7 +194,7 @@ const DailyWorkSchedule = () => {
         <button type="button" aria-label={t("Next day")} title={t("Next day")} onClick={() => setDate((value) => shiftDate(value, 1))}>›</button>
       </div>
       <button type="button" className="daily-schedule__today" onClick={() => setDate(today())} disabled={date === today()}><span>{t("Today")}</span><small>{t(date === today() ? "Current date selected" : "Return to current date")}</small></button>
-      {isSuperAdmin ? <label><span>{t("Branch")}</span><select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">{t("All branches")}</option>{branchNames.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : <div className="daily-schedule__branch"><span>{t("Branch")}</span><strong>{homeBranch || t("Assigned branch")}</strong></div>}
+      {isSuperAdmin ? <label><span>{t("Branch")}</span><SearchableSelect value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">{t("All branches")}</option>{branchNames.map((item) => <option key={item} value={item}>{item}</option>)}</SearchableSelect></label> : <div className="daily-schedule__branch"><span>{t("Branch")}</span><strong>{homeBranch || t("Assigned branch")}</strong></div>}
     </div>
     <p className="daily-schedule__date">{formatDate(date, currentLanguage === "Filipino" ? "fil-PH" : "en-PH")} · {tasks.length} {t(tasks.length === 1 ? "job" : "jobs")}</p>
     <PersistentErrorNotice
@@ -197,7 +203,7 @@ const DailyWorkSchedule = () => {
       onDismiss={() => setError("")}
     />
     {notice ? <p className="tech-message tech-message--success">{notice}</p> : null}
-    {loading ? <p className="daily-schedule__empty">{t("Loading the schedule…")}</p> : null}
+    {loading ? <LoadingSkeleton label={t("Loading the schedule…")} variant="table" /> : null}
     {!loading && groups.length === 0 ? <div className="daily-schedule__empty"><strong>{t("No jobs scheduled for this date.")}</strong><span>{t("Choose another day, or use the Technicians tab to create a work order.")}</span></div> : null}
 
     {!loading ? groups.map(([groupBranch, groupTasks]) => <section className="daily-schedule__branch-group" key={groupBranch}>
@@ -216,11 +222,11 @@ const DailyWorkSchedule = () => {
             <td data-label={t("Costs & personnel")}><strong>{t(money(details.otherExpenses))}</strong><span>{details.sellerPersonnel || t("Personnel not recorded")}</span></td>
             <td data-label={t("Status")}><span className={`daily-schedule__status is-${String(task.status || "pending").replace(/\s+/g, "-")}`}>{t(statusLabel(task.status))}</span><button type="button" className="daily-schedule__edit" onClick={() => beginEdit(task)} disabled={["completed", "cancelled"].includes(String(task.status).toLowerCase())}>{t(editingId === task.id ? "Editing" : "Edit schedule")}</button></td>
           </tr>{editingId === task.id && draft ? <tr className="daily-schedule__editor-row"><td colSpan="8"><div className="daily-schedule__editor">
-            <label><span>{t("Scheduled date")}</span><input type="date" min={today()} value={draft.scheduledDate} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("scheduledDate", event.target.value)} />{task.requestId ? <small>{t("Customer-confirmed service dates stay locked. Use the service request or visit follow-up workflow to reschedule.")}</small> : null}</label>
-            <label><span>{t("Time")}</span><select value={draft.timeSlot} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{!TECHNICIAN_TIME_SLOTS.includes(draft.timeSlot) ? <option value={draft.timeSlot}>{draft.timeSlot}</option> : null}{TECHNICIAN_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label>
-            <label><span>{t("Assigned technician")}</span><select value={draft.assignedTechnicianId} disabled={isServiceAssignmentLocked(task)} onChange={(event) => updateDraft("assignedTechnicianId", event.target.value)}><option value="">{t("Select technician")}</option>{techniciansFor(task).map((technician) => { const busy = technicianBusy(task, technician.id); return <option key={technician.id} value={technician.id} disabled={busy}>{technician.name}{busy ? ` · ${t("Schedule conflict")}` : ""}</option>; })}</select>{isServiceAssignmentLocked(task) ? <small>{t("This service-request assignment is permanently locked.")}</small> : null}</label>
+            <label><span>{t("Scheduled date")}</span><input type="date" {...getWorkOrderDateWindow()} value={draft.scheduledDate} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("scheduledDate", event.target.value)} />{task.requestId ? <small>{t("Customer-confirmed service dates stay locked. Use the service request or visit follow-up workflow to reschedule.")}</small> : null}</label>
+            <label><span>{t("Time")}</span><SearchableSelect value={draft.timeSlot} disabled={Boolean(task.requestId)} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{!TECHNICIAN_TIME_SLOTS.includes(draft.timeSlot) ? <option value={draft.timeSlot}>{draft.timeSlot}</option> : null}{TECHNICIAN_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</SearchableSelect></label>
+            <label><span>{t("Assigned technician")}</span><SearchableSelect value={draft.assignedTechnicianId} disabled={isServiceAssignmentLocked(task)} onChange={(event) => updateDraft("assignedTechnicianId", event.target.value)}><option value="">{t("Select technician")}</option>{techniciansFor(task).map((technician) => { const busy = technicianBusy(task, technician.id); return <option key={technician.id} value={technician.id} disabled={busy}>{technician.name}{busy ? ` · ${t("Schedule conflict")}` : ""}</option>; })}</SearchableSelect>{isServiceAssignmentLocked(task) ? <small>{t("This service-request assignment is permanently locked.")}</small> : null}</label>
             <div className="daily-schedule__readonly-field"><span>{t("Driver")}</span><strong>{technicians.find((item) => item.id === draft.assignedTechnicianId)?.name || task.assignedTechnicianName || t("Choose a technician")}</strong><small>{t("The assigned technician is also the scheduled driver.")}</small></div>
-            <label className="daily-schedule__note-field"><span>{t("Schedule note")}</span><textarea rows="3" value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} placeholder={t("Access instructions, delivery note, equipment, or other operational detail")} /></label>
+            <label className="daily-schedule__note-field"><span>{t("Schedule note")}</span><textarea maxLength={1000} rows="3" value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} placeholder={t("Access instructions, delivery note, equipment, or other operational detail")} /></label>
             <div className="daily-schedule__editor-actions"><button type="button" className="tech-secondary-button" onClick={() => { setEditingId(""); setDraft(null); }} disabled={saving}>{t("Cancel")}</button><button type="button" className="tech-primary-button" onClick={() => saveSchedule(task)} disabled={saving}>{t(saving ? "Saving…" : "Save schedule")}</button></div>
           </div></td></tr> : null}</React.Fragment>;
         })}</tbody>

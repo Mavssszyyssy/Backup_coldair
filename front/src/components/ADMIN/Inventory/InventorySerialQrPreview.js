@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import { Copy, QrCode, X } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -155,7 +156,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
           {units.length > 1 ? (
             <label className="inventory-serial-picker">
               {t("Select AC unit")}
-              <select
+              <SearchableSelect
                 value={getUnitKey(selectedUnit, units.indexOf(selectedUnit))}
                 onChange={(event) => setSelectedKey(event.target.value)}
               >
@@ -164,7 +165,7 @@ function InventorySerialQrPreview({ product, branch, placement = "bottom" }) {
                     {unit.serialNumber || unit.qrUnitId || `${t('Unit')} ${index + 1}`}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
           ) : null}
 

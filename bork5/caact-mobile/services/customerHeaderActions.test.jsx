@@ -9,9 +9,9 @@ jest.mock("../hooks/useInterfaceLanguage", () => ({ useInterfaceLanguage: () => 
 
 beforeEach(() => jest.clearAllMocks());
 
-test("Chat Support is beside Alerts and each opens its existing route", async () => {
+test("the AEROPULSE assistant is beside Alerts and each opens its existing route", async () => {
   const view = await render(<CustomerHeaderActions />);
-  const chat = view.getByRole("button", { name: "Chat Support" });
+  const chat = view.getByRole("button", { name: "Open AEROPULSE assistant" });
   const alerts = view.getByRole("button", { name: "Alerts" });
   expect(chat.parent).toBe(alerts.parent);
   await fireEvent.press(chat);

@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import {
   CheckCircle,
   Clock,
@@ -6,7 +7,7 @@ import {
   ShoppingBag,
   WarningDiamond,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -23,7 +24,7 @@ import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
-import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
+import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 
 const normalizeOrder = (order = {}) => ({
   id: String(order.id || order._id || order.orderCode || ""),
@@ -39,6 +40,7 @@ const normalizeOrder = (order = {}) => ({
   paymentMethod: String(order.paymentMethod || ""),
   paymentStatus: String(order.paymentStatus || ""),
   paymentProvider: String(order.paymentProvider || ""),
+  paymentCheckoutState: order.paymentCheckoutState || "",
   paymongo: order.paymongo || {},
   paymentRetryCount: Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0),
   receipt: order.receipt || {},
@@ -62,6 +64,7 @@ function OrderConfirmation() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const paymentInFlight = useRef(false);
   const paymentReturnState = searchParams.get("payment");
 
   useEffect(() => {
@@ -71,9 +74,8 @@ function OrderConfirmation() {
       const currentRequest = ++request;
       setLoading(true);
       setError("");
-      setPaying(false);
       try {
-        const response = await apiRequest(`/orders/me/${orderId}`);
+        const response = await apiRequest(`/orders/me/${orderId}`, { fresh: true });
         if (response.order) {
           let nextOrder = normalizeOrder(response.order);
           if (
@@ -108,22 +110,32 @@ function OrderConfirmation() {
     };
   }, [orderId, paymentReturnState, refresh]);
 
+  const expiresAt = Date.parse(order?.paymongo?.checkoutExpiresAt);
+  useEffect(() => {
+    const delay = expiresAt - Date.now();
+    if (order?.workflowStatus !== "to_pay" || !["pending", "failed", "cancelled"].includes(order.paymentStatus) || !Number.isFinite(delay) || delay <= 0) return undefined;
+    const timer = window.setTimeout(() => setRefresh((value) => value + 1), delay);
+    return () => window.clearTimeout(timer);
+  }, [expiresAt, order?.paymentStatus, order?.workflowStatus]);
+
   const outcome = paymentOutcome(order, paymentReturnState);
   const normalizedPaymentStatus = String(order?.paymentStatus || "").toLowerCase();
   const isCashOnDelivery = String(order?.paymentMethod || "").toLowerCase() === "cod";
   const paymentStatusLabel = isCashOnDelivery && normalizedPaymentStatus !== "paid" ? "To be paid on delivery" : (order?.receipt?.paymentStatus || order?.paymentStatus || "pending");
   const paymentNeedsAction =
     order?.paymentProvider === "paymongo" && normalizedPaymentStatus !== "paid";
+  const checkoutBlocked = order?.paymongo?.retryInProgress || ["processing", "expiring"].includes(order?.paymentCheckoutState);
+  const isGcash = String(order?.paymentMethod || "").toLowerCase() === "gcash";
   const canRetryPayment =
-    order && paymentNeedsAction && order.workflowStatus === "to_pay" &&
-    String(order.paymentMethod || "").toLowerCase() === "gcash" &&
+    order && paymentNeedsAction && !checkoutBlocked && order.workflowStatus === "to_pay" &&
     ["pending", "failed", "cancelled", "expired"].includes(normalizedPaymentStatus);
   const paymentRetryLimitReached =
-    String(order?.paymentMethod || "").toLowerCase() === "gcash" &&
-    Number(order?.paymentRetryCount || 0) >= 3;
+    canRetryPayment && isGcash && Number(order?.paymentRetryCount || 0) >= 3 &&
+    !(normalizedPaymentStatus === "pending" && order.paymongo?.checkoutUrl);
 
   const handlePayNow = async () => {
-    if (!order?.id) return;
+    if (!order?.id || !canRetryPayment || paymentRetryLimitReached || paymentInFlight.current) return;
+    paymentInFlight.current = true;
     setPaying(true);
     try {
       const response = await apiRequest(`/orders/${order.id}/paymongo/checkout`, {
@@ -137,7 +149,10 @@ function OrderConfirmation() {
       if (!paymentUrl) throw new Error(t("A secure payment link was not returned."));
       openOnlineCheckout(paymentUrl, order.id);
     } catch (err) {
-      alert(err?.message || t("Unable to open secure payment."));
+      alert(t(err?.message || "Unable to open secure payment."));
+      setRefresh((value) => value + 1);
+    } finally {
+      paymentInFlight.current = false;
       setPaying(false);
     }
   };
@@ -145,16 +160,7 @@ function OrderConfirmation() {
   if (loading) {
     return (
       <BoutiqueScreen withHeader={false} background={BQ_COLORS.bg}>
-        <BoutiqueBox tag="main" flex={1} align="center" justify="center" padding={60}>
-          <BoutiqueStack gap={20} align="center">
-            <BoutiqueBox className="bq-spin" color={BQ_COLORS.brand}>
-              <Clock size={48} weight="bold" />
-            </BoutiqueBox>
-            <BoutiqueText variant="h3">
-              {t("Fetching your order details...")}
-            </BoutiqueText>
-          </BoutiqueStack>
-        </BoutiqueBox>
+        <main className="loading-screen"><LoadingSkeleton label={t("Fetching your order details...")} variant="detail" count={2} /></main>
       </BoutiqueScreen>
     );
   }
@@ -199,11 +205,11 @@ function OrderConfirmation() {
         direction="column"
         flex={1}
         width="100%"
-        padding="40px 24px"
+        padding={BQ_GEOMETRY.pagePadding}
         style={{ maxWidth: "800px", margin: "0 auto" }}
       >
-        <BoutiqueStack gap={32}>
-          <BoutiqueCard padding={48} align="center">
+        <BoutiqueStack gap={18}>
+          <BoutiqueCard padding="clamp(18px, 4vw, 32px)" align="center">
             <BoutiqueBox
               width={80}
               height={80}
@@ -252,7 +258,15 @@ function OrderConfirmation() {
                 <BoutiqueText weight={800} color={order.paymentStatus === "paid" ? "#047857" : "#9a3412"}>
                   {t("Payment")}: {t(order.paymentStatus || "pending").toUpperCase()}
                 </BoutiqueText>
-                {paymentRetryLimitReached ? (
+                {order.paymentCheckoutState === "expiring" ? (
+                  <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">
+                    {t("The previous payment link is closing. Check the payment status before trying again.")}
+                  </BoutiqueText>
+                ) : order.paymentCheckoutState === "processing" ? (
+                  <BoutiqueText size="13px" color={BQ_COLORS.inkMuted} margin="6px 0 0">
+                    {t("A payment is still processing. Refresh the order and wait for its result before retrying.")}
+                  </BoutiqueText>
+                ) : paymentRetryLimitReached ? (
                   <BoutiqueText size="13px" color={BQ_COLORS.danger} margin="6px 0 0">
                     {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}
                   </BoutiqueText>

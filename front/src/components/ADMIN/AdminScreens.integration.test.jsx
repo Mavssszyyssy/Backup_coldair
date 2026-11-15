@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import AdminDashboard from "./Dashboard/AdminDashboard";
 import AdminInventory from "./Inventory/AdminInventory";
@@ -127,11 +127,13 @@ afterEach(() => {
   window.sessionStorage.removeItem("activeBranch");
 });
 
-const renderScreen = (Component, entry) => render(
-  <MemoryRouter initialEntries={[entry]}>
-    <Component />
-  </MemoryRouter>,
-);
+const renderScreen = (Component, entry) => {
+  if (Component === AdminProfile) {
+    const router = createMemoryRouter([{ path: entry, element: <Component /> }], { initialEntries: [entry] });
+    return render(<RouterProvider router={router} />);
+  }
+  return render(<MemoryRouter initialEntries={[entry]}><Component /></MemoryRouter>);
+};
 
 it.each([
   ["dashboard", AdminDashboard, "/admin/dashboard", "Commerce analytics"],

@@ -8,7 +8,7 @@ import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
-import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
+import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 
@@ -64,7 +64,7 @@ function FaqPage() {
         direction="column"
         flex={1}
         width="100%"
-        padding="40px 24px"
+        padding={BQ_GEOMETRY.pagePadding}
         style={{ maxWidth: "900px", margin: "0 auto" }}
       >
         <BoutiqueStack gap={40}>

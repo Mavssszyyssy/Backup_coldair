@@ -116,6 +116,7 @@ export function normalizeOrder(order = {}) {
     address: order.address || null,
     paymentMethod: order.paymentMethod || "COD",
     paymentProvider: order.paymentProvider || "",
+    paymentCheckoutState: order.paymentCheckoutState || "",
     paymongo: order.paymongo || null,
     paymentRetryCount: Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0),
     paymentUrl: order.paymentUrl || order.paymongo?.checkoutUrl || "",

@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
@@ -157,8 +159,8 @@ const SuperAdminSettings = () => {
       <section className="hq-account-card">
         <div className="hq-card-heading"><p>{t('Workspace')}</p><h3>{t('Display preferences')}</h3></div>
         <p>{t('Choose your account display options, then save them here.')}</p>
-        <label>{t('Theme')}<select value={preferences.theme} onChange={(event) => updateDisplayPreference('theme', event.target.value)}><option value="light">{t('Light')}</option><option value="dark">{t('Dark')}</option></select></label>
-        <label>{t('Language')}<select value={preferences.language} onChange={(event) => updateDisplayPreference('language', event.target.value)}><option value="English">{t('English')}</option><option value="Filipino">{t('Filipino')}</option></select></label>
+        <label>{t('Theme')}<SearchableSelect value={preferences.theme} onChange={(event) => updateDisplayPreference('theme', event.target.value)}><option value="light">{t('Light')}</option><option value="dark">{t('Dark')}</option></SearchableSelect></label>
+        <label>{t('Language')}<SearchableSelect value={preferences.language} onChange={(event) => updateDisplayPreference('language', event.target.value)}><option value="English">{t('English')}</option><option value="Filipino">{t('Filipino')}</option></SearchableSelect></label>
         <button type="button" className="hq-display-save" onClick={saveDisplayPreferences} disabled={savingPreferences}>{t(savingPreferences ? 'Saving display preferences…' : 'Save display preferences')}</button>
         {preferencesNotice ? <span className="hq-success" role="status">{t(preferencesNotice)}</span> : null}
         {preferencesError ? <span className="hq-error" role="alert">{t(preferencesError)}</span> : null}
@@ -175,7 +177,8 @@ const SuperAdminSettings = () => {
       <section className="hq-account-card hq-domain-policy-card">
         <div className="hq-card-heading"><p>{t('Account protection')}</p><h3>{t('Email Domain Whitelist')}</h3></div>
         <p>{t('Only active domains can be used for new accounts, email changes, and other submitted user email addresses. Disposable providers remain blocked by the server.')}</p>
-        <div className="hq-domain-selector">
+        {policyLoading && <LoadingSkeleton label={t('Loading domains…')} variant="inline" count={1} />}
+        <div className="hq-domain-selector" hidden={policyLoading}>
           <button type="button" className="hq-domain-selector-button" aria-expanded={domainMenuOpen} onClick={() => setDomainMenuOpen((current) => !current)} disabled={policyLoading}>
             <span>{policyLoading ? t('Loading domains…') : `${emailDomains.filter((entry) => entry.enabled).length} ${t('active of')} ${emailDomains.length} ${t('domains')}`}</span>
             <b aria-hidden="true">{domainMenuOpen ? '▲' : '▼'}</b>
@@ -188,7 +191,7 @@ const SuperAdminSettings = () => {
           </div> : null}
         </div>
         <div className="hq-domain-add-row">
-          <label>{t('Company, organization, or school domain')}<input value={customDomain} onChange={(event) => { setCustomDomain(event.target.value); setPolicyError(''); }} placeholder="example.edu.ph" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addEmailDomain(); } }} /></label>
+          <label>{t('Company, organization, or school domain')}<input maxLength={253} value={customDomain} onChange={(event) => { setCustomDomain(event.target.value); setPolicyError(''); }} placeholder="example.edu.ph" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addEmailDomain(); } }} /></label>
           <button type="button" onClick={addEmailDomain}>{t('Add domain')}</button>
         </div>
         <button type="button" className="hq-domain-save-button" onClick={saveEmailDomains} disabled={policyLoading || policySaving}>{t(policySaving ? 'Saving whitelist…' : 'Save email whitelist')}</button>

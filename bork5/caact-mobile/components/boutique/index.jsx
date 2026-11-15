@@ -3,6 +3,8 @@ import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-nativ
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
+import ScreenHeading from "../ui/ScreenHeading";
+import { TYPE, TOUCH } from "../../constants/theme";
 
 export const BQ_COLORS = {
   accent: "#2563eb",
@@ -26,12 +28,12 @@ export const BQ_SHADOW = {
 };
 
 const textStyles = {
-  body: { fontSize: 15, lineHeight: 22, fontWeight: "400" },
-  caption: { fontSize: 12, lineHeight: 17, fontWeight: "500" },
-  label: { fontSize: 12, lineHeight: 16, fontWeight: "700", letterSpacing: 0.3 },
-  h1: { fontSize: 28, lineHeight: 34, fontWeight: "800" },
-  h2: { fontSize: 21, lineHeight: 27, fontWeight: "800" },
-  h3: { fontSize: 16, lineHeight: 21, fontWeight: "700" },
+  body: TYPE.body,
+  caption: TYPE.caption,
+  label: TYPE.label,
+  h1: TYPE.display,
+  h2: TYPE.section,
+  h3: TYPE.card,
 };
 
 export function BoutiqueText({ children, variant = "body", color = BQ_COLORS.ink, align, style, ...props }) {
@@ -40,8 +42,10 @@ export function BoutiqueText({ children, variant = "body", color = BQ_COLORS.ink
 
 export function BoutiqueScreen({ children, contentContainerStyle, style }) {
   const pathname = usePathname();
-  const isTopLevel = new Set(["/customer/shop", "/customer/orders"]).has(pathname);
-  return <KeyboardAwareScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} minBottomPadding={isTopLevel ? BQ_SPACING.xl : BQ_SPACING.lg} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md }, contentContainerStyle]}>{children}</KeyboardAwareScrollView>;
+  const insets = useSafeAreaInsets();
+  const hasBottomNav = pathname === "/customer/shop" || pathname === "/customer/orders";
+  const bottomClearance = BQ_SPACING.md + (hasBottomNav ? 0 : insets.bottom);
+  return <KeyboardAwareScrollView style={[{ flex: 1, backgroundColor: BQ_COLORS.bg }, style]} minBottomPadding={bottomClearance} contentContainerStyle={[{ padding: BQ_SPACING.md, gap: BQ_SPACING.md }, contentContainerStyle]}>{children}</KeyboardAwareScrollView>;
 }
 
 export function BoutiqueCard({ children, onPress, padding = BQ_SPACING.md, elevated = true, style }) {
@@ -55,7 +59,19 @@ export function BoutiqueButton({ title, onPress, disabled, variant = "primary", 
   const padding = size === "sm" ? { paddingVertical: 9, paddingHorizontal: 12 } : { paddingVertical: 13, paddingHorizontal: 16 };
   const backgroundColor = isOutline || isGhost ? "transparent" : BQ_COLORS.brand;
   const color = isOutline || isGhost ? BQ_COLORS.brand : "#fff";
-  return <Pressable disabled={disabled} onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [{ flexDirection: "row", minHeight: 40, alignItems: "center", justifyContent: "center", gap: BQ_SPACING.xs, borderRadius: BQ_RADIUS.md, backgroundColor, borderWidth: isOutline ? 1 : 0, borderColor: BQ_COLORS.brand, opacity: disabled ? 0.45 : pressed ? 0.82 : 1, alignSelf: fullWidth ? "stretch" : "flex-start", ...padding }, style]}>{leftIcon}<BoutiqueText variant="label" color={color}>{title}</BoutiqueText>{rightIcon}</Pressable>;
+  return (
+    <Pressable disabled={disabled} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}
+      style={({ pressed }) => [{
+        flexDirection: "row", minHeight: TOUCH.minimum, maxWidth: "100%", alignItems: "center", justifyContent: "center",
+        gap: BQ_SPACING.xs, borderRadius: BQ_RADIUS.md, backgroundColor, borderWidth: isOutline ? 1 : 0,
+        borderColor: BQ_COLORS.brand, opacity: disabled ? 0.45 : pressed ? 0.82 : 1, alignSelf: fullWidth ? "stretch" : "flex-start",
+        ...padding,
+      }, style]}>
+      {leftIcon}
+      <Text style={[size === "sm" ? TYPE.label : TYPE.action, { color, flexShrink: 1, textAlign: "center" }]}>{title}</Text>
+      {rightIcon}
+    </Pressable>
+  );
 }
 
 const chipColors = {
@@ -65,20 +81,49 @@ export function BoutiqueChip({ label, variant = "neutral" }) { const colors = ch
 
 export function BoutiqueHeader({ title, subtitle, onBack, onCart, cartCount = 0 }) {
   const insets = useSafeAreaInsets();
-  return <View style={[{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm, paddingHorizontal: BQ_SPACING.md, paddingTop: Math.max(insets.top, BQ_SPACING.md), paddingBottom: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }, BQ_SHADOW.float]}>{onBack ? <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back"><View style={{ width: 40, height: 40, borderRadius: BQ_RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.bgAlt }}><Ionicons name="arrow-back" size={22} color={BQ_COLORS.ink} /></View></Pressable> : <Image source={require("../../assets/coldair-app-icon.png")} accessibilityLabel="Cold Air ACT" style={{ width: 40, height: 40, borderRadius: BQ_RADIUS.md }} />}<View style={{ flex: 1 }}><BoutiqueText variant="h2" numberOfLines={1}>{title}</BoutiqueText>{subtitle ? <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>{subtitle}</BoutiqueText> : null}</View>{onCart ? <Pressable onPress={onCart} style={{ width: 40, height: 40, borderRadius: BQ_RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.bgAlt }} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Cart${cartCount ? `, ${cartCount} items` : ""}`}><Ionicons name="cart-outline" size={23} color={BQ_COLORS.ink} />{cartCount > 0 ? <View style={{ position: "absolute", right: -4, top: -4, minWidth: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.danger }}><BoutiqueText variant="caption" color="#fff">{cartCount}</BoutiqueText></View> : null}</Pressable> : null}</View>;
+  const controlStyle = { width: 40, height: 40, borderRadius: BQ_RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.bgAlt };
+
+  return (
+    <View style={[{
+      flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm,
+      paddingHorizontal: BQ_SPACING.md, paddingTop: Math.max(insets.top, BQ_SPACING.md),
+      paddingBottom: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface,
+      borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border,
+    }, BQ_SHADOW.float]}>
+      {onBack ? (
+        <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back" style={controlStyle}>
+          <Ionicons name="arrow-back" size={22} color={BQ_COLORS.ink} />
+        </Pressable>
+      ) : (
+        <Image source={require("../../assets/coldair-app-icon.png")} accessibilityLabel="Cold Air ACT" style={{ width: 40, height: 40, borderRadius: BQ_RADIUS.md }} />
+      )}
+      <ScreenHeading title={title} subtitle={subtitle} />
+      {onCart ? (
+        <Pressable onPress={onCart} style={controlStyle} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Cart${cartCount ? `, ${cartCount} items` : ""}`}>
+          <Ionicons name="cart-outline" size={23} color={BQ_COLORS.ink} />
+          {cartCount > 0 ? (
+            <View style={{ position: "absolute", right: -4, top: -4, minWidth: 18, minHeight: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: BQ_COLORS.danger }}>
+              <Text style={[TYPE.tab, { color: "#fff" }]}>{cartCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
-export function BoutiqueQuantityStepper({ value, onChange, max = 99, disabled = false }) {
+export function BoutiqueQuantityStepper({ value, onChange, max = 99, disabled = false, largeTargets = false, t = (value) => value }) {
   const safeValue = Number(value || 1);
   const canDecrease = !disabled && safeValue > 1;
   const canIncrease = !disabled && Number.isFinite(Number(max)) && safeValue < Number(max);
+  const targetStyle = largeTargets ? { width: TOUCH.minimum, height: TOUCH.minimum, alignItems: "center", justifyContent: "center", borderRadius: BQ_RADIUS.sm, backgroundColor: BQ_COLORS.bg } : undefined;
   return <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm }}>
-    <Pressable testID="quantity-decrease" disabled={!canDecrease} onPress={() => onChange(safeValue - 1)} accessibilityRole="button" accessibilityState={{ disabled: !canDecrease }} accessibilityLabel="Decrease quantity"><Ionicons name="remove-circle-outline" size={23} color={canDecrease ? BQ_COLORS.brand : BQ_COLORS.inkMuted} /></Pressable>
+    <Pressable testID="quantity-decrease" style={targetStyle} disabled={!canDecrease} onPress={() => onChange(safeValue - 1)} accessibilityRole="button" accessibilityState={{ disabled: !canDecrease }} accessibilityLabel={t("Decrease quantity")}><Ionicons name="remove-circle-outline" size={23} color={canDecrease ? BQ_COLORS.brand : BQ_COLORS.inkMuted} /></Pressable>
     <BoutiqueText variant="label">{safeValue}</BoutiqueText>
-    <Pressable testID="quantity-increase" disabled={!canIncrease} onPress={() => onChange(safeValue + 1)} accessibilityRole="button" accessibilityState={{ disabled: !canIncrease }} accessibilityLabel="Increase quantity"><Ionicons name="add-circle-outline" size={23} color={canIncrease ? BQ_COLORS.brand : BQ_COLORS.inkMuted} /></Pressable>
+    <Pressable testID="quantity-increase" style={targetStyle} disabled={!canIncrease} onPress={() => onChange(safeValue + 1)} accessibilityRole="button" accessibilityState={{ disabled: !canIncrease }} accessibilityLabel={t("Increase quantity")}><Ionicons name="add-circle-outline" size={23} color={canIncrease ? BQ_COLORS.brand : BQ_COLORS.inkMuted} /></Pressable>
   </View>;
 }
 
-export function BoutiqueSearchInput({ value, onChangeText, placeholder }) { return <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm, borderWidth: 1, borderColor: BQ_COLORS.border, borderRadius: BQ_RADIUS.md, paddingHorizontal: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface }}><Ionicons name="search-outline" size={19} color={BQ_COLORS.inkMuted} /><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} accessibilityLabel={placeholder || "Search"} placeholderTextColor={BQ_COLORS.inkMuted} style={{ flex: 1, minHeight: 44, color: BQ_COLORS.ink }} /></View>; }
+export function BoutiqueSearchInput({ value, onChangeText, placeholder }) { return <View style={{ flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm, borderWidth: 1, borderColor: BQ_COLORS.border, borderRadius: BQ_RADIUS.md, paddingHorizontal: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface }}><Ionicons name="search-outline" size={19} color={BQ_COLORS.inkMuted} /><TextInput maxLength={160} value={value} onChangeText={onChangeText} placeholder={placeholder} accessibilityLabel={placeholder || "Search"} placeholderTextColor={BQ_COLORS.inkMuted} style={[TYPE.body, { flex: 1, minHeight: TOUCH.minimum, color: BQ_COLORS.ink }]} /></View>; }
 
 export function BoutiqueSegmented({ options = [], value, onChange, disabled = false }) { return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: BQ_SPACING.xs }}>{options.map((option) => { const selected = option.value === value; return <Pressable key={option.value} disabled={disabled} onPress={() => onChange(option.value)} accessibilityRole="button" accessibilityState={{ selected, disabled }} accessibilityLabel={option.label} style={{ backgroundColor: selected ? BQ_COLORS.brand : BQ_COLORS.surface, borderRadius: BQ_RADIUS.pill, borderWidth: 1, borderColor: selected ? BQ_COLORS.brand : BQ_COLORS.border, paddingHorizontal: 12, paddingVertical: 8 }}><BoutiqueText variant="caption" color={selected ? "#fff" : BQ_COLORS.ink}>{option.label}</BoutiqueText></Pressable>; })}</ScrollView>; }

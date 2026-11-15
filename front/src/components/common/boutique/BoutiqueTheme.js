@@ -38,13 +38,14 @@ export const BQ_GEOMETRY = {
   radiusMd: "16px",
   radiusPill: "999px",
   headerHeight: "80px",
+  pagePadding: "20px clamp(14px, 3vw, 24px) 24px",
   sidebarWidth: "320px",
   cartWidth: "440px",
 };
 
 export const BQ_FONTS = {
-  heading: "'Outfit', sans-serif",
-  body: "'Outfit', sans-serif",
+  heading: "var(--app-font-family)",
+  body: "var(--app-font-family)",
 };
 
 export const BQ_WEIGHTS = {

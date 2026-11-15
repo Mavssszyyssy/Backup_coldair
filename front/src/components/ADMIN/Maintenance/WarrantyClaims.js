@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useState } from 'react';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
@@ -29,10 +30,10 @@ const WarrantyClaims = ({ claims = [], busyClaimId, onReview }) => {
                 <small>{claim.issue}</small>
                 {claim.coverageSummary ? <small>{claim.coverageSummary}</small> : null}
                 {coverage.length > 0 ? <label>{t("Component covered")}
-                  <select aria-label={`${t('Component covered for')} ${claim.claimId}`} value={components[componentKey] || ''} onChange={(event) => setComponents((previous) => ({ ...previous, [componentKey]: event.target.value }))} disabled={busy}>
+                  <SearchableSelect aria-label={`${t('Component covered for')} ${claim.claimId}`} value={components[componentKey] || ''} onChange={(event) => setComponents((previous) => ({ ...previous, [componentKey]: event.target.value }))} disabled={busy}>
                     <option value="">{t("Select component")}</option>
                     {coverage.map((item) => <option key={item.component} value={item.component.toLowerCase()} disabled={item.status !== 'active'}>{t(item.component)} — {t(readable(item.status))}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </label> : null}
               </span>
               <span className="maintenance-request-meta">

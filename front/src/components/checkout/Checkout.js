@@ -1,6 +1,7 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { Buildings, CheckCircle, Spinner } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 import { useCart } from "../../context/CartContext";
@@ -45,13 +46,13 @@ const checkoutFingerprint = ({ cartItems = [], address = {}, paymentMethod = "" 
       .sort((left, right) => left.id.localeCompare(right.id)),
   });
 
-const getCheckoutIdempotencyKey = (fingerprint) => {
+const getCheckoutIdempotencyKey = (fingerprint, storageKey, online) => {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY) || "null");
+    const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
     if (
       saved?.key &&
       saved.fingerprint === fingerprint &&
-      Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS
+      (online || Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS)
     ) return saved.key;
   } catch (_error) {
     // Checkout still works when browser storage is unavailable.
@@ -59,7 +60,7 @@ const getCheckoutIdempotencyKey = (fingerprint) => {
   const key = `web_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
     sessionStorage.setItem(
-      CHECKOUT_IDEMPOTENCY_STORAGE_KEY,
+      storageKey,
       JSON.stringify({ key, fingerprint, createdAt: Date.now() }),
     );
   } catch (_error) {
@@ -68,9 +69,9 @@ const getCheckoutIdempotencyKey = (fingerprint) => {
   return key;
 };
 
-const clearCheckoutIdempotencyKey = () => {
+const clearCheckoutIdempotencyKey = (storageKey) => {
   try {
-    sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY);
+    sessionStorage.removeItem(storageKey);
   } catch (_error) {
     // Nothing else is required when session storage is unavailable.
   }
@@ -117,8 +118,21 @@ const findBestSelectedAddress = (items, currentId = "") => {
 };
 
 function Checkout() {
+  const { key, state } = useLocation();
+  const buyNowItem = state?.buyNowItem;
+  return <CheckoutForm key={buyNowItem ? key : "cart"} buyNowItem={buyNowItem} />;
+}
+
+function CheckoutForm({ buyNowItem }) {
   const navigate = useNavigate();
-  const { cart, clearCart, getCartTotal, updateQuantity, removeFromCart } = useCart();
+  const { cart, loading: cartLoading, clearCart, getCartTotal, updateQuantity, removeFromCart } = useCart();
+  const isBuyNow = Boolean(buyNowItem);
+  const storageKey = isBuyNow ? `${CHECKOUT_IDEMPOTENCY_STORAGE_KEY}:buy-now` : CHECKOUT_IDEMPOTENCY_STORAGE_KEY;
+  const [buyNowQuantity, setBuyNowQuantity] = useState(() => buyNowItem?.quantity ?? 0);
+  const checkoutItems = useMemo(() => {
+    if (!isBuyNow) return cart;
+    return buyNowQuantity > 0 ? [{ ...buyNowItem, quantity: buyNowQuantity }] : [];
+  }, [buyNowItem, buyNowQuantity, cart, isBuyNow]);
   const { synchronizeAddresses, currentLanguage } = useUser();
   const t = useCallback((value) => translateText(value, currentLanguage), [currentLanguage]);
   const [addresses, setAddresses] = useState([]);
@@ -134,7 +148,8 @@ function Checkout() {
   const [assignedBranch, setAssignedBranch] = useState("");
   const [branchError, setBranchError] = useState("");
   const [checkingBranch, setCheckingBranch] = useState(false);
-  const orderRequestKeyRef = useRef("");
+  const orderRequestRef = useRef(null);
+  const submissionInFlightRef = useRef(false);
 
   const resolveAddressBranch = useCallback(async (address) => {
     if (!address) return "";
@@ -169,13 +184,13 @@ function Checkout() {
   }, [assignedBranch]);
 
   const totals = useMemo(() => {
-    const subtotal = getCartTotal();
+    const subtotal = isBuyNow ? buyNowItem.price * buyNowQuantity : getCartTotal();
     return computePurchaseTotals({
       subtotal,
       serviceAreaId,
       discountAmount,
     });
-  }, [getCartTotal, serviceAreaId, discountAmount]);
+  }, [getCartTotal, isBuyNow, buyNowItem, buyNowQuantity, serviceAreaId, discountAmount]);
 
   const syncAddresses = useCallback(
     (nextAddresses, currentId = "") => {
@@ -188,9 +203,9 @@ function Checkout() {
     [synchronizeAddresses],
   );
 
-  const loadAddresses = useCallback(async () => {
+  const loadAddresses = useCallback(async (fresh = false) => {
     try {
-      const response = await apiRequest("/users/addresses");
+      const response = await apiRequest("/users/addresses", { fresh });
       return syncAddresses(response.addresses || []);
     } catch (_error) {
       return syncAddresses([]);
@@ -219,7 +234,7 @@ function Checkout() {
       );
 
       const issues = [];
-      for (const item of cart) {
+      for (const item of checkoutItems) {
         const idKey = String(item.id || "");
         const skuKey = String(item.model || item.sku || "");
         const available = byId.has(idKey)
@@ -268,10 +283,10 @@ function Checkout() {
       }
       return issues;
     },
-    [cart],
+    [checkoutItems],
   );
 
-  const refreshStock = useCallback(async (branch = assignedBranch) => {
+  const refreshStock = useCallback(async (branch = assignedBranch, fresh = false) => {
     if (!branch) {
       setStockIssues([]);
       setStockCheckedAt("");
@@ -279,7 +294,7 @@ function Checkout() {
     }
     try {
       const query = `?branch=${encodeURIComponent(branch)}`;
-      const response = await apiRequest(`/products/public${query}`);
+      const response = await apiRequest(`/products/public${query}`, { fresh });
       setStockIssues(computeStockIssues(response));
       setStockCheckedAt(new Date().toISOString());
       return { ok: true, issues: computeStockIssues(response) };
@@ -318,7 +333,7 @@ function Checkout() {
   }, [navigate]);
 
   const ensureHasAddressBeforeCheckout = useCallback(async () => {
-    const latestAddresses = await loadAddresses();
+    const latestAddresses = await loadAddresses(true);
     const latestSelectedAddress = findBestSelectedAddress(
       latestAddresses,
       selectedAddress?.id || "",
@@ -430,8 +445,7 @@ function Checkout() {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const handlePlaceOrder = useCallback(async () => {
-    if (isProcessingPayment) return;
+  const submitOrder = useCallback(async () => {
     // Do not read the selectedAddress state after refreshing the address list:
     // React state is asynchronous and can still hold the old, empty address.
     const checkoutAddress = await ensureHasAddressBeforeCheckout();
@@ -443,7 +457,7 @@ function Checkout() {
         return;
       }
       setAssignedBranch(confirmedBranch);
-      const latestStock = await refreshStock(confirmedBranch);
+      const latestStock = await refreshStock(confirmedBranch, true);
       if (!latestStock.ok) {
         alert(t("We could not confirm your delivery branch's current stock. Please try again before placing this order."));
         return;
@@ -477,15 +491,14 @@ function Checkout() {
     }
 
     setIsProcessingPayment(true);
-    if (!orderRequestKeyRef.current) {
-      orderRequestKeyRef.current = getCheckoutIdempotencyKey(
-        checkoutFingerprint({ cartItems: cart, address: checkoutAddress, paymentMethod: selectedPayment }),
-      );
+    const fingerprint = checkoutFingerprint({ cartItems: checkoutItems, address: checkoutAddress, paymentMethod: selectedPayment });
+    if (orderRequestRef.current?.fingerprint !== fingerprint) {
+      orderRequestRef.current = { fingerprint, key: getCheckoutIdempotencyKey(fingerprint, storageKey, selectedPayment !== "cod") };
     }
 
     const fromPostReg = consumePostRegistrationCheckoutIntent();
     const order = buildCustomerOrder({
-      cartItems: cart,
+      cartItems: checkoutItems,
       address: checkoutAddress,
       paymentMethod: selectedPayment,
       serviceAreaId,
@@ -507,7 +520,7 @@ function Checkout() {
           vatAmount: totals.vatAmount,
           shippingFee: totals.deliveryFee,
           discountAmount: totals.discountAmount,
-          idempotencyKey: orderRequestKeyRef.current,
+          idempotencyKey: orderRequestRef.current.key,
         }),
       });
       const created = response.order;
@@ -523,14 +536,14 @@ function Checkout() {
         created?.paymentUrl ||
         created?.paymongo?.checkoutUrl ||
         "";
-      orderRequestKeyRef.current = "";
-      clearCheckoutIdempotencyKey();
-      clearCart();
+      orderRequestRef.current = null;
+      clearCheckoutIdempotencyKey(storageKey);
+      if (!isBuyNow) clearCart();
       if (selectedPayment !== "cod") {
         if (!paymentUrl) {
           alert(t("The secure payment link is unavailable. Your order was saved, but payment has not started. Check My Orders before placing another order or contact support."));
           setIsProcessingPayment(false);
-          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
+          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`, { replace: true });
           return;
         }
         try {
@@ -538,24 +551,35 @@ function Checkout() {
         } catch (openError) {
           alert(`${openError?.message || t("Unable to open secure payment.")} ${t("Your order was saved, but payment has not started. Check My Orders before placing another order or contact support.")}`);
           setIsProcessingPayment(false);
-          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
+          navigate(`/order-confirmation/${encodeURIComponent(orderId)}`, { replace: true });
         }
         return;
       }
       setIsProcessingPayment(false);
-      navigate(`/order-confirmation/${encodeURIComponent(orderId)}`);
+      navigate(`/order-confirmation/${encodeURIComponent(orderId)}`, { replace: isBuyNow });
     } catch (error) {
       setIsProcessingPayment(false);
+      if (error?.data?.code === "ORDER_PAYMENT_RETRY_REQUIRED" && error.data.orderId) {
+        orderRequestRef.current = null;
+        clearCheckoutIdempotencyKey(storageKey);
+        if (!isBuyNow) clearCart();
+        navigate(`/order-confirmation/${encodeURIComponent(error.data.orderId)}?payment=returned`, { replace: true });
+        return;
+      }
+      if (error?.data?.code === "ORDER_CHECKOUT_FAILED") {
+        orderRequestRef.current = null;
+        clearCheckoutIdempotencyKey(storageKey);
+      }
       if (error?.code === "ORDER_REFERENCE_MISSING") {
         alert(error.message);
         return;
       }
       if (error?.code === "PAYMENT_CONNECTION_TIMEOUT" || error?.code === "API_TIMEOUT") {
-        alert(error.message);
+        alert(t("Connection timed out. Check My Orders before trying again; your order may still be processing."));
         return;
       }
       if (!error?.status) {
-        alert(t("The order server could not be reached. No order or stock change was made; your cart is still available. Please try again when connected."));
+        alert(t("Unable to confirm whether the order was saved. Check My Orders before trying again."));
         return;
       }
       alert(
@@ -567,17 +591,32 @@ function Checkout() {
     refreshStock,
     ensureHasAddressBeforeCheckout,
     resolveAddressBranch,
-    cart,
+    checkoutItems,
     selectedPayment,
     serviceAreaId,
     totals,
     clearCart,
+    isBuyNow,
+    storageKey,
     navigate,
-    isProcessingPayment,
     t,
   ]);
 
-  if (cart.length === 0) {
+  const handlePlaceOrder = async () => {
+    if (submissionInFlightRef.current || isProcessingPayment || !checkoutItems.length) return;
+    submissionInFlightRef.current = true;
+    try {
+      await submitOrder();
+    } finally {
+      submissionInFlightRef.current = false;
+    }
+  };
+
+  if (!isBuyNow && cartLoading) {
+    return <main className="loading-screen"><LoadingSkeleton label={t("Loading your cart…")} variant="detail" count={2} /></main>;
+  }
+
+  if (checkoutItems.length === 0) {
     return (
       <BoutiqueScreen withHeader={false} background="white">
         <BoutiqueHeader
@@ -588,7 +627,7 @@ function Checkout() {
         />
         <BoutiqueBox tag="main" flex={1} align="center" justify="center" padding={60}>
           <BoutiqueStack gap={20} align="center">
-            <BoutiqueText variant="h2">{t("Your cart is empty")}</BoutiqueText>
+            <BoutiqueText variant="h2">{t(isBuyNow ? "No item selected for Buy Now." : "Your cart is empty")}</BoutiqueText>
             <BoutiqueButton
               onClick={() => navigate("/shop")}
               size="lg"
@@ -737,12 +776,14 @@ function Checkout() {
           style={{ position: "sticky", top: "80px", height: "fit-content" }}
         >
           <OrderSummary
-            cart={cart}
+            cart={checkoutItems}
             selectedPayment={selectedPayment}
             totals={totals}
             onPlaceOrder={handlePlaceOrder}
-            onUpdateQuantity={updateQuantity}
-            onRemoveItem={removeFromCart}
+            onUpdateQuantity={isBuyNow ? (_id, quantity) => {
+              if (!submissionInFlightRef.current && Number.isSafeInteger(quantity) && quantity > 0) setBuyNowQuantity(quantity);
+            } : updateQuantity}
+            onRemoveItem={isBuyNow ? () => { if (!submissionInFlightRef.current) setBuyNowQuantity(0); } : removeFromCart}
             stockIssues={stockIssues}
             stockCheckedAt={stockCheckedAt}
             isProcessing={isProcessingPayment}

@@ -1,11 +1,11 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { COLORS, SPACING, TYPE } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
 import { confirmAction } from "../../utils/confirmAction";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
@@ -38,33 +38,30 @@ export default function ManagerIndexScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <View
-        style={{
-          flex: 1,
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
           justifyContent: "center",
           padding: SPACING.lg,
         }}
       >
         <Card>
           <Text
-            style={{
+            accessibilityRole="header"
+            style={[TYPE.display, {
               color: COLORS.textPrimary,
-              fontSize: FONT.xxl,
-              fontWeight: FONT.black,
               marginBottom: SPACING.sm,
               textAlign: "center",
-            }}
+            }]}
           >
             {t("You should use the web app instead.")}
           </Text>
           <Text
-            style={{
+            style={[TYPE.body, {
               color: COLORS.textSecondary,
-              fontSize: FONT.base,
-              lineHeight: 22,
               marginBottom: SPACING.lg,
               textAlign: "center",
-            }}
+            }]}
           >
             {t("This mobile app is only for customer and technician accounts.")}
             {current?.email ? ` ${t("Signed in as")} ${current.email}.` : ""}
@@ -76,7 +73,7 @@ export default function ManagerIndexScreen() {
             loading={loggingOut}
           />
         </Card>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

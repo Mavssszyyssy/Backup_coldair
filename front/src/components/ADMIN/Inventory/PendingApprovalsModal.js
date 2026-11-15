@@ -1,10 +1,14 @@
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
 import { formatBusinessDate } from '../../../utils/dateTime';
+import { useUser } from '../../../context/UserContext';
+import { translateText } from '../../../utils/customerI18n';
 import './PendingApprovalsModal.css';
 
 const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
+  const { currentLanguage } = useUser();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,7 +106,7 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
           {error && <p className="error-message">{error}</p>}
 
           {loading ? (
-            <p className="loading-state">Loading requests...</p>
+            <LoadingSkeleton label={translateText("Loading…", currentLanguage)} />
           ) : requests.length === 0 ? (
             <p className="empty-state">No pending requests</p>
           ) : (
@@ -143,6 +147,7 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
                     <div className="request-rejection-form">
                       <h5>Rejection Reason (required)</h5>
                       <textarea
+                        maxLength={1000}
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
                         placeholder="Enter reason for rejection..."

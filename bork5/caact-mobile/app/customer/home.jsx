@@ -2,7 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 
 import CustomerMetricPill from "../../components/customer/CustomerMetricPill";
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -158,12 +159,7 @@ export default function CustomerHomeScreen() {
       </View>
 
       {loading ? (
-        <Card>
-          <View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}>
-            <ActivityIndicator color={COLORS.primary} />
-            <Text style={{ color: COLORS.textSecondary }}>{t("Loading your latest account activity...")}</Text>
-          </View>
-        </Card>
+        <LoadingSkeleton label={t("Loading your latest account activity...")} variant="detail" />
       ) : units.length === 0 ? (
         <Card>
           <EmptyState
@@ -192,6 +188,7 @@ export default function CustomerHomeScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, paddingHorizontal: SPACING.sm, marginBottom: SPACING.sm }}>
             <Ionicons name="search-sharp" size={18} color={COLORS.textMuted} />
             <TextInput
+              maxLength={160}
               value={unitSearch}
               onChangeText={setUnitSearch}
               placeholder={t("Find an AC unit")}
@@ -256,10 +253,7 @@ export default function CustomerHomeScreen() {
           onAction={() => router.push("/customer/orders")}
         />
         {loading ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm }}>
-            <ActivityIndicator color={COLORS.primary} />
-            <Text style={{ color: COLORS.textSecondary }}>{t("Loading recent orders...")}</Text>
-          </View>
+            <LoadingSkeleton label={t("Loading recent orders...")} variant="inline" />
         ) : recentOrders.length === 0 ? (
           <Text style={{ color: COLORS.textSecondary }}>{t("No website orders found yet.")}</Text>
         ) : (

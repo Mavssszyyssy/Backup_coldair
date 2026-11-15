@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { COMPANY_PROFILE } from "../../../config/company";
@@ -53,6 +55,9 @@ const INVENTORY_CATEGORY_OPTIONS = [
 ];
 const REPORT_PAGE_SIZE = 10;
 const BUSINESS_INTELLIGENCE_PAGES = ["Sales intelligence", "Service intelligence", "Inventory intelligence", "AMP intelligence"];
+const SALES_KPIS = ["paidRevenue", "transactionCount", "unitsSold"];
+const SALES_KPI_LABELS = { paidRevenue: "Total revenue collected", transactionCount: "Total orders", unitsSold: "Units ordered" };
+const INTERPRETATION_DISCLAIMER = "For decision support only. AI does not replace human judgment.";
 const SALES_FINANCIAL_FIELDS = new Set([
   "unitPrice", "subtotal", "vat", "deliveryFee", "discount", "total", "amountCollected",
 ]);
@@ -126,25 +131,46 @@ const displayValue = (value, key) => {
 };
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-const reportTableHtml = (rows, { title = "Report details", className = "" } = {}) => {
-  if (!rows.length) return '<div class="meta">No matching records.</div>';
-  const headers = Object.keys(rows[0]);
-  const tableClass = ["report-table", className].filter(Boolean).join(" ");
-  return `<h2 class="table-title">${escapeHtml(title)}</h2><table class="${tableClass}"><thead><tr>${headers.map((header) => `<th>${escapeHtml(humanize(header))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+const salesSummary = (summary, status) => {
+  const { paidRevenue, transactionCount, unitsSold, ...breakdown } = summary;
+  return {
+    paidRevenue: paidRevenue ?? (status === "cancelled" ? 0 : breakdown.amountCollected ?? 0),
+    transactionCount: transactionCount ?? 0,
+    unitsSold: unitsSold ?? 0,
+    ...breakdown,
+  };
 };
 
-const salesReportHtml = (rows, summaryHtml, secondaryRows = []) => {
+const reportInterpretation = (value, t) => ({
+  title: t("AI interpretation"),
+  lines: [
+    ...(value?.status === "ready" && value.summary && value.reviewAction
+      ? [value.summary, `${t("Suggested review")}: ${value.reviewAction}`]
+      : [t(value?.status === "empty" ? "No matching records to interpret." : "AI interpretation is unavailable for this report.")]),
+    t(INTERPRETATION_DISCLAIMER),
+  ],
+});
+
+const reportTableHtml = (rows, { title = "Report details", className = "", emptyLabel = "No matching records." } = {}) => {
+  const heading = `<h2 class="table-title">${escapeHtml(title)}</h2>`;
+  if (!rows.length) return `${heading}<div class="meta">${escapeHtml(emptyLabel)}</div>`;
+  const headers = Object.keys(rows[0]);
+  const tableClass = ["report-table", className].filter(Boolean).join(" ");
+  return `${heading}<table class="${tableClass}"><thead><tr>${headers.map((header) => `<th>${escapeHtml(humanize(header))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+};
+
+const salesReportHtml = (rows, summaryHtml, secondaryRows = [], t = (value) => value) => {
   const operationalRows = rows.map((row) => Object.fromEntries(
-      Object.entries(row || {}).filter(([key]) => !SALES_FINANCIAL_FIELDS.has(key)),
+      Object.entries(row || {}).filter(([key]) => key === "amountCollected" || !SALES_FINANCIAL_FIELDS.has(key)),
   ));
   const financialRows = rows.map((row) => Object.fromEntries(
       Object.entries(row || {}).filter(([key]) => key === "orderCode" || SALES_FINANCIAL_FIELDS.has(key)),
   ));
-  return `${summaryHtml}<section class="report-section report-section--splittable report-page--sales">${reportTableHtml(operationalRows, { title: "Order and payment details", className: "report-table--operations" })}${reportTableHtml(financialRows, { title: "Transaction amounts", className: "report-table--financial" })}</section>${secondaryRows.length ? `<section class="report-section report-section--splittable">${reportTableHtml(secondaryRows, { title: "Product sales summary", className: "report-table--products" })}</section>` : ""}`;
+  return `${summaryHtml}<section class="report-section report-section--splittable report-page--sales">${reportTableHtml(operationalRows, { title: t("Sales list"), className: "report-table--operations", emptyLabel: t("No matching records.") })}${financialRows.length ? reportTableHtml(financialRows, { title: t("Transaction amounts"), className: "report-table--financial" }) : ""}</section>${secondaryRows.length ? `<section class="report-section report-section--splittable">${reportTableHtml(secondaryRows, { title: t("Product sales summary"), className: "report-table--products" })}</section>` : ""}`;
 };
 
-const inventoryReportHtml = (rows, summaryHtml) => {
-  return `${summaryHtml}<section class="report-section report-section--splittable">${reportTableHtml(rows, { title: "Inventory records" })}</section>`;
+const inventoryReportHtml = (rows, summaryHtml, t) => {
+  return `${summaryHtml}<section class="report-section report-section--splittable">${reportTableHtml(rows, { title: t("Inventory records"), emptyLabel: t("No matching records.") })}</section>`;
 };
 
 const businessIntelligenceRows = (intelligence = {}) => {
@@ -326,13 +352,21 @@ function AdminReports() {
   const brandOptions = filterOptions.brands;
 
   const setTab = (tab) => {
+    if (tab !== activeTab) setRange(defaultRange());
     setActiveTab(tab);
     setReportPage(1);
     setError("");
     setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
   };
   const rangeError = range.from && range.to && range.from > range.to ? t('The report start date must be on or before the end date.') : "";
-  const canExport = data.rows.length > 0;
+  const hasInterpretation = activeTab === "sales" || activeTab === "inventory";
+  const canExport = !busy && Boolean(data.summary) && (hasInterpretation || data.rows.length > 0);
+  const notes = hasInterpretation ? reportInterpretation(data.interpretation, t) : undefined;
+  const reportSummary = activeTab === "intelligence" ? businessIntelligenceSummary(data.summary || {})
+    : activeTab === "sales" ? salesSummary(data.summary || {}, data.salesStatus)
+      : data.summary;
+  const metricLabel = (key) => t((activeTab === "sales" && SALES_KPI_LABELS[key]) || humanize(key));
+  const rowHeading = activeTab === "sales" ? t("Sales list") : activeTab === "inventory" ? t("Inventory records") : undefined;
   const isPaginatedReport = ["sales", "inventory", "intelligence"].includes(activeTab);
   const reportTotalPages = activeTab === "intelligence"
     ? BUSINESS_INTELLIGENCE_PAGES.length
@@ -350,33 +384,47 @@ function AdminReports() {
   }, [activeTab, branch, range, currentLanguage]);
 
   const generate = async () => {
+    if (busy) return;
     if (rangeError && activeTab !== "inventory") return setError(rangeError);
     setBusy(true);
     setError("");
     setReportPage(1);
+    const interpretation = { interpretation: "1", language: currentLanguage === "Filipino" ? "filipino" : "english" };
+    const saveReport = (result, reportData) => {
+      setData({
+        ...reportData,
+        basis: result.basis || "",
+        updatedAt: result.updatedAt || "",
+        interpretation: result.interpretation,
+        reportTitle: title,
+        reportMetadata: metadata(result.updatedAt),
+      });
+    };
     try {
       if (activeTab === "intelligence") {
         const query = new URLSearchParams({ from: range.from, to: range.to, branch });
         const result = await apiRequest(`/reports/business-intelligence?${query}`);
-        setData({ summary: result.summary || {}, rows: businessIntelligenceRows(result), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "", intelligence: result, warning: result.warning || "" });
+        saveReport(result, { summary: result.summary || {}, rows: businessIntelligenceRows(result), secondaryRows: [], intelligence: result, warning: result.warning || "" });
       } else if (activeTab === "sales") {
         const query = new URLSearchParams({
           interval: "daily", from: range.from, to: range.to, status: salesStatus,
           paymentMethod: salesPaymentMethod, search: salesSearch.trim(), sku: salesSku.trim(), customer: salesCustomer.trim(), topN: "10", branch,
+          ...interpretation,
         });
         const result = await apiRequest(`/reports/sales?${query}`);
-        setData({ summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
+        saveReport(result, { summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], salesStatus });
       } else if (activeTab === "inventory") {
         const query = new URLSearchParams({
           branch, stock: stockStatus, category: inventoryCategory,
           search: inventorySearch.trim(), brand: inventoryBrand.trim(), sku: inventorySku.trim(),
+          ...interpretation,
         });
         const result = await apiRequest(`/reports/inventory?${query}`);
-        setData({ summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
+        saveReport(result, { summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [] });
       } else {
         const query = new URLSearchParams({ from: range.from, to: range.to, branch, search: technicianSearch.trim(), technician: technicianId });
         const result = await apiRequest(`/reports/technicians?${query}`);
-        setData({ summary: result.summary || {}, rows: result.rows || [], secondaryRows: [], basis: result.basis || "", updatedAt: result.updatedAt || "" });
+        saveReport(result, { summary: result.summary || {}, rows: result.rows || [], secondaryRows: [] });
       }
     } catch (requestError) {
       setError(requestError?.message || "Failed to generate report.");
@@ -384,13 +432,13 @@ function AdminReports() {
     } finally { setBusy(false); }
   };
 
-  const metadata = () => ({
+  const metadata = (updatedAt) => ({
     ...COMPANY,
     logoUrl: "/Cold%20Air%20Logo.jpg",
     branch: isSuperAdmin && branch === "all" ? "Head Office · All Branches" : branch || assignedBranch || "Unassigned Branch",
     representative: user?.name || user?.email || "AEROPULSE Representative",
     representativeRole: isSuperAdmin ? "Super Admin · Authorized Representative" : "Branch Admin · Authorized Representative",
-    reportingPeriod: activeTab === "inventory" ? `Inventory as of ${formatBusinessDateTime(data.updatedAt || Date.now())}` : `${formatBusinessDate(range.from)} to ${formatBusinessDate(range.to)}`,
+    reportingPeriod: activeTab === "inventory" ? `Inventory as of ${formatBusinessDateTime(updatedAt || Date.now())}` : `${formatBusinessDate(range.from)} to ${formatBusinessDate(range.to)}`,
     reportId: `APR-${activeTab.toUpperCase()}-${(activeTab === "inventory" ? toIsoDate(new Date()) : range.from).replaceAll("-", "")}-${activeTab === "inventory" ? String(branch || "ALL").toUpperCase() : range.to.replaceAll("-", "")}`,
     generatedAt: formatBusinessDateTime(new Date()),
     filters: activeTab === "sales"
@@ -400,21 +448,32 @@ function AdminReports() {
         : activeTab === "intelligence" ? "Verified sales, service, inventory, and AMP records" : `Search: ${technicianSearch.trim() || "None"}; Technician: ${filterOptions.technicians.find((item) => item.value === technicianId)?.label || "All"}`,
   });
 
-  const exportExcel = () => exportToExcel({ filename: `cold-air-${activeTab}-${toIsoDate(new Date())}.xls`, title, summary: activeTab === "intelligence" ? businessIntelligenceSummary(data.summary) : data.summary, rows: data.rows, metadata: metadata() });
+  const exportExcel = () => exportToExcel({
+    filename: `cold-air-${activeTab}-${toIsoDate(new Date())}.xls`,
+    title: data.reportTitle, summary: reportSummary, rows: data.rows,
+    metadata: { ...data.reportMetadata, emptyRowsLabel: t("No matching records.") },
+    ...(hasInterpretation ? {
+      notes, rowHeading,
+      summaryHeading: t(activeTab === "sales" ? "Key performance indicators" : "Report summary"),
+      summaryLabels: Object.fromEntries(Object.keys(reportSummary).map((key) => [key, metricLabel(key)])),
+    } : {}),
+  });
   const exportPdf = () => {
-    const reportMetadata = metadata();
-    const exportSummary = activeTab === "intelligence" ? businessIntelligenceSummary(data.summary) : data.summary;
-    const summaryHtml = `<div class="summary">${Object.entries(exportSummary || {}).map(([key, value]) => `<div class="summary-item"><strong>${escapeHtml(formatReportValue(value, key))}</strong><span>${escapeHtml(humanize(key))}</span></div>`).join("")}</div>`;
-    const primaryTitle = activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance";
-    const secondary = data.secondaryRows.length ? reportTableHtml(data.secondaryRows, { title: "Product sales summary" }) : "";
+    const reportMetadata = data.reportMetadata;
+    const tiles = (entries, className = "summary") => entries.length ? `<div class="${className}">${entries.map(([key, value]) => `<div class="summary-item"><strong>${escapeHtml(formatReportValue(value, key))}</strong><span>${escapeHtml(metricLabel(key))}</span></div>`).join("")}</div>` : "";
+    const entries = Object.entries(reportSummary || {});
+    const summaryHtml = activeTab === "sales"
+      ? `<h2>${escapeHtml(t("Key performance indicators"))}</h2>${tiles(entries.filter(([key]) => SALES_KPIS.includes(key)), "summary summary--kpis")}${tiles(entries.filter(([key]) => !SALES_KPIS.includes(key)))}`
+      : tiles(entries);
+    const notesHtml = notes ? `<section class="report-section report-section--accent report-interpretation"><h2>${escapeHtml(notes.title)}</h2>${notes.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</section>` : "";
     const reportHtml = activeTab === "inventory"
-      ? inventoryReportHtml(data.rows, summaryHtml)
+      ? inventoryReportHtml(data.rows, summaryHtml + notesHtml, t)
       : activeTab === "sales"
-        ? salesReportHtml(data.rows, summaryHtml, data.secondaryRows)
+        ? salesReportHtml(data.rows, summaryHtml + notesHtml, data.secondaryRows, t)
         : activeTab === "intelligence"
           ? businessIntelligenceReportHtml(data.intelligence, summaryHtml)
-          : `${summaryHtml}${reportTableHtml(data.rows, { title: primaryTitle })}${secondary}`;
-    exportHtmlToPdfViaPrint({ title, subtitle: `${data.basis} - Branch: ${reportMetadata.branch} - Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR", pageOrientation: "landscape", documentStyle: "tabular" } });
+          : `${summaryHtml}${reportTableHtml(data.rows, { title: "Technician performance" })}`;
+    exportHtmlToPdfViaPrint({ title: data.reportTitle, subtitle: `${data.basis} - Branch: ${reportMetadata.branch} - Filters: ${reportMetadata.filters}`, html: reportHtml, fileName: `${reportMetadata.reportId}.pdf`, metadata: { ...reportMetadata, reportType: TABS.find((tab) => tab.id === activeTab)?.label, watermark: "COLD AIR", pageOrientation: "landscape", documentStyle: "tabular" } });
   };
 
   return <Layout title={t('Analytics & Reports')} subtitle={t('AI-prioritized business intelligence and company-formatted operational records')}>
@@ -424,38 +483,38 @@ function AdminReports() {
         <div><p>{t('Company operational report')}</p><h2>{COMPANY.name}</h2><span>{COMPANY.address}</span><span>{COMPANY.proprietor} · {COMPANY.contact} · {COMPANY.taxRegistration}</span></div>
       </header>
 
-      <nav className="company-report-tabs" aria-label={t('Report type')}>{TABS.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} onClick={() => setTab(tab.id)}>{t(tab.label)}</button>)}</nav>
+      <nav className="company-report-tabs" aria-label={t('Report type')}>{TABS.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} disabled={busy} onClick={() => setTab(tab.id)}>{t(tab.label)}</button>)}</nav>
 
       <div className="company-report-controls">
         <div className="company-report-period-row">
           {activeTab !== "inventory" ? <><label>{t('From')}<input type="date" max={new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} value={range.from} onChange={(event) => setRange((previous) => ({ ...previous, from: event.target.value }))} /></label><label>{t('To')}<input type="date" max={new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} value={range.to} onChange={(event) => setRange((previous) => ({ ...previous, to: event.target.value }))} /></label></> : null}
-          <label>{t('Branch')}<select value={branch || assignedBranch} disabled={!isSuperAdmin} onChange={(event) => setBranch(event.target.value)}>{isSuperAdmin ? <option value="all">{t('All branches')}</option> : null}{(isSuperAdmin ? branchNames : [assignedBranch]).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label>{t('Branch')}<SearchableSelect value={branch || assignedBranch} disabled={!isSuperAdmin} onChange={(event) => setBranch(event.target.value)}>{isSuperAdmin ? <option value="all">{t('All branches')}</option> : null}{(isSuperAdmin ? branchNames : [assignedBranch]).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</SearchableSelect></label>
         </div>
         {activeTab === "sales" ? <section className="company-report-filter-panel" aria-labelledby="sales-filter-heading">
           <div className="company-report-filter-heading"><strong id="sales-filter-heading">{t('Sales filters')}</strong><span>{t('Use one search or narrow the report with the dropdowns.')}</span></div>
           <div className="company-report-filter-grid">
-            <label className="company-report-filter-search">{t('Search')}<input type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder={t('Order number, product, SKU, or customer')} /></label>
-            <label>SKU<select value={salesSku} onChange={(event) => setSalesSku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
-            <label>{t('Customer')}<select value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)}><option value="">{t('All customers')}</option>{filterOptions.customers.map((customer) => <option key={customer} value={customer}>{customer}</option>)}</select></label>
-            <label>{t('Payment method')}<select value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
-            <label>{t('Transaction status')}<select value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input maxLength={160} type="search" value={salesSearch} onChange={(event) => setSalesSearch(event.target.value)} placeholder={t('Order number, product, SKU, or customer')} /></label>
+            <label>SKU<SearchableSelect value={salesSku} onChange={(event) => setSalesSku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</SearchableSelect></label>
+            <label>{t('Customer')}<SearchableSelect value={salesCustomer} onChange={(event) => setSalesCustomer(event.target.value)}><option value="">{t('All customers')}</option>{filterOptions.customers.map((customer) => <option key={customer} value={customer}>{customer}</option>)}</SearchableSelect></label>
+            <label>{t('Payment method')}<SearchableSelect value={salesPaymentMethod} onChange={(event) => setSalesPaymentMethod(event.target.value)}>{SALES_PAYMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</SearchableSelect></label>
+            <label>{t('Transaction status')}<SearchableSelect value={salesStatus} onChange={(event) => setSalesStatus(event.target.value)}>{SALES_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</SearchableSelect></label>
           </div>
         </section> : null}
         {activeTab === "inventory" ? <section className="company-report-filter-panel" aria-labelledby="inventory-filter-heading">
           <div className="company-report-filter-heading"><strong id="inventory-filter-heading">{t('Inventory filters')}</strong><span>{t('Use one search or narrow the report with the dropdowns.')}</span></div>
           <div className="company-report-filter-grid">
-            <label className="company-report-filter-search">{t('Search')}<input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder={t('Product, model, SKU, or branch')} /></label>
-            <label>SKU<select value={inventorySku} onChange={(event) => setInventorySku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</select></label>
-            <label>{t('Brand')}<select value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)}><option value="">{t('All brands')}</option>{brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
-            <label>{t('Stock status')}<select value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
-            <label>{t('Category')}<select value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input maxLength={160} type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder={t('Product, model, SKU, or branch')} /></label>
+            <label>SKU<SearchableSelect value={inventorySku} onChange={(event) => setInventorySku(event.target.value)}><option value="">{t('All SKUs')}</option>{skuOptions.map((sku) => <option key={sku} value={sku}>{sku}</option>)}</SearchableSelect></label>
+            <label>{t('Brand')}<SearchableSelect value={inventoryBrand} onChange={(event) => setInventoryBrand(event.target.value)}><option value="">{t('All brands')}</option>{brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</SearchableSelect></label>
+            <label>{t('Stock status')}<SearchableSelect value={stockStatus} onChange={(event) => setStockStatus(event.target.value)}>{INVENTORY_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</SearchableSelect></label>
+            <label>{t('Category')}<SearchableSelect value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>{INVENTORY_CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</SearchableSelect></label>
           </div>
         </section> : null}
         {activeTab === "tech" ? <section className="company-report-filter-panel" aria-labelledby="technician-filter-heading">
           <div className="company-report-filter-heading"><strong id="technician-filter-heading">{t('Technician filters')}</strong><span>{t('Choose a technician or use one search for names and branches.')}</span></div>
           <div className="company-report-filter-grid company-report-filter-grid--compact">
-            <label className="company-report-filter-search">{t('Search')}<input type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder={t('Technician name or branch')} /></label>
-            <label>{t('Technician')}<select value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}><option value="">{t('All active technicians')}</option>{filterOptions.technicians.map((technician) => <option key={technician.value} value={technician.value}>{technician.label}{isSuperAdmin && technician.branch ? ` · ${technician.branch}` : ""}</option>)}</select></label>
+            <label className="company-report-filter-search">{t('Search')}<input maxLength={160} type="search" value={technicianSearch} onChange={(event) => setTechnicianSearch(event.target.value)} placeholder={t('Technician name or branch')} /></label>
+            <label>{t('Technician')}<SearchableSelect value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}><option value="">{t('All active technicians')}</option>{filterOptions.technicians.map((technician) => <option key={technician.value} value={technician.value}>{technician.label}{isSuperAdmin && technician.branch ? ` · ${technician.branch}` : ""}</option>)}</SearchableSelect></label>
           </div>
         </section> : null}
         <div className="company-report-actions">
@@ -467,10 +526,15 @@ function AdminReports() {
       {error ? <p className="company-report-error" role="alert">{t(error)}</p> : null}
 
       {data.summary ? <article className="company-report-document">
-        <div className="company-report-document-heading"><div><p>{t(activeTab === "inventory" ? 'Stock position' : 'Reporting period')}</p><h2>{title}</h2></div><div><strong>{branch === "all" ? t('All Branches') : branch || assignedBranch}</strong><span>{t('Generated')} {formatBusinessDateTime(data.updatedAt || Date.now())}</span></div></div>
-        {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(data.summary).map(([key, value]) => <div key={key}><span>{t(humanize(key))}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
+        <div className="company-report-document-heading"><div><p>{t(activeTab === "inventory" ? 'Stock position' : 'Reporting period')}</p><h2>{data.reportTitle}</h2></div><div><strong>{data.reportMetadata.branch}</strong><span>{t('Generated')} {formatBusinessDateTime(data.updatedAt || Date.now())}</span></div></div>
+        {activeTab === "sales" ? <section className="company-report-kpis">
+          <h3>{t("Key performance indicators")}</h3>
+          <div className="company-report-summary">{SALES_KPIS.map((key) => <div key={key}><span>{metricLabel(key)}</span><strong>{formatReportValue(reportSummary[key], key)}</strong></div>)}</div>
+        </section> : null}
+        {activeTab !== "intelligence" ? <div className="company-report-summary">{Object.entries(reportSummary).filter(([key]) => activeTab !== "sales" || !SALES_KPIS.includes(key)).map(([key, value]) => <div key={key}><span>{metricLabel(key)}</span><strong>{formatReportValue(value, key)}</strong></div>)}</div> : null}
         {data.basis ? <p className="company-report-basis"><strong>{t('Report basis:')}</strong> {t(data.basis)}</p> : null}
-        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} page={currentReportPage} t={t} /> : <ReportTable t={t} title={activeTab === "sales" ? "Transaction register" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
+        {notes ? <section className="company-report-interpretation"><h3>{notes.title}</h3>{notes.lines.map((line, index) => <p key={index}>{line}</p>)}</section> : null}
+        {activeTab === "intelligence" ? <BusinessIntelligenceView data={data} page={currentReportPage} t={t} /> : <ReportTable t={t} title={activeTab === "sales" ? "Sales list" : activeTab === "inventory" ? "Branch stock register" : "Technician performance"} rows={displayedRows} inventory={activeTab === "inventory"} />}
         {isPaginatedReport && data.rows.length ? <nav className="company-report-pagination" aria-label={`${t(activeTab === "intelligence" ? "Business intelligence" : activeTab === "sales" ? "Sales report" : "Inventory report")} ${t('pagination')}`}>
           <span>{activeTab === "intelligence" ? t(BUSINESS_INTELLIGENCE_PAGES[currentReportPage - 1]) : `${t('Showing')} ${firstReportRowIndex + 1}–${Math.min(firstReportRowIndex + REPORT_PAGE_SIZE, data.rows.length)} ${t('of')} ${data.rows.length} ${t('records')}`}</span>
           <div>
@@ -481,7 +545,7 @@ function AdminReports() {
         </nav> : null}
         {data.secondaryRows.length && activeTab === "sales" && currentReportPage === 1 ? <ReportTable t={t} title="Product sales summary" rows={data.secondaryRows} /> : null}
         {activeTab !== "intelligence" && !data.rows.length ? <div className="company-report-empty">{t('No records match the selected filters.')}</div> : null}
-      </article> : <div className="company-report-empty">{t('Choose the report filters, then select Generate report.')}</div>}
+      </article> : busy ? <LoadingSkeleton label={t('Generating…')} variant="table" /> : <div className="company-report-empty">{t('Choose the report filters, then select Generate report.')}</div>}
     </section>
   </Layout>;
 }

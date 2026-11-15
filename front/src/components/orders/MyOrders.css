@@ -53,8 +53,8 @@
 }
 
 .orders-title {
-    font-size: 24px;
-    font-weight: bold;
+    font-size: var(--app-type-page);
+    font-weight: var(--app-weight-heading);
     color: #333;
     margin: 0;
 }
@@ -328,14 +328,6 @@
         text-align: center;
     }
 }
-.orders-loading-skeleton { display: grid; gap: 16px; width: 100%; color: #475569; }
-.orders-skeleton-card { display: grid; gap: 10px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; }
-.orders-skeleton-card i { height: 12px; width: 64%; border-radius: 6px; background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 200% 100%; animation: orders-skeleton-pulse 1.5s linear infinite; }
-.orders-skeleton-card i:first-child { width: 32%; height: 16px; }
-.orders-skeleton-card i:last-child { width: 48%; }
-@keyframes orders-skeleton-pulse { to { background-position-x: -200%; } }
-@media (prefers-reduced-motion: reduce) { .orders-skeleton-card i { animation: none; } }
-
 .customer-orders-filter-panel {
     display: grid;
     grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr));

@@ -38,7 +38,7 @@ export default function HomeHero({ onBookNow, onShop }) {
           __html: `
         .home-hero {
           position: relative;
-          padding: 120px 40px;
+          padding: clamp(32px, 5vw, 76px) clamp(16px, 3vw, 40px);
           background: ${BQ_COLORS.bgAlt};
           overflow: hidden;
           display: flex;
@@ -64,19 +64,19 @@ export default function HomeHero({ onBookNow, onShop }) {
           text-transform: uppercase;
           letter-spacing: 0.15em;
           box-shadow: ${BQ_SHADOWS.soft};
-          margin-bottom: 32px;
+          margin-bottom: 20px;
           border: 1px solid ${BQ_COLORS.border};
           animation: slideDown 0.6s ease;
         }
 
         .hero-title {
           font-family: ${BQ_FONTS.heading};
-          font-size: 82px;
+          font-size: clamp(2.25rem, 1.45rem + 4.4vw, 5.125rem);
           font-weight: 950;
-          line-height: 0.95;
+          line-height: 1.07;
           color: ${BQ_COLORS.ink};
-          letter-spacing: -0.05em;
-          margin-bottom: 28px;
+          letter-spacing: -0.035em;
+          margin-bottom: 18px;
           animation: fadeIn 0.8s ease;
         }
 
@@ -84,7 +84,7 @@ export default function HomeHero({ onBookNow, onShop }) {
           font-size: 21px;
           color: ${BQ_COLORS.inkMuted};
           line-height: 1.5;
-          margin-bottom: 56px;
+          margin-bottom: 28px;
           max-width: 680px;
           margin-left: auto;
           margin-right: auto;
@@ -141,12 +141,9 @@ export default function HomeHero({ onBookNow, onShop }) {
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         @media (max-width: 1024px) {
-          .hero-title { font-size: 64px; }
         }
 
         @media (max-width: 768px) {
-          .home-hero { padding: 80px 24px; }
-          .hero-title { font-size: 48px; }
           .hero-subtitle { font-size: 18px; }
           .hero-actions { flex-direction: column; width: 100%; }
           .hero-btn { width: 100%; justify-content: center; }

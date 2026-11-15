@@ -6,6 +6,16 @@ import { serviceLabel, serviceDateLabel, serviceDetails, servicePriceLabel } fro
 import { useUser } from '../../context/UserContext';
 import { translateText } from '../../utils/customerI18n';
 
+const WARRANTY_LABELS = {
+  pending_activation: 'Activation in progress',
+  under_review: 'Claim under review',
+  approved: 'Claim approved',
+  rejected: 'Claim not approved',
+  expired: 'Coverage expired',
+  void: 'Coverage unavailable',
+  active: 'Active',
+};
+
 function ServiceHistory({ unit, onClose }) {
   const { currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
@@ -13,6 +23,7 @@ function ServiceHistory({ unit, onClose }) {
   const [filterType, setFilterType] = useState('all');
   const [historyPage, setHistoryPage] = useState(1);
   const historyListRef = useRef(null);
+  const closeButtonRef = useRef(null);
 
   const serviceTypes = useMemo(() => {
     const list = unit.unitHistory || unit.serviceHistory || [];
@@ -36,9 +47,46 @@ function ServiceHistory({ unit, onClose }) {
   const historyPages = filteredSorted.length;
   const visibleHistory = filteredSorted.slice(historyPage - 1, historyPage);
   const modelName = unit?.model || unit?.productSku || 'AC unit';
-  const unitName = unit?.brand && !modelName.toLowerCase().startsWith(unit.brand.toLowerCase())
+  const modelWithBrand = unit?.brand && !modelName.toLowerCase().startsWith(unit.brand.toLowerCase())
     ? `${unit.brand} ${modelName}`
     : modelName;
+  const unitName = unit.unitName || modelWithBrand;
+  const warrantyStatus = unit.warrantyStatus || unit.warranty?.status;
+  const unitFacts = [
+    ['Purchase branch', unit.purchaseBranch],
+    ['Order Number', unit.orderCode],
+    ['Ordered On', unit.purchaseDate],
+    ['Serial Number', unit.serialNumber],
+    ['Installing technician', unit.installingTechnician],
+    ['Installation Date', unit.installationDate],
+    ['Installed At', [unit.placementArea, unit.installationEnvironment].filter(Boolean).join(', ')],
+    ['Responsible Branch', unit.serviceBranch],
+    ['Warranty', t(WARRANTY_LABELS[warrantyStatus])],
+  ];
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    closeButtonRef.current?.focus();
+    return () => previousFocus?.focus?.();
+  }, []);
+
+  const handleDialogKey = (event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      onClose();
+    }
+    if (event.key !== 'Tab') return;
+    const controls = [...event.currentTarget.querySelectorAll('a[href], button:not(:disabled), select:not(:disabled), input:not(:disabled), [tabindex="0"]')];
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
 
   useEffect(() => {
     setHistoryPage(1);
@@ -60,6 +108,7 @@ function ServiceHistory({ unit, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="service-history-title"
+        onKeyDown={handleDialogKey}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="modal-header service-history-header">
@@ -69,6 +118,7 @@ function ServiceHistory({ unit, onClose }) {
             <p>{unitName}</p>
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             className="close-modal service-history-close"
             onClick={onClose}
@@ -78,6 +128,17 @@ function ServiceHistory({ unit, onClose }) {
           </button>
         </header>
         <div className="modal-body service-history-body">
+          <section className="service-history-unit-facts" aria-labelledby="service-history-unit-facts-title">
+            <h4 id="service-history-unit-facts-title">{t("Purchase and installation")}</h4>
+            <dl>
+              {unitFacts.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{t(label)}</dt>
+                  <dd>{value || t("Not recorded")}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
           <section className="service-history-toolbar" aria-label={t("Service history filters")}>
             <div className="service-history-toolbar-heading">
               <div>

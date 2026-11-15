@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import { CheckCircle, Copy, Package, Plus, QrCode } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
@@ -176,8 +177,8 @@ export default function SuperAdminCatalog({ onCreated }) {
             <button type="button" aria-pressed={!showArchived} className={!showArchived ? 'active' : ''} onClick={() => { setShowArchived(false); setCatalogPage(1); }}>{t('Active Products')}</button>
             <button type="button" aria-pressed={showArchived} className={showArchived ? 'active' : ''} onClick={() => { setShowArchived(true); setCatalogPage(1); }}>{t('Archived Products')}</button>
           </div>
-          <label>{t('Search products')}<input type="search" value={catalogSearch} onChange={(event) => { setCatalogSearch(event.target.value); setCatalogPage(1); }} placeholder={t('Name, brand, or SKU')} /></label>
-          <label>{t('Sort products')}<select value={catalogSort} onChange={(event) => { setCatalogSort(event.target.value); setCatalogPage(1); }}><option value="name">{t('Name A–Z')}</option><option value="stock">{t('Lowest stock first')}</option></select></label>
+          <label>{t('Search products')}<input maxLength={160} type="search" value={catalogSearch} onChange={(event) => { setCatalogSearch(event.target.value); setCatalogPage(1); }} placeholder={t('Name, brand, or SKU')} /></label>
+          <label>{t('Sort products')}<SearchableSelect value={catalogSort} onChange={(event) => { setCatalogSort(event.target.value); setCatalogPage(1); }}><option value="name">{t('Name A–Z')}</option><option value="stock">{t('Lowest stock first')}</option></SearchableSelect></label>
         </div>
         <div className="super-catalog-product-list">
           {visibleProducts.map((product) => <article key={product.id} className="super-catalog-product-row"><div><strong>{product.name}</strong><small>{product.brand ? `${product.brand} · ` : ''}{product.sku} · {t(product.isActive === false ? 'Archived' : 'Active')} · {Number(product.stock || 0)} {t('units retained')}</small></div><button type="button" disabled={changingProductId === product.id} onClick={() => changeArchiveState(product, product.isActive !== false)}>{t(changingProductId === product.id ? 'Saving…' : product.isActive === false ? 'Restore' : 'Archive')}</button></article>)}
@@ -190,11 +191,11 @@ export default function SuperAdminCatalog({ onCreated }) {
         <div className="super-catalog-section">
           <div className="super-catalog-section-heading"><Package size={20} weight="fill" /><div><h3>{t('Product details')}</h3><p>{t('These details are shown to customers in the shop.')}</p></div></div>
           <div className="super-catalog-grid">
-            <label>{t('Product name')}<input value={form.name} onChange={(event) => updateField("name", event.target.value)} required /></label>
-            <label>SKU<input value={form.sku} onChange={(event) => updateField("sku", event.target.value)} required /></label>
-            <label>{t('Brand')}<input value={form.brand} onChange={(event) => updateField("brand", event.target.value)} required /></label>
-            <label>{t('AC type')}<select value={form.category} onChange={(event) => updateField("category", event.target.value)}><option value="split">{t('Split type')}</option><option value="window">{t('Window type')}</option><option value="floor">{t('Floor mounted')}</option></select></label>
-            <label>{t('AC specification')}<input value={form.specs} onChange={(event) => updateField("specs", event.target.value)} placeholder={t('Example: 1.5 HP')} required /></label>
+            <label>{t('Product name')}<input maxLength={120} value={form.name} onChange={(event) => updateField("name", event.target.value)} required /></label>
+            <label>SKU<input maxLength={80} value={form.sku} onChange={(event) => updateField("sku", event.target.value)} required /></label>
+            <label>{t('Brand')}<input maxLength={80} value={form.brand} onChange={(event) => updateField("brand", event.target.value)} required /></label>
+            <label>{t('AC type')}<SearchableSelect value={form.category} onChange={(event) => updateField("category", event.target.value)}><option value="split">{t('Split type')}</option><option value="window">{t('Window type')}</option><option value="floor">{t('Floor mounted')}</option></SearchableSelect></label>
+            <label>{t('AC specification')}<input maxLength={80} value={form.specs} onChange={(event) => updateField("specs", event.target.value)} placeholder={t('Example: 1.5 HP')} required /></label>
             <label>{t('Price (PHP)')}<input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField("price", event.target.value)} required /></label>
             <label>{t('Low-stock alert level')}<input type="number" min="0" step="1" value={form.threshold} onChange={(event) => updateField("threshold", event.target.value)} placeholder={t('Optional')} /></label>
             <label>{t('Image URL')} <span>{t('(optional)')}</span><input type="url" maxLength={2048} value={form.image} onChange={(event) => updateField("image", event.target.value)} placeholder={t('Paste a direct HTTPS image link')} /></label>
@@ -208,15 +209,15 @@ export default function SuperAdminCatalog({ onCreated }) {
                 : imagePreviewStatus === 'error' ? t('This link did not load an image. Check the address or use another link.')
                 : t('Checking image preview…')}</p>
             </div>
-            <label className="super-catalog-wide">{t('Customer description')} <span>{t('(optional)')}</span><textarea rows="3" value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder={t('Describe this AC unit in customer-friendly language')} /></label>
-            <label className="super-catalog-wide">{t('Features')} <span>{t('(optional, separated by commas)')}</span><input value={form.features} onChange={(event) => updateField("features", event.target.value)} placeholder={t('Inverter, quiet operation, energy saving')} /></label>
+            <label className="super-catalog-wide">{t('Customer description')} <span>{t('(optional)')}</span><textarea maxLength={2000} rows="3" value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder={t('Describe this AC unit in customer-friendly language')} /></label>
+            <label className="super-catalog-wide">{t('Features')} <span>{t('(optional, separated by commas)')}</span><input maxLength={1000} value={form.features} onChange={(event) => updateField("features", event.target.value)} placeholder={t('Inverter, quiet operation, energy saving')} /></label>
           </div>
         </div>
 
         <div className="super-catalog-section">
           <div className="super-catalog-section-heading"><QrCode size={20} weight="fill" /><div><h3>{t('Starting stock and serials')}</h3><p>{t('The system assigns this stock to one branch and generates one serial per unit.')}</p></div></div>
           <div className="super-catalog-grid super-catalog-stock-grid">
-            <label>{t('Branch')}<select value={form.branch} onChange={(event) => updateField("branch", event.target.value)}>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label>{t('Branch')}<SearchableSelect value={form.branch} onChange={(event) => updateField("branch", event.target.value)}>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label>
             <label>{t('Starting stock')}<input type="number" min="1" step="1" value={form.quantity} onChange={(event) => updateField("quantity", event.target.value)} required /></label>
           </div>
           <p className="super-catalog-note">{t('Generated serials are inventory identifiers. A Superadmin can later replace a generated serial with the unit’s real manufacturer serial in the Serial / QR Registry without changing its QR Unit ID.')}</p>

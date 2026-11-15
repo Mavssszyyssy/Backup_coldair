@@ -134,7 +134,7 @@ export default function RegisterEmailStep({
         </BoutiqueText>
       </BoutiqueBox>
 
-      <BoutiqueInput label={t("Email Address")} icon={EnvelopeSimple} type="email" placeholder="you@example.com" value={formData.email} onChange={(event) => changeDestination("email", event.target.value)} disabled={otpSent || loading || verified} status={verified ? "success" : visibleError ? "error" : null} errorMessage={t(visibleError)} required />
+      <BoutiqueInput maxLength={254} label={t("Email Address")} icon={EnvelopeSimple} type="email" placeholder="you@example.com" value={formData.email} onChange={(event) => changeDestination("email", event.target.value)} disabled={otpSent || loading || verified} status={verified ? "success" : visibleError ? "error" : null} errorMessage={t(visibleError)} required />
 
       {otpSent && !verified ? (
         <BoutiqueStack gap={20} padding={24} background="#f8fafc" style={{ borderRadius: 20, border: "1px solid #e2e8f0" }}>

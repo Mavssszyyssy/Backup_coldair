@@ -64,3 +64,14 @@ test("mobile customer chat keeps quick questions compact instead of stretching v
   }));
   expect(screen.getByText("Quick questions")).toBeTruthy();
 });
+
+test("mobile stock shortcut shows the catalogue reply and opens Shop", async () => {
+  useInterfaceLanguage.mockReturnValue({ language: "Filipino", t: (value) => translateText(value, "Filipino") });
+  mockSend.mockResolvedValueOnce({ success: true, provider: "catalog", reply: { text: "May 8 available na unit sa Cavite.", route: "/shop" } });
+  await render(<CustomerChatScreen />);
+  await fireEvent.press(screen.getByText("Aling branch ang may pinakamaraming stock ng aircon?"));
+  expect(await screen.findByText("May 8 available na unit sa Cavite.")).toBeTruthy();
+  expect(mockSend).toHaveBeenCalledWith("customer-token", expect.objectContaining({ message: "Which branch has the most AC stock?", language: "Filipino" }));
+  await fireEvent.press(screen.getByText("Buksan ang pahina"));
+  expect(mockPush).toHaveBeenCalledWith("/customer/shop");
+});

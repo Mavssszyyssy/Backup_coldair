@@ -10,10 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../constants/theme";
+import { COLORS, RADIUS, SPACING, TYPE } from "../constants/theme";
 import { useUserContext } from "../context/UserContext";
 import { checkBackendConnection } from "../services/api";
 import LoadingLogo from "../components/LoadingLogo";
+import LoadingSkeleton from "../components/ui/LoadingSkeleton";
+import { useInterfaceLanguage } from "../hooks/useInterfaceLanguage";
 
 const STATUS_COPY = {
   checking: {
@@ -32,6 +34,7 @@ const STATUS_COPY = {
 
 export default function Index() {
   const { current, token, initialized, refreshCurrentUser, resolveHomeRoute } = useUserContext();
+  const { t } = useInterfaceLanguage();
   const [connection, setConnection] = useState({
     state: "checking",
     message: STATUS_COPY.checking.detail,
@@ -76,29 +79,26 @@ export default function Index() {
         }}
       >
         <View style={{ alignItems: "center", marginBottom: SPACING.xl }}>
-          <LoadingLogo size={92} />
+          {!isLoading && <LoadingLogo size={92} />}
           <Text
-            style={{
+            accessibilityRole="header"
+            style={[TYPE.display, {
               color: COLORS.textPrimary,
-              fontSize: FONT.xxl,
-              fontWeight: FONT.black,
               marginBottom: SPACING.sm,
               marginTop: SPACING.lg,
               textAlign: "center",
-            }}
+            }]}
           >
-            {status.title}
+            {t(status.title)}
           </Text>
-          <Text
-            style={{
+          {isLoading ? <LoadingSkeleton label={t(status.detail)} variant="detail" count={2} /> : <Text
+            style={[TYPE.body, {
               color: COLORS.textSecondary,
-              fontSize: FONT.md,
-              lineHeight: 23,
               textAlign: "center",
-            }}
+            }]}
           >
-            {isLoading ? status.detail : connection.message || status.detail}
-          </Text>
+            {t(connection.message || status.detail)}
+          </Text>}
         </View>
 
         {connection.state === "offline" ? (
@@ -112,8 +112,8 @@ export default function Index() {
               paddingVertical: 14,
             }}
           >
-            <Text style={{ color: COLORS.surface, fontWeight: FONT.bold }}>
-              Try Again
+            <Text style={[TYPE.action, { color: COLORS.surface, textAlign: "center" }]}>
+              {t("Try again")}
             </Text>
           </TouchableOpacity>
         ) : null}

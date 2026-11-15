@@ -153,11 +153,37 @@ export function getShopDeliveryAddress(user = {}, selectedAddressId = "") {
   return selected || addresses.find((entry) => entry.isDefault) || addresses[0] || null;
 }
 
-export async function fetchShopProducts(branch = "") {
+const recentCatalogReads = new Map();
+const catalogRequests = new Map();
+const CATALOG_READ_TTL_MS = 15_000;
+const MAX_CATALOG_READS = 16;
+
+export async function fetchShopProducts(branch = "", { reuseRecent = false } = {}) {
+  const query = branch ? `?branch=${encodeURIComponent(branch)}` : "";
+  const cached = recentCatalogReads.get(query);
+  if (reuseRecent && cached?.expiresAt > Date.now()) return cached.products;
+  recentCatalogReads.delete(query);
+  if (!reuseRecent) return loadShopProducts(query);
+  if (catalogRequests.has(query)) return catalogRequests.get(query);
+
+  const request = loadShopProducts(query);
+  catalogRequests.set(query, request);
+  try {
+    const products = await request;
+    if (recentCatalogReads.size >= MAX_CATALOG_READS) {
+      recentCatalogReads.delete(recentCatalogReads.keys().next().value);
+    }
+    recentCatalogReads.set(query, { products, expiresAt: Date.now() + CATALOG_READ_TTL_MS });
+    return products;
+  } finally {
+    catalogRequests.delete(query);
+  }
+}
+
+async function loadShopProducts(query) {
   // The public catalogue is intentionally used here. The previous protected
   // endpoint was called without an auth header and made the app silently show
   // only its old test fallback products.
-  const query = branch ? `?branch=${encodeURIComponent(branch)}` : "";
   const response = await apiFetch(`/products/public${query}`);
   if (!response.ok) throw new Error("Unable to load products.");
   const body = await response.json();

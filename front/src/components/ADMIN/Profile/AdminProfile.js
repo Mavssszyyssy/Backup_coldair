@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import AdminLayout from '../Common/AdminLayout';
@@ -7,25 +7,36 @@ import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
+import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
+import useUnsavedProfileChanges from '../../../hooks/useUnsavedProfileChanges';
 import '../adminShared.css';
 import './styles.css';
 
 const AdminProfile = () => {
   const { user, updateProfile, changePassword, currentLanguage } = useUser();
-  const t = (value) => translateText(value, currentLanguage);
+  const t = useCallback((value) => translateText(value, currentLanguage), [currentLanguage]);
   const roleTitle = user?.role === 'superadmin' ? 'SuperAdmin' : 'Admin';
   const branchName = getSessionActiveBranch() || user?.activeBranch || user?.assignedBranch || '';
   const branchInfo = loadBranchNetwork().find((branch) => branch.name === branchName);
   const adminLocation = branchInfo?.location || branchName || '-';
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
   });
+  const dirty = isEditing && (form.name !== (user?.name || '') || form.phone !== (user?.phone || ''));
+  const confirmDiscard = useUnsavedProfileChanges(dirty, saving, t);
+  useAutoDismissMessage(notice, setNotice);
+
+  const closeEditor = async () => {
+    if (await confirmDiscard()) setIsEditing(false);
+  };
 
   const openEditModal = () => {
+    setNotice('');
     setForm({
       name: user?.name || '',
       phone: user?.phone || '',
@@ -36,6 +47,7 @@ const AdminProfile = () => {
 
   const saveProfile = async (event) => {
     event.preventDefault();
+    if (saving) return;
     const validationError = validateLocalPhMobile(form.phone);
     if (validationError) {
       setPhoneError(validationError);
@@ -45,7 +57,7 @@ const AdminProfile = () => {
       setSaving(true);
       await updateProfile(form);
       setIsEditing(false);
-      alert('Profile updated successfully.');
+      setNotice('Saved Changes');
     } catch (error) {
       alert(`Failed to update profile: ${error.message}`);
     } finally {
@@ -66,6 +78,7 @@ const AdminProfile = () => {
             <p><strong>{t("Location:")}</strong> {adminLocation}</p>
             <p><strong>{t("Last Login:")}</strong> {user?.lastLogin ? formatBusinessDateTime(user.lastLogin) : '-'}</p>
             <button type="button" onClick={openEditModal}>{t("Edit Profile")}</button>
+            {notice && <p role="status">{t(notice)}</p>}
           </div>
           <div className="admin-profile-card">
             <AccountSecurityManagement
@@ -75,10 +88,10 @@ const AdminProfile = () => {
           </div>
         </div>
         {isEditing && (
-          <div className="admin-profile-modal-overlay" onClick={() => setIsEditing(false)}>
+          <div className="admin-profile-modal-overlay" onClick={closeEditor}>
             <form className="admin-profile-modal-card" onSubmit={saveProfile} onClick={(event) => event.stopPropagation()}>
               <h3>{t("Edit Admin Profile")}</h3>
-              <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder={t("Name")} />
+              <input maxLength={41} value={form.name} disabled={saving} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder={t("Name")} />
               <input
                 aria-label={t("Phone number")}
                 type="tel"
@@ -86,6 +99,7 @@ const AdminProfile = () => {
                 autoComplete="tel-national"
                 maxLength={11}
                 value={form.phone}
+                disabled={saving}
                 onChange={(event) => {
                   setForm((prev) => ({ ...prev, phone: sanitizeLocalPhMobileInput(event.target.value) }));
                   setPhoneError('');
@@ -95,7 +109,7 @@ const AdminProfile = () => {
               {phoneError ? <p className="admin-profile-phone-error" role="alert">{t(phoneError)}</p> : <small className="admin-profile-phone-help">{t("Use exactly 11 digits (09XXXXXXXXX).")}</small>}
               <input value={adminLocation} readOnly disabled placeholder={t("Location")} />
               <div className="admin-profile-modal-actions">
-                <button type="button" onClick={() => setIsEditing(false)}>{t("Cancel")}</button>
+                <button type="button" onClick={closeEditor} disabled={saving}>{t("Cancel")}</button>
                 <button type="submit" disabled={saving}>{t(saving ? 'Saving...' : 'Save Changes')}</button>
               </div>
             </form>

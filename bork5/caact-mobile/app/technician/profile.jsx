@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect, usePreventRemove, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, BackHandler, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
 import TechnicianScreen, {
   TechHero,
@@ -12,14 +12,16 @@ import StickyActionBar from "../../components/ui/StickyActionBar";
 import TextField from "../../components/ui/TextField";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
+import useUnsavedProfileChanges from "../../hooks/useUnsavedProfileChanges";
 import { getDisplayName } from "../../services/profileService";
 import { confirmAction } from "../../utils/confirmAction";
-import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
+import { canonicalizePhMobile, FORMATTED_MOBILE_INPUT_MAX_LENGTH, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../utils/authValidation";
 import PasswordField from "../../components/ui/PasswordField";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import { translateText } from "../../services/interfaceI18n";
 
 const LANGUAGE_NOTICE_DURATION_MS = 3000;
+const PROFILE_NOTICE_DURATION_MS = 3000;
 const PASSWORD_NOTICE_DURATION_MS = 4000;
 
 function SettingsRow({ icon, title, subtitle, right, danger, onPress }) {
@@ -129,8 +131,8 @@ export default function TechProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
-  const discardPromptOpen = useRef(false);
-  const hasPasswordDraft = Boolean(currentPassword || password || confirmPassword);
+  const savedAlias = current?.alias || "";
+  const savedPhone = canonicalizePhMobile(current?.phone || "");
 
   useEffect(() => () => {
     if (noticeTimeout.current !== null) clearTimeout(noticeTimeout.current);
@@ -153,37 +155,24 @@ export default function TechProfile() {
     setIsChangingPassword(false);
   }, []);
 
-  const requestPasswordExit = useCallback((exit = closePasswordEditor) => {
-    if (saveInFlight.current || discardPromptOpen.current) return;
-    if (!hasPasswordDraft) {
-      exit();
-      return;
-    }
-    discardPromptOpen.current = true;
-    Alert.alert(t("Discard changes?"), t("Your unsaved changes will be lost."), [
-      { text: t("Keep editing"), style: "cancel", onPress: () => { discardPromptOpen.current = false; } },
-      { text: t("Discard"), style: "destructive", onPress: () => {
-        discardPromptOpen.current = false;
-        exit();
-      } },
-    ], { cancelable: false });
-  }, [closePasswordEditor, hasPasswordDraft, t]);
+  const closeProfileEditor = useCallback(() => {
+    Keyboard.dismiss();
+    setIsEditing(false);
+    setAlias(savedAlias);
+    setPhone(savedPhone);
+  }, [savedAlias, savedPhone]);
 
-  usePreventRemove(isChangingPassword && (hasPasswordDraft || saving), ({ repeat }) => {
-    requestPasswordExit(() => {
-      closePasswordEditor();
-      repeat();
-    });
+  const editing = isEditing || isChangingPassword;
+  const dirty = isChangingPassword
+    ? Boolean(currentPassword || password || confirmPassword)
+    : isEditing && (alias !== savedAlias || phone !== savedPhone);
+  const requestExit = useUnsavedProfileChanges({
+    editing,
+    dirty,
+    saving,
+    closeEditor: isChangingPassword ? closePasswordEditor : closeProfileEditor,
+    t,
   });
-
-  useFocusEffect(useCallback(() => {
-    if (!isChangingPassword) return undefined;
-    const back = BackHandler.addEventListener("hardwareBackPress", () => {
-      requestPasswordExit();
-      return true;
-    });
-    return () => back.remove();
-  }, [isChangingPassword, requestPasswordExit]));
 
   const selectLanguage = async (nextLanguage) => {
     if (savingLanguage || nextLanguage === language) return;
@@ -213,17 +202,14 @@ export default function TechProfile() {
     try {
       const normalizedPhone = canonicalizePhMobile(phone);
       const result = await updateMyAccount({ alias: nextAlias, phone: normalizedPhone });
-      const ok = result.success;
-      Alert.alert(
-        t(ok ? "Saved" : "Not Saved"),
-        t(ok ? "Profile updated." : result.error || "Profile update failed."),
-      );
-      if (ok) {
-        setAlias(result.user?.alias ?? nextAlias);
-        setPhone(canonicalizePhMobile(result.user?.phone ?? normalizedPhone));
-        setPassword("");
-        setIsEditing(false);
+      if (!result.success) {
+        Alert.alert(t("Not Saved"), t(result.error || "Profile update failed."));
+        return;
       }
+      setAlias(result.user?.alias ?? nextAlias);
+      setPhone(canonicalizePhMobile(result.user?.phone ?? normalizedPhone));
+      setIsEditing(false);
+      showNotice(t("Saved Changes"), PROFILE_NOTICE_DURATION_MS);
     } catch (error) {
       Alert.alert(t("Not Saved"), t(error.message || "Profile update failed. Please try again."));
     } finally {
@@ -273,10 +259,9 @@ export default function TechProfile() {
       title={t("Account")}
       subtitle={t(isChangingPassword ? "Reset your password" : isEditing ? "Edit technician profile" : "Account, security, and sign-in settings")}
       icon="person-sharp"
-      onBack={isChangingPassword ? () => requestPasswordExit() : undefined}
-      contentContainerStyle={{ paddingBottom: isEditing || isChangingPassword ? 160 : SPACING.lg }}
+      onBack={editing ? () => requestExit() : undefined}
       stickyAction={
-        isEditing || isChangingPassword ? (
+        editing ? (
           <StickyActionBar>
             <TechButton
               title={t(saving ? "Saving..." : isChangingPassword ? "Reset Password" : "Save Changes")}
@@ -289,12 +274,7 @@ export default function TechProfile() {
             <TechButton
               title={t("Cancel")}
               disabled={saving}
-              onPress={isChangingPassword ? () => requestPasswordExit() : () => {
-                if (saveInFlight.current) return;
-                setIsEditing(false);
-                setAlias(current?.alias || "");
-                setPhone(canonicalizePhMobile(current?.phone || ""));
-              }}
+              onPress={() => requestExit()}
               variant="secondary"
             />
           </StickyActionBar>
@@ -308,7 +288,7 @@ export default function TechProfile() {
         icon="id-card-sharp"
       /> : null}
 
-      {notice && !isChangingPassword ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", padding: SPACING.md, marginBottom: SPACING.sm, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}>
+      {notice && !editing ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", padding: SPACING.md, marginBottom: SPACING.sm, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}>
         <Ionicons name="checkmark-circle" size={20} color={COLORS.success} style={{ marginRight: SPACING.sm }} />
         <Text style={{ flex: 1, color: "#166534", fontWeight: FONT.bold }}>{notice}</Text>
       </View> : null}
@@ -373,8 +353,8 @@ export default function TechProfile() {
       ) : (
         <Card>
           <ProfileSectionHeader title={t("Edit technician profile")} description={t("Update your username and contact number.")} />
-          <TextField translate={t} label={t("Username")} value={alias} onChangeText={setAlias} editable={!saving} />
-          <TextField translate={t}
+          <TextField maxLength={30} translate={t} label={t("Username")} value={alias} onChangeText={setAlias} editable={!saving} />
+          <TextField maxLength={FORMATTED_MOBILE_INPUT_MAX_LENGTH} translate={t}
             label={t("Contact Number")}
             value={phone}
             onChangeText={(value) => setPhone((previous) => sanitizeLocalPhMobileInput(value, previous))}

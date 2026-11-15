@@ -8,7 +8,7 @@
   min-height: 100vh;
   background: #f6f8fb;
   color: var(--legal-ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .legal-page * {

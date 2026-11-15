@@ -124,7 +124,7 @@ export default function SignUpStep2() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={126}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }}>
         <PageHeader title={t("Create Account")} subtitle={t("Step 3 of 4: Account and security")} color={COLORS.primary} onBack={() => router.back()} />
 
         <Card>
@@ -132,7 +132,7 @@ export default function SignUpStep2() {
           <TextField label={t("First Name")} value={form.name_first} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${form.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateField("name_first", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("First name")} error={errors.name_first} />
           <TextField label={t("Last Name")} value={form.name_last} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${form.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateField("name_last", String(value || "").replace(/[0-9]/g, ""))} placeholder={t("Last name")} error={errors.name_last} />
           <TextField label={t("Suffix (optional)")} value={form.suffix} maxLength={12} helperText={`${form.suffix?.length || 0}/12`} onChangeText={(value) => updateField("suffix", value)} placeholder="Jr., Sr., III, etc." error={errors.suffix} />
-          <TextField label={t("Username")} value={form.alias} onChangeText={(value) => updateField("alias", value.toLowerCase().trim())} onBlur={checkAlias} placeholder={aliasPlaceholder} error={errors.alias} autoCapitalize="none" />
+          <TextField maxLength={30} label={t("Username")} value={form.alias} onChangeText={(value) => updateField("alias", value.toLowerCase().trim())} onBlur={checkAlias} placeholder={aliasPlaceholder} error={errors.alias} autoCapitalize="none" />
           {aliasStatus === "checking" ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{t("Checking username...")}</Text> : null}
           {aliasStatus === "available" ? <Text style={{ color: COLORS.success, fontSize: FONT.sm }}>{t("Username available")}</Text> : null}
         </Card>

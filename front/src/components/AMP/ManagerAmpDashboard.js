@@ -1,3 +1,5 @@
+import SearchableSelect from "../common/SearchableSelect";
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -484,23 +486,34 @@ function ManagerAmpDashboard() {
     const branchQuery = isCompanyWide && selectedBranch !== "all"
       ? `&branch=${encodeURIComponent(selectedBranch)}`
       : "";
+    let snapshot;
+    const showPipeline = (result) => {
+      if (cancelled) return;
+      setPipeline(result.units || []);
+      setPipelinePagination(result.pagination || { page: 1, pageSize: PIPELINE_PAGE_SIZE, total: result.units?.length || 0, totalPages: 1 });
+      setBranchSummary(result.branchSummary || []);
+      setActionSummary(result.actionSummary || { serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
+      setAggregate(result.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
+    };
     Promise.all([
-      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=${PIPELINE_PAGE_SIZE}${branchQuery}`),
+      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=${PIPELINE_PAGE_SIZE}${branchQuery}`, {
+        onCached: (result) => {
+          snapshot = result;
+          showPipeline(result);
+        },
+      }),
       apiRequest("/amp/report-units"),
     ])
       .then(([pipelineResult, reportUnitResult]) => {
         if (cancelled) return;
-        setPipeline(pipelineResult.units || []);
-        setPipelinePagination(pipelineResult.pagination || { page: 1, pageSize: PIPELINE_PAGE_SIZE, total: pipelineResult.units?.length || 0, totalPages: 1 });
-        setBranchSummary(pipelineResult.branchSummary || []);
-        setActionSummary(pipelineResult.actionSummary || { serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
+        if (pipelineResult !== snapshot) showPipeline(pipelineResult);
         setReportUnits(reportUnitResult.units || []);
-        setAggregate(pipelineResult.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
         setError("");
       })
       .catch((err) => {
         if (cancelled) return;
         setError(err.message || "Unable to load the maintenance list. Please try again.");
+        if (snapshot && ![401, 403].includes(err.status)) return;
         setPipeline([]);
         setPipelinePagination({ page: 1, pageSize: PIPELINE_PAGE_SIZE, total: 0, totalPages: 1 });
         setBranchSummary([]);
@@ -611,8 +624,8 @@ function ManagerAmpDashboard() {
       <AmpPurposeGuide planning={isCompanyWide} />
       {isCompanyWide ? <div className="amp-followup-controls" aria-label={t('Branch maintenance filters')}>
         <div className="amp-overview-filters">
-          <label className="amp-branch-filter">{t("Service window")}<select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>{t('Next')} {days} {t('days')}</option>)}</select></label>
-          <label className="amp-branch-filter">{t("Branch (including branches with no due units)")}<select value={selectedBranch} onChange={(event) => selectBranch(event.target.value)}><option value="all">{t("All branches")}</option>{[...branchNames, UNASSIGNED_BRANCH].map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+          <label className="amp-branch-filter">{t("Service window")}<SearchableSelect value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>{t('Next')} {days} {t('days')}</option>)}</SearchableSelect></label>
+          <label className="amp-branch-filter">{t("Branch (including branches with no due units)")}<SearchableSelect value={selectedBranch} onChange={(event) => selectBranch(event.target.value)}><option value="all">{t("All branches")}</option>{[...branchNames, UNASSIGNED_BRANCH].map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
         </div>
         {unassignedCount > 0 ? <p className="amp-unassigned-notice"><strong>{unassignedCount} {t(unassignedCount === 1 ? "unit has no responsible branch." : "units have no responsible branch.")}</strong> {t("These records are not included in any branch admin’s service queue.")}</p> : null}
       </div> : null}
@@ -665,10 +678,10 @@ function ManagerAmpDashboard() {
               {isCompanyWide ? <p className="amp-muted">{t("View only. Units are grouped by the branch responsible for follow-up.")}</p> : null}
             </div>
           </div>
-          {!isCompanyWide ? <label className="amp-branch-filter">{t("Service window")}<select value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>{t("Next")} {days} {t("days")}</option>)}</select></label> : null}
-          {loading ? <span>{t("Loading...")}</span> : null}
+          {!isCompanyWide ? <label className="amp-branch-filter">{t("Service window")}<SearchableSelect value={serviceWindow} onChange={(event) => { setPipelinePage(1); setServiceWindow(Number(event.target.value)); }}>{SERVICE_WINDOWS.map((days) => <option key={days} value={days}>{t("Next")} {days} {t("days")}</option>)}</SearchableSelect></label> : null}
         </div>
 
+        {loading && !pipeline.length ? <LoadingSkeleton label={t("Loading...")} variant="table" /> : null}
         {error ? <p className="amp-error">{error}</p> : null}
 
         {!loading && !error && pipeline.length === 0 ? (

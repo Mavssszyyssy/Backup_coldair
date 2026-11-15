@@ -57,26 +57,19 @@ function Settings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const initialTab = SETTINGS_TABS.some((tab) => tab.id === requestedTab)
+  const activeTab = SETTINGS_TABS.some((tab) => tab.id === requestedTab)
     ? requestedTab
     : "profile";
 
-  const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
-  useEffect(() => {
-    if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
-      setActiveTab(requestedTab);
-    }
-  }, [requestedTab]);
-
   const selectTab = (tabId) => {
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    setActiveTab(tabId);
+    if (tabId === activeTab) return;
     setSearchParams({ tab: tabId }, { replace: true });
   };
 
@@ -123,7 +116,7 @@ function Settings() {
   };
 
   const handleUpdateProfile = (payload) =>
-    callWithToast(() => updateProfile(payload), "Profile updated.");
+    callWithToast(() => updateProfile(payload), "Saved Changes");
 
   const handleUpdatePreferences = (payload) =>
     callWithToast(() => updatePreferences(payload), "Preferences saved.");
@@ -172,7 +165,7 @@ function Settings() {
         direction="row"
         flex={1}
         width="100%"
-        padding="40px 24px"
+        padding={BQ_GEOMETRY.pagePadding}
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         className="settings-layout"
       >
@@ -308,6 +301,7 @@ function Settings() {
 
       {toast && (
         <BoutiqueBox
+          role={toast.type === "error" ? "alert" : "status"}
           padding="12px 24px"
           background={
             toast.type === "error" ? BQ_COLORS.danger : BQ_COLORS.brand

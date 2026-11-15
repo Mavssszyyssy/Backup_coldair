@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -243,7 +244,7 @@ export default function CustomerContactScreen() {
       {focusedMessageId ? (
         <Card>
           <CustomerSectionHeader title={t('Selected Support Message')} />
-          {historyLoading || (!focusedMessage && (selectedLoading || selectedFetchId.current !== focusedMessageId)) ? <Text style={{ color: COLORS.textMuted }}>{t('Loading this support message…')}</Text> : null}
+          {historyLoading || (!focusedMessage && (selectedLoading || selectedFetchId.current !== focusedMessageId)) ? <LoadingSkeleton label={t('Loading this support message…')} variant="detail" /> : null}
           {!historyLoading && focusedMessage ? <SupportMessage item={focusedMessage} focused expanded t={t} /> : null}
           {!historyLoading && !selectedLoading && selectedFetchId.current === focusedMessageId && !focusedMessage ? <Text style={{ color: COLORS.danger }}>{t('This support message is no longer available.')}</Text> : null}
         </Card>
@@ -298,7 +299,7 @@ export default function CustomerContactScreen() {
         <CustomerSectionHeader title={t('My Support Messages')} />
         <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>{t('Track each reference and read replies from your support team.')}</Text>
         {historyError ? <Text style={{ color: COLORS.danger }}>{t(historyError)}</Text> : null}
-        {historyLoading && !history.length ? <Text style={{ color: COLORS.textMuted }}>{t('Loading your support messages…')}</Text> : null}
+        {historyLoading && !history.length ? <LoadingSkeleton label={t('Loading your support messages…')} variant="inline" /> : null}
         {!historyLoading && history.length === 0 && !historyError ? <Text style={{ color: COLORS.textMuted }}>{t('No messages sent yet.')}</Text> : null}
         {remainingHistory.map((item) => <SupportMessage key={item.id || item._id} item={item} t={t}
           expanded={expandedId === String(item.id || item._id)}

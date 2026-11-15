@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import ServiceRequests from './ServiceRequests';
@@ -29,12 +31,12 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionError, setDecisionError] = useState('');
 
-  const load = useCallback(async ({ quiet = false } = {}) => {
+  const load = useCallback(async ({ quiet = false, fresh = false } = {}) => {
     if (!quiet) { setError(''); setLoading(true); }
     try {
       const [result, claimResult] = await Promise.all([
-        apiRequest('/service-requests'),
-        apiRequest('/warranties/claims'),
+        apiRequest('/service-requests', fresh ? { fresh } : undefined),
+        apiRequest('/warranties/claims', fresh ? { fresh } : undefined),
       ]);
       const nextRequests = Array.isArray(result.requests) ? result.requests : [];
       setRequests(nextRequests);
@@ -161,7 +163,7 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
           </div>
         </div>
 
-        {error ? <div className="maintenance-alert" role="alert">{t(error)}<button type="button" onClick={load}>{t("Try again")}</button></div> : null}
+        {error ? <div className="maintenance-alert" role="alert">{t(error)}<button type="button" onClick={() => load({ fresh: true })}>{t("Try again")}</button></div> : null}
 
         <WarrantyClaims claims={warrantyClaims} busyClaimId={busyClaimId} onReview={openClaimReview} />
 
@@ -191,17 +193,17 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
           <div className="maintenance-queue-panel">
             <div className="maintenance-panel-heading">
               <div><p className="maintenance-eyebrow">{t("Service queue")}</p><h2>{t("Requests")}</h2></div>
-              <button type="button" className="maintenance-button maintenance-button--secondary" onClick={load} disabled={loading}>
+              <button type="button" className="maintenance-button maintenance-button--secondary" onClick={() => load({ fresh: true })} disabled={loading}>
                 {t(loading ? 'Refreshing…' : 'Refresh')}
               </button>
             </div>
             <div className="maintenance-filters">
-              <label className="maintenance-search-field"><span>{t("Search")}</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Customer, unit, issue, address")} /></label>
-              <label><span>{t("Status")}</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(status)}</option>)}</select></label>
-              <label><span>{t("Technician")}</span><select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</select></label>
+              <label className="maintenance-search-field"><span>{t("Search")}</span><input maxLength={160} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Customer, unit, issue, address")} /></label>
+              <label><span>{t("Status")}</span><SearchableSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(status)}</option>)}</SearchableSelect></label>
+              <label><span>{t("Technician")}</span><SearchableSelect value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</SearchableSelect></label>
               <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>{t("Clear filters")}</button>
             </div>
-            {loading ? <div className="maintenance-loading">{t("Loading service requests…")}</div> : <ServiceRequests requests={filteredRequests} selectedId={selected?.id} onSelect={setSelected} />}
+            {loading ? <LoadingSkeleton label={t("Loading service requests…")} /> : <ServiceRequests requests={filteredRequests} selectedId={selected?.id} onSelect={setSelected} />}
           </div>
           <RequestDetails request={selected} onUpdated={handleUpdated} />
         </div>

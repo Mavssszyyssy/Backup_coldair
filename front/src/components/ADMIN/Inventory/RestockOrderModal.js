@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../../config/api';
 import useActiveBranches from '../../../domain/branches/useActiveBranches';
@@ -157,6 +158,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="form-group">
                 <label htmlFor="supplierName">Supplier Name *</label>
                 <input
+                  maxLength={120}
                   id="supplierName"
                   type="text"
                   value={supplierName}
@@ -170,6 +172,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label htmlFor="supplierEmail">Email</label>
                   <input
+                    maxLength={254}
                     id="supplierEmail"
                     type="email"
                     value={supplierEmail}
@@ -182,6 +185,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="form-group">
                   <label htmlFor="supplierPhone">Phone</label>
                   <input
+                    maxLength={30}
                     id="supplierPhone"
                     type="tel"
                     value={supplierPhone}
@@ -230,7 +234,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
                 ) : (
                   products.map((item, index) => (
                     <div key={index} className="product-row">
-                      <select
+                      <SearchableSelect
                         value={item.product}
                         onChange={(e) => handleProductChange(index, 'product', e.target.value)}
                         className="form-select"
@@ -241,7 +245,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
                             {p.name} (SKU: {p.sku})
                           </option>
                         ))}
-                      </select>
+                      </SearchableSelect>
 
                       <input
                         type="number"
@@ -301,6 +305,7 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
 
               <div className="form-group">
                 <textarea
+                  maxLength={1000}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any special instructions or notes..."

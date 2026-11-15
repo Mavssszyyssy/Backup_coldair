@@ -3,6 +3,7 @@ import { apiRequest } from '../../../config/api';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 
 const List = ({ title, values, render }) => Array.isArray(values) && values.length ? <div className="maintenance-ai-group"><strong>{title}</strong><ul>{values.map((value, index) => <li key={`${title}-${index}`}>{render ? render(value) : value}</li>)}</ul></div> : null;
 const TextRow = ({ label, value }) => value ? <p className="maintenance-ai-row"><strong>{label}</strong><span>{value}</span></p> : null;
@@ -14,7 +15,7 @@ function AssessmentCard({ title, value, available, buttonLabel, busy, onGenerate
       {available ? <button type="button" className="maintenance-button maintenance-button--secondary" onClick={onGenerate} disabled={busy}>{t(busy ? 'Generating…' : buttonLabel)}</button> : null}
     </div>
     {value?.status === 'completed' ? <><p className="maintenance-ai-meta">{t('Generated')} {formatBusinessDateTime(value.generatedAt)} · {t('Technician review')}: {t(value.review?.decision || 'pending')}</p>{highlights}<details className="maintenance-ai-evidence"><summary>{t('Interpretation and supporting details')}</summary>{children}<Evidence assessment={value} t={t} /></details></>
-      : <p className="maintenance-muted">{value?.error || t(available ? 'No assessment generated yet.' : 'Available when the maintenance record reaches this stage.')}</p>}
+      : busy ? <LoadingSkeleton label={t('Generating…')} variant="detail" /> : <p className="maintenance-muted">{value?.error || t(available ? 'No assessment generated yet.' : 'Available when the maintenance record reaches this stage.')}</p>}
   </section>;
 }
 
@@ -54,7 +55,7 @@ export default function MaintenanceDecisionSupport({ request, task, initialPost 
   return <div className="maintenance-detail-section"><h3>{t('Parts and future-issue assessment')}</h3>
     <p>{t('AI suggestions use saved records, including Tagalog or Taglish notes. Original wording is preserved. They do not confirm a fault or reserve stock.')}</p>
     {error ? <p className="maintenance-message maintenance-message--error" role="alert">{t(error)}</p> : null}
-    {request ? <AssessmentCard t={t} title="Before maintenance · parts to prepare" value={pre} available={Boolean(request.id) && !['Completed', 'Cancelled'].includes(request.status)} buttonLabel={pre ? 'Regenerate AI assessment' : 'Generate AI assessment'} busy={busy === 'pre'} onGenerate={() => generate('pre')} highlights={<>
+    {request ? <AssessmentCard t={t} title="Before maintenance · parts to prepare" value={pre} available={Boolean(request.id) && !['Completed', 'Cancelled'].includes(request.status)} buttonLabel={pre?.status === 'completed' ? 'Refresh AI assessment' : 'Generate AI assessment'} busy={busy === 'pre'} onGenerate={() => generate('pre')} highlights={<>
       <TextRow label={t('Possible problem')} value={preResult?.possible_problem} />
       <List title={t('Parts to bring for inspection')} values={preResult?.parts_to_bring} render={part => <>{part.name} — {part.reason}</>} />
       <List title={t('Use only if diagnosis confirms it')} values={preResult?.replace_only_after_diagnosis} render={part => <>{part.name} — {part.only_if}</>} />
@@ -68,7 +69,7 @@ export default function MaintenanceDecisionSupport({ request, task, initialPost 
       <List title={t('Safety flags')} values={preResult?.safety_flags} />
       <List title={t('Missing evidence')} values={preResult?.missing_evidence} />
     </AssessmentCard> : null}
-    {task ? <AssessmentCard t={t} title="After maintenance · what to monitor next" value={post} available={task.status === 'completed'} buttonLabel={post ? 'Regenerate future-issue assessment' : 'Generate future-issue assessment'} busy={busy === 'post'} onGenerate={() => generate('post')} highlights={<>
+    {task ? <AssessmentCard t={t} title="After maintenance · what to monitor next" value={post} available={task.status === 'completed'} buttonLabel={post?.status === 'completed' ? 'Refresh future-issue assessment' : 'Generate future-issue assessment'} busy={busy === 'post'} onGenerate={() => generate('post')} highlights={<>
       <TextRow label={t('Possible next issue')} value={postResult?.possible_future_issue} />
       <TextRow label={t('Part to monitor')} value={postResult?.component_to_monitor} />
       <TextRow label={t('Risk / confidence')} value={postResult ? `${postResult.risk_level} · ${postResult.confidence}` : ''} />

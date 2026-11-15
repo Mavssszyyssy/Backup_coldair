@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -60,14 +62,28 @@ function SuperAdminDashboard() {
   useEffect(() => {
     let mounted = true;
     setError("");
-    apiRequest(dashboardFilterQuery({ branch, ...(dateRange || {}) }))
+    let snapshot;
+    const showDashboard = (result, loadedAt = Date.now()) => {
+      if (!mounted) return;
+      setDashboard({ stats: result.stats || null, analytics: result.analytics || null, scopeKey });
+      setUpdatedAt(new Date(loadedAt));
+    };
+    apiRequest(dashboardFilterQuery({ branch, ...(dateRange || {}) }), {
+      onCached: (result, loadedAt) => {
+        snapshot = result;
+        showDashboard(result, loadedAt);
+      },
+    })
       .then((result) => {
         if (!mounted) return;
-        setDashboard({ stats: result.stats || null, analytics: result.analytics || null, scopeKey });
-        setUpdatedAt(new Date());
+        if (result !== snapshot) showDashboard(result);
         setError("");
       })
-      .catch((loadError) => mounted && setError(loadError?.message || "Unable to load global commerce analytics."));
+      .catch((loadError) => {
+        if (!mounted) return;
+        if ([401, 403].includes(loadError?.status)) setDashboard({ stats: null, analytics: null });
+        setError(loadError?.message || "Unable to load global commerce analytics.");
+      });
     return () => { mounted = false; };
   }, [branch, dateRange, scopeKey]);
 
@@ -135,7 +151,7 @@ function SuperAdminDashboard() {
 
         {error ? <div className="commerce-error">{error}</div> : null}
         <form className="commerce-date-filter super-dashboard-filters" onSubmit={applyDateRange} aria-label={t("Dashboard filters")}>
-          <label>{t("Branch")}<select value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">{t("All Branches")}</option>{branches.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
+          <label>{t("Branch")}<SearchableSelect value={branch} onChange={(event) => setBranch(event.target.value)}><option value="all">{t("All Branches")}</option>{branches.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</SearchableSelect></label>
           <div className="super-dashboard-periods" role="group" aria-label={t("Reporting period")}>
             <span>{t("Reporting period")}</span>
             <div className="commerce-tabs">{PERIODS.map((item) => <button key={item} type="button" aria-pressed={period === item} className={period === item ? "active" : ""} onClick={() => { setPeriod(item); if (item !== 'custom') { setDateRange(null); setDateError(''); } }}>{t(item === 'custom' ? 'Custom range' : item)}</button>)}</div>
@@ -189,14 +205,14 @@ function SuperAdminDashboard() {
         <div className="commerce-analytics-grid">
           <Panel title={t("Technician output")} description={t("Completed work orders this month.")}><TechnicianPerformance technicians={analytics.technicianKPIs} t={t} /></Panel>
         </div>
-        </> : !error ? <div className="commerce-empty" role="status">{t("Loading analytics for the selected scope…")}</div> : null}
+        </> : !error ? <LoadingSkeleton label={t("Loading analytics for the selected scope…")} variant="cards" /> : null}
       </div>
 
       {isEditing ? (
         <div className="app-modal-overlay" onClick={() => setIsEditing(false)}>
           <form className="app-modal-card" onSubmit={onSave} onClick={(event) => event.stopPropagation()}>
             <h3>{t("Edit Super Admin Profile")}</h3>
-            <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder={t("Name")} />
+            <input maxLength={41} value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder={t("Name")} />
             <input
               aria-label={t("Phone number")}
               type="tel"
@@ -211,7 +227,7 @@ function SuperAdminDashboard() {
               placeholder="09XXXXXXXXX"
             />
             {formError ? <p className="app-modal-error" role="alert">{t(formError)}</p> : <small className="app-modal-help">{t("Use exactly 11 digits (09XXXXXXXXX).")}</small>}
-            <input value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} placeholder={t("Address")} />
+            <input maxLength={220} value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} placeholder={t("Address")} />
             <div className="app-modal-actions"><button type="button" onClick={() => setIsEditing(false)}>{t("Cancel")}</button><button type="submit" disabled={saving}>{t(saving ? "Saving..." : "Save Changes")}</button></div>
           </form>
         </div>

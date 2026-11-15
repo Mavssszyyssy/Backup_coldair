@@ -36,7 +36,7 @@ const toSpreadsheetCell = (value, label = '') => {
     if (label === 'onTimeRate') {
       return `<Cell ss:StyleID="percent"><Data ss:Type="Number">${value / 100}</Data></Cell>`;
     }
-    const style = isCurrencyField(label) ? 'currency' : 'number';
+    const style = isCurrencyField(label) ? 'currency' : Number.isInteger(value) ? 'integer' : 'number';
     return `<Cell ss:StyleID="${style}"><Data ss:Type="Number">${value}</Data></Cell>`;
   }
   return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
@@ -58,7 +58,10 @@ export const formatReportValue = (value, label = '') => {
   return value.toLocaleString('en-PH', { maximumFractionDigits: 2 });
 };
 
-export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = {}, rows = [], metadata = {} }) => {
+export const exportToExcel = ({
+  filename, title = 'AeroPulse Report', summary = {}, rows = [], metadata = {},
+  summaryHeading = 'REPORT SUMMARY', summaryLabels = {}, rowHeading, notes,
+}) => {
   const normalizedRows = Array.isArray(rows) ? rows : [];
   const headers = normalizedRows.length ? Object.keys(normalizedRows[0]) : [];
   const metadataRows = [
@@ -78,7 +81,7 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
   const mergedColumns = columnCount - 1;
   const metadataMerge = mergedColumns > 1 ? ` ss:MergeAcross="${mergedColumns - 1}"` : '';
   const summaryRows = Object.entries(summary || {})
-    .map(([key, value]) => `<Row><Cell ss:StyleID="label"><Data ss:Type="String">${escapeXml(humanizeLabel(key))}</Data></Cell>${toSpreadsheetCell(value, key)}</Row>`)
+    .map(([key, value]) => `<Row><Cell ss:StyleID="label"><Data ss:Type="String">${escapeXml(summaryLabels[key] || humanizeLabel(key))}</Data></Cell>${toSpreadsheetCell(value, key)}</Row>`)
     .join('');
   const reportMetadataRows = metadataRows
     .map(([label, value]) => `<Row><Cell ss:StyleID="label"><Data ss:Type="String">${escapeXml(label)}</Data></Cell><Cell${metadataMerge}><Data ss:Type="String">${escapeXml(value)}</Data></Cell></Row>`)
@@ -86,6 +89,12 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
   const headerCells = headers.map((header) => `<Cell ss:StyleID="header"><Data ss:Type="String">${escapeXml(humanizeLabel(header))}</Data></Cell>`).join('');
   const dataRows = normalizedRows.map((row) => `<Row>${headers.map((header) => toSpreadsheetCell(row[header], header)).join('')}</Row>`).join('');
   const columns = Array.from({ length: columnCount }, () => '<Column ss:Width="155"/>').join('');
+  const section = (label) => `<Row><Cell ss:StyleID="header" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell></Row>`;
+  const noteRows = (notes?.lines || []).map((line) => {
+    const charactersPerLine = columnCount * 23;
+    const lineCount = Math.ceil(String(line).length / charactersPerLine) + 1;
+    return `<Row ss:Height="${Math.min(180, 14 * lineCount)}"><Cell ss:StyleID="note" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(line)}</Data></Cell></Row>`;
+  }).join('');
   const spreadsheet = `<?xml version="1.0"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
   <Styles>
@@ -95,6 +104,8 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
     <Style ss:ID="header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F4C81" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/></Style>
     <Style ss:ID="label"><Font ss:Bold="1" ss:Color="#0F172A"/><Interior ss:Color="#E8F0F8" ss:Pattern="Solid"/></Style>
     <Style ss:ID="number"><NumberFormat ss:Format="#,##0.00"/><Alignment ss:Horizontal="Right"/></Style>
+    <Style ss:ID="integer"><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right"/></Style>
+    <Style ss:ID="note"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Interior ss:Color="#F1F6FB" ss:Pattern="Solid"/></Style>
     <Style ss:ID="percent"><NumberFormat ss:Format="0.00%"/><Alignment ss:Horizontal="Right"/></Style>
     <Style ss:ID="currency"><NumberFormat ss:Format="&quot;₱&quot;#,##0.00"/><Alignment ss:Horizontal="Right"/></Style>
   </Styles>
@@ -104,7 +115,10 @@ export const exportToExcel = ({ filename, title = 'AeroPulse Report', summary = 
     <Row><Cell ss:StyleID="subtitle" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">Generated ${escapeXml(metadata.generatedAt || new Date().toLocaleString())}</Data></Cell></Row>
     ${reportMetadataRows}
     <Row/>
-    ${summaryRows ? `<Row><Cell ss:StyleID="header" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">REPORT SUMMARY</Data></Cell></Row>${summaryRows}<Row/>` : ''}
+    ${summaryRows ? `${section(summaryHeading)}${summaryRows}<Row/>` : ''}
+    ${noteRows ? `${section(notes.title)}${noteRows}<Row/>` : ''}
+    ${rowHeading ? section(rowHeading) : ''}
+    ${rowHeading && !headers.length ? `<Row><Cell ss:StyleID="note" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(metadata.emptyRowsLabel || 'No matching records.')}</Data></Cell></Row>` : ''}
     ${headers.length ? `<Row>${headerCells}</Row>` : ''}
     ${dataRows}
   </Table></Worksheet>
@@ -185,6 +199,10 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       .report-field span { display: block; margin-bottom: 2px; color: #64748b; font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
       .report-field strong { display: block; color: #0f172a; font-size: 10px; overflow-wrap: anywhere; }
       .report-callout { margin: 9px 0 0; padding: 9px 11px; border-left: 3px solid #60a5fa; background: #eff6ff; color: #334155; }
+      .report-document--tabular .summary--kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .summary--kpis .summary-item strong { font-size: 17px; }
+      .report-interpretation p { overflow-wrap: anywhere; }
+      .report-interpretation p:last-child { margin-bottom: 0; }
       .report-subsection { break-inside: avoid; page-break-inside: avoid; }
       .history-list { display: grid; gap: 8px; }
       .history-entry { padding: 10px 11px; border: 1px solid #d7e1ec; border-radius: 4px; break-inside: avoid; page-break-inside: avoid; }

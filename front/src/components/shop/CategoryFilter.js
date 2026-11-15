@@ -50,6 +50,7 @@ function CategoryFilter({ categories, selectedCategory, onSelectCategory }) {
             }}
           />
           <input
+            maxLength={160}
             type="text"
             placeholder="Search..."
             value={searchTerm}

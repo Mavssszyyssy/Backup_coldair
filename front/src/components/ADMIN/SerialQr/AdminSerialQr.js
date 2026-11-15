@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowsClockwise } from "@phosphor-icons/react";
 import { QRCodeCanvas } from "qrcode.react";
 import AdminLayout from "../Common/AdminLayout";
@@ -78,7 +80,8 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
     setRefreshNotice("");
     setLoading(true);
     try {
-      const result = await apiRequest(requestedBranch ? `/products?branch=${encodeURIComponent(requestedBranch)}` : "/products");
+      const path = requestedBranch ? `/products?branch=${encodeURIComponent(requestedBranch)}` : "/products";
+      const result = await (manual ? apiRequest(path, { fresh: true }) : apiRequest(path));
       if (version !== loadVersion.current) return;
       const nextProducts = result.products || [];
       setProducts(nextProducts);
@@ -198,7 +201,7 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
     setPage(1);
   }, [branchFilter, productId, query, serialKindFilter, statusFilter]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!productId) focusedProduct.current = "";
     else if (!loading && productHeading.current && focusedProduct.current !== productId) {
       focusedProduct.current = productId;
@@ -268,31 +271,31 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
         <div className="serialqr-actions">
           <label className="serialqr-search">
             {t("Search")}
-            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search model, SKU, branch, or serial")} />
+            <input maxLength={160} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search model, SKU, branch, or serial")} />
           </label>
           {isSuperAdmin ? (
             <label>
               {t("Branch")}
-              <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
+              <SearchableSelect value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label={t("Filter QR records by branch")}>
                 <option value="all">{t("All branches")}</option>
                 {(branchFilter !== "all" && !branchOptions.includes(branchFilter) ? [...branchOptions, branchFilter] : branchOptions).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
-              </select>
+              </SearchableSelect>
             </label>
           ) : null}
           <label>
             {t("Status")}
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
+            <SearchableSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter QR records by status")}>
               <option value="all">{t("All statuses")}</option>
               {statusOptions.map((status) => <option key={status} value={status}>{t(status.replace(/-/g, " "))}</option>)}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             {t("Serial type")}
-            <select value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label={t("Filter QR records by serial type")}>
+            <SearchableSelect value={serialKindFilter} onChange={(event) => setSerialKindFilter(event.target.value)} aria-label={t("Filter QR records by serial type")}>
               <option value="all">{t("All serial types")}</option>
               <option value="manufacturer">{t("Manufacturer serial")}</option>
               <option value="temporary">{t("Temporary serial")}</option>
-            </select>
+            </SearchableSelect>
           </label>
           {(productId || query || branchFilter !== "all" || statusFilter !== "all" || serialKindFilter !== "all") ? (
             <button type="button" className="serialqr-clear" onClick={() => { setQuery(""); setBranchFilter("all"); setStatusFilter("all"); setSerialKindFilter("all"); onClearProduct?.(); }}>
@@ -304,7 +307,7 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
 
       {error ? <p className="serialqr-error">{t(error)}</p> : null}
       {refreshNotice ? <p role="status" className="serialqr-refresh-notice">{t(refreshNotice)}</p> : null}
-      {loading ? <div className="admin-card">{t("Loading serial numbers...")}</div> : null}
+      {loading && !pageProducts.length ? <LoadingSkeleton label={t("Loading serial numbers...")} variant="cards" count={3} /> : null}
 
       <div className="serialqr-model-list">
         {pageProducts.map((product) => {
@@ -367,6 +370,7 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
                                 {t("Real manufacturer serial")}
                               </label>
                               <input
+                                maxLength={80}
                                 id={`manufacturer-serial-${product.id}-${index}`}
                                 value={serialDraft}
                                 onChange={(event) => setSerialDraft(event.target.value.toUpperCase())}

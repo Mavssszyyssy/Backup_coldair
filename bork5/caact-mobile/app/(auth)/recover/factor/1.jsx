@@ -157,6 +157,7 @@ export default function RecoverPasswordScreen() {
 
         <Card>
           <TextField
+            maxLength={254}
             label={t("Email or Account Login ID")}
             value={identifier}
             onChangeText={() => {}}
@@ -165,6 +166,7 @@ export default function RecoverPasswordScreen() {
           />
           {usesSharedDemoEmail && (
             <TextField
+              maxLength={30}
               label={t("Demo Account Login ID")}
               value={accountLoginId}
               onChangeText={(value) => {

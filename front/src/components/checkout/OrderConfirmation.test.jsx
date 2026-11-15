@@ -54,6 +54,14 @@ test("a pending first GCash attempt still offers Pay Again", async () => {
   expect(await screen.findByRole("button", { name: "Pay Again" })).toBeEnabled();
 });
 
+test("an overdue checkout awaiting PayMongo confirmation only offers status checking", async () => {
+  apiRequest.mockResolvedValue({ order: { ...pending, paymentMethod: "gcash", paymentCheckoutState: "expiring" } });
+  show();
+  await screen.findByText("The previous payment link is closing. Check the payment status before trying again.");
+  expect(screen.getByRole("button", { name: "Check payment status" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Pay Again" })).toBeNull();
+});
+
 test("the third unsuccessful GCash attempt blocks another retry", async () => {
   apiRequest.mockResolvedValue({ order: { ...pending, paymentMethod: "gcash", paymentRetryCount: 3 } });
   show("cancelled");

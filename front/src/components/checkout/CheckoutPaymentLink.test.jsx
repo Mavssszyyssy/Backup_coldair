@@ -8,6 +8,8 @@ import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
 const fixture = vi.hoisted(() => ({
   cart: [{ id: "p1", name: "AC", price: 100, quantity: 1 }],
   clearCart: vi.fn(),
+  updateQuantity: vi.fn(),
+  removeFromCart: vi.fn(),
   getCartTotal: () => 100,
   synchronizeAddresses: vi.fn(),
 }));
@@ -26,10 +28,10 @@ const address = {
   postalCode: "4102", phone: "09123456789", isDefault: true,
 };
 
-const renderCheckout = async (payment, orderError = null) => {
+const renderCheckout = async (payment, orderError = null, buyNowItem = null) => {
   apiRequest.mockImplementation(async (path) => {
     if (path === "/users/addresses") return { addresses: [address] };
-    if (path.startsWith("/products/public")) return { products: [{ id: "p1", stock: 5 }] };
+    if (path.startsWith("/products/public")) return { products: [{ id: "p1", stock: 5 }, { id: "p2", stock: 5 }] };
     if (path === "/orders") {
       if (orderError) throw orderError;
       return { order: { id: "order123" }, payment };
@@ -37,7 +39,7 @@ const renderCheckout = async (payment, orderError = null) => {
     throw new Error(`Unexpected request: ${path}`);
   });
   render(
-    <MemoryRouter initialEntries={["/checkout"]}>
+    <MemoryRouter initialEntries={[{ pathname: "/checkout", state: buyNowItem ? { buyNowItem } : null }]}>
       <Routes>
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-confirmation/:id" element={<div>Saved order confirmation</div>} />
@@ -45,6 +47,11 @@ const renderCheckout = async (payment, orderError = null) => {
     </MemoryRouter>,
   );
   await screen.findByText("Test street");
+  if (buyNowItem) {
+    expect(screen.getByText(buyNowItem.name)).toBeInTheDocument();
+    expect(screen.queryByText("AC")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Increase quantity of ${buyNowItem.name}` }));
+  }
   fireEvent.click(screen.getByText("GCash"));
   await waitFor(() => expect(screen.getByRole("button", { name: "Place order" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Place order" }));
@@ -94,4 +101,25 @@ it("continues to open a valid PayMongo test checkout link", async () => {
   await waitFor(() => expect(openOnlineCheckout).toHaveBeenCalledWith("https://checkout.paymongo.com/test", "order123"));
   expect(window.alert).not.toHaveBeenCalled();
   expect(fixture.clearCart).toHaveBeenCalledTimes(1);
+});
+
+it("opens the same saved order instead of reopening PayMongo when checkout replays a previous submission", async () => {
+  await renderCheckout(null, Object.assign(new Error("This order already exists."), {
+    status: 409, data: { code: "ORDER_PAYMENT_RETRY_REQUIRED", orderId: "order123" },
+  }));
+  await screen.findByText("Saved order confirmation");
+  expect(openOnlineCheckout).not.toHaveBeenCalled();
+  expect(window.alert).not.toHaveBeenCalled();
+  expect(fixture.clearCart).toHaveBeenCalledTimes(1);
+});
+
+it("Buy Now submits only its selected product and quantity and leaves the cart alone", async () => {
+  await renderCheckout(null, null, { id: "p2", name: "Direct purchase AC", price: 200, quantity: 2, stock: 5 });
+  await screen.findByText("Saved order confirmation");
+  const [, request] = apiRequest.mock.calls.find(([path]) => path === "/orders");
+  expect(JSON.parse(request.body)).toMatchObject({ items: [{ id: "p2", quantity: 3 }], subtotal: 600 });
+  expect(JSON.parse(request.body).items).toHaveLength(1);
+  expect(fixture.clearCart).not.toHaveBeenCalled();
+  expect(fixture.updateQuantity).not.toHaveBeenCalled();
+  expect(fixture.removeFromCart).not.toHaveBeenCalled();
 });

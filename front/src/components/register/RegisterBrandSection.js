@@ -69,9 +69,9 @@ export default function RegisterBrandSection() {
         }
 
         @media (max-width: 1024px) {
-          .bq-reg-brand { padding: 40px 24px; min-height: fit-content; }
+          .bq-reg-brand { padding: 20px 16px; min-height: fit-content; }
           .bq-reg-brand-name { font-size: 36px; }
-          .bq-reg-logo { width: 100px; height: 100px; border-radius: 24px; margin-bottom: 24px; }
+          .bq-reg-logo { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 12px; }
         }
       `,
         }}

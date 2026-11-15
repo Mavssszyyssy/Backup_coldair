@@ -1,9 +1,10 @@
+import LoadingSkeleton from "../../../components/ui/LoadingSkeleton";
 import PagedItems from "../../../components/ui/PagedItems";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../services/liveRefresh";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Text, View } from "react-native";
+import { Alert, Linking, Text, View } from "react-native";
 
 import {
   CustomerRecommendationPanel,
@@ -327,12 +328,7 @@ export default function CustomerUnitDetailsScreen() {
   if (loading) {
     return (
       <CustomerScreen title={t("AC Unit Details")} subtitle={t("Loading your registered AC unit")}>
-        <Card style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
-          <ActivityIndicator color={COLORS.primary} size="large" />
-          <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
-            {t("Getting the latest unit, warranty, and service details...")}
-          </Text>
-        </Card>
+        <LoadingSkeleton label={t("Getting the latest unit, warranty, and service details...")} variant="detail" count={2} />
       </CustomerScreen>
     );
   }

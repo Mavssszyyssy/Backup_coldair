@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 
-import { COLORS, FONT, SPACING, RADIUS } from "../../constants/theme";
+import { COLORS, SPACING, RADIUS, TYPE } from "../../constants/theme";
 
 export default function Section({ title, children, style, right }) {
   return (
@@ -29,16 +29,11 @@ export default function Section({ title, children, style, right }) {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: SPACING.sm,
             marginBottom: 12,
           }}
         >
-          <Text
-            style={{
-              fontSize: FONT.lg,
-              fontWeight: FONT.black,
-              color: COLORS.textPrimary,
-            }}
-          >
+          <Text accessibilityRole="header" style={[TYPE.section, { color: COLORS.textPrimary, flexShrink: 1 }]}>
             {title}
           </Text>
           {right ?? null}

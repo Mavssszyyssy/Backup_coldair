@@ -25,7 +25,7 @@ export default function SignUpStep0() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={126}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }}>
         <PageHeader title={t("Create Account")} subtitle={t("Step 1 of 4: Terms & Privacy")} color={COLORS.primary} onBack={() => { resetDraft(); router.replace("/sign-in"); }} />
         <MobileLegalConsent
           value={draft.legalConsent}

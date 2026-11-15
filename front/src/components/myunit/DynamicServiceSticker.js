@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useEffect, useState } from "react";
 import { CalendarBlank, DeviceMobile, Info, Wrench } from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
@@ -58,7 +59,7 @@ function DynamicServiceSticker({ unit }) {
     return () => { alive = false; };
   }, [unitId]);
   if (!isMongoId(unitId)) return null;
-  if (loading) return <section className="service-sticker">{t("Checking your recommended service schedule...")}</section>;
+  if (loading) return <section className="service-sticker"><LoadingSkeleton label={t("Checking your recommended service schedule...")} variant="inline" count={1} /></section>;
   if (error) return <section className="service-sticker service-sticker-alert">{t("We could not load your service schedule right now. Please try again.")}</section>;
   const recommendation = result?.recommendation;
   if (!recommendation) return null;

@@ -25,8 +25,12 @@ test("hours and parts dropdowns, actual costs and written report survive paginat
   await mount(); await screen.findByText("Test AC");
   await fireEvent.press(screen.getByText("Completed"));
   await fireEvent.press(screen.getByLabelText("Select Hours Worked"));
+  await fireEvent.changeText(screen.getByLabelText("Search options"), "2.5");
+  expect(screen.queryByLabelText("Hours Worked: 4")).toBeNull();
   await fireEvent.press(screen.getByLabelText("Hours Worked: 2.5"));
   await fireEvent.press(screen.getByLabelText("Select Parts Used"));
+  await fireEvent.changeText(screen.getByLabelText("Search options"), "filter");
+  expect(screen.queryByLabelText("Parts Used: Control board")).toBeNull();
   await fireEvent.press(screen.getByLabelText("Parts Used: Filter"));
   await fireEvent.changeText(screen.getByLabelText("Labor cost (PHP)"), "200");
   await fireEvent.changeText(screen.getByLabelText("Parts cost (PHP)"), "50");

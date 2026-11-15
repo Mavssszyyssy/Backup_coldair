@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import TasksScreen from "../app/technician/tasks";
 
 const mockCurrent = { id: "technician-1" };
@@ -26,7 +27,7 @@ jest.mock("../components/technician/TechnicianScreen", () => {
 });
 
 test("date tabs and filter choices expose clear selected states", async () => {
-  await render(<TasksScreen />);
+  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, right: 0, bottom: 34, left: 0 } }}><TasksScreen /></SafeAreaProvider>);
   expect(screen.getByRole("tab", { name: "Today: 0" }).props.accessibilityState.selected).toBe(true);
   await fireEvent.press(screen.getByRole("tab", { name: "Upcoming: 0" }));
   expect(screen.getByRole("tab", { name: "Upcoming: 0" }).props.accessibilityState.selected).toBe(true);

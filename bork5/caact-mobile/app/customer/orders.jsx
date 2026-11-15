@@ -1,8 +1,9 @@
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, View } from "react-native";
+import { Alert, Linking, View } from "react-native";
 
 import {
   BoutiqueButton,
@@ -405,8 +406,8 @@ export default function CustomerOrdersScreen() {
       if (!checkoutUrl || !(await Linking.canOpenURL(checkoutUrl))) {
         throw new Error("PayMongo did not return a usable checkout link.");
       }
+      router.push(`/customer/order-confirmation/${encodeURIComponent(order.id)}?payment=returned`);
       await Linking.openURL(checkoutUrl);
-      router.push(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (error) {
       Alert.alert(t("Unable to open payment"), t(error?.message || "Please try again."));
       void refreshOrders();
@@ -468,10 +469,7 @@ export default function CustomerOrdersScreen() {
 
         {loadError ? <BoutiqueCard style={{ gap: BQ_SPACING.sm }}><BoutiqueText color={BQ_COLORS.danger}>{t(loadError)}</BoutiqueText><BoutiqueButton title={t("Try again")} disabled={loading} onPress={refreshOrders} /></BoutiqueCard> : null}
         {loading ? (
-          <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
-            <ActivityIndicator size="large" color={BQ_COLORS.brand} accessibilityLabel={t("Loading orders...")} />
-            <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Loading orders...")}</BoutiqueText>
-          </BoutiqueCard>
+          <LoadingSkeleton label={t("Loading orders...")} />
         ) : orders.length === 0 && !loadError ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={52} color={BQ_COLORS.inkFaint} />

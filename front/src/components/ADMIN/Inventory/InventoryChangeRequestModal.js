@@ -87,6 +87,7 @@ const InventoryChangeRequestModal = ({ isOpen, product, currentStock, onClose, o
             <div className="form-group">
               <label htmlFor="reason">Reason for Change *</label>
               <textarea
+                maxLength={1000}
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}

@@ -3,6 +3,7 @@ import { WarningCircle } from "@phosphor-icons/react";
 function InputField({
   label,
   type = "text",
+  maxLength = 160,
   placeholder,
   value,
   onChange,
@@ -20,6 +21,7 @@ function InputField({
       )}
       <input
         type={type}
+        maxLength={maxLength}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

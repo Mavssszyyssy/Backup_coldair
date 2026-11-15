@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
@@ -25,11 +27,11 @@ export default function SuperAdminReorders({ embedded = false }) {
   const [error, setError] = useState('');
   const hasLoadedQueue = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     setLoading(true);
     setError('');
     try {
-      const result = await apiRequest('/reorders');
+      const result = await (fresh ? apiRequest('/reorders', { fresh }) : apiRequest('/reorders'));
       setReorders(result.reorders || []);
       hasLoadedQueue.current = true;
     } catch (requestError) {
@@ -75,7 +77,7 @@ export default function SuperAdminReorders({ embedded = false }) {
 
   return (
     <SuperAdminLayout title={t('Inventory Management — Reorder Management')} subtitle={t('Review branch replenishment requests and add stock safely')} embedded={embedded}>
-      <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>{t('Requests awaiting your decision')}</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>{t('Approved replenishments')}</span></div><button type="button" onClick={load} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button></div>
+      <div className="reorder-overview"><div><strong>{reorders.filter((item) => item.status === 'submitted').length}</strong><span>{t('Requests awaiting your decision')}</span></div><div><strong>{reorders.filter((item) => item.status === 'approved').length}</strong><span>{t('Approved replenishments')}</span></div><button type="button" onClick={() => load(true)} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button></div>
       {error ? <p className="reorder-message is-error">{t(error)}</p> : null}
       <section className="reorder-history">
         <div className="reorder-panel-heading">
@@ -86,15 +88,15 @@ export default function SuperAdminReorders({ embedded = false }) {
           </div>
           <label className="reorder-filter">
             <span>{t('Show requests')}</span>
-            <select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label={t('Filter reorder queue')}>
+            <SearchableSelect value={filter} onChange={(event) => setFilter(event.target.value)} aria-label={t('Filter reorder queue')}>
               <option value="submitted">{t('Awaiting review')}</option>
               <option value="all">{t('All requests')}</option>
               <option value="approved">{t('Approved')}</option>
               <option value="rejected">{t('Rejected')}</option>
-            </select>
+            </SearchableSelect>
           </label>
         </div>
-        {loading ? <div className="reorder-empty">{t('Loading reorder requests…')}</div> : visible.length === 0 ? <div className="reorder-empty">{t('No reorder requests match this filter.')}</div> : (
+        {loading ? <LoadingSkeleton label={t('Loading reorder requests…')} /> : visible.length === 0 ? <div className="reorder-empty">{t('No reorder requests match this filter.')}</div> : (
           <div className="reorder-history-list">
             {pageReorders.map((reorder) => (
               <article className="reorder-history-item reorder-request-card" key={reorder.id}>
@@ -115,6 +117,7 @@ export default function SuperAdminReorders({ embedded = false }) {
                     <div className="reorder-decision-field">
                       <label htmlFor={`decision-note-${reorder.id}`}>{t('Decision note')} <span>{t('Optional')}</span></label>
                       <textarea
+                        maxLength={1000}
                         id={`decision-note-${reorder.id}`}
                         rows="3"
                         value={notes[reorder.id] || ''}

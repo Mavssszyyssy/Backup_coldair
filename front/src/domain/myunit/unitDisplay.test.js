@@ -55,7 +55,7 @@ describe("customer AC unit display", () => {
     expect(css).toContain("overflow-wrap: anywhere");
   });
 
-  it("lets only the selected AC card grow when View More is opened", () => {
+  it("keeps the AC cards compact and fills the footer with the blue service history action", () => {
     const css = fs.readFileSync(
       path.resolve(process.cwd(), "src", "components", "myunit", "MyUnit.css"),
       "utf8",
@@ -63,6 +63,8 @@ describe("customer AC unit display", () => {
 
     expect(css).toMatch(/\.units-grid\s*\{[^}]*align-items:\s*start/s);
     expect(css).toMatch(/\.unit-card\s*\{[^}]*height:\s*auto[^}]*align-self:\s*start/s);
+    expect(css).toMatch(/\.unit-btn\s*\{[^}]*flex:\s*1/s);
+    expect(css).toMatch(/\.unit-footer \.history-btn\s*\{[^}]*background:\s*#1d4ed8[^}]*color:\s*#fff/s);
   });
 
   it("keeps the customer AC list to one desktop row and provides compact numbered pagination", () => {

@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../../../../../components/ui/LoadingSkeleton";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../../../../../services/liveRefresh";
 import React, { useState } from "react";
@@ -56,7 +57,7 @@ export default function LogDetailScreen() {
           color={COLORS.tech}
           onBack={() => router.back()}
         />
-        {loading ? <Text>{t("Loading service note...")}</Text> : error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{t(error)}</Text> : log ? <ServiceNoteDetails log={log} unitName={task?.unitName} /> : null}
+        {loading ? <LoadingSkeleton label={t("Loading service note...")} variant="detail" /> : error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger }}>{t(error)}</Text> : log ? <ServiceNoteDetails log={log} unitName={task?.unitName} /> : null}
         {canEdit && (
           <View style={{ flexDirection: "row", gap: SPACING.sm }}>
             <TechButton

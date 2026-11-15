@@ -19,7 +19,7 @@ import BoutiqueCart from "../common/boutique/BoutiqueCart";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
-import useCustomerAlerts from "../../hooks/useCustomerAlerts";
+import useCustomerAlerts from "../../hooks/useAlerts";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import ShopCatalogue from "./ShopCatalogue";
 import ShopSidebar from "./ShopSidebar";
@@ -34,6 +34,7 @@ const parseHP = (hpStr) => {
 const Shop = () => {
   const {
     cart,
+    loading: cartLoading,
     addToCart,
     updateQuantity,
     removeFromCart,
@@ -55,6 +56,7 @@ const Shop = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartNotice, setCartNotice] = useState(null);
+  const purchaseInFlightRef = useRef(false);
   const catalogRequestRef = useRef(null);
   const catalogGenerationRef = useRef(0);
 
@@ -72,7 +74,7 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState("default");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async ({ fresh = false } = {}) => {
     // A slow branch lookup or server wake-up must not start overlapping reads.
     // A changed auth session gets its own request; older results cannot replace it.
     if (catalogRequestRef.current?.authenticated === isAuthenticated) {
@@ -83,12 +85,16 @@ const Shop = () => {
       try {
         let branch = "";
         if (isAuthenticated) {
-          const addressResult = await apiRequest("/users/addresses", { silentConnection: true });
+          const addressResult = await apiRequest("/users/addresses", { silentConnection: true, fresh });
           const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
           const address = addresses.find((entry) => entry.isDefault) || addresses[0];
-          if (address) branch = await resolveConfiguredBranch(address);
+          if (address) branch = await resolveConfiguredBranch(address, { display: true, fresh });
         }
-        const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, { silentConnection: true });
+        const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, {
+          silentConnection: true,
+          display: true,
+          fresh,
+        });
         const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
         if (generation === catalogGenerationRef.current) {
           setBackendProducts(mapped);
@@ -134,13 +140,6 @@ const Shop = () => {
     const cat = params.get("cat");
     if (cat) setSelectedCategory(cat);
   }, [location.search]);
-
-  // Buy Now flow integration
-  useEffect(() => {
-    const handleBuyNowEvent = () => navigate("/checkout");
-    window.addEventListener("bq:buy-now", handleBuyNowEvent);
-    return () => window.removeEventListener("bq:buy-now", handleBuyNowEvent);
-  }, [navigate]);
 
   const products = useMemo(() => {
     return deduplicateProducts(backendProducts, { verbose: false }).map((product) => ({
@@ -208,7 +207,8 @@ const Shop = () => {
   }, [products]);
   const horsepowers = useMemo(() => [...new Set(products.map((product) => Number(product.horsepower)).filter((value) => value > 0))].sort((a, b) => a - b), [products]);
 
-  const handleAddToCart = async (product, qty = 1) => {
+  const preparePurchase = async (product, qty, buyNow) => {
+    if (purchaseInFlightRef.current) return false;
     setStockNotice("");
     if (!Number.isSafeInteger(Number(qty)) || !/^\d+$/.test(String(qty).trim()) || Number(qty) <= 0) {
       setStockNotice(t("Enter a positive whole-number quantity."));
@@ -220,40 +220,47 @@ const Shop = () => {
     }
     if (!isAuthenticated) {
       showAuthRequiredPrompt(
-        t("Sign in to add this AC unit to your cart."),
+        t(buyNow ? "Sign in to continue to checkout." : "Sign in to add this AC unit to your cart."),
       );
       return false;
     }
+    purchaseInFlightRef.current = true;
     try {
-      const addressesResult = await apiRequest("/users/addresses");
+      const addressesResult = await apiRequest("/users/addresses", { fresh: true });
       const addresses = Array.isArray(addressesResult.addresses) ? addressesResult.addresses : [];
       const address = addresses.find((entry) => entry.isDefault) || addresses[0];
-      if (!address) throw new Error(t("Save a delivery address before adding items to your cart."));
+      if (!address) throw new Error(t(buyNow ? "Please add a delivery address to continue." : "Save a delivery address before adding items to your cart."));
       const branch = await resolveConfiguredBranch(address);
-      if (!branch) throw new Error(t("Your delivery address is outside our service areas. Update it before adding items."));
-      const stockResult = await apiRequest(`/products/public?branch=${encodeURIComponent(branch)}`);
+      if (!branch) throw new Error(t(buyNow ? "This address is outside the current service areas. Choose another delivery address." : "Your delivery address is outside our service areas. Update it before adding items."));
+      const stockResult = await apiRequest(`/products/public?branch=${encodeURIComponent(branch)}`, { fresh: true });
       const availableProduct = (stockResult.products || []).find((entry) => String(entry.id || entry._id) === String(product.id));
       const available = Number(availableProduct?.stock || 0);
       const existing = cart.find((item) => item.id === product.id);
-      const requested = Number(qty) + Number(existing?.quantity || 0);
+      const requested = Number(qty) + (buyNow ? 0 : Number(existing?.quantity || 0));
       if (!Number.isSafeInteger(available) || available < requested) {
         throw new Error(available <= 0
           ? (isFilipino(currentLanguage) ? `Hindi available ang AC unit na ito sa sangay ng ${branch}.` : `This AC unit is unavailable at the ${branch} branch.`)
           : t("The requested quantity exceeds this branch's available stock. Reduce the quantity and try again."));
       }
-      addToCart({ ...mapCatalogProductToCartProduct(availableProduct), fulfillmentBranch: branch }, Number(qty));
+      const item = { ...mapCatalogProductToCartProduct(availableProduct), fulfillmentBranch: branch };
       setFulfillmentBranch(branch);
-      setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+      if (buyNow) {
+        navigate("/checkout", { state: { buyNowItem: { ...item, quantity: Number(qty) } } });
+      } else {
+        addToCart(item, Number(qty));
+        setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+      }
       return true;
     } catch (error) {
       setStockNotice(error.message || t("Unable to confirm branch stock. Please try again."));
       return false;
+    } finally {
+      purchaseInFlightRef.current = false;
     }
   };
 
-  const handleBuyNow = async (product) => {
-    if (await handleAddToCart(product, 1)) navigate("/checkout");
-  };
+  const handleAddToCart = (product, qty = 1) => preparePurchase(product, qty, false);
+  const handleBuyNow = (product, qty = 1) => preparePurchase(product, qty, true);
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -345,7 +352,7 @@ const Shop = () => {
           products={filteredProducts}
           loading={catalogLoading}
           error={t(catalogError)}
-          onRetry={fetchProducts}
+          onRetry={() => fetchProducts({ fresh: true })}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           onProductClick={setSelectedProduct}
@@ -358,6 +365,7 @@ const Shop = () => {
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
           cart={cart}
+          loading={cartLoading}
           onUpdateQuantity={updateQuantity}
           onRemoveItem={removeFromCart}
           onCheckout={handleCheckout}
@@ -380,6 +388,7 @@ const Shop = () => {
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow}
         />
       )}
     </BoutiqueScreen>

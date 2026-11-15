@@ -1,10 +1,11 @@
+import SearchableSelect from "../SearchableSelect";
 import { Eye, EyeSlash, WarningDiamond } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { translateText } from "../../../utils/customerI18n";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueStack from "./BoutiqueStack";
 import BoutiqueText from "./BoutiqueText";
-import { BQ_COLORS, BQ_GEOMETRY, BQ_SHADOWS } from "./BoutiqueTheme";
+import { BQ_COLORS, BQ_FONTS, BQ_GEOMETRY, BQ_SHADOWS, BQ_WEIGHTS } from "./BoutiqueTheme";
 
 /**
  * BOUTIQUE INPUT
@@ -21,11 +22,16 @@ export default function BoutiqueInput({
   options = [], // For select type
   inlineAction, // For buttons inside the field (e.g., Verify)
   children, // For block content below the field (e.g., Strength Meter)
+  id,
   ...props
 }) {
+  const generatedId = useId();
+  const fieldId = id || generatedId;
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
   const actualType = isPassword ? (showPassword ? "text" : "password") : type;
+  const toggleLabel = isPassword ? translateText(showPassword ? "Hide password" : "Show password", language) : "";
+  const VisibilityIcon = showPassword ? Eye : EyeSlash;
 
   const getStatusClass = () => {
     if (status === "error") return "bq-input--error";
@@ -41,17 +47,13 @@ export default function BoutiqueInput({
       style={{ "--field-accent": BQ_COLORS.inkFaint }}
     >
       {label && (
-        <BoutiqueText
-          variant="label"
-          className="bq-input-label"
-          color={BQ_COLORS.ink}
-        >
+        <label htmlFor={fieldId} className="bq-input-label">
           {label}
-        </BoutiqueText>
+        </label>
       )}
 
       <BoutiqueBox
-        className="bq-input-field-area"
+        className={`bq-input-field-area${Icon ? " has-field-icon" : ""}`}
         style={{
           position: "relative",
           width: "100%",
@@ -61,7 +63,8 @@ export default function BoutiqueInput({
         {Icon && <Icon size={18} weight="bold" className="bq-input-icon" />}
 
         {type === "select" ? (
-          <select
+          <SearchableSelect
+            id={fieldId}
             className={`bq-input-field bq-input-select ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""}`}
             {...props}
           >
@@ -71,10 +74,12 @@ export default function BoutiqueInput({
                 {opt.label || opt}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         ) : (
           <input
+            id={fieldId}
             type={actualType}
+            maxLength={isPassword ? 128 : type === "email" ? 254 : 160}
             className={`bq-input-field ${isPassword ? "has-pass" : ""} ${inlineAction ? "has-action" : ""}`}
             {...props}
           />
@@ -98,11 +103,13 @@ export default function BoutiqueInput({
             <button
               type="button"
               className="bq-input-pass-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={translateText(showPassword ? "Hide password" : "Show password", language)}
-              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={toggleLabel}
+              aria-controls={fieldId}
+              title={toggleLabel}
+              disabled={props.disabled}
             >
-              {showPassword ? <EyeSlash size={20} weight="bold" aria-hidden="true" /> : <Eye size={20} weight="bold" aria-hidden="true" />}
+              <VisibilityIcon size={20} weight="bold" aria-hidden="true" />
             </button>
           )}
           {inlineAction}
@@ -144,23 +151,29 @@ export default function BoutiqueInput({
           __html: `
         .bq-input-group:focus-within { --field-accent: ${BQ_COLORS.brand}; }
         .bq-input-field.has-pass::-ms-reveal { display: none; }
+        .bq-input-label {
+          color: ${BQ_COLORS.ink}; font-family: ${BQ_FONTS.body};
+          font-size: var(--app-type-label); font-weight: ${BQ_WEIGHTS.semibold};
+          line-height: var(--app-leading-label);
+        }
         .bq-input--error { --field-accent: ${BQ_COLORS.danger} !important; }
         .bq-input--success { --field-accent: ${BQ_COLORS.success} !important; }
 
         .bq-input-field {
           width: 100%;
           padding: 16px 20px;
-          padding-left: ${Icon ? "48px" : "20px"};
           padding-right: 20px;
           background: ${BQ_COLORS.surfaceAlt};
           border: 1.5px solid var(--field-accent);
           border-radius: ${BQ_GEOMETRY.radiusMd};
           font-family: inherit;
-          font-size: 15px;
+          font-size: var(--app-type-body);
           color: ${BQ_COLORS.ink};
           transition: all 0.3s ease;
           outline: none;
         }
+
+        .bq-input-field-area.has-field-icon .bq-input-field { padding-left: 48px; }
 
         /* Responsive Right Padding */
         .bq-input-field.has-pass { padding-right: 54px; }

@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../LoadingSkeleton";
 import { Archive, ArrowCounterClockwise, Bell, CheckCircle } from "@phosphor-icons/react";
 import { useRef } from "react";
 import BoutiqueBox from "./BoutiqueBox";
@@ -5,6 +6,7 @@ import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS } from "./BoutiqueTheme";
 import { translateText } from "../../../utils/customerI18n";
+import { ArchiveAllAlerts, ArchivedAlertPages } from "../AlertArchiveControls";
 
 /**
  * BOUTIQUE NOTIFICATIONS
@@ -22,6 +24,10 @@ export default function BoutiqueNotifications({
   pendingAction = false,
   actionError,
   onMoveAlert,
+  onArchiveAll,
+  archivePage,
+  hasMoreArchived,
+  onArchivePageChange,
   onRetry,
   currentLanguage = "English",
 }) {
@@ -50,10 +56,12 @@ export default function BoutiqueNotifications({
       >
         {onChangeFolder && (
           <div ref={folderControls} className="bq-notif-folders" role="group" aria-label={t("Alert folders")}>
-            <button type="button" aria-pressed={!archived} onClick={() => onChangeFolder("active")}>{t("Current")}</button>
-            <button type="button" aria-pressed={archived} onClick={() => onChangeFolder("archived")}>{t("Archived")}</button>
+            <button type="button" aria-pressed={!archived} disabled={pendingAction} onClick={() => onChangeFolder("active")}>{t("Current")}</button>
+            <button type="button" aria-pressed={archived} disabled={pendingAction} onClick={() => onChangeFolder("archived")}>{t("Archived")}</button>
           </div>
         )}
+
+        {!archived && hasNotifications && onArchiveAll && <ArchiveAllAlerts t={t} disabled={pendingAction} onArchive={onArchiveAll} />}
         {!archived && hasNotifications && (
           <BoutiqueBox
             direction="row"
@@ -115,7 +123,7 @@ export default function BoutiqueNotifications({
           className="bq-notif-list"
           style={{ overflowY: "auto" }}
         >
-          {!hasNotifications && status === "loading" && <p role="status" className="bq-notif-feedback">{t("Loading…")}</p>}
+          {!hasNotifications && status === "loading" && <LoadingSkeleton label={t("Loading…")} variant="inline" />}
           {!hasNotifications && status === "ready" && (
             <BoutiqueBox
               align="center"
@@ -201,6 +209,8 @@ export default function BoutiqueNotifications({
             </div>
           ))}
         </BoutiqueBox>
+        {archived && <ArchivedAlertPages page={archivePage} hasMore={hasMoreArchived} onChange={onArchivePageChange}
+          disabled={pendingAction || status === "loading"} t={t} />}
       </BoutiqueBox>
 
       <style

@@ -2,7 +2,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { getStoredToken, sendCustomerChatMessage } from "../../services/api";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
@@ -21,10 +21,11 @@ import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 const WELCOME_MESSAGE = {
   id: "welcome",
   from: "bot",
-  text: "Hi! I am the AEROPULSE Assistant. Ask me about your order, payment, AC unit, or service request.",
+  text: "Ask me about AC stock by branch, product prices, orders, payments, or Cold Air services.",
 };
 
 const QUICK_QUESTIONS = [
+  "Which branch has the most AC stock?",
   "How do I request a service?",
   "Where can I track my order?",
   "How does the suggested service date work?",
@@ -42,7 +43,7 @@ const MOBILE_ROUTE_BY_WEB_ROUTE = {
 
 export default function CustomerChatScreen() {
   const router = useRouter();
-  const { t } = useInterfaceLanguage();
+  const { language, t } = useInterfaceLanguage();
   const listRef = useRef(null);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
@@ -69,6 +70,7 @@ export default function CustomerChatScreen() {
         message: text,
         history,
         currentPage: "/customer/chat",
+        language,
       });
       if (!result.success || !result.reply?.text) {
         throw new Error(result.error || "The AEROPULSE assistant is unavailable right now.");
@@ -154,10 +156,7 @@ export default function CustomerChatScreen() {
             );
           }}
           ListFooterComponent={sending ? (
-            <View style={styles.thinkingRow}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={{ color: COLORS.textSecondary }}>{t("AEROPULSE is thinking…")}</Text>
-            </View>
+            <LoadingSkeleton label={t("AEROPULSE is thinking…")} variant="inline" count={1} />
           ) : null}
         />
 
@@ -256,13 +255,6 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: FONT.base,
     lineHeight: 21,
-  },
-  thinkingRow: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    padding: SPACING.sm,
   },
   quickSection: {
     flexShrink: 0,

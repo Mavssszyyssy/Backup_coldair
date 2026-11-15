@@ -44,7 +44,7 @@ test('technician contact editing normalizes formatted numbers, rejects excess di
   await fireEvent.press(screen.getByLabelText('Edit technician profile'));
   expect(screen.queryByText('Sign out')).toBeNull();
   expect(screen.queryByText(/Spaces and dashes are accepted/)).toBeNull();
-  expect(screen.getByLabelText('Contact Number').props.maxLength).toBeUndefined();
+  expect(screen.getByLabelText('Contact Number').props.maxLength).toBe(32);
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '091234567890');
   expect(screen.getByLabelText('Contact Number').props.value).toBe('09123456789');
   await fireEvent.changeText(screen.getByLabelText('Contact Number'), '');
@@ -59,6 +59,8 @@ test('technician contact editing normalizes formatted numbers, rejects excess di
   mockUpdate.mockResolvedValue({ success: true });
   await fireEvent.press(screen.getByText('Save Changes'));
   expect(mockUpdate).toHaveBeenLastCalledWith({ alias: 'tech.cavite.test', phone: '09123456789' });
+  expect(await screen.findByText('Saved Changes')).toBeTruthy();
+  expect(mockPreventRemove.mock.calls.at(-1)[0]).toBe(false);
   alert.mockRestore();
   mockUpdate.mockReset();
 });
@@ -72,6 +74,12 @@ test('technician profile rejects an invalid new alias and discards cancelled edi
   expect(alert).toHaveBeenCalledWith('Invalid username', expect.any(String));
   expect(mockUpdate).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText('Cancel'));
+  const buttons = alert.mock.calls.at(-1)[2];
+  expect(buttons.map(({ text }) => text)).toEqual(['Keep Editing', 'Discard']);
+  await act(() => buttons[0].onPress());
+  expect(screen.getByLabelText('Username').props.value).toBe('bad alias');
+  await fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+  await act(() => alert.mock.calls.at(-1)[2][1].onPress());
   await fireEvent.press(screen.getByLabelText('Edit technician profile'));
   expect(screen.getByLabelText('Username').props.value).toBe('tech.cavite.test');
   alert.mockRestore();
@@ -111,7 +119,7 @@ test('password fields preserve input, allow visibility checks, and report failed
   const next = screen.getByLabelText('New Password');
   expect(next.props.autoCapitalize).toBe('none');
   expect(next.props.autoCorrect).toBe(false);
-  expect(next.props.maxLength).toBeUndefined(); // report over-length input instead of silently truncating paste
+  expect(next.props.maxLength).toBe(128); // Keep room to reject passwords above the 25-character policy.
   await fireEvent.changeText(screen.getByLabelText('Current Password'), 'OldPass123!');
   await fireEvent.changeText(next, 'NewPass123.');
   await fireEvent.changeText(screen.getByLabelText('Confirm New Password'), 'NewPass123.');

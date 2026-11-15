@@ -45,7 +45,7 @@ const ChangePassword = () => {
   return (
     <form className="admin-profile-form" onSubmit={submit}>
       <h3>Change Password</h3>
-      <input name="current" type="password" value={form.current} onChange={updateField} placeholder="Current password" />
+      <input maxLength={128} name="current" type="password" value={form.current} onChange={updateField} placeholder="Current password" />
       <input name="next" type="password" maxLength={25} value={form.next} onChange={updateField} placeholder="New password" />
       <input name="confirm" type="password" maxLength={25} value={form.confirm} onChange={updateField} placeholder="Confirm password" />
       <button type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update Password'}</button>

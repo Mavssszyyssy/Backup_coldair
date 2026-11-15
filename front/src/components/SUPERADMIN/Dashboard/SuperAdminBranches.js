@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
@@ -34,13 +36,13 @@ const SuperAdminBranches = () => {
   const [createdLoginId, setCreatedLoginId] = useState('');
   const branchNames = useMemo(() => coverage.length ? coverage.map((item) => item.name) : BRANCHES, [coverage]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     setLoading(true);
     setError('');
     try {
       const [usersResult, coverageResult] = await Promise.all([
-        apiRequest('/users?role=admin'),
-        apiRequest('/branches'),
+        apiRequest('/users?role=admin', fresh ? { fresh } : undefined),
+        apiRequest('/branches', fresh ? { fresh } : undefined),
       ]);
       setAdmins(Array.isArray(usersResult.users) ? usersResult.users : []);
       setCoverage(Array.isArray(coverageResult.branches) ? coverageResult.branches : []);
@@ -170,35 +172,35 @@ const SuperAdminBranches = () => {
       <div className="branch-workspace-heading"><div><p>{t('Branch expansion')}</p><h2>{t('Add branch')}</h2><span>{t('New branches start with no stock, orders, technicians, or administrator.')}</span></div></div>
       <form className="branch-assignment-form branch-create-form" onSubmit={createBranch}>
         <label>{t('Branch name')}<input value={newBranchName} maxLength={80} required onChange={(event) => setNewBranchName(event.target.value)} /></label>
-        <label className="branch-coverage-field">{t('Service areas (comma-separated)')}<input value={newBranchCoverage} required onChange={(event) => setNewBranchCoverage(event.target.value)} placeholder={t('City or province names')} /></label>
+        <label className="branch-coverage-field">{t('Service areas (comma-separated)')}<input maxLength={2000} value={newBranchCoverage} required onChange={(event) => setNewBranchCoverage(event.target.value)} placeholder={t('City or province names')} /></label>
         <button type="submit" disabled={saving || loading}>{t(saving ? 'Saving…' : 'Add branch')}</button>
       </form>
       <div className="branch-workspace-heading"><div><h2>{t('Create branch administrator')}</h2><span>{t('Only branches without an active administrator can be assigned.')}</span></div></div>
       <form className="branch-assignment-form branch-admin-form" onSubmit={createAdministrator}>
         <label>{t('First name')}<input value={adminDraft.name_first} maxLength={PERSON_NAME_MAX_LENGTH} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_first: event.target.value }))} /></label>
         <label>{t('Last name')}<input value={adminDraft.name_last} maxLength={PERSON_NAME_MAX_LENGTH} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_last: event.target.value }))} /></label>
-        <label>{t('Email')}<input type="email" value={adminDraft.email} required onChange={(event) => setAdminDraft((current) => ({ ...current, email: event.target.value }))} /></label>
-        <label>{t('Eligible branch')}<select value={adminDraft.branch} required onChange={(event) => setAdminDraft((current) => ({ ...current, branch: event.target.value }))}><option value="">{t('Select branch')}</option>{branchNames.filter((name) => !assignmentByBranch[name]).map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+        <label>{t('Email')}<input maxLength={254} type="email" value={adminDraft.email} required onChange={(event) => setAdminDraft((current) => ({ ...current, email: event.target.value }))} /></label>
+        <label>{t('Eligible branch')}<SearchableSelect value={adminDraft.branch} required onChange={(event) => setAdminDraft((current) => ({ ...current, branch: event.target.value }))}><option value="">{t('Select branch')}</option>{branchNames.filter((name) => !assignmentByBranch[name]).map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
         <button type="submit" disabled={saving || loading || !adminDraft.branch}>{t(saving ? 'Creating…' : 'Create administrator')}</button>
       </form>
       {oneTimePassword ? <p className="branch-success" role="status">{t('Invitation email was unavailable. Share this one-time temporary password securely:')} <strong>{oneTimePassword}</strong>. {t('It will disappear when you leave this page.')}</p> : null}
       {createdLoginId ? <p className="branch-success" role="status">{t('Account Login ID:')} <strong>{createdLoginId}</strong>. {t('Use this Login ID to sign in with the shared demo email account.')}</p> : null}
     </section>
     <section className="branch-workspace">
-      <div className="branch-workspace-heading"><div><p>{t('HQ branch control')}</p><h2>{t('Assign branch accountability')}</h2><span>{t('Only unassigned administrators can take an open branch. Existing ownership is not changed silently.')}</span></div><button type="button" onClick={load} disabled={loading}>{t(loading ? 'Loading…' : 'Refresh')}</button></div>
+      <div className="branch-workspace-heading"><div><p>{t('HQ branch control')}</p><h2>{t('Assign branch accountability')}</h2><span>{t('Only unassigned administrators can take an open branch. Existing ownership is not changed silently.')}</span></div><button type="button" onClick={() => load(true)} disabled={loading}>{t(loading ? 'Loading…' : 'Refresh')}</button></div>
       <form className="branch-assignment-form branch-owner-form" onSubmit={save}>
-        <label>{t('Branch')}<select value={branch} onChange={(event) => setBranch(event.target.value)}>{branchNames.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
-        <label>{t('Responsible administrator')}<select value={adminId} onChange={(event) => setAdminId(event.target.value)} disabled={Boolean(selectedAssignment)}><option value="">{t('Select an administrator')}</option>{admins.filter((admin) => !admin.assignedBranch || admin.id === selectedAssignment?.id).map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email} {t(admin.assignedBranch ? '— current owner' : '— unassigned')}</option>)}</select></label>
+        <label>{t('Branch')}<SearchableSelect value={branch} onChange={(event) => setBranch(event.target.value)}>{branchNames.map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
+        <label>{t('Responsible administrator')}<SearchableSelect value={adminId} onChange={(event) => setAdminId(event.target.value)} disabled={Boolean(selectedAssignment)}><option value="">{t('Select an administrator')}</option>{admins.filter((admin) => !admin.assignedBranch || admin.id === selectedAssignment?.id).map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email} {t(admin.assignedBranch ? '— current owner' : '— unassigned')}</option>)}</SearchableSelect></label>
         <button type="submit" disabled={saving || loading || Boolean(selectedAssignment)}>{t(saving ? 'Saving…' : 'Save assignment')}</button>
       </form>
       <form className="branch-assignment-form" onSubmit={saveCoverage}>
-        <label className="branch-coverage-field">{t('Service coverage (comma-separated)')}<input value={coverageAreas} onChange={(event) => setCoverageAreas(event.target.value)} placeholder={t('e.g. Bulacan, Plaridel, Malolos')} /><small className="branch-coverage-help">{t('Customer addresses are matched only against these configured areas. Unmatched addresses cannot be checked out.')}</small></label>
+        <label className="branch-coverage-field">{t('Service coverage (comma-separated)')}<input maxLength={2000} value={coverageAreas} onChange={(event) => setCoverageAreas(event.target.value)} placeholder={t('e.g. Bulacan, Plaridel, Malolos')} /><small className="branch-coverage-help">{t('Customer addresses are matched only against these configured areas. Unmatched addresses cannot be checked out.')}</small></label>
         <button type="submit" disabled={saving || loading}>{t(saving ? 'Saving…' : 'Save coverage')}</button>
       </form>
       {message ? <p className="branch-success">{message}</p> : null}{error ? <p className="branch-error">{t(error)}</p> : null}
     </section>
-    <section className="branch-directory" aria-label={t('Branch assignments')}><header><div><p>{t('Branch directory')}</p><h2>{t('Current ownership')}</h2></div></header>{loading ? <p className="branch-empty">{t('Loading branch assignments…')}</p> : <div>{branchNames.map((name) => { const admin = assignmentByBranch[name]; const areas = coverage.find((item) => item.name === name)?.coverageAreas || []; return <article key={name}><div><strong>{name}</strong><span>{t(admin ? 'Assigned' : 'Needs an administrator')}</span></div>{admin ? <div className="branch-admin-detail"><b>{admin.name || t('Administrator')}</b><small>{admin.email || t('No email recorded')} · {lastActive(admin.lastLogin, t)}</small></div> : <p>{t('Choose this branch above to assign an administrator.')}</p>}<small className="branch-coverage-list">{t('Coverage')}: {areas.join(', ') || t('Not configured')}</small></article>; })}</div>}</section>
-    <section className="branch-directory branch-email-directory" aria-label={t('Administrator email management')}><header><div><p>{t('Administrator accounts')}</p><h2>{t('Contact email addresses')}</h2><span>{t("Editing an email does not change the administrator's account ID, branch, permissions, password, or session ownership.")}</span></div></header>{loading ? <p className="branch-empty">{t('Loading administrator accounts…')}</p> : <div>{admins.map((admin) => <article key={admin.id}><div><strong>{admin.name || t('Administrator')}</strong><span>{admin.assignedBranch || t('Unassigned')}</span></div><label>{t('Email address')}<input type="email" value={admin.email || ''} onChange={(event) => setAdmins((current) => current.map((item) => item.id === admin.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" disabled={savingEmailId === admin.id} /></label><button type="button" onClick={() => saveAdminEmail(admin)} disabled={Boolean(savingEmailId)}>{t(savingEmailId === admin.id ? 'Saving…' : 'Save email')}</button></article>)}</div>}</section>
+    <section className="branch-directory" aria-label={t('Branch assignments')}><header><div><p>{t('Branch directory')}</p><h2>{t('Current ownership')}</h2></div></header>{loading ? <LoadingSkeleton label={t('Loading branch assignments…')} variant="table" /> : <div>{branchNames.map((name) => { const admin = assignmentByBranch[name]; const areas = coverage.find((item) => item.name === name)?.coverageAreas || []; return <article key={name}><div><strong>{name}</strong><span>{t(admin ? 'Assigned' : 'Needs an administrator')}</span></div>{admin ? <div className="branch-admin-detail"><b>{admin.name || t('Administrator')}</b><small>{admin.email || t('No email recorded')} · {lastActive(admin.lastLogin, t)}</small></div> : <p>{t('Choose this branch above to assign an administrator.')}</p>}<small className="branch-coverage-list">{t('Coverage')}: {areas.join(', ') || t('Not configured')}</small></article>; })}</div>}</section>
+    <section className="branch-directory branch-email-directory" aria-label={t('Administrator email management')}><header><div><p>{t('Administrator accounts')}</p><h2>{t('Contact email addresses')}</h2><span>{t("Editing an email does not change the administrator's account ID, branch, permissions, password, or session ownership.")}</span></div></header>{loading ? <LoadingSkeleton label={t('Loading administrator accounts…')} variant="table" /> : <div>{admins.map((admin) => <article key={admin.id}><div><strong>{admin.name || t('Administrator')}</strong><span>{admin.assignedBranch || t('Unassigned')}</span></div><label>{t('Email address')}<input maxLength={254} type="email" value={admin.email || ''} onChange={(event) => setAdmins((current) => current.map((item) => item.id === admin.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" disabled={savingEmailId === admin.id} /></label><button type="button" onClick={() => saveAdminEmail(admin)} disabled={Boolean(savingEmailId)}>{t(savingEmailId === admin.id ? 'Saving…' : 'Save email')}</button></article>)}</div>}</section>
   </SuperAdminLayout>;
 };
 

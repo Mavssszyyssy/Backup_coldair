@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -5,7 +7,7 @@ import AdminLayout from '../Common/AdminLayout';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
 import { confirmDialog } from '../../../utils/dialog';
-import { formatBusinessDateKey } from '../../../utils/dateTime';
+import { formatBusinessDateKey, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import { appendAuditLog } from '../../../utils/auditLogs';
@@ -28,9 +30,7 @@ const TIME_SLOT_OPTIONS = [
   '4:00 PM - 6:00 PM',
 ];
 
-const getTodayDateInput = () => formatBusinessDateKey();
 
-const isPastCalendarDate = (value) => Boolean(value && String(value) < getTodayDateInput());
 
 const getInventoryQrPayload = (serialNumber, storedQrCode = '') => {
   const serial = String(serialNumber || '').trim();
@@ -214,21 +214,21 @@ const AdminOrders = ({ embedded = false }) => {
   const skipNextFilterPageResetRef = useRef(false);
 
   const loadOrders = useCallback(async (options = {}) => {
-    const background = Boolean(options?.background);
+    const { background = false, fresh = false } = options;
     if (orderLoadInFlightRef.current) return;
     orderLoadInFlightRef.current = true;
     setError('');
     setLoading(true);
     try {
       const [ordersResponse, tasksResponse] = await Promise.all([
-        apiRequest('/orders', { silentConnection: background }),
-        apiRequest('/tasks?limit=75', { silentConnection: background }).catch(() => ({ tasks: [] })),
+        apiRequest('/orders', { silentConnection: background, fresh }),
+        apiRequest('/tasks?limit=75', { silentConnection: background, fresh }).catch(() => ({ tasks: [] })),
       ]);
       const response = ordersResponse;
       setOrders(response.orders || []);
       setTasks(tasksResponse.tasks || []);
       setLastSyncedAt(new Date());
-      apiRequest('/users?role=technician', { silentConnection: true })
+      apiRequest('/users?role=technician', { silentConnection: true, fresh })
         .then((usersResponse) => setTechnicians(usersResponse.users || []))
         .catch(() => setTechnicians([]));
     } catch (e) {
@@ -417,9 +417,9 @@ const AdminOrders = ({ embedded = false }) => {
       alert(t('Choose an installation date and time slot before dispatching this order.'));
       return;
     }
-    if (['approve', 'dispatch'].includes(config.action) && isPastCalendarDate(form.installationDate)) {
-      alert('Installation date must be today or a future date.');
-      return;
+    if (['approve', 'dispatch'].includes(config.action) && form.installationDate) {
+      const dateError = getWorkOrderDateSelectionError(form.installationDate);
+      if (dateError) { alert(t(dateError)); return; }
     }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
     if (config.action === 'cancel' && !form.cancellationReason.trim()) {
@@ -493,9 +493,9 @@ const AdminOrders = ({ embedded = false }) => {
 
     const processingKey = `${order.id}:recovery-${action}`;
     const form = getFulfillmentForm(order);
-    if (['assign_technician', 'recreate_task'].includes(action) && isPastCalendarDate(form.installationDate)) {
-      alert('Installation date must be today or a future date.');
-      return;
+    if (['assign_technician', 'recreate_task'].includes(action) && form.installationDate) {
+      const dateError = getWorkOrderDateSelectionError(form.installationDate);
+      if (dateError) { alert(t(dateError)); return; }
     }
     const technician = technicians.find((item) => String(item.id) === String(form.assignedTechnicianId));
     setProcessingId(processingKey);
@@ -572,7 +572,7 @@ const AdminOrders = ({ embedded = false }) => {
   return (
     <AdminLayout title={t('Customer Orders')} subtitle={t('Review and process customer checkout requests')} embedded={embedded}>
       <div className="admin-orders-page">
-        {loading ? <p>{t('Loading orders...')}</p> : null}
+        {loading ? <LoadingSkeleton label={t('Loading orders...')} /> : null}
         {error ? <p className="admin-orders-error">{t(error)}</p> : null}
         {!loading ? (
           <div className="admin-orders-filter-panel">
@@ -581,7 +581,7 @@ const AdminOrders = ({ embedded = false }) => {
                 <strong>{t('Find customer orders')}</strong>
                 <span>{t('Search and narrow the list before processing an order.')}</span>
               </div>
-              <button type="button" onClick={loadOrders} className="admin-orders-refresh">
+              <button type="button" onClick={() => loadOrders({ fresh: true })} className="admin-orders-refresh">
                 {t('Refresh')}{lastSyncedAt ? ` · ${lastSyncedAt.toLocaleTimeString()}` : ''}
               </button>
             </div>
@@ -590,6 +590,7 @@ const AdminOrders = ({ embedded = false }) => {
               <label className="admin-orders-search-field">
                 <span>{t('Search orders')}</span>
                 <input
+                  maxLength={160}
                   type="search"
                   value={orderSearch}
                   onChange={(event) => setOrderSearch(event.target.value)}
@@ -599,29 +600,29 @@ const AdminOrders = ({ embedded = false }) => {
               </label>
               <label>
                 <span>{t('Order stage')}</span>
-                <select value={workflowFilter} onChange={(event) => setWorkflowFilter(event.target.value)}>
+                <SearchableSelect value={workflowFilter} onChange={(event) => setWorkflowFilter(event.target.value)}>
                   {ORDER_WORKFLOW_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-                </select>
+                </SearchableSelect>
               </label>
               <label>
                 <span>{t('Payment')}</span>
-                <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+                <SearchableSelect value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
                   {ORDER_PAYMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-                </select>
+                </SearchableSelect>
               </label>
               <label>
                 <span>{t('Order date')}</span>
-                <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                <SearchableSelect value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
                   {ORDER_DATE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-                </select>
+                </SearchableSelect>
               </label>
               {branchOptions.length > 1 ? (
                 <label>
                   <span>{t('Stock branch')}</span>
-                  <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
+                  <SearchableSelect value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
                     <option value="all">{t('All branches')}</option>
                     {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </label>
               ) : null}
             </div>
@@ -769,7 +770,7 @@ const AdminOrders = ({ embedded = false }) => {
                   <div className="admin-order-fulfillment">
                     <label>
                       {t('Technician')}
-                      <select
+                      <SearchableSelect
                         value={getFulfillmentForm(order).assignedTechnicianId}
                         onChange={(event) => updateFulfillmentForm(order, { assignedTechnicianId: event.target.value })}
                       >
@@ -780,13 +781,13 @@ const AdminOrders = ({ embedded = false }) => {
                             {technician.assignedBranch ? ` - ${technician.assignedBranch}` : ''}
                           </option>
                         ))}
-                      </select>
+                      </SearchableSelect>
                     </label>
                     <label>
                       {t('Installation & delivery date')}
                       <input
                         type="date"
-                        min={getTodayDateInput()}
+                        {...getWorkOrderDateWindow()}
                         value={getFulfillmentForm(order).installationDate}
                         onChange={(event) => updateFulfillmentForm(order, { installationDate: event.target.value })}
                       />
@@ -794,7 +795,7 @@ const AdminOrders = ({ embedded = false }) => {
                     </label>
                     <label>
                       {t('Time Slot')}
-                      <select
+                      <SearchableSelect
                         value={getFulfillmentForm(order).timeSlot}
                         onChange={(event) => updateFulfillmentForm(order, { timeSlot: event.target.value })}
                       >
@@ -802,7 +803,7 @@ const AdminOrders = ({ embedded = false }) => {
                         {TIME_SLOT_OPTIONS.map((slot) => (
                           <option key={slot} value={slot}>{slot}</option>
                         ))}
-                      </select>
+                      </SearchableSelect>
                     </label>
                     <button
                       type="button"
@@ -957,6 +958,7 @@ const AdminOrders = ({ embedded = false }) => {
                         {canCancel ? (
                           <>
                             <input
+                              maxLength={500}
                               className="admin-cancel-reason"
                               type="text"
                               placeholder={t('Cancellation note')}

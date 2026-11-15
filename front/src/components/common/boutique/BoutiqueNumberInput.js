@@ -122,6 +122,7 @@ export default function BoutiqueNumberInput({
       </button>
 
       <input
+        maxLength={20}
         type="text"
         className="bq-num-field"
         style={{ fontSize: fontSizes[size] }}

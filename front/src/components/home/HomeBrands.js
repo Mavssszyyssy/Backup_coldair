@@ -40,7 +40,7 @@ export default function HomeBrands({ brands }) {
         dangerouslySetInnerHTML={{
           __html: `
         .home-brands {
-          padding: 100px 40px;
+          padding: clamp(28px, 4vw, 60px) clamp(16px, 3vw, 40px);
           background: ${BQ_COLORS.surface};
         }
 
@@ -57,21 +57,21 @@ export default function HomeBrands({ brands }) {
           text-transform: uppercase;
           letter-spacing: 0.25em;
           text-align: center;
-          margin-bottom: 72px;
+          margin-bottom: 24px;
           opacity: 1;
         }
 
         .brands-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 24px;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+          gap: 16px;
         }
 
         .brand-card {
           display: flex;
           align-items: center;
-          gap: 24px;
-          padding: 32px;
+          gap: 16px;
+          padding: 20px;
           background: ${BQ_COLORS.surfaceAlt};
           border-radius: ${BQ_GEOMETRY.radiusCard};
           transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);

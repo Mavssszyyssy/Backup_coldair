@@ -1,9 +1,11 @@
 // app/(technician)/tasks.jsx
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import React, { useMemo, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TechnicianScreen, {
   TechHero,
 } from "../../components/technician/TechnicianScreen";
@@ -107,6 +109,7 @@ function FilterSheet({
   tasks,
 }) {
   const { t } = useInterfaceLanguage();
+  const { bottom } = useSafeAreaInsets();
   const closeSheet = () => {
     Keyboard.dismiss();
     onClose();
@@ -128,7 +131,7 @@ function FilterSheet({
           onPress={() => {}}
           style={{ maxHeight: "88%", backgroundColor: COLORS.bg, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl }}
         >
-          <KeyboardAwareScrollView minBottomPadding={SPACING.xxl + 48} contentContainerStyle={{ padding: SPACING.md }}>
+          <KeyboardAwareScrollView minBottomPadding={SPACING.md + bottom} contentContainerStyle={{ padding: SPACING.md }}>
           <View style={{ width: 42, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderInput, alignSelf: "center", marginBottom: SPACING.sm }} />
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
             <View style={{ width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}>
@@ -146,6 +149,7 @@ function FilterSheet({
           <View style={{ flexDirection: "row", alignItems: "center", minHeight: 46, borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.surface, marginBottom: SPACING.md }}>
             <Ionicons name="search-sharp" size={19} color={COLORS.textMuted} />
             <TextInput
+              maxLength={160}
               value={searchQuery}
               onChangeText={onSearchChange}
               placeholder={t("Search customer, task, order, or serial")}
@@ -227,6 +231,7 @@ export default function TasksScreen() {
   const routeFilters = workOrderRouteFilters(params);
   const { current } = useUserContext();
   const [tasks, setTasks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState(routeFilters.status);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState(routeFilters.search);
@@ -246,7 +251,7 @@ export default function TasksScreen() {
       .then((all) => {
         if (isCurrent()) setTasks(sortTechnicianWorkOrders(all));
       })
-      .catch(() => {});
+      .finally(() => { if (isCurrent()) setLoaded(true); });
   };
   useFocusEffect(
     React.useCallback(() => {
@@ -256,6 +261,7 @@ export default function TasksScreen() {
         .then((all) => {
           if (!active) return;
           setTasks(sortTechnicianWorkOrders(all));
+          if (all.length) setLoaded(true);
         })
         .catch(() => {});
       const stop = startLiveRefresh(refresh);
@@ -402,7 +408,6 @@ export default function TasksScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: SPACING.lg }}
         showsVerticalScrollIndicator={false}
       >
         <View>
@@ -440,7 +445,7 @@ export default function TasksScreen() {
             </View>
           </Card>
         </View>
-        {visibleTasks.length === 0 ? (
+        {!loaded ? <LoadingSkeleton label={t("Loading…")} /> : visibleTasks.length === 0 ? (
           <EmptyState
             title={t(tasks.length ? "No matching work orders" : "No work orders assigned")}
             message={t(tasks.length ? "Try clearing or changing the current filters." : "Assigned service work will appear here.")}

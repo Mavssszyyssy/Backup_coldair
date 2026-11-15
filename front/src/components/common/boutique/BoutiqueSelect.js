@@ -1,3 +1,4 @@
+import SearchableSelect from "../SearchableSelect";
 import { CaretDown } from "@phosphor-icons/react";
 import {
   BQ_COLORS,
@@ -22,7 +23,7 @@ export default function BoutiqueSelect({
 }) {
   return (
     <div className="bq-select-container">
-      <select
+      <SearchableSelect
         className="bq-select-field"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -34,7 +35,7 @@ export default function BoutiqueSelect({
             {opt.label || opt}
           </option>
         ))}
-      </select>
+      </SearchableSelect>
 
       <div className="bq-select-icon">
         <CaretDown size={14} weight="bold" />
@@ -89,6 +90,8 @@ export default function BoutiqueSelect({
           transform: translateY(-50%) rotate(180deg);
           color: ${BQ_COLORS.brand};
         }
+
+        .searchable-select + .bq-select-icon { right: 62px; }
       `,
         }}
       />

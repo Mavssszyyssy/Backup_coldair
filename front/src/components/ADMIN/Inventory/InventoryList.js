@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
@@ -7,9 +9,34 @@ import { alertDialog } from '../../../utils/dialog';
 import { sortInventoryProducts } from '../../../domain/inventorySort';
 import { inventoryStockState } from '../../../domain/stockAlerts';
 import { isFilipino, translateText } from '../../../utils/customerI18n';
+import { formatPesoAmount } from '../../../utils/currency';
 import './styles.css';
 
-const priceFormat = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
+const productFilters = [
+  { field: 'brand', label: 'Brand', all: 'All brands' },
+  { field: 'category', label: 'Category', all: 'All categories' },
+  { field: 'specs', label: 'HP / Specs', all: 'All specs' },
+];
+const filterKey = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+const categoryLabels = new Map([['split', 'Split type'], ['window', 'Window type'], ['floor', 'Floor mounted']]);
+
+function inventoryFilterValue(product, field) {
+  const key = filterKey(product[field]);
+  const horsepower = field === 'specs' && key.match(/^(\d+(?:\.\d+)?)(?:\s*hp)?$/);
+  return horsepower ? `${Number(horsepower[1])} hp` : key;
+}
+
+function getFilterOptions(products, field) {
+  const labels = new Map();
+  for (const product of products) {
+    const key = inventoryFilterValue(product, field);
+    if (key && !labels.has(key)) {
+      const label = field === 'specs' && /^\d+(?:\.\d+)? hp$/.test(key) ? key.replace(' hp', ' HP') : String(product[field]).trim();
+      labels.set(key, label);
+    }
+  }
+  return new Map([...labels].sort(([, left], [, right]) => left.localeCompare(right, 'en-PH', { numeric: true })));
+}
 
 const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, getProductStock, canManageStock = false, searchQuery = '', stockFilter = 'all' }) => {
   const { user, currentLanguage } = useUser();
@@ -19,6 +46,9 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [sort, setSort] = React.useState('recent');
+  const [filters, setFilters] = React.useState({});
+  const filterOptions = React.useMemo(() => productFilters.map(({ field }) => getFilterOptions(products, field)), [products]);
+  const query = filterKey(searchQuery);
 
   const getRowState = (productId) => rowState[productId] || { quantity: '' };
   const setRowValue = (productId, next) => {
@@ -37,26 +67,29 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
 
   const visibleProducts = sortInventoryProducts(products.filter((product) => {
     const stock = Number(getStockDisplay(product) || 0);
-    const query = String(searchQuery || '').trim().toLowerCase();
     const searchable = [product.name, product.sku, product.brand, product.category, product.specs]
-      .map((value) => String(value || '').toLowerCase())
+      .map(filterKey)
       .join(' ');
     const matchesSearch = !query || searchable.includes(query);
     const state = inventoryStockState(product, branch, stock);
     const matchesStock =
       stockFilter === 'all' ||
       stockFilter === state;
-    return matchesSearch && matchesStock;
+    return matchesSearch && matchesStock && productFilters.every(({ field }, index) => {
+      const selected = filters[field];
+      return !filterOptions[index].has(selected) || inventoryFilterValue(product, field) === selected;
+    });
   }), sort);
 
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
-  const firstProductIndex = (page - 1) * pageSize;
+  const currentPage = Math.min(page, totalPages);
+  const firstProductIndex = (currentPage - 1) * pageSize;
   const pageProducts = visibleProducts.slice(firstProductIndex, firstProductIndex + pageSize);
   const columnCount = 7 + (canManageStock ? 1 : 0) + (onRequestChange ? 1 : 0);
 
   React.useEffect(() => {
     setPage(1);
-  }, [searchQuery, stockFilter, branch, pageSize, sort]);
+  }, [searchQuery, stockFilter, branch, pageSize, sort, filters]);
 
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -105,11 +138,42 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
 
   return (
     <div className="admin-card">
-      <h3>{t('Inventory List')}</h3>
-      {loading ? (
-        <p>{t('Loading…')}</p>
+      <div className="inventory-list-heading">
+        <h3>{t('Inventory List')}</h3>
+        {onRefresh && <button type="button" className="inventory-refresh-button" onClick={onRefresh} disabled={loading}>
+          {t(loading ? 'Refreshing…' : 'Refresh')}
+        </button>}
+      </div>
+      <div className="inventory-list-filters">
+        {productFilters.map(({ field, label, all }, index) => (
+          <label key={field}>
+            <span>{t(label)}</span>
+            <SearchableSelect
+              value={filterOptions[index].has(filters[field]) ? filters[field] : ''}
+              onChange={(event) => {
+                const value = event.target.value;
+                setFilters((previous) => ({ ...previous, [field]: value }));
+              }}
+            >
+              <option value="">{t(all)}</option>
+              {[...filterOptions[index]].map(([key, name]) => (
+                <option key={key} value={key}>{field === 'category' && categoryLabels.has(key) ? t(categoryLabels.get(key)) : name}</option>
+              ))}
+            </SearchableSelect>
+          </label>
+        ))}
+        <label>
+          <span>{t('Sort products')}</span>
+          <SearchableSelect aria-label={t('Sort inventory')} value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="recent">{t('Newest first')}</option>
+            <option value="name-asc">{t('Product Name — A to Z')}</option>
+            <option value="name-desc">{t('Product Name — Z to A')}</option>
+          </SearchableSelect>
+        </label>
+      </div>
+      {loading && !products.length ? (
+        <LoadingSkeleton label={t('Loading…')} variant="table" />
       ) : null}
-      <label className="inventory-sort-control">{t('Sort products')} <select aria-label={t('Sort inventory')} value={sort} onChange={(event) => setSort(event.target.value)}><option value="recent">{t('Newest first')}</option><option value="name-asc">{t('Product Name — A to Z')}</option><option value="name-desc">{t('Product Name — Z to A')}</option></select></label>
       <div className="inventory-table-scroll">
         <table className={`admin-table inventory-table${canManageStock || onRequestChange ? ' inventory-table--with-actions' : ''}`}>
         <thead>
@@ -147,7 +211,7 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
                   {t(inventoryStockState(product, branch, getStockDisplay(product)) === 'out' ? 'Out of stock' : inventoryStockState(product, branch, getStockDisplay(product)) === 'low' ? 'Low stock' : 'In stock')} · {getStockDisplay(product)}
                 </span>
               </td>
-              <td className="inventory-price">{product.price != null && product.price !== '' && Number.isFinite(Number(product.price)) ? `PHP ${priceFormat.format(Number(product.price))}` : '—'}</td>
+              <td className="inventory-price">{product.price != null && product.price !== '' && Number.isFinite(Number(product.price)) ? `PHP ${formatPesoAmount(product.price)}` : '—'}</td>
               {canManageStock && (
                 <td className="inventory-stock-adjustment-cell">
                   <div className="inventory-stock-adjustment">
@@ -188,36 +252,35 @@ const InventoryList = ({ products, loading, onRefresh, branch, onRequestChange, 
         </table>
       </div>
       {!loading && visibleProducts.length > 0 ? (
-        <div className="inventory-pagination" aria-label={t('Inventory pagination')}>
+        <nav className="inventory-pagination" aria-label={t('Inventory pagination')}>
           <span className="inventory-pagination-summary">
             {t('Showing')} {firstProductIndex + 1}-{Math.min(firstProductIndex + pageSize, visibleProducts.length)} {t('of')} {visibleProducts.length}
           </span>
-          <label className="inventory-page-size">
-            {t('Rows')}
-            <select
-              value={pageSize}
-              onChange={(event) => setPageSize(Number(event.target.value))}
-              aria-label={t('Inventory rows per page')}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </label>
-          <div className="inventory-page-controls">
-            <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
-              {t('Previous')}
-            </button>
-            <span>{t('Page')} {page} {t('of')} {totalPages}</span>
-            <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>
-              {t('Next')}
-            </button>
+          <div className="inventory-pagination-actions">
+            <label className="inventory-page-size">
+              {t('Rows')}
+              <SearchableSelect
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+                aria-label={t('Inventory rows per page')}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </SearchableSelect>
+            </label>
+            <div className="inventory-page-controls">
+              <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}>
+                {t('Previous')}
+              </button>
+              <span>{t('Page')} {currentPage} {t('of')} {totalPages}</span>
+              <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                {t('Next')}
+              </button>
+            </div>
           </div>
-        </div>
+        </nav>
       ) : null}
-      <button type="button" className="inventory-refresh-button" onClick={onRefresh}>
-        {t('Refresh')}
-      </button>
     </div>
   );
 };

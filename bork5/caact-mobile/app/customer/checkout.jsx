@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
@@ -48,13 +49,13 @@ const formatHorsepower = (item = {}) => {
 };
 
 
-const getCheckoutIdempotencyKey = async (fingerprint) => {
+const getCheckoutIdempotencyKey = async (fingerprint, storageKey, online) => {
   try {
-    const saved = JSON.parse(await AsyncStorage.getItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY) || "null");
+    const saved = JSON.parse(await AsyncStorage.getItem(storageKey) || "null");
     if (
       saved?.key &&
       saved.fingerprint === fingerprint &&
-      Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS
+      (online || Date.now() - Number(saved.createdAt || 0) < CHECKOUT_IDEMPOTENCY_TTL_MS)
     ) return saved.key;
   } catch (_error) {
     // An in-memory key still protects the current screen.
@@ -62,7 +63,7 @@ const getCheckoutIdempotencyKey = async (fingerprint) => {
   const key = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
     await AsyncStorage.setItem(
-      CHECKOUT_IDEMPOTENCY_STORAGE_KEY,
+      storageKey,
       JSON.stringify({ key, fingerprint, createdAt: Date.now() }),
     );
   } catch (_error) {
@@ -71,11 +72,11 @@ const getCheckoutIdempotencyKey = async (fingerprint) => {
   return key;
 };
 
-const clearCheckoutIdempotencyKey = async () => {
+const clearCheckoutIdempotencyKey = async (storageKey) => {
   try {
-    await AsyncStorage.removeItem(CHECKOUT_IDEMPOTENCY_STORAGE_KEY);
+    await AsyncStorage.removeItem(storageKey);
   } catch (_error) {
-    // The key naturally expires, so an unavailable store needs no action.
+    // If storage is unavailable, a replay still opens the saved order.
   }
 };
 
@@ -90,8 +91,13 @@ const calculateCheckoutTotals = (items = [], branch = "") => {
 };
 
 export default function CheckoutScreen() {
+  const { addressId, buyNowProductId } = useLocalSearchParams();
+  const productId = Array.isArray(buyNowProductId) ? buyNowProductId[0] : buyNowProductId;
+  return <Checkout key={productId ? `buy-now:${productId}` : "cart"} addressId={addressId} buyNowProductId={productId} />;
+}
+
+function Checkout({ addressId, buyNowProductId }) {
   const router = useRouter();
-  const { addressId } = useLocalSearchParams();
   const { language, t } = useInterfaceLanguage();
   const localizeIssue = (message) => {
     const zipMismatch = String(message || "").match(/^ZIP code does not match (.+)\.$/);
@@ -99,8 +105,18 @@ export default function CheckoutScreen() {
       ? `Hindi tumutugma ang ZIP code sa ${zipMismatch[1]}.`
       : t(message);
   };
-  const { cart, clearCart, replaceCart, updateQuantity, removeFromCart } = useCart();
+  const { cart, hydrated = true, clearCart, replaceCart, updateQuantity, removeFromCart } = useCart();
   const { current, token } = useUserContext();
+  const isBuyNow = buyNowProductId !== undefined;
+  const storageKey = isBuyNow ? `${CHECKOUT_IDEMPOTENCY_STORAGE_KEY}:buy-now` : CHECKOUT_IDEMPOTENCY_STORAGE_KEY;
+  const [buyNowProduct, setBuyNowProduct] = useState(null);
+  const [buyNowQuantity, setBuyNowQuantity] = useState(1);
+  const [buyNowError, setBuyNowError] = useState("");
+  const [buyNowRetry, setBuyNowRetry] = useState(0);
+  const checkoutItems = useMemo(() => {
+    if (!isBuyNow) return cart;
+    return buyNowProduct && buyNowQuantity > 0 ? [{ ...buyNowProduct, quantity: buyNowQuantity }] : [];
+  }, [buyNowProduct, buyNowQuantity, cart, isBuyNow]);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
@@ -111,7 +127,7 @@ export default function CheckoutScreen() {
   const [stockIssues, setStockIssues] = useState([]);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [connectionRecoveryRevision, setConnectionRecoveryRevision] = useState(0);
-  const orderRequestKeyRef = useRef("");
+  const orderRequestRef = useRef(null);
   const submissionInFlightRef = useRef(false);
   const stockRefreshRef = useRef(0);
   const savedAddresses = useMemo(() => Array.isArray(current?.addresses) ? current.addresses : [], [current?.addresses]);
@@ -123,7 +139,22 @@ export default function CheckoutScreen() {
     const phoneError = address?.phone ? validatePhone(address.phone) : "Phone number is required.";
     return phoneError || validatePostalCodeForAddress(address);
   }, [address]);
-  const checkoutTotals = useMemo(() => calculateCheckoutTotals(cart, inventoryBranch), [cart, inventoryBranch]);
+  const checkoutTotals = useMemo(() => calculateCheckoutTotals(checkoutItems, inventoryBranch), [checkoutItems, inventoryBranch]);
+
+  useEffect(() => {
+    if (!isBuyNow) return;
+    let active = true;
+    setBuyNowError("");
+    fetchShopProducts()
+      .then((products) => {
+        if (!active) return;
+        const product = products.find((item) => String(item.id) === buyNowProductId);
+        if (product) setBuyNowProduct(product);
+        else setBuyNowError("This item is no longer available. Choose another item from the shop.");
+      })
+      .catch(() => { if (active) setBuyNowError("Unable to load products."); });
+    return () => { active = false; };
+  }, [buyNowProductId, buyNowRetry, isBuyNow]);
 
   useEffect(() => {
     return subscribeBackendRecovery(() => {
@@ -145,7 +176,7 @@ export default function CheckoutScreen() {
 
   const refreshCheckoutStock = useCallback(async () => {
     const refreshId = ++stockRefreshRef.current;
-    if (!inventoryBranch || cart.length === 0) {
+    if (!inventoryBranch || checkoutItems.length === 0) {
       setBranchStockById({});
       setStockIssues([]);
       return [];
@@ -156,7 +187,7 @@ export default function CheckoutScreen() {
       const stockBySku = Object.fromEntries(catalogue
         .filter((product) => product.sku)
         .map((product) => [`sku:${String(product.sku)}`, Number(product.stock || 0)]));
-      const nextIssues = cart.flatMap((item) => {
+      const nextIssues = checkoutItems.flatMap((item) => {
         const stock = stockById[String(item.id)] ?? stockBySku[`sku:${String(item.sku || "")}`];
         if (!Number.isSafeInteger(Number(item.quantity)) || Number(item.quantity) <= 0) return [{ id: String(item.id), name: item.name || "This item", available: stock || 0, code: "invalid_quantity" }];
         if (!Number.isFinite(stock)) return [{ id: String(item.id), name: item.name || "This item", available: 0, code: "out_of_stock" }];
@@ -174,7 +205,7 @@ export default function CheckoutScreen() {
       // incorrectly label stock unavailable when the catalogue is offline.
       return [];
     }
-  }, [cart, inventoryBranch]);
+  }, [checkoutItems, inventoryBranch]);
 
   useEffect(() => {
     void refreshCheckoutStock();
@@ -182,7 +213,7 @@ export default function CheckoutScreen() {
 
   const submitOrder = async () => {
     if (submissionInFlightRef.current) return;
-    if (!cart.length) return Alert.alert(t("Cart is empty"), t("Add an item before checking out."));
+    if (!checkoutItems.length) return;
     if (!token) return Alert.alert(t("Sign in required"), t("Please sign in again before checking out."));
     if (addressIssue) return Alert.alert(t("Complete delivery address"), localizeIssue(addressIssue));
 
@@ -204,7 +235,7 @@ export default function CheckoutScreen() {
     // Cart contents can persist between app updates. Resolve every line back
     // to the active catalogue before checkout so placeholder or stale IDs
     // cannot make COD or PayMongo appear to do nothing.
-    let checkoutCart = cart;
+    let checkoutCart = checkoutItems;
     let liveBranch = "";
     try {
       liveBranch = await resolveConfiguredInventoryBranch(address);
@@ -215,9 +246,9 @@ export default function CheckoutScreen() {
       const catalogue = await fetchShopProducts(
         liveBranch,
       );
-      const activeItems = validateBranchCart(cart, catalogue, liveBranch);
+      const activeItems = validateBranchCart(checkoutItems, catalogue, liveBranch);
       checkoutCart = activeItems;
-      replaceCart(activeItems);
+      if (!isBuyNow) replaceCart(activeItems);
     } catch (error) {
       setSubmitting(false);
       setCheckoutMessage("");
@@ -269,7 +300,7 @@ export default function CheckoutScreen() {
       if (latestBranch !== liveBranch) {
         const latestCatalogue = await fetchShopProducts(latestBranch);
         checkoutCart = validateBranchCart(checkoutCart, latestCatalogue, latestBranch);
-        replaceCart(checkoutCart);
+        if (!isBuyNow) replaceCart(checkoutCart);
       }
     } catch (error) {
       setSubmitting(false);
@@ -278,14 +309,28 @@ export default function CheckoutScreen() {
     }
     setInventoryBranch(latestBranch);
     const latestTotals = calculateCheckoutTotals(checkoutCart, latestBranch);
-    orderRequestKeyRef.current = await getCheckoutIdempotencyKey(
-      checkoutFingerprint({ cartItems: checkoutCart, address: checkoutAddress, paymentMethod, customerId: checkoutUser?.id || checkoutUser?._id, branch: latestBranch }),
-    );
+    const fingerprint = checkoutFingerprint({
+      cartItems: checkoutCart,
+      address: checkoutAddress,
+      paymentMethod,
+      customerId: checkoutUser?.id || checkoutUser?._id,
+      branch: latestBranch,
+    });
+    if (orderRequestRef.current?.fingerprint !== fingerprint) {
+      orderRequestRef.current = { fingerprint, key: await getCheckoutIdempotencyKey(fingerprint, storageKey, paymentMethod !== "cod") };
+    }
     setCheckoutMessage(
       paymentMethod === "cod"
         ? "Submitting your order…"
         : "Connecting to secure payment…",
     );
+    const finishCheckout = async (orderId, online) => {
+      if (!isBuyNow) clearCart();
+      orderRequestRef.current = null;
+      await clearCheckoutIdempotencyKey(storageKey);
+      router.replace(`/customer/order-confirmation/${encodeURIComponent(orderId)}${online ? "?payment=returned" : ""}`);
+    };
+    let paymentTimeout;
     try {
       const result = await Promise.race([
         createOrder(token, {
@@ -306,29 +351,26 @@ export default function CheckoutScreen() {
           shippingFee: latestTotals.shippingFee,
           total: latestTotals.total,
           paymentReturnTarget: "mobile",
-          idempotencyKey: orderRequestKeyRef.current,
+          idempotencyKey: orderRequestRef.current.key,
         }),
-        new Promise((_, reject) =>
-          setTimeout(() => {
+        new Promise((_, reject) => {
+          paymentTimeout = setTimeout(() => {
             const timeout = new Error(
               "Connection timed out. Check My Orders before trying again; your order may still be processing.",
             );
             timeout.code = "PAYMENT_CONNECTION_TIMEOUT";
             reject(timeout);
-          }, PAYMENT_CONNECTION_TIMEOUT_MS),
-        ),
+          }, PAYMENT_CONNECTION_TIMEOUT_MS);
+        }),
       ]);
       if (!result.success) {
         if (result.code === "ORDER_PAYMENT_RETRY_REQUIRED" && result.orderId) {
-          clearCart();
-          orderRequestKeyRef.current = "";
-          await clearCheckoutIdempotencyKey();
-          router.replace(`/customer/order-confirmation/${result.orderId}?payment=returned`);
+          await finishCheckout(result.orderId, true);
           return;
         }
         if (result.code === "ORDER_CHECKOUT_FAILED") {
-          orderRequestKeyRef.current = "";
-          await clearCheckoutIdempotencyKey();
+          orderRequestRef.current = null;
+          await clearCheckoutIdempotencyKey(storageKey);
         }
         const error = new Error(result.error);
         error.status = result.status;
@@ -342,22 +384,17 @@ export default function CheckoutScreen() {
         result.order?.paymentUrl ||
         result.order?.paymongo?.checkoutUrl;
 
-      if (paymentMethod !== "cod") {
-        if (!checkoutUrl) {
-          throw new Error("A secure payment link was not provided. Your cart is still available—please try again shortly.");
+      const online = paymentMethod !== "cod";
+      // Commit the saved order locally before handing control to the external browser.
+      await finishCheckout(orderId, online);
+      if (online) {
+        try {
+          if (!checkoutUrl || !(await Linking.canOpenURL(checkoutUrl))) throw new Error("Unavailable checkout link");
+          await Linking.openURL(checkoutUrl);
+        } catch {
+          Alert.alert(t("Payment connection failed"), t("Your order was saved, but payment has not started. Check My Orders before placing another order or contact support."));
         }
-        setCheckoutMessage("Connecting to secure payment…");
-        const canOpenCheckout = await Linking.canOpenURL(checkoutUrl);
-        if (!canOpenCheckout) {
-          throw new Error("This device could not open the secure payment link. Your cart is still available—please try again or use another payment method.");
-        }
-        await Linking.openURL(checkoutUrl);
       }
-
-      clearCart();
-      orderRequestKeyRef.current = "";
-      await clearCheckoutIdempotencyKey();
-      router.replace(`/customer/order-confirmation/${orderId}${paymentMethod !== "cod" ? "?payment=returned" : ""}`);
     } catch (error) {
       Alert.alert(
         error?.code === "PAYMENT_CONNECTION_TIMEOUT"
@@ -365,6 +402,8 @@ export default function CheckoutScreen() {
           : t("Payment connection failed"),
         t(error?.message || "Unable to connect to secure payment."),
       );
+    } finally {
+      clearTimeout(paymentTimeout);
     }
     } finally {
       submissionInFlightRef.current = false;
@@ -377,9 +416,17 @@ export default function CheckoutScreen() {
     <>
       <BoutiqueHeader title={t("Checkout")} subtitle={t("Review and place your order")} onBack={() => { if (!submissionInFlightRef.current) router.back(); }} />
       <BoutiqueScreen>
-        {cart.length === 0 ? (
+        {isBuyNow && buyNowError ? (
           <BoutiqueCard style={{ gap: BQ_SPACING.md }}>
-            <BoutiqueText variant="h2">{t("Your cart is empty")}</BoutiqueText>
+            <BoutiqueText accessibilityRole="alert">{t(buyNowError)}</BoutiqueText>
+            <BoutiqueButton title={t("Retry")} onPress={() => setBuyNowRetry((value) => value + 1)} />
+            <BoutiqueButton variant="outline" title={t("Browse products")} onPress={() => router.replace("/customer/shop")} />
+          </BoutiqueCard>
+        ) : (isBuyNow ? !buyNowProduct : !hydrated) ? (
+          <LoadingSkeleton label={t(isBuyNow ? "Loading product details…" : "Loading your cart…")} variant="detail" count={2} />
+        ) : checkoutItems.length === 0 ? (
+          <BoutiqueCard style={{ gap: BQ_SPACING.md }}>
+            <BoutiqueText variant="h2">{t(isBuyNow ? "No item selected for Buy Now." : "Your cart is empty")}</BoutiqueText>
             <BoutiqueButton title={t("Browse products")} onPress={() => router.replace("/customer/shop")} />
           </BoutiqueCard>
         ) : (
@@ -401,7 +448,7 @@ export default function CheckoutScreen() {
                         accessibilityState={{ selected }}
                         disabled={submitting}
                         accessibilityLabel={`${item.label || t("Saved address")}: ${[item.street, item.barangay, item.city, item.province].filter(Boolean).join(", ")}`}
-                        onPress={() => { if (submissionInFlightRef.current) return; setSelectedAddressId(id); setShowAddressChoices(false); orderRequestKeyRef.current = ""; }}
+                        onPress={() => { if (submissionInFlightRef.current) return; setSelectedAddressId(id); setShowAddressChoices(false); }}
                         style={{ padding: BQ_SPACING.sm, borderWidth: 1, borderColor: selected ? BQ_COLORS.brand : BQ_COLORS.border, borderRadius: 10, gap: BQ_SPACING.xs }}
                       >
                         <BoutiqueText variant="label">{item.label || t("Saved address")}{item.isDefault ? ` · ${t("Account default")}` : ""}{selected ? ` · ${t("Selected for this order")}` : ""}</BoutiqueText>
@@ -428,11 +475,11 @@ export default function CheckoutScreen() {
               <TouchableOpacity onPress={() => setShowOrderDetails((value) => !value)} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={showOrderDetails ? t("Hide order details") : t("View order details")} accessibilityState={{ expanded: showOrderDetails }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View>
                   <BoutiqueText variant="h3">{t("Order summary")}</BoutiqueText>
-                  <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{cart.reduce((count, item) => count + Number(item.quantity || 0), 0)} {t("item(s)")}</BoutiqueText>
+                  <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{checkoutItems.reduce((count, item) => count + Number(item.quantity || 0), 0)} {t("item(s)")}</BoutiqueText>
                 </View>
                 <BoutiqueText variant="label" color={BQ_COLORS.brand}>{showOrderDetails ? t("Hide details") : t("View details")}</BoutiqueText>
               </TouchableOpacity>
-              {showOrderDetails ? cart.map((item) => {
+              {showOrderDetails ? checkoutItems.map((item) => {
                 const branchStock = branchStockById[String(item.id)];
                   const maximumQuantity = Number.isFinite(branchStock)
                     ? branchStock
@@ -445,8 +492,16 @@ export default function CheckoutScreen() {
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Horsepower")}: {t(formatHorsepower(item))}</BoutiqueText>
                     <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.quantity} × {formatPeso(item.price)}</BoutiqueText>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: BQ_SPACING.sm, gap: BQ_SPACING.sm }}>
-                      <BoutiqueQuantityStepper value={item.quantity} max={maximumQuantity} disabled={submitting} onChange={(quantity) => { if (!submissionInFlightRef.current) updateQuantity(item.id, quantity); }} />
-                      <TouchableOpacity disabled={submitting} onPress={() => { if (!submissionInFlightRef.current) removeFromCart(item.id); }} accessibilityRole="button" accessibilityState={{ disabled: submitting }} accessibilityLabel={`${t("Remove")} ${item.name} ${t("from order")}`}>
+                      <BoutiqueQuantityStepper value={item.quantity} max={maximumQuantity} disabled={submitting} onChange={(quantity) => {
+                        if (submissionInFlightRef.current) return;
+                        if (isBuyNow) setBuyNowQuantity(quantity);
+                        else updateQuantity(item.id, quantity);
+                      }} />
+                      <TouchableOpacity disabled={submitting} onPress={() => {
+                        if (submissionInFlightRef.current) return;
+                        if (isBuyNow) setBuyNowQuantity(0);
+                        else removeFromCart(item.id);
+                      }} accessibilityRole="button" accessibilityState={{ disabled: submitting }} accessibilityLabel={`${t("Remove")} ${item.name} ${t("from order")}`}>
                         <BoutiqueText variant="caption" color={BQ_COLORS.danger} style={{ fontWeight: "800" }}>{t("Remove")}</BoutiqueText>
                       </TouchableOpacity>
                     </View>
@@ -486,9 +541,15 @@ export default function CheckoutScreen() {
                 [t("Items subtotal"), checkoutTotals.subtotal],
                 [t("VAT"), checkoutTotals.vatAmount],
                 [t("Delivery fee"), checkoutTotals.shippingFee],
-              ].map(([label, amount]) => <View key={label} style={{ flexDirection: "row", justifyContent: "space-between" }}><BoutiqueText color={BQ_COLORS.inkMuted}>{label}</BoutiqueText><BoutiqueText>{formatPeso(amount)}</BoutiqueText></View>)}
-              <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, marginTop: BQ_SPACING.sm, paddingTop: BQ_SPACING.sm, flexDirection: "row", justifyContent: "space-between" }}>
-                <BoutiqueText variant="h2">{t("Final total")}</BoutiqueText><BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
+              ].map(([label, amount]) => (
+                <View key={label} style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: BQ_SPACING.sm }}>
+                  <BoutiqueText color={BQ_COLORS.inkMuted}>{label}</BoutiqueText>
+                  <BoutiqueText>{formatPeso(amount)}</BoutiqueText>
+                </View>
+              ))}
+              <View style={{ borderTopWidth: 1, borderTopColor: BQ_COLORS.border, marginTop: BQ_SPACING.sm, paddingTop: BQ_SPACING.sm, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: BQ_SPACING.sm }}>
+                <BoutiqueText variant="h2">{t("Final total")}</BoutiqueText>
+                <BoutiqueText variant="h2">{formatPeso(checkoutTotals.total)}</BoutiqueText>
               </View>
             </BoutiqueCard>
 

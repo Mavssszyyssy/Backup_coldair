@@ -21,10 +21,10 @@ export default function CustomerHeaderActions() {
         onPress={() => router.push("/customer/chat")}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel={t("Chat Support")}
+        accessibilityLabel={t("Open AEROPULSE assistant")}
         style={actionStyle}
       >
-        <Ionicons name="chatbubble-ellipses-sharp" size={23} color={COLORS.primary} />
+        <Ionicons name="sparkles-sharp" size={23} color={COLORS.primary} />
       </Pressable>
       <Pressable
         onPress={() => router.push("/customer/notifications")}

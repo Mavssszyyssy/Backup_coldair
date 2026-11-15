@@ -5,13 +5,15 @@ import { Stack } from "expo-router/stack";
 import { useEffect, useState } from "react";
 import { Keyboard, View } from "react-native";
 
-import LoadingLogo from "../../components/LoadingLogo";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import BottomNav from "../../components/ui/BottomNav";
 import { COLORS } from "../../constants/theme";
 import { useRoleGuard } from "../../hooks/useRoleGuard";
 
 export default function CustomerLayout() {
   const { initialized, allowed, redirectHref } = useRoleGuard(["customer"]);
+  const { t } = useInterfaceLanguage();
   const pathname = usePathname();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const topLevelScreens = new Set([
@@ -38,11 +40,11 @@ export default function CustomerLayout() {
         style={{
           flex: 1,
           justifyContent: "center",
-          alignItems: "center",
+          paddingHorizontal: 20,
           backgroundColor: COLORS.bg,
         }}
       >
-        <LoadingLogo size={82} />
+        <LoadingSkeleton label={t("Loading…")} variant="detail" count={2} />
       </View>
     );
   }

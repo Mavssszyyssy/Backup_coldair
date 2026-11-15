@@ -17,8 +17,8 @@ const AdminLogin = () => {
   return (
     <form className="admin-form admin-auth" onSubmit={submit}>
       <h2>Admin Login</h2>
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <input maxLength={254} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input maxLength={128} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <button type="submit">Sign In</button>
     </form>
   );

@@ -63,7 +63,7 @@ export default function HomeInfo() {
         dangerouslySetInnerHTML={{
           __html: `
         .home-info {
-          padding: 120px 40px;
+          padding: clamp(28px, 4vw, 60px) clamp(16px, 3vw, 40px);
           background: ${BQ_COLORS.bgAlt};
         }
 
@@ -72,7 +72,7 @@ export default function HomeInfo() {
           margin: 0 auto;
           display: grid;
           grid-template-columns: 1.2fr 1fr;
-          gap: 100px;
+          gap: clamp(24px, 4vw, 60px);
           align-items: center;
         }
 
@@ -80,20 +80,20 @@ export default function HomeInfo() {
           font-family: ${BQ_FONTS.heading};
           font-size: 56px; font-weight: 950;
           color: ${BQ_COLORS.ink}; letter-spacing: -0.05em;
-          margin-bottom: 28px;
+          margin-bottom: 16px;
           line-height: 1.05;
         }
 
         .info-text {
           font-size: 20px; color: ${BQ_COLORS.inkMuted};
-          line-height: 1.6; margin-bottom: 72px;
+          line-height: 1.6; margin-bottom: 28px;
           max-width: 600px;
           font-weight: 500;
         }
 
-        .info-features { display: flex; flex-direction: column; gap: 48px; }
+        .info-features { display: flex; flex-direction: column; gap: 20px; }
 
-        .feat-item { display: flex; gap: 32px; align-items: flex-start; }
+        .feat-item { display: flex; gap: 20px; align-items: flex-start; }
         .feat-icon {
           width: 64px; height: 64px; background: ${BQ_COLORS.brand}; color: white;
           border-radius: 20px; display: flex; align-items: center; justify-content: center;
@@ -112,7 +112,7 @@ export default function HomeInfo() {
         .info-visual { display: flex; justify-content: center; position: relative; }
 
         .stat-blob {
-          width: 380px; height: 380px; background: ${BQ_COLORS.surface};
+          width: min(100%, 300px); aspect-ratio: 1; background: ${BQ_COLORS.surface};
           border-radius: 80px; display: flex; flex-direction: column;
           align-items: center; justify-content: center;
           box-shadow: ${BQ_SHADOWS.hover};
@@ -127,7 +127,7 @@ export default function HomeInfo() {
         .stat-label { font-family: ${BQ_FONTS.heading}; font-size: 15px; font-weight: 900; color: ${BQ_COLORS.inkMuted}; text-transform: uppercase; letter-spacing: 0.15em; margin-top: 10px; }
 
         @media (max-width: 1024px) {
-          .info-container { grid-template-columns: minmax(0, 1fr); gap: 64px; }
+          .info-container { grid-template-columns: minmax(0, 1fr); }
           .info-visual { display: none; }
         }
 

@@ -5,6 +5,8 @@ import zxcvbn from "zxcvbn";
 export const EMAIL_REGEX = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE = "This email domain is not allowed. Please use a valid and supported email provider.";
 export const PASSWORD_MAX_LENGTH = 25;
+export const PASSWORD_INPUT_MAX_LENGTH = 128;
+export const FORMATTED_MOBILE_INPUT_MAX_LENGTH = 32;
 export const ACCOUNT_SUFFIX_MAX_LENGTH = 12;
 
 export function validateAccountSuffix(value = "") {

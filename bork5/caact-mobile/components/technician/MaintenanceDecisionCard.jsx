@@ -4,6 +4,7 @@ import Card from "../ui/Card";
 import TechButton from "./TechButton";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { fetchTaskDecisionSupport, generateTaskDecisionSupport, reviewTaskDecisionSupport } from "../../services/taskStorage";
+import LoadingSkeleton from "../ui/LoadingSkeleton";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const hasText = value => typeof value === "string" && value.trim().length > 0;
@@ -118,17 +119,20 @@ function AssessmentPager({ pages, resetKey, onPageChange }) {
 export default function MaintenanceDecisionCard({ taskId, completed, requestId, onPageChange }) {
   const { t } = useInterfaceLanguage();
   const [record, setRecord] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [pagerRevision, setPagerRevision] = useState({ pre: 0, post: 0 });
   useEffect(() => {
     let active = true;
+    setLoading(true);
     setRecord(null); setError(""); setPagerRevision({ pre: 0, post: 0 });
     (async () => {
       const result = await fetchTaskDecisionSupport(taskId);
       if (active) result.success ? setRecord(result) : setError(result.error);
-    })().catch(() => { if (active) setError("Unable to load saved AI assessments."); });
+    })().catch(() => { if (active) setError("Unable to load saved AI assessments."); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [taskId, completed]);
   const run = async phase => {
@@ -260,9 +264,10 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
     },
   ].filter(page => page.visible);
 
+  const title = t("AI-Assisted Future Assessment");
   return <Card>
-    <Pressable accessibilityRole="button" accessibilityLabel={t("AI parts and future-issue assessment")} accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
-      <Text style={styles.cardTitle}>{t("AI parts and future-issue assessment")}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
+      <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardSummary}>{t(expanded ? "See less" : "See more")} {expanded ? "▲" : "▼"}</Text>
     </Pressable>
     {expanded && <>
@@ -270,26 +275,28 @@ export default function MaintenanceDecisionCard({ taskId, completed, requestId, 
       <Text style={styles.guidanceText}>{t("Suggestions can interpret Tagalog and Taglish notes, but your original findings stay unchanged. Confirm faults and part compatibility before replacement.")}</Text>
     </View>
     {!!error && <Text accessibilityRole="alert" style={styles.errorText}>{t(error)}</Text>}
+    {loading ? <LoadingSkeleton label={t("Loading assessments…")} variant="detail" /> : <>
     {!!requestId && <View style={styles.assessmentSection}>
       <Text style={styles.sectionTitle}>{t("Before maintenance")}</Text>
       <Text style={styles.sectionDescription}>{t("Parts preparation and diagnostic guidance")}</Text>
       {pre?.status === "completed" ? (
         <AssessmentPager pages={prePages} resetKey={`${taskId}:pre:${pagerRevision.pre}`} onPageChange={onPageChange} />
-      ) : (
+      ) : busy === "pre" ? <LoadingSkeleton label={t("Generating…")} variant="inline" count={1} /> : (
         <Text style={styles.emptyText}>{t(pre?.error || "No AI assessment saved yet.")}</Text>
       )}
-      {!completed && <TechButton title={t(pre ? "Regenerate AI assessment" : "Generate AI assessment")} onPress={() => run("pre")} loading={busy === "pre"} variant="secondary" style={styles.generateButton} />}
+      {!completed && <TechButton title={t(pre?.status === "completed" ? "Refresh AI assessment" : "Generate AI assessment")} onPress={() => run("pre")} loading={busy === "pre"} variant="secondary" style={styles.generateButton} />}
     </View>}
     {completed && <View style={styles.assessmentSection}>
       <Text style={styles.sectionTitle}>{t("After maintenance")}</Text>
       <Text style={styles.sectionDescription}>{t("Future-risk monitoring and preventive guidance")}</Text>
       {post?.status === "completed" ? (
         <AssessmentPager pages={postPages} resetKey={`${taskId}:post:${pagerRevision.post}`} onPageChange={onPageChange} />
-      ) : (
+      ) : busy === "post" ? <LoadingSkeleton label={t("Generating…")} variant="inline" count={1} /> : (
         <Text style={styles.emptyText}>{t(post?.error || "Generate after the final technician report is saved.")}</Text>
       )}
-      <TechButton title={t(post ? "Regenerate future-issue assessment" : "Generate future-issue assessment")} onPress={() => run("post")} loading={busy === "post"} variant="secondary" style={styles.generateButton} />
+      <TechButton title={t(post?.status === "completed" ? "Refresh future-issue assessment" : "Generate future-issue assessment")} onPress={() => run("post")} loading={busy === "post"} variant="secondary" style={styles.generateButton} />
     </View>}
+    </>}
     </>}
   </Card>;
 }

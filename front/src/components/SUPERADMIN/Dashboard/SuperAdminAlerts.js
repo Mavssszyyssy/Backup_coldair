@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
@@ -61,16 +63,16 @@ const SuperAdminAlerts = () => {
   const [page, setPage] = useState(1);
   const loadInFlightRef = useRef(false);
 
-  const load = useCallback(async ({ showLoading = false } = {}) => {
+  const load = useCallback(async ({ showLoading = false, fresh = false } = {}) => {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;
     if (showLoading) setLoading(true);
     setError('');
     try {
       const [notificationResult, orderResult, productResult] = await Promise.all([
-        apiRequest('/notifications/me?scope=operations'),
-        apiRequest('/orders?view=compact&limit=200').catch(() => ({ orders: [] })),
-        apiRequest('/products/stock-status'),
+        apiRequest('/notifications/me?scope=operations', { fresh }),
+        apiRequest('/orders?view=compact&limit=200', { fresh }).catch(() => ({ orders: [] })),
+        apiRequest('/products/stock-status', { fresh }),
       ]);
       setAlerts(Array.isArray(notificationResult.notifications) ? notificationResult.notifications : []);
       setOrders(Array.isArray(orderResult.orders) ? orderResult.orders : []);
@@ -92,7 +94,7 @@ const SuperAdminAlerts = () => {
     // poll keeps long-open tabs synchronized without downloading the same
     // unchanged alert context twelve times per minute.
     const pollId = window.setInterval(refreshWhenVisible, 15000);
-    const unsubscribe = subscribeToNotificationUpdates(() => load());
+    const unsubscribe = subscribeToNotificationUpdates(() => load({ fresh: true }));
     document.addEventListener('visibilitychange', refreshWhenVisible);
     window.addEventListener('focus', refreshWhenVisible);
     return () => {
@@ -136,17 +138,17 @@ const SuperAdminAlerts = () => {
         <div><strong>{detailedAlerts.length}</strong><span>{t('Operations alerts')}</span></div>
         <div><strong>{detailedAlerts.filter((alert) => alert.severity === 'high').length}</strong><span>{t('High priority')}</span></div>
         <div><strong>{new Set(detailedAlerts.map((alert) => alert.branch).filter((branch) => branch !== 'Not recorded')).size}</strong><span>{t('Branches involved')}</span></div>
-        <button type="button" onClick={() => load({ showLoading: true })} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button>
+        <button type="button" onClick={() => load({ showLoading: true, fresh: true })} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button>
       </section>
       <section className="alert-workspace">
         <div className="alert-heading"><div><p className="alert-eyebrow">{t('Executive inbox')}</p><h2>{t('Transactions, requests, maintenance & stock')}</h2><p>{t('Review events and current inventory shortages across branches.')}</p></div></div>
         <div className="alert-filters">
-          <label>{t('Branch')}<select value={branchFilter} onChange={(event) => { setBranchFilter(event.target.value); setPage(1); }}><option value="all">{t('All branches')}</option>{branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
-          <label>{t('Activity')}<select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPage(1); }}><option value="all">{t('All activities')}</option><option value="transactions">{t('Transactions')}</option><option value="requests">{t('Requests & warranty')}</option><option value="maintenance">{t('Maintenance & technician work')}</option><option value="stock">{t('Stock alerts')}</option><option value="other">{t('Other alerts')}</option></select></label>
-          <label>{t('Priority')}<select value={severityFilter} onChange={(event) => { setSeverityFilter(event.target.value); setPage(1); }}><option value="all">{t('All priorities')}</option><option value="high">{t('High priority')}</option><option value="medium">{t('Medium priority')}</option><option value="low">{t('Low priority')}</option></select></label>
+          <label>{t('Branch')}<SearchableSelect value={branchFilter} onChange={(event) => { setBranchFilter(event.target.value); setPage(1); }}><option value="all">{t('All branches')}</option>{branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label>
+          <label>{t('Activity')}<SearchableSelect value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPage(1); }}><option value="all">{t('All activities')}</option><option value="transactions">{t('Transactions')}</option><option value="requests">{t('Requests & warranty')}</option><option value="maintenance">{t('Maintenance & technician work')}</option><option value="stock">{t('Stock alerts')}</option><option value="other">{t('Other alerts')}</option></SearchableSelect></label>
+          <label>{t('Priority')}<SearchableSelect value={severityFilter} onChange={(event) => { setSeverityFilter(event.target.value); setPage(1); }}><option value="all">{t('All priorities')}</option><option value="high">{t('High priority')}</option><option value="medium">{t('Medium priority')}</option><option value="low">{t('Low priority')}</option></SearchableSelect></label>
           <button type="button" className="alert-reset" onClick={() => { setBranchFilter('all'); setSeverityFilter('all'); setCategoryFilter('all'); setPage(1); }} disabled={branchFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all'}>{t('Clear filters')}</button>
         </div>
-        {loading ? <div className="alert-empty">{t('Loading operations alerts…')}</div> : null}
+        {loading ? <LoadingSkeleton label={t('Loading operations alerts…')} /> : null}
         {error ? <div className="alert-error">{t(error)}</div> : null}
         {!loading && !error && visibleAlerts.length === 0 ? <div className="alert-empty">{t('No operations alerts match these filters.')}</div> : null}
         <div className="alert-list">

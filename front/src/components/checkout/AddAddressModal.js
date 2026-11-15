@@ -1,3 +1,4 @@
+import SearchableSelect from "../common/SearchableSelect";
 import { useEffect, useId, useState } from 'react';
 import { psgcRegions, psgcProvinces, psgcLocalities, psgcBarangays, resolveSavedAddressCodes } from '../../domain/location/psgcAddressService';
 import {
@@ -194,6 +195,7 @@ function AddAddressModal({
           <div className="address-editor-field">
             <label htmlFor="address-editor-label">{t('Label')}</label>
             <input
+              maxLength={80}
               id="address-editor-label"
               type="text"
               placeholder="Home, Office, Condo"
@@ -203,15 +205,16 @@ function AddAddressModal({
           </div>
           <div className="address-editor-field">
             <label htmlFor="address-editor-type">{t('Address Type')}</label>
-            <select id="address-editor-type" value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
+            <SearchableSelect id="address-editor-type" value={address.type} onChange={(e) => setAddressField('type', e.target.value)}>
               <option value="home">{t('Home')}</option>
               <option value="office">{t('Office')}</option>
               <option value="other">{t('Other')}</option>
-            </select>
+            </SearchableSelect>
           </div>
           <div className="address-editor-field">
             <label htmlFor="address-editor-name">{t('Recipient Name')} *</label>
             <input
+              maxLength={60}
               id="address-editor-name"
               type="text"
               placeholder="Full name"
@@ -222,48 +225,49 @@ function AddAddressModal({
           <div className="address-editor-grid">
             <div className="address-editor-field">
               <label htmlFor="address-editor-region">{t('Region')} *</label>
-              <select id="address-editor-region" value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
+              <SearchableSelect id="address-editor-region" value={address.region} onChange={(e) => setAddressField('region', e.target.value)}>
                 <option value="">{t('Select Region')}</option>
                 {regions.map((region) => (
                   <option key={region.code || region.name} value={region.name}>{region.name}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
             <div className="address-editor-field">
               <label htmlFor="address-editor-province">{t('Province')} *</label>
-              <select id="address-editor-province" value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
+              <SearchableSelect id="address-editor-province" value={address.province} onChange={(e) => setAddressField('province', e.target.value)} disabled={!address.region}>
                 <option value="">{t('Select Province')}</option>
                 {provinces.map((province) => (
                   <option key={province.code || province.name} value={province.name}>{province.name}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
 
           <div className="address-editor-grid">
             <div className="address-editor-field">
               <label htmlFor="address-editor-city">{t('City / Municipality')} *</label>
-              <select id="address-editor-city" value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
+              <SearchableSelect id="address-editor-city" value={address.city} onChange={(e) => setAddressField('city', e.target.value)} disabled={!address.province}>
                 <option value="">{t('Select City / Municipality')}</option>
                 {cities.map((city) => (
                   <option key={city.code || city.name} value={city.name}>{city.name}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
             <div className="address-editor-field">
               <label htmlFor="address-editor-barangay">{t('Barangay')} *</label>
-              <select id="address-editor-barangay" value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
+              <SearchableSelect id="address-editor-barangay" value={address.barangay} onChange={(e) => setAddressField('barangay', e.target.value)} disabled={!address.city}>
                 <option value="">{t('Select Barangay')}</option>
                 {barangays.map((barangay) => (
                   <option key={barangay.code || barangay.name} value={barangay.name}>{barangay.name}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
 
           <div className="address-editor-field">
             <label htmlFor="address-editor-street">{t('Street Address')} *</label>
             <input
+              maxLength={180}
               id="address-editor-street"
               type="text"
               placeholder="House/Block/Lot No., Street"

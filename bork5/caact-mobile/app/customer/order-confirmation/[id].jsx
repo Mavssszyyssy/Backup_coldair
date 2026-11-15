@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../components/ui/LoadingSkeleton";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, AppState, Linking, View } from "react-native";
@@ -33,7 +34,7 @@ export default function OrderConfirmationScreen() {
       try {
         let next = await getOrderById(id);
         // The local order cache and callback URL cannot confirm a charge.
-        if (payment || next?.paymentProvider === "paymongo" || ["gcash", "card", "maya"].includes(next?.paymentMethod)) {
+        if (payment || next?.paymentProvider === "paymongo" || ["gcash", "credit", "card", "maya", "paymaya", "online"].includes(String(next?.paymentMethod || "").toLowerCase())) {
           next = await verifyOrderPayment(id);
         }
         if (!next) throw new Error("Order could not be verified");
@@ -58,6 +59,14 @@ export default function OrderConfirmationScreen() {
     };
   }, [id, payment, refresh]);
 
+  const expiresAt = Date.parse(order?.paymongo?.checkoutExpiresAt);
+  useEffect(() => {
+    const delay = expiresAt - Date.now();
+    if (order?.workflowStatus !== "to_pay" || !["pending", "failed", "cancelled"].includes(order.paymentStatus) || !Number.isFinite(delay) || delay <= 0) return undefined;
+    const timer = setTimeout(() => setRefresh((value) => value + 1), delay);
+    return () => clearTimeout(timer);
+  }, [expiresAt, order?.paymentStatus, order?.workflowStatus]);
+
   const outcome = paymentOutcome(order, payment, { checking, error });
   const failed = outcome.kind === "failed";
   const paid = outcome.kind === "paid";
@@ -77,7 +86,6 @@ export default function OrderConfirmationScreen() {
         throw new Error("A secure payment link was not returned.");
       }
       await Linking.openURL(checkoutUrl);
-      router.replace(`/customer/order-confirmation/${order.id}?payment=returned`);
     } catch (paymentError) {
       Alert.alert(t("Unable to open payment"), t(paymentError?.message || "Please try again."));
       setRefresh((value) => value + 1);
@@ -90,6 +98,7 @@ export default function OrderConfirmationScreen() {
     <>
       <BoutiqueHeader title={t("Order payment")} onBack={() => router.replace("/customer/orders")} />
       <BoutiqueScreen>
+        {checking && !order ? <LoadingSkeleton label={t(outcome.title)} variant="detail" count={2} /> : <>
         <BoutiqueCard style={{ gap: BQ_SPACING.md, alignItems: "center" }}>
           <View style={{ padding: 18, borderRadius: 48, backgroundColor: failed ? "#fef2f2" : paid ? "#ecfdf5" : "#eff6ff" }}>
             <Ionicons name={failed || error ? "alert-circle-outline" : paid ? "checkmark-circle-outline" : "time-outline"} size={44} color={color} />
@@ -100,11 +109,15 @@ export default function OrderConfirmationScreen() {
           {!paid && outcome.kind !== "received" ? (
             <BoutiqueButton title={checking ? t("Checking…") : t("Check payment status")} disabled={checking} onPress={() => setRefresh((value) => value + 1)} />
           ) : null}
-          {retryLimitReached ? (
+          {!checking && !error && order?.paymentCheckoutState === "expiring" ? (
+            <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{t("The previous payment link is closing. Check the payment status before trying again.")}</BoutiqueText>
+          ) : !checking && !error && order?.paymentCheckoutState === "processing" ? (
+            <BoutiqueText align="center" color={BQ_COLORS.inkMuted}>{t("A payment is still processing. Refresh the order and wait for its result before retrying.")}</BoutiqueText>
+          ) : !error && retryLimitReached ? (
             <BoutiqueText align="center" color="#dc2626" weight={700}>
               {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}
             </BoutiqueText>
-          ) : canRetry ? (
+          ) : !error && canRetry ? (
             <BoutiqueButton
               title={paying ? t("Connecting…") : resuming ? t("Complete payment") : t("Pay Again")}
               loading={paying}
@@ -129,6 +142,7 @@ export default function OrderConfirmationScreen() {
             <BoutiqueText color={BQ_COLORS.inkMuted}>{formatPeso(order.total)}</BoutiqueText>
           </BoutiqueCard>
         ) : null}
+        </>}
       </BoutiqueScreen>
     </>
   );

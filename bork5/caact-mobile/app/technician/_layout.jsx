@@ -4,13 +4,15 @@ import { Redirect, usePathname } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { View } from "react-native";
 
-import LoadingLogo from "../../components/LoadingLogo";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import TechnicianBottomNav from "../../components/technician/TechnicianBottomNav";
 import { COLORS } from "../../constants/theme";
 import { useRoleGuard } from "../../hooks/useRoleGuard";
 
 export default function TechnicianLayout() {
   const { initialized, allowed, redirectHref } = useRoleGuard(["technician"]);
+  const { t } = useInterfaceLanguage();
   const pathname = usePathname();
   const topLevelScreens = [
     "/technician",
@@ -28,11 +30,11 @@ export default function TechnicianLayout() {
         style={{
           flex: 1,
           justifyContent: "center",
-          alignItems: "center",
+          paddingHorizontal: 20,
           backgroundColor: COLORS.bg,
         }}
       >
-        <LoadingLogo size={82} />
+        <LoadingSkeleton label={t("Loading…")} variant="detail" count={2} />
       </View>
     );
   }

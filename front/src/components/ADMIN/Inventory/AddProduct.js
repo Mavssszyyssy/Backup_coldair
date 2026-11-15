@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import useActiveBranches from '../../../domain/branches/useActiveBranches';
@@ -86,16 +87,16 @@ const AddProduct = ({ onCreated }) => {
   return (
     <form className="admin-form" onSubmit={handleSubmit}>
       <h3>Add Product</h3>
-      <input name="name" value={form.name} onChange={handleChange} placeholder="Product name" />
-      <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" />
-      <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" />
-      <select name="category" value={form.category} onChange={handleChange}>
+      <input maxLength={120} name="name" value={form.name} onChange={handleChange} placeholder="Product name" />
+      <input maxLength={80} name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" />
+      <input maxLength={80} name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" />
+      <SearchableSelect name="category" value={form.category} onChange={handleChange}>
         <option value="split">Split</option>
         <option value="window">Window</option>
         <option value="floor">Floor Mounted</option>
-      </select>
-      <input name="specs" value={form.specs} onChange={handleChange} placeholder="Specs (e.g. 1.5HP)" />
-      <input name="features" value={form.features} onChange={handleChange} placeholder="Features (comma separated)" />
+      </SearchableSelect>
+      <input maxLength={80} name="specs" value={form.specs} onChange={handleChange} placeholder="Specs (e.g. 1.5HP)" />
+      <input maxLength={1000} name="features" value={form.features} onChange={handleChange} placeholder="Features (comma separated)" />
       <input
         name={`stock${activeBranch || 'Bulacan'}`}
         value={form[`stock${activeBranch || 'Bulacan'}`] || ''}

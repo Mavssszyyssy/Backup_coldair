@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import CustomerNotificationsScreen from "../app/customer/notifications";
 
@@ -43,7 +43,8 @@ test("customer alerts localize controls and preserve recorded notification conte
 test("repeated customer alert taps mark and navigate only once", async () => {
   mockLanguage = "English";
   mockRouter.push.mockClear();
-  mockMarkNotification.mockReset().mockResolvedValue({});
+  let finishRead;
+  mockMarkNotification.mockReset().mockImplementation(() => new Promise((resolve) => { finishRead = resolve; }));
   mockGetNotifications.mockResolvedValue([
     { id: "alert-2", title: "Order update", message: "Ready", unread: true, route: "/customer/orders" },
     { id: "alert-3", title: "Previous update", message: "Done", read: true },
@@ -53,8 +54,9 @@ test("repeated customer alert taps mark and navigate only once", async () => {
   expect(screen.getByText("New")).toBeTruthy();
   expect(screen.getByText("Earlier")).toBeTruthy();
   const alert = screen.getByRole("button", { name: "Order update. Open alert" });
-  fireEvent.press(alert);
-  fireEvent.press(alert);
+  await fireEvent.press(alert);
+  await fireEvent.press(alert);
+  await act(async () => finishRead({}));
   await waitFor(() => expect(mockRouter.push).toHaveBeenCalledTimes(1));
   expect(mockMarkNotification).toHaveBeenCalledTimes(1);
 });

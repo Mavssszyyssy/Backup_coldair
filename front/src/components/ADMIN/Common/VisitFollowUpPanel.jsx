@@ -1,13 +1,14 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../../config/api';
 import { TECHNICIAN_TIME_SLOTS } from '../../../domain/technicianTimeSlots';
-import { formatBusinessDateKey, formatBusinessDateTime } from '../../../utils/dateTime';
+import { formatBusinessDateTime, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import './VisitFollowUpPanel.css';
 
-export default function VisitFollowUpPanel({ task, onUpdated }) {
+export default function VisitFollowUpPanel({ task, onUpdated, service = false }) {
   const { currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const summary = task?.visitAttempt || task?.payload?.visitAttempt;
@@ -32,8 +33,9 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
   const save = async event => {
     event.preventDefault();
     if (busy) return;
-    if (!date || date < formatBusinessDateKey()) {
-      setMessage('Choose today or a future visit date.');
+    const dateError = getWorkOrderDateSelectionError(date, service);
+    if (dateError) {
+      setMessage(dateError);
       return;
     }
     setBusy(true); setMessage('');
@@ -58,8 +60,8 @@ export default function VisitFollowUpPanel({ task, onUpdated }) {
     {attempt?.photo?.uri ? <a href={attempt.photo.uri} target="_blank" rel="noreferrer"><img className="visit-follow-up-photo" src={attempt.photo.uri} alt={t('Technician proof of unattended visit')} /></a> : <button type="button" onClick={() => setReload(value => value + 1)}>{t('Reload proof photo')}</button>}
     {summary.awaitingAdmin && !confirmed && !['completed', 'cancelled'].includes(task.status) ? <form onSubmit={save}>
       <p>{t('Contact the customer, then confirm the next date and time. This requires a fresh GPS arrival.')}</p>
-      <div className="visit-follow-up-fields"><label>{t('Next visit date')}<input required type="date" min={formatBusinessDateKey()} value={date} onChange={e => setDate(e.target.value)} disabled={busy} /></label>
-        <label>{t('Time slot')}<select required value={time} onChange={e => setTime(e.target.value)} disabled={busy}><option value="">{t('Choose time slot')}</option>{TECHNICIAN_TIME_SLOTS.map(slot => <option key={slot}>{slot}</option>)}</select></label></div>
+      <div className="visit-follow-up-fields"><label>{t('Next visit date')}<input required type="date" {...getWorkOrderDateWindow(new Date(), service)} value={date} onChange={e => setDate(e.target.value)} onInvalid={e => setMessage(getWorkOrderDateSelectionError(e.target.value, service))} disabled={busy} /></label>
+        <label>{t('Time slot')}<SearchableSelect required value={time} onChange={e => setTime(e.target.value)} disabled={busy}><option value="">{t('Choose time slot')}</option>{TECHNICIAN_TIME_SLOTS.map(slot => <option key={slot}>{slot}</option>)}</SearchableSelect></label></div>
       <button className="visit-follow-up-confirm" disabled={busy || !date || !time}>{t(busy ? 'Confirming…' : 'Confirm next visit')}</button>
     </form> : null}
     {summary.resolution ? <p>{t('Next visit')}: {summary.resolution.scheduledDate} · {summary.resolution.timeSlot}</p> : null}

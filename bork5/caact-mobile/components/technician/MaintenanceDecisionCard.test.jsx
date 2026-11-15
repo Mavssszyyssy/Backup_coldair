@@ -18,7 +18,9 @@ test('Filipino assessment controls preserve the original AI finding', async () =
     review: { decision: 'pending' },
   } });
   await render(<MaintenanceDecisionCard taskId="task-fil" requestId="request-fil" completed={false} />);
-  fireEvent.press(screen.getByRole('button', { name: 'Pagsusuri ng AI sa mga piyesa at posibleng susunod na problema' }));
+  const title = 'Pagsusuri sa mga posibleng problema sa tulong ng AI';
+  expect(screen.getByText(title)).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: title }));
   expect(await screen.findByText('Buod ng assessment')).toBeTruthy();
   expect(screen.getByText('Cooling and fan noise need inspection.')).toBeTruthy();
   expect(screen.getByText('Pahina ng assessment 1 sa 2')).toBeTruthy();
@@ -39,7 +41,8 @@ test('technician sees saved advice and can reject it without changing the visit 
     possible_problem: 'Cooling and fan noise need inspection.', priority: 'medium', confidence: 'limited',
   }, review: { decision: 'rejected' } } });
   await render(<MaintenanceDecisionCard taskId="task-1" requestId="request-1" completed={false} />);
-  fireEvent.press(screen.getByRole('button', { name: 'AI parts and future-issue assessment' }));
+  expect(screen.getByText('AI-Assisted Future Assessment')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'AI-Assisted Future Assessment' }));
   expect(await screen.findByText('Cooling and fan noise need inspection.')).toBeTruthy();
   expect(screen.getByText('Assessment page 1 of 3')).toBeTruthy();
   await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'Next assessment page' })); });
@@ -75,7 +78,7 @@ test('completed maintenance allows a separate future-issue assessment', async ()
     preventive_actions: ['Inspect and clean the fan assembly.'],
   }, review: { decision: 'confirmed' } } });
   await render(<MaintenanceDecisionCard taskId="task-2" requestId="request-2" completed />);
-  fireEvent.press(screen.getByRole('button', { name: 'AI parts and future-issue assessment' }));
+  fireEvent.press(screen.getByRole('button', { name: 'AI-Assisted Future Assessment' }));
   const generateButton = await screen.findByText('Generate future-issue assessment');
   await act(async () => { fireEvent.press(generateButton); });
   await waitFor(() => expect(generateTaskDecisionSupport).toHaveBeenCalledWith('task-2', 'post'));
@@ -104,7 +107,7 @@ test('long AI lists use explicit See more and See less controls', async () => {
   }, review: { decision: 'pending' } }, futurePrediction: null });
 
   await render(<MaintenanceDecisionCard taskId="task-3" requestId="request-3" completed={false} onPageChange={onPageChange} />);
-  fireEvent.press(screen.getByRole('button', { name: 'AI parts and future-issue assessment' }));
+  fireEvent.press(screen.getByRole('button', { name: 'AI-Assisted Future Assessment' }));
   await screen.findByText('Inspection needed.');
   await act(async () => { fireEvent.press(screen.getByRole('button', { name: 'Next assessment page' })); });
   expect(onPageChange).toHaveBeenCalledTimes(1);

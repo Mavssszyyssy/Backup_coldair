@@ -1,0 +1,137 @@
+.bq-drawer-panel.bq-cart-drawer {
+  --cart-padding: clamp(14px, 4vw, 24px);
+  height: 100dvh;
+  color: var(--bq-color-ink);
+}
+
+.bq-cart-drawer .bq-drawer-header {
+  padding: 10px var(--cart-padding);
+  gap: 12px;
+}
+
+.bq-cart-drawer .bq-drawer-title {
+  font-size: 18px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.bq-cart-drawer .bq-drawer-close,
+.bq-cart-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.bq-cart-drawer .bq-drawer-content { min-height: 0; overflow: hidden; }
+
+.bq-cart-items,
+.bq-cart-details {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--cart-padding);
+}
+
+.bq-cart-items,
+.bq-cart-details,
+.bq-cart-line-summary,
+.bq-cart-specs { display: grid; align-content: start; gap: 12px; }
+
+.bq-cart-item {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--bq-color-border);
+  border-radius: 14px;
+}
+
+.bq-cart-photo,
+.bq-cart-detail-image {
+  display: grid;
+  place-items: center;
+  position: relative;
+  background: var(--bq-color-surface-alt);
+  color: var(--bq-color-ink-muted);
+  border: 1px solid var(--bq-color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bq-cart-photo { width: 80px; height: 80px; padding: 8px; cursor: zoom-in; }
+.bq-cart-detail-image { height: clamp(120px, 30vh, 240px); grid-template-rows: minmax(0, 1fr); padding: 16px; }
+.bq-cart-photo img,
+.bq-cart-detail-image img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.bq-cart-detail-image .bq-cart-brand { max-width: 160px; }
+
+.bq-cart-zoom {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bq-color-surface);
+  color: var(--bq-color-ink);
+}
+
+.bq-cart-line-summary { gap: 5px; }
+.bq-cart-line-summary h3,
+.bq-cart-details h3 { margin: 0; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.bq-cart-details h3 { font-size: 1.25rem; margin-bottom: 6px; }
+.bq-cart-specs { gap: 3px; color: var(--bq-color-ink-muted); font-size: .83rem; overflow-wrap: anywhere; }
+
+.bq-cart-controls,
+.bq-cart-detail-row,
+.bq-cart-total {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.bq-cart-controls { grid-column: 1 / -1; }
+.bq-cart-detail-row { border-top: 1px solid var(--bq-color-border); padding-top: 10px; }
+.bq-cart-quantity { min-width: 0; max-width: 100%; }
+.bq-cart-quantity .bq-number-input { gap: 3px; max-width: 100%; min-height: 48px; padding: 0 3px; }
+.bq-cart-quantity .bq-number-input .bq-num-btn { min-width: 44px; min-height: 44px; }
+.bq-cart-quantity small { display: block; color: var(--bq-color-ink); margin-top: 6px; }
+
+.bq-cart-remove { background: transparent; border: 0; border-radius: 10px; color: #e25151; cursor: pointer; }
+.bq-cart-remove:hover { background: var(--bq-color-surface-alt); }
+.bq-cart-drawer button:focus-visible,
+.bq-cart-drawer input:focus-visible { outline: 2px solid var(--bq-color-accent); outline-offset: 2px; }
+.bq-cart-quantity input:focus-visible { outline-offset: -2px; }
+.bq-cart-empty { display: grid; justify-items: center; padding: 32px 0; color: var(--bq-color-ink-muted); }
+
+.bq-cart-footer {
+  flex-shrink: 0;
+  display: grid;
+  gap: 12px;
+  padding: 14px var(--cart-padding);
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background: var(--bq-color-surface-alt);
+  border-top: 1px solid var(--bq-color-border);
+}
+
+.bq-cart-total { color: var(--bq-color-ink-muted); }
+.bq-cart-total strong { color: var(--bq-color-ink); font-size: 1.18rem; overflow-wrap: anywhere; }
+.bq-cart-checkout {
+  min-height: 48px;
+  padding: 10px 16px;
+  background: var(--bq-color-brand);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.bq-cart-checkout:hover { background: var(--bq-color-brand-hover); }

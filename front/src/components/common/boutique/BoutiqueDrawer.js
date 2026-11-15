@@ -1,4 +1,4 @@
-import { X } from "@phosphor-icons/react";
+import { ArrowLeft, X } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import { BQ_COLORS, BQ_FONTS } from "./BoutiqueTheme";
 import { translateText } from "../../../utils/customerI18n";
@@ -17,9 +17,11 @@ export default function BoutiqueDrawer({
   side = "right", // 'left' or 'right'
   width = "400px",
   currentLanguage = "English",
+  className = "",
+  backLabel,
 }) {
   const isLeft = side === "left";
-  const closeLabel = `${translateText("Close", currentLanguage)} ${title || translateText("menu", currentLanguage)}`;
+  const closeLabel = backLabel || `${translateText("Close", currentLanguage)} ${title || translateText("menu", currentLanguage)}`;
   const panelRef = useRef(null);
   const closeRef = useRef(null);
 
@@ -62,7 +64,7 @@ export default function BoutiqueDrawer({
       {/* Panel */}
       <div
         ref={panelRef}
-        className={`bq-drawer-panel bq-drawer--${side}`}
+        className={`bq-drawer-panel bq-drawer--${side} ${className}`}
         role="dialog"
         aria-modal={isOpen ? "true" : undefined}
         aria-label={title || translateText("Menu", currentLanguage)}
@@ -79,8 +81,8 @@ export default function BoutiqueDrawer({
       >
         <div className="bq-drawer-header">
           <h2 className="bq-drawer-title">{title}</h2>
-          <button ref={closeRef} type="button" className="bq-drawer-close" onClick={onClose} aria-label={closeLabel}>
-            <X size={24} weight="bold" />
+          <button ref={closeRef} type="button" className={backLabel ? "bq-drawer-close bq-drawer-back" : "bq-drawer-close"} onClick={onClose} aria-label={closeLabel}>
+            {backLabel ? <ArrowLeft size={22} weight="bold" /> : <X size={24} weight="bold" />}
           </button>
         </div>
 
@@ -115,7 +117,7 @@ export default function BoutiqueDrawer({
           cursor: pointer; transition: transform 0.3s ease;
           display: flex; align-items: center; justify-content: center;
         }
-        .bq-drawer-close:hover { transform: rotate(90deg); }
+        .bq-drawer-close:not(.bq-drawer-back):hover { transform: rotate(90deg); }
         .bq-drawer-close:focus-visible { outline: 3px solid ${BQ_COLORS.accent}; outline-offset: 3px; }
 
         .bq-drawer-content {

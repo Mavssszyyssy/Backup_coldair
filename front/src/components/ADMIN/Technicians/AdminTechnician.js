@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../Common/AdminLayout";
 import { useUser } from "../../../context/UserContext";
@@ -6,7 +8,7 @@ import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
-import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime } from "../../../utils/dateTime";
+import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from "../../../utils/dateTime";
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
 import { PERSON_NAME_MAX_LENGTH } from "../../../domain/personNameValidation";
@@ -135,6 +137,7 @@ const CustomerCombobox = ({ customers, value, query, onQueryChange, onSelect, di
     <label>
       <span>{t("Customer / site")}</span>
       <input
+        maxLength={160}
         type="search"
         role="combobox"
         aria-expanded={open}
@@ -233,16 +236,16 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     setWorkspaceView(initialView === "schedule" ? "schedule" : "technicians");
   }, [initialView]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     setLoading(true);
     setError("");
     try {
       const [usersResult, customerResult, tasksResult, catalogResult, unitResult] = await Promise.all([
-        apiRequest("/users?role=technician"),
-        apiRequest("/users?role=customer"),
-        apiRequest("/tasks"),
-        apiRequest("/service-requests/catalog"),
-        apiRequest("/amp/report-units"),
+        apiRequest("/users?role=technician", fresh ? { fresh } : undefined),
+        apiRequest("/users?role=customer", fresh ? { fresh } : undefined),
+        apiRequest("/tasks", fresh ? { fresh } : undefined),
+        apiRequest("/service-requests/catalog", fresh ? { fresh } : undefined),
+        apiRequest("/amp/report-units", fresh ? { fresh } : undefined),
       ]);
       setTechnicians((usersResult.users || []).map((item) => ({
         ...item,
@@ -546,7 +549,8 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     if (!service) { setError("Choose the type of work to be completed."); return; }
     if (!draft.address.trim()) { setError("Choose or enter the service address."); return; }
     if (!technician) { setError("Choose a technician from the assignment dropdown."); return; }
-    if (draft.scheduledDate < today()) { setError("Choose today or a future date."); return; }
+    const dateError = getWorkOrderDateSelectionError(draft.scheduledDate);
+    if (dateError) { setError(dateError); return; }
     if (technicianHasConflict(tasks, {
       technicianId: technician.id,
       scheduledDate: draft.scheduledDate,
@@ -714,12 +718,12 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         </div>
 
         <section className="tech-filter-card admin-card" aria-label={t("Technician filters")}>
-          <div className="tech-filter-heading"><div><h2>{t("Find a technician")}</h2><p>{t("Use the filters to match one assigned technician to each job.")}</p></div><button type="button" className="tech-secondary-button" onClick={load} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button></div>
+          <div className="tech-filter-heading"><div><h2>{t("Find a technician")}</h2><p>{t("Use the filters to match one assigned technician to each job.")}</p></div><button type="button" className="tech-secondary-button" onClick={() => load(true)} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button></div>
           <div className="tech-filter-grid">
-            <label className="tech-search-field"><span>{t("Search")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Name, login ID, skill, or branch")} /></label>
-            <label><span>{t("Account status")}</span><select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">{t("All accounts")}</option><option value="active">{t("Active")}</option><option value="disabled">{t("Disabled")}</option></select></label>
-            <label><span>{t("Workload")}</span><select value={workloadFilter} onChange={(event) => setWorkloadFilter(event.target.value)}><option value="all">{t("All workloads")}</option><option value="available">{t("Available (under 3 open)")}</option><option value="busy">{t("Busy (3+ open)")}</option></select></label>
-            <label><span>{t("Branch")}</span><select value={branchFilter} disabled={!isSuperAdmin && Boolean(homeBranch)} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">{t("All branches")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label className="tech-search-field"><span>{t("Search")}</span><input maxLength={160} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Name, login ID, skill, or branch")} /></label>
+            <label><span>{t("Account status")}</span><SearchableSelect value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}><option value="all">{t("All accounts")}</option><option value="active">{t("Active")}</option><option value="disabled">{t("Disabled")}</option></SearchableSelect></label>
+            <label><span>{t("Workload")}</span><SearchableSelect value={workloadFilter} onChange={(event) => setWorkloadFilter(event.target.value)}><option value="all">{t("All workloads")}</option><option value="available">{t("Available (under 3 open)")}</option><option value="busy">{t("Busy (3+ open)")}</option></SearchableSelect></label>
+            <label><span>{t("Branch")}</span><SearchableSelect value={branchFilter} disabled={!isSuperAdmin && Boolean(homeBranch)} onChange={(event) => setBranchFilter(event.target.value)}><option value="all">{t("All branches")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label>
           </div>
         </section>
 
@@ -734,7 +738,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
               <label><span>{t("Last name")}</span><input value={staffDraft.lastName} maxLength={PERSON_NAME_MAX_LENGTH} onChange={(event) => updateStaffDraft("lastName", event.target.value)} autoComplete="family-name" required /></label>
             </div>
             <label><span>{t("Username")}</span><input value={staffDraft.loginName} maxLength={30} onChange={(event) => updateStaffDraft("loginName", event.target.value)} placeholder={t("e.g. j.delacruz")} autoComplete="off" required /><small>{t("Use a short, unique username. Check the generated Login ID below.")}</small></label>
-            <label><span>{t("Assigned branch")}</span><select value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label><span>{t("Assigned branch")}</span><SearchableSelect value={staffDraft.branch} onChange={(event) => updateStaffDraft("branch", event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label>
             <label><span>{t("Service Quota")}</span><input type="number" min="1" max="50" step="1" value={staffDraft.serviceQuota} onChange={(event) => updateStaffDraft("serviceQuota", event.target.value)} placeholder={t("Maximum service jobs")} required /><small>{t("Choose 1–50 whole-number service jobs. Required before warranty assignment.")}</small></label>
             <div className="tech-credential-preview"><span>{t("Login ID")}</span><strong>{credentialPreview.loginIdentifier || "tech.branch.name"}</strong><span>{t("Default password")}</span><strong>{credentialPreview.defaultPassword || "branch.name"}</strong></div>
             <p className="tech-staff-note">{t("Email is not used. At first sign-in in the mobile app, the technician must confirm a contact number and replace the default password before accessing work.")}</p>
@@ -753,7 +757,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         <div className="tech-management-grid">
           <section className="admin-card tech-roster-card">
             <div className="tech-section-heading"><div><h2>{t("Field team")}</h2><p>{filteredTechnicians.length} {t(filteredTechnicians.length === 1 ? "technician" : "technicians")} {t("match the selected filters.")}</p></div></div>
-            {loading ? <p className="tech-empty">{t("Loading technicians…")}</p> : pageTechnicians.length === 0 ? <p className="tech-empty">{t("No technicians match these filters.")}</p> : <div className="tech-roster-list">{pageTechnicians.map((technician) => {
+            {loading ? <LoadingSkeleton label={t("Loading technicians…")} /> : pageTechnicians.length === 0 ? <p className="tech-empty">{t("No technicians match these filters.")}</p> : <div className="tech-roster-list">{pageTechnicians.map((technician) => {
               const openCount = openTasksByTechnician[String(technician.id)] || 0;
               const taskStats = taskStatsByTechnician[String(technician.id)] || {
                 assigned: 0,
@@ -796,7 +800,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
                   </div>
                   {isSuperAdmin ? <div className="tech-person-control-row tech-person-edit-row"><label className="tech-inline-select tech-email-field"><span>{t("Email address")}</span><input type="email" maxLength={254} value={technician.email || ""} disabled={changing} onChange={(event) => setTechnicians((current) => current.map((item) => item.id === technician.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" /><small>{t("Contact email only; the technician still signs in with the unique login ID above.")}</small></label><button type="button" className="tech-secondary-button" disabled={changing || !isValidEmailFormat(technician.email)} onClick={() => saveTechnicianEmail(technician)}>{t(changing ? "Saving…" : "Save email")}</button></div> : null}
                   <div className={`tech-person-control-row tech-person-action-row${isSuperAdmin ? '' : ' tech-person-action-row--admin'}`}>
-                    {isSuperAdmin ? <label className="tech-inline-select"><span>{t("Branch assignment")}</span><select value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} ${t('is now assigned to')} ${event.target.value}.`)}><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : null}
+                    {isSuperAdmin ? <label className="tech-inline-select"><span>{t("Branch assignment")}</span><SearchableSelect value={technician.branch} disabled={changing} onChange={(event) => updateTechnician(technician, { assignedBranch: event.target.value }, `${technician.name} ${t('is now assigned to')} ${event.target.value}.`)}><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label> : null}
                     <button type="button" className={technician.accountStatus === "active" ? "tech-danger-button" : "tech-primary-button"} disabled={changing} onClick={() => changeTechnicianAccountStatus(technician)}>{t(changing ? "Saving…" : technician.accountStatus === "active" ? "Disable account" : "Enable account")}</button>
                   </div>
                 </div> : null}
@@ -809,7 +813,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
             <div className="tech-section-heading"><div><h2>{t("Create work order")}</h2><p>{t("Assignment is saved directly to the selected technician’s My Work list.")}</p></div></div>
             <fieldset className="tech-form-section">
               <legend>{t("Customer and service location")}</legend>
-              {isSuperAdmin ? <label><span>{t("Branch")}</span><select value={draft.branch} onChange={(event) => changeWorkOrderBranch(event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label> : <p className="tech-branch-note">{t("Branch:")} <strong>{homeBranch || "Your active branch"}</strong></p>}
+              {isSuperAdmin ? <label><span>{t("Branch")}</span><SearchableSelect value={draft.branch} data-placeholder={!draft.branch ? "" : undefined} onChange={(event) => changeWorkOrderBranch(event.target.value)} required><option value="">{t("Select branch")}</option>{branchNames.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</SearchableSelect></label> : <p className="tech-branch-note">{t("Branch:")} <strong>{homeBranch || "Your active branch"}</strong></p>}
               <CustomerCombobox
                 customers={availableCustomers}
                 value={draft.customerId}
@@ -818,25 +822,27 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
                 onSelect={selectCustomer}
                 disabled={isSuperAdmin && !draft.branch}
               />
-              <label><span>{t("Service address")}</span><select value={draft.addressId} onChange={(event) => selectAddress(event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select a saved address")}</option>{addressOptions.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.address}</option>)}<option value={CUSTOM_ADDRESS_ID}>{t("+ Use another address")}</option></select></label>
-              {draft.customAddress ? <label><span>{t("Custom service address")}</span><input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder={t("Enter the complete service address")} required /></label> : null}
-              <label><span>{t("Registered AC unit")} <small>{t("(optional)")}</small></span><select value={draft.unitId} onChange={(event) => selectUnit(event.target.value)} disabled={!draft.customerId || customerUnits.length === 0}><option value="">{t(customerUnits.length ? "No specific unit" : "No registered units for this customer")}</option>{customerUnits.map((unit) => <option key={unit.unitId} value={unit.unitId}>{unit.modelName}{unit.serialNumber ? ` · ${unit.serialNumber}` : ""}</option>)}</select></label>
+              <label><span>{t("Service address")}</span><SearchableSelect value={draft.addressId} data-placeholder={!draft.addressId ? "" : undefined} onChange={(event) => selectAddress(event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select a saved address")}</option>{addressOptions.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.address}</option>)}<option value={CUSTOM_ADDRESS_ID}>{t("+ Use another address")}</option></SearchableSelect></label>
+              {draft.customAddress ? <label><span>{t("Custom service address")}</span><input maxLength={240} value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder={t("Enter the complete service address")} required /></label> : null}
+              <label><span>{t("Registered AC unit")} <small>{t("(optional)")}</small></span><SearchableSelect value={draft.unitId} data-placeholder={!draft.unitId ? "" : undefined} onChange={(event) => selectUnit(event.target.value)} disabled={!draft.customerId || customerUnits.length === 0}><option value="">{t(customerUnits.length ? "No specific unit" : "No registered units for this customer")}</option>{customerUnits.map((unit) => <option key={unit.unitId} value={unit.unitId}>{unit.modelName}{unit.serialNumber ? ` · ${unit.serialNumber}` : ""}</option>)}</SearchableSelect></label>
             </fieldset>
 
             <fieldset className="tech-form-section">
               <legend>{t("Work details")}</legend>
-              <label><span>{t("Work type")}</span><select value={draft.serviceTypeId} onChange={(event) => updateDraft("serviceTypeId", event.target.value)} required><option value="">{t("Select work type")}</option>{serviceOfferings.map((service) => <option key={service.id} value={service.id}>{t(service.title)}</option>)}</select></label>
-              <label><span>{t("Instructions")} <small>{t("(optional)")}</small></span><textarea rows="3" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder={t("Add access notes or a short description of the work")} /></label>
+              <div className="tech-form-row">
+                <label><span>{t("Work type")}</span><SearchableSelect value={draft.serviceTypeId} data-placeholder={!draft.serviceTypeId ? "" : undefined} onChange={(event) => updateDraft("serviceTypeId", event.target.value)} required><option value="">{t("Select work type")}</option>{serviceOfferings.map((service) => <option key={service.id} value={service.id}>{t(service.title)}</option>)}</SearchableSelect></label>
+                <label><span>{t("Priority")}</span><SearchableSelect value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="urgent">{t("Urgent")}</option><option value="high">{t("High")}</option><option value="medium">{t("Medium")}</option><option value="normal">{t("Normal")}</option><option value="low">{t("Low")}</option></SearchableSelect></label>
+              </div>
+              <label><span>{t("Instructions")} <small>{t("(optional)")}</small></span><textarea maxLength={1000} rows="2" value={draft.description} onChange={(event) => updateDraft("description", event.target.value)} placeholder={t("Add access notes or a short description of the work")} /></label>
             </fieldset>
 
             <fieldset className="tech-form-section">
               <legend>{t("Schedule and assignment")}</legend>
-              <label><span>{t("Assign technician")}</span><select value={draft.technicianId} onChange={(event) => updateDraft("technicianId", event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select an active technician")}</option>{availableForAssignment.map((technician) => {
+              <label><span>{t("Assign technician")}</span><SearchableSelect value={draft.technicianId} data-placeholder={!draft.technicianId ? "" : undefined} onChange={(event) => updateDraft("technicianId", event.target.value)} disabled={!draft.customerId} required><option value="">{t("Select an active technician")}</option>{availableForAssignment.map((technician) => {
                 const conflict = technicianHasConflict(tasks, { technicianId: technician.id, scheduledDate: draft.scheduledDate, timeSlot: draft.timeSlot });
                 return <option key={technician.id} value={technician.id} disabled={conflict}>{technician.name} · {openTasksByTechnician[String(technician.id)] || 0} {t("open")}{conflict ? ` · ${t("Schedule conflict")}` : ""}</option>;
-              })}</select></label>
-              <div className="tech-form-row"><label><span>{t("Scheduled date")}</span><input type="date" min={today()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} required /></label><label><span>{t("Time slot")}</span><select value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label></div>
-              <label><span>{t("Priority")}</span><select value={draft.priority} onChange={(event) => updateDraft("priority", event.target.value)}><option value="urgent">{t("Urgent")}</option><option value="high">{t("High")}</option><option value="medium">{t("Medium")}</option><option value="normal">{t("Normal")}</option><option value="low">{t("Low")}</option></select></label>
+              })}</SearchableSelect></label>
+              <div className="tech-form-row"><label><span>{t("Scheduled date")}</span><input type="date" {...getWorkOrderDateWindow()} value={draft.scheduledDate} onChange={(event) => updateDraft("scheduledDate", event.target.value)} onInvalid={(event) => setError(getWorkOrderDateSelectionError(event.target.value))} required /></label><label><span>{t("Time slot")}</span><SearchableSelect value={draft.timeSlot} onChange={(event) => updateDraft("timeSlot", event.target.value)}>{TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}</SearchableSelect></label></div>
             </fieldset>
             <button className="tech-primary-button" type="submit" disabled={savingTask}>{t(savingTask ? "Creating work order…" : "Assign work order")}</button>
           </form>
@@ -845,10 +851,10 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
         <section className="admin-card tech-work-orders">
           <div className="tech-section-heading"><div><h2>{t("Recent work assignments")}</h2><p>{t("Search, filter, activate, or reassign work without scanning the entire history.")}</p></div><span className="tech-result-count">{filteredWorkAssignments.length} {t("of")} {tasks.length} {t("shown")}</span></div>
           <div className="tech-work-filters" aria-label={t("Work assignment filters")}>
-            <label className="tech-work-search"><span>{t("Search assignments")}</span><input type="search" value={workSearch} onChange={(event) => setWorkSearch(event.target.value)} placeholder={t("Work order, customer, unit, branch…")} /></label>
-            <label><span>{t("Status")}</span><select value={workStatusFilter} onChange={(event) => setWorkStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option><option value="pending">{t("Awaiting Admin")}</option><option value="in-progress">{t("In progress")}</option><option value="installing">{t("Installing")}</option><option value="on-hold">{t("On hold")}</option><option value="completed">{t("Completed")}</option></select></label>
-            <label><span>{t("Assignment type")}</span><select value={workTypeFilter} onChange={(event) => setWorkTypeFilter(event.target.value)}><option value="all">{t("All work types")}</option><option value="service">{t("Service")}</option><option value="installation">{t("Installation")}</option></select></label>
-            <label><span>{t("Technician")}</span><select value={workTechnicianFilter} onChange={(event) => setWorkTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={String(technician.id)}>{technician.name}</option>)}</select></label>
+            <label className="tech-work-search"><span>{t("Search assignments")}</span><input maxLength={160} type="search" value={workSearch} onChange={(event) => setWorkSearch(event.target.value)} placeholder={t("Work order, customer, unit, branch…")} /></label>
+            <label><span>{t("Status")}</span><SearchableSelect value={workStatusFilter} onChange={(event) => setWorkStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option><option value="pending">{t("Awaiting Admin")}</option><option value="in-progress">{t("In progress")}</option><option value="installing">{t("Installing")}</option><option value="on-hold">{t("On hold")}</option><option value="completed">{t("Completed")}</option></SearchableSelect></label>
+            <label><span>{t("Assignment type")}</span><SearchableSelect value={workTypeFilter} onChange={(event) => setWorkTypeFilter(event.target.value)}><option value="all">{t("All work types")}</option><option value="service">{t("Service")}</option><option value="installation">{t("Installation")}</option></SearchableSelect></label>
+            <label><span>{t("Technician")}</span><SearchableSelect value={workTechnicianFilter} onChange={(event) => setWorkTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={String(technician.id)}>{technician.name}</option>)}</SearchableSelect></label>
             {hasWorkFilters ? <button type="button" className="tech-clear-filters" onClick={() => { setWorkSearch(""); setWorkStatusFilter("all"); setWorkTypeFilter("all"); setWorkTechnicianFilter("all"); }}>{t("Clear filters")}</button> : null}
           </div>
           {pageWorkAssignments.length === 0 ? <p className="tech-empty">{t(tasks.length ? "No work assignments match these filters." : "There are no work orders yet.")}</p> : <div className="tech-work-list">{pageWorkAssignments.map((task) => {
@@ -874,7 +880,7 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
                   <span>{t(formatCheckInCoordinates(checkIn))}</span>
                   {mapUrl ? <a href={mapUrl} target="_blank" rel="noreferrer">{t("Open check-in map")}</a> : null}
                 </div> : <div className="tech-check-in"><strong>{t("Not checked in")}</strong><span>{t("The technician’s GPS arrival has not been recorded.")}</span></div>}
-                {openTask(task) ? <label><span>{t("Assigned technician")}</span><select value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">{t("Select technician")}</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</select></label> : <p className="tech-completed-by"><span>{t("Completed by")}</span><strong>{task.assignedTechnicianName || t("Technician")}</strong></p>}
+                {openTask(task) ? <label><span>{t("Assigned technician")}</span><SearchableSelect value={task.assignedTechnicianId || ""} disabled={updatingId === `task-${task.id}`} onChange={(event) => updateTaskAssignment(task, event.target.value)}><option value="">{t("Select technician")}</option>{technicians.filter((technician) => technician.accountStatus === "active" && (!task.branch || !technician.branch || technician.branch === task.branch)).map((technician) => <option key={technician.id} value={technician.id}>{technician.name}</option>)}</SearchableSelect></label> : <p className="tech-completed-by"><span>{t("Completed by")}</span><strong>{task.assignedTechnicianName || t("Technician")}</strong></p>}
               </div>
             </article>;
           })}</div>}

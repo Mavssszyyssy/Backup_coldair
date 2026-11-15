@@ -42,7 +42,7 @@
 .super-layout {
   min-height: 100vh;
   background: radial-gradient(circle at 20% 0%, #eef2ff 0%, var(--super-bg) 38%, #f9fafb 100%);
-  font-family: 'DM Sans', -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .super-layout-main {

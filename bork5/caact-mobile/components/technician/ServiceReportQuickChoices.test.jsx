@@ -34,6 +34,7 @@ test("existing draft prose survives opening and choosing a standard finding", as
   const changed = jest.fn();
   await render(<Form initial="Existing observation from the technician." onFindings={changed} />);
   expect(screen.getByLabelText("Other technician findings").props.value).toBe("Existing observation from the technician.");
+  expect(screen.getByLabelText("Other technician findings").props.maxLength).toBe(1000);
   expect(changed).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByLabelText("Select Technician Findings"));
   await fireEvent.press(screen.getByLabelText("Technician Findings: Dust buildup on the air filter."));

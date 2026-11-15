@@ -65,6 +65,18 @@ export const FONT = {
   black: "800",
 };
 
+export const TYPE = {
+  display: { fontSize: 28, lineHeight: 35, fontWeight: FONT.black },
+  title: { fontSize: FONT.xl, lineHeight: 28, fontWeight: FONT.black },
+  section: { fontSize: FONT.lg, lineHeight: 24, fontWeight: FONT.bold },
+  card: { fontSize: FONT.md, lineHeight: 22, fontWeight: FONT.bold },
+  body: { fontSize: FONT.md, lineHeight: 24, fontWeight: "400" },
+  label: { fontSize: FONT.base, lineHeight: 20, fontWeight: "600" },
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: "400" },
+  action: { fontSize: FONT.md, lineHeight: 22, fontWeight: FONT.bold },
+  tab: { fontSize: FONT.sm, lineHeight: 16, fontWeight: "600" },
+};
+
 export const SHADOWS = {
   card: {
     shadowColor: "#0F2742",

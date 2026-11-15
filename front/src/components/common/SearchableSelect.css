@@ -1,0 +1,73 @@
+.searchable-select {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.searchable-select > select { flex: 1; min-width: 0; max-width: 100%; }
+
+.searchable-select__trigger, .searchable-select__panel {
+  color: var(--bq-color-ink, #172033);
+  background: var(--bq-color-surface, white);
+  border: 1px solid var(--bq-color-border, #cbd5e1);
+  border-radius: 9px;
+}
+
+.searchable-select__trigger {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  min-height: 44px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.searchable-select__panel {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 20%);
+  font: 400 var(--app-type-label, .875rem)/1.4 var(--app-font-family, system-ui);
+  overflow: auto;
+}
+
+.searchable-select__panel input {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--bq-color-border, #cbd5e1);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.searchable-select__panel ul { margin: 4px 0 0; padding: 0; list-style: none; overflow: auto; }
+.searchable-select__panel li button {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  text-align: start;
+  overflow-wrap: anywhere;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.searchable-select__panel li button:is(:hover, [aria-pressed="true"]) { background: var(--bq-color-bg, #eff6ff); }
+.searchable-select__panel li button[aria-pressed="true"] { font-weight: 600; }
+.searchable-select__trigger:focus-visible, .searchable-select__panel :is(input, button):focus-visible { outline: 2px solid var(--bq-color-accent, #2563eb); outline-offset: -2px; }
+.searchable-select__panel li button:disabled { opacity: .55; cursor: not-allowed; }
+.searchable-select__panel small { display: block; }
+.searchable-select__panel p { margin: 8px 0 0; }

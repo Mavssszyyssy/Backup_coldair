@@ -267,6 +267,11 @@ export default function SignUpStep3() {
         const error = validateRequired(form[field], label);
         if (error) nextErrors[field] = t(error);
       });
+      const combinedStreet = [form.apartmentUnit, form.propertyBlockLot, form.thoroughfare]
+        .map(value => value.trim()).filter(Boolean).join(", ");
+      if (!nextErrors.thoroughfare && combinedStreet.length > 180) {
+        nextErrors.thoroughfare = t("Street address must be 180 characters or fewer.");
+      }
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -329,11 +334,8 @@ export default function SignUpStep3() {
       <KeyboardAwareScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          justifyContent: "center",
           padding: SPACING.md,
-          paddingBottom: 112,
         }}
-        minBottomPadding={148}
       >
         <PageHeader
           title={t("Create Account")}
@@ -399,6 +401,7 @@ export default function SignUpStep3() {
             onSelect={handleBarangaySelect}
           />
           <TextField
+            maxLength={180}
             label={t("Street address (optional)")}
             value={form.thoroughfare}
             onChangeText={(value) => updateField("thoroughfare", value)}
@@ -406,18 +409,21 @@ export default function SignUpStep3() {
             error={errors.thoroughfare}
           />
           <TextField
+            maxLength={80}
             label={t("Property, Block, or Lot")}
             value={form.propertyBlockLot}
             onChangeText={(value) => updateField("propertyBlockLot", value)}
             placeholder={t("Block 5, Lot 12")}
           />
           <TextField
+            maxLength={80}
             label={t("Apartment Unit")}
             value={form.apartmentUnit}
             onChangeText={(value) => updateField("apartmentUnit", value)}
             placeholder={t("Unit 101")}
           />
           <TextField
+            maxLength={180}
             label={t("Landmark(s) (optional)")}
             value={form.landmark}
             onChangeText={(value) => updateField("landmark", value)}

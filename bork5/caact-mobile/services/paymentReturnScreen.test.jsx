@@ -91,6 +91,19 @@ test("a backed-out first GCash attempt still offers the same payment flow", asyn
   await fireEvent.press(screen.getByText("Complete payment"));
   await waitFor(() => expect(mockRetry).toHaveBeenCalledWith("order123"));
   expect(Linking.openURL).toHaveBeenCalledWith("https://pay.example/gcash-retry");
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("a timed-out checkout cannot be reopened while PayMongo confirms expiry", async () => {
+  const order = { ...pending, paymentMethod: "gcash", workflowStatus: "to_pay", paymentCheckoutState: "expiring",
+    paymongo: { checkoutSessionId: "checkout-1", checkoutUrl: "https://pay.example/overdue" } };
+  mockGet.mockResolvedValue(order);
+  mockVerify.mockResolvedValue(order);
+  await render(<OrderConfirmation />);
+  await screen.findByText("The previous payment link is closing. Check the payment status before trying again.");
+  expect(screen.queryByText("Complete payment")).toBeNull();
+  expect(screen.queryByText("Pay Again")).toBeNull();
+  expect(screen.getByText("Check payment status")).toBeTruthy();
 });
 
 test("the third unsuccessful GCash attempt blocks another payment session", async () => {

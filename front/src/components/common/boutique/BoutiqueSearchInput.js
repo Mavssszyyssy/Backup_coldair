@@ -23,6 +23,7 @@ export default function BoutiqueSearchInput({
     <div className="bq-search-container">
       <MagnifyingGlass className="bq-search-icon" size={18} weight="bold" />
       <input
+        maxLength={160}
         type="text"
         className="bq-search-field"
         placeholder={placeholder}

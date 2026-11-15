@@ -13,7 +13,7 @@ import BoutiqueNotifications from "../common/boutique/BoutiqueNotifications";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueSideMenu from "../common/boutique/BoutiqueSideMenu";
 import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
-import useCustomerAlerts from "../../hooks/useCustomerAlerts";
+import useCustomerAlerts from "../../hooks/useAlerts";
 
 // Home Specific Modular Sections
 import HomeBrands from "./HomeBrands";
@@ -24,6 +24,7 @@ function Home() {
   const navigate = useNavigate();
   const {
     cart,
+    loading: cartLoading,
     updateQuantity,
     removeFromCart,
     getCartTotal,
@@ -135,6 +136,7 @@ function Home() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
+        loading={cartLoading}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
         onCheckout={() => navigate("/checkout")}

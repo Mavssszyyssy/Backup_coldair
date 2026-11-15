@@ -21,9 +21,9 @@ const AdminRegister = () => {
   return (
     <form className="admin-form admin-auth" onSubmit={submit}>
       <h2>Admin Register</h2>
-      <input name="name" placeholder="Full name" value={form.name} onChange={update} />
-      <input name="email" type="email" placeholder="Email" value={form.email} onChange={update} />
-      <input name="password" type="password" placeholder="Password" value={form.password} onChange={update} />
+      <input maxLength={41} name="name" placeholder="Full name" value={form.name} onChange={update} />
+      <input maxLength={254} name="email" type="email" placeholder="Email" value={form.email} onChange={update} />
+      <input maxLength={25} name="password" type="password" placeholder="Password" value={form.password} onChange={update} />
       <button type="submit">Create Account</button>
     </form>
   );

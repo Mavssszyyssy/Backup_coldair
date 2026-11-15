@@ -1,4 +1,5 @@
 import { clearAuthSession, getAuthSessionItem, getSessionActiveBranch } from "../utils/authSession";
+import { createPageDataCache, readCacheTtl } from "./pageDataCache";
 
 const LIVE_API_BASE_URL = "https://api.coldair-act.online/api";
 const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
@@ -35,14 +36,33 @@ if (
 
 const getToken = () => getAuthSessionItem("accessToken");
 const getActiveBranch = () => getSessionActiveBranch();
-const isPublicApiPath = (path = "") =>
-  path === "/health" ||
-  path === "/products/public" ||
-  path === "/branches" ||
-  path.startsWith("/auth/");
+const isPublicApiPath = (path = "") => /^(?:\/health|\/products\/public|\/branches(?:\/resolve)?|\/system-settings\/email-domains\/public)(?:\?|$)/.test(path)
+  || path.startsWith("/auth/");
 
 let activeRequestCount = 0;
 const inFlightReadRequests = new Map();
+const pageData = createPageDataCache();
+const writesInFlight = { data: 0, notifications: 0 };
+const generations = { data: 0, notifications: 0 };
+let cacheScope;
+
+function invalidatePageData(group) {
+  pageData.invalidate(group);
+  for (const key of Object.keys(generations)) {
+    if (!group || group === key) generations[key] += 1;
+  }
+  for (const [key, request] of inFlightReadRequests) {
+    if (!group || group === request.group) inFlightReadRequests.delete(key);
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:session-ended", () => invalidatePageData());
+}
+
+// These operations are independent of the records displayed by the portal.
+const noPageDataWrite = /^\/(?:ai\/customer-chat|auth\/(?:session\/(?:cart|registration)|request-otp|verify-otp|forgot-password|login\/resend-email)|users\/validate)(?:\?|$)/;
+const dataGroup = (path) => path.startsWith("/notifications") ? "notifications" : "data";
 
 const publishConnectionState = (state, detail = {}) => {
   if (typeof window === "undefined") return;
@@ -173,7 +193,7 @@ const performApiRequest = async (path, options = {}) => {
     }
     if (!response) throw lastNetworkError || new Error("Network request failed.");
   } catch (error) {
-    console.error("API request failed", { url: requestUrl, options, error });
+    console.error("API request failed", { method, error: error?.name || "Error" });
     const message = error?.code === "API_TIMEOUT"
       ? error.message
       : "Unable to connect to the server. Please check your connection and try again.";
@@ -193,9 +213,11 @@ const performApiRequest = async (path, options = {}) => {
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 403 && token === getToken()) invalidatePageData();
+    if (response.status === 401 && token === getToken()) {
+      invalidatePageData();
       clearAuthSession();
-      console.warn("Cleared stale auth state after 401.", { url: requestUrl, options });
+      console.warn("Cleared stale auth state after 401.");
 
       try {
         window.dispatchEvent(
@@ -224,35 +246,65 @@ const performApiRequest = async (path, options = {}) => {
   return data;
 };
 
-const apiRequest = (path, options = {}) => {
+const apiRequest = (path, { fresh = false, display = false, onCached, ...options } = {}) => {
   const method = String(options.method || "GET").toUpperCase();
-  // Multiple panels can request the same data on the same refresh tick. Share
-  // that read instead of allowing long-running tabs to build an ever-growing
-  // queue of identical browser and serverless requests.
-  if (method !== "GET" || options.signal) return performApiRequest(path, options);
+  const token = getToken();
+  const branch = getActiveBranch();
+  const scope = JSON.stringify([token, branch]);
+  if (scope !== cacheScope) {
+    invalidatePageData();
+    cacheScope = scope;
+  }
+  const group = dataGroup(path);
+  if (method !== "GET") {
+    if (noPageDataWrite.test(path)) return performApiRequest(path, options);
+    const invalidate = group === "notifications" ? group : undefined;
+    writesInFlight[group] += 1;
+    invalidatePageData(invalidate);
+    return performApiRequest(path, options).finally(() => {
+      writesInFlight[group] -= 1;
+      invalidatePageData(invalidate);
+    });
+  }
+  if (options.signal || options.headers || options.body != null) return performApiRequest(path, options);
 
-  const requestKey = [
-    path,
-    getToken(),
-    getActiveBranch(),
-    JSON.stringify(options.headers || {}),
-  ].join("|");
-  const existingRequest = inFlightReadRequests.get(requestKey);
-  if (existingRequest) return existingRequest;
+  const ttl = readCacheTtl(path, { token, display, ...options });
+  const canReuse = ttl && !writesInFlight[group] && !writesInFlight.data;
+  const key = JSON.stringify([path, display]);
+  const cached = canReuse && !fresh ? pageData.read(key, ttl, Boolean(onCached)) : null;
+  if (cached) {
+    onCached?.(cached.data, cached.loadedAt);
+    if (cached.fresh) return Promise.resolve(cached.data);
+  }
 
+  // A live-only or explicitly refreshed read cannot join an older display read.
+  const refreshKey = JSON.stringify([key, true]);
+  const defaultKey = JSON.stringify([key, false]);
+  const requestKey = fresh ? refreshKey : defaultKey;
+  const existingRequest = inFlightReadRequests.get(refreshKey)
+    || (!fresh && inFlightReadRequests.get(defaultKey));
+  if (existingRequest) return existingRequest.promise;
+  if (fresh) {
+    pageData.remove(key);
+    inFlightReadRequests.delete(defaultKey);
+  }
+
+  const generation = generations[group];
   const request = performApiRequest(path, options);
-  inFlightReadRequests.set(requestKey, request);
+  const entry = { promise: request, group };
+  inFlightReadRequests.set(requestKey, entry);
+  const finish = () => {
+    if (inFlightReadRequests.get(requestKey) === entry) inFlightReadRequests.delete(requestKey);
+  };
   request.then(
-    () => {
-      if (inFlightReadRequests.get(requestKey) === request) {
-        inFlightReadRequests.delete(requestKey);
+    (data) => {
+      if (canReuse && inFlightReadRequests.get(requestKey) === entry
+        && generation === generations[group] && token === getToken() && branch === getActiveBranch()) {
+        pageData.save(key, data, group);
       }
+      finish();
     },
-    () => {
-      if (inFlightReadRequests.get(requestKey) === request) {
-        inFlightReadRequests.delete(requestKey);
-      }
-    },
+    finish,
   );
   return request;
 };

@@ -1,3 +1,5 @@
+import SearchableSelect from "../common/SearchableSelect";
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { Snowflake } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -11,7 +13,7 @@ import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
-import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
+import { BQ_COLORS, BQ_GEOMETRY } from "../common/boutique/BoutiqueTheme";
 import "./MyUnit.css";
 import ServiceHistory from "./ServiceHistory";
 import UnitCard from "./UnitCard";
@@ -39,7 +41,7 @@ const formatCustomerDate = (value = "") => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? String(value)
-    : date.toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" });
+    : date.toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Manila" });
 };
 
 const buildUnitFromBackend = (unit = {}) => ({
@@ -56,6 +58,8 @@ const buildUnitFromBackend = (unit = {}) => ({
   orderCode: unit.orderCode || "",
   purchaseDateRaw: unit.purchaseDate || "",
   purchaseDate: formatCustomerDate(unit.purchaseDate),
+  purchaseBranch: unit.purchaseBranch || "",
+  installingTechnician: unit.installingTechnician || "",
   qrCode: unit.qrCode || "",
   unitName: unit.unitName || [unit.brand, unit.model || unit.modelName].filter(Boolean).join(" ") || "Installed AC Unit",
   serviceBranch: unit.serviceBranch || "",
@@ -200,7 +204,7 @@ function MyUnit() {
         direction="column"
         flex={1}
         width="100%"
-        padding="40px 24px"
+        padding={BQ_GEOMETRY.pagePadding}
         style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <BoutiqueBox
@@ -218,15 +222,13 @@ function MyUnit() {
         </BoutiqueBox>
 
         {loadingUnits ? (
-          <BoutiqueBox flex={1} align="center" justify="center" padding={60} background="white" aria-live="polite">
-            <BoutiqueText variant="h3">{t("Loading your registered AC units...")}</BoutiqueText>
-          </BoutiqueBox>
+          <LoadingSkeleton label={t("Loading your registered AC units...")} />
         ) : units.length === 0 ? (
           <BoutiqueBox
             flex={1}
             align="center"
             justify="center"
-            padding={60}
+            padding={24}
             background="white"
             style={{
               borderRadius: "24px",
@@ -260,6 +262,7 @@ function MyUnit() {
               <label className="unit-search-field">
                 <span>{t("Search your units")}</span>
                 <input
+                  maxLength={160}
                   type="search"
                   value={unitSearch}
                   onChange={(event) => setUnitSearch(event.target.value)}
@@ -268,11 +271,11 @@ function MyUnit() {
               </label>
               <label className="unit-sort-field">
                 <span>{t("Arrange by")}</span>
-                <select value={unitSort} onChange={(event) => setUnitSort(event.target.value)}>
+                <SearchableSelect value={unitSort} onChange={(event) => setUnitSort(event.target.value)}>
                   <option value="newest">{t("Newest purchase first")}</option>
                   <option value="oldest">{t("Oldest purchase first")}</option>
                   <option value="name">{t("Name A–Z")}</option>
-                </select>
+                </SearchableSelect>
               </label>
             </section>
 
@@ -291,7 +294,7 @@ function MyUnit() {
               </div>
             ) : (
             <BoutiqueGrid
-              columns="repeat(auto-fill, minmax(320px, 1fr))"
+              columns="repeat(auto-fill, minmax(min(100%, 320px), 1fr))"
               gap={24}
             >
               {pagedUnits.map((unit, index) => (

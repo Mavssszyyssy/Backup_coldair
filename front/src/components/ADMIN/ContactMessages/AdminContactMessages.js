@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { formatBusinessDateTime } from "../../../utils/dateTime";
@@ -41,7 +43,7 @@ export default function AdminContactMessages({ recordId = "" }) {
   const [error, setError] = useState("");
   const requestVersion = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     const version = ++requestVersion.current;
     setLoading(true);
     setError("");
@@ -49,7 +51,8 @@ export default function AdminContactMessages({ recordId = "" }) {
       const params = new URLSearchParams({ page: String(page), limit: "20" });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (search.trim()) params.set("search", search.trim());
-      const result = await apiRequest(`/contact-messages?${params}`);
+      const path = `/contact-messages?${params}`;
+      const result = await (fresh ? apiRequest(path, { fresh }) : apiRequest(path));
       if (version !== requestVersion.current) return;
       const next = Array.isArray(result.messages) ? result.messages : [];
       setMessages(next);
@@ -103,14 +106,14 @@ export default function AdminContactMessages({ recordId = "" }) {
       {error ? <div className="contact-inbox__alert" role="alert">{t(error)}<button type="button" onClick={load}>{t("Try again")}</button></div> : null}
 
       <div className="contact-inbox__toolbar">
-        <label><span>{t("Search messages")}</span><input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Reference, customer, subject, or message")} /></label>
-        <label><span>{t("Status")}</span><select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(statusLabel(status))}</option>)}</select></label>
-        <button type="button" onClick={load} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button>
+        <label><span>{t("Search messages")}</span><input maxLength={160} type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Reference, customer, subject, or message")} /></label>
+        <label><span>{t("Status")}</span><SearchableSelect value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(statusLabel(status))}</option>)}</SearchableSelect></label>
+        <button type="button" onClick={() => load(true)} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button>
       </div>
 
       <div className="contact-inbox__workspace">
         <div className="contact-inbox__queue" aria-label={t("Customer message list")}>
-          {loading ? <div className="contact-inbox__empty">{t("Loading customer messages…")}</div> : null}
+          {loading ? <LoadingSkeleton label={t("Loading customer messages…")} /> : null}
           {!loading && !messages.length ? <div className="contact-inbox__empty">{t("No customer messages match the selected filters.")}</div> : null}
           {!loading && messages.map((item) => (
             <button key={item.id} type="button" className={item.id === selectedId ? "contact-message-card is-selected" : "contact-message-card"} onClick={() => { setSelectedId(item.id); setReplyDraft({ ticketId: item.id, text: "" }); }}>

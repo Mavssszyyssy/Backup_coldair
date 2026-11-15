@@ -1,3 +1,5 @@
+import SearchableSelect from "../../common/SearchableSelect";
+import LoadingSkeleton from "../../common/LoadingSkeleton";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import LowStockItems from './LowStockItems';
@@ -25,13 +27,13 @@ const AdminReoder = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     setError('');
     setLoading(true);
     try {
       const [stockResult, reorderResult] = await Promise.all([
-        apiRequest('/products/low-stock'),
-        apiRequest('/reorders/mine'),
+        apiRequest('/products/low-stock', fresh ? { fresh } : undefined),
+        apiRequest('/reorders/mine', fresh ? { fresh } : undefined),
       ]);
       setItems(stockResult.products || []);
       setReorders(reorderResult.reorders || []);
@@ -59,7 +61,7 @@ const AdminReoder = ({ embedded = false }) => {
       <div className="reorder-overview">
         <div><strong>{submittedCount}</strong><span>{t("Awaiting SuperAdmin review")}</span></div>
         <div><strong>{items.length}</strong><span>{t(items.length === 1 ? "Low-stock product" : "Low-stock products")} {t("in this branch")}</span></div>
-        <button type="button" onClick={load} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button>
+        <button type="button" onClick={() => load(true)} disabled={loading}>{t(loading ? 'Refreshing…' : 'Refresh')}</button>
       </div>
       {error ? <p className="reorder-message is-error">{t(error)}</p> : null}
       <div className="reorder-management-grid">
@@ -67,8 +69,8 @@ const AdminReoder = ({ embedded = false }) => {
         <ReorderForm item={selectedItem} onSubmitted={load} />
       </div>
       <section className="reorder-history">
-        <div className="reorder-panel-heading"><div><h2>{t("Request history")}</h2><p>{t("Every request remains visible until it is approved or rejected.")}</p></div><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter reorder history")}><option value="all">{t("All statuses")}</option><option value="submitted">{t("Awaiting review")}</option><option value="approved">{t("Approved")}</option><option value="rejected">{t("Rejected")}</option></select></div>
-        {loading ? <div className="reorder-empty">{t("Loading reorder requests…")}</div> : visibleReorders.length === 0 ? <div className="reorder-empty">{t("No reorder requests match this filter.")}</div> : <div className="reorder-history-list">{pageReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || t('Removed product')}</strong><span>{formatCartHorsepower(reorder.product)} · {reorder.quantity} {t("unit(s) ·")} {reorder.branch || t('Branch not set')}</span><small>{reorder.notes || t('No additional note')} {t("· Submitted")} {t(formatDate(reorder.createdAt))}</small>{reorder.reviewNotes ? <small>{t("Review note:")} {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{t(statusLabel(reorder.status))}</span></article>)}</div>}
+        <div className="reorder-panel-heading"><div><h2>{t("Request history")}</h2><p>{t("Every request remains visible until it is approved or rejected.")}</p></div><SearchableSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label={t("Filter reorder history")}><option value="all">{t("All statuses")}</option><option value="submitted">{t("Awaiting review")}</option><option value="approved">{t("Approved")}</option><option value="rejected">{t("Rejected")}</option></SearchableSelect></div>
+        {loading ? <LoadingSkeleton label={t("Loading reorder requests…")} /> : visibleReorders.length === 0 ? <div className="reorder-empty">{t("No reorder requests match this filter.")}</div> : <div className="reorder-history-list">{pageReorders.map((reorder) => <article key={reorder.id} className="reorder-history-item"><div><strong>{reorder.product?.name || t('Removed product')}</strong><span>{formatCartHorsepower(reorder.product)} · {reorder.quantity} {t("unit(s) ·")} {reorder.branch || t('Branch not set')}</span><small>{reorder.notes || t('No additional note')} {t("· Submitted")} {t(formatDate(reorder.createdAt))}</small>{reorder.reviewNotes ? <small>{t("Review note:")} {reorder.reviewNotes}</small> : null}</div><span className={`reorder-status status-${reorder.status}`}>{t(statusLabel(reorder.status))}</span></article>)}</div>}
         {visibleReorders.length > HISTORY_PAGE_SIZE ? <nav className="reorder-pagination" aria-label={t("Reorder request history pagination")}>
           <span>{t("Showing")} {(historyPage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(historyPage * HISTORY_PAGE_SIZE, visibleReorders.length)} {t("of")} {visibleReorders.length}</span>
           <div><button type="button" onClick={() => setHistoryPage((current) => Math.max(1, current - 1))} disabled={historyPage === 1}>{t("Previous")}</button><span>{t("Page")} {historyPage} {t("of")} {historyTotalPages}</span><button type="button" onClick={() => setHistoryPage((current) => Math.min(historyTotalPages, current + 1))} disabled={historyPage === historyTotalPages}>{t("Next")}</button></div>

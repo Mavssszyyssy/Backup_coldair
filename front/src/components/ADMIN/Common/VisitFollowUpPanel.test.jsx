@@ -3,6 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VisitFollowUpPanel from './VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
+import { getWorkOrderDateWindow } from '../../../utils/dateTime';
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 let language = 'English';
 vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ currentLanguage: language }) }));
@@ -12,12 +13,24 @@ test('renders visit proof and requires Admin date and dropdown time before confi
   const updated = vi.fn(); render(<VisitFollowUpPanel task={task} onUpdated={updated} />);
   await screen.findByAltText('Technician proof of unattended visit');
   expect(screen.getByRole('button', { name: 'Confirm next visit' }).disabled).toBe(true);
-  fireEvent.change(screen.getByLabelText('Next visit date'), { target: { value: '2099-12-12' } });
+  const scheduledDate = getWorkOrderDateWindow().max;
+  fireEvent.change(screen.getByLabelText('Next visit date'), { target: { value: scheduledDate } });
   fireEvent.change(screen.getByLabelText('Time slot'), { target: { value: '10:00 AM – 12:00 PM' } });
   fireEvent.click(screen.getByRole('button', { name: 'Confirm next visit' }));
   await waitFor(() => expect(updated).toHaveBeenCalledTimes(1));
-  expect(apiRequest).toHaveBeenCalledWith('/tasks/task-1/next-visit', { method: 'PATCH', body: JSON.stringify({ attemptId: 'attempt-1', scheduledDate: '2099-12-12', timeSlot: '10:00 AM – 12:00 PM' }) });
+  expect(apiRequest).toHaveBeenCalledWith('/tasks/task-1/next-visit', { method: 'PATCH', body: JSON.stringify({ attemptId: 'attempt-1', scheduledDate, timeSlot: '10:00 AM – 12:00 PM' }) });
   expect(screen.queryByRole('button', { name: 'Confirm next visit' })).toBeNull();
+});
+
+test('linked service follow-ups retain the shorter date window', async () => {
+  render(<VisitFollowUpPanel task={task} service />);
+  await screen.findByAltText('Technician proof of unattended visit');
+  const input = screen.getByLabelText('Next visit date');
+  expect(input).toHaveAttribute('max', getWorkOrderDateWindow(new Date(), true).max);
+  fireEvent.change(input, { target: { value: getWorkOrderDateWindow().max } });
+  fireEvent.submit(input.closest('form'));
+  expect(screen.getByText('Choose a date within 90 calendar days from today.')).toBeVisible();
+  expect(apiRequest.mock.calls.some(([, options]) => options?.method === 'PATCH')).toBe(false);
 });
 test('no pending visit means no extra form; cancelled work cannot be rescheduled', () => {
   const { rerender } = render(<VisitFollowUpPanel task={{ id: 'other' }} />);

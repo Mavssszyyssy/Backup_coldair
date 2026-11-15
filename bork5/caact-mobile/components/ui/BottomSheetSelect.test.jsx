@@ -47,4 +47,18 @@ describe("BottomSheetSelect keyboard lifecycle", () => {
     await fireEvent.press(screen.getByText("Bulacan"));
     expect(onSelect).toHaveBeenCalledWith(province);
   });
+
+  test("matches accents and identifiers, clearing the query after the picker closes", async () => {
+    const first = { id: "unit-101", name: "José AC" };
+    await render(<BottomSheetSelect label="AC unit" placeholder="Select unit" items={[first, { id: "unit-102", name: "Other AC" }]} />);
+    await fireEvent.press(screen.getByText("Select unit"));
+    await fireEvent.changeText(screen.getByLabelText("Search for ac unit"), "101 JOSE");
+    expect(screen.getByText("José AC")).toBeTruthy();
+    expect(screen.queryByText("Other AC")).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText("Search for ac unit"), "no results");
+    expect(screen.getByText("No matching records found.")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("Close"));
+    await fireEvent.press(screen.getByText("Select unit"));
+    expect(screen.getByLabelText("Search for ac unit").props.value).toBe("");
+  });
 });

@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { WarningDiamond } from "@phosphor-icons/react";
 import { useUser } from "../../context/UserContext";
 import { isFilipino, translateText } from "../../utils/customerI18n";
@@ -89,23 +90,13 @@ export default function ShopCatalogue({
         </BoutiqueBox>
 
         {loading ? (
-          <BoutiqueBox
-            className="bq-empty-state"
-            align="center"
-            justify="center"
-            padding="100px 20px"
-            color={BQ_COLORS.inkFaint}
-            aria-live="polite"
-            style={{ minHeight: `calc(100vh - ${BQ_GEOMETRY.headerHeight})` }}
-          >
-            <BoutiqueText variant="h2" style={{ fontSize: "18px" }}>{t("Loading the latest available AC units...")}</BoutiqueText>
-          </BoutiqueBox>
+          <LoadingSkeleton label={t("Loading the latest available AC units...")} variant="cards" />
         ) : products.length === 0 ? (
           <BoutiqueBox
             className="bq-empty-state"
             align="center"
             justify="center"
-            padding="100px 20px"
+            padding="24px 16px"
             color={BQ_COLORS.inkFaint}
           >
             <WarningDiamond size={64} weight="bold" />

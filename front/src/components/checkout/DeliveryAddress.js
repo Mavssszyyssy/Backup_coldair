@@ -1,3 +1,4 @@
+import SearchableSelect from "../common/SearchableSelect";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
 // import icons from '../common/icons';
@@ -52,7 +53,7 @@ function DeliveryAddress({
         <>
           <div className="address-select-wrap">
             <label htmlFor="saved-address-select">{t("Saved Address")}</label>
-            <select
+            <SearchableSelect
               id="saved-address-select"
               value={selectedValue}
               onChange={handleSelection}
@@ -64,7 +65,7 @@ function DeliveryAddress({
                   {formatAddressOption(address)}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </div>
 
           {selectedAddress && (

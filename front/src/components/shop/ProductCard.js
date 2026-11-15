@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
+import { formatPesoAmount } from "../../utils/currency";
 import { getBrandLogo } from "../../config/brandLogos";
 import { getCatalogThumbnailUrl } from "../../config/catalogImages";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
@@ -195,7 +196,7 @@ export default function ProductCard({
             >
               <BoutiqueBox direction="row" align="baseline" gap={6}>
                 <BoutiqueText variant="h2" className="bq-current-price">
-                  ₱{product.price.toLocaleString()}
+                  ₱{formatPesoAmount(product.price)}
                 </BoutiqueText>
                 {product.oldPrice && (
                   <BoutiqueText
@@ -204,7 +205,7 @@ export default function ProductCard({
                     weight={600}
                     style={{ textDecoration: "line-through" }}
                   >
-                    ₱{product.oldPrice.toLocaleString()}
+                    ₱{formatPesoAmount(product.oldPrice)}
                   </BoutiqueText>
                 )}
               </BoutiqueBox>

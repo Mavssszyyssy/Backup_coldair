@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
@@ -57,7 +58,7 @@ const AdminInventory = () => {
     setBranch(assignedBranch);
   }, [assignedBranch]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ fresh = false } = {}) => {
     setLoading(true);
     setError('');
     if (!branch) {
@@ -67,7 +68,8 @@ const AdminInventory = () => {
       return;
     }
     try {
-      const result = await apiRequest(`/products?branch=${encodeURIComponent(branch)}`);
+      const path = `/products?branch=${encodeURIComponent(branch)}`;
+      const result = await (fresh ? apiRequest(path, { fresh }) : apiRequest(path));
       setProducts(result.products || []);
     } catch (requestError) {
       setError(requestError.message || 'Unable to load inventory.');
@@ -109,19 +111,19 @@ const AdminInventory = () => {
           </div>
           <div className="branch-filter-section">
             <label htmlFor="admin-inventory-branch">{t('View stock for branch')}</label>
-            <select id="admin-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
+            <SearchableSelect id="admin-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
               {branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <input className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('Search name, SKU, brand, category…')} aria-label={t('Search inventory')} />
-            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label={t('Filter by stock status')}>
+            </SearchableSelect>
+            <input maxLength={160} className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('Search name, SKU, brand, category…')} aria-label={t('Search inventory')} />
+            <SearchableSelect value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label={t('Filter by stock status')}>
               <option value="all">{t('All stock states')}</option>
               <option value="out">{t('Out of stock')}</option>
               <option value="low">{t('Low stock')}</option>
               <option value="available">{t('In stock')}</option>
-            </select>
+            </SearchableSelect>
           </div>
           {error ? <p style={{ color: '#b91c1c' }}>{t(error)}</p> : null}
-          <InventoryList products={products} loading={loading} onRefresh={load} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} searchQuery={searchQuery} stockFilter={stockFilter} />
+          <InventoryList products={products} loading={loading} onRefresh={() => load({ fresh: true })} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} searchQuery={searchQuery} stockFilter={stockFilter} />
         </>
       ) : null}
       {activeTab === 'reorder' ? <AdminReoder embedded /> : null}

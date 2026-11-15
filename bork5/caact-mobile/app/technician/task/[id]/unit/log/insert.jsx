@@ -275,6 +275,7 @@ export default function LogInsertScreen({ mode = "insert" }) {
         <Card style={{ marginBottom: SPACING.md }}>
           <ServiceReportQuickChoices serviceType={reportType} findings={findings} resolution={resolution} onFindingsChange={setFindings} onResolutionChange={setResolution} onValidationChange={setChoiceError} />
           <TextField
+            maxLength={1000}
             label={t("Additional Notes (Optional)")}
             value={notes}
             onChangeText={setNotes}

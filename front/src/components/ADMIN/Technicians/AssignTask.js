@@ -17,6 +17,7 @@ const AssignTask = ({ technician }) => {
       <h3>Assign Task</h3>
       {technician ? <p>Selected: {technician.name}</p> : <p>Select a technician first.</p>}
       <input
+        maxLength={1000}
         value={task}
         onChange={(event) => setTask(event.target.value)}
         placeholder="Task description"

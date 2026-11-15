@@ -18,6 +18,7 @@ function ServiceFilters({ categories, selectedCategory, onCategoryChange, onSear
       <div className="search-box">
         <img src={icons.globePointer} alt="" className="inline-icon" />
         <input
+          maxLength={160}
           type="text"
           placeholder="Search services..."
           onChange={(e) => onSearch(e.target.value)}

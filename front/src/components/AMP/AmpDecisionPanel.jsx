@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
 import MaintenanceDecisionSupport from "../ADMIN/Maintenance/MaintenanceDecisionSupport";
@@ -35,7 +36,7 @@ export default function AmpDecisionPanel({ unitId }) {
   return <details className="amp-details amp-decision-panel" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
     <summary>{t("AI parts and future-issue assessment")}</summary>
     <p className="amp-muted">{t("For this AC only. Review suggested parts before a visit and possible follow-up concerns after completed maintenance. Technician confirmation is required.")}</p>
-    {loading ? <p role="status">{t("Loading assessments…")}</p> : null}
+    {loading ? <LoadingSkeleton label={t("Loading assessments…")} variant="detail" /> : null}
     {error ? <p className="amp-error" role="alert">{t(error)}</p> : null}
     {!loading && !error && data && !data.request && !task ? <p className="amp-empty">{t("No open maintenance request or linked completed visit is available for this AC.")}</p> : null}
     {!loading && !error && data && (data.request || task) ? <MaintenanceDecisionSupport

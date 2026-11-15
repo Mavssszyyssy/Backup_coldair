@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import { apiRequest } from '../../../config/api';
@@ -135,16 +136,16 @@ function AdminAnalyticsDashboard() {
           <div className="admin-analytics-controls">
             <label className="admin-analytics-label">
               Interval
-              <select value={interval} onChange={(e) => setInterval(e.target.value)} className="admin-analytics-select">
+              <SearchableSelect value={interval} onChange={(e) => setInterval(e.target.value)} className="admin-analytics-select">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
-              </select>
+              </SearchableSelect>
             </label>
 
             <label className="admin-analytics-label">
               Range
-              <select
+              <SearchableSelect
                 value={rangeDays}
                 onChange={(e) => setRangeDays(clamp(Number(e.target.value) || 30, 7, 365))}
                 className="admin-analytics-select"
@@ -153,7 +154,7 @@ function AdminAnalyticsDashboard() {
                 <option value={30}>Last 30 days</option>
                 <option value={90}>Last 90 days</option>
                 <option value={180}>Last 180 days</option>
-              </select>
+              </SearchableSelect>
             </label>
           </div>
 

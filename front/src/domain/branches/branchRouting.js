@@ -20,10 +20,10 @@ const toSearchParams = (address = {}) => {
 
 // Branch coverage belongs to the backend. This prevents a browser build from
 // keeping an obsolete service-area map after Super Admin updates coverage.
-export const resolveConfiguredBranch = async (address = {}) => {
+export const resolveConfiguredBranch = async (address = {}, options) => {
   const query = toSearchParams(address);
   if (!query) return "";
-  const result = await apiRequest(`/branches/resolve?${query}`);
+  const result = await apiRequest(`/branches/resolve?${query}`, options);
   return result?.serviceable ? String(result.branch || "") : "";
 };
 

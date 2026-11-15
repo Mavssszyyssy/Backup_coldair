@@ -3,7 +3,8 @@
 import { Redirect, Stack } from "expo-router";
 import { View } from "react-native";
 
-import LoadingLogo from "../../components/LoadingLogo";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
+import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import { COLORS } from "../../constants/theme";
 import { useGuestGuard } from "../../hooks/useGuestGuard";
 import { RegistrationDraftProvider } from "../../context/RegistrationDraftContext";
@@ -13,6 +14,7 @@ export { AUTH_STACK_OPTIONS };
 
 export default function AuthLayout() {
   const { current, initialized, redirectHref } = useGuestGuard();
+  const { t } = useInterfaceLanguage();
 
   if (!initialized) {
     return (
@@ -20,11 +22,11 @@ export default function AuthLayout() {
         style={{
           flex: 1,
           justifyContent: "center",
-          alignItems: "center",
+          paddingHorizontal: 20,
           backgroundColor: COLORS.bg,
         }}
       >
-        <LoadingLogo size={82} />
+        <LoadingSkeleton label={t("Loading…")} variant="detail" count={2} />
       </View>
     );
   }

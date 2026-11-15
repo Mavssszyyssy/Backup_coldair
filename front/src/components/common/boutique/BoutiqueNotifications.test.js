@@ -2,11 +2,16 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "../../../config/api";
-import useCustomerAlerts from "../../../hooks/useCustomerAlerts";
+import useCustomerAlerts from "../../../hooks/useAlerts";
 import { announceNotificationUpdate } from "../../../utils/notificationSync";
 import BoutiqueNotifications from "./BoutiqueNotifications";
+import AdminNotificationsBell from "../../ADMIN/Common/AdminNotificationsBell";
+import SuperAdminNotificationsBell from "../../SUPERADMIN/Common/SuperAdminNotificationsBell";
 
 vi.mock("../../../config/api", () => ({ apiRequest: vi.fn() }));
+vi.mock("../../../context/UserContext", () => ({
+  useUser: () => ({ isAuthenticated: true, user: { id: "staff-1" }, currentLanguage: "English" }),
+}));
 beforeEach(() => vi.resetAllMocks());
 
 function AlertsHarness({ language }) {
@@ -118,5 +123,43 @@ describe("BoutiqueNotifications", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Open alerts (0)" })).toBeInTheDocument());
     await act(async () => finishStaleRead({ notifications: [alertItem] }));
     expect(await screen.findByText("Your inbox is empty.")).toBeVisible();
+  });
+
+  it("confirms archive all and can browse older archived alerts without navigating away", async () => {
+    let archived = false;
+    apiRequest.mockImplementation(async (path) => {
+      if (path === "/notifications/me/archive-all") archived = true;
+      if (path === "/notifications/me") return { notifications: archived ? [] : [alertItem] };
+      if (path.endsWith("page=2")) return { notifications: [{ ...alertItem, _id: "notice-2", title: "Older alert" }], hasMore: false };
+      return { notifications: [alertItem], hasMore: true };
+    });
+    renderAlerts();
+    fireEvent.click(await screen.findByRole("button", { name: "Open alerts (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive all", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+    expect(apiRequest).not.toHaveBeenCalledWith("/notifications/me/archive-all", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Archive all", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive all alerts", exact: true }));
+    await screen.findByText("Your inbox is empty.");
+    expect(apiRequest).toHaveBeenCalledWith("/notifications/me/archive-all", expect.objectContaining({ method: "PATCH" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archived", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Next page" }));
+    expect(await screen.findByRole("button", { name: "Archived alert: Older alert" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
+    expect(screen.getByLabelText("Current page")).toHaveTextContent("/shop");
+  });
+
+  it.each([AdminNotificationsBell, SuperAdminNotificationsBell])("offers archive all in %p", async (Bell) => {
+    let archived = false;
+    apiRequest.mockImplementation(async (path) => {
+      if (path === "/notifications/me/archive-all") archived = true;
+      return { notifications: archived ? [] : [alertItem], unreadCount: archived ? 0 : 1 };
+    });
+    render(<MemoryRouter><Bell /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "Open alerts" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Archive all", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive all alerts", exact: true }));
+    await screen.findByText("No alerts right now.");
+    expect(apiRequest.mock.calls.filter(([path]) => path === "/notifications/me/archive-all")).toHaveLength(1);
   });
 });

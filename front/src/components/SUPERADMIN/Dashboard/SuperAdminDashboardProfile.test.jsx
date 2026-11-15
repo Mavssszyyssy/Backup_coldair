@@ -50,7 +50,10 @@ test("keeps branch and period controls together while applying and clearing a va
   fireEvent.change(screen.getByLabelText("From Date"), { target: { value: "2026-01-01" } });
   fireEvent.change(screen.getByLabelText("To Date"), { target: { value: "2026-01-31" } });
   fireEvent.click(screen.getByRole("button", { name: "Apply range" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/dashboard/me?branch=Bulacan&from=2026-01-01&to=2026-01-31"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(
+    "/dashboard/me?branch=Bulacan&from=2026-01-01&to=2026-01-31",
+    expect.objectContaining({ onCached: expect.any(Function) }),
+  ));
   expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue("Bulacan");
   fireEvent.click(screen.getByRole("button", { name: "Clear range" }));
   expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue("Bulacan");
@@ -79,4 +82,22 @@ test("identifies a stale API contract separately from a genuine analytics mismat
   render(<MemoryRouter><SuperAdminDashboard /></MemoryRouter>);
   expect(await screen.findByRole("alert")).toHaveTextContent("dashboard API response is missing reconciliation fields");
   expect(screen.queryByText(/Analytics totals do not match the breakdown/)).not.toBeInTheDocument();
+});
+
+test("shows saved dashboard data while a new request is pending and replaces it on success", async () => {
+  useUser.mockReturnValue({ user: { name: "Super Admin" }, updateProfile: vi.fn() });
+  const oldResult = { stats: { paidRevenue: 1111 }, analytics: {} };
+  const newResult = { stats: { paidRevenue: 2222 }, analytics: {} };
+  let finish;
+  apiRequest.mockImplementation((path, options) => {
+    if (path === "/branches") return Promise.resolve({ branches: [] });
+    options.onCached(oldResult, new Date(2026, 10, 14, 8, 12).getTime());
+    return new Promise((resolve) => { finish = resolve; });
+  });
+
+  const { container } = render(<MemoryRouter><SuperAdminDashboard /></MemoryRouter>);
+  expect(await screen.findByText(/Updated .*8:12/)).toBeVisible();
+  expect(container.querySelector(".commerce-kpi-grid")).toBeInTheDocument();
+  finish(newResult);
+  await waitFor(() => expect(screen.queryByText(/Updated .*8:12/)).not.toBeInTheDocument());
 });

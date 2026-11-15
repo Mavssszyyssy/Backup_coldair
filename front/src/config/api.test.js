@@ -1,13 +1,175 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { apiRequest } from "./api";
 
+const auth = vi.hoisted(() => ({ token: null, branch: "" }));
 vi.mock("../utils/authSession", () => ({
   clearAuthSession: vi.fn(),
-  getAuthSessionItem: () => null,
-  getSessionActiveBranch: () => null,
+  getAuthSessionItem: () => auth.token,
+  getSessionActiveBranch: () => auth.branch,
 }));
 
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  auth.token = null;
+  auth.branch = "";
+  window.dispatchEvent(new Event("auth:session-ended"));
+});
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+const reply = (data, status = 200) => ({ ok: status === 200, status, json: async () => data });
+
+test("shop reuses a display read within the same branch and TTL while stock validation reads fresh", async () => {
+  const now = vi.spyOn(Date, "now").mockReturnValue(50_000);
+  let stock = 8;
+  const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ products: [{ stock }] }) }));
+  vi.stubGlobal("fetch", fetchMock);
+  const display = { display: true, silentConnection: true };
+  const cavite = "/products/public?branch=Cavite";
+  const first = await apiRequest(cavite, display);
+  stock = 0;
+  expect(await apiRequest(cavite, display)).toEqual(first);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][1]).not.toHaveProperty("display");
+
+  expect((await apiRequest("/products/public?branch=Laguna", display)).products[0].stock).toBe(0);
+  expect((await apiRequest(cavite)).products[0].stock).toBe(0);
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+
+  now.mockReturnValue(65_000);
+  await apiRequest("/products/public?branch=Laguna", display);
+  expect(fetchMock).toHaveBeenCalledTimes(4);
+});
+
+test.each([
+  "/dashboard/me?branch=Bulacan", "/amp/manager/pipeline?days=30", "/reports/sales",
+  "/orders/me?status=completed", "/users/addresses", "/products?branch=Bulacan",
+  "/tasks?scheduled_date=2026-11-14", "/contact-messages/me", "/notifications/me",
+  "/warranties/claims", "/reorders/mine", "/system-settings/email-domains",
+])("reuses matching page data across reads for %s", async (path) => {
+  auth.token = "test-session";
+  const fetchMock = vi.fn().mockResolvedValue(reply({ rows: [{ count: 1 }] }));
+  vi.stubGlobal("fetch", fetchMock);
+  const result = await apiRequest(path);
+  result.rows[0].count = 5;
+  expect(await apiRequest(path)).toEqual({ rows: [{ count: 1 }] });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][1].cache).toBe("no-store");
+});
+
+test("revisits can render a recent dashboard snapshot while a network refresh is pending", async () => {
+  auth.token = "dashboard-session";
+  const now = vi.spyOn(Date, "now").mockReturnValue(50_000);
+  let finish;
+  const fetchMock = vi.fn().mockResolvedValueOnce(reply({ count: 1 }))
+    .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const path = "/dashboard/me?branch=Cavite";
+  await apiRequest(path);
+  now.mockReturnValue(80_000);
+  const onCached = vi.fn();
+  const revalidate = apiRequest(path, { onCached });
+  expect(onCached).toHaveBeenCalledWith({ count: 1 }, 50_000);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  finish(reply({ count: 2 }));
+  expect(await revalidate).toEqual({ count: 2 });
+});
+
+test("a manual refresh replaces older reads, and late results cannot refill the cache", async () => {
+  auth.token = "refresh-session";
+  let finish;
+  const fetchMock = vi.fn().mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+    .mockResolvedValueOnce(reply({ count: 2 }));
+  vi.stubGlobal("fetch", fetchMock);
+  const path = "/orders/me";
+  const oldRead = apiRequest(path);
+  expect(await apiRequest(path, { fresh: true })).toEqual({ count: 2 });
+  finish(reply({ count: 1 }));
+  await oldRead;
+  expect(await apiRequest(path)).toEqual({ count: 2 });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
+test("cache boundaries include query, active branch, account, and sign-out", async () => {
+  auth.token = "first-account";
+  auth.branch = "Bulacan";
+  let calls = 0;
+  vi.stubGlobal("fetch", vi.fn(async () => reply({ count: ++calls })));
+  const read = () => apiRequest("/orders?limit=10");
+  expect(await read()).toEqual({ count: 1 });
+  expect(await apiRequest("/orders?limit=20")).toEqual({ count: 2 });
+  expect(await read()).toEqual({ count: 1 });
+  auth.branch = "Laguna";
+  expect(await read()).toEqual({ count: 3 });
+  auth.token = "second-account";
+  expect(await read()).toEqual({ count: 4 });
+  window.dispatchEvent(new Event("auth:session-ended"));
+  expect(await read()).toEqual({ count: 5 });
+});
+
+test("a stock update invalidates linked inventory, orders, and summaries even with reads in flight", async () => {
+  auth.token = "operations-session";
+  let stock = 5;
+  let finish;
+  vi.stubGlobal("fetch", vi.fn(async (url, options) => {
+    if (options.method === "PATCH") {
+      stock = 4;
+      return reply({ success: true });
+    }
+    if (url.endsWith("/orders?limit=75") && stock === 5) {
+      return new Promise((resolve) => { finish = resolve; });
+    }
+    return reply({ stock });
+  }));
+  await apiRequest("/products");
+  await apiRequest("/dashboard/me");
+  const oldOrders = apiRequest("/orders?limit=75");
+  await apiRequest("/products/product-1/stock", { method: "PATCH" });
+  finish(reply({ stock: 5 }));
+  await oldOrders;
+  for (const path of ["/products", "/dashboard/me", "/orders?limit=75"]) {
+    expect(await apiRequest(path)).toEqual({ stock: 4 });
+  }
+});
+
+test("notification changes refresh alerts without evicting other web pages", async () => {
+  auth.token = "alerts-session";
+  const fetchMock = vi.fn(async () => reply({ rows: [] }));
+  vi.stubGlobal("fetch", fetchMock);
+  await apiRequest("/dashboard/me");
+  await apiRequest("/notifications/me");
+  await apiRequest("/notifications/notice/read", { method: "PATCH" });
+  await apiRequest("/notifications/me");
+  await apiRequest("/dashboard/me");
+  expect(fetchMock).toHaveBeenCalledTimes(4);
+});
+
+test("auth and checkout validation reads remain live and errors are not cached", async () => {
+  auth.token = "checkout-session";
+  const fetchMock = vi.fn(async () => reply({ ok: true }));
+  vi.stubGlobal("fetch", fetchMock);
+  for (const path of ["/auth/me", "/auth/session", "/branches/resolve?city=Malolos", "/products/public?branch=Bulacan"]) {
+    await apiRequest(path);
+    await apiRequest(path);
+  }
+  expect(fetchMock).toHaveBeenCalledTimes(8);
+  fetchMock.mockResolvedValueOnce(reply({ message: "Temporarily unavailable" }, 500));
+  await expect(apiRequest("/orders")).rejects.toMatchObject({ status: 500 });
+  await expect(apiRequest("/orders")).resolves.toEqual({ ok: true });
+  expect(fetchMock).toHaveBeenCalledTimes(10);
+});
+
+test("an authorization rejection drops cached private records", async () => {
+  auth.token = "permission-session";
+  const path = "/dashboard/me";
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(reply({ count: 1 }))
+    .mockResolvedValueOnce(reply({ message: "Forbidden" }, 403))
+    .mockResolvedValueOnce(reply({ count: 3 }));
+  vi.stubGlobal("fetch", fetchMock);
+  await apiRequest(path);
+  await expect(apiRequest("/orders")).rejects.toMatchObject({ status: 403 });
+  expect(await apiRequest(path)).toEqual({ count: 3 });
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+});
 
 test("bodyless public GET avoids a JSON preflight header", async () => {
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ products: [] }) });

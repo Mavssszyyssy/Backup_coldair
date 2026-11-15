@@ -67,9 +67,9 @@ export default function ShopHeader({
 
         .bq-shop-title {
           font-family: ${BQ_FONTS.heading};
-          font-size: 28px;
-          font-weight: 800;
-          letter-spacing: -0.04em;
+          font-size: var(--app-type-page);
+          font-weight: var(--app-weight-heading);
+          line-height: var(--app-leading-heading);
           margin: 0;
           color: ${BQ_COLORS.ink};
         }

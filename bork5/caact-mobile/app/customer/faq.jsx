@@ -150,6 +150,7 @@ export default function CustomerFaqScreen() {
       <View style={{ position: "relative", marginBottom: SPACING.md }}>
         <Ionicons name="search-sharp" size={20} color={COLORS.textMuted} style={{ position: "absolute", left: 14, top: 14, zIndex: 1 }} />
         <TextInput
+          maxLength={160}
           value={query}
           onChangeText={setQuery}
           placeholder={t("Search delivery, warranty, payment...")}
@@ -217,7 +218,7 @@ export default function CustomerFaqScreen() {
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>{t("Email")}</Text>
           </Pressable>
           <Pressable onPress={() => router.push("/customer/chat")} accessibilityRole="button" accessibilityLabel={t("Open AEROPULSE assistant")} style={({ pressed }) => [{ flex: width < 380 ? undefined : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md }, pressed && { backgroundColor: COLORS.primaryLight }]}>
-            <Ionicons name="chatbubbles-sharp" size={17} color={COLORS.primary} />
+            <Ionicons name="sparkles-sharp" size={17} color={COLORS.primary} />
             <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>{t("Chat")}</Text>
           </Pressable>
         </View>

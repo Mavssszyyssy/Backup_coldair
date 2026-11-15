@@ -15,7 +15,13 @@ jest.mock("../context/UserContext", () => ({
 jest.mock("../hooks/useInterfaceLanguage", () => ({
   useInterfaceLanguage: () => ({ t: (value) => value }),
 }));
-jest.mock("../services/liveRefresh", () => ({ startLiveRefresh: () => () => {} }));
+jest.mock("../services/liveRefresh", () => ({
+  startLiveRefresh: (load) => {
+    let active = true;
+    load({ isCurrent: () => active });
+    return () => { active = false; };
+  },
+}));
 jest.mock("../services/taskStorage", () => ({
   getTasksByTechnician: jest.fn().mockResolvedValue([]),
   getTaskStats: () => ({ inProgress: 2, pending: 3, completed: 4, total: 10 }),
@@ -40,10 +46,11 @@ test("dashboard summary cards open their matching all-date work-order filters", 
 });
 
 test("dashboard separates notifications and shows readable work-order statuses", async () => {
-  getTasksByTechnician.mockResolvedValueOnce([
+  const workOrders = [
     { id: "job-1", title: "Repair A", status: "In Progress", customerName: "Customer One" },
     { id: "job-2", title: "Repair B", status: "On Hold", customerName: "Customer Two" },
-  ]);
+  ];
+  getTasksByTechnician.mockResolvedValueOnce(workOrders).mockResolvedValueOnce(workOrders);
   await render(<TechDashboard />);
   await waitFor(() => expect(screen.getByText("Repair A")).toBeTruthy());
   expect(screen.getByText("Notifications")).toBeTruthy();

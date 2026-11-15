@@ -251,6 +251,7 @@ export default function RegisterLocationStep({
             />
             <BoutiqueBox style={{ gridColumn: "span 2" }}>
               <BoutiqueInput
+                maxLength={180}
                 label={t("Street Address")}
                 placeholder={t("House No., Building, Street")}
                 value={currentLoc.address.street}

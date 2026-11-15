@@ -13,6 +13,27 @@ export const formatBusinessDateKey = (value = new Date()) => {
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
+export const getWorkOrderDateWindow = (now = new Date(), service = false) => {
+  const min = formatBusinessDateKey(now);
+  const [year, month, day] = min.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year + 2, month, 0)).getUTCDate();
+  const end = service
+    ? new Date(Date.UTC(year, month - 1, day + 90))
+    : new Date(Date.UTC(year + 2, month - 1, Math.min(day, lastDay)));
+  return { min, max: end.toISOString().slice(0, 10) };
+};
+
+export const getWorkOrderDateSelectionError = (value, service = false, now = new Date()) => {
+  const { min, max } = getWorkOrderDateWindow(now, service);
+  if (!value || value < min) return "Choose today or a future date.";
+  if (value > max) {
+    return service
+      ? "Choose a date within 90 calendar days from today."
+      : "Choose a work order date within two calendar years from today.";
+  }
+  return "";
+};
+
 const displayDate = (value, options) => {
   if (!value) return "";
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(value));

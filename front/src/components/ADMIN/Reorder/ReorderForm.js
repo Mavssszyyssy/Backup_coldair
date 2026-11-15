@@ -56,7 +56,7 @@ const ReorderForm = ({ item, onSubmitted }) => {
         <>
           <div className="reorder-product-summary"><strong>{item.name}</strong><span>{item.sku || 'No SKU'} · {formatCartHorsepower(item)} · {Number(item.stock || 0)} {t("currently in stock")}</span></div>
           <label>{t("Quantity to request")}<input type="number" min="1" step="1" inputMode="numeric" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
-          <label>{t("Note for SuperAdmin")} <span>{t("(optional)")}</span><textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t("Supplier, urgency, or branch notes")} /></label>
+          <label>{t("Note for SuperAdmin")} <span>{t("(optional)")}</span><textarea maxLength={1000} rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t("Supplier, urgency, or branch notes")} /></label>
           <button className="reorder-primary-action" type="submit" disabled={saving}>{t(saving ? 'Sending request…' : 'Send Reorder Request')}</button>
           <p className="reorder-helper">{t("Approval adds stock and generates the inventory serial records for this branch.")}</p>
         </>

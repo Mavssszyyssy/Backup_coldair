@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ServicePaymentCard from "../../../../components/technician/ServicePaymentCard";
 import ServiceCostSummary from "../../../../components/technician/ServiceCostSummary";
@@ -376,9 +377,7 @@ export default function TaskInformationScreen() {
         />
 
         {loading && !task ? (
-          <Card>
-            <Text style={{ color: COLORS.textSecondary }}>{t("Loading work order details…")}</Text>
-          </Card>
+          <LoadingSkeleton label={t("Loading work order details…")} variant="detail" count={2} />
         ) : null}
 
         {loadError ? (

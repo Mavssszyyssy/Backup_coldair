@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Text, View } from "react-native";
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, RADIUS, SPACING, TYPE } from "../../constants/theme";
 
 export default function AppHero({
   eyebrow,
@@ -56,24 +56,17 @@ export default function AppHero({
         >
           <Ionicons name={icon} size={27} color={COLORS.surface} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           {!!eyebrow && (
-            <Text style={{ color: "#DBEAFE", fontSize: FONT.sm, fontWeight: FONT.bold }}>
+            <Text style={[TYPE.label, { color: "#DBEAFE" }]}>
               {eyebrow}
             </Text>
           )}
-          <Text
-            style={{
-              color: COLORS.surface,
-              fontSize: FONT.xl,
-              fontWeight: FONT.black,
-              marginTop: 2,
-            }}
-          >
+          <Text accessibilityRole="header" style={[TYPE.title, { color: COLORS.surface, marginTop: 2 }]}>
             {title}
           </Text>
           {!!subtitle && (
-            <Text style={{ color: "#EFF6FF", marginTop: 4, lineHeight: 20 }}>
+            <Text style={[TYPE.caption, { color: "#EFF6FF", marginTop: SPACING.xs }]}>
               {subtitle}
             </Text>
           )}

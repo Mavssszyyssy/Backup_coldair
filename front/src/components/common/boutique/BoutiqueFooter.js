@@ -24,19 +24,18 @@ export default function BoutiqueFooter() {
     <BoutiqueBox
       tag="footer"
       background={BQ_COLORS.bgAlt}
-      padding="80px 40px 40px"
-      margin="auto 0 0"
+      padding="clamp(24px, 4vw, 44px) clamp(16px, 3vw, 40px) 20px"
       className="bq-footer"
       style={{ borderTop: `1px solid ${BQ_COLORS.border}` }}
     >
       <BoutiqueGrid
         columns="1.5fr 1fr 1fr 1fr"
-        gap={64}
-        margin="0 auto 80px"
+        gap={24}
+        margin="0 auto 24px"
         className="bq-footer-content"
         style={{ maxWidth: "1400px" }}
       >
-        <BoutiqueStack gap={32} className="bq-footer-brand">
+        <BoutiqueStack gap={16} className="bq-footer-brand">
           <BoutiqueText
             variant="label"
             size="13px"
@@ -69,7 +68,7 @@ export default function BoutiqueFooter() {
           </BoutiqueBox>
         </BoutiqueStack>
 
-        <BoutiqueStack gap={32} className="bq-footer-column">
+        <BoutiqueStack gap={16} className="bq-footer-column">
           <BoutiqueText
             variant="label"
             size="13px"
@@ -79,7 +78,7 @@ export default function BoutiqueFooter() {
             {t("Collections")}
           </BoutiqueText>
           <BoutiqueStack
-            gap={16}
+            gap={10}
             tag="ul"
             className="bq-footer-links"
             padding={0}
@@ -101,7 +100,7 @@ export default function BoutiqueFooter() {
           </BoutiqueStack>
         </BoutiqueStack>
 
-        <BoutiqueStack gap={32} className="bq-footer-column">
+        <BoutiqueStack gap={16} className="bq-footer-column">
           <BoutiqueText
             variant="label"
             size="13px"
@@ -111,7 +110,7 @@ export default function BoutiqueFooter() {
             {t("Experience")}
           </BoutiqueText>
           <BoutiqueStack
-            gap={16}
+            gap={10}
             tag="ul"
             className="bq-footer-links"
             padding={0}
@@ -133,7 +132,7 @@ export default function BoutiqueFooter() {
           </BoutiqueStack>
         </BoutiqueStack>
 
-        <BoutiqueStack gap={32} className="bq-footer-column">
+        <BoutiqueStack gap={16} className="bq-footer-column">
           <BoutiqueText
             variant="label"
             size="13px"
@@ -143,7 +142,7 @@ export default function BoutiqueFooter() {
             {t("Legal")}
           </BoutiqueText>
           <BoutiqueStack
-            gap={16}
+            gap={10}
             tag="ul"
             className="bq-footer-links"
             padding={0}
@@ -167,7 +166,7 @@ export default function BoutiqueFooter() {
       </BoutiqueGrid>
 
       <BoutiqueBox
-        padding="40px 0 0"
+        padding="16px 0 0"
         align="center"
         className="bq-footer-bottom"
         style={{
@@ -206,8 +205,10 @@ export default function BoutiqueFooter() {
         .bq-social-btn:hover { background: ${BQ_COLORS.brand}; color: white; transform: translateY(-6px) scale(1.1); box-shadow: ${BQ_SHADOWS.float}; border-color: transparent; }
 
         @media (max-width: 768px) {
-          .bq-footer-content { grid-template-columns: 1fr !important; gap: 48px !important; }
-          .bq-footer { padding-top: 64px !important; }
+          .bq-footer-content { grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 20px 16px !important; }
+          .bq-footer-brand { grid-column: 1 / -1; }
+          .bq-footer-links a { overflow-wrap: anywhere; }
+          .bq-social-links { flex-wrap: wrap !important; }
         }
       `,
         }}

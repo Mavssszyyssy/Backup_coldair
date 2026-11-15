@@ -132,10 +132,10 @@ export default function SignUpStep1() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={150}>
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }}>
         <PageHeader title={t("Create Account")} subtitle={t("Step 2 of 4: Verify email")} color={COLORS.primary} onBack={() => router.back()} />
         <Card>
-          <TextField label={t("Email address")} value={email} onChangeText={changeEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={error && !codeSent ? error : ""} />
+          <TextField maxLength={254} label={t("Email address")} value={email} onChangeText={changeEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" error={error && !codeSent ? error : ""} />
           <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm }}>{t("Your email is used for sign-in and verification.")}</Text>
           <Button title={resendCountdown > 0 && codeSent ? `${t("Resend in")} ${resendCountdown}s` : codeSent ? t("Resend Verification Code") : t("Send Verification Code")} onPress={sendCode} variant="secondary" style={{ marginTop: SPACING.md }} disabled={resendCountdown > 0 || isBlocked || submitting} />
         </Card>

@@ -1,3 +1,4 @@
+import SearchableSelect from "../common/SearchableSelect";
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
@@ -106,9 +107,9 @@ function ContactForm() {
           </div>
           <div className="form-group">
             <label htmlFor="contact-category">{t("What can we help with?")} *</label>
-            <select id="contact-category" value={formData.category} onChange={(event) => update("category", event.target.value)} required>
+            <SearchableSelect id="contact-category" value={formData.category} onChange={(event) => update("category", event.target.value)} required>
               {CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-            </select>
+            </SearchableSelect>
           </div>
         </div>
         <div className="form-group">

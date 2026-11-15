@@ -1,5 +1,7 @@
+import SearchableSelect from "../common/SearchableSelect";
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { ShoppingBag, WarningDiamond } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
 import { openOnlineCheckout } from "../../domain/checkout/openOnlineCheckout";
@@ -81,6 +83,7 @@ function MyOrders() {
   const [cancellingOrderId, setCancellingOrderId] = useState("");
   const [cancelOrder, setCancelOrder] = useState(null);
   const [payingOrderId, setPayingOrderId] = useState("");
+  const payRequest = useRef(false);
   const [reorderingOrderId, setReorderingOrderId] = useState("");
 
   const limit = pagination.limit;
@@ -142,9 +145,7 @@ function MyOrders() {
         setSelectedOrder((current) => current ? normalized.find((order) => String(order.id) === String(current.id)) || current : null);
       } catch (_error) {
         if (!mounted || currentRequest !== requestId) return;
-        // Orders are always sourced from the backend. Falling back to a
-        // browser copy can show an outdated or duplicate transaction after
-        // payments, cancellations, dispatch, or installation updates.
+        // Preserve already displayed records when an update fails.
         if (!hasLoaded) setOrders([]);
         setOrdersError(true);
       } finally {
@@ -206,6 +207,8 @@ function MyOrders() {
   };
 
   const handlePayAgain = async (order) => {
+    if (payRequest.current) return;
+    payRequest.current = true;
     setPayingOrderId(String(order.id));
     try {
       const response = await apiRequest(`/orders/${encodeURIComponent(order.id)}/paymongo/checkout`, {
@@ -215,8 +218,13 @@ function MyOrders() {
       if (!paymentUrl) throw new Error(t("A secure payment link was not returned."));
       openOnlineCheckout(paymentUrl, order.id);
     } catch (error) {
-      alert(error?.message || t("Unable to open secure payment."));
+      if (["PAYMENT_RETRY_CHANGED", "PAYMENT_CHECKOUT_EXPIRING", "PAYMENT_RETRY_PROCESSING"].includes(error?.data?.code)) {
+        navigate(`/order-confirmation/${encodeURIComponent(order.id)}?payment=returned`);
+      } else {
+        alert(t(error?.message || "Unable to open secure payment."));
+      }
     } finally {
+      payRequest.current = false;
       setPayingOrderId("");
     }
   };
@@ -258,7 +266,7 @@ function MyOrders() {
         direction="column"
         flex={1}
         width="100%"
-        padding="40px 24px"
+        padding={BQ_GEOMETRY.pagePadding}
         style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <BoutiqueBox
@@ -330,32 +338,29 @@ function MyOrders() {
           </label>
           <label>
             <span>{t("Payment status")}</span>
-            <select value={paymentFilter} onChange={(event) => updateOrderFilter(setPaymentFilter, event.target.value)}>
+            <SearchableSelect value={paymentFilter} onChange={(event) => updateOrderFilter(setPaymentFilter, event.target.value)}>
               <option value="">{t("All payment statuses")}</option>
               {["pending", "paid", "failed", "cancelled", "expired", "not_required"].map((value) => (
                 <option key={value} value={value}>{t(({ pending: "Pending", paid: "Paid", failed: "Failed", cancelled: "Cancelled", expired: "Expired", not_required: "No payment required" })[value])}</option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             <span>{t("Order date")}</span>
-            <select value={dateFilter} onChange={(event) => updateOrderFilter(setDateFilter, event.target.value)}>
+            <SearchableSelect value={dateFilter} onChange={(event) => updateOrderFilter(setDateFilter, event.target.value)}>
               <option value="">{t("Any date")}</option>
               <option value="30d">{t("Last 30 days")}</option>
               <option value="90d">{t("Last 90 days")}</option>
-            </select>
+            </SearchableSelect>
           </label>
         </section>
         {!ordersLoading && !ordersError ? <div className="customer-orders-result-count" aria-live="polite">
           {`${pagination.total ? (page - 1) * pagination.limit + 1 : 0}–${Math.min(page * pagination.limit, pagination.total)} ${t("of")} ${pagination.total} ${t("orders")}`}
         </div> : null}
 
-        <BoutiqueStack gap={24} className="orders-main">
+        <BoutiqueStack gap={16} className="orders-main">
           {ordersLoading ? (
-            <div role="status" className="orders-loading-skeleton">
-              <span>{t("Loading orders...")}</span>
-              {[1, 2, 3].map((row) => <div key={row} className="orders-skeleton-card" aria-hidden="true"><i /><i /><i /></div>)}
-            </div>
+            <LoadingSkeleton label={t("Loading orders...")} />
           ) : ordersError && orders.length === 0 ? (
             <BoutiqueBox padding={32} role="alert">{t("Unable to load orders. Please try again.")}</BoutiqueBox>
           ) : orders.length === 0 && !hasFilters ? (

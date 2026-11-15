@@ -1,10 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text } from "react-native";
 
 import TechButton from "../../../../../../components/technician/TechButton";
 import Card from "../../../../../../components/ui/Card";
-import { COLORS, FONT, SPACING } from "../../../../../../constants/theme";
+import { COLORS, SPACING, TYPE } from "../../../../../../constants/theme";
 import { deleteServiceLog } from "../../../../../../services/unitServiceLogStorage";
 import { useInterfaceLanguage } from "../../../../../../hooks/useInterfaceLanguage";
 
@@ -38,16 +38,15 @@ export default function LogDeleteScreen() {
     >
       <Card style={{ width: "100%", maxWidth: 420 }}>
         <Text
-          style={{
+          accessibilityRole="header"
+          style={[TYPE.section, {
             color: COLORS.textPrimary,
-            fontSize: FONT.lg,
-            fontWeight: FONT.black,
             marginBottom: SPACING.xs,
-          }}
+          }]}
         >
           {t("Delete Service Note")}
         </Text>
-        <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>
+        <Text style={[TYPE.body, { color: COLORS.textSecondary, marginBottom: SPACING.md }]}>
           {t("Delete this service note? This action cannot be undone.")}
         </Text>
         <TechButton

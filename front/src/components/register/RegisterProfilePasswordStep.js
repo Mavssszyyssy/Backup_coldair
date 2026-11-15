@@ -202,6 +202,7 @@ export default function RegisterProfilePasswordStep({
 
         <BoutiqueBox style={{ gridColumn: "span 2" }}>
           <BoutiqueInput
+            maxLength={30}
             label={t("Username")}
             icon={UserCircle}
             placeholder={aliasPlaceholder}

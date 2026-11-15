@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../config/api";
@@ -259,7 +260,7 @@ export default function Register() {
           />
         )}
         {step === "identity" && (
-          <Suspense fallback={<BoutiqueText>{t("Loading...")}</BoutiqueText>}>
+          <Suspense fallback={<LoadingSkeleton label={t("Loading...")} variant="detail" />}>
             <RegisterProfilePasswordStep
               currentLanguage={currentLanguage}
               formData={formData}

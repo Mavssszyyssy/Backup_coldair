@@ -76,9 +76,9 @@ export default function AccountSecurityManagement({ user, onChangePassword }) {
           {usesLocalPassword && editing ? (
             <form onSubmit={submitPassword}>
               <BoutiqueStack gap={14}>
-                <BoutiqueInput label={t("Current Password")} aria-label={t("Current Password")} language={user?.preferences?.language} type="password" autoComplete="current-password" value={passwords.current} onChange={(event) => updatePassword("current", event.target.value)} />
-                <BoutiqueInput label={t("New Password")} aria-label={t("New Password")} language={user?.preferences?.language} type="password" autoComplete="new-password" value={passwords.next} onChange={(event) => updatePassword("next", event.target.value)} hint={t("Use 8–25 characters with uppercase, lowercase, a number, and a symbol.")} />
-                <BoutiqueInput label={t("Confirm New Password")} aria-label={t("Confirm New Password")} language={user?.preferences?.language} type="password" autoComplete="new-password" value={passwords.confirm} onChange={(event) => updatePassword("confirm", event.target.value)} />
+                <BoutiqueInput maxLength={128} label={t("Current Password")} aria-label={t("Current Password")} language={user?.preferences?.language} type="password" autoComplete="current-password" value={passwords.current} onChange={(event) => updatePassword("current", event.target.value)} />
+                <BoutiqueInput maxLength={128} label={t("New Password")} aria-label={t("New Password")} language={user?.preferences?.language} type="password" autoComplete="new-password" value={passwords.next} onChange={(event) => updatePassword("next", event.target.value)} hint={t("Use 8–25 characters with uppercase, lowercase, a number, and a symbol.")} />
+                <BoutiqueInput maxLength={128} label={t("Confirm New Password")} aria-label={t("Confirm New Password")} language={user?.preferences?.language} type="password" autoComplete="new-password" value={passwords.confirm} onChange={(event) => updatePassword("confirm", event.target.value)} />
                 <BoutiqueBox direction="row" gap={10} wrap="wrap">
                   <BoutiqueButton type="submit" loading={saving}>{t("Save New Password")}</BoutiqueButton>
                   <BoutiqueButton type="button" variant="outline" onClick={() => { setEditing(false); setPasswords({ current: "", next: "", confirm: "" }); setMessage(null); }}>{t("Cancel")}</BoutiqueButton>

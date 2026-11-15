@@ -16,7 +16,7 @@ vi.mock("../../../context/UserContext", () => ({
   useUser: () => ({ user: { name: "Cavite Admin", email: "admin@test.local", role, activeBranch: "Cavite", assignedBranch: "Cavite" } }),
 }));
 
-afterEach(() => { cleanup(); role = "admin"; vi.clearAllMocks(); });
+afterEach(() => { cleanup(); role = "admin"; vi.useRealTimers(); vi.clearAllMocks(); });
 const renderReport = () => render(<MemoryRouter><AdminReports /></MemoryRouter>);
 
 it("shows the default Sales Report first and switches without loading other reports automatically", async () => {
@@ -30,9 +30,45 @@ it("shows the default Sales Report first and switches without loading other repo
   expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/reports/sales?") || path.startsWith("/reports/business-intelligence?"))).toBe(false);
 });
 
+it.each(["admin", "superadmin"])("resets report dates on tab changes for %s and keeps inventory current", async (reportRole) => {
+  role = reportRole;
+  vi.setSystemTime(new Date("2026-11-14T16:15:00Z"));
+  apiRequest.mockResolvedValue({ customers: [], technicians: [], skus: [], brands: [], rows: [], summary: {} });
+  renderReport();
+  const expectDefaultDates = () => {
+    expect(screen.getByLabelText("From")).toHaveValue("2026-10-16");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-11-15");
+  };
+
+  expectDefaultDates();
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-01" } });
+  fireEvent.click(screen.getByRole("button", { name: "Business Intelligence" }));
+  expectDefaultDates();
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-02" } });
+  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-10" } });
+
+  fireEvent.click(screen.getByRole("button", { name: "Inventory Report" }));
+  expect(screen.queryByLabelText("From")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("To")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  const inventoryRequest = apiRequest.mock.calls.find(([url]) => url.startsWith("/reports/inventory?"))[0];
+  const inventoryFilters = new URLSearchParams(inventoryRequest.split("?")[1]);
+  expect(inventoryFilters.has("from")).toBe(false);
+  expect(inventoryFilters.has("to")).toBe(false);
+  await screen.findByRole("button", { name: "Generate report" });
+
+  fireEvent.click(screen.getByRole("button", { name: "Technician Performance" }));
+  expectDefaultDates();
+  fireEvent.click(screen.getByRole("button", { name: "Business Intelligence" }));
+  expectDefaultDates();
+  fireEvent.click(screen.getByRole("button", { name: "Sales Report" }));
+  expectDefaultDates();
+});
+
 it("requests paid branch sales with unshifted date-only filters and renders stored totals", async () => {
   const report = {
-    summary: { transactionCount: 1, totalOrderValue: 2490, amountCollected: 2490 },
+    summary: { transactionCount: 1, unitsSold: 2, totalOrderValue: 3490, amountCollected: 2490, paidRevenue: 2490 },
+    interpretation: { status: "ready", summary: "Collected revenue is below the total order value.", reviewAction: "Review the matching payment records." },
     basis: "Stored paid transactions.", updatedAt: "2026-09-10T15:00:00.000Z",
     transactions: [{ orderCode: "ORD-1", sku: "AC-ONE-1HP", total: 2490, amountCollected: 2490 }],
     products: [{ sku: "AC-ONE-1HP", product: "AC One", unitsSold: 2, merchandiseSales: 2000 }],
@@ -59,15 +95,35 @@ it("requests paid branch sales with unshifted date-only filters and renders stor
   expect(requested).toContain("search=ORD-1");
   expect(requested).toContain("sku=AC-ONE-1HP");
   expect(requested).toContain("customer=Customer+One");
+  expect(requested).toContain("interpretation=1");
   expect(screen.getByText("ORD-1")).toBeInTheDocument();
   expect(screen.getAllByText("SKU").length).toBeGreaterThan(0);
   expect(screen.getAllByText("AC-ONE-1HP").length).toBeGreaterThan(0);
   expect(screen.getAllByText("₱2,490.00").length).toBeGreaterThan(0);
+  expect(screen.getByRole("heading", { name: "Key performance indicators" })).toBeInTheDocument();
+  expect(screen.getByText("Total orders")).toBeInTheDocument();
+  expect(screen.getByText("Collected revenue is below the total order value.")).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("Search"), { target: { value: "next-draft-search" } });
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const excel = exportToExcel.mock.calls.at(-1)[0];
+  const pdf = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
+  expect(excel.summary).toMatchObject({ paidRevenue: 2490, transactionCount: 1, unitsSold: 2 });
+  expect(excel.summaryLabels.paidRevenue).toBe("Total revenue collected");
+  expect(excel.rowHeading).toBe("Sales list");
+  expect(excel.metadata.filters).toContain("Search: ORD-1");
+  expect(pdf.metadata.filters).toEqual(excel.metadata.filters);
+  expect(pdf.html).toContain('class="summary summary--kpis"');
+  expect(pdf.html).toContain("Sales list");
+  expect(excel.notes.lines).toContain("For decision support only. AI does not replace human judgment.");
+  for (const line of excel.notes.lines) expect(pdf.html).toContain(line);
 });
 
 it("loads the complete inventory report endpoint instead of the low-stock product endpoint", async () => {
   const report = {
     summary: { productLines: 1, currentStockUnits: 3, inventoryValue: 60000, outOfStockItems: 0, lowStockItems: 0 },
+    interpretation: { status: "unavailable" },
     basis: "Current branch stock.", updatedAt: "2026-09-10T15:00:00.000Z",
     rows: [{ branch: "Cavite", sku: "AC-1", product: "AC One", currentStock: 3, availableSerials: 2, soldUnits: 1, stockValue: 60000, stockStatus: "In stock", assignedUnits: 1, serviceUnits: 0, retiredUnits: 0, trackedUnits: 3, inventoryVariance: 1, reorderLevel: 2 }],
   };
@@ -87,13 +143,18 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   expect(reportRequest).toContain("category=split");
   expect(reportRequest).toContain("brand=Cold+Air");
   expect(reportRequest).toContain("sku=AC-1");
+  expect(reportRequest).toContain("interpretation=1");
   expect(screen.getAllByText("AC-1").length).toBeGreaterThan(1);
   expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   for (const removedHeader of ["Assigned", "In service", "Retired", "Tracked units", "Stock / QR variance", "Reorder level"]) {
     expect(screen.queryByRole("columnheader", { name: removedHeader })).not.toBeInTheDocument();
   }
   fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
   const exportedHtml = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0].html;
+  const notes = exportToExcel.mock.calls.at(-1)[0].notes;
+  expect(notes.lines).toContain("AI interpretation is unavailable for this report.");
+  for (const line of notes.lines) expect(exportedHtml).toContain(line);
   for (const removedHeader of ["Assigned", "In service", "Retired", "Tracked units", "Stock / QR variance", "Reorder level"]) {
     expect(exportedHtml).not.toContain(removedHeader);
   }
@@ -238,6 +299,8 @@ it("paginates the sales transaction register", async () => {
   expect(exported.html).toContain("ORD-01");
   expect(exported.html).toContain("ORD-12");
   expect(exported.metadata).toMatchObject({ pageOrientation: "landscape", documentStyle: "tabular" });
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  expect(exportToExcel.mock.calls.at(-1)[0].rows).toEqual(transactions);
 });
 
 it("blocks a reversed reporting range before requesting data", () => {

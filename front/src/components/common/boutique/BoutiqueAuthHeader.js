@@ -22,7 +22,7 @@ export default function BoutiqueAuthHeader({ title, subtitle, children }) {
         gap={20}
         className="bq-auth-header-top"
       >
-        <BoutiqueText variant="h1" style={{ fontWeight: 900, lineHeight: 1.1 }}>
+        <BoutiqueText variant="h1" style={{ minWidth: 0 }}>
           {title}
         </BoutiqueText>
         <BoutiqueBox align="center" className="bq-auth-header-extra">
@@ -34,7 +34,7 @@ export default function BoutiqueAuthHeader({ title, subtitle, children }) {
           variant="body"
           color={BQ_COLORS.inkMuted}
           weight={500}
-          style={{ opacity: 0.8, maxWidth: "400px", lineHeight: 1.5 }}
+          style={{ maxWidth: "400px" }}
           className="bq-auth-subtitle"
         >
           {subtitle}
@@ -46,7 +46,6 @@ export default function BoutiqueAuthHeader({ title, subtitle, children }) {
           __html: `
         @media (max-width: 640px) {
           .bq-auth-header-top { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
-          .bq-auth-header-block h1 { font-size: 28px !important; }
         }
       `,
         }}

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, RADIUS, SPACING, TYPE } from "../../constants/theme";
 
 const TextField = forwardRef(function TextField({
   label,
@@ -29,6 +29,7 @@ const TextField = forwardRef(function TextField({
   onFocus,
   onBlur,
   style,
+  maxLength = 160,
   ...props
 }, forwardedRef) {
   const generatedId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -40,12 +41,10 @@ const TextField = forwardRef(function TextField({
     <View style={{ marginBottom: SPACING.sm + 6 }}>
       {label ? (
         <Text
-          style={{
-            fontSize: FONT.base,
+          style={[TYPE.label, {
             color: COLORS.textPrimary,
-            fontWeight: "600",
             marginBottom: SPACING.xs + 2,
-          }}
+          }]}
         >
           {label}
         </Text>
@@ -55,9 +54,10 @@ const TextField = forwardRef(function TextField({
         accessibilityLabel={label}
         ref={forwardedRef}
         value={value}
+        maxLength={maxLength}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={COLORS.textSecondary}
         keyboardType={keyboardType ?? "default"}
         autoCapitalize={autoCapitalize ?? (props.secureTextEntry ? "none" : "sentences")}
         autoCorrect={props.secureTextEntry ? false : undefined}
@@ -82,7 +82,7 @@ const TextField = forwardRef(function TextField({
             paddingVertical: SPACING.md - 2,
             borderColor: error ? COLORS.danger : focused ? COLORS.borderFocus : COLORS.borderInput,
             borderWidth: focused || error ? 1.5 : 1,
-            fontSize: FONT.base,
+            fontSize: TYPE.body.fontSize,
             color: COLORS.textPrimary,
             minHeight: 50,
           },
@@ -93,21 +93,19 @@ const TextField = forwardRef(function TextField({
 
       {error ? (
         <Text
-          style={{
+          style={[TYPE.caption, {
             color: COLORS.danger,
             marginTop: SPACING.xs,
-            fontSize: FONT.sm,
-          }}
+          }]}
         >
           {error}
         </Text>
       ) : helperText ? (
         <Text
-          style={{
+          style={[TYPE.caption, {
             color: COLORS.textSecondary,
             marginTop: SPACING.xs,
-            fontSize: FONT.sm,
-          }}
+          }]}
         >
           {helperText}
         </Text>
@@ -133,7 +131,7 @@ const TextField = forwardRef(function TextField({
               hitSlop={10}
               style={{ paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs }}
             >
-              <Text style={{ color: COLORS.primary, fontSize: FONT.base, fontWeight: "700" }}>
+              <Text style={[TYPE.label, { color: COLORS.primary }]}>
                 {translate("Done")}
               </Text>
             </Pressable>

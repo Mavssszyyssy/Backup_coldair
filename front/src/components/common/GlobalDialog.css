@@ -67,16 +67,16 @@
 .app-dialog-title {
   margin: 0;
   color: #0f172a;
-  font-size: 23px;
-  line-height: 1.25;
+  font-size: var(--app-type-section);
+  line-height: var(--app-leading-heading);
   overflow-wrap: anywhere;
 }
 
 .app-dialog-message {
   margin: 12px 0 0;
   color: #475569;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: var(--app-type-body);
+  line-height: var(--app-leading-body);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }

@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
@@ -33,12 +34,12 @@ export default function ContactHistory({ messageId = "" }) {
   const selectedRef = useRef(null);
   const lastScrolledRef = useRef("");
 
-  const load = useCallback(async ({ background = false } = {}) => {
+  const load = useCallback(async ({ background = false, fresh = false } = {}) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     if (!background) setLoading(true);
     try {
-      const result = await apiRequest("/contact-messages/me", { silentConnection: background });
+      const result = await apiRequest("/contact-messages/me", { silentConnection: background, fresh });
       if (!mountedRef.current) return;
       setMessages(Array.isArray(result.messages) ? result.messages : []);
       setError("");
@@ -93,11 +94,11 @@ export default function ContactHistory({ messageId = "" }) {
           <h2 id="contact-history-title">{t("My Support Messages")}</h2>
           <p>{t("Replies update automatically while this page is open.")}</p>
         </div>
-        <button type="button" onClick={() => load()} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button>
+        <button type="button" onClick={() => load({ fresh: true })} disabled={loading}>{t(loading ? "Refreshing…" : "Refresh")}</button>
       </div>
 
       {error ? <div className="contact-history__error" role="alert">{t(error)}</div> : null}
-      {loading && messages.length === 0 ? <p className="contact-history__empty">{t("Loading your messages…")}</p> : null}
+      {loading && messages.length === 0 ? <LoadingSkeleton label={t("Loading your messages…")} /> : null}
       <div className="contact-history__list">
         {orderedMessages.map((item) => {
           const id = String(item.id || item._id);

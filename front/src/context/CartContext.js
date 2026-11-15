@@ -152,6 +152,7 @@ export const CartProvider = ({ children }) => {
     <CartContext.Provider
       value={{
         cart,
+        loading: authLoading || (isAuthenticated && user?.role === "customer" && isInitialLoad),
         addToCart,
         removeFromCart,
         updateQuantity,

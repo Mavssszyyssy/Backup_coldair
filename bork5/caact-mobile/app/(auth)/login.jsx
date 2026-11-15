@@ -96,7 +96,6 @@ export function LoginScreen() {
           justifyContent: "center",
           padding: SPACING.md,
         }}
-        minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
           title="Sign in"
@@ -121,6 +120,7 @@ export function LoginScreen() {
           ) : (
             <>
               <TextField
+                maxLength={254}
                 label={t("Email or Username")}
                 value={form.email}
                 onChangeText={(v) => updateField("email", v)}

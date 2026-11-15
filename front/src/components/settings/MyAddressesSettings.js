@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { MapPin, Phone, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../../config/api";
@@ -161,13 +162,7 @@ function MyAddressesSettings({ onAddressesChanged, language = "English" }) {
 
         <BoutiqueStack gap={16}>
           {addressLoading && (
-            <BoutiqueText
-              align="center"
-              padding="20px"
-              color={BQ_COLORS.inkMuted}
-            >
-              {t("Loading your addresses...")}
-            </BoutiqueText>
+            <LoadingSkeleton label={t("Loading your addresses...")} variant="inline" />
           )}
 
           {!addressLoading && sortedAddresses.length === 0 && (

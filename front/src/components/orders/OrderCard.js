@@ -104,13 +104,15 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
     ["to_pay", "to_deliver", "to_dispatch", "for_rescheduling"].includes(String(order.status || "").toLowerCase()) &&
     !order.cancellationRequest?.requested;
   const cancellationLabel = cancellationStatusLabel(order);
-  const isUnpaidGcash =
+  const paymentStatus = String(order.paymentStatus || "").toLowerCase();
+  const canAttemptPayment =
     String(order.paymentProvider || "").toLowerCase() === "paymongo" &&
-    String(order.paymentMethod || "").toLowerCase() === "gcash" &&
-    String(order.paymentStatus || "").toLowerCase() !== "paid" &&
+    ["pending", "failed", "cancelled", "expired"].includes(paymentStatus) &&
+    !order.paymongo?.retryInProgress && !["processing", "expiring"].includes(order.paymentCheckoutState) &&
     String(order.status || "").toLowerCase() === "to_pay";
   const paymentRetryCount = Number(order.paymentRetryCount ?? order.paymongo?.retryAttempts ?? 0);
-  const paymentRetryLimitReached = isUnpaidGcash && paymentRetryCount >= 3;
+  const paymentRetryLimitReached = String(order.paymentMethod || "").toLowerCase() === "gcash" && paymentRetryCount >= 3 &&
+    !(paymentStatus === "pending" && order.paymongo?.checkoutUrl);
 
   return (
     <BoutiqueCard padding={0} style={{ overflow: "hidden" }}>
@@ -330,7 +332,7 @@ function OrderCard({ order, onTrack, onReorder, onReceipt, onCancelRequest, onPa
                   {cancelling ? t("Submitting...") : t("Request Cancel")}
                 </BoutiqueButton>
               ) : null}
-              {isUnpaidGcash ? (
+              {canAttemptPayment ? (
                 paymentRetryLimitReached ? (
                   <BoutiqueText size="12px" weight={800} color={BQ_COLORS.danger} style={{ maxWidth: "240px" }}>
                     {t("Maximum payment attempts reached. You can no longer retry payment for this order.")}

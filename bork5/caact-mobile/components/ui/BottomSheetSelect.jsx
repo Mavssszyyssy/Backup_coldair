@@ -1,3 +1,4 @@
+import LoadingSkeleton from "./LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -13,7 +14,8 @@ import {
   View,
 } from "react-native";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, RADIUS, SPACING, TYPE } from "../../constants/theme";
+import { dropdownSearch } from "../../services/dropdownSearch";
 import TextField from "./TextField";
 
 export default function BottomSheetSelect({
@@ -37,6 +39,7 @@ export default function BottomSheetSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef(null);
+  const searchLabel = searchPlaceholder || `${translate("Search for")} ${String(label || translate("options")).toLowerCase()}`;
 
   const dismissKeyboard = () => {
     searchInputRef.current?.blur?.();
@@ -50,21 +53,19 @@ export default function BottomSheetSelect({
   };
 
   const filteredItems = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return items;
-    return items.filter((item) => getLabel(item).toLowerCase().includes(needle));
-  }, [getLabel, items, query]);
+    if (!query.trim()) return items;
+    const matches = dropdownSearch(query);
+    return items.filter((item) => matches(getLabel(item), getKey(item)));
+  }, [getKey, getLabel, items, query]);
 
   return (
     <View style={{ marginBottom: SPACING.sm + 6 }}>
       {!!label && (
         <Text
-          style={{
-            fontSize: FONT.base,
+          style={[TYPE.label, {
             color: COLORS.textPrimary,
-            fontWeight: "600",
             marginBottom: SPACING.xs + 2,
-          }}
+          }]}
         >
           {label}
         </Text>
@@ -77,6 +78,8 @@ export default function BottomSheetSelect({
         }}
         activeOpacity={0.75}
         disabled={disabled}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open, disabled }}
         style={{
           backgroundColor: disabled ? "#F1F5F9" : COLORS.surface,
           borderRadius: RADIUS.md,
@@ -89,11 +92,11 @@ export default function BottomSheetSelect({
         }}
       >
         <Text
-          style={{
+          style={[TYPE.body, {
             flex: 1,
-            color: value ? COLORS.textPrimary : COLORS.textMuted,
-            fontSize: FONT.base,
-          }}
+            color: value ? COLORS.textPrimary : COLORS.textSecondary,
+            marginRight: SPACING.sm,
+          }]}
         >
           {value || placeholder}
         </Text>
@@ -108,7 +111,7 @@ export default function BottomSheetSelect({
         )}
       </TouchableOpacity>
       {!!error && (
-        <Text style={{ color: COLORS.danger, marginTop: SPACING.xs, fontSize: FONT.sm }}>
+        <Text style={[TYPE.caption, { color: COLORS.danger, marginTop: SPACING.xs }]}>
           {error}
         </Text>
       )}
@@ -150,40 +153,37 @@ export default function BottomSheetSelect({
               }}
             >
               <Text
-                style={{
+                accessibilityRole="header"
+                style={[TYPE.section, {
                   color: COLORS.textPrimary,
-                  fontWeight: FONT.black,
-                  fontSize: FONT.lg,
                   flex: 1,
                   flexShrink: 1,
                   paddingRight: SPACING.sm,
-                }}
+                }]}
               >
                 {label ? `${translate("Select a")} ${label}` : translate("Select an option")}
               </Text>
-              <TouchableOpacity onPress={closeSheet} hitSlop={12}>
+              <TouchableOpacity onPress={closeSheet} hitSlop={12} accessibilityRole="button" accessibilityLabel={translate("Close")}>
                 <Ionicons name="close-sharp" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <TextField
+              maxLength={160}
               ref={searchInputRef}
               label=""
               value={query}
               onChangeText={setQuery}
-              placeholder={searchPlaceholder || `${translate("Search for")} ${String(label || translate("options")).toLowerCase()}`}
-              autoCapitalize="words"
+              placeholder={searchLabel}
+              accessibilityLabel={searchLabel}
+              autoCapitalize="none"
+              autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={dismissKeyboard}
             />
 
             {loading ? (
-              <View style={{ padding: SPACING.xl, alignItems: "center" }}>
-                <ActivityIndicator size="large" color={accentColor} />
-                <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.sm }}>
-                  {translate("Loading list...")}
-                </Text>
-              </View>
+              <LoadingSkeleton label={translate("Loading list...")} variant="inline" />
             ) : (
               <FlatList
                 data={filteredItems}
@@ -198,7 +198,7 @@ export default function BottomSheetSelect({
                       padding: SPACING.lg,
                     }}
                   >
-                    {emptyMessage || translate("No matching records found.")}
+                    {(!query.trim() && emptyMessage) || translate("No matching records found.")}
                   </Text>
                 }
                 renderItem={({ item }) => (
@@ -208,6 +208,8 @@ export default function BottomSheetSelect({
                       onSelect?.(item);
                     }}
                     activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: getLabel(item) === value }}
                     style={{
                       backgroundColor: COLORS.surface,
                       borderRadius: RADIUS.md,

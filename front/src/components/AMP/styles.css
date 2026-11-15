@@ -164,7 +164,7 @@
 }
 
 .amp-main {
-  padding: 26px clamp(18px, 2.2vw, 34px) 40px;
+  padding: 16px clamp(14px, 2vw, 24px) 24px;
   min-width: 0;
 }
 
@@ -173,8 +173,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
-  padding: 20px 22px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
   border: 1px solid #dbe4ef;
   border-radius: 18px;
   background: rgba(255, 255, 255, .92);
@@ -183,12 +183,16 @@
 
 .amp-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--app-type-page);
+  font-weight: var(--app-weight-heading);
+  line-height: var(--app-leading-heading);
 }
 
 .amp-header p {
   margin: 5px 0 0;
   color: #64748b;
+  font-size: var(--app-type-label);
+  line-height: var(--app-leading-body);
 }
 
 .amp-header > span {
@@ -1677,7 +1681,6 @@
 .amp-report-center,
 .amp-insight-details { border-radius: 10px; box-shadow: none; }
 .amp-header { padding: 18px 20px; border-color: #d9dee7; background: #fff; }
-.amp-header h1 { font-size: 26px; }
 .amp-user-chip { border-color: #d9dee7; border-radius: 9px; background: #f8fafc; }
 .amp-user-chip-icon { width: 32px; height: 32px; border-radius: 7px; background: #eef2f7; color: #475569; }
 .amp-user-chip small { text-transform: none; letter-spacing: 0; }

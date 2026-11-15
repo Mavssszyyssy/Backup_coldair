@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING, TYPE } from "../../constants/theme";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const ITEMS = [
@@ -19,7 +19,7 @@ function NavItem({ item }) {
   const router = useRouter();
   const pathname = usePathname();
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-  const color = active ? COLORS.tech : COLORS.textMuted;
+  const color = active ? COLORS.tech : COLORS.textSecondary;
 
   return (
     <TouchableOpacity
@@ -32,8 +32,9 @@ function NavItem({ item }) {
         flex: 1,
         minWidth: 0,
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         minHeight: 64,
+        paddingVertical: SPACING.xs,
       }}
     >
       <View
@@ -56,16 +57,13 @@ function NavItem({ item }) {
         {item.href === "/technician/notifications" ? <NotificationBadge /> : null}
       </View>
       <Text
-        style={{
+        style={[TYPE.tab, {
           color,
-          fontSize: 11,
-          fontWeight: active ? FONT.black : FONT.bold,
+          fontWeight: active ? FONT.bold : TYPE.tab.fontWeight,
           marginTop: 3,
           textAlign: "center",
           width: "100%",
-          lineHeight: 14,
-        }}
-        numberOfLines={2}
+        }]}
       >
         {t(item.label)}
       </Text>
@@ -82,14 +80,14 @@ export default function TechnicianBottomNav() {
       style={{
         zIndex: 30,
         flexDirection: "row",
-        height: 68 + bottomInset,
+        minHeight: 68 + bottomInset,
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         paddingHorizontal: SPACING.xs,
         paddingTop: 2,
         paddingBottom: bottomInset,
-        alignItems: "center",
+        alignItems: "stretch",
         elevation: 8,
         shadowColor: "#0F172A",
         shadowOpacity: 0.1,

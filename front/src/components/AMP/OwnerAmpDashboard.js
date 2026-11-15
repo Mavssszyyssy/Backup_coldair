@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Buildings,
@@ -78,23 +79,35 @@ function OwnerAmpDashboard() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiRequest("/amp/owner/forecast?months=12&includeHistory=false")
+    let snapshot;
+    const showForecast = (result) => {
+      if (cancelled) return;
+      setForecast(result.forecast || []);
+      setSummary({
+        totalForecastedServices: result.totalForecastedServices || 0,
+        totalProjectedRevenue: result.totalProjectedRevenue || 0,
+        averageServiceRevenue: result.averageServiceRevenue || 0,
+        revenueDisclaimer: result.revenueDisclaimer || "",
+      });
+      setServiceDemand(result.recommendedServiceDemand || []);
+      setBranchDemand(result.branchMaintenanceVolume || []);
+    };
+    apiRequest("/amp/owner/forecast?months=12&includeHistory=false", {
+      onCached: (result) => {
+        snapshot = result;
+        showForecast(result);
+        setLoading(false);
+      },
+    })
       .then((result) => {
         if (cancelled) return;
-        setForecast(result.forecast || []);
-        setSummary({
-          totalForecastedServices: result.totalForecastedServices || 0,
-          totalProjectedRevenue: result.totalProjectedRevenue || 0,
-          averageServiceRevenue: result.averageServiceRevenue || 0,
-          revenueDisclaimer: result.revenueDisclaimer || "",
-        });
-        setServiceDemand(result.recommendedServiceDemand || []);
-        setBranchDemand(result.branchMaintenanceVolume || []);
+        if (result !== snapshot) showForecast(result);
         setError("");
       })
       .catch((err) => {
         if (cancelled) return;
         setError(err.message || "Unable to load AMP forecast.");
+        if (snapshot && ![401, 403].includes(err.status)) return;
         setForecast([]);
         setServiceDemand([]);
         setBranchDemand([]);
@@ -171,9 +184,9 @@ function OwnerAmpDashboard() {
       <section className="amp-card amp-owner-section">
         <div className="amp-card-header amp-owner-section-heading">
           <div className="amp-section-title"><span className="amp-section-icon"><ChartBar size={23} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Suggested services by month")}</h2></div></div>
-          {loading ? <span>{t("Loading...")}</span> : null}
         </div>
 
+        {loading && !forecast.length ? <LoadingSkeleton label={t("Loading...")} variant="table" /> : null}
         {error ? <p className="amp-error">{t(error)}</p> : null}
         <p className="amp-muted">{t("Each unit appears in the month of its next suggested service date. These are not booked appointments.")}</p>
         {forecast.length > 0 ? <ForecastBars forecast={forecast} t={t} /> : null}
@@ -197,7 +210,7 @@ function OwnerAmpDashboard() {
       </section>
 
       <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}><summary><span className="amp-details-summary-icon"><Package size={19} weight="duotone" aria-hidden="true" /></span><span><strong>{t("Recorded parts history")}</strong><small>{t("Optional completed-service breakdown")}</small></span></summary>
-      {historyLoading ? <p className="amp-muted" role="status">{t("Loading recorded maintenance history…")}</p> : null}
+      {historyLoading ? <LoadingSkeleton label={t("Loading recorded maintenance history…")} variant="table" /> : null}
       {historyError ? <p className="amp-error" role="alert">{t(historyError)} <button type="button" onClick={loadHistoricalInsights}>{t("Retry")}</button></p> : null}
         <section className="amp-insight-card">
           <div className="amp-section-title compact"><span className="amp-section-icon"><Package size={20} weight="duotone" aria-hidden="true" /></span><div><h2>{t("Parts used in past services")}</h2></div></div>
@@ -241,7 +254,7 @@ function OwnerAmpDashboard() {
       <div id="amp-service-plan"><AmpReportCenter unitsLoading={reportUnitsLoading} onPlanGenerated={() => setRefreshRevision(value => value + 1)} units={reportUnits} title={t("Service planner")} subtitle={t("Choose a unit to review its suggested date, service history, and next steps.")} /></div>
         <details className="amp-card amp-details amp-insight-details" onToggle={(event) => { if (event.currentTarget.open) loadHistoricalInsights(); }}>
           <summary><span className="amp-details-summary-icon"><ClockCounterClockwise size={19} weight="duotone" aria-hidden="true" /></span><span><strong>{t("Service records by model and brand")}</strong><small>{t("Completed services by unit type")}</small></span></summary>
-          {historyLoading ? <p className="amp-muted" role="status">{t("Loading recorded maintenance history…")}</p> : null}
+          {historyLoading ? <LoadingSkeleton label={t("Loading recorded maintenance history…")} variant="table" /> : null}
           {historyError ? <p className="amp-error" role="alert">{t(historyError)} <button type="button" onClick={loadHistoricalInsights}>{t("Retry")}</button></p> : null}
           <p className="amp-muted">{t("This shows completed service visits only. It does not rate a model or predict a breakdown.")}</p>
           <div className="amp-table-wrap"><table className="amp-table compact"><thead><tr><th>{t("AC model or brand")}</th><th>{t("Completed services")}</th><th>{t("Average services per unit")}</th></tr></thead><tbody>{modelTrends.slice(0, 5).map((item) => <tr key={`model-${item.label}`}><td>{item.label}</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}{brandTrends.slice(0, 5).map((item) => <tr key={`brand-${item.label}`}><td>{item.label} ({t("brand")})</td><td>{item.recordedServices}</td><td>{item.servicesPerUnit}</td></tr>)}</tbody></table></div>

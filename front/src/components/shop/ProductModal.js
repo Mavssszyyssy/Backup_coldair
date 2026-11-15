@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { translateText } from "../../utils/customerI18n";
+import { formatPesoAmount } from "../../utils/currency";
 import { getBrandLogo } from "../../config/brandLogos";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueNumberInput from "../common/boutique/BoutiqueNumberInput";
@@ -55,7 +56,7 @@ function ModalProductImage({ product }) {
   );
 }
 
-function ProductModal({ product, onClose, onAddToCart }) {
+function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
   const { currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const [quantity, setQuantity] = useState(1);
@@ -93,7 +94,7 @@ function ProductModal({ product, onClose, onAddToCart }) {
   const isOutOfStock = maxQuantity <= 0;
 
   const validQuantity = /^\d+$/.test(String(quantity).trim()) && Number.isSafeInteger(Number(quantity)) && Number(quantity) >= 1 && Number(quantity) <= maxQuantity;
-  const addSelectedQuantity = async () => {
+  const submitSelectedQuantity = async (action) => {
     if (isOutOfStock) return false;
     if (!validQuantity || quantityError) {
       setQuantityError(t("Choose a valid quantity within availability."));
@@ -101,19 +102,14 @@ function ProductModal({ product, onClose, onAddToCart }) {
     }
     setSubmitting(true);
     try {
-      const added = await onAddToCart(product, Number(quantity));
-      if (added) onClose();
-      return Boolean(added);
+      if (await action(product, Number(quantity))) onClose();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleAddToCart = () => { void addSelectedQuantity(); };
-
-  const handleBuyNow = async () => {
-    if (await addSelectedQuantity()) window.dispatchEvent(new CustomEvent("bq:buy-now"));
-  };
+  const handleAddToCart = () => { void submitSelectedQuantity(onAddToCart); };
+  const handleBuyNow = () => { void submitSelectedQuantity(onBuyNow); };
 
   if (!product) return null;
 
@@ -219,11 +215,11 @@ function ProductModal({ product, onClose, onAddToCart }) {
                       <div className="bq-price-main">
                         <span className="bq-price-symbol">₱</span>
                         <span className="bq-price-num">
-                          {totalPrice.toLocaleString()}
+                          {formatPesoAmount(totalPrice)}
                         </span>
                       </div>
                     </div>
-                    {!isOutOfStock ? (
+                    {!isOutOfStock && onBuyNow ? (
                       <div className="bq-modal-buy-row">
                         <BoutiqueButton variant="outline" fullWidth onClick={handleBuyNow} disabled={submitting}>
                           {t("Buy Now")} <Lightning size={18} weight="fill" />

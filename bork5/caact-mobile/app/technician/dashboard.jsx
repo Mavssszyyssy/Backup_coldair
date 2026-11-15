@@ -15,10 +15,11 @@ import { getTasksByTechnician, getTaskStats } from "../../services/taskStorage";
 import { sortTechnicianWorkOrders } from "../../services/technicianWorkOrderSort";
 import { workOrderStatusPresentation } from "../../services/technicianWorkOrderPresentation";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 
 function MetricCard({ label, value, icon, color, onPress }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} style={{ flex: 1, minHeight: 128, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, justifyContent: "space-between" }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} style={{ flex: 1, gap: SPACING.xs, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.sm }}>
       <View style={{ width: 34, height: 34, borderRadius: RADIUS.md, backgroundColor: `${color}18`, alignItems: "center", justifyContent: "center" }}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
@@ -59,24 +60,30 @@ export default function TechDashboard() {
   const { current } = useUserContext();
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
   const [workOrders, setWorkOrders] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       if (!current?.id) return;
       let active = true;
+      let liveSettled = false;
       const applyTasks = (tasks) => {
         if (!active) return;
         const orderedTasks = sortTechnicianWorkOrders(tasks);
         setStats(getTaskStats(orderedTasks));
         setWorkOrders(orderedTasks.slice(0, 3));
+        if (orderedTasks.length) setLoaded(true);
       };
-      getTasksByTechnician(current.id, { sync: false }).then(applyTasks).catch(() => {});
+      getTasksByTechnician(current.id, { sync: false }).then((tasks) => {
+        if (!liveSettled) applyTasks(tasks);
+      }).catch(() => {});
       const stop = startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
         .then((tasks) => {
           if (!isCurrent()) return;
+          liveSettled = true;
           applyTasks(tasks);
         })
-        .catch(() => {}));
+        .finally(() => { if (isCurrent() && active) setLoaded(true); }));
       return () => {
         active = false;
         stop();
@@ -97,7 +104,7 @@ export default function TechDashboard() {
       subtitle={`${t("Welcome back,")} ${getDisplayName(current)}`}
       icon="speedometer-sharp"
     >
-      <TechHero
+      {!loaded ? <LoadingSkeleton label={t("Loading work order details…")} variant="detail" /> : <TechHero
         eyebrow={t("WORK ORDER STATUS")}
         title={stats.inProgress ? `${stats.inProgress} ${t(stats.inProgress === 1 ? "job in progress" : "jobs in progress")}` : t("Ready for your next job")}
         subtitle={focusMessage}
@@ -109,7 +116,7 @@ export default function TechDashboard() {
           variant="secondary"
           leftIcon={<Ionicons name="clipboard-sharp" size={18} color={COLORS.tech} />}
         />
-      </TechHero>
+      </TechHero>}
 
       <View style={{ marginBottom: SPACING.md }}>
         <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("Notifications")}</Text>
@@ -117,6 +124,7 @@ export default function TechDashboard() {
       </View>
 
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("Work order summary")}</Text>
+      {!loaded ? <LoadingSkeleton label={t("Loading…")} variant="cards" /> : <>
       <View style={{ flexDirection: "row", marginBottom: SPACING.sm }}>
         <View style={{ flex: 1, marginRight: SPACING.xs }}><MetricCard label={t("In progress")} value={stats.inProgress} icon="play-sharp" color={COLORS.tech} onPress={() => openWorkOrders("in-progress")} /></View>
         <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label={t("Pending")} value={stats.pending} icon="time-sharp" color={COLORS.warning} onPress={() => openWorkOrders("pending")} /></View>
@@ -125,9 +133,10 @@ export default function TechDashboard() {
         <View style={{ flex: 1, marginRight: SPACING.xs }}><MetricCard label={t("Completed")} value={stats.completed} icon="checkmark-done-sharp" color={COLORS.success} onPress={() => openWorkOrders("completed")} /></View>
         <View style={{ flex: 1, marginLeft: SPACING.xs }}><MetricCard label={t("All work orders")} value={stats.total} icon="layers-sharp" color={COLORS.primary} onPress={() => openWorkOrders("all")} /></View>
       </View>
+      </>}
 
       <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.lg, marginBottom: SPACING.sm }}>{t("Recent work orders")}</Text>
-      {workOrders.length ? workOrders.map((workOrder) => (
+      {!loaded ? <LoadingSkeleton label={t("Loading…")} /> : workOrders.length ? workOrders.map((workOrder) => (
         <Card key={workOrder.id} onPress={() => router.push(`/technician/task/${workOrder.id}/information`)} style={{ padding: SPACING.md - 2, marginBottom: SPACING.sm, borderLeftWidth: 3, borderLeftColor: workOrderStatusPresentation(workOrder.status).color }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View style={{ width: 42, height: 42, borderRadius: RADIUS.md, backgroundColor: COLORS.techLight, alignItems: "center", justifyContent: "center", marginRight: SPACING.sm }}><Ionicons name="clipboard-sharp" size={21} color={COLORS.tech} /></View>

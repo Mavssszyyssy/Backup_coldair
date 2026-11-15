@@ -123,6 +123,7 @@ function AccountSettings({
               <BoutiqueStack gap={20}>
                 {usesLocalPassword && (
                   <BoutiqueInput
+                    maxLength={128}
                     label={t("Current Password")}
                     language={user?.preferences?.language}
                     type="password"
@@ -137,6 +138,7 @@ function AccountSettings({
                   />
                 )}
                 <BoutiqueInput
+                  maxLength={6}
                   label={t("Type DELETE to confirm")}
                   placeholder="DELETE"
                   value={deleteData.confirmText}

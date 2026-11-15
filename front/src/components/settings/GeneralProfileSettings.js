@@ -1,6 +1,7 @@
 import { EnvelopeSimple, Phone, User, UserCircle } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../config/api";
+import useUnsavedProfileChanges from "../../hooks/useUnsavedProfileChanges";
 import { translateText } from "../../utils/customerI18n";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
@@ -29,38 +30,41 @@ function sanitizeAccountPhone(value, previousValue = "") {
   return digits.length <= 11 ? digits : previousValue;
 }
 
+function editableProfile(user) {
+  return {
+    name_first: user?.name_first || "",
+    name_last: user?.name_last || "",
+    suffix: user?.suffix || "",
+    alias: user?.alias || "",
+    phone: sanitizeAccountPhone(user?.phone || "", user?.phone || ""),
+    email: user?.email || "",
+  };
+}
+
 function GeneralProfileSettings({ user, onUpdateProfile }) {
-  const t = (value) => translateText(value, user?.preferences?.language);
-  const [formData, setFormData] = useState({
-    name_first: "",
-    name_last: "",
-    suffix: "",
-    alias: "",
-    phone: "",
-    email: "", // Usually read-only or handled specially
-  });
+  const language = user?.preferences?.language;
+  const t = useCallback((value) => translateText(value, language), [language]);
+  const { name_first, name_last, suffix, alias, phone, email } = user || {};
+  const sessionProfile = useMemo(() => editableProfile({ name_first, name_last, suffix, alias, phone, email }),
+    [name_first, name_last, suffix, alias, phone, email]);
+  const [savedProfile, setSavedProfile] = useState(sessionProfile);
+  const [formData, setFormData] = useState(savedProfile);
   const [aliasStatus, setAliasStatus] = useState(null); // null, 'checking', 'available', 'taken'
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const dirty = Object.keys(formData).some((field) => formData[field] !== savedProfile[field]);
+  useUnsavedProfileChanges(dirty, saving, t);
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name_first: user.name_first || "",
-        name_last: user.name_last || "",
-        suffix: user.suffix || "",
-        alias: user.alias || "",
-        phone: sanitizeAccountPhone(user.phone || "", user.phone || ""),
-        email: user.email || "",
-      });
-      setErrors({
-        name_first: user.name_first ? validatePersonName(user.name_first, "First name") : "",
-        name_last: user.name_last ? validatePersonName(user.name_last, "Last name") : "",
-        suffix: validateAccountSuffix(user.suffix || ""),
-        phone: validateLocalPhMobile(sanitizeAccountPhone(user.phone || "", user.phone || "")),
-      });
-    }
-  }, [user]);
+    setSavedProfile(sessionProfile);
+    setFormData(sessionProfile);
+    setErrors({
+      name_first: sessionProfile.name_first ? validatePersonName(sessionProfile.name_first, "First name") : "",
+      name_last: sessionProfile.name_last ? validatePersonName(sessionProfile.name_last, "Last name") : "",
+      suffix: validateAccountSuffix(sessionProfile.suffix),
+      phone: validateLocalPhMobile(sessionProfile.phone),
+    });
+  }, [sessionProfile]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -124,13 +128,16 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
         return;
       }
 
-      await onUpdateProfile({
+      const saved = await onUpdateProfile({
         name_first: formData.name_first,
         name_last: formData.name_last,
         suffix: formData.suffix.trim(),
         alias: formData.alias,
         phone: formData.phone,
       });
+      const nextProfile = saved ? editableProfile({ ...formData, ...saved }) : formData;
+      setSavedProfile(nextProfile);
+      setFormData(nextProfile);
     } catch (err) {
       setErrors({ submit: err.message });
     } finally {
@@ -164,6 +171,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               maxLength={PERSON_NAME_MAX_LENGTH}
               hint={`${formData.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
               onChange={(e) => handleChange("name_first", e.target.value)}
+              disabled={saving}
               placeholder="Juan"
               status={errors.name_first ? "error" : null}
               errorMessage={t(errors.name_first)}
@@ -176,6 +184,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
               maxLength={PERSON_NAME_MAX_LENGTH}
               hint={`${formData.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`}
               onChange={(e) => handleChange("name_last", e.target.value)}
+              disabled={saving}
               placeholder="Dela Cruz"
               status={errors.name_last ? "error" : null}
               errorMessage={t(errors.name_last)}
@@ -189,16 +198,19 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             maxLength={ACCOUNT_SUFFIX_MAX_LENGTH}
             hint={`${formData.suffix?.length || 0}/${ACCOUNT_SUFFIX_MAX_LENGTH}`}
             onChange={(e) => handleChange("suffix", e.target.value)}
+            disabled={saving}
             placeholder={t("Jr. or III")}
             status={errors.suffix ? "error" : null}
             errorMessage={t(errors.suffix)}
           />
 
           <BoutiqueInput
+            maxLength={30}
             label={t("Username")}
             icon={UserCircle}
             value={formData.alias}
             onChange={(e) => handleChange("alias", e.target.value)}
+            disabled={saving}
             onBlur={handleAliasBlur}
             placeholder="juan.dc"
             status={aliasStatus === "taken" || errors.alias ? "error" : aliasStatus === "available" ? "success" : null}
@@ -214,6 +226,7 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             type="tel"
             inputMode="numeric"
             onChange={(e) => handlePhoneChange(e.target.value)}
+            disabled={saving}
             placeholder="09XXXXXXXXX"
             status={errors.phone ? "error" : null}
             errorMessage={t(errors.phone)}
@@ -243,10 +256,10 @@ function GeneralProfileSettings({ user, onUpdateProfile }) {
             <BoutiqueButton
               onClick={handleSave}
               loading={saving}
-              disabled={aliasStatus === "checking" || aliasStatus === "taken"}
+              disabled={saving || aliasStatus === "checking" || aliasStatus === "taken"}
               style={{ width: "auto", minWidth: "200px" }}
             >
-              {t("Save Profile Changes")}
+              {t("Save Changes")}
             </BoutiqueButton>
           </BoutiqueBox>
         </BoutiqueStack>

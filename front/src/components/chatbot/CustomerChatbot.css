@@ -10,6 +10,10 @@
 }
 
 .customer-chatbot-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 44px;
     border: none;
     border-radius: 999px;
     background: #2563eb;
@@ -46,6 +50,9 @@
 }
 
 .customer-chatbot-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin: 0;
     font-size: 15px;
 }
@@ -97,10 +104,6 @@
     background: #2563eb;
     color: #fff;
     align-self: flex-end;
-}
-
-.customer-chatbot-thinking {
-    opacity: 0.75;
 }
 
 .customer-chatbot-route-btn {

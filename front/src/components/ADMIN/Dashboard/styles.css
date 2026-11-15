@@ -67,11 +67,7 @@
 ══════════════════════════════ */
 
 .admin-dashboard {
-  padding: 28px 32px;
-  padding-top: 5rem;
-  background: var(--gray-50);
-  min-height: 100vh;
-  font-family: 'DM Sans', -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--app-font-family);
   max-width: 1400px;
   margin: 0 auto;
   color: var(--gray-800);
@@ -618,7 +614,6 @@
 }
 
 @media (max-width: 768px) {
-  .admin-dashboard { padding: 16px; padding-top: 5rem; }
   .dashboard-two-column { grid-template-columns: 1fr; gap: 14px; }
   .dashboard-header { flex-direction: column; gap: 12px; text-align: center; }
   .admin-info { width: 100%; justify-content: center; }

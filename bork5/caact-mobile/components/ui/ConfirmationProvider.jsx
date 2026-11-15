@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, Text, TouchableOpacity, View } from "react-native";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING, TYPE } from "../../constants/theme";
 import { registerConfirmationPresenter } from "../../utils/confirmAction";
 
 export default function ConfirmationProvider({ children }) {
@@ -114,10 +114,10 @@ export default function ConfirmationProvider({ children }) {
                 <Text style={{ color: dialog?.destructive ? COLORS.danger : COLORS.primary, fontSize: 24, fontWeight: FONT.black }}>!</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text accessibilityRole="header" style={{ color: COLORS.textPrimary, fontSize: FONT.lg, fontWeight: FONT.black, lineHeight: 25 }}>
+                <Text accessibilityRole="header" style={[TYPE.section, { color: COLORS.textPrimary }]}>
                   {dialog?.title}
                 </Text>
-                <Text style={{ marginTop: SPACING.xs, color: COLORS.textSecondary, fontSize: FONT.base, lineHeight: 22 }}>
+                <Text style={[TYPE.body, { marginTop: SPACING.xs, color: COLORS.textSecondary }]}>
                   {dialog?.message}
                 </Text>
               </View>
@@ -137,7 +137,7 @@ export default function ConfirmationProvider({ children }) {
                 disabled={busy}
                 style={{ flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }}
               >
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black }}>{dialog?.cancelText || "Cancel"}</Text>
+                <Text style={[TYPE.action, { color: COLORS.textPrimary, textAlign: "center" }]}>{dialog?.cancelText || "Cancel"}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 accessibilityRole="button"
@@ -146,7 +146,7 @@ export default function ConfirmationProvider({ children }) {
                 style={{ flex: 1, minHeight: 48, flexDirection: "row", gap: SPACING.xs, alignItems: "center", justifyContent: "center", borderRadius: RADIUS.md, backgroundColor: dialog?.destructive ? COLORS.danger : COLORS.primary, opacity: busy ? 0.72 : 1 }}
               >
                 {busy ? <ActivityIndicator size="small" color={COLORS.surface} /> : null}
-                <Text style={{ color: COLORS.surface, fontWeight: FONT.black }}>
+                <Text style={[TYPE.action, { color: COLORS.surface, flexShrink: 1, textAlign: "center" }]}>
                   {busy ? (dialog?.pendingText || "Processing...") : (dialog?.confirmText || "Confirm")}
                 </Text>
               </TouchableOpacity>

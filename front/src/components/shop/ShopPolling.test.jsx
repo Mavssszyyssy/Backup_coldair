@@ -1,18 +1,19 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import Shop from "./Shop";
 import { apiRequest } from "../../config/api";
 
 const authState = vi.hoisted(() => ({ authenticated: false }));
+const purchase = vi.hoisted(() => ({ navigate: vi.fn(), addToCart: vi.fn(), cart: [] }));
 vi.mock("react-router-dom", async (original) => ({
   ...(await original()),
   useLocation: () => ({ search: "" }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => purchase.navigate,
 }));
 vi.mock("../../config/api", () => ({ apiRequest: vi.fn() }));
 vi.mock("../../domain/branches/branchRouting", () => ({ resolveConfiguredBranch: vi.fn().mockResolvedValue("Cavite") }));
 vi.mock("../../context/CartContext", () => ({ useCart: () => ({
-  cart: [], addToCart: vi.fn(), updateQuantity: vi.fn(), removeFromCart: vi.fn(),
+  cart: purchase.cart, addToCart: purchase.addToCart, updateQuantity: vi.fn(), removeFromCart: vi.fn(),
   getCartCount: () => 0, getCartTotal: () => 0,
 }) }));
 vi.mock("../../context/UserContext", () => ({ useUser: () => ({
@@ -26,7 +27,9 @@ vi.mock("../common/boutique/BoutiqueFooter", () => ({ default: () => null }));
 vi.mock("../common/boutique/BoutiqueHeader", () => ({ default: ({ subtitle }) => <div>{subtitle}</div> }));
 vi.mock("../common/boutique/BoutiqueNotifications", () => ({ default: () => null }));
 vi.mock("../common/boutique/BoutiqueSideMenu", () => ({ default: () => null }));
-vi.mock("./ShopCatalogue", () => ({ default: () => null }));
+vi.mock("./ShopCatalogue", () => ({ default: ({ products, onBuyNow }) => products.length > 0 && (
+  <button onClick={() => onBuyNow(products[0])}>Buy Now</button>
+) }));
 vi.mock("./ShopSidebar", () => ({ default: () => null }));
 vi.mock("./ProductModal", () => ({ default: () => null }));
 
@@ -34,6 +37,9 @@ beforeEach(() => {
   vi.useFakeTimers();
   apiRequest.mockReset();
   authState.authenticated = false;
+  purchase.cart = [];
+  purchase.navigate.mockClear();
+  purchase.addToCart.mockClear();
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
 afterEach(() => vi.useRealTimers());
@@ -57,6 +63,25 @@ test("catalogue polling coalesces a slow request and pauses while hidden", async
   await act(async () => { vi.advanceTimersByTime(20000); });
   expect(apiRequest).toHaveBeenCalledTimes(2);
   view.unmount();
+});
+
+test("web Buy Now routes only the selected product even when the cart already has the last unit", async () => {
+  authState.authenticated = true;
+  purchase.cart = [{ id: "p1", quantity: 1 }, { id: "p2", quantity: 1 }];
+  apiRequest.mockImplementation(async (path) => {
+    if (path === "/users/addresses") return { addresses: [{ city: "Bacoor", isDefault: true }] };
+    if (path === "/products/public?branch=Cavite") return {
+      products: [{ id: "p2", name: "Window AC", category: "window", price: 200, stock: 1 }],
+    };
+    throw new Error(`Unexpected path: ${path}`);
+  });
+  const view = render(<Shop />);
+  await act(async () => {});
+  await act(async () => { fireEvent.click(view.getByRole("button", { name: "Buy Now" })); });
+  expect(purchase.navigate).toHaveBeenCalledWith("/checkout", {
+    state: { buyNowItem: expect.objectContaining({ id: "p2", quantity: 1 }) },
+  });
+  expect(purchase.addToCart).not.toHaveBeenCalled();
 });
 
 test("an older anonymous response cannot replace branch-specific stock after sign-in", async () => {

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import DailyWorkSchedule from "./DailyWorkSchedule";
 import { apiRequest } from "../../../config/api";
+import { getWorkOrderDateWindow } from "../../../utils/dateTime";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -14,7 +15,7 @@ vi.mock("../../../config/api", () => ({ apiRequest: vi.fn() }));
 
 const task = {
   id: "task-1", taskCode: "TSK-1", title: "Fulfill ORD-1", customerName: "Customer One",
-  customerPhone: "09123456789", address: "Bacoor, Cavite", branch: "Cavite", scheduledDate: "2026-09-16",
+  customerPhone: "09123456789", address: "Bacoor, Cavite", branch: "Cavite", scheduledDate: getWorkOrderDateWindow().min,
   timeSlot: "9:00 AM - 12:00 PM", assignedTechnicianId: "tech-1", assignedTechnicianName: "Tech One",
   status: "in-progress", schedule: { driverName: "Driver One", notes: "Bring ladder" },
   scheduleDetails: { reference: "ORD-1", category: "installation", workDescription: "Split AC", paymentMethod: "GCash", paymentStatus: "paid", otherExpenses: null, sellerPersonnel: "" },
@@ -59,4 +60,17 @@ test("shows linked operational data and saves schedule changes on the existing t
     schedule: { driverName: "Tech Two", notes: "Bring ladder" },
   });
   expect(JSON.parse(call[1].body).schedule).not.toHaveProperty("teamMemberIds");
+});
+
+test("applies the date window to schedule edits and stops an invalid save", async () => {
+  render(<DailyWorkSchedule />);
+  fireEvent.click(await screen.findByRole("button", { name: "Edit schedule" }));
+  const input = screen.getByLabelText("Scheduled date");
+  const { min, max } = getWorkOrderDateWindow();
+  expect(input).toHaveAttribute("min", min);
+  expect(input).toHaveAttribute("max", max);
+  fireEvent.change(input, { target: { value: "2099-12-31" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save schedule" }));
+  expect(screen.getByText("Choose a work order date within two calendar years from today.")).toBeVisible();
+  expect(apiRequest.mock.calls.some(([, options]) => options?.method === "PATCH")).toBe(false);
 });

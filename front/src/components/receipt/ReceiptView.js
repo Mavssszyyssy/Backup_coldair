@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { DownloadSimple } from "@phosphor-icons/react";
 import { paymentMethodLabel as methodLabel } from "../../domain/paymentMethodLabel";
 import { receiptOrderName, receiptReferences, customerStatus } from "../../domain/customerLanguage";
@@ -172,7 +173,7 @@ function ReceiptView() {
     return (
       <BoutiqueScreen withHeader={false}>
         <BoutiqueHeader headingLevel={2} title={t("E-Receipt")} leftAction="back" onLeftAction={returnToWorkspace} />
-        <main className="receipt-page">{loading ? t("Loading receipt...") : error ? t(error) : t(!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</main>
+        <main className="receipt-page">{loading ? <LoadingSkeleton label={t("Loading receipt...")} variant="detail" count={2} /> : error ? t(error) : t(!order?.receiptAvailable ? "An official receipt will be available after payment is confirmed." : "Receipt not found.")}</main>
       </BoutiqueScreen>
     );
   }

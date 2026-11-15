@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useNavigation, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
@@ -13,6 +13,7 @@ import TextField from "../../components/ui/TextField";
 import PasswordField from "../../components/ui/PasswordField";
 import { COLORS, FONT, SPACING } from "../../constants/theme";
 import { useUserContext } from "../../context/UserContext";
+import useUnsavedProfileChanges from "../../hooks/useUnsavedProfileChanges";
 import {
   getBarangaysByLocality,
   getLocalitiesByProvince,
@@ -31,6 +32,7 @@ import {
   validateAccountSuffix,
   validateAccountPassword,
   PERSON_NAME_MAX_LENGTH,
+  FORMATTED_MOBILE_INPUT_MAX_LENGTH,
   validatePersonName,
   validatePhone,
   validateRequired,
@@ -105,7 +107,6 @@ function validateAddressForm(form) {
 
 export default function CustomerSettingsScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const { language, t, updateLanguage } = useInterfaceLanguage();
   const [savingLanguage, setSavingLanguage] = useState(false);
   const {
@@ -137,7 +138,6 @@ export default function CustomerSettingsScreen() {
   const [barangaysLoading, setBarangaysLoading] = useState(false);
   const addressEditorRequest = useRef(0);
   const originalAddressForm = useRef(null);
-  const allowNavigation = useRef(false);
   const noticeTimeout = useRef(null);
 
   useEffect(() => () => {
@@ -255,7 +255,7 @@ export default function CustomerSettingsScreen() {
       });
     }
   };
-  const closeEditor = () => {
+  const closeEditor = useCallback(() => {
     Keyboard.dismiss();
     addressEditorRequest.current += 1;
     setEditingProfile(false);
@@ -267,7 +267,7 @@ export default function CustomerSettingsScreen() {
     setProfileErrors({});
     setAddressErrors({});
     originalAddressForm.current = null;
-  };
+  }, []);
 
   const hasUnsavedChanges = editingProfile
     ? JSON.stringify(profileForm) !== JSON.stringify(buildEditableProfile(current))
@@ -275,23 +275,7 @@ export default function CustomerSettingsScreen() {
       ? JSON.stringify(addressForm) !== JSON.stringify(originalAddressForm.current)
       : Boolean(currentPassword || newPassword || confirmPassword);
 
-  const confirmDiscard = (discard) => {
-    if (!hasUnsavedChanges) { discard(); return; }
-    Alert.alert(t("Discard changes?"), t("Your unsaved changes will be lost."), [
-      { text: t("Keep editing"), style: "cancel" },
-      { text: t("Discard"), style: "destructive", onPress: discard },
-    ]);
-  };
-
-  useEffect(() => {
-    if (!isEditing || !hasUnsavedChanges) return undefined;
-    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-      if (allowNavigation.current) return;
-      event.preventDefault();
-      confirmDiscard(() => { allowNavigation.current = true; navigation.dispatch(event.data.action); });
-    });
-    return unsubscribe;
-  }, [navigation, isEditing, hasUnsavedChanges]);
+  const requestExit = useUnsavedProfileChanges({ editing: isEditing, dirty: hasUnsavedChanges, saving, closeEditor, t });
 
   const savePassword = async () => {
     const validationError = validateAccountPassword(newPassword);
@@ -394,7 +378,7 @@ export default function CustomerSettingsScreen() {
       profilePayload.phone = canonicalizePhMobile(profileForm.phone);
       const result = await updateMyAccount(profilePayload);
       if (!result.success) return Alert.alert(t("Save failed"), t(result.error || "Unable to update your account."));
-      showNotice(t("Account details updated."));
+      showNotice(t("Saved Changes"));
       setEditingProfile(false);
     } finally { setSaving(false); }
   };
@@ -470,13 +454,13 @@ export default function CustomerSettingsScreen() {
 
   const subtitle = securityMode === "password" ? "Reset your password" : isEditingAddress ? (addressId(addressForm) ? "Edit delivery address" : "Add your first delivery address") : editingProfile ? "Edit account details" : "Account, delivery addresses, and security";
   const saveCurrentEditor = securityMode === "password" ? savePassword : isEditingAddress ? saveAddress : saveProfile;
-  const saveTitle = securityMode === "password" ? "Reset Password" : isEditingAddress ? "Save Address" : "Save Account";
+  const saveTitle = securityMode === "password" ? "Reset Password" : isEditingAddress ? "Save Address" : "Save Changes";
   return (
     <CustomerScreen
       title={t("Account")}
       subtitle={t(subtitle)}
-      contentContainerStyle={{ paddingBottom: isEditing ? 176 : 96 }}
-      stickyAction={isEditing ? <StickyActionBar><Button title={t(saving ? "Saving..." : saveTitle)} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title={t("Cancel")} variant="secondary" onPress={() => confirmDiscard(closeEditor)} disabled={saving} /></StickyActionBar> : null}
+      onBack={isEditing ? () => requestExit() : undefined}
+      stickyAction={isEditing ? <StickyActionBar><Button title={t(saving ? "Saving..." : saveTitle)} onPress={saveCurrentEditor} loading={saving} disabled={saving} /><Button title={t("Cancel")} variant="secondary" onPress={() => requestExit()} disabled={saving} /></StickyActionBar> : null}
     >
       {notice ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: "row", gap: 8, alignItems: "center", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#86efac", backgroundColor: "#f0fdf4" }}><Ionicons name="checkmark-circle" size={20} color={COLORS.success} /><Text style={{ flex: 1, color: "#166534", fontWeight: "700" }}>{notice}</Text></View> : null}
 
@@ -525,14 +509,14 @@ export default function CustomerSettingsScreen() {
         <PasswordField label={t("Confirm New Password")} value={confirmPassword} onChangeText={setConfirmPassword} editable={!saving} />
       </Section> : isEditingAddress ? <>
         <Section title={t("Address details")}>
-          <TextField translate={t} label={t("Address label")} value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder={t("Home, office, etc.")} />
-          <TextField translate={t} label={t("Recipient name")} value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
-          <TextField translate={t} label={t("Mobile number")} value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizeLocalPhMobileInput(value, addressForm.phone))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} showKeyboardDone />
+          <TextField maxLength={80} translate={t} label={t("Address label")} value={addressForm.label} onChangeText={(value) => updateAddressField("label", value)} placeholder={t("Home, office, etc.")} />
+          <TextField maxLength={60} translate={t} label={t("Recipient name")} value={addressForm.name} onChangeText={(value) => updateAddressField("name", value)} error={addressErrors.name} />
+          <TextField maxLength={FORMATTED_MOBILE_INPUT_MAX_LENGTH} translate={t} label={t("Mobile number")} value={addressForm.phone} onChangeText={(value) => updateAddressField("phone", sanitizeLocalPhMobileInput(value, addressForm.phone))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={addressErrors.phone} showKeyboardDone />
           <BottomSheetSelect translate={t} label={t("Region")} value={addressForm.region} placeholder={t("Select region")} items={regions} loading={regionsLoading} error={addressErrors.region} emptyMessage={t("No regions found. Check your connection and try again.")} onSelect={selectRegion} />
           <BottomSheetSelect translate={t} label={t("Province")} value={addressForm.province} placeholder={t("Select province")} items={provinces} loading={provincesLoading} disabled={!addressForm.regionCode} error={addressErrors.province} emptyMessage={t(addressForm.regionCode ? "No provinces found." : "Select a region first.")} onSelect={selectProvince} />
           <BottomSheetSelect translate={t} label={t("City or municipality")} value={addressForm.city} placeholder={t("Select city or municipality")} items={localities} loading={localitiesLoading} disabled={!addressForm.provinceCode} error={addressErrors.city} emptyMessage={t(addressForm.provinceCode ? "No city or municipality matched your search." : "Select a province first.")} onSelect={selectLocality} />
           <BottomSheetSelect translate={t} label={t("Barangay or district")} value={addressForm.barangay} placeholder={t("Select barangay")} items={barangays} loading={barangaysLoading} disabled={!addressForm.municipalityCode} error={addressErrors.barangay} emptyMessage={t(addressForm.municipalityCode ? "No barangays matched your search." : "Select a city or municipality first.")} onSelect={selectBarangay} />
-          <TextField translate={t} label={t("Street address")} value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder={t("House, block, lot, street")} error={addressErrors.street} />
+          <TextField maxLength={180} translate={t} label={t("Street address")} value={addressForm.street} onChangeText={(value) => updateAddressField("street", value)} placeholder={t("House, block, lot, street")} error={addressErrors.street} />
           <TextField translate={t} label={t("ZIP Code *")} value={addressForm.postalCode} onChangeText={(value) => updateAddressField("postalCode", value.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" inputMode="numeric" maxLength={4} autoCorrect={false} autoComplete="postal-code" textContentType="postalCode" error={addressErrors.postalCode} showKeyboardDone />
           <TouchableOpacity
             accessibilityRole="checkbox"
@@ -569,12 +553,12 @@ export default function CustomerSettingsScreen() {
           {addressId(addressForm) ? <Button title={t("Delete this address")} variant="danger" disabled={saving} onPress={() => confirmDeleteAddress(addressForm)} /> : null}
         </Section>
       </> : <Section title={t("Account details")}>
-        <TextField translate={t} label={t("First name")} value={profileForm.name_first} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_first)} />
-        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_last)} />
-        <TextField translate={t} label={t("Suffix (optional)")} value={profileForm.suffix} maxLength={12} helperText={`${profileForm.suffix?.length || 0}/12`} onChangeText={(value) => updateProfileField("suffix", value)} error={t(profileErrors.suffix)} />
-        <TextField translate={t} label={t("Username")} value={profileForm.alias} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
+        <TextField translate={t} label={t("First name")} value={profileForm.name_first} editable={!saving} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_first?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_first", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_first)} />
+        <TextField translate={t} label={t("Last name")} value={profileForm.name_last} editable={!saving} maxLength={PERSON_NAME_MAX_LENGTH} helperText={`${profileForm.name_last?.length || 0}/${PERSON_NAME_MAX_LENGTH}`} onChangeText={(value) => updateProfileField("name_last", value.replace(/[0-9]/g, ""))} error={t(profileErrors.name_last)} />
+        <TextField translate={t} label={t("Suffix (optional)")} value={profileForm.suffix} editable={!saving} maxLength={12} helperText={`${profileForm.suffix?.length || 0}/12`} onChangeText={(value) => updateProfileField("suffix", value)} error={t(profileErrors.suffix)} />
+        <TextField maxLength={30} translate={t} label={t("Username")} value={profileForm.alias} editable={!saving} onChangeText={(value) => updateProfileField("alias", value.toLowerCase().trim())} autoCapitalize="none" error={profileErrors.alias} />
         <TextField translate={t} label={t("Email")} value={profileForm.email} editable={false} helperText={t("Email cannot be changed here. Contact support if you need to update it.")} style={{ backgroundColor: COLORS.bg, color: COLORS.textMuted }} />
-        <TextField translate={t} label={t("Phone")} value={profileForm.phone} onChangeText={(value) => updateProfileField("phone", sanitizeLocalPhMobileInput(value, profileForm.phone))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
+        <TextField maxLength={FORMATTED_MOBILE_INPUT_MAX_LENGTH} translate={t} label={t("Phone")} value={profileForm.phone} editable={!saving} onChangeText={(value) => updateProfileField("phone", sanitizeLocalPhMobileInput(value, profileForm.phone))} keyboardType="phone-pad" placeholder="09XXXXXXXXX" error={profileErrors.phone} showKeyboardDone />
       </Section>}
     </CustomerScreen>
   );

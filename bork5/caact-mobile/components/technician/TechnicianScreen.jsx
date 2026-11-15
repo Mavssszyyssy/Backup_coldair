@@ -3,8 +3,9 @@ import { usePathname, useRouter } from "expo-router";
 import { Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, FONT, RADIUS, SPACING, TYPE } from "../../constants/theme";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
+import ScreenHeading from "../ui/ScreenHeading";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 const BOTTOM_NAV_ROUTES = new Set([
@@ -54,24 +55,17 @@ export function TechHero({ eyebrow, title, subtitle, icon = "construct-sharp", c
         >
           <Ionicons name={icon} size={26} color={COLORS.surface} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           {!!eyebrow && (
-            <Text style={{ color: "#BAE6FD", fontSize: FONT.sm, fontWeight: FONT.bold }}>
+            <Text style={[TYPE.label, { color: "#BAE6FD" }]}>
               {eyebrow}
             </Text>
           )}
-          <Text
-            style={{
-              color: COLORS.surface,
-              fontSize: FONT.xl,
-              fontWeight: FONT.black,
-              marginTop: 2,
-            }}
-          >
+          <Text accessibilityRole="header" style={[TYPE.title, { color: COLORS.surface, marginTop: 2 }]}>
             {title}
           </Text>
           {!!subtitle && (
-            <Text style={{ color: "#E0F2FE", marginTop: 4, lineHeight: 20 }}>
+            <Text style={[TYPE.caption, { color: "#E0F2FE", marginTop: SPACING.xs }]}>
               {subtitle}
             </Text>
           )}
@@ -123,9 +117,7 @@ export default function TechnicianScreen({
   const insets = useSafeAreaInsets();
   const isTopLevel = BOTTOM_NAV_ROUTES.has(pathname);
   const hasBottomNav = withBottomNav && isTopLevel;
-  const bottomClearance = hasBottomNav
-    ? SPACING.lg
-    : Math.max(insets.bottom, SPACING.md) + SPACING.lg;
+  const bottomClearance = SPACING.md + (hasBottomNav ? 0 : insets.bottom);
 
   const content = scroll ? (
     <KeyboardAwareScrollView
@@ -134,7 +126,7 @@ export default function TechnicianScreen({
         { padding: SPACING.md, paddingBottom: bottomClearance },
         contentContainerStyle,
       ]}
-      minBottomPadding={stickyAction ? bottomClearance + 84 : bottomClearance}
+      minBottomPadding={bottomClearance}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -189,17 +181,8 @@ export default function TechnicianScreen({
             </View>
           </Pressable>
         )}
-        <View style={{ flex: 1, flexShrink: 1, marginHorizontal: SPACING.sm }}>
-          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.black, fontSize: FONT.xl }}>
-            {title}
-          </Text>
-          {!!subtitle && (
-            <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>
-              {subtitle}
-            </Text>
-          )}
-        </View>
-        <View style={{ minWidth: 38, alignItems: "flex-end" }}>{right ?? null}</View>
+        <ScreenHeading title={title} subtitle={subtitle} style={{ marginHorizontal: SPACING.sm }} />
+        {right ? <View style={{ flexShrink: 0, alignItems: "flex-end" }}>{right}</View> : null}
       </View>
       <View style={{ flex: 1 }}>{content}</View>
       {stickyAction ?? null}

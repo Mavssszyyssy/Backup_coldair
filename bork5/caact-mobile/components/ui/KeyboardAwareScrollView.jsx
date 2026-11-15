@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Keyboard, Platform, ScrollView, TextInput } from "react-native";
+import { Keyboard, Platform, ScrollView, StyleSheet, TextInput } from "react-native";
+import { SPACING } from "../../constants/theme";
 
 export const focusedFieldScrollOffset = ({ fieldTop, fieldHeight, viewportTop, viewportHeight, scrollY }) => {
   const below = fieldTop + fieldHeight - (viewportTop + viewportHeight - 32);
@@ -16,7 +17,7 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   {
     children,
     contentContainerStyle,
-    minBottomPadding = 112,
+    minBottomPadding = SPACING.md,
     keyboardExtraOffset = 28,
     onScroll,
     ...props
@@ -27,6 +28,13 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   const scrollYRef = useRef(0);
   const keyboardTopRef = useRef(Infinity);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const contentPadding = StyleSheet.flatten(contentContainerStyle)?.paddingBottom;
+  const restingBottomPadding = typeof contentPadding === "number"
+    ? Math.max(minBottomPadding, contentPadding)
+    : minBottomPadding;
+  const bottomPadding = Platform.OS === "ios" && keyboardHeight > 0
+    ? Math.max(restingBottomPadding, keyboardHeight + keyboardExtraOffset)
+    : restingBottomPadding;
 
   useImperativeHandle(forwardedRef, () => scrollRef.current);
 
@@ -88,7 +96,7 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
       scrollEventThrottle={16}
       contentContainerStyle={[
         contentContainerStyle,
-        { paddingBottom: Math.max(minBottomPadding, Platform.OS === "ios" ? keyboardHeight + keyboardExtraOffset : minBottomPadding) },
+        { paddingBottom: bottomPadding },
       ]}
       {...props}
     >

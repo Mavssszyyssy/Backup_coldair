@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import { useUser } from '../../../context/UserContext';
@@ -141,16 +142,16 @@ function AdminSettings() {
 
           <div className="admin-field-group">
             <label>{t('Interface language')}
-              <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+              <SearchableSelect value={language} onChange={(event) => setLanguage(event.target.value)}>
                 <option value="English">{t('English')}</option>
                 <option value="Filipino">{t('Filipino')}</option>
-              </select>
+              </SearchableSelect>
             </label>
             <label>{t('Theme')}
-              <select value={theme} onChange={(event) => setTheme(event.target.value)}>
+              <SearchableSelect value={theme} onChange={(event) => setTheme(event.target.value)}>
                 <option value="light">{t('Light')}</option>
                 <option value="dark">{t('Dark')}</option>
-              </select>
+              </SearchableSelect>
             </label>
           </div>
 

@@ -11,7 +11,7 @@ import PasswordField from "../../../components/ui/PasswordField";
 import { COLORS, SPACING } from "../../../constants/theme";
 import { useUserContext } from "../../../context/UserContext";
 import { requiredSetupRoute } from "../../../services/accountSetupRoute";
-import { canonicalizePhMobile, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../../utils/authValidation";
+import { canonicalizePhMobile, FORMATTED_MOBILE_INPUT_MAX_LENGTH, sanitizeLocalPhMobileInput, validateAccountPassword, validatePhone } from "../../../utils/authValidation";
 import { confirmAction } from "../../../utils/confirmAction";
 import { useInterfaceLanguage } from "../../../hooks/useInterfaceLanguage";
 
@@ -63,11 +63,11 @@ export default function TechnicianOobe() {
     } finally { setSaving(false); }
   };
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-    <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={128}>
+    <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.md }}>
       <PageHeader title={t("Technician Setup")} subtitle={t("Confirm your contact number and replace your initial password")} onBack={switchAccount} />
       <Card>
-        <TextField translate={t} label={t("Username")} value={current?.username || current?.alias || ""} editable={false} />
-        <TextField translate={t} label={t("Contact Number")} value={phone} onChangeText={(value) => setPhone((previous) => sanitizeLocalPhMobileInput(value, previous))} keyboardType="phone-pad" editable={!saving} showKeyboardDone
+        <TextField maxLength={30} translate={t} label={t("Username")} value={current?.username || current?.alias || ""} editable={false} />
+        <TextField maxLength={FORMATTED_MOBILE_INPUT_MAX_LENGTH} translate={t} label={t("Contact Number")} value={phone} onChangeText={(value) => setPhone((previous) => sanitizeLocalPhMobileInput(value, previous))} keyboardType="phone-pad" editable={!saving} showKeyboardDone
           error={submitted ? t(validatePhone(phone)) : ""} />
         <PasswordField label={t("New Password")} value={password} onChangeText={setPassword} showRequirements editable={!saving}
           error={submitted ? t(validateAccountPassword(password)) : ""} />

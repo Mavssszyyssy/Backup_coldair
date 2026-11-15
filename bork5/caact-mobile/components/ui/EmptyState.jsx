@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
 import { Text, View } from "react-native";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, RADIUS, SPACING, TYPE } from "../../constants/theme";
 
 export default function EmptyState({
   title = "Nothing here yet",
@@ -14,11 +14,10 @@ export default function EmptyState({
   return (
     <View
       style={{
-        flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: SPACING.xl,
-        paddingVertical: SPACING.xl,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.lg,
         borderRadius: RADIUS.lg,
         backgroundColor: COLORS.surfaceAlt,
         borderWidth: 1,
@@ -42,25 +41,22 @@ export default function EmptyState({
       </View>
 
       <Text
-        style={{
-          fontSize: FONT.lg,
-          fontWeight: FONT.bold,
+        accessibilityRole="header"
+        style={[TYPE.section, {
           color: COLORS.textPrimary,
           textAlign: "center",
           marginBottom: message ? SPACING.sm : 0,
-        }}
+        }]}
       >
         {title}
       </Text>
 
       {!!message && (
         <Text
-          style={{
-            fontSize: FONT.base,
+          style={[TYPE.body, {
             color: COLORS.textSecondary,
             textAlign: "center",
-            lineHeight: 22,
-          }}
+          }]}
         >
           {message}
         </Text>

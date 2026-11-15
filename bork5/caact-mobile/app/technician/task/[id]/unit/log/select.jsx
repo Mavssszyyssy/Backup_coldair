@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../../../../components/ui/LoadingSkeleton";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../../../../services/liveRefresh";
 import React, { useState } from "react";
@@ -122,7 +123,6 @@ export default function LogSelectScreen() {
       <ScrollView
         contentContainerStyle={{
           padding: SPACING.md,
-          paddingBottom: 96,
         }}
       >
         <PageHeader
@@ -177,7 +177,7 @@ export default function LogSelectScreen() {
           </Card>
         )}
 
-        {loading ? <Text style={{ color: COLORS.textSecondary }}>{t("Loading work-order notes...")}</Text> : null}
+        {loading ? <LoadingSkeleton label={t("Loading work-order notes...")} /> : null}
         {loadError ? <Text style={{ color: COLORS.danger }}>{t(loadError)}</Text> : null}
         {!loading && !loadError && view === "notes" ? logs.length === 0 ? (
           <EmptyState
@@ -230,7 +230,7 @@ export default function LogSelectScreen() {
             </TouchableOpacity>
           )} />
         ) : null}
-        {view === "history" && !loadError ? loading || historyLoading || (!unitHistory && !historyError) ? <Text style={{ color: COLORS.textSecondary }}>{t("Loading AC unit history...")}</Text> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{t(historyError)}</Text><TechButton title={t("Retry AC unit history")} size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : <UnitHistoryPanel key={taskId} history={unitHistory} /> : null}
+        {view === "history" && !loadError ? loading || historyLoading || (!unitHistory && !historyError) ? <LoadingSkeleton label={t("Loading AC unit history...")} /> : historyError ? <Card><Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm }}>{t(historyError)}</Text><TechButton title={t("Retry AC unit history")} size="sm" variant="secondary" onPress={() => loadUnitHistory(task)} /></Card> : <UnitHistoryPanel key={taskId} history={unitHistory} /> : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,3 +1,5 @@
+import SearchableSelect from "../common/SearchableSelect";
+import LoadingSkeleton from "../common/LoadingSkeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle,
@@ -248,14 +250,14 @@ function AmpReportCenter({
         {report ? <button type="button" className="amp-export-button" onClick={exportPdf}><DownloadSimple size={18} weight="bold" aria-hidden="true" /> {t("Export PDF")}</button> : null}
       </div>
       <div className="amp-report-controls" aria-label={t('Report generator')}>
-        <label><span><i aria-hidden="true">1</i>{t("Report type")}</span><select aria-label={t("Report type")} disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</select></label>
-        {canChooseCustomer ? <label><span>{t("Customer name")}</span><select aria-label={t("Customer name")} disabled={loading || unitsLoading} value={customerFilter} onChange={(event) => { setUnitId(""); setUnitSearch(""); setCustomerFilter(event.target.value); }}><option value="">{t("All customers")}</option>{customerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label> : null}
-        {reportUnits.length > 10 ? <label><span>{t("Find installed AC unit")}</span><input type="search" aria-label={t("Find installed AC unit")} value={unitSearch} onChange={(event) => setUnitSearch(event.target.value)} placeholder={t("Model or serial number")} /></label> : null}
-        <label><span><i aria-hidden="true">2</i>{t("Installed AC unit")}</span><select aria-label={t("Installed AC unit")} disabled={loading || unitsLoading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">{t(unitsLoading ? "Loading installed AC units…" : "Select a unit")}</option>{selectableUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{canChooseCustomer && !customerFilter ? `${unit.customerName || t("Customer name not recorded")} · ` : ""}{unit.modelName || unit.model || t("AC Unit")} · {unit.serialNumber || value}</option>; })}</select></label>
+        <label><span><i aria-hidden="true">1</i>{t("Report type")}</span><SearchableSelect aria-label={t("Report type")} disabled={loading} value={reportType} onChange={(event) => setReportType(event.target.value)}>{types.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}</SearchableSelect></label>
+        {canChooseCustomer ? <label><span>{t("Customer name")}</span><SearchableSelect aria-label={t("Customer name")} disabled={loading || unitsLoading} value={customerFilter} onChange={(event) => { setUnitId(""); setUnitSearch(""); setCustomerFilter(event.target.value); }}><option value="">{t("All customers")}</option>{customerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</SearchableSelect></label> : null}
+        {reportUnits.length > 10 ? <label><span>{t("Find installed AC unit")}</span><input maxLength={160} type="search" aria-label={t("Find installed AC unit")} value={unitSearch} onChange={(event) => setUnitSearch(event.target.value)} placeholder={t("Model or serial number")} /></label> : null}
+        <label><span><i aria-hidden="true">2</i>{t("Installed AC unit")}</span><SearchableSelect aria-label={t("Installed AC unit")} disabled={loading || unitsLoading} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">{t(unitsLoading ? "Loading installed AC units…" : "Select a unit")}</option>{selectableUnits.map((unit) => { const value = unit.unitId || unit.id; return <option key={value} value={value}>{canChooseCustomer && !customerFilter ? `${unit.customerName || t("Customer name not recorded")} · ` : ""}{unit.modelName || unit.model || t("AC Unit")} · {unit.serialNumber || value}</option>; })}</SearchableSelect></label>
         <button type="button" className="amp-generate-button" onClick={generate} disabled={loading || unitsLoading || !reportUnits.length}><FileText size={18} weight="bold" aria-hidden="true" />{t(loading ? "Preparing report…" : "View report")}</button>
       </div>
       <p className="amp-report-help"><CheckCircle size={17} weight="fill" aria-hidden="true" />{t(types.find(item => item.value === reportType)?.help)}</p>
-      {unitsLoading ? <p className="amp-muted" role="status">{t("Loading installed AC units…")}</p> : !reportUnits.length ? <p className="amp-empty">{t("No installed AC units are available here yet.")}</p> : null}
+      {unitsLoading ? <LoadingSkeleton label={t("Loading installed AC units…")} variant="inline" /> : !reportUnits.length ? <p className="amp-empty">{t("No installed AC units are available here yet.")}</p> : null}
       {error ? <p className="amp-error">{t(error)}</p> : null}
       {unitId && ["admin", "superadmin"].includes(user?.role) ? <AmpDecisionPanel key={unitId} unitId={unitId} /> : null}
       {report ? <div className="amp-report-result" ref={reportResultRef}>

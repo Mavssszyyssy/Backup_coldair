@@ -1,3 +1,4 @@
+import SearchableSelect from "../../common/SearchableSelect";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../../config/api';
@@ -38,11 +39,11 @@ const SuperAdminInventory = () => {
     if (branchNames.length && !branchNames.includes(branch)) setBranch(branchNames[0]);
   }, [branch, branchNames]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ fresh = false } = {}) => {
     setLoading(true);
     setError('');
     try {
-      const result = await apiRequest('/products');
+      const result = await apiRequest('/products', { fresh });
       setProducts(result.products || []);
     } catch (requestError) {
       setError(requestError.message || 'Unable to load inventory.');
@@ -77,19 +78,19 @@ const SuperAdminInventory = () => {
           </div>
           <div className="branch-filter-section">
             <label htmlFor="super-inventory-branch">{t('Manage branch')}</label>
-            <select id="super-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
+            <SearchableSelect id="super-inventory-branch" value={branch} onChange={(event) => setBranch(event.target.value)} className="branch-select">
               {branchNames.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <input className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('Search name, SKU, brand, category…')} aria-label={t('Search inventory')} />
-            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label={t('Filter by stock status')}>
+            </SearchableSelect>
+            <input maxLength={160} className="inventory-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('Search name, SKU, brand, category…')} aria-label={t('Search inventory')} />
+            <SearchableSelect value={stockFilter} onChange={(event) => setStockFilter(event.target.value)} className="branch-select" aria-label={t('Filter by stock status')}>
               <option value="all">{t('All stock states')}</option>
               <option value="out">{t('Out of stock')}</option>
               <option value="low">{t('Low stock')}</option>
               <option value="available">{t('In stock')}</option>
-            </select>
+            </SearchableSelect>
           </div>
           {error ? <p style={{ color: '#b91c1c' }}>{t(error)}</p> : null}
-          <InventoryList products={products} loading={loading} onRefresh={load} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} canManageStock searchQuery={searchQuery} stockFilter={stockFilter} />
+          <InventoryList products={products} loading={loading} onRefresh={() => load({ fresh: true })} branch={branch} getProductStock={(product) => getBranchStock(product, branch)} canManageStock searchQuery={searchQuery} stockFilter={stockFilter} />
         </>
       ) : null}
       {activeTab === 'serial-qr' ? <AdminSerialQr embedded productId={searchParams.get('productId') || ''} initialBranch={searchParams.get('branch') || 'all'} onClearProduct={() => selectTab('serial-qr')} /> : null}

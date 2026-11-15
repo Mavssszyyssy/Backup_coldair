@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 
-import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { COLORS, SPACING } from "../../constants/theme";
+import ScreenHeading from "./ScreenHeading";
 
 export default function PageHeader({
   title,
@@ -22,10 +23,7 @@ export default function PageHeader({
         >
           <Ionicons name="arrow-back-sharp" size={21} color={color} />
         </TouchableOpacity>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontSize: FONT.xl, fontWeight: FONT.black, color }}>{title}</Text>
-          {subtitle ? <Text numberOfLines={2} style={{ fontSize: FONT.sm, lineHeight: 18, color: COLORS.textSecondary, marginTop: 2 }}>{subtitle}</Text> : null}
-        </View>
+        <ScreenHeading title={title} subtitle={subtitle} />
       </View>
     );
   }
@@ -42,28 +40,7 @@ export default function PageHeader({
             marginBottom: SPACING.md,
           }}
         />
-        <Text
-          style={{
-            fontSize: FONT.xxl,
-            fontWeight: FONT.black,
-            color,
-            textAlign: "center",
-          }}
-        >
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text
-            style={{
-              fontSize: FONT.base,
-              color: COLORS.textSecondary,
-              marginTop: SPACING.xs,
-              textAlign: "center",
-            }}
-          >
-            {subtitle}
-          </Text>
-        ) : null}
+        <ScreenHeading title={title} subtitle={subtitle} centered />
       </View>
     </View>
   );

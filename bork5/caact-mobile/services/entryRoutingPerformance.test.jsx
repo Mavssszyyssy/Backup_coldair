@@ -48,7 +48,7 @@ test("a saved token with failed restoration retains the connection retry", async
   checkBackendConnection.mockResolvedValue({ connected: false, message: "Server unavailable" });
   const view = await render(<Index />);
   await act(async () => { await Promise.resolve(); });
-  expect(view.getByText("Try Again")).toBeTruthy();
+  expect(view.getByText("Try again")).toBeTruthy();
   expect(checkBackendConnection).toHaveBeenCalledTimes(1);
   expect(mockRefreshCurrentUser).not.toHaveBeenCalled();
   view.unmount();

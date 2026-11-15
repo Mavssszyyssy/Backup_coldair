@@ -1,8 +1,9 @@
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   BoutiqueButton,
@@ -19,6 +20,7 @@ import {
   BQ_SHADOW,
   BQ_SPACING,
 } from "../../components/boutique";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "../../context/CartContext";
 import { useUserContext } from "../../context/UserContext";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
@@ -153,100 +155,158 @@ function ProductCard({ product, onPress, onAddToCart, onBuyNow }) {
   );
 }
 
+const cartStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.32)", justifyContent: "flex-end" },
+  sheet: {
+    width: "100%", maxWidth: 560, maxHeight: "90%", alignSelf: "center",
+    backgroundColor: BQ_COLORS.surface, borderTopLeftRadius: BQ_RADIUS.card, borderTopRightRadius: BQ_RADIUS.card,
+  },
+  header: {
+    flexDirection: "row", alignItems: "center", gap: BQ_SPACING.sm,
+    paddingHorizontal: BQ_SPACING.md, paddingVertical: BQ_SPACING.sm,
+    borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border,
+  },
+  list: { flexShrink: 1, flexGrow: 0 },
+  listContent: { gap: BQ_SPACING.md, padding: BQ_SPACING.md },
+  card: { gap: BQ_SPACING.sm, padding: BQ_SPACING.sm + 4, borderWidth: 1, borderColor: BQ_COLORS.border, borderRadius: BQ_RADIUS.md },
+  product: { flexDirection: "row", alignItems: "flex-start", gap: BQ_SPACING.sm + 4 },
+  photo: { width: 76 },
+  zoom: {
+    position: "absolute", right: 4, bottom: 4, width: 24, height: 24, borderRadius: 12,
+    backgroundColor: BQ_COLORS.surface, alignItems: "center", justifyContent: "center",
+  },
+  summary: { flex: 1, gap: BQ_SPACING.xs },
+  controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: BQ_SPACING.sm },
+  touch: { width: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  detailRow: { borderTopWidth: 1, borderTopColor: BQ_COLORS.border, paddingTop: BQ_SPACING.sm },
+  footer: {
+    flexShrink: 0, gap: BQ_SPACING.sm, padding: BQ_SPACING.md,
+    backgroundColor: BQ_COLORS.bg, borderTopWidth: 1, borderColor: BQ_COLORS.border,
+  },
+  empty: { alignItems: "center", gap: BQ_SPACING.sm, padding: BQ_SPACING.lg },
+});
+
+function CartProductSpecs({ item, t }) {
+  return (
+    <View style={{ gap: BQ_SPACING.xs }}>
+      <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Model")}: {formatCartModel(item)}</BoutiqueText>
+      <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Horsepower")}: {formatCartHorsepower(item)}</BoutiqueText>
+    </View>
+  );
+}
+
+function CartQuantity({ item, updateQuantity, t }) {
+  return <BoutiqueQuantityStepper value={item.quantity} max={Number(item.stock ?? 99)}
+    onChange={(next) => updateQuantity(item.id, next)} largeTargets t={t} />;
+}
+
 export function CartModal({ visible, onClose, addressId = "" }) {
-  const { language, t } = useInterfaceLanguage();
+  const { t } = useInterfaceLanguage();
   const router = useRouter();
-  const { cart, cartTotal, updateQuantity, removeFromCart } = useCart();
+  const insets = useSafeAreaInsets();
+  const { cart, cartTotal, hydrated = true, updateQuantity, removeFromCart } = useCart();
+  const [selectedId, setSelectedId] = useState(null);
+  const item = hydrated ? cart.find((entry) => entry.id === selectedId) : null;
+  const listOffset = useRef(0);
+  const sheetPadding = { paddingBottom: Math.max(BQ_SPACING.md, insets.bottom) };
+
+  useEffect(() => {
+    if (!visible) {
+      setSelectedId(null);
+      listOffset.current = 0;
+    } else if (!item && selectedId !== null) {
+      setSelectedId(null);
+    }
+  }, [visible, item?.id, selectedId]);
+
+  const close = () => {
+    if (item) setSelectedId(null);
+    else onClose();
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.28)", justifyContent: "flex-end" }}>
-        <View
-          style={[
-            {
-              maxHeight: "82%",
-              backgroundColor: BQ_COLORS.surface,
-              borderTopLeftRadius: BQ_RADIUS.card,
-              borderTopRightRadius: BQ_RADIUS.card,
-              padding: BQ_SPACING.lg,
-              gap: BQ_SPACING.md,
-            },
-            BQ_SHADOW.float,
-          ]}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View>
-              <BoutiqueText variant="h2">{t("Cart")}</BoutiqueText>
-              <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-                {language === "Filipino" ? `${cart.length} uri ng produkto` : `${cart.length} product line${cart.length === 1 ? "" : "s"}`}
-              </BoutiqueText>
-            </View>
-            <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("Close cart")}>
-              <Ionicons name="close-sharp" size={24} color={BQ_COLORS.ink} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <View style={cartStyles.overlay}>
+        <View style={[cartStyles.sheet, BQ_SHADOW.float]} accessibilityViewIsModal>
+          <View style={cartStyles.header}>
+            <BoutiqueText variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
+              {t(item ? "Cart item details" : "Cart")}
+            </BoutiqueText>
+            <Pressable onPress={close} style={cartStyles.touch} accessibilityRole="button" accessibilityLabel={t(item ? "Back to cart" : "Close cart")}>
+              <Ionicons name={item ? "arrow-back-sharp" : "close-sharp"} size={24} color={BQ_COLORS.ink} />
             </Pressable>
           </View>
 
-          {cart.length === 0 ? (
-            <View style={{ paddingVertical: BQ_SPACING.xl, alignItems: "center", gap: BQ_SPACING.sm }}>
-              <Ionicons name="cart-outline" size={48} color={BQ_COLORS.inkFaint} />
-              <BoutiqueText variant="h3" align="center" style={{ alignSelf: "stretch", flexShrink: 0, minHeight: 28 }}>{t("Your cart is empty")}</BoutiqueText>
+          {item ? (
+            <>
+              <ScrollView key="cart-item-details" style={cartStyles.list} contentContainerStyle={cartStyles.listContent} nestedScrollEnabled>
+                <ProductImage key={item.id} product={item} size={176} />
+                <View style={{ gap: BQ_SPACING.sm }}>
+                  <BoutiqueText variant="h3">{item.name}</BoutiqueText>
+                  <CartProductSpecs item={item} t={t} />
+                </View>
+                <View style={[cartStyles.controls, cartStyles.detailRow]}>
+                  <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Unit price")}</BoutiqueText>
+                  <BoutiqueText variant="h3">{formatPeso(item.price)}</BoutiqueText>
+                </View>
+                <View style={[cartStyles.controls, cartStyles.detailRow]}>
+                  <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Quantity")}</BoutiqueText>
+                  <CartQuantity item={item} updateQuantity={updateQuantity} t={t} />
+                </View>
+              </ScrollView>
+              <View style={[cartStyles.footer, sheetPadding]}>
+                <View style={cartStyles.controls}>
+                  <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Item total")}</BoutiqueText>
+                  <BoutiqueText variant="h3" accessibilityLiveRegion="polite">{formatPeso(item.price * item.quantity)}</BoutiqueText>
+                </View>
+              </View>
+            </>
+          ) : !hydrated ? (
+            <View style={[cartStyles.listContent, sheetPadding]}><LoadingSkeleton label={t("Loading your cart…")} /></View>
+          ) : cart.length === 0 ? (
+            <View style={cartStyles.empty}>
+              <Ionicons name="cart-outline" size={42} color={BQ_COLORS.inkMuted} />
+              <BoutiqueText variant="h3" align="center">{t("Your cart is empty")}</BoutiqueText>
             </View>
           ) : (
             <>
-              <ScrollView testID="cart-items-scroll" style={{ flexGrow: 0, maxHeight: "60%" }} contentContainerStyle={{ gap: BQ_SPACING.md, paddingBottom: BQ_SPACING.sm }} nestedScrollEnabled>
-              {cart.map((item) => (
-                <View
-                  key={item.id}
-                  style={{
-                    flexDirection: "row",
-                    gap: BQ_SPACING.md,
-                    paddingBottom: BQ_SPACING.md,
-                    borderBottomWidth: 1,
-                    borderBottomColor: BQ_COLORS.border,
-                  }}
-                >
-                  <ProductImage product={item} size={72} />
-                  <View style={{ flex: 1, gap: BQ_SPACING.xs }}>
-                    <BoutiqueText variant="h3" numberOfLines={1}>
-                      {item.name}
-                    </BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>
-                      {t("Model")}: {formatCartModel(item)}
-                    </BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted} numberOfLines={1}>
-                      {t("Horsepower")}: {formatCartHorsepower(item)}
-                    </BoutiqueText>
-                    <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>
-                      {formatPeso(item.price)} {t("each")}
-                    </BoutiqueText>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <BoutiqueQuantityStepper
-                        value={item.quantity}
-                        max={Number(item.stock ?? 99)}
-                        onChange={(next) => updateQuantity(item.id, next)}
-                      />
-                      <Pressable onPress={() => removeFromCart(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`${t("Remove")} ${item.name} ${t("from cart")}`}>
-                        <Ionicons name="trash-sharp" size={18} color={BQ_COLORS.danger} />
+              <ScrollView key="cart-items" testID="cart-items-scroll" style={cartStyles.list} contentContainerStyle={cartStyles.listContent}
+                contentOffset={{ x: 0, y: listOffset.current }} scrollEventThrottle={32}
+                onScroll={(event) => { listOffset.current = event.nativeEvent.contentOffset.y; }} nestedScrollEnabled>
+                {cart.map((line) => (
+                  <View key={line.id} style={cartStyles.card}>
+                    <View style={cartStyles.product}>
+                      <Pressable onPress={() => setSelectedId(line.id)} style={cartStyles.photo} accessibilityRole="button"
+                        accessibilityLabel={`${t("View details")}: ${line.name}`}>
+                        <ProductImage product={line} size={76} />
+                        <View style={cartStyles.zoom}><Ionicons name="search-sharp" size={14} color={BQ_COLORS.ink} /></View>
+                      </Pressable>
+                      <View style={cartStyles.summary}>
+                        <BoutiqueText variant="h3">{line.name}</BoutiqueText>
+                        <CartProductSpecs item={line} t={t} />
+                        <BoutiqueText variant="h3">{formatPeso(line.price * line.quantity)}</BoutiqueText>
+                      </View>
+                    </View>
+                    <View style={cartStyles.controls}>
+                      <CartQuantity item={line} updateQuantity={updateQuantity} t={t} />
+                      <Pressable onPress={() => removeFromCart(line.id)} style={cartStyles.touch} accessibilityRole="button"
+                        accessibilityLabel={`${t("Remove")} ${line.name} ${t("from cart")}`}>
+                        <Ionicons name="trash-outline" size={20} color={BQ_COLORS.danger} />
                       </Pressable>
                     </View>
                   </View>
-                </View>
-              ))}
+                ))}
               </ScrollView>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
-                  {t("Subtotal")}
-                </BoutiqueText>
-                <BoutiqueText variant="h2">{formatPeso(cartTotal)}</BoutiqueText>
-              </View>
-              <BoutiqueButton
-                title={t("Checkout")}
-                fullWidth
-                onPress={() => {
+              <View style={[cartStyles.footer, sheetPadding]}>
+                <View style={cartStyles.controls}>
+                  <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Subtotal")}</BoutiqueText>
+                  <BoutiqueText variant="h3">{formatPeso(cartTotal)}</BoutiqueText>
+                </View>
+                <BoutiqueButton title={t("Checkout")} fullWidth onPress={() => {
                   onClose();
                   router.push(addressId ? { pathname: "/customer/checkout", params: { addressId } } : "/customer/checkout");
-                }}
-              />
+                }} />
+              </View>
             </>
           )}
         </View>
@@ -336,7 +396,7 @@ export default function CustomerShopScreen() {
         try {
           const address = getShopDeliveryAddress(current, selectedAddressId);
           const branch = address ? await resolveConfiguredInventoryBranch(address) : "";
-          const products = await fetchShopProducts(branch);
+          const products = await fetchShopProducts(branch, { reuseRecent: true });
           if (active) { setBackendProducts(products); setInventoryBranch(branch); }
         } catch (_error) {
           // Keep the last confirmed catalogue when connectivity drops.
@@ -380,12 +440,14 @@ export default function CustomerShopScreen() {
     return false;
   };
 
-  const handleAddToCart = async (product) => {
+  const preparePurchase = async (product, buyNow) => {
     if (addInFlightRef.current || !requireCustomer()) return false;
     addInFlightRef.current = true;
     try {
       const session = await me(token);
-      if (!session?.success || !session.user) throw new Error(t("Unable to confirm your account. Please try again before adding to cart."));
+      if (!session?.success || !session.user) throw new Error(t(buyNow
+        ? "Please sign in again before checking out."
+        : "Unable to confirm your account. Please try again before adding to cart."));
       const user = session.user;
       const address = getShopDeliveryAddress(user, selectedAddressId);
       if (!address) throw new Error(t("Please add a delivery address to continue."));
@@ -394,19 +456,23 @@ export default function CustomerShopScreen() {
       const latest = await fetchShopProducts(branch);
       const currentProduct = latest.find((entry) => String(entry.id) === String(product.id));
       const available = Number(currentProduct?.stock || 0);
-      const requested = Number(cart.find((entry) => String(entry.id) === String(product.id))?.quantity || 0) + 1;
+      const requested = 1 + (buyNow ? 0 : Number(cart.find((entry) => String(entry.id) === String(product.id))?.quantity || 0));
       if (!Number.isSafeInteger(available) || available < requested) throw new Error(available <= 0
         ? (language === "Filipino" ? `Hindi available ang AC unit na ito sa sangay ng ${branch}.` : `This AC unit is unavailable at the ${branch} branch.`)
         : (language === "Filipino" ? `Ang sangay ng ${branch} ay may ${available} available na unit lamang.` : `The ${branch} branch has only ${available} unit(s) available.`));
-      addToCart({ ...currentProduct, fulfillmentBranch: branch }, 1);
       lastStockAlertRef.current = { message: "", at: 0 };
-      setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+      if (buyNow) {
+        router.push({ pathname: "/customer/checkout", params: { addressId: selectedAddressId, buyNowProductId: String(currentProduct.id) } });
+      } else {
+        addToCart({ ...currentProduct, fulfillmentBranch: branch }, 1);
+        setCartNotice({ id: Date.now(), name: product.name || "AC unit" });
+      }
       return true;
     } catch (error) {
       const message = error?.message || t("Unable to confirm branch stock. Please try again.");
       const previous = lastStockAlertRef.current;
       if (previous.message !== message || Date.now() - previous.at > 2500) {
-        Alert.alert(t("Cannot add to cart"), message);
+        Alert.alert(t(buyNow ? "Review your order" : "Cannot add to cart"), message);
         lastStockAlertRef.current = { message, at: Date.now() };
       }
       return false;
@@ -415,9 +481,8 @@ export default function CustomerShopScreen() {
     }
   };
 
-  const handleBuyNow = async (product) => {
-    if (await handleAddToCart(product)) router.push({ pathname: "/customer/checkout", params: { addressId: selectedAddressId } });
-  };
+  const handleAddToCart = (product) => preparePurchase(product, false);
+  const handleBuyNow = (product) => preparePurchase(product, true);
 
   return (
     <>
@@ -522,12 +587,13 @@ export default function CustomerShopScreen() {
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>
-            {language === "Filipino" ? `${filteredProducts.length} produktong nakita` : `Found ${filteredProducts.length} products`}
+            {loading ? t("Loading products...") : language === "Filipino" ? `${filteredProducts.length} produktong nakita` : `Found ${filteredProducts.length} products`}
           </BoutiqueText>
-          {loading ? <ActivityIndicator color={BQ_COLORS.brand} /> : null}
         </View>
 
-        {filteredProducts.length === 0 && !loading ? (
+        {loading && !filteredProducts.length ? (
+          <LoadingSkeleton label={t("Loading the latest available AC units...")} variant="cards" />
+        ) : filteredProducts.length === 0 ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.sm, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="warning-sharp" size={44} color={BQ_COLORS.inkFaint} />
             <BoutiqueText variant="h3">{t("No products found")}</BoutiqueText>

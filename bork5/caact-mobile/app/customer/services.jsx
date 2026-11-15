@@ -1,8 +1,9 @@
+import LoadingSkeleton from "../../components/ui/LoadingSkeleton";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { customerServiceChoices } from "../../services/customerServiceChoices";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Text, View } from "react-native";
+import { Alert, Linking, Text, View } from "react-native";
 
 import CustomerScreen from "../../components/customer/CustomerScreen";
 import CustomerSectionHeader from "../../components/customer/CustomerSectionHeader";
@@ -291,8 +292,8 @@ export default function CustomerServicesScreen() {
         : "Submit Service Request";
 
   return (
-    <CustomerScreen title={t("Service Request")} subtitle={t("Arrange AC cleaning, request a repair, or submit a warranty claim")} contentContainerStyle={{ paddingBottom: 116 }} stickyAction={<StickyActionBar><Button title={t(loadingUnits ? "Loading AC Units..." : submitting ? "Submitting..." : submitTitle)} onPress={handleSubmit} loading={submitting} disabled={loadingUnits || submitting || !selectedUnit || (requestMode === "service" ? !selectedService : !warrantyEligible) || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
-      {loadingUnits ? <Card><View style={{ alignItems: "center", gap: SPACING.sm, paddingVertical: SPACING.lg }}><ActivityIndicator color={COLORS.primary} /><Text style={{ color: COLORS.textSecondary }}>{t("Loading registered AC units and open requests...")}</Text></View></Card> : null}
+    <CustomerScreen title={t("Service Request")} subtitle={t("Arrange AC cleaning, request a repair, or submit a warranty claim")} stickyAction={<StickyActionBar><Button title={t(loadingUnits ? "Loading AC Units..." : submitting ? "Submitting..." : submitTitle)} onPress={handleSubmit} loading={submitting} disabled={loadingUnits || submitting || !selectedUnit || (requestMode === "service" ? !selectedService : !warrantyEligible) || Boolean(selectedActiveRequest) || Boolean(activeWarrantyClaim)} /></StickyActionBar>}>
+      {loadingUnits ? <LoadingSkeleton label={t("Loading registered AC units and open requests...")} variant="inline" /> : null}
       {!loadingUnits && units.length === 0 ? <Card><EmptyState title={t("Register a unit first")} message={t("Service requests need a registered AC unit. Buy from the website and add your AC unit before booking.")} action={<Button title={t("Visit Website")} onPress={() => Linking.openURL(COLD_AIR_WEBSITE)} />} /></Card> : null}
       <Card>
         <CustomerSectionHeader title={t("What do you need?")} />
@@ -362,7 +363,7 @@ export default function CustomerServicesScreen() {
         <CustomerSectionHeader title={t(requestMode === "warranty" ? "Warranty Claim Details" : "Visit Details")} />
         {requestMode === "service" ? <CalendarDatePicker label={t("Preferred Date")} value={preferredDate} onChange={selectDate} minimumDate={getManilaDateKey()} maximumDate={getServiceBookingMaxDateKey()} required error={t(dateError)} /> : null}
         <TextField key={concernInputKey} label={t(requestMode === "warranty" ? "AC problem" : "Service Concern")} value={issueDescription} onChangeText={setIssueDescription} placeholder={t(requestMode === "warranty" ? "Describe the fault you want us to review" : "Tell us about the cleaning or service needed")} maxLength={MAX_SERVICE_CONCERN_LENGTH} helperText={`${issueDescription.length}/${MAX_SERVICE_CONCERN_LENGTH}`} multiline style={{ minHeight: 100, textAlignVertical: "top" }} />
-        <TextField label={t("Notes (optional)")} value={notes} onChangeText={setNotes} placeholder={t("Additional site instructions or preferences")} multiline style={{ minHeight: 80, textAlignVertical: "top" }} />
+        <TextField maxLength={2000} label={t("Notes (optional)")} value={notes} onChangeText={setNotes} helperText={`${notes.length}/2000`} placeholder={t("Additional site instructions or preferences")} multiline style={{ minHeight: 80, textAlignVertical: "top" }} />
       </Card> : null}
     </CustomerScreen>
   );

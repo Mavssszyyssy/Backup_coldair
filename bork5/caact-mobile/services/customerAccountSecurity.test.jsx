@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Alert, BackHandler } from "react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import CustomerSettingsScreen from "../app/customer/settings";
 import { translateText } from "./interfaceI18n";
 
@@ -11,6 +12,7 @@ const mockLogout = jest.fn();
 const mockConfirmAction = jest.fn();
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+const mockPreventRemove = jest.fn();
 const mockCustomer = {
   id: "customer-fixture",
   role: "customer",
@@ -23,7 +25,8 @@ const mockCustomer = {
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace, push: mockPush }),
-  useNavigation: () => ({ addListener: () => () => {}, dispatch: jest.fn() }),
+  useFocusEffect: (callback) => require("react").useEffect(callback, [callback]),
+  usePreventRemove: (...args) => mockPreventRemove(...args),
 }));
 jest.mock("../context/UserContext", () => ({
   useUserContext: () => ({
@@ -37,7 +40,10 @@ jest.mock("../context/UserContext", () => ({
   }),
 }));
 jest.mock('../utils/confirmAction', () => ({ confirmAction: (...args) => mockConfirmAction(...args) }));
-jest.mock("../components/customer/CustomerScreen", () => ({ children, stickyAction }) => <>{children}{stickyAction}</>);
+jest.mock("../components/customer/CustomerScreen", () => ({ children, stickyAction, onBack }) => {
+  const { Pressable, Text } = require("react-native");
+  return <>{onBack && <Pressable onPress={onBack}><Text>Back</Text></Pressable>}{children}{stickyAction}</>;
+});
 jest.mock("./philippineAddressService", () => ({
   getPhilippineRegions: jest.fn().mockResolvedValue([]),
   getProvincesByRegion: jest.fn().mockResolvedValue([]),
@@ -83,21 +89,54 @@ test("customer profile rejects invalid fields without claiming they were saved",
   expect(screen.getByLabelText("Last name").props.maxLength).toBe(20);
   await fireEvent.changeText(screen.getByLabelText("First name"), "123");
   await fireEvent.changeText(screen.getByLabelText("Username"), "a");
-  await fireEvent.press(screen.getByRole("button", { name: "Save Account" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Save Changes" }));
   expect(mockUpdateAccount).not.toHaveBeenCalled();
   expect(screen.getByText(/Username must be 3-30/)).toBeTruthy();
-  expect(screen.queryByText("Account details updated.")).toBeNull();
+  expect(screen.queryByText("Saved Changes")).toBeNull();
 });
 
 test("account success notice disappears automatically after saving", async () => {
   mockUpdateAccount.mockResolvedValue({ success: true });
   await render(<CustomerSettingsScreen />);
   await fireEvent.press(screen.getByRole("button", { name: "Edit" }));
-  await fireEvent.press(screen.getByRole("button", { name: "Save Account" }));
-  expect(await screen.findByText("Account details updated.")).toBeTruthy();
-  await waitFor(() => expect(screen.queryByText("Account details updated.")).toBeNull(), { timeout: 6000 });
+  await fireEvent.press(screen.getByRole("button", { name: "Save Changes" }));
+  expect(await screen.findByText("Saved Changes")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText("Saved Changes")).toBeNull(), { timeout: 6000 });
   expect(mockUpdateAccount).toHaveBeenCalledTimes(1);
 }, 10000);
+
+test("customer profile guards the back button, Android hardware back and native navigation", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  const backHandler = jest.spyOn(BackHandler, "addEventListener");
+  try {
+    await render(<CustomerSettingsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit" }));
+    await fireEvent.press(screen.getByText("Back"));
+    expect(alert).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Edit" }));
+    await fireEvent.changeText(screen.getByLabelText("First name"), "Draft");
+    await act(() => { expect(backHandler.mock.calls.at(-1)[1]()).toBe(true); });
+    const buttons = alert.mock.calls.at(-1)[2];
+    expect(buttons.map(({ text }) => text)).toEqual(["Keep Editing", "Discard"]);
+    await fireEvent.press(screen.getByText("Back"));
+    expect(alert).toHaveBeenCalledTimes(1);
+    await act(() => buttons[0].onPress());
+    expect(screen.getByLabelText("First name").props.value).toBe("Draft");
+    const [blocked, onRemove] = mockPreventRemove.mock.calls.at(-1);
+    const repeat = jest.fn();
+    expect(blocked).toBe(true);
+    await act(() => onRemove({ repeat }));
+    expect(repeat).not.toHaveBeenCalled();
+    await act(() => alert.mock.calls.at(-1)[2][1].onPress());
+    expect(repeat).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("First name").props.value).toBe("Pat");
+    expect(mockUpdateAccount).not.toHaveBeenCalled();
+  } finally {
+    backHandler.mockRestore();
+    alert.mockRestore();
+  }
+});
 
 test("address edits validate the recipient and save the changed street to the same address", async () => {
   mockCustomer.addresses = [{

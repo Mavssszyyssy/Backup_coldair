@@ -16,7 +16,7 @@
 .settings-container {
   min-height: 100vh;
   background: #f9fafb;
-  font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--app-font-family);
   transition: background 0.2s ease;
 }
 
@@ -163,8 +163,8 @@
 }
 
 .settings-header h1 {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: var(--app-type-page);
+  font-weight: var(--app-weight-heading);
   color: #111827;
   margin: 0;
   letter-spacing: -0.04em;
@@ -399,9 +399,9 @@
   flex-shrink: 0;
 }
 
-.section-title h2 {
-  font-size: 15px;
-  font-weight: 700;
+.settings-container .section-title h2 {
+  font-size: var(--app-type-section);
+  font-weight: var(--app-weight-heading);
   color: #111827;
   margin: 0;
   letter-spacing: -0.02em;

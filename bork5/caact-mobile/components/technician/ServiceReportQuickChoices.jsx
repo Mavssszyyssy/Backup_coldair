@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import TextField from "../ui/TextField";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
+import { dropdownSearch } from "../../services/dropdownSearch";
 
 const FINDINGS = ["Dust buildup on the air filter.", "Dust buildup on the evaporator coil.", "Restricted airflow from the indoor unit.", "Water was leaking from the drain line."];
 const CLEANING = ["Cleaned the air filter.", "Cleaned the evaporator coil.", "Flushed the drain line.", "Tested cooling and airflow after cleaning."];
@@ -13,6 +14,7 @@ const REPAIR_WORK = ["Replaced the control board.", "Replaced the compressor.", 
 export function ReportDropdown({ label, options, value, onChange, open, onToggle, onMissingOther }) {
   const { language, t } = useInterfaceLanguage();
   const [otherEnabled, setOtherEnabled] = useState(false);
+  const [query, setQuery] = useState("");
   // Existing/custom prose is preserved as Other; opening a dropdown never writes a finding.
   const lines = String(value || "").split("\n");
   const selected = options.filter(option => lines.some(line => line.trim() === option));
@@ -23,22 +25,28 @@ export function ReportDropdown({ label, options, value, onChange, open, onToggle
   const write = (nextSelected, custom) => onChange([...nextSelected, ...(custom ? [custom] : [])].join("\n"));
   const toggleOption = option => write(selected.includes(option) ? selected.filter(item => item !== option) : [...selected, option], other);
   const count = selected.length + (showOther ? 1 : 0);
+  const matches = dropdownSearch(query);
+  const visibleOptions = options.filter((option) => matches(option, t(option)));
+  const showOtherOption = matches("Other", t("Other"));
+  const toggle = () => { setQuery(""); Keyboard.dismiss(); onToggle(); };
   const row = (text, checked, onPress) => <TouchableOpacity key={text} accessibilityRole="checkbox" accessibilityLabel={t(label) + ": " + t(text)} accessibilityState={{ checked }} onPress={onPress} style={{ flexDirection: "row", alignItems: "center", padding: SPACING.sm + 3, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: checked ? COLORS.techLight : COLORS.surface }}>
     <Ionicons name={checked ? "checkbox" : "square-outline"} size={22} color={checked ? COLORS.tech : COLORS.textSecondary} style={{ marginRight: SPACING.sm }} />
     <Text style={{ flex: 1, color: COLORS.textPrimary, fontSize: FONT.base }}>{t(text)}</Text>
   </TouchableOpacity>;
   return <View style={{ marginBottom: SPACING.md }}>
     <Text style={{ fontWeight: FONT.bold, color: COLORS.textPrimary, marginBottom: SPACING.xs }}>{t(label)}</Text>
-    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t("Select")} ${t(label)}`} accessibilityState={{ expanded: open }} onPress={() => { Keyboard.dismiss(); onToggle(); }} style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: COLORS.surface }}>
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t("Select")} ${t(label)}`} accessibilityState={{ expanded: open }} onPress={toggle} style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: COLORS.borderInput, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: COLORS.surface }}>
       <Text style={{ flex: 1, color: count ? COLORS.textPrimary : COLORS.textMuted }}>{count ? `${count} ${t("selected")}` : t("Select one or more")}</Text>
       <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color={COLORS.tech} />
     </TouchableOpacity>
     {open ? <View style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, overflow: "hidden", marginTop: SPACING.xs }}>
-      {options.map(option => row(option, selected.includes(option), () => toggleOption(option)))}
-      {row("Other", showOther, () => { setOtherEnabled(!showOther); if (showOther) write(selected, ""); })}
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t("Done selecting")} ${t(label)}`} onPress={onToggle} style={{ padding: SPACING.sm + 3, alignItems: "center", backgroundColor: COLORS.techLight }}><Text style={{ fontWeight: FONT.bold, color: COLORS.tech }}>{t("Done")}</Text></TouchableOpacity>
+      {options.length > 1 ? <TextField maxLength={160} value={query} onChangeText={setQuery} accessibilityLabel={t("Search options")} placeholder={t("Search options")} autoCapitalize="none" autoCorrect={false} /> : null}
+      {visibleOptions.map(option => row(option, selected.includes(option), () => toggleOption(option)))}
+      {showOtherOption ? row("Other", showOther, () => { setOtherEnabled(!showOther); if (showOther) write(selected, ""); }) : null}
+      {!visibleOptions.length && !showOtherOption ? <Text accessibilityLiveRegion="polite" style={{ color: COLORS.textSecondary, padding: SPACING.sm }}>{t("No matching records found.")}</Text> : null}
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t("Done selecting")} ${t(label)}`} onPress={toggle} style={{ padding: SPACING.sm + 3, alignItems: "center", backgroundColor: COLORS.techLight }}><Text style={{ fontWeight: FONT.bold, color: COLORS.tech }}>{t("Done")}</Text></TouchableOpacity>
     </View> : null}
-    {showOther ? <TextField label={language === "Filipino" ? `${t("Other")} ${t(label)}` : "Other " + label.toLowerCase()} value={other} onChangeText={text => write(selected, text)} placeholder={t("Describe what you actually observed or performed")} multiline numberOfLines={3} error={missingOther ? t("Enter details for Other, or deselect it.") : ""} style={{ marginTop: SPACING.sm }} /> : null}
+    {showOther ? <TextField maxLength={1000} label={language === "Filipino" ? `${t("Other")} ${t(label)}` : "Other " + label.toLowerCase()} value={other} onChangeText={text => write(selected, text)} placeholder={t("Describe what you actually observed or performed")} multiline numberOfLines={3} error={missingOther ? t("Enter details for Other, or deselect it.") : ""} style={{ marginTop: SPACING.sm }} /> : null}
     {!open && selected.length ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.xs }}>{selected.join("\n")}</Text> : null}
   </View>;
 }

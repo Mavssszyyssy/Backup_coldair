@@ -1,8 +1,8 @@
-import { markNotificationRead, getNotificationsForUser, archiveNotificationForUser } from './notificationService';
+import { markNotificationRead, getNotificationsForUser, archiveNotificationForUser, archiveAllNotificationsForUser } from './notificationService';
 import * as api from './api';
 import { subscribeNotificationChanges } from './notificationEvents';
 jest.mock('@react-native-async-storage/async-storage',()=>require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
-jest.mock('./api',()=>({getStoredToken:jest.fn(async()=>'test'),fetchNotifications:jest.fn(),markNotificationRead:jest.fn(),archiveNotification:jest.fn()}));
+jest.mock('./api',()=>({getStoredToken:jest.fn(async()=>'test'),fetchNotifications:jest.fn(),markNotificationRead:jest.fn(),archiveNotification:jest.fn(),archiveAllNotifications:jest.fn()}));
 beforeEach(() => jest.clearAllMocks());
 test('failed remote read never announces a read-state change',async()=>{
  const changed=jest.fn();const unsubscribe=subscribeNotificationChanges(changed);
@@ -57,4 +57,20 @@ test('an inbox refresh started before archiving cannot bring the archived alert 
   finishOldRead({ success: true, notifications: [{ id: 'n1' }] });
   await expect(refresh).resolves.toMatchObject({ items: [{ id: 'other' }] });
   expect(api.fetchNotifications).toHaveBeenCalledTimes(2);
+});
+
+test('bulk archive publishes only confirmed changes and archived pages keep their server IDs', async () => {
+  const changed = jest.fn();
+  const unsubscribe = subscribeNotificationChanges(changed);
+  try {
+    api.archiveAllNotifications.mockResolvedValueOnce({ success: false, error: 'Offline' }).mockResolvedValueOnce({ success: true });
+    await expect(archiveAllNotificationsForUser()).rejects.toThrow('Offline');
+    expect(changed).not.toHaveBeenCalled();
+    await archiveAllNotificationsForUser();
+    expect(changed).toHaveBeenCalledTimes(1);
+    api.fetchNotifications.mockResolvedValue({ success: true, notifications: [{ id: 'archived-1', archivedAt: '2026-11-11' }], hasMore: true });
+    await expect(getNotificationsForUser({ id: 'customer1' }, { strict: true, archivePage: 2, withMetadata: true }))
+      .resolves.toMatchObject({ items: [{ id: 'archived-1' }], hasMore: true });
+    expect(api.fetchNotifications).toHaveBeenLastCalledWith('test', { archivePage: 2 });
+  } finally { unsubscribe(); }
 });

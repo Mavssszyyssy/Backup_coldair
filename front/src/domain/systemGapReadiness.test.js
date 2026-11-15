@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, expect, test } from "vitest";
+import { getWorkOrderDateWindow } from "../utils/dateTime";
 
 const source = (relativePath) => fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 
@@ -33,7 +34,11 @@ describe("cross-surface readiness gaps", () => {
   test("admin scheduling uses the Philippine business date", () => {
     const orders = source("src/components/ADMIN/Orders/AdminOrders.js");
     const technicians = source("src/components/ADMIN/Technicians/AdminTechnician.js");
-    expect(orders).toContain("formatBusinessDateKey()");
+    expect(orders).toContain("getWorkOrderDateWindow()");
+    expect(getWorkOrderDateWindow(new Date("2026-12-31T16:00:00Z"))).toEqual({
+      min: "2027-01-01",
+      max: "2029-01-01",
+    });
     expect(technicians).toContain("formatScheduledDate(task.scheduledDate)");
   });
 

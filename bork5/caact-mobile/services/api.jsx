@@ -1021,10 +1021,11 @@ export async function patchServiceRequestStatus(token, requestId, payload) {
 // Notifications
 // ---------------------------------------------------------------------------
 
-export async function fetchNotifications(token, { limit = 0 } = {}) {
-  const path = limit ? `/notifications/me?scope=mobile&limit=${Math.min(200, Math.max(30, Math.floor(limit)))}` : "/notifications/me";
+export async function fetchNotifications(token, { limit = 0, archivePage = 0 } = {}) {
+  const path = archivePage ? `/notifications/me?view=archived&page=${archivePage}`
+    : limit ? `/notifications/me?scope=mobile&limit=${Math.min(200, Math.max(30, Math.floor(limit)))}` : "/notifications/me";
   const { ok, data } = await get(path, token);
-  if (ok) return { success: true, notifications: data.notifications || [], ...(limit ? { hasMore: Boolean(data.hasMore) } : {}) };
+  if (ok) return { success: true, notifications: data.notifications || [], ...(limit || archivePage ? { hasMore: Boolean(data.hasMore) } : {}) };
   return {
     success: false,
     error: getErrorMessage(data, "Failed to fetch alerts."),
@@ -1036,6 +1037,16 @@ export async function archiveNotification(token, notificationId) {
   const { ok, data } = await patch(`/notifications/${encodeURIComponent(notificationId)}/archive`, {}, token);
   if (ok) return { success: true, notification: data.notification };
   return { success: false, error: getErrorMessage(data, "Failed to archive alert.") };
+}
+
+export async function archiveAllNotifications(token) {
+  const { ok, data } = await patch("/notifications/me/archive-all", {}, token);
+  return ok ? { success: true } : { success: false, error: getErrorMessage(data, "Unable to archive alerts.") };
+}
+
+export async function restoreNotification(token, notificationId) {
+  const { ok, data } = await patch(`/notifications/${encodeURIComponent(notificationId)}/restore`, {}, token);
+  return ok ? { success: true } : { success: false, error: getErrorMessage(data, "Unable to restore this alert.") };
 }
 
 export async function markNotificationRead(token, notificationId) {
@@ -1198,9 +1209,9 @@ export async function generateAmpReport(token, { unitId, reportType = "predictiv
   };
 }
 
-export async function sendCustomerChatMessage(token, { message, history = [], currentPage = "" } = {}) {
+export async function sendCustomerChatMessage(token, { message, history = [], currentPage = "", language = "English" } = {}) {
   const { ok, data } = await request("POST", "/ai/customer-chat", {
-    body: { message, history, currentPage },
+    body: { message, history, currentPage, language },
     token,
     timeoutMs: CUSTOMER_CHAT_TIMEOUT_MS,
   });

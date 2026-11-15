@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../../components/ui/LoadingSkeleton";
 import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,6 +63,7 @@ export default function VisitAttemptScreen() {
   if (!task && !error) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg, padding: SPACING.md }}>
       <PageHeader title={t('Loading visit')} subtitle={t('Checking the work order')} color={COLORS.tech} onBack={() => router.back()} />
+      <LoadingSkeleton label={t('Checking the work order')} variant="detail" />
     </SafeAreaView>;
   }
   return <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>

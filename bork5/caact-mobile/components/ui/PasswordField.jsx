@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
-import { getAccountPasswordRequirements } from "../../utils/authValidation";
+import { COLORS, RADIUS, SPACING, TYPE } from "../../constants/theme";
+import { getAccountPasswordRequirements, PASSWORD_INPUT_MAX_LENGTH } from "../../utils/authValidation";
 
 export default function PasswordField({
   label,
@@ -11,7 +11,7 @@ export default function PasswordField({
   onChangeText,
   error,
   placeholder,
-  maxLength,
+  maxLength = PASSWORD_INPUT_MAX_LENGTH,
   style,
   editable = true,
   showRequirements = false,
@@ -22,12 +22,10 @@ export default function PasswordField({
     <View style={{ marginBottom: SPACING.sm + 6 }}>
       {label ? (
         <Text
-          style={{
-            fontSize: FONT.base,
+          style={[TYPE.label, {
             color: COLORS.textPrimary,
-            fontWeight: "600",
             marginBottom: SPACING.xs + 2,
-          }}
+          }]}
         >
           {label}
         </Text>
@@ -58,11 +56,11 @@ export default function PasswordField({
           secureTextEntry={!visible}
           maxLength={maxLength}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={COLORS.textSecondary}
           style={{
             flex: 1,
             paddingVertical: SPACING.md - 2,
-            fontSize: FONT.base,
+            fontSize: TYPE.body.fontSize,
             color: COLORS.textPrimary,
           }}
         />
@@ -71,7 +69,7 @@ export default function PasswordField({
           accessibilityLabel={`${visible ? "Hide" : "Show"} ${(label || "password").toLowerCase()}`}
           style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons
-            name={visible ? "eye-off-outline" : "eye-outline"}
+            name={visible ? "eye-outline" : "eye-off-outline"}
             size={20}
             color={COLORS.textSecondary}
           />
@@ -80,17 +78,16 @@ export default function PasswordField({
 
       {showRequirements ? <View accessibilityLabel="Password requirements" style={{ marginTop: SPACING.sm }}>
         {getAccountPasswordRequirements(value).map((rule) => <Text key={rule.label}
-          style={{ color: rule.met && value ? COLORS.primary : COLORS.textSecondary, fontSize: FONT.sm, marginBottom: 4 }}>
+          style={[TYPE.caption, { color: rule.met && value ? COLORS.primary : COLORS.textSecondary, marginBottom: SPACING.xs }]}>
           {rule.met && value ? "✓" : "○"} {rule.label}
         </Text>)}
       </View> : null}
       {error ? (
         <Text
-          style={{
+          style={[TYPE.caption, {
             color: COLORS.danger,
             marginTop: SPACING.xs,
-            fontSize: FONT.sm,
-          }}
+          }]}
         >
           {error}
         </Text>

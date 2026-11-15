@@ -1,6 +1,6 @@
 import { Text, TouchableOpacity, View } from "react-native";
 
-import { COLORS, FONT, SPACING } from "../../constants/theme";
+import { COLORS, SPACING, TYPE } from "../../constants/theme";
 
 export default function CustomerSectionHeader({ title, actionLabel, onAction, right }) {
   return (
@@ -9,22 +9,18 @@ export default function CustomerSectionHeader({ title, actionLabel, onAction, ri
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        flexWrap: "wrap",
+        gap: SPACING.sm,
         marginBottom: SPACING.sm,
       }}
     >
-      <Text
-        style={{
-          color: COLORS.textPrimary,
-          fontSize: FONT.lg,
-          fontWeight: FONT.black,
-        }}
-      >
+      <Text accessibilityRole="header" style={[TYPE.section, { color: COLORS.textPrimary, flexShrink: 1 }]}>
         {title}
       </Text>
       {right ??
         (actionLabel && onAction ? (
-          <TouchableOpacity onPress={onAction} activeOpacity={0.72}>
-            <Text style={{ color: COLORS.primary, fontWeight: FONT.bold }}>
+          <TouchableOpacity onPress={onAction} accessibilityRole="button" activeOpacity={0.72}>
+            <Text style={[TYPE.label, { color: COLORS.primary }]}>
               {actionLabel}
             </Text>
           </TouchableOpacity>

@@ -39,7 +39,7 @@ export default function BoutiqueAuthLayout({ children }) {
             width="100%"
             height="100%"
             style={{ maxWidth: "480px" }}
-            padding="60px 20px"
+            padding="clamp(20px, 4vw, 40px) 20px"
           >
             {children}
           </BoutiqueBox>
@@ -68,9 +68,10 @@ export default function BoutiqueAuthLayout({ children }) {
 
         /* RESPONSIVE STACKING */
         @media (max-width: 1024px) {
+          .bq-auth-layout { height: auto !important; min-height: 100vh; }
           .bq-auth-flex { flex-direction: column !important; }
           .bq-auth-brand-area { flex: none !important; height: fit-content; }
-          .bq-auth-form-area { flex: none !important; min-height: 60vh; padding: 32px 24px; }
+          .bq-auth-form-constraint { height: auto !important; }
         }
       `,
         }}

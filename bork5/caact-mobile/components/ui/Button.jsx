@@ -1,18 +1,18 @@
 // components/ui/Button.jsx
 import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
-import { COLORS, FONT, RADIUS, SHADOWS, SPACING, TOUCH } from "../../constants/theme";
+import { COLORS, RADIUS, SHADOWS, SPACING, TOUCH, TYPE } from "../../constants/theme";
 
 const SIZE_STYLES = {
   sm: {
     paddingVertical: 9,
     paddingHorizontal: SPACING.sm + 4,
-    fontSize: FONT.sm,
+    typography: TYPE.label,
     iconGap: SPACING.xs,
   },
   md: {
     paddingVertical: 14,
     paddingHorizontal: SPACING.md,
-    fontSize: FONT.md,
+    typography: TYPE.action,
     iconGap: SPACING.sm,
   },
 };
@@ -89,11 +89,11 @@ export default function Button({
             <View style={{ marginRight: s.iconGap }}>{leftIcon}</View>
           )}
           <Text
-            style={{
+            style={[s.typography, {
               color: inactive && variant !== "ghost" ? COLORS.textMuted : v.text,
-              fontSize: s.fontSize,
-              fontWeight: FONT.bold,
-            }}
+              flexShrink: 1,
+              textAlign: align === "start" ? "left" : "center",
+            }]}
           >
             {title}
           </Text>

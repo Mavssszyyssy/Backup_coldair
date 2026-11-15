@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
+import { COLORS, RADIUS, SPACING } from "../../constants/theme";
 import KeyboardAwareScrollView from "../ui/KeyboardAwareScrollView";
+import ScreenHeading from "../ui/ScreenHeading";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 
 // Top-level tab routes show the Cold Air brand instead of a redundant back action.
@@ -33,9 +34,7 @@ export default function CustomerScreen({
   const insets = useSafeAreaInsets();
   const isTabRoute = TAB_ROUTES.has(pathname);
   const hasBottomNav = withBottomNav && isTabRoute;
-  const bottomClearance = hasBottomNav
-    ? SPACING.lg
-    : Math.max(insets.bottom, SPACING.sm) + SPACING.lg;
+  const bottomClearance = SPACING.md + (hasBottomNav ? 0 : insets.bottom);
 
   const content = scroll ? (
     <KeyboardAwareScrollView
@@ -46,7 +45,7 @@ export default function CustomerScreen({
         },
         contentContainerStyle,
       ]}
-      minBottomPadding={stickyAction ? bottomClearance + 96 : bottomClearance}
+      minBottomPadding={bottomClearance}
     >
       {children}
     </KeyboardAwareScrollView>
@@ -118,29 +117,7 @@ export default function CustomerScreen({
           </Pressable>
         )}
 
-        <View style={{ flex: 1, minWidth: 0, marginHorizontal: SPACING.sm }}>
-          <Text
-            numberOfLines={2}
-            style={{
-              color: COLORS.textPrimary,
-              fontWeight: FONT.black,
-              fontSize: FONT.xl,
-            }}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text
-              style={{
-                color: COLORS.textSecondary,
-                fontSize: FONT.sm,
-                marginTop: 2,
-              }}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
+        <ScreenHeading title={title} subtitle={subtitle} style={{ marginHorizontal: SPACING.sm }} />
 
         <View style={{ minWidth: right ? 40 : 0, flexShrink: 0, alignItems: "flex-end" }}>
           {right ?? null}

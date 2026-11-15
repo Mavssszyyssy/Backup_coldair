@@ -3,10 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyNotificationsChanged } from "./notificationEvents";
 import {
   fetchNotifications,
+  archiveAllNotifications as archiveAllRemoteNotifications,
   archiveNotification as archiveRemoteNotification,
   getStoredToken,
   markAllNotificationsRead,
   markNotificationRead as markRemoteNotificationRead,
+  restoreNotification as restoreRemoteNotification,
 } from "./api";
 import { resolveNotificationRoute } from "./notificationRouteService";
 
@@ -84,7 +86,7 @@ export async function createNotification(payload = {}) {
   return created;
 }
 
-export async function getNotificationsForUser(user = {}, { strict = false, limit = 0, withMetadata = false } = {}) {
+export async function getNotificationsForUser(user = {}, { strict = false, limit = 0, withMetadata = false, archivePage = 0 } = {}) {
   const token = await getStoredToken();
   if (token) {
     try {
@@ -92,10 +94,11 @@ export async function getNotificationsForUser(user = {}, { strict = false, limit
       let version;
       do {
         version = archiveVersion;
-        result = limit ? await fetchNotifications(token, { limit }) : await fetchNotificationsOnce(token);
+        result = archivePage ? await fetchNotifications(token, { archivePage })
+          : limit ? await fetchNotifications(token, { limit }) : await fetchNotificationsOnce(token);
       } while (version !== archiveVersion);
       if (result.success) {
-        const items = result.notifications.filter((item) => !item.archivedAt).map((item) => {
+        const items = result.notifications.filter((item) => Boolean(item.archivedAt) === Boolean(archivePage)).map((item) => {
           const normalized = normalizeNotification(item);
           return {
             ...normalized,
@@ -109,6 +112,8 @@ export async function getNotificationsForUser(user = {}, { strict = false, limit
     }
     if (strict) throw new Error("Unable to refresh alerts.");
   }
+
+  if (archivePage) return withMetadata ? { items: [], hasMore: false } : [];
 
   const items = await getAllNotifications();
   const localItems = items
@@ -125,14 +130,36 @@ export async function getNotificationsForUser(user = {}, { strict = false, limit
   return withMetadata ? { items: localItems.slice(0, limit || 30), hasMore: localItems.length > (limit || 30) } : localItems;
 }
 
+function invalidateNotificationReads(token) {
+  archiveVersion += 1;
+  if (activeNotificationRead?.token === token) activeNotificationRead = null;
+}
+
+export async function archiveAllNotificationsForUser() {
+  const token = await getStoredToken();
+  if (!token) throw new Error("Unable to archive alerts.");
+  const result = await archiveAllRemoteNotifications(token);
+  if (!result.success) throw new Error(result.error || "Unable to archive alerts.");
+  invalidateNotificationReads(token);
+  notifyNotificationsChanged();
+}
+
+export async function restoreNotificationForUser(notificationId) {
+  const token = await getStoredToken();
+  if (!token) throw new Error("Unable to restore this alert.");
+  const result = await restoreRemoteNotification(token, notificationId);
+  if (!result.success) throw new Error(result.error || "Unable to restore this alert.");
+  invalidateNotificationReads(token);
+  notifyNotificationsChanged();
+}
+
 export async function archiveNotificationForUser(notificationId) {
   const token = await getStoredToken();
   if (token) {
     const result = await archiveRemoteNotification(token, notificationId);
     if (!result.success) throw new Error(result.error || "Unable to archive alert.");
     // A poll started before the archive may still return the old inbox.
-    archiveVersion += 1;
-    if (activeNotificationRead?.token === token) activeNotificationRead = null;
+    invalidateNotificationReads(token);
   }
   try {
     const items = await getAllNotifications();

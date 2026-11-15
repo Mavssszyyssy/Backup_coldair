@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -13,6 +14,7 @@ import { getTodayDateKey } from "../../../../components/ui/CalendarDatePicker";
 import BottomSheetSelect from "../../../../components/ui/BottomSheetSelect";
 import KeyboardAwareScrollView from "../../../../components/ui/KeyboardAwareScrollView";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
+import ScreenHeading from "../../../../components/ui/ScreenHeading";
 import { fetchTechnicianUnitHistory, getStoredToken } from "../../../../services/api";
 import { getTaskById, registerTaskAmpUnit } from "../../../../services/taskStorage";
 import { resolveInventoryQrSerial } from "../../../../services/qrLookupService";
@@ -206,23 +208,24 @@ export default function AmpRegistrationScreen() {
   };
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.md, paddingTop: SPACING.xs, paddingBottom: SPACING.sm }}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} accessibilityLabel={t("Back to work order")} style={{ width: 38, height: 38, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back-sharp" size={20} color={COLORS.tech} />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: SPACING.sm }}>
-          <Text style={{ color: COLORS.textPrimary, fontSize: FONT.xl, fontWeight: FONT.black }}>{t("Verify AC unit")}</Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: 2 }}>{t("Scan the assigned QR label or enter its serial number.")}</Text>
-        </View>
+        <ScreenHeading
+          title={t("Verify AC unit")}
+          subtitle={t("Scan the assigned QR label or enter its serial number.")}
+          style={{ marginLeft: SPACING.sm }}
+        />
       </View>
 
-      <KeyboardAwareScrollView ref={scrollRef} contentContainerStyle={{ padding: SPACING.md }} minBottomPadding={SPACING.xxl + 72}>
-        <Card>
+      <KeyboardAwareScrollView ref={scrollRef} contentContainerStyle={{ padding: SPACING.md }}>
+        {loading && !task ? <LoadingSkeleton label={t("Loading work order details…")} variant="detail" /> : <Card>
           <InfoCard label={t("Work order")} value={task?.taskCode || task?.title || t("Loading…")} />
           <InfoCard label={t("Customer")} value={task?.customerName || task?.customer || t("Loading…")} />
           {installationTask ? <InfoCard label={t("Unit progress")} value={loading ? t("Loading…") : language === "Filipino" ? `${totalRegistered} sa ${totalRequired} na nakatalagang unit ang na-verify` : `${totalRegistered} of ${totalRequired} assigned units verified`} /> : null}
-        </Card>
+        </Card>}
 
         {!loading && !installationTask ? (
           <Card>
@@ -268,6 +271,7 @@ export default function AmpRegistrationScreen() {
             {pendingSerial ? <InfoCard label={t(pendingSource === "manual_serial" ? "Serial confirmed" : "QR captured")} value={pendingSerial} /> : verificationMode === "manual" ? <View>
               <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginBottom: SPACING.xs }}>{t("Serial number")}</Text>
               <TextInput
+                maxLength={1024}
                 value={manualSerial}
                 onChangeText={setManualSerial}
                 placeholder={t("Enter the assigned serial number")}

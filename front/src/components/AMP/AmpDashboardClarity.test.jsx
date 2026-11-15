@@ -110,7 +110,7 @@ it("keeps Superadmin branch and service-window filters working with clearer labe
   expect(screen.queryByText("Branch service overview")).not.toBeInTheDocument();
   fireEvent.change(screen.getByRole("combobox", { name: /Branch \(including branches with no due units\)/ }), { target: { value: "Bulacan" } });
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10&branch=Bulacan"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10&branch=Bulacan", expect.objectContaining({ onCached: expect.any(Function) })));
   expect(screen.getByRole("link", { name: "12-month workload plan" })).toBeVisible();
 });
 
@@ -153,7 +153,7 @@ it("shows a reconciled, interactive Superadmin follow-up summary", async () => {
   expect(screen.getByText("6 units assigned to branches")).toBeVisible();
 
   fireEvent.click(screen.getByRole("button", { name: "Filter follow-up units to Cavite" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=1&pageSize=10&branch=Cavite"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=1&pageSize=10&branch=Cavite", expect.objectContaining({ onCached: expect.any(Function) })));
   expect(await screen.findByText("4 units: 1 overdue and 3 upcoming")).toBeVisible();
 });
 
@@ -198,7 +198,7 @@ it("renders the 12-month workload before the AC selector and defers hidden histo
 
   expect((await screen.findAllByText("Sep 2026"))[0]).toBeVisible();
   expect(screen.getByRole("status", { name: "" })).toHaveTextContent("Loading installed AC units");
-  expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=false");
+  expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=false", expect.objectContaining({ onCached: expect.any(Function) }));
   expect(apiRequest).not.toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true");
 
   expect(screen.getByText("Current service needs")).toBeVisible();
@@ -241,7 +241,7 @@ it("gives branch admins a service-window control without cross-branch access", a
   show(<ManagerAmpDashboard />);
   await screen.findByText(/No units are entering/);
   fireEvent.change(screen.getByRole("combobox", { name: "Service window" }), { target: { value: "90" } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=90&page=1&pageSize=10", expect.objectContaining({ onCached: expect.any(Function) })));
   expect(screen.getByText("About this maintenance list")).toBeVisible();
   expect(screen.getByText(/Dates are suggestions only/)).toBeVisible();
 });
@@ -253,7 +253,7 @@ it("loads later maintenance pipeline pages without hiding the total", async () =
   show(<ManagerAmpDashboard />);
   expect(await screen.findByText("Page 1 of 8 · 75 units")).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=2&pageSize=10"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/manager/pipeline?days=30&page=2&pageSize=10", expect.objectContaining({ onCached: expect.any(Function) })));
   expect(await screen.findByText("Page 2 of 8 · 75 units")).toBeVisible();
 });
 

@@ -13,5 +13,6 @@ test("customer bottom navigation keeps the account tab and readable labels", asy
   await render(<BottomNav />);
   expect(screen.getByRole("tab", { name: "Account" }).props.accessibilityState.selected).toBe(true);
   expect(screen.getAllByRole("tab")).toHaveLength(5);
-  expect(screen.getByText("Services").props.numberOfLines).toBe(2);
+  expect(screen.getByText("Services").props.numberOfLines).toBeUndefined();
+  expect(screen.getByText("Services")).toHaveStyle({ fontSize: 12, lineHeight: 16 });
 });

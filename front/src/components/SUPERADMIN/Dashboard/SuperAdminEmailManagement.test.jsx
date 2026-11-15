@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import SuperAdminProfile from './SuperAdminProfile';
 import SuperAdminBranches from './SuperAdminBranches';
@@ -10,6 +10,8 @@ import { useUser } from '../../../context/UserContext';
 vi.mock('../Common/SuperAdminLayout', () => ({ default: ({ children }) => <div>{children}</div> }));
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 vi.mock('../../../context/UserContext', () => ({ useUser: vi.fn() }));
+
+const renderProfile = () => render(<RouterProvider router={createMemoryRouter([{ path: '/', element: <SuperAdminProfile /> }])} />);
 
 beforeEach(() => {
   apiRequest.mockReset();
@@ -24,13 +26,13 @@ test('superadmin profile submits the edited contact email and refreshes through 
     updateProfile,
     changePassword: vi.fn(),
   });
-  render(<MemoryRouter><SuperAdminProfile /></MemoryRouter>);
+  renderProfile();
   const email = screen.getByLabelText(/Email address/);
   expect(email).not.toHaveAttribute('readonly');
   fireEvent.change(email, { target: { value: 'lanlords2025@gmail.com' } });
-  fireEvent.click(screen.getByText('Save profile'));
+  fireEvent.click(screen.getByText('Save Changes'));
   await waitFor(() => expect(updateProfile).toHaveBeenCalledWith(expect.objectContaining({ email: 'lanlords2025@gmail.com' })));
-  expect(await screen.findByText('Profile updated successfully.')).toBeInTheDocument();
+  expect(await screen.findByText('Saved Changes')).toBeInTheDocument();
 });
 
 test('superadmin profile limits the mobile number to 11 digits', () => {
@@ -39,7 +41,7 @@ test('superadmin profile limits the mobile number to 11 digits', () => {
     updateProfile: vi.fn(),
     changePassword: vi.fn(),
   });
-  render(<MemoryRouter><SuperAdminProfile /></MemoryRouter>);
+  renderProfile();
   const phone = screen.getByLabelText(/Mobile number/);
   expect(phone).toHaveAttribute('maxlength', '11');
   fireEvent.change(phone, { target: { value: '09789654322888' } });

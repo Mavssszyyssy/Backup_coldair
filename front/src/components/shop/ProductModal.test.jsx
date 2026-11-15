@@ -4,12 +4,13 @@ import ProductModal from "./ProductModal";
 
 vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage: "English" }) }));
 
-const product = { id: "p1", name: "Cold Air AC", brand: "Cold Air", model: "AC-1", price: 100, stock: 2, inStock: true, specs: "1 HP", warranty: "1 year" };
+const product = { id: "p1", name: "Cold Air AC", brand: "Cold Air", model: "AC-1", price: 100.25, stock: 2, inStock: true, specs: "1 HP", warranty: "1 year" };
 
 test("typed decimal, zero and over-stock quantities cannot be added", async () => {
   const onAddToCart = vi.fn().mockResolvedValue(true);
   render(<ProductModal product={product} onClose={vi.fn()} onAddToCart={onAddToCart} />);
   expect(screen.getByRole("dialog", { name: "Product details: Cold Air AC" })).toBeInTheDocument();
+  expect(screen.getByText("100.25")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Close product details" })).toHaveFocus();
   const input = document.querySelector(".bq-num-field");
   for (const value of ["1.5", "0", "3", "letters"]) {
@@ -19,6 +20,19 @@ test("typed decimal, zero and over-stock quantities cannot be added", async () =
     expect(onAddToCart).not.toHaveBeenCalled();
   }
   fireEvent.change(input, { target: { value: "2" } });
+  expect(screen.getByText("200.50")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
   await waitFor(() => expect(onAddToCart).toHaveBeenCalledWith(product, 2));
+});
+
+test("Buy Now uses the selected quantity without adding anything to the cart", async () => {
+  const onBuyNow = vi.fn().mockResolvedValue(true);
+  const onAddToCart = vi.fn();
+  const onClose = vi.fn();
+  render(<ProductModal product={product} onClose={onClose} onAddToCart={onAddToCart} onBuyNow={onBuyNow} />);
+  fireEvent.change(document.querySelector(".bq-num-field"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: "Buy Now" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  expect(onBuyNow).toHaveBeenCalledWith(product, 2);
+  expect(onAddToCart).not.toHaveBeenCalled();
 });

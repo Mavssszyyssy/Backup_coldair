@@ -1,7 +1,8 @@
 import {
   Navigate,
   Route,
-  BrowserRouter as Router,
+  createBrowserRouter,
+  RouterProvider,
   Routes,
   useLocation,
 } from "react-router-dom";
@@ -32,7 +33,8 @@ const OrderConfirmation = lazyWithReload(() => import("./components/checkout/Ord
 import GlobalDialog from "./components/common/GlobalDialog";
 import ApplicationErrorBoundary from "./components/common/ApplicationErrorBoundary";
 import BackendConnectionBanner from "./components/common/BackendConnectionBanner";
-import LoadingLogo from "./components/common/LoadingLogo";
+import LoadingSkeleton from "./components/common/LoadingSkeleton";
+import { translateText } from "./utils/customerI18n";
 import LoginPromptModal from "./components/common/LoginPromptModal";
 const Contact = lazyWithReload(() => import("./components/contact/Contact"), "Contact");
 const FaqPage = lazyWithReload(() => import("./components/faq/FaqPage"), "FaqPage");
@@ -50,12 +52,17 @@ import { AdminSettingsProvider } from "./context/AdminSettingsContext";
 import { CartProvider } from "./context/CartContext";
 import { UserProvider, useUser } from "./context/UserContext";
 
+function RouteLoading() {
+  const { currentLanguage } = useUser();
+  return <main className="loading-screen"><LoadingSkeleton label={translateText("Loading…", currentLanguage)} variant="detail" count={2} /></main>;
+}
+
 const RoleRoute = ({ allowedRoles, children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
   const location = useLocation();
 
   if (loading) {
-    return <main className="loading-screen"><LoadingLogo /></main>;
+    return <RouteLoading />;
   }
 
   if (!isAuthenticated) {
@@ -74,7 +81,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading, userRole } = useUser();
 
   if (loading) {
-    return <main className="loading-screen"><LoadingLogo /></main>;
+    return <RouteLoading />;
   }
 
   return !isAuthenticated ? (
@@ -89,7 +96,7 @@ const HomeRoute = ({ children }) => {
   const { loading } = useUser();
 
   if (loading) {
-    return <main className="loading-screen"><LoadingLogo /></main>;
+    return <RouteLoading />;
   }
 
   return children;
@@ -108,7 +115,7 @@ export function AppContent() {
   const location = useLocation();
 
   if (loading) {
-    return <main className="loading-screen"><LoadingLogo /></main>;
+    return <RouteLoading />;
   }
 
   const hiddenChatbotRoutes = ["/login", "/register", "/forgot-password", "/privacy"];
@@ -121,7 +128,7 @@ export function AppContent() {
 
   return (
     <>
-      <Suspense fallback={<main className="loading-screen"><LoadingLogo /></main>}>
+      <Suspense fallback={<RouteLoading />}>
       <Routes>
         {/* Shopping is the primary customer entry point. */}
         <Route path="/" element={<Navigate to="/shop" replace />} />
@@ -529,20 +536,25 @@ export function AppContent() {
   );
 }
 
-// Main App component with providers
+let appRouter;
+
 function App() {
+  appRouter ??= createBrowserRouter([{
+    path: "*",
+    element: (
+      <div className="App">
+        <BackendConnectionBanner />
+        <AppContent />
+        <GlobalDialog />
+      </div>
+    ),
+  }]);
   return (
     <ApplicationErrorBoundary>
       <UserProvider>
         <AdminSettingsProvider>
           <CartProvider>
-            <Router>
-              <div className="App">
-                <BackendConnectionBanner />
-                <AppContent />
-                <GlobalDialog />
-              </div>
-            </Router>
+            <RouterProvider router={appRouter} />
           </CartProvider>
         </AdminSettingsProvider>
       </UserProvider>

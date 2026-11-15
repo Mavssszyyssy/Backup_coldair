@@ -67,6 +67,7 @@ export default function QrCameraScanner({ active = true, onScanned }) {
             {t("Web QR test")}
           </Text>
           <TextInput
+            maxLength={1024}
             value={testValue}
             onChangeText={setTestValue}
             autoCapitalize="none"

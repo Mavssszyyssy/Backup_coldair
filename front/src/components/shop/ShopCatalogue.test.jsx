@@ -23,7 +23,7 @@ test("keeps unavailable products visible after available products without purcha
   const onBuyNow = vi.fn();
   render(
     <ShopCatalogue
-      products={[product("sold-out", false), product("ready", true)]}
+      products={[product("sold-out", false), { ...product("ready", true), price: 19999.5, oldPrice: 21000 }]}
       onAddToCart={onAddToCart}
       onBuyNow={onBuyNow}
       onProductClick={vi.fn()}
@@ -39,6 +39,9 @@ test("keeps unavailable products visible after available products without purcha
   const sections = document.querySelectorAll(".bq-catalogue > .bq-scrollview section");
   expect(sections[0]).toHaveTextContent("ready");
   expect(sections[1]).toHaveTextContent("sold-out");
+  expect(within(sections[0]).getByText("₱19,999.50")).toBeInTheDocument();
+  expect(within(sections[0]).getByText("₱21,000.00")).toBeInTheDocument();
+  expect(within(sections[1]).getByText("₱20,000.00")).toBeInTheDocument();
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("loading", "eager");
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("fetchpriority", "high");
   expect(within(sections[1]).getByRole("img", { name: "Cold Air sold-out" })).toHaveAttribute("loading", "lazy");

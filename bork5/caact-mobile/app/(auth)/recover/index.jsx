@@ -48,7 +48,6 @@ export default function RecoverScreen() {
           justifyContent: "center",
           padding: SPACING.md,
         }}
-        minBottomPadding={SPACING.xxl + 40}
       >
         <PageHeader
           title="Reset Password"
@@ -59,6 +58,7 @@ export default function RecoverScreen() {
 
         <Card>
           <TextField
+            maxLength={254}
             label="Email or Account Login ID"
             value={identifier}
             onChangeText={(v) => {

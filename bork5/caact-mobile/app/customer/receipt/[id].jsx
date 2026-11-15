@@ -1,3 +1,4 @@
+import LoadingSkeleton from "../../../components/ui/LoadingSkeleton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { startLiveRefresh } from "../../../services/liveRefresh";
@@ -212,11 +213,9 @@ export default function ReceiptScreen() {
   return (
     <>
       <BoutiqueHeader title={t("Your receipt")} onBack={() => router.back()} />
-      <BoutiqueScreen contentContainerStyle={{ padding: BQ_SPACING.md, paddingBottom: BQ_SPACING.xl * 3 }}>
+      <BoutiqueScreen>
         {loading ? (
-          <BoutiqueCard>
-            <BoutiqueText color={BQ_COLORS.inkMuted}>{t("Loading receipt…")}</BoutiqueText>
-          </BoutiqueCard>
+          <LoadingSkeleton label={t("Loading receipt…")} variant="detail" count={2} />
         ) : !order || !order.receiptAvailable ? (
           <BoutiqueCard style={{ alignItems: "center", gap: BQ_SPACING.md, paddingVertical: BQ_SPACING.xl }}>
             <Ionicons name="receipt-outline" size={48} color={BQ_COLORS.inkFaint} />
@@ -250,7 +249,7 @@ export default function ReceiptScreen() {
               >
                 <Image source={require("../../../images/cold logo.png")} accessibilityLabel={t("Cold Air logo")} style={{ width: 54, height: 54 }} resizeMode="contain" />
               </View>
-              <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("OFFICIAL E-RECEIPT")}</BoutiqueText>
                 <BoutiqueText variant="h2">Coldair ACT</BoutiqueText>
               </View>
@@ -263,7 +262,7 @@ export default function ReceiptScreen() {
 
             <View style={{ padding: BQ_SPACING.lg, gap: BQ_SPACING.sm, backgroundColor: BQ_COLORS.surface, borderBottomWidth: 1, borderColor: BQ_COLORS.border }}>
               <BoutiqueText variant="label" color={BQ_COLORS.inkMuted}>{t("PAYMENT SUMMARY")}</BoutiqueText>
-              <BoutiqueText variant="h1" style={{ fontSize: 28 }}>{formatPeso(receipt.total)}</BoutiqueText>
+              <BoutiqueText variant="h1">{formatPeso(receipt.total)}</BoutiqueText>
               <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: BQ_SPACING.sm }}>
                 <BoutiqueChip label={t(String(receipt.paymentStatus)).toUpperCase()} variant={statusVariant(receipt.paymentStatus)} />
                 <BoutiqueText variant="body" color={BQ_COLORS.inkMuted}>{t(receipt.paymentMethod)}</BoutiqueText>
@@ -306,8 +305,8 @@ export default function ReceiptScreen() {
                 const price = Number(item.price || 0);
                 return (
                   <View key={`${item.id || item.name}-${index}`} style={{ gap: BQ_SPACING.xs, paddingBottom: BQ_SPACING.md, borderBottomWidth: 1, borderBottomColor: BQ_COLORS.border }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: BQ_SPACING.md }}>
-                      <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: BQ_SPACING.md }}>
+                      <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: "50%", minWidth: 0 }}>
                         <BoutiqueText variant="h3">{item.name}</BoutiqueText>
                         {!!item.specs && <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{item.specs}</BoutiqueText>}
                         <BoutiqueText variant="caption" color={BQ_COLORS.inkMuted}>{t("Horsepower")}: {item.horsepower ? formatHorsepower(item) : t(formatHorsepower(item))}</BoutiqueText>
