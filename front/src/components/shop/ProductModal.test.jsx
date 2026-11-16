@@ -6,6 +6,15 @@ vi.mock("../../context/UserContext", () => ({ useUser: () => ({ currentLanguage:
 
 const product = { id: "p1", name: "Cold Air AC", brand: "Cold Air", model: "AC-1", price: 100.25, stock: 2, inStock: true, specs: "1 HP", warranty: "1 year" };
 
+test("sold-out product details show stock and price without purchase buttons", () => {
+  render(<ProductModal product={{ ...product, stock: 0, inStock: false }} onClose={vi.fn()} onAddToCart={vi.fn()} onBuyNow={vi.fn()} />);
+
+  expect(screen.getByText("Out of stock")).toBeVisible();
+  expect(screen.getByText("100.25")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Close product details" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: /unavailable|add to cart|buy now/i })).not.toBeInTheDocument();
+});
+
 test("typed decimal, zero and over-stock quantities cannot be added", async () => {
   const onAddToCart = vi.fn().mockResolvedValue(true);
   render(<ProductModal product={product} onClose={vi.fn()} onAddToCart={onAddToCart} />);

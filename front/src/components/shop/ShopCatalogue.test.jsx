@@ -54,7 +54,8 @@ test("keeps unavailable products visible after available products without purcha
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("fetchpriority", "high");
   expect(within(sections[1]).getByRole("img", { name: "Cold Air sold-out" })).toHaveAttribute("loading", "lazy");
   expect(within(sections[1]).getByRole("button", { name: "Out of stock" })).toBeDisabled();
-  expect(within(sections[1]).getByRole("button", { name: "Unavailable" })).toBeDisabled();
+  expect(within(sections[1]).queryByRole("button", { name: "Unavailable" })).not.toBeInTheDocument();
+  expect(within(sections[1]).queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
   expect(onAddToCart).not.toHaveBeenCalled();
   expect(onBuyNow).not.toHaveBeenCalled();
 });

@@ -225,18 +225,19 @@ export default function ProductCard({
             {outOfStock ? t("Out of stock") : <>{t("Buy Now")} <Lightning size={18} weight="fill" /></>}
           </BoutiqueButton>
 
-          <BoutiqueButton
-            variant="primary"
-            size="sm"
-            fullWidth
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(product, 1);
-            }}
-            disabled={outOfStock}
-          >
-            {outOfStock ? t("Unavailable") : <>{t("Add to Cart")} <ShoppingCart size={18} weight="bold" /></>}
-          </BoutiqueButton>
+          {!outOfStock && (
+            <BoutiqueButton
+              variant="primary"
+              size="sm"
+              fullWidth
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(product, 1);
+              }}
+            >
+              {t("Add to Cart")} <ShoppingCart size={18} weight="bold" />
+            </BoutiqueButton>
+          )}
         </BoutiqueStack>
 
         <BoutiqueBox

@@ -124,7 +124,7 @@ function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
 
   const horsepower = product.specs || product.capacity || "";
   const brandLogoUrl = getBrandLogo(product.brand);
-  const totalPrice = validQuantity ? product.price * Number(quantity) : 0;
+  const displayedPrice = isOutOfStock ? product.price : (validQuantity ? product.price * Number(quantity) : 0);
 
   return (
     <div className="bq-modal-overlay" onClick={onClose}>
@@ -183,7 +183,7 @@ function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
             </div>
 
             <div className="bq-transaction-hub">
-              <div className="bq-interactive-footer">
+              <div className={isOutOfStock ? "bq-interactive-footer bq-interactive-footer--out-of-stock" : "bq-interactive-footer"}>
                 <div className="bq-selection-column">
                   <div className="bq-misc-badges">
                     <BoutiqueTechnicalCard
@@ -215,7 +215,7 @@ function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
                       <div className="bq-price-main">
                         <span className="bq-price-symbol">₱</span>
                         <span className="bq-price-num">
-                          {formatPesoAmount(totalPrice)}
+                          {formatPesoAmount(displayedPrice)}
                         </span>
                       </div>
                     </div>
@@ -228,16 +228,13 @@ function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
                     ) : null}
                   </div>
 
-                  <div className="bq-modal-add-row">
-                    <BoutiqueButton
-                      variant="primary"
-                      fullWidth
-                      onClick={handleAddToCart}
-                      disabled={isOutOfStock || submitting}
-                    >
-                      {isOutOfStock ? t("Unavailable") : t("Add to Cart")}
-                    </BoutiqueButton>
-                  </div>
+                  {!isOutOfStock && (
+                    <div className="bq-modal-add-row">
+                      <BoutiqueButton variant="primary" fullWidth onClick={handleAddToCart} disabled={submitting}>
+                        {t("Add to Cart")}
+                      </BoutiqueButton>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -362,6 +359,9 @@ function ProductModal({ product, onClose, onAddToCart, onBuyNow }) {
         .bq-modal-reveal-group:has(+ .bq-modal-add-row:hover, .bq-modal-buy-row:hover) {
             transform: translateY(28px);
         }
+
+        .bq-interactive-footer--out-of-stock { height: auto; align-items: center; flex-wrap: wrap; }
+        .bq-interactive-footer--out-of-stock .bq-modal-reveal-group { transform: none; }
 
         .bq-modal-reveal-group, .bq-modal-add-row, .bq-modal-buy-row {
             width: fit-content;
