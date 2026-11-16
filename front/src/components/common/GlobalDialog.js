@@ -1,8 +1,10 @@
-import { Info, WarningDiamond, X } from "@phosphor-icons/react";
+import { Info, Question, WarningDiamond, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
+import { translateText } from "../../utils/customerI18n";
 import "./GlobalDialog.css";
 
-function GlobalDialog() {
+function GlobalDialog({ language = "English" }) {
+  const t = (value) => translateText(value, language);
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ function GlobalDialog() {
     previousFocusRef.current = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    window.requestAnimationFrame(() => cancelRef.current?.focus());
+    const focusFrame = window.requestAnimationFrame(() => cancelRef.current?.focus());
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && !busyRef.current) {
@@ -66,10 +68,17 @@ function GlobalDialog() {
       const focusable = dialogRef.current?.querySelectorAll(
         'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
-      if (!focusable?.length) return;
+      if (!focusable?.length) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (!Array.from(focusable).includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -80,6 +89,7 @@ function GlobalDialog() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
       previousFocusRef.current?.focus?.();
@@ -127,6 +137,7 @@ function GlobalDialog() {
   };
 
   const title = dialog.title || (isConfirm ? "Please Confirm" : "Notice");
+  const DialogIcon = destructive ? WarningDiamond : isConfirm ? Question : Info;
 
   return (
     <div className="app-dialog-layer">
@@ -141,27 +152,30 @@ function GlobalDialog() {
         ref={dialogRef}
         className={`app-dialog${destructive ? " app-dialog--destructive" : ""}`}
         role={isConfirm ? "alertdialog" : "dialog"}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="app-dialog-title"
         aria-describedby="app-dialog-message"
       >
-        <button
-          ref={!isConfirm ? cancelRef : undefined}
+        {!isConfirm && <button
+          ref={cancelRef}
           type="button"
           className="app-dialog-close"
           onClick={() => close(false)}
           disabled={busy}
-          aria-label="Close dialog"
+          aria-label={t("Close dialog")}
         >
           <X size={20} weight="bold" />
-        </button>
+        </button>}
 
-        <div className="app-dialog-icon" aria-hidden="true">
-          {isConfirm ? <WarningDiamond size={42} weight="duotone" /> : <Info size={42} weight="duotone" />}
+        <div className="app-dialog-body">
+          <div className="app-dialog-icon" aria-hidden="true"><DialogIcon size={27} weight="duotone" /></div>
+          <div className="app-dialog-copy">
+            <h2 id="app-dialog-title" className="app-dialog-title">{t(title)}</h2>
+            <p id="app-dialog-message" className="app-dialog-message">{t(dialog.message)}</p>
+            {error ? <p className="app-dialog-error" role="alert">{t(error)}</p> : null}
+          </div>
         </div>
-        <h2 id="app-dialog-title" className="app-dialog-title">{title}</h2>
-        <p id="app-dialog-message" className="app-dialog-message">{dialog.message}</p>
-        {error ? <p className="app-dialog-error" role="alert">{error}</p> : null}
 
         <div className="app-dialog-actions">
           {isConfirm ? (
@@ -173,7 +187,7 @@ function GlobalDialog() {
                 onClick={() => close(false)}
                 disabled={busy}
               >
-                {dialog.cancelText || "Cancel"}
+                {t(dialog.cancelText || "Cancel")}
               </button>
               <button
                 type="button"
@@ -181,7 +195,7 @@ function GlobalDialog() {
                 onClick={confirm}
                 disabled={busy}
               >
-                {busy ? (dialog.pendingText || "Processing...") : (dialog.confirmText || "Confirm")}
+                {t(busy ? (dialog.pendingText || "Processing...") : (dialog.confirmText || "Confirm"))}
               </button>
             </>
           ) : (
@@ -190,7 +204,7 @@ function GlobalDialog() {
               className="app-dialog-button app-dialog-button--confirm"
               onClick={() => close(true)}
             >
-              {dialog.confirmText || "Dismiss"}
+              {t(dialog.confirmText || "Dismiss")}
             </button>
           )}
         </div>

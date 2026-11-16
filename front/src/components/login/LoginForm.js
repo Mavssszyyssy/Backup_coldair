@@ -12,6 +12,7 @@ export default function LoginForm({
   onPasswordChange,
   onSubmit,
   loading,
+  isLocked,
 }) {
   const t = (value) => translateText(value, currentLanguage);
   const handleSubmit = (e) => {
@@ -23,11 +24,14 @@ export default function LoginForm({
     <form className="bq-login-step" onSubmit={handleSubmit}>
       <BoutiqueInput
         maxLength={254}
-        label={t("Sign-in alias")}
+        label={t("Sign-in alias or email")}
         icon={UserCircle}
-        placeholder="juan.dc"
+        placeholder={t("Enter your alias or email")}
         autoComplete="username"
         value={identifier}
+        disabled={loading}
+        autoCapitalize="none"
+        spellCheck={false}
         onChange={(e) => onIdentifierChange(e.target.value)}
         status={errors.identifier ? "error" : null}
         errorMessage={t(errors.identifier)}
@@ -44,6 +48,7 @@ export default function LoginForm({
           autoComplete="current-password"
           placeholder={t("Enter your password")}
           value={password}
+          disabled={loading || isLocked}
           onChange={(e) => onPasswordChange(e.target.value)}
           status={errors.password ? "error" : null}
           errorMessage={t(errors.password)}
@@ -57,7 +62,7 @@ export default function LoginForm({
       <button
         type="submit"
         className="bq-login-btn bq-login-btn--primary"
-        disabled={loading}
+        disabled={loading || isLocked}
       >
         {t(loading ? "Signing in..." : "Sign in")}
         {!loading && <ArrowRight size={18} weight="bold" aria-hidden="true" />}

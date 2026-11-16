@@ -4,7 +4,12 @@
 .branch-create-form { grid-template-columns: minmax(170px, 1fr) minmax(250px, 2fr) auto; }
 .branch-create-form .branch-coverage-field { grid-column: auto; }
 .branch-admin-form { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
-.branch-admin-form label:nth-child(3) { grid-column: 1 / -1; }
+.branch-admin-form .branch-admin-email { grid-column: 1 / -1; }
+.branch-text-field { display: grid; gap: 5px; min-width: 0; }
+.branch-field-error { color: #b91c1c; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.branch-text-field input[aria-invalid="true"] { border-color: #dc2626; }
+:root[data-theme='dark'] .branch-text-field .branch-field-error { color: #fca5a5; }
+:root[data-theme='dark'] .super-layout .branch-text-field input[aria-invalid="true"] { border-color: #f87171; }
 .branch-admin-form button { justify-self: start; }
 .branch-owner-form { grid-template-columns: minmax(170px, 1fr) minmax(230px, 1.5fr) auto; }
 .branch-owner-form .branch-remove-assignment { background: #a61b1b; color: #fff; }
@@ -17,7 +22,7 @@
 }
 @media (max-width: 640px) {
   .branch-create-form, .branch-admin-form, .branch-owner-form { grid-template-columns: minmax(0, 1fr); }
-  .branch-create-form .branch-coverage-field, .branch-admin-form label:nth-child(3), .branch-create-form button, .branch-admin-form button, .branch-owner-form button { grid-column: auto; }
+  .branch-create-form .branch-coverage-field, .branch-admin-form .branch-admin-email, .branch-create-form button, .branch-admin-form button, .branch-owner-form button { grid-column: auto; }
   .branch-create-form button, .branch-admin-form button, .branch-owner-form button { width: 100%; }
 }
 .branch-workspace,.branch-directory,.branch-workspace-heading>div,.branch-assignment-form label{min-width:0}.branch-assignment-form input,.branch-assignment-form select{box-sizing:border-box;width:100%;min-width:0}.branch-workspace-heading span,.branch-success,.branch-error,.branch-coverage-list,.branch-email-directory article small{overflow-wrap:anywhere}.branch-assignment-form button:disabled{opacity:.55;cursor:not-allowed}

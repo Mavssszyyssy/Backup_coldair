@@ -11,7 +11,7 @@ import { apiRequest } from "../../../config/api";
 import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from "../../../utils/dateTime";
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
-import { PERSON_NAME_MAX_LENGTH } from "../../../domain/personNameValidation";
+import { PERSON_NAME_MAX_LENGTH, validatePersonName } from "../../../domain/personNameValidation";
 import PersistentErrorNotice from "../../common/PersistentErrorNotice";
 import useAutoDismissMessage from "../../../hooks/useAutoDismissMessage";
 import DailyWorkSchedule from "./DailyWorkSchedule";
@@ -496,6 +496,8 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
       setError("Enter the technician's name, username, and assigned branch.");
       return;
     }
+    const nameError = validatePersonName(firstName, "First name") || validatePersonName(lastName, "Last name");
+    if (nameError) { setError(nameError); return; }
     if (credentialPreview.loginIdentifier.length > 30 || credentialPreview.defaultPassword.length > 25) {
       setError("Use a shorter username so the Login ID and default password fit their limits.");
       return;

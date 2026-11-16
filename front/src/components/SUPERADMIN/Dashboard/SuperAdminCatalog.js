@@ -2,6 +2,7 @@ import SearchableSelect from "../../common/SearchableSelect";
 import { CheckCircle, Copy, Package, Plus, QrCode } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../../config/api";
+import { confirmDialog } from "../../../utils/dialog";
 import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { useUser } from "../../../context/UserContext";
 import { translateText } from "../../../utils/customerI18n";
@@ -79,7 +80,13 @@ export default function SuperAdminCatalog({ onCreated }) {
   useEffect(() => { if (catalogPage > catalogPages) setCatalogPage(catalogPages); }, [catalogPage, catalogPages]);
 
   const changeArchiveState = async (product, archive) => {
-    if (archive && !window.confirm(`${t('Archive')} ${product.name}? ${t('It will disappear from the customer shop, but stock and history will be retained.')}`)) return;
+    if (archive && !await confirmDialog({
+      title: t('Archive product?'),
+      message: t('{product} will be hidden from the customer shop. Its stock and sales history will be kept.')
+        .replace('{product}', () => product.name),
+      confirmText: t('Archive'),
+      destructive: true,
+    })) return;
     setChangingProductId(product.id); setError('');
     try {
       await apiRequest(`/products/${product.id}/${archive ? 'archive' : 'restore'}`, { method: 'PATCH' });

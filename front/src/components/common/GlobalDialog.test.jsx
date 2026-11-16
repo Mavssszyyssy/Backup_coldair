@@ -84,3 +84,27 @@ test("feedback opened by a confirmed action remains visible after the action fin
   expect(await screen.findByRole("dialog", { name: "Notice" })).toBeInTheDocument();
   expect(screen.getByText("Request approved successfully.")).toBeInTheDocument();
 });
+
+test("a destructive confirmation shows localized actions and keeps a failed request open", async () => {
+  render(<GlobalDialog language="Filipino" />);
+
+  let result;
+  act(() => {
+    result = confirmDialog({
+      title: "Remove branch assignment?",
+      message: "This administrator will lose branch access and be signed out.",
+      confirmText: "Remove assignment",
+      destructive: true,
+      onConfirm: async () => { throw new Error("Unable to complete this action. Please try again."); },
+    });
+  });
+
+  const confirmation = screen.getByRole("alertdialog", { name: "Alisin ang pagtatalaga sa sangay?" });
+  const confirm = screen.getByRole("button", { name: "Alisin ang pagtatalaga" });
+  expect(confirm).toHaveClass("app-dialog-button--danger");
+  fireEvent.click(confirm);
+  expect(await screen.findByRole("alert")).toBeVisible();
+  expect(confirmation).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Kanselahin" }));
+  await expect(result).resolves.toBe(false);
+});

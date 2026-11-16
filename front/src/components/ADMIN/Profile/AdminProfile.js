@@ -6,6 +6,7 @@ import AccountSecurityManagement from '../../security/AccountSecurityManagement'
 import { loadBranchNetwork } from '../../../domain/branches/branchNetworkStorage';
 import { getSessionActiveBranch } from '../../../utils/authSession';
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
+import { FULL_NAME_MAX_LENGTH, validateFullName } from '../../../domain/personNameValidation';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
 import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
 import useUnsavedProfileChanges from '../../../hooks/useUnsavedProfileChanges';
@@ -23,6 +24,7 @@ const AdminProfile = () => {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [nameError, setNameError] = useState('');
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -42,12 +44,16 @@ const AdminProfile = () => {
       phone: user?.phone || '',
     });
     setPhoneError('');
+    setNameError('');
     setIsEditing(true);
   };
 
   const saveProfile = async (event) => {
     event.preventDefault();
     if (saving) return;
+    const invalidName = form.name === user?.name ? '' : validateFullName(form.name);
+    setNameError(invalidName);
+    if (invalidName) return;
     const validationError = validateLocalPhMobile(form.phone);
     if (validationError) {
       setPhoneError(validationError);
@@ -55,7 +61,8 @@ const AdminProfile = () => {
     }
     try {
       setSaving(true);
-      await updateProfile(form);
+      const changes = form.name === user?.name ? { phone: form.phone } : form;
+      await updateProfile(changes);
       setIsEditing(false);
       setNotice('Saved Changes');
     } catch (error) {
@@ -91,7 +98,10 @@ const AdminProfile = () => {
           <div className="admin-profile-modal-overlay" onClick={closeEditor}>
             <form className="admin-profile-modal-card" onSubmit={saveProfile} onClick={(event) => event.stopPropagation()}>
               <h3>{t("Edit Admin Profile")}</h3>
-              <input maxLength={41} value={form.name} disabled={saving} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder={t("Name")} />
+              <input maxLength={FULL_NAME_MAX_LENGTH} value={form.name} disabled={saving} aria-label={t("Full name")} aria-invalid={Boolean(nameError)}
+                aria-describedby={nameError ? "admin-profile-name-error" : undefined}
+                onChange={(event) => { setForm((prev) => ({ ...prev, name: event.target.value })); setNameError(''); }} placeholder={t("Name")} />
+              {nameError && <p id="admin-profile-name-error" className="admin-profile-phone-error" role="alert">{t(nameError)}</p>}
               <input
                 aria-label={t("Phone number")}
                 type="tel"

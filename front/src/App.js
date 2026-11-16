@@ -538,6 +538,11 @@ export function AppContent() {
 
 let appRouter;
 
+function AppDialog() {
+  const { currentLanguage } = useUser();
+  return <GlobalDialog language={currentLanguage} />;
+}
+
 function App() {
   appRouter ??= createBrowserRouter([{
     path: "*",
@@ -545,7 +550,7 @@ function App() {
       <div className="App">
         <BackendConnectionBanner />
         <AppContent />
-        <GlobalDialog />
+        <AppDialog />
       </div>
     ),
   }]);

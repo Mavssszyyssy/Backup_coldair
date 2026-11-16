@@ -15,6 +15,7 @@ import { apiRequest } from "../../../config/api";
 import { dashboardFilterQuery, validateDashboardDates } from "../../../domain/dashboardFilters";
 import { useUser } from "../../../context/UserContext";
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from "../../../utils/phMobileValidation";
+import { validateFullName } from "../../../domain/personNameValidation";
 import { formatBusinessDate } from "../../../utils/dateTime";
 import { translateText } from "../../../utils/customerI18n";
 import SuperAdminLayout from "../Common/SuperAdminLayout";
@@ -107,6 +108,9 @@ function SuperAdminDashboard() {
   };
   const onSave = async (event) => {
     event.preventDefault();
+    if (saving) return;
+    const nameError = form.name === user?.name ? "" : validateFullName(form.name);
+    if (nameError) { setFormError(nameError); return; }
     const phoneError = validateLocalPhMobile(form.phone);
     if (phoneError) {
       setFormError(phoneError);
@@ -114,7 +118,8 @@ function SuperAdminDashboard() {
     }
     setSaving(true);
     try {
-      await updateProfile(form);
+      const { name, ...details } = form;
+      await updateProfile(name === user?.name ? details : form);
       setIsEditing(false);
     } catch (saveError) {
       setFormError(saveError?.message || "Unable to update the profile.");

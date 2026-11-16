@@ -1,12 +1,16 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
 import { BRANCHES } from '../../../domain/branches/branches';
-import { validateEmailForSubmission } from '../../../domain/emailPolicy';
-import { PERSON_NAME_MAX_LENGTH } from '../../../domain/personNameValidation';
+import { EMAIL_FORMAT_MESSAGE, isValidEmailFormat, validateEmailForSubmission } from '../../../domain/emailPolicy';
+import { PERSON_NAME_MAX_LENGTH, validatePersonName } from '../../../domain/personNameValidation';
+import {
+  COVERAGE_MAX_LENGTH, LOCATION_MAX_LENGTH, validateBranchName, validateServiceAreas,
+} from '../../../domain/branches/branchInputValidation';
 import { formatBusinessDate } from '../../../utils/dateTime';
+import { confirmDialog } from '../../../utils/dialog';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import useAutoDismissMessage from '../../../hooks/useAutoDismissMessage';
@@ -14,6 +18,16 @@ import '../superAdminShared.css';
 import './SuperAdminBranches.css';
 
 const lastActive = (value, t) => value ? formatBusinessDate(value) : t('Never signed in');
+
+function BranchTextField({ label, error, help, className, ...props }) {
+  const id = useId();
+  const descriptionId = help || error ? `${id}-description` : undefined;
+  return <div className={className}>
+    <label htmlFor={id}>{label}</label>
+    <input {...props} id={id} aria-invalid={error ? true : undefined} aria-describedby={descriptionId} />
+    {descriptionId && <small id={descriptionId} role={error ? 'alert' : undefined} className={error ? 'branch-field-error' : 'branch-coverage-help'}>{error || help}</small>}
+  </div>;
+}
 
 const SuperAdminBranches = () => {
   const { currentLanguage } = useUser();
@@ -32,9 +46,30 @@ const SuperAdminBranches = () => {
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchCoverage, setNewBranchCoverage] = useState('');
   const [adminDraft, setAdminDraft] = useState({ name_first: '', name_last: '', email: '', branch: '' });
+  const [validatedFields, setValidatedFields] = useState({});
   const [oneTimePassword, setOneTimePassword] = useState('');
   const [createdLoginId, setCreatedLoginId] = useState('');
   const branchNames = useMemo(() => coverage.length ? coverage.map((item) => item.name) : BRANCHES, [coverage]);
+  const knownLocations = useMemo(() => coverage.flatMap((item) => [item.name, ...(item.coverageAreas || [])]), [coverage]);
+  const fieldErrors = {
+    branchName: validateBranchName(newBranchName).error,
+    newCoverage: validateServiceAreas(newBranchCoverage, knownLocations).error,
+    savedCoverage: validateServiceAreas(coverageAreas, knownLocations).error,
+    firstName: validatePersonName(adminDraft.name_first, 'First name'),
+    lastName: validatePersonName(adminDraft.name_last, 'Last name'),
+    email: isValidEmailFormat(adminDraft.email) ? '' : EMAIL_FORMAT_MESSAGE,
+  };
+  const checkFields = (...keys) => {
+    setValidatedFields((current) => ({ ...current, ...Object.fromEntries(keys.map((key) => [key, true])) }));
+    return keys.every((key) => !fieldErrors[key]);
+  };
+  const fieldFeedback = (key) => ({
+    onBlur: () => checkFields(key),
+    error: validatedFields[key] && fieldErrors[key] ? t(fieldErrors[key]) : '',
+  });
+  const resetFieldFeedback = (...keys) => {
+    setValidatedFields((current) => ({ ...current, ...Object.fromEntries(keys.map((key) => [key, false])) }));
+  };
 
   const load = useCallback(async (fresh = false) => {
     setLoading(true);
@@ -65,6 +100,7 @@ const SuperAdminBranches = () => {
   useEffect(() => {
     const currentCoverage = coverage.find((item) => item.name === branch);
     setCoverageAreas((currentCoverage?.coverageAreas || []).join(', '));
+    setValidatedFields((current) => ({ ...current, savedCoverage: false }));
   }, [branch, coverage]);
 
   const save = async (event) => {
@@ -88,32 +124,36 @@ const SuperAdminBranches = () => {
     const ownerName = selectedAssignment.name || selectedAssignment.email || t('Administrator');
     const confirmation = t('Remove {administrator} from {branch}? This administrator will lose branch access and be signed out.')
       .replace(/\{(administrator|branch)\}/g, (_, key) => key === 'administrator' ? ownerName : branch);
-    if (!window.confirm(confirmation)) return;
-    setMessage('');
-    setError('');
-    setSaving(true);
-    try {
-      const result = await apiRequest(`/users/${selectedAssignment.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ unassignBranch: branch }),
-      });
-      setAdmins((current) => current.map((admin) => admin.id === result.user.id ? result.user : admin));
-      setMessage(t('Branch assignment removed.'));
-    } catch (requestError) {
-      setError(requestError.message || 'Unable to remove the branch assignment.');
-    } finally {
-      setSaving(false);
-    }
+    await confirmDialog({
+      title: t('Remove branch assignment?'),
+      message: confirmation,
+      confirmText: t('Remove assignment'),
+      pendingText: t('Removing assignment…'),
+      destructive: true,
+      errorMessage: t('Unable to remove the branch assignment.'),
+      onConfirm: async () => {
+        setMessage('');
+        setError('');
+        setSaving(true);
+        try {
+          const result = await apiRequest(`/users/${selectedAssignment.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ unassignBranch: branch }),
+          });
+          setAdmins((current) => current.map((admin) => admin.id === result.user.id ? result.user : admin));
+          setMessage(t('Branch assignment removed.'));
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   };
 
   const saveCoverage = async (event) => {
     event.preventDefault();
     setMessage('');
     setError('');
-    if (!branch || !coverageAreas.trim()) {
-      setError('Enter at least one city, province, or service-area name.');
-      return;
-    }
+    if (saving || !branch || !checkFields('savedCoverage')) return;
     setSaving(true);
     try {
       const currentCoverage = coverage.find((item) => item.name === branch);
@@ -134,13 +174,17 @@ const SuperAdminBranches = () => {
 
   const createBranch = async (event) => {
     event.preventDefault();
-    setMessage(''); setError(''); setSaving(true);
+    if (saving) return;
+    setMessage(''); setError('');
+    if (!checkFields('branchName', 'newCoverage')) return;
+    setSaving(true);
     try {
       const result = await apiRequest('/branches', { method: 'POST', body: JSON.stringify({ name: newBranchName, coverageAreas: newBranchCoverage }) });
       setCoverage((current) => [...current, result.branch].sort((a, b) => a.name.localeCompare(b.name)));
       setBranch(result.branch.name);
       setAdminDraft((current) => ({ ...current, branch: result.branch.name }));
       setNewBranchName(''); setNewBranchCoverage('');
+      resetFieldFeedback('branchName', 'newCoverage');
       setMessage(`${result.branch.name} ${t('was created with no inventory, orders, or administrator assigned.')}`);
     } catch (requestError) { setError(requestError.message || 'Unable to create branch.'); }
     finally { setSaving(false); }
@@ -148,12 +192,15 @@ const SuperAdminBranches = () => {
 
   const createAdministrator = async (event) => {
     event.preventDefault();
+    if (saving) return;
     setMessage(''); setError(''); setOneTimePassword(''); setCreatedLoginId('');
+    if (!checkFields('firstName', 'lastName', 'email')) return;
+    if (!branchNames.includes(adminDraft.branch)) { setError('Select branch'); return; }
     if (assignmentByBranch[adminDraft.branch]) { setError('This branch already has an active administrator.'); return; }
-    const emailError = await validateEmailForSubmission(adminDraft.email);
-    if (emailError) { setError(emailError); return; }
     setSaving(true);
     try {
+      const emailError = await validateEmailForSubmission(adminDraft.email);
+      if (emailError) { setError(emailError); return; }
       const result = await apiRequest('/users/staff', { method: 'POST', body: JSON.stringify({ ...adminDraft, role: 'admin' }) });
       setAdmins((current) => [...current, result.user]);
       setOneTimePassword(result.tempPassword || '');
@@ -161,6 +208,7 @@ const SuperAdminBranches = () => {
       if (result.deliveryWarning) setError(result.deliveryWarning);
       else setMessage(`${result.user.name || t('Administrator')} ${t('was assigned to')} ${adminDraft.branch}.`);
       setAdminDraft({ name_first: '', name_last: '', email: '', branch: '' });
+      resetFieldFeedback('firstName', 'lastName', 'email');
     } catch (requestError) { setError(requestError.message || 'Unable to create administrator.'); }
     finally { setSaving(false); }
   };
@@ -195,16 +243,22 @@ const SuperAdminBranches = () => {
     <div className="branch-summary"><div><strong>{branchNames.length}</strong><span>{t('Operating branches')}</span></div><div><strong>{Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>{t('Assigned admins')}</span></div><div><strong>{branchNames.length - Object.values(assignmentByBranch).filter(Boolean).length}</strong><span>{t('Need assignment')}</span></div></div>
     <section className="branch-workspace" aria-label={t('Create branch and administrator')}>
       <div className="branch-workspace-heading"><div><p>{t('Branch expansion')}</p><h2>{t('Add branch')}</h2><span>{t('New branches start with no stock, orders, technicians, or administrator.')}</span></div></div>
-      <form className="branch-assignment-form branch-create-form" onSubmit={createBranch}>
-        <label>{t('Branch name')}<input value={newBranchName} maxLength={80} required onChange={(event) => setNewBranchName(event.target.value)} /></label>
-        <label className="branch-coverage-field">{t('Service areas (comma-separated)')}<input maxLength={2000} value={newBranchCoverage} required onChange={(event) => setNewBranchCoverage(event.target.value)} placeholder={t('City or province names')} /></label>
+      <form className="branch-assignment-form branch-create-form" noValidate onSubmit={createBranch}>
+        <BranchTextField className="branch-text-field" label={t('Branch name')} value={newBranchName}
+          maxLength={LOCATION_MAX_LENGTH} required onChange={(event) => setNewBranchName(event.target.value)} {...fieldFeedback('branchName')} />
+        <BranchTextField className="branch-text-field branch-coverage-field" label={t('Service areas (comma-separated)')}
+          maxLength={COVERAGE_MAX_LENGTH} value={newBranchCoverage} required onChange={(event) => setNewBranchCoverage(event.target.value)}
+          placeholder={t('City or province names')} {...fieldFeedback('newCoverage')} />
         <button type="submit" disabled={saving || loading}>{t(saving ? 'Saving…' : 'Add branch')}</button>
       </form>
       <div className="branch-workspace-heading"><div><h2>{t('Create branch administrator')}</h2><span>{t('Only branches without an active administrator can be assigned.')}</span></div></div>
-      <form className="branch-assignment-form branch-admin-form" onSubmit={createAdministrator}>
-        <label>{t('First name')}<input value={adminDraft.name_first} maxLength={PERSON_NAME_MAX_LENGTH} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_first: event.target.value }))} /></label>
-        <label>{t('Last name')}<input value={adminDraft.name_last} maxLength={PERSON_NAME_MAX_LENGTH} required onChange={(event) => setAdminDraft((current) => ({ ...current, name_last: event.target.value }))} /></label>
-        <label>{t('Email')}<input maxLength={254} type="email" value={adminDraft.email} required onChange={(event) => setAdminDraft((current) => ({ ...current, email: event.target.value }))} /></label>
+      <form className="branch-assignment-form branch-admin-form" noValidate onSubmit={createAdministrator}>
+        <BranchTextField className="branch-text-field" label={t('First name')} value={adminDraft.name_first}
+          maxLength={PERSON_NAME_MAX_LENGTH} autoComplete="given-name" required onChange={(event) => setAdminDraft((current) => ({ ...current, name_first: event.target.value }))} {...fieldFeedback('firstName')} />
+        <BranchTextField className="branch-text-field" label={t('Last name')} value={adminDraft.name_last}
+          maxLength={PERSON_NAME_MAX_LENGTH} autoComplete="family-name" required onChange={(event) => setAdminDraft((current) => ({ ...current, name_last: event.target.value }))} {...fieldFeedback('lastName')} />
+        <BranchTextField className="branch-text-field branch-admin-email" label={t('Email')} maxLength={254} type="email" value={adminDraft.email}
+          autoComplete="email" required onChange={(event) => setAdminDraft((current) => ({ ...current, email: event.target.value }))} {...fieldFeedback('email')} />
         <label>{t('Eligible branch')}<SearchableSelect value={adminDraft.branch} required onChange={(event) => setAdminDraft((current) => ({ ...current, branch: event.target.value }))}><option value="">{t('Select branch')}</option>{branchNames.filter((name) => !assignmentByBranch[name]).map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
         <button type="submit" disabled={saving || loading || !adminDraft.branch}>{t(saving ? 'Creating…' : 'Create administrator')}</button>
       </form>
@@ -221,7 +275,11 @@ const SuperAdminBranches = () => {
           : <button type="submit" disabled={saving || loading || !adminId}>{t(saving ? 'Saving…' : 'Save assignment')}</button>}
       </form>
       <form className="branch-assignment-form" onSubmit={saveCoverage}>
-        <label className="branch-coverage-field">{t('Service coverage (comma-separated)')}<input maxLength={2000} value={coverageAreas} onChange={(event) => setCoverageAreas(event.target.value)} placeholder={t('e.g. Bulacan, Plaridel, Malolos')} /><small className="branch-coverage-help">{t('Customer addresses are matched only against these configured areas. Unmatched addresses cannot be checked out.')}</small></label>
+        <BranchTextField className="branch-text-field branch-coverage-field" label={t('Service coverage (comma-separated)')}
+          maxLength={COVERAGE_MAX_LENGTH} value={coverageAreas} onChange={(event) => setCoverageAreas(event.target.value)}
+          placeholder={t('e.g. Bulacan, Plaridel, Malolos')}
+          help={t('Customer addresses are matched only against these configured areas. Unmatched addresses cannot be checked out.')}
+          {...fieldFeedback('savedCoverage')} />
         <button type="submit" disabled={saving || loading}>{t(saving ? 'Saving…' : 'Save coverage')}</button>
       </form>
       {message ? <p className="branch-success" role="status">{message}</p> : null}{error ? <p className="branch-error" role="alert">{t(error)}</p> : null}

@@ -7,9 +7,9 @@ import { BQ_COLORS } from "./BoutiqueTheme";
  * Unified layout for Login and Registration.
  * Handles the 50/50 flex split and mobile vertical stacking.
  */
-export default function BoutiqueAuthLayout({ children }) {
+export default function BoutiqueAuthLayout({ children, className = "" }) {
   return (
-    <BoutiqueBox className="bq-auth-layout" width="100%" height="100vh">
+    <BoutiqueBox className={`bq-auth-layout ${className}`.trim()} width="100%" height="100vh">
       <BoutiqueBox
         className="bq-auth-flex"
         direction="row"

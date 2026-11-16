@@ -1,6 +1,6 @@
-import { ArrowLeft, Info, Key } from "@phosphor-icons/react";
+import { ArrowLeft, Info, Key, LockKey } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import BoutiqueAuthHeader from "../common/boutique/BoutiqueAuthHeader";
 import BoutiqueAuthLayout from "../common/boutique/BoutiqueAuthLayout";
@@ -8,10 +8,29 @@ import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
 import BoutiqueText from "../common/boutique/BoutiqueText";
 import BoutiqueInput from "../common/boutique/BoutiqueInput";
-import { BQ_COLORS, BQ_SHADOWS } from "../common/boutique/BoutiqueTheme";
+import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import LoginForm from "./LoginForm";
 import { getRoleHomePath } from "../../domain/webRoleHome";
 import { translateText } from "../../utils/customerI18n";
+import "./Login.css";
+
+const LOCKOUT_STORAGE_KEY = "aeropulse:web-login-lockouts";
+const normalizeIdentifier = (identifier) => identifier.trim().toLowerCase();
+
+function readLockouts() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(LOCKOUT_STORAGE_KEY));
+    return Array.isArray(stored)
+      ? stored.filter((entry) => typeof entry?.identifier === "string" && Number.isFinite(entry.until) && entry.until > Date.now())
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatCountdown(seconds) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 const getCustomerLoginDestination = (location) => {
   const from = location.state?.from;
@@ -39,12 +58,32 @@ function Login() {
   const [challengeToken, setChallengeToken] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
+  const [lockouts, setLockouts] = useState(readLockouts);
+  const [now, setNow] = useState(Date.now);
+  const [resendAt, setResendAt] = useState(0);
+  const identifier = normalizeIdentifier(user.identifier);
+  const lockout = lockouts.find((entry) => entry.until > now && (!identifier || entry.identifier === identifier));
+  const lockoutSeconds = lockout ? Math.ceil((lockout.until - now) / 1000) : 0;
+  const resendSeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const countdownActive = lockoutSeconds > 0 || resendSeconds > 0;
+
+  useEffect(() => {
+    if (!countdownActive) return undefined;
+    const updateClock = () => setNow(Date.now());
+    const timer = window.setInterval(updateClock, 1000);
+    window.addEventListener("focus", updateClock);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", updateClock);
+    };
+  }, [countdownActive]);
 
   useEffect(() => {
     setAuthMessage("");
   }, [location.search]);
 
   const handleIdentifierChange = (identifier) => {
+    setNow(Date.now());
     setUser((prev) => ({ ...prev, identifier }));
     if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: "" }));
   };
@@ -54,7 +93,38 @@ function Login() {
     if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
   };
 
+  const resetChallenge = () => {
+    setChallengeToken("");
+    setVerificationCode("");
+    setMaskedEmail("");
+    setResendAt(0);
+    setAuthMessage("");
+    setErrors({});
+  };
+
+  const handleAccountLockout = (error) => {
+    const seconds = error.data?.retryAfterSeconds;
+    if (error.status !== 429 || error.data?.code !== "LOGIN_LOCKED" || !Number.isFinite(seconds) || seconds <= 0) return false;
+    const currentTime = Date.now();
+    const next = [
+      { identifier, until: currentTime + seconds * 1000 },
+      ...lockouts.filter((entry) => entry.identifier !== identifier && entry.until > currentTime),
+    ];
+    setLockouts(next);
+    setNow(currentTime);
+    try { sessionStorage.setItem(LOCKOUT_STORAGE_KEY, JSON.stringify(next)); } catch { /* In-memory lockout still applies. */ }
+    resetChallenge();
+    setUser((previous) => ({ ...previous, password: "" }));
+    return true;
+  };
+
+  const applyResendDeadline = (result) => {
+    setNow(Date.now());
+    setResendAt(Date.parse(result?.resendAvailableAt) || 0);
+  };
+
   const authenticateUser = async () => {
+    if (loading || lockoutSeconds || (challengeToken && verificationCode.length !== 6)) return;
     setErrors({});
     if (!user.identifier || !user.password) {
       alert(t("Please fill in all fields."));
@@ -70,11 +140,9 @@ function Login() {
         setChallengeToken(loggedInUser.challengeToken);
         setVerificationCode("");
         setMaskedEmail(loggedInUser.maskedEmail || "your account email");
-        setErrors({});
-        setLoading(false);
+        applyResendDeadline(loggedInUser);
         return;
       }
-      setLoading(false);
       navigate(
         loggedInUser?.role === "customer"
           ? getCustomerLoginDestination(location)
@@ -82,44 +150,64 @@ function Login() {
         { replace: true },
       );
     } catch (err) {
-      setErrors(challengeToken
-        ? { verificationCode: err.message }
-        : { password: err.message });
+      if (!handleAccountLockout(err)) {
+        setErrors(challengeToken
+          ? { verificationCode: err.message }
+          : { password: err.message });
+      }
+    } finally {
       setLoading(false);
     }
   };
 
   const resendCode = async () => {
+    if (loading || lockoutSeconds || resendSeconds) return;
     setLoading(true);
     setErrors({});
+    setAuthMessage("");
     try {
       const result = await resendLoginEmail(challengeToken);
       if (result?.challengeToken) setChallengeToken(result.challengeToken);
+      applyResendDeadline(result);
       setAuthMessage(result?.message || "A new sign-in code was sent.");
     } catch (error) {
-      setErrors({ verificationCode: error.message || "Unable to resend the sign-in code." });
+      if (!handleAccountLockout(error)) {
+        const retryAfter = error.data?.retryAfterSeconds;
+        if (error.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+          const currentTime = Date.now();
+          setNow(currentTime);
+          setResendAt(currentTime + retryAfter * 1000);
+        } else {
+          setErrors({ verificationCode: error.message || "Unable to resend the sign-in code." });
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <BoutiqueAuthLayout>
-      {/* Floating Back Button */}
-      <button
-        className="bq-login-back-btn"
-        onClick={() => navigate("/home")}
-        title={t("Back to Home")}
-      >
-        <ArrowLeft size={20} weight="bold" />
-      </button>
+    <BoutiqueAuthLayout className="bq-auth-layout--sign-in">
+      <Link className="bq-login-back-link" to="/home">
+        <ArrowLeft size={16} weight="bold" aria-hidden="true" />
+        {t("Back to Home")}
+      </Link>
 
       <BoutiqueAuthHeader
         title={t("Sign in")}
         subtitle={t("Sign in to your Cold Air account")}
       />
 
-      <BoutiqueStack gap={24} className="bq-login-form-inner">
+      <BoutiqueStack gap={16} className="bq-login-form-inner">
+        {lockoutSeconds > 0 && (
+          <div className="bq-login-lockout">
+            <LockKey size={20} weight="duotone" aria-hidden="true" />
+            <div>
+              <p role="status">{t("Sign-in temporarily locked")}</p>
+              <p>{t("Try again in")} <strong role="timer">{formatCountdown(lockoutSeconds)}</strong></p>
+            </div>
+          </div>
+        )}
         {authMessage && (
           <BoutiqueBox
             padding="16px 20px"
@@ -145,6 +233,7 @@ function Login() {
           onPasswordChange={handlePasswordChange}
           onSubmit={authenticateUser}
           loading={loading}
+          isLocked={lockoutSeconds > 0}
         /> : (
           <form className="bq-login-step" onSubmit={(event) => { event.preventDefault(); authenticateUser(); }}>
             <BoutiqueText size="14px" color={BQ_COLORS.inkMuted}>
@@ -157,6 +246,7 @@ function Login() {
               maxLength="6"
               placeholder="000000"
               value={verificationCode}
+              disabled={loading}
               onChange={(event) => {
                 setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6));
                 setErrors({});
@@ -169,11 +259,14 @@ function Login() {
               {t(loading ? "Verifying..." : "Verify and Sign In")}
             </button>
             <div className="bq-auth-secondary-actions">
-              <button type="button" className="bq-auth-action bq-auth-action--outline" onClick={resendCode} disabled={loading}>{t("Resend code")}</button>
+              <button type="button" className="bq-auth-action bq-auth-action--outline" onClick={resendCode} disabled={loading || resendSeconds > 0}>
+                {t("Resend code")}{resendSeconds > 0 && <> <span role="timer">{formatCountdown(resendSeconds)}</span></>}
+              </button>
               <button
                 type="button"
                 className="bq-auth-action bq-auth-action--ghost"
-                onClick={() => { setChallengeToken(""); setVerificationCode(""); setMaskedEmail(""); setErrors({}); }}
+                disabled={loading}
+                onClick={resetChallenge}
               >
                 {t("Use a different account")}
               </button>
@@ -181,73 +274,16 @@ function Login() {
           </form>
         )}
 
-        <BoutiqueBox align="center" margin="8px 0 0">
+        <BoutiqueBox align="center" className="bq-login-signup">
           <BoutiqueText color={BQ_COLORS.inkMuted} weight={500}>
             {t("New to AeroPulse?")}{" "}
-            <button
-              className="bq-signup-link"
-              onClick={() => navigate("/register")}
-            >
+            <Link className="bq-signup-link" to="/register">
               {t("Create Account")}
-            </button>
+            </Link>
           </BoutiqueText>
         </BoutiqueBox>
       </BoutiqueStack>
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .bq-login-back-btn {
-          position: absolute; top: 40px; left: 40px;
-          background: white; border: none;
-          width: 48px; height: 48px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; transition: all 0.3s ease;
-          color: ${BQ_COLORS.ink}; box-shadow: ${BQ_SHADOWS.soft};
-          z-index: 100;
-        }
-        .bq-login-back-btn:hover { transform: translateX(-4px); box-shadow: ${BQ_SHADOWS.float}; }
-
-        .bq-signup-link { background: none; border: none; color: ${BQ_COLORS.brand}; font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0 4px; font-size: 15px; }
-
-        .bq-login-step { display: flex; flex-direction: column; gap: 24px; width: 100%; }
-        .bq-login-password-field { display: flex; flex-direction: column; gap: 4px; }
-        .bq-login-forgot {
-          align-self: flex-end; display: inline-flex; align-items: center;
-          min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 600;
-          color: ${BQ_COLORS.accent}; text-decoration: underline;
-        }
-        .bq-login-form-inner .bq-login-btn--primary {
-          width: 100%; padding: 18px; border-radius: 999px; border: none;
-          font-family: inherit; font-weight: 700; font-size: var(--app-type-body); cursor: pointer;
-          display: flex; align-items: center; justify-content: center; gap: 10px;
-          background: ${BQ_COLORS.brand}; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .bq-login-form-inner .bq-login-btn--primary:hover:not(:disabled) { background: ${BQ_COLORS.brandHover}; }
-        .bq-login-form-inner .bq-login-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .bq-auth-secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .bq-auth-action {
-          min-height: 48px; padding: 12px 18px; border-radius: 999px;
-          font-family: inherit; font-size: 14px; font-weight: 800;
-          cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
-        }
-        .bq-auth-action--outline { border: 1.5px solid ${BQ_COLORS.ink}; background: ${BQ_COLORS.surface}; color: ${BQ_COLORS.ink}; }
-        .bq-auth-action--outline:hover:not(:disabled) { transform: translateY(-1px); background: ${BQ_COLORS.bgAlt}; box-shadow: ${BQ_SHADOWS.soft}; }
-        .bq-auth-action--ghost { border: 1.5px solid ${BQ_COLORS.border}; background: ${BQ_COLORS.bgAlt}; color: ${BQ_COLORS.inkMuted}; }
-        .bq-auth-action--ghost:hover:not(:disabled) { transform: translateY(-1px); border-color: #d4d4d8; color: ${BQ_COLORS.ink}; }
-        .bq-auth-action:focus-visible { outline: 3px solid rgba(37, 99, 235, .22); outline-offset: 2px; }
-        .bq-auth-action:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-        @media (max-width: 1024px) {
-          .bq-login-back-btn { top: 20px; left: 20px; width: 40px; height: 40px; }
-        }
-        @media (max-width: 520px) {
-          .bq-auth-secondary-actions { grid-template-columns: 1fr; gap: 8px; }
-        }
-      `,
-        }}
-      />
     </BoutiqueAuthLayout>
   );
 }

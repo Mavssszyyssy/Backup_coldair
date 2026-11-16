@@ -3,6 +3,7 @@ import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { useUser } from '../../../context/UserContext';
 import AccountSecurityManagement from '../../security/AccountSecurityManagement';
 import { validateEmailForSubmission } from '../../../domain/emailPolicy';
+import { validateFullName } from '../../../domain/personNameValidation';
 import { sanitizeLocalPhMobileInput, validateLocalPhMobile } from '../../../utils/phMobileValidation';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
 import { translateText } from '../../../utils/customerI18n';
@@ -26,13 +27,19 @@ const SuperAdminProfile = () => {
   const saveProfile = async (event) => {
     event.preventDefault(); setError(''); setProfileNotice('');
     if (savingProfile) return;
+    const nameError = profile.name === name ? '' : validateFullName(profile.name);
+    if (nameError) { setError(nameError); return; }
     const phoneError = validateLocalPhMobile(profile.phone);
     if (phoneError) { setError(phoneError); return; }
     setSavingProfile(true);
     try {
       const emailError = await validateEmailForSubmission(profile.email);
       if (emailError) { setError(emailError); return; }
-      await updateProfile({ ...profile, email: String(profile.email || '').trim().toLowerCase() });
+      await updateProfile({
+        ...(profile.name === name ? {} : { name: profile.name }),
+        phone: profile.phone,
+        email: profile.email.trim().toLowerCase(),
+      });
       setProfileNotice('Saved Changes');
     } catch (requestError) {
       setError(requestError.message || 'Unable to update profile.');

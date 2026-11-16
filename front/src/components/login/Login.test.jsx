@@ -1,8 +1,8 @@
 import { Eye, EyeSlash } from "@phosphor-icons/react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import Login from "./Login";
 
 const login = vi.fn();
@@ -15,6 +15,7 @@ vi.mock("../../context/UserContext", () => ({
 }));
 
 beforeEach(() => {
+  sessionStorage.clear();
   currentLanguage = "English";
   login.mockReset();
   verifyLoginEmail.mockReset();
@@ -25,6 +26,8 @@ beforeEach(() => {
     maskedEmail: "m***@example.com",
   });
 });
+
+afterEach(() => vi.useRealTimers());
 
 it("provides one password visibility control and preserves the input value when toggled", () => {
   render(<MemoryRouter><Login /></MemoryRouter>);
@@ -54,7 +57,7 @@ it("places the keyboard-accessible reset link below the password and removes the
       </Routes>
     </MemoryRouter>
   );
-  expect(screen.getByLabelText("Sign-in alias")).toHaveAttribute("autocomplete", "username");
+  expect(screen.getByLabelText("Sign-in alias or email")).toHaveAttribute("autocomplete", "username");
   expect(screen.queryByText("Boutique Security")).not.toBeInTheDocument();
 
   const reset = screen.getByRole("link", { name: "Reset password" });
@@ -74,7 +77,7 @@ it("places the keyboard-accessible reset link below the password and removes the
 it("localizes the updated login text in Filipino", () => {
   currentLanguage = "Filipino";
   render(<MemoryRouter><Login /></MemoryRouter>);
-  expect(screen.getByLabelText("Alias sa pag-sign in")).toBeInTheDocument();
+  expect(screen.getByLabelText("Alias o email sa pag-sign in")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "I-reset ang password" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Mag-sign in" })).toBeEnabled();
 });
@@ -82,7 +85,7 @@ it("localizes the updated login text in Filipino", () => {
 it("keeps polished secondary actions when the login form switches to email verification", async () => {
   render(<MemoryRouter><Login /></MemoryRouter>);
 
-  fireEvent.change(screen.getByLabelText("Sign-in alias"), { target: { value: "admin.cavite" } });
+  fireEvent.change(screen.getByLabelText("Sign-in alias or email"), { target: { value: "admin.cavite" } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "StrongPass1." } });
   fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
@@ -95,10 +98,64 @@ it("keeps polished secondary actions when the login form switches to email verif
 it("keeps the sign-in form usable after rejected credentials", async () => {
   login.mockRejectedValueOnce(new Error("Invalid credentials"));
   render(<MemoryRouter><Login /></MemoryRouter>);
-  fireEvent.change(screen.getByLabelText("Sign-in alias"), { target: { value: "wrong.role" } });
+  fireEvent.change(screen.getByLabelText("Sign-in alias or email"), { target: { value: "wrong.role" } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "WrongPassword1!" } });
   fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
   expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
-  expect(screen.getByLabelText("Sign-in alias")).toBeEnabled();
+  expect(screen.getByLabelText("Sign-in alias or email")).toBeEnabled();
+});
+
+it("shows the lockout immediately, restores its countdown on reload, and enables sign-in when it ends", async () => {
+  vi.useFakeTimers();
+  login.mockRejectedValueOnce(Object.assign(new Error("Too many failed attempts. Try again later."), {
+    status: 429,
+    data: { code: "LOGIN_LOCKED", retryAfterSeconds: 60 },
+  }));
+  const page = render(<MemoryRouter><Login /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText("Sign-in alias or email"), { target: { value: "name@example.com" } });
+  fireEvent.change(screen.getByLabelText("Password"), { target: { value: "WrongPassword1!" } });
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Sign in" })); });
+
+  expect(screen.getByRole("timer")).toHaveTextContent("1:00");
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Show password" })).toBeDisabled();
+  expect(screen.getByLabelText("Password")).toHaveValue("");
+  expect(screen.getByRole("link", { name: "Reset password" })).toBeVisible();
+  fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).form);
+  expect(login).toHaveBeenCalledTimes(1);
+
+  page.unmount();
+  act(() => { vi.advanceTimersByTime(1000); });
+  render(<MemoryRouter><Login /></MemoryRouter>);
+  expect(screen.getByRole("timer")).toHaveTextContent("0:59");
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+
+  const identifier = screen.getByLabelText("Sign-in alias or email");
+  fireEvent.change(identifier, { target: { value: "different.user" } });
+  expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  fireEvent.change(identifier, { target: { value: "NAME@example.com" } });
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+  act(() => { vi.advanceTimersByTime(59_000); });
+  expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+});
+
+it("displays the verification resend countdown without requiring a failed resend", async () => {
+  vi.useFakeTimers();
+  login.mockResolvedValueOnce({
+    requiresEmailVerification: true,
+    challengeToken: "challenge-2",
+    resendAvailableAt: new Date(Date.now() + 3000).toISOString(),
+  });
+  render(<MemoryRouter><Login /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText("Sign-in alias or email"), { target: { value: "admin.cavite" } });
+  fireEvent.change(screen.getByLabelText("Password"), { target: { value: "StrongPass1." } });
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Sign in" })); });
+  expect(screen.getByRole("button", { name: /Resend code/ })).toBeDisabled();
+  expect(screen.getByRole("timer")).toHaveTextContent("0:03");
+  expect(resendLoginEmail).not.toHaveBeenCalled();
+  act(() => { vi.advanceTimersByTime(3000); });
+  expect(screen.getByRole("button", { name: "Resend code" })).toBeEnabled();
 });

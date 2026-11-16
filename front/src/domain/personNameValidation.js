@@ -1,4 +1,5 @@
 export const PERSON_NAME_MAX_LENGTH = 20;
+export const FULL_NAME_MAX_LENGTH = PERSON_NAME_MAX_LENGTH * 2 + 1;
 
 export const validatePersonName = (value, label = "Name") => {
   const text = String(value || "").trim().replace(/\s+/g, " ");
@@ -12,4 +13,9 @@ export const validatePersonName = (value, label = "Name") => {
     (index >= 3 && word === words[index - 2] && words[index - 1] === words[index - 3])
   ))) return `${label} contains repeated words`;
   return "";
+};
+
+export const validateFullName = (value) => {
+  const [first, ...last] = String(value || "").trim().split(/\s+/u);
+  return validatePersonName(first, "First name") || validatePersonName(last.join(" "), "Last name");
 };

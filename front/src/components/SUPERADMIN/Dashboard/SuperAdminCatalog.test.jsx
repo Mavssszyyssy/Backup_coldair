@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { apiRequest } from '../../../config/api';
+import GlobalDialog from '../../common/GlobalDialog';
 import SuperAdminCatalog from './SuperAdminCatalog';
 
 const { language } = vi.hoisted(() => ({ language: { value: 'English' } }));
@@ -17,10 +18,13 @@ test('archive control confirms, hides active item, and restore returns it', asyn
     if (path === '/products/product-1/restore') { archived = false; return { archived: false }; }
     throw new Error(`Unexpected request: ${path}`);
   });
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
-  render(<SuperAdminCatalog onCreated={vi.fn()} />);
+  render(<><SuperAdminCatalog onCreated={vi.fn()} /><GlobalDialog /></>);
   expect(await screen.findByText('AC-1 · Active · 3 units retained')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  const dialog = screen.getByRole('alertdialog', { name: 'Archive product?' });
+  expect(dialog).toHaveTextContent('Window AC will be hidden');
+  expect(apiRequest).not.toHaveBeenCalledWith('/products/product-1/archive', expect.anything());
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Archive' }));
   await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/products/product-1/archive', { method: 'PATCH' }));
   fireEvent.click(screen.getByRole('button', { name: 'Archived Products' }));
   expect(await screen.findByText('AC-1 · Archived · 3 units retained')).toBeInTheDocument();
