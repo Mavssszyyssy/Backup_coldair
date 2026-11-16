@@ -42,10 +42,14 @@ const SuperAdminInventory = () => {
   const load = useCallback(async ({ fresh = false } = {}) => {
     setLoading(true);
     setError('');
-    try {
-      const result = await apiRequest('/products', { fresh });
+    const showProducts = (result) => {
       setProducts(result.products || []);
+      setLoading(false);
+    };
+    try {
+      showProducts(await apiRequest('/products', { fresh, onCached: showProducts }));
     } catch (requestError) {
+      if ([401, 403].includes(requestError.status)) setProducts([]);
       setError(requestError.message || 'Unable to load inventory.');
     } finally {
       setLoading(false);

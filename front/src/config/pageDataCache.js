@@ -19,6 +19,7 @@ export function readCacheTtl(path, { token, display, headers, signal }) {
   if (publicReference.test(route)) return REFERENCE_TTL;
   if (!token || liveOnly.test(route)) return 0;
   if (reference.test(route)) return REFERENCE_TTL;
+  if (route === "/users/addresses" && display) return PAGE_TTL;
   if (route === "/users/addresses" || operational.test(route)) return SHORT_TTL;
   return pageData.test(route) ? PAGE_TTL : 0;
 }

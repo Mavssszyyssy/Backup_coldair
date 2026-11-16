@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { apiRequest } from "./api";
+import { loadPageRequests } from "./loadPageRequests";
 
 const auth = vi.hoisted(() => ({ token: null, branch: "" }));
 vi.mock("../utils/authSession", () => ({
@@ -66,11 +67,54 @@ test("revisits can render a recent dashboard snapshot while a network refresh is
   await apiRequest(path);
   now.mockReturnValue(80_000);
   const onCached = vi.fn();
+  const connectionUpdate = vi.fn();
+  window.addEventListener("aeropulse:connection", connectionUpdate, { once: true });
   const revalidate = apiRequest(path, { onCached });
   expect(onCached).toHaveBeenCalledWith({ count: 1 }, 50_000);
   expect(fetchMock).toHaveBeenCalledTimes(2);
   finish(reply({ count: 2 }));
   expect(await revalidate).toEqual({ count: 2 });
+  window.removeEventListener("aeropulse:connection", connectionUpdate);
+  expect(connectionUpdate).not.toHaveBeenCalled();
+});
+
+test("a page with several lists can render a matching snapshot before its slowest read finishes", async () => {
+  auth.token = "dispatch-session";
+  const now = vi.spyOn(Date, "now").mockReturnValue(50_000);
+  const fetchMock = vi.fn((url) => Promise.resolve(reply({ url })));
+  vi.stubGlobal("fetch", fetchMock);
+  const orders = "/orders";
+  const tasks = "/tasks?limit=75";
+  await apiRequest(orders);
+  const snapshot = vi.fn();
+  await loadPageRequests([orders, tasks], { onCached: snapshot });
+  expect(snapshot).not.toHaveBeenCalled();
+
+  now.mockReturnValue(63_000);
+  let finish;
+  fetchMock.mockImplementationOnce(() => Promise.resolve(reply({ orders: ["new"] })))
+    .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const refresh = loadPageRequests([orders, tasks], { onCached: snapshot });
+  expect(snapshot).toHaveBeenCalledWith([
+    { url: expect.stringContaining(orders) },
+    { url: expect.stringContaining(tasks) },
+  ], 50_000);
+  finish(reply({ tasks: ["new"] }));
+  expect(await refresh).toEqual([{ orders: ["new"] }, { tasks: ["new"] }]);
+});
+
+test("shop display addresses are reusable without sharing data with checkout validation", async () => {
+  auth.token = "shop-session";
+  const now = vi.spyOn(Date, "now").mockReturnValue(50_000);
+  const fetchMock = vi.fn().mockResolvedValueOnce(reply({ addresses: ["original"] }))
+    .mockResolvedValue(reply({ addresses: ["current"] }));
+  vi.stubGlobal("fetch", fetchMock);
+  const path = "/users/addresses";
+  await apiRequest(path, { display: true });
+  now.mockReturnValue(70_000);
+  expect(await apiRequest(path, { display: true })).toEqual({ addresses: ["original"] });
+  expect(await apiRequest(path, { fresh: true })).toEqual({ addresses: ["current"] });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
 test("a manual refresh replaces older reads, and late results cannot refill the cache", async () => {

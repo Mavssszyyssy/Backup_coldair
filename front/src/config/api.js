@@ -290,7 +290,7 @@ const apiRequest = (path, { fresh = false, display = false, onCached, ...options
   }
 
   const generation = generations[group];
-  const request = performApiRequest(path, options);
+  const request = performApiRequest(path, cached ? { ...options, silentConnection: true } : options);
   const entry = { promise: request, group };
   inFlightReadRequests.set(requestKey, entry);
   const finish = () => {

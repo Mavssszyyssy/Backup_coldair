@@ -26,6 +26,33 @@
 .alert-archive-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; }
 .alert-archive-confirm p { flex-basis: 100%; margin: 0; }
 .alert-archive-pages { justify-content: space-between; border-top: 1px solid var(--bq-color-border); border-bottom: 0; }
+.alert-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.alert-item-selection {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+:is(.alert-select-all, .alert-item-selection) input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--bq-color-accent);
+}
+.staff-alert-panel .has-alert-selection > .alert-item-selection { position: absolute; top: 0; inset-inline-start: 0; }
+.staff-alert-panel :is(.admin-notifications-row, .super-notifications-row).has-alert-selection > button:first-child { padding-inline-start: 44px; overflow-wrap: anywhere; }
+.alert-card-identity { display: flex; gap: 8px; align-items: center; }
+.alert-card-identity > div { min-width: 0; }
+.alert-workspace .alert-archive-controls { margin-bottom: 12px; padding-inline: 0; }
 .staff-alert-feedback { margin: 10px 14px; color: var(--bq-color-ink); font-size: 13px; }
 .staff-alert-panel.admin-notifications-panel,
 .staff-alert-panel.super-notifications-panel { max-height: min(75vh, 36rem); overflow-y: auto; }

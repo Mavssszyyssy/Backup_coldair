@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
 import VisitFollowUpPanel from '../Common/VisitFollowUpPanel';
 import { apiRequest } from '../../../config/api';
+import { loadPageRequests } from '../../../config/loadPageRequests';
 import { confirmDialog } from '../../../utils/dialog';
 import { formatBusinessDateKey, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
@@ -210,32 +211,51 @@ const AdminOrders = ({ embedded = false }) => {
   const [dateFilter, setDateFilter] = useState('all');
   const [orderPage, setOrderPage] = useState(1);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
-  const orderLoadInFlightRef = useRef(false);
+  const orderLoadInFlightRef = useRef(null);
   const skipNextFilterPageResetRef = useRef(false);
 
   const loadOrders = useCallback(async (options = {}) => {
     const { background = false, fresh = false } = options;
-    if (orderLoadInFlightRef.current) return;
-    orderLoadInFlightRef.current = true;
+    if (orderLoadInFlightRef.current && !fresh) return;
+    const request = {};
+    orderLoadInFlightRef.current = request;
+    const isCurrent = () => orderLoadInFlightRef.current === request;
     setError('');
-    setLoading(true);
-    try {
-      const [ordersResponse, tasksResponse] = await Promise.all([
-        apiRequest('/orders', { silentConnection: background, fresh }),
-        apiRequest('/tasks?limit=75', { silentConnection: background, fresh }).catch(() => ({ tasks: [] })),
-      ]);
-      const response = ordersResponse;
-      setOrders(response.orders || []);
+    if (!background) setLoading(true);
+    let shownOrders;
+    let shownTasks;
+    const showOrders = ([ordersResponse, tasksResponse], loadedAt = Date.now()) => {
+      if (!isCurrent() || (shownOrders === ordersResponse && shownTasks === tasksResponse)) return;
+      shownOrders = ordersResponse;
+      shownTasks = tasksResponse;
+      setOrders(ordersResponse.orders || []);
       setTasks(tasksResponse.tasks || []);
-      setLastSyncedAt(new Date());
+      setLastSyncedAt(new Date(loadedAt));
+      setLoading(false);
+    };
+    try {
+      showOrders(await loadPageRequests(['/orders', '/tasks?limit=75'], {
+        fresh,
+        silentConnection: background,
+        onCached: showOrders,
+        fallbacks: { '/tasks?limit=75': { tasks: [] } },
+      }));
+      if (!isCurrent()) return;
       apiRequest('/users?role=technician', { silentConnection: true, fresh })
         .then((usersResponse) => setTechnicians(usersResponse.users || []))
         .catch(() => setTechnicians([]));
     } catch (e) {
+      if (!isCurrent()) return;
+      if ([401, 403].includes(e.status)) {
+        setOrders([]);
+        setTasks([]);
+      }
       setError(e.message || 'Failed to load orders.');
     } finally {
-      setLoading(false);
-      orderLoadInFlightRef.current = false;
+      if (isCurrent()) {
+        setLoading(false);
+        orderLoadInFlightRef.current = null;
+      }
     }
   }, []);
 
@@ -263,6 +283,7 @@ const AdminOrders = ({ embedded = false }) => {
     window.addEventListener('focus', refreshWhenVisible);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
+      orderLoadInFlightRef.current = null;
       window.clearInterval(refreshId);
       window.removeEventListener('focus', refreshWhenVisible);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
@@ -450,7 +471,7 @@ const AdminOrders = ({ embedded = false }) => {
         action: 'change_order_status',
         details: `Order ${order.orderCode || order.id}: ${order.workflowStatus} -> ${config.action}`,
       });
-      await loadOrders();
+      await loadOrders({ fresh: true });
     } catch (e) {
       alert(t(e.message || 'Unable to process order.'));
     } finally {
@@ -466,7 +487,7 @@ const AdminOrders = ({ embedded = false }) => {
       await apiRequest(`/orders/${order.id}/paymongo/verify`, {
         method: 'POST',
       });
-      await loadOrders();
+      await loadOrders({ fresh: true });
     } catch (e) {
       alert(e.message || 'Unable to verify PayMongo payment.');
     } finally {
@@ -512,7 +533,7 @@ const AdminOrders = ({ embedded = false }) => {
         }),
       });
       alert(result.message || 'Recovery action completed.');
-      await loadOrders();
+      await loadOrders({ fresh: true });
     } catch (e) {
       alert(e.message || 'Unable to run order recovery.');
     } finally {
@@ -552,7 +573,7 @@ const AdminOrders = ({ embedded = false }) => {
         action: 'refund_review',
         details: `Order ${order.orderCode || order.id}: ${label}`,
       });
-      await loadOrders();
+      await loadOrders({ fresh: true });
     } catch (e) {
       alert(e.message || 'Unable to update refund review.');
     } finally {
@@ -926,7 +947,7 @@ const AdminOrders = ({ embedded = false }) => {
                     ) : null}
                   </div>
                 ) : null}
-                <VisitFollowUpPanel task={linkedTask ? { ...detailedTask, ...linkedTask } : detailedTask} onUpdated={() => { setTaskDetailsById({}); return loadOrders(); }} />
+                <VisitFollowUpPanel task={linkedTask ? { ...detailedTask, ...linkedTask } : detailedTask} onUpdated={() => { setTaskDetailsById({}); return loadOrders({ fresh: true }); }} />
                 {needsTaskActivation ? (
                   <p className="admin-order-recovery-note" role="alert">
                     {t('The order is dispatched, but its technician work order is not active. Use Activate Work Order below to synchronize it before field work.')}

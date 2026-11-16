@@ -149,6 +149,57 @@ describe("BoutiqueNotifications", () => {
     expect(screen.getByLabelText("Current page")).toHaveTextContent("/shop");
   });
 
+  it("archives two selected alerts in one request and leaves the third in Current", async () => {
+    const second = { ...alertItem, _id: "notice-2", title: "Unit scheduled" };
+    const third = { ...alertItem, _id: "notice-3", title: "Service reminder" };
+    let current = [alertItem, second, third];
+    let archived = [];
+    apiRequest.mockImplementation(async (path, options) => {
+      if (path.endsWith("/archive-selected")) {
+        const { ids } = JSON.parse(options.body);
+        archived = current.filter(({ _id }) => ids.includes(_id));
+        current = current.filter(({ _id }) => !ids.includes(_id));
+        return { modifiedCount: archived.length };
+      }
+      return { notifications: path.includes("view=archived") ? archived : current };
+    });
+    renderAlerts();
+    fireEvent.click(await screen.findByRole("button", { name: "Open alerts (3)" }));
+    const selectAll = screen.getByRole("checkbox", { name: "Select all shown" });
+    fireEvent.click(selectAll);
+    expect(selectAll).toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select alert: Service reminder" }));
+    expect(selectAll).toBePartiallyChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Archive selected (2)" }));
+    await screen.findByRole("button", { name: "Open alerts (1)" });
+    expect(apiRequest).toHaveBeenCalledWith("/notifications/me/archive-selected", {
+      method: "PATCH", silentConnection: true, body: JSON.stringify({ ids: ["notice-1", "notice-2"] }),
+    });
+    expect(apiRequest.mock.calls.filter(([path]) => path.endsWith("/archive-selected"))).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Unread alert: Service reminder" })).toBeVisible();
+    expect(screen.queryByRole("checkbox", { name: "Select alert: Order received" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Current page")).toHaveTextContent("/shop");
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    expect(await screen.findByRole("button", { name: "Archived alert: Unit scheduled" })).toBeVisible();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("keeps checked alerts selected for retry if the batch request fails", async () => {
+    apiRequest.mockImplementation(async (path) => {
+      if (path.endsWith("/archive-selected")) throw new Error("Offline");
+      return { notifications: [alertItem] };
+    });
+    renderAlerts("Filipino");
+    fireEvent.click(await screen.findByRole("button", { name: "Open alerts (1)" }));
+    const checkbox = screen.getByRole("checkbox", { name: "Piliin ang alerto: Order received" });
+    fireEvent.click(checkbox);
+    const archive = screen.getByRole("button", { name: "I-archive ang napili (1)" });
+    fireEvent.click(archive);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Hindi ma-archive ang mga napiling alerto.");
+    expect(checkbox).toBeChecked();
+    expect(archive).toBeEnabled();
+  });
+
   it.each([AdminNotificationsBell, SuperAdminNotificationsBell])("offers archive all in %p", async (Bell) => {
     let archived = false;
     apiRequest.mockImplementation(async (path) => {
@@ -161,5 +212,22 @@ describe("BoutiqueNotifications", () => {
     fireEvent.click(screen.getByRole("button", { name: "Archive all alerts", exact: true }));
     await screen.findByText("No alerts right now.");
     expect(apiRequest.mock.calls.filter(([path]) => path === "/notifications/me/archive-all")).toHaveLength(1);
+  });
+
+  it.each([AdminNotificationsBell, SuperAdminNotificationsBell])("archives a checked staff alert in %p", async (Bell) => {
+    let notifications = [alertItem, { ...alertItem, _id: "notice-2", title: "Other alert" }];
+    apiRequest.mockImplementation(async (path, options) => {
+      if (path.endsWith("/archive-selected")) {
+        const { ids } = JSON.parse(options.body);
+        notifications = notifications.filter(({ _id }) => !ids.includes(_id));
+      }
+      return { notifications };
+    });
+    render(<MemoryRouter><Bell /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "Open alerts" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select alert: Order received" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive selected (1)" }));
+    await waitFor(() => expect(screen.queryByText("Order received")).not.toBeInTheDocument());
+    expect(screen.getByRole("checkbox", { name: "Select alert: Other alert" })).not.toBeChecked();
   });
 });

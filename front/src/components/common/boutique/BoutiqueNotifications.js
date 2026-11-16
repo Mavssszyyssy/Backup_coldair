@@ -6,7 +6,8 @@ import BoutiqueDrawer from "./BoutiqueDrawer";
 import BoutiqueText from "./BoutiqueText";
 import { BQ_COLORS } from "./BoutiqueTheme";
 import { translateText } from "../../../utils/customerI18n";
-import { ArchiveAllAlerts, ArchivedAlertPages } from "../AlertArchiveControls";
+import useAlertSelection from "../../../hooks/useAlertSelection";
+import { AlertCheckbox, ArchiveAllAlerts, ArchivedAlertPages } from "../AlertArchiveControls";
 
 /**
  * BOUTIQUE NOTIFICATIONS
@@ -25,6 +26,7 @@ export default function BoutiqueNotifications({
   actionError,
   onMoveAlert,
   onArchiveAll,
+  onArchiveSelected,
   archivePage,
   hasMoreArchived,
   onArchivePageChange,
@@ -38,6 +40,8 @@ export default function BoutiqueNotifications({
   const MoveIcon = archived ? ArrowCounterClockwise : Archive;
   const hasNotifications = notifications.length > 0;
   const unreadCount = notifications.filter((n) => n.unread).length;
+  const canSelect = !archived && Boolean(onArchiveSelected);
+  const selection = useAlertSelection(canSelect ? notifications : [], `${isOpen}:${folder}`);
 
   return (
     <BoutiqueDrawer
@@ -62,7 +66,8 @@ export default function BoutiqueNotifications({
           </div>
         )}
 
-        {!archived && hasNotifications && onArchiveAll && <ArchiveAllAlerts t={t} disabled={pendingAction} onArchive={onArchiveAll} />}
+        {!archived && hasNotifications && onArchiveAll && <ArchiveAllAlerts t={t} disabled={pendingAction} onArchive={onArchiveAll}
+          selection={canSelect ? selection : undefined} onArchiveSelected={onArchiveSelected} />}
         {!archived && hasNotifications && (
           <BoutiqueBox
             direction="row"
@@ -143,7 +148,7 @@ export default function BoutiqueNotifications({
             </BoutiqueBox>
           )}
           {notifications.map((notif) => (
-            <div className={`bq-notif-entry ${notif.unread ? "unread" : ""}`} key={notif.id}>
+            <div className={`bq-notif-entry ${notif.unread ? "unread" : ""}${canSelect && notif.id ? " has-alert-selection" : ""}`} key={notif.id}>
               <button
                 type="button"
                 className="bq-notif-item"
@@ -169,6 +174,7 @@ export default function BoutiqueNotifications({
                   </BoutiqueText>
                 </BoutiqueBox>
               </button>
+              {canSelect && notif.id && <AlertCheckbox item={notif} selection={selection} disabled={pendingAction} t={t} />}
               <div className="bq-notif-meta">
                 <span className="bq-notif-time">{notif.time}</span>
                 {onMoveAlert && notif.id && (
@@ -238,6 +244,9 @@ export default function BoutiqueNotifications({
         }
         .bq-notif-item:hover, .bq-notif-move:hover { background: ${BQ_COLORS.bg}; }
         .bq-notif-content { min-width: 0; overflow-wrap: anywhere; }
+        .bq-notif-entry.has-alert-selection { position: relative; }
+        .bq-notif-entry.has-alert-selection > .alert-item-selection { position: absolute; top: 0; inset-inline-start: 0; }
+        .bq-notif-entry.has-alert-selection > .bq-notif-item { padding-inline-start: 44px; }
         .bq-notif-meta {
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px;
             padding: 0 var(--alert-gutter) 10px calc(var(--alert-gutter) + 20px);

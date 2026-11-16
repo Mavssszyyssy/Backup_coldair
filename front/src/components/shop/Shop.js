@@ -64,6 +64,7 @@ const Shop = () => {
   const purchaseInFlightRef = useRef(false);
   const catalogRequestRef = useRef(null);
   const catalogGenerationRef = useRef(0);
+  const accountId = user?.id || user?._id;
 
   useEffect(() => {
     if (!cartNotice) return undefined;
@@ -90,7 +91,7 @@ const Shop = () => {
   const fetchProducts = useCallback(async ({ fresh = false } = {}) => {
     // A slow branch lookup or server wake-up must not start overlapping reads.
     // A changed auth session gets its own request; older results cannot replace it.
-    if (catalogRequestRef.current?.authenticated === isAuthenticated) {
+    if (catalogRequestRef.current?.authenticated === isAuthenticated && catalogRequestRef.current?.accountId === accountId) {
       return catalogRequestRef.current.promise;
     }
     const generation = ++catalogGenerationRef.current;
@@ -98,20 +99,27 @@ const Shop = () => {
       try {
         let branch = "";
         if (isAuthenticated) {
-          const addressResult = await apiRequest("/users/addresses", { silentConnection: true, fresh });
+          const addressResult = await apiRequest("/users/addresses", { silentConnection: true, display: true, fresh });
           const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
           const address = addresses.find((entry) => entry.isDefault) || addresses[0];
           if (address) branch = await resolveConfiguredBranch(address, { display: true, fresh });
         }
+        let shownResult;
+        const applyProducts = (response) => {
+          if (generation !== catalogGenerationRef.current || shownResult === response) return;
+          shownResult = response;
+          setBackendProducts((response.products || []).map(mapCatalogProductToCartProduct));
+          setFulfillmentBranch(branch);
+          setCatalogLoading(false);
+        };
         const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, {
           silentConnection: true,
           display: true,
           fresh,
+          onCached: applyProducts,
         });
-        const mapped = (response.products || []).map(mapCatalogProductToCartProduct);
+        applyProducts(response);
         if (generation === catalogGenerationRef.current) {
-          setBackendProducts(mapped);
-          setFulfillmentBranch(branch);
           setCatalogError("");
         }
       } catch (error) {
@@ -126,11 +134,15 @@ const Shop = () => {
         if (catalogRequestRef.current?.generation === generation) catalogRequestRef.current = null;
       }
     })();
-    catalogRequestRef.current = { authenticated: isAuthenticated, generation, promise };
+    catalogRequestRef.current = { authenticated: isAuthenticated, accountId, generation, promise };
     return promise;
-  }, [isAuthenticated]);
+  }, [accountId, isAuthenticated]);
 
   useEffect(() => {
+    setBackendProducts([]);
+    setFulfillmentBranch("");
+    setCatalogError("");
+    setCatalogLoading(true);
     fetchProducts();
     const pollId = window.setInterval(() => {
       if (document.visibilityState === "visible") void fetchProducts();

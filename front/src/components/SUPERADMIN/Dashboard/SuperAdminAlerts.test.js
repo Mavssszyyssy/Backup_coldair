@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
 import SuperAdminAlerts from './SuperAdminAlerts';
@@ -77,4 +77,30 @@ it('shows a readable label for current stock alerts instead of an internal ID', 
   expect(await screen.findByText('Low stock: Window AC')).toBeInTheDocument();
   expect(screen.getAllByText('Stock alerts').length).toBeGreaterThan(0);
   expect(screen.queryByText('stock:internal-product-id:Bulacan')).not.toBeInTheDocument();
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+});
+
+it('archives selected operations notifications and keeps live stock warnings visible', async () => {
+  currentLanguage = 'English';
+  let notifications = [
+    { id: 'payment', type: 'payment', title: 'Payment notice' },
+    { id: 'service', type: 'service', title: 'Service notice' },
+  ];
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/notifications/me/archive-selected') {
+      const { ids } = JSON.parse(options.body);
+      notifications = notifications.filter(({ id }) => !ids.includes(id));
+      return { modifiedCount: ids.length };
+    }
+    if (path === '/notifications/me?scope=operations') return { notifications };
+    if (path === '/products/stock-status') return { products: [{ id: 'p1', name: 'Window AC', branchStock: { Bulacan: 2 }, threshold: 3 }] };
+    return { orders: [] };
+  });
+  render(<MemoryRouter><SuperAdminAlerts /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all shown' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Archive selected (2)' }));
+  expect(await screen.findByRole('heading', { name: 'Low stock: Window AC' })).toBeVisible();
+  expect(apiRequest).toHaveBeenCalledWith('/notifications/me/archive-selected',
+    expect.objectContaining({ body: JSON.stringify({ ids: ['payment', 'service'] }) }));
+  await waitFor(() => expect(screen.queryByRole('checkbox')).not.toBeInTheDocument());
 });

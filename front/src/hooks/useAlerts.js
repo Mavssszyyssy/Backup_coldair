@@ -112,14 +112,14 @@ export default function useAlerts(isAuthenticated, accountId, resolveRoute = res
     void refresh("archived", true);
   };
 
-  const updateAlerts = async (path, apply, errorMessage = "") => {
+  const updateAlerts = async (path, apply, errorMessage = "", body) => {
     const session = sessionRef.current;
     if (!session || session.pending) return false;
     session.pending = true;
     setPendingAction(true);
     setActionError("");
     try {
-      await apiRequest(path, { method: "PATCH", silentConnection: true });
+      await apiRequest(path, { method: "PATCH", silentConnection: true, ...(body ? { body: JSON.stringify(body) } : {}) });
       if (sessionRef.current !== session) return false;
       setFolders(apply);
       announceNotificationUpdate();
@@ -191,6 +191,21 @@ export default function useAlerts(isAuthenticated, accountId, resolveRoute = res
       hasMoreArchived: folders.archived.hasMore,
       onArchivePageChange: changeArchivePage,
       onMoveAlert: moveAlert,
+      onArchiveSelected: (ids) => {
+        const selected = new Set(ids);
+        return updateAlerts("/notifications/me/archive-selected", (current) => {
+          const remaining = current.active.items.filter((item) => !selected.has(item.id));
+          const archivedUnread = current.active.items.filter((item) => item.unread && selected.has(item.id)).length;
+          return {
+            ...current,
+            active: {
+              ...current.active,
+              items: remaining,
+              unreadCount: Math.max(0, (current.active.unreadCount || 0) - archivedUnread),
+            },
+          };
+        }, "Unable to archive selected alerts.", { ids });
+      },
       onArchiveAll: () => updateAlerts("/notifications/me/archive-all", (current) => ({
         ...current,
         active: { ...current.active, items: [], unreadCount: 0 },

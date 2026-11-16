@@ -5,8 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { alertCategory, operationalAlertRoute } from '../../../domain/operationalAlerts';
 import { currentStockAlerts } from '../../../domain/stockAlerts';
+import { loadPageRequests } from '../../../config/loadPageRequests';
 import { apiRequest } from '../../../config/api';
-import { subscribeToNotificationUpdates } from '../../../utils/notificationSync';
+import useAlertSelection from '../../../hooks/useAlertSelection';
+import { AlertCheckbox, SelectAlerts } from '../../common/AlertArchiveControls';
+import { announceNotificationUpdate, subscribeToNotificationUpdates } from '../../../utils/notificationSync';
 import { formatBusinessDateTime } from '../../../utils/dateTime';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
@@ -61,27 +64,47 @@ const SuperAdminAlerts = () => {
   const [severityFilter, setSeverityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const loadInFlightRef = useRef(false);
+  const loadInFlightRef = useRef(null);
+  const archiveInFlightRef = useRef(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState('');
 
   const load = useCallback(async ({ showLoading = false, fresh = false } = {}) => {
-    if (loadInFlightRef.current) return;
-    loadInFlightRef.current = true;
+    if (loadInFlightRef.current && !fresh) return;
+    const request = {};
+    loadInFlightRef.current = request;
+    const isCurrent = () => loadInFlightRef.current === request;
     if (showLoading) setLoading(true);
     setError('');
-    try {
-      const [notificationResult, orderResult, productResult] = await Promise.all([
-        apiRequest('/notifications/me?scope=operations', { fresh }),
-        apiRequest('/orders?view=compact&limit=200', { fresh }).catch(() => ({ orders: [] })),
-        apiRequest('/products/stock-status', { fresh }),
-      ]);
+    let shownResults;
+    const showAlerts = (results, loadedAt = Date.now()) => {
+      if (!isCurrent()) return;
+      if (shownResults && results.every((result, index) => result === shownResults[index])) return;
+      shownResults = results;
+      const [notificationResult, orderResult, productResult] = results;
       setAlerts(Array.isArray(notificationResult.notifications) ? notificationResult.notifications : []);
       setOrders(Array.isArray(orderResult.orders) ? orderResult.orders : []);
-      setStockAlerts(currentStockAlerts(Array.isArray(productResult.products) ? productResult.products : []));
+      setStockAlerts(currentStockAlerts(Array.isArray(productResult.products) ? productResult.products : [], new Date(loadedAt).toISOString()));
+      setLoading(false);
+    };
+    try {
+      showAlerts(await loadPageRequests([
+        '/notifications/me?scope=operations', '/orders?view=compact&limit=200', '/products/stock-status',
+      ], {
+        fresh,
+        silentConnection: !showLoading,
+        onCached: showAlerts,
+        fallbacks: { '/orders?view=compact&limit=200': { orders: [] } },
+      }));
     } catch (requestError) {
+      if (!isCurrent()) return;
+      if ([401, 403].includes(requestError.status)) showAlerts([{}, {}, {}]);
       setError(requestError.message || 'Unable to load operations alerts.');
     } finally {
-      setLoading(false);
-      loadInFlightRef.current = false;
+      if (isCurrent()) {
+        setLoading(false);
+        loadInFlightRef.current = null;
+      }
     }
   }, []);
 
@@ -98,6 +121,7 @@ const SuperAdminAlerts = () => {
     document.addEventListener('visibilitychange', refreshWhenVisible);
     window.addEventListener('focus', refreshWhenVisible);
     return () => {
+      loadInFlightRef.current = null;
       window.clearInterval(pollId);
       unsubscribe();
       document.removeEventListener('visibilitychange', refreshWhenVisible);
@@ -127,6 +151,32 @@ const SuperAdminAlerts = () => {
   const totalPages = Math.max(1, Math.ceil(visibleAlerts.length / ALERTS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const pageAlerts = visibleAlerts.slice((currentPage - 1) * ALERTS_PER_PAGE, currentPage * ALERTS_PER_PAGE);
+  const selection = useAlertSelection(
+    pageAlerts.filter((alert) => !alert.currentCondition),
+    JSON.stringify([branchFilter, severityFilter, categoryFilter, currentPage]),
+  );
+
+  const archiveSelected = async (ids) => {
+    if (archiveInFlightRef.current || !ids.length) return false;
+    archiveInFlightRef.current = true;
+    setArchiving(true);
+    setArchiveError('');
+    try {
+      await apiRequest('/notifications/me/archive-selected', {
+        method: 'PATCH', silentConnection: true, body: JSON.stringify({ ids }),
+      });
+      const archivedIds = new Set(ids);
+      setAlerts((current) => current.filter(({ id }) => !archivedIds.has(id)));
+      announceNotificationUpdate();
+      return true;
+    } catch {
+      setArchiveError('Unable to archive selected alerts.');
+      return false;
+    } finally {
+      archiveInFlightRef.current = false;
+      setArchiving(false);
+    }
+  };
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -150,13 +200,23 @@ const SuperAdminAlerts = () => {
         </div>
         {loading ? <LoadingSkeleton label={t('Loading operations alerts…')} /> : null}
         {error ? <div className="alert-error">{t(error)}</div> : null}
+        {archiveError ? <div className="alert-error" role="alert">{t(archiveError)}</div> : null}
+        {selection.available && <div className="alert-archive-controls">
+          <SelectAlerts selection={selection} disabled={archiving} onArchive={archiveSelected} t={t} />
+        </div>}
         {!loading && !error && visibleAlerts.length === 0 ? <div className="alert-empty">{t('No operations alerts match these filters.')}</div> : null}
         <div className="alert-list">
           {pageAlerts.map((alert) => {
             const order = alert.order;
             const itemSummary = order?.items?.map((item) => `${item.name} ×${item.quantity}`).join(', ') || t('Order details are not available for this legacy alert.');
             return <article key={alert.id} className="alert-card">
-              <div className="alert-card-top"><div><p className="alert-reference">{alert.currentCondition ? t('Stock alerts') : order?.orderCode || alert.id}</p><h3>{alert.title || t('Customer support alert')}</h3></div><span className={`alert-severity alert-severity--${alert.severity}`}>{t(`${alert.severity} priority`)}</span></div>
+              <div className="alert-card-top">
+                <div className="alert-card-identity">
+                  {!alert.currentCondition && alert.id && <AlertCheckbox item={alert} selection={selection} disabled={archiving} t={t} />}
+                  <div><p className="alert-reference">{alert.currentCondition ? t('Stock alerts') : order?.orderCode || alert.id}</p><h3>{alert.title || t('Customer support alert')}</h3></div>
+                </div>
+                <span className={`alert-severity alert-severity--${alert.severity}`}>{t(`${alert.severity} priority`)}</span>
+              </div>
               <p className="alert-concern">{alert.message || t('No message provided.')}</p>
               <dl className="alert-detail-grid">
                 {order ? <><div><dt>{t('Customer')}</dt><dd>{order?.customerName || t('Not linked to a customer order')}</dd></div>

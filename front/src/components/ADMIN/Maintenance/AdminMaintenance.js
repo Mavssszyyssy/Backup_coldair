@@ -6,6 +6,7 @@ import ServiceRequests from './ServiceRequests';
 import RequestDetails from './RequestDetails';
 import WarrantyClaims from './WarrantyClaims';
 import { apiRequest } from '../../../config/api';
+import { loadPageRequests } from '../../../config/loadPageRequests';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import { matchesServiceRequestStatus, serviceRequestSummary } from '../../../domain/serviceRequestSummary';
@@ -40,14 +41,13 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [decisionError, setDecisionError] = useState('');
   const queueId = useId();
   const queueHeading = useRef(null);
+  const loadVersion = useRef(0);
 
   const load = useCallback(async ({ quiet = false, fresh = false } = {}) => {
+    const version = ++loadVersion.current;
     if (!quiet) { setError(''); setLoading(true); }
-    try {
-      const [result, claimResult] = await Promise.all([
-        apiRequest('/service-requests', fresh ? { fresh } : undefined),
-        apiRequest('/warranties/claims', fresh ? { fresh } : undefined),
-      ]);
+    const showRequests = ([result, claimResult]) => {
+      if (version !== loadVersion.current) return;
       const nextRequests = Array.isArray(result.requests) ? result.requests : [];
       setRequests(nextRequests);
       setSelected((previous) => {
@@ -58,10 +58,18 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
         return latest;
       });
       setWarrantyClaims(Array.isArray(claimResult.claims) ? claimResult.claims : []);
+      setLoading(false);
+    };
+    try {
+      showRequests(await loadPageRequests(['/service-requests', '/warranties/claims'], {
+        fresh, silentConnection: quiet, onCached: showRequests,
+      }));
     } catch (requestError) {
+      if (version !== loadVersion.current) return;
+      if ([401, 403].includes(requestError.status)) showRequests([{}, {}]);
       if (!quiet) setError(requestError.message || 'Unable to load service requests.');
     } finally {
-      if (!quiet) setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [recordId]);
 
@@ -79,6 +87,7 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
       .then((result) => setTechnicians(Array.isArray(result.users) ? result.users : []))
       .catch(() => setTechnicians([]));
     return () => {
+      loadVersion.current += 1;
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', refreshVisible);
       window.removeEventListener('focus', refreshVisible);

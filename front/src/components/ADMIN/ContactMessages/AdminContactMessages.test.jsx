@@ -20,9 +20,9 @@ test('inbox uses backend-filtered results and server counts rather than counting
   expect(screen.getByText('43')).toBeInTheDocument();
   expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
   fireEvent.change(screen.getByRole('searchbox', { name: 'Search messages' }), { target: { value: 'specific ticket' } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('search=specific+ticket')));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('search=specific+ticket'), expect.objectContaining({ onCached: expect.any(Function) })));
   fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'in_progress' } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('status=in_progress')));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining('status=in_progress'), expect.objectContaining({ onCached: expect.any(Function) })));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
   await waitFor(() => expect(apiRequest).toHaveBeenLastCalledWith(

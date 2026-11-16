@@ -2,9 +2,10 @@ import { Bell } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import { useUser } from "../../context/UserContext";
 import useAlerts from "../../hooks/useAlerts";
+import useAlertSelection from "../../hooks/useAlertSelection";
 import { translateText } from "../../utils/customerI18n";
 import { formatBusinessDateTime } from "../../utils/dateTime";
-import { ArchiveAllAlerts, ArchivedAlertPages } from "./AlertArchiveControls";
+import { AlertCheckbox, ArchiveAllAlerts, ArchivedAlertPages } from "./AlertArchiveControls";
 import LoadingSkeleton from "./LoadingSkeleton";
 
 export default function StaffNotificationsBell({ resolveRoute, superadmin = false }) {
@@ -13,13 +14,14 @@ export default function StaffNotificationsBell({ resolveRoute, superadmin = fals
   const { unreadCount, openAlerts, drawerProps } = useAlerts(isAuthenticated, user?.id || user?._id, resolveRoute);
   const {
     isOpen, onClose, folder, onChangeFolder, notifications, status, actionError, pendingAction,
-    onRetry, onMoveAlert, onNotificationClick, onMarkAllAsRead, onArchiveAll,
+    onRetry, onMoveAlert, onNotificationClick, onMarkAllAsRead, onArchiveAll, onArchiveSelected,
     archivePage, hasMoreArchived, onArchivePageChange,
   } = drawerProps;
   const panel = useRef(null);
   const trigger = useRef(null);
   const prefix = superadmin ? "super-notifications" : "admin-notifications";
   const archived = folder === "archived";
+  const selection = useAlertSelection(archived ? [] : notifications, `${isOpen}:${folder}`);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -58,19 +60,21 @@ export default function StaffNotificationsBell({ resolveRoute, superadmin = fals
               disabled={pendingAction} onClick={() => onChangeFolder(key)}>{t(label)}</button>
           ))}
         </div>
-        {!archived && notifications.length > 0 && <ArchiveAllAlerts t={t} disabled={pendingAction} onArchive={onArchiveAll} />}
+        {!archived && notifications.length > 0 && <ArchiveAllAlerts t={t} disabled={pendingAction} onArchive={onArchiveAll}
+          selection={selection} onArchiveSelected={onArchiveSelected} />}
         {actionError && <p role="alert" className="staff-alert-feedback">{t(actionError)}</p>}
         {status === "error" && <p role="alert" className="staff-alert-feedback">{t("Unable to load alerts.")}</p>}
         {status === "loading" && !notifications.length ? <LoadingSkeleton label={t("Loading…")} variant="inline" /> : null}
         {status === "ready" && !notifications.length ? <p className={`${prefix}-empty`}>{t(archived ? "No archived alerts." : "No alerts right now.")}</p> : null}
         {notifications.length > 0 && <div className={`${prefix}-list`}>
           {notifications.map((item) => (
-            <div className={`${prefix}-row`} key={item.id}>
+            <div className={`${prefix}-row${!archived && item.id ? " has-alert-selection" : ""}`} key={item.id}>
               <button type="button" className={`${prefix}-item${item.unread ? " unread" : ""}`} disabled={pendingAction} onClick={() => onNotificationClick(item)}>
                 <strong className={`${prefix}-item-title`}>{item.title || t("System alert")}</strong>
                 <span className={`${prefix}-item-msg`}>{item.message || t("No additional details.")}</span>
                 <small className={`${prefix}-item-time`}>{formatBusinessDateTime(item.createdAt)}</small>
               </button>
+              {!archived && item.id && <AlertCheckbox item={item} selection={selection} disabled={pendingAction} t={t} />}
               {item.id && <button type="button" className={`${prefix}-archive`} disabled={pendingAction}
                 aria-label={`${t(archived ? "Restore" : "Archive")}: ${item.title || t("System alert")}`}
                 onClick={() => onMoveAlert(item)}>{t(archived ? "Restore" : "Archive")}</button>}

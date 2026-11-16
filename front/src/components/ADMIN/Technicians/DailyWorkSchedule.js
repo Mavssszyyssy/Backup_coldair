@@ -1,7 +1,8 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../../../config/api";
+import { loadPageRequests } from "../../../config/loadPageRequests";
 import { useUser } from "../../../context/UserContext";
 import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { TECHNICIAN_TIME_SLOTS } from "../../../domain/technicianTimeSlots";
@@ -64,17 +65,16 @@ const DailyWorkSchedule = () => {
   const [draft, setDraft] = useState(null);
   const [conflictTasks, setConflictTasks] = useState([]);
   const [saving, setSaving] = useState(false);
+  const loadVersion = useRef(0);
 
   const load = useCallback(async ({ quiet = false, fresh = false } = {}) => {
+    const version = ++loadVersion.current;
     if (!quiet) setLoading(true);
     setError("");
-    try {
-      const query = new URLSearchParams({ scheduled_date: date, limit: "200" });
-      if (isSuperAdmin && branch !== "all") query.set("branch", branch);
-      const [taskResult, userResult] = await Promise.all([
-        apiRequest(`/tasks?${query}`, fresh ? { fresh } : undefined),
-        apiRequest("/users?role=technician", fresh ? { fresh } : undefined),
-      ]);
+    let showedSchedule = false;
+    const showSchedule = ([taskResult, userResult]) => {
+      if (version !== loadVersion.current) return;
+      showedSchedule = true;
       setTasks(taskResult.tasks || []);
       setTechnicians((userResult.users || []).map((item) => ({
         ...item,
@@ -82,14 +82,27 @@ const DailyWorkSchedule = () => {
         name: displayName(item),
         branch: item.assignedBranch || item.activeBranch || "",
       })).filter((item) => item.accountStatus !== "disabled" && !item.isDeleted));
+      setLoading(false);
+    };
+    try {
+      const query = new URLSearchParams({ scheduled_date: date, limit: "200" });
+      if (isSuperAdmin && branch !== "all") query.set("branch", branch);
+      showSchedule(await loadPageRequests([`/tasks?${query}`, "/users?role=technician"], {
+        fresh, silentConnection: quiet, onCached: showSchedule,
+      }));
     } catch (requestError) {
+      if (version !== loadVersion.current) return;
+      if ((!quiet && !showedSchedule) || [401, 403].includes(requestError.status)) showSchedule([{}, {}]);
       setError(requestError.message || "Unable to load the daily work schedule.");
     } finally {
-      if (!quiet) setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [branch, date, isSuperAdmin]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { loadVersion.current += 1; };
+  }, [load]);
   useEffect(() => {
     let cancelled = false;
     if (!editingId || !draft?.scheduledDate) {

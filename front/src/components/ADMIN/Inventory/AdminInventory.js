@@ -1,5 +1,5 @@
 import SearchableSelect from "../../common/SearchableSelect";
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../Common/AdminLayout';
 import AdminReoder from '../Reorder/AdminReoder';
@@ -37,7 +37,7 @@ const AdminInventory = () => {
     : searchParams.get('tab') === 'serial-qr'
       ? 'serial-qr'
       : 'inventory';
-  const [products, setProducts] = useState([]);
+  const [inventory, setInventory] = useState({ branch: '', products: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const assignedBranch = useMemo(() => {
@@ -45,6 +45,7 @@ const AdminInventory = () => {
     return branchNames.includes(currentBranch) ? currentBranch : '';
   }, [branchNames, user?.activeBranch, user?.assignedBranch]);
   const [branch, setBranch] = useState(assignedBranch);
+  const products = useMemo(() => inventory.branch === branch ? inventory.products : [], [inventory, branch]);
   const branchOptions = useMemo(
     () => assignedBranch
       ? [assignedBranch, ...branchNames.filter((item) => item !== assignedBranch)]
@@ -53,28 +54,36 @@ const AdminInventory = () => {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
+  const loadVersion = useRef(0);
 
   useEffect(() => {
     setBranch(assignedBranch);
   }, [assignedBranch]);
 
   const load = useCallback(async ({ fresh = false } = {}) => {
+    const version = ++loadVersion.current;
     setLoading(true);
     setError('');
     if (!branch) {
-      setProducts([]);
+      setInventory({ branch: '', products: [] });
       setError('This Admin account does not have a valid branch assignment.');
       setLoading(false);
       return;
     }
+    const showProducts = (result) => {
+      if (version !== loadVersion.current) return;
+      setInventory({ branch, products: result.products || [] });
+      setLoading(false);
+    };
     try {
       const path = `/products?branch=${encodeURIComponent(branch)}`;
-      const result = await (fresh ? apiRequest(path, { fresh }) : apiRequest(path));
-      setProducts(result.products || []);
+      showProducts(await apiRequest(path, { fresh, onCached: showProducts }));
     } catch (requestError) {
+      if (version !== loadVersion.current) return;
+      if ([401, 403].includes(requestError.status)) setInventory({ branch: '', products: [] });
       setError(requestError.message || 'Unable to load inventory.');
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [branch]);
 
@@ -87,6 +96,7 @@ const AdminInventory = () => {
     };
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
+      loadVersion.current += 1;
       window.clearInterval(pollId);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };

@@ -47,12 +47,7 @@ export default function AdminContactMessages({ recordId = "" }) {
     const version = ++requestVersion.current;
     setLoading(true);
     setError("");
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (search.trim()) params.set("search", search.trim());
-      const path = `/contact-messages?${params}`;
-      const result = await (fresh ? apiRequest(path, { fresh }) : apiRequest(path));
+    const showMessages = (result) => {
       if (version !== requestVersion.current) return;
       const next = Array.isArray(result.messages) ? result.messages : [];
       setMessages(next);
@@ -61,14 +56,28 @@ export default function AdminContactMessages({ recordId = "" }) {
       setSelectedId((current) => recordId && next.some((item) => item.id === recordId)
         ? recordId
         : current && next.some((item) => item.id === current) ? current : next[0]?.id || "");
+      setLoading(false);
+    };
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (search.trim()) params.set("search", search.trim());
+      const options = fresh ? { fresh: true } : { onCached: showMessages };
+      showMessages(await apiRequest(`/contact-messages?${params}`, options));
     } catch (requestError) {
-      if (version === requestVersion.current) setError(requestError.message || "Unable to load customer messages.");
+      if (version === requestVersion.current) {
+        if ([401, 403].includes(requestError.status)) showMessages({});
+        setError(requestError.message || "Unable to load customer messages.");
+      }
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
   }, [recordId, page, search, statusFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { requestVersion.current += 1; };
+  }, [load]);
 
   const selected = messages.find((item) => item.id === selectedId) || null;
   // Keep a draft tied to its ticket so a delayed selection effect cannot erase
@@ -103,7 +112,7 @@ export default function AdminContactMessages({ recordId = "" }) {
         <article className="is-resolved"><span>{t("Completed")}</span><strong>{summary.resolved}</strong><small>{t("Resolved or closed")}</small></article>
       </div>
 
-      {error ? <div className="contact-inbox__alert" role="alert">{t(error)}<button type="button" onClick={load}>{t("Try again")}</button></div> : null}
+      {error ? <div className="contact-inbox__alert" role="alert">{t(error)}<button type="button" onClick={() => load(true)}>{t("Try again")}</button></div> : null}
 
       <div className="contact-inbox__toolbar">
         <label><span>{t("Search messages")}</span><input maxLength={160} type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Reference, customer, subject, or message")} /></label>

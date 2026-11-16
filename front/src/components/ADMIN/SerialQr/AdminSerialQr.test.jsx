@@ -17,7 +17,7 @@ test('registry refresh is read-only, reports unique IDs, and does not regenerate
   fireEvent.click(screen.getByRole('button', { name: 'Refresh QR registry' }));
   expect(await screen.findByRole('status')).toHaveTextContent('2 unique Unit IDs');
   expect(apiRequest).toHaveBeenCalledTimes(2);
-  expect(apiRequest).toHaveBeenCalledWith('/products');
+  expect(apiRequest).toHaveBeenCalledWith('/products', expect.objectContaining({ onCached: expect.any(Function) }));
   expect(apiRequest.mock.calls.every(([, options]) => !options?.method || options.method === 'GET')).toBe(true);
 });
 
@@ -60,7 +60,7 @@ test('opens an exact model and branch with labeled unit statuses', async () => {
   render(<AdminSerialQr productId="p1" initialBranch="Cavite" />);
   const heading = await screen.findByRole('heading', { name: 'Selected AC' });
   await waitFor(() => expect(heading).toHaveFocus());
-  expect(apiRequest).toHaveBeenCalledWith('/products?branch=Cavite');
+  expect(apiRequest).toHaveBeenCalledWith('/products?branch=Cavite', expect.objectContaining({ onCached: expect.any(Function) }));
   expect(screen.getByText('sold', { selector: '.serialqr-unit-status' })).toHaveAttribute('data-status', 'sold');
   expect(screen.getByText('available', { selector: '.serialqr-unit-status' })).toHaveAttribute('data-status', 'available');
   expect(screen.queryByText('S3')).not.toBeInTheDocument();

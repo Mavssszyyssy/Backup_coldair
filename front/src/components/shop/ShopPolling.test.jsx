@@ -120,6 +120,19 @@ test("catalogue polling coalesces a slow request and pauses while hidden", async
   view.unmount();
 });
 
+test("returning to the shop shows the cached catalog while stock is refreshed", async () => {
+  const lastProduct = { id: "p1", name: "Previously Listed Model", price: 20000, stock: 1 };
+  let finish;
+  apiRequest.mockImplementation((_path, { onCached }) => {
+    onCached({ products: [lastProduct] }, 50_000);
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  const view = render(<Shop />);
+  expect(view.getByText(lastProduct.name)).toBeVisible();
+  await act(async () => { finish({ products: [] }); });
+  expect(view.getByRole("list", { name: "Catalog results" })).toBeEmptyDOMElement();
+});
+
 test("web Buy Now routes only the selected product even when the cart already has the last unit", async () => {
   authState.authenticated = true;
   purchase.cart = [{ id: "p1", quantity: 1 }, { id: "p2", quantity: 1 }];

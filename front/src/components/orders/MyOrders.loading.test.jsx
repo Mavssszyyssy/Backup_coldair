@@ -26,5 +26,19 @@ test("an empty filtered result does not tell the customer they have never ordere
 
   expect(await screen.findByText("No matching orders")).toBeInTheDocument();
   expect(screen.queryByText("No Orders Yet")).not.toBeInTheDocument();
-  expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("orderStatus=to_deliver"));
+  expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("orderStatus=to_deliver"), expect.objectContaining({ onCached: expect.any(Function) }));
+});
+
+test("revisiting order history shows the saved result while the server refreshes it", async () => {
+  let finish;
+  apiRequest.mockImplementation((_path, { onCached }) => {
+    onCached({ orders: [] }, 50_000);
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  render(<MemoryRouter><MyOrders /></MemoryRouter>);
+
+  expect(screen.getByText("No Orders Yet")).toBeInTheDocument();
+  expect(screen.queryByText("Loading orders...")).not.toBeInTheDocument();
+  await act(() => finish({ orders: [{ id: "order-1", orderCode: "ORD-REFRESHED", items: [] }] }));
+  expect(screen.queryByText("No Orders Yet")).not.toBeInTheDocument();
 });

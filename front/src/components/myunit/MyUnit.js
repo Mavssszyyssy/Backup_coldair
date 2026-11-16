@@ -136,14 +136,18 @@ function MyUnit() {
     const loadUnits = async () => {
       setLoadingUnits(true);
       setUnitLoadError("");
+      let shownResult;
+      const applyUnits = (result) => {
+        if (!mounted || shownResult === result) return;
+        shownResult = result;
+        setUnits((result.units || []).map(buildUnitFromBackend));
+        setLoadingUnits(false);
+      };
       try {
-        const result = await apiRequest("/amp/customer/units");
-        const backendUnits = (result.units || []).map(buildUnitFromBackend);
-        if (!mounted) return;
-        setUnits(backendUnits);
+        applyUnits(await apiRequest("/amp/customer/units", { fresh: reloadKey > 0, onCached: applyUnits }));
       } catch (loadError) {
         if (mounted) {
-          setUnits([]);
+          if (!shownResult || [401, 403].includes(loadError.status)) setUnits([]);
           setUnitLoadError(loadError.message || "Unable to load your registered AC units.");
         }
       } finally {

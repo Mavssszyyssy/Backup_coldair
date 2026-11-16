@@ -79,12 +79,17 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
     setError("");
     setRefreshNotice("");
     setLoading(true);
+    const showProducts = (result) => {
+      if (version !== loadVersion.current) return;
+      setProducts(result.products || []);
+      setLoading(false);
+    };
     try {
       const path = requestedBranch ? `/products?branch=${encodeURIComponent(requestedBranch)}` : "/products";
-      const result = await (manual ? apiRequest(path, { fresh: true }) : apiRequest(path));
+      const result = await apiRequest(path, { fresh: manual, onCached: showProducts });
       if (version !== loadVersion.current) return;
       const nextProducts = result.products || [];
-      setProducts(nextProducts);
+      showProducts(result);
       if (manual) {
         const ids = nextProducts.flatMap((product) => (product.serialUnits || []).map((unit) => unit.qrUnitId).filter(Boolean));
         const duplicateCount = ids.length - new Set(ids).size;
@@ -92,7 +97,10 @@ const AdminSerialQr = ({ embedded = false, productId = "", initialBranch = "all"
         else setRefreshNotice(`QR registry refreshed: ${ids.length} unique Unit IDs. Existing labels were not changed.`);
       }
     } catch (err) {
-      if (version === loadVersion.current) setError(err.message || "Unable to load product serial numbers.");
+      if (version === loadVersion.current) {
+        if ([401, 403].includes(err.status)) setProducts([]);
+        setError(err.message || "Unable to load product serial numbers.");
+      }
     } finally {
       if (version === loadVersion.current) setLoading(false);
     }

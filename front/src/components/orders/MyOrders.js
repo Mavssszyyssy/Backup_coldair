@@ -130,26 +130,33 @@ function MyOrders() {
     let mounted = true;
     let requestId = 0;
     let hasLoaded = false;
+    let shownOrders;
 
     const loadOrders = async () => {
       const currentRequest = ++requestId;
-      try {
-        const response = await apiRequest(`/orders/me?${orderQuery}`);
-        if (!mounted || currentRequest !== requestId) return;
-        if (!Array.isArray(response?.orders)) throw new Error("Missing order history");
+      const isCurrent = () => mounted && currentRequest === requestId;
+      const applyOrders = (response) => {
+        if (!isCurrent() || shownOrders === response || !Array.isArray(response?.orders)) return;
+        shownOrders = response;
         const normalized = response.orders.map(normalizeCustomerOrder);
         hasLoaded = true;
         setOrders(normalized);
         setPagination(response.pagination || { total: normalized.length, totalPages: 1, limit });
         setOrdersError(false);
+        setSettledQuery(orderQuery);
         setSelectedOrder((current) => current ? normalized.find((order) => String(order.id) === String(current.id)) || current : null);
-      } catch (_error) {
-        if (!mounted || currentRequest !== requestId) return;
+      };
+      try {
+        const response = await apiRequest(`/orders/me?${orderQuery}`, { onCached: applyOrders });
+        if (!Array.isArray(response?.orders)) throw new Error("Missing order history");
+        applyOrders(response);
+      } catch (error) {
+        if (!isCurrent()) return;
         // Preserve already displayed records when an update fails.
-        if (!hasLoaded) setOrders([]);
+        if (!hasLoaded || [401, 403].includes(error.status)) setOrders([]);
         setOrdersError(true);
       } finally {
-        if (mounted && currentRequest === requestId) setSettledQuery(orderQuery);
+        if (isCurrent()) setSettledQuery(orderQuery);
       }
     };
 
