@@ -204,39 +204,38 @@ export default function ProductCard({
               )}
             </BoutiqueBox>
 
-            <BoutiqueTechnicalCard
-              variant={outOfStock ? "danger" : "success"}
-              size="sm"
-            >
-              {t(product.stockLabel || (outOfStock ? "Out of stock" : "In stock"))}
-            </BoutiqueTechnicalCard>
+            {!outOfStock && (
+              <BoutiqueTechnicalCard variant="success" size="sm">
+                {t(product.stockLabel || "In stock")}
+              </BoutiqueTechnicalCard>
+            )}
           </BoutiqueBox>
 
-          <BoutiqueButton
-            variant="outline"
-            size="sm"
-            fullWidth
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuyNow(product);
-            }}
-            disabled={outOfStock}
-          >
-            {outOfStock ? t("Out of stock") : <>{t("Buy Now")} <Lightning size={18} weight="fill" /></>}
-          </BoutiqueButton>
-
           {!outOfStock && (
-            <BoutiqueButton
-              variant="primary"
-              size="sm"
-              fullWidth
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(product, 1);
-              }}
-            >
-              {t("Add to Cart")} <ShoppingCart size={18} weight="bold" />
-            </BoutiqueButton>
+            <>
+              <BoutiqueButton
+                variant="outline"
+                size="sm"
+                fullWidth
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBuyNow(product);
+                }}
+              >
+                {t("Buy Now")} <Lightning size={18} weight="fill" />
+              </BoutiqueButton>
+              <BoutiqueButton
+                variant="primary"
+                size="sm"
+                fullWidth
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(product, 1);
+                }}
+              >
+                {t("Add to Cart")} <ShoppingCart size={18} weight="bold" />
+              </BoutiqueButton>
+            </>
           )}
         </BoutiqueStack>
 

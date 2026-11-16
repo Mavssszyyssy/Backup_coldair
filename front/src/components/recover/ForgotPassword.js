@@ -92,7 +92,7 @@ function ForgotPassword() {
   };
   const identifierLabel = t('Email or Account Login ID');
 
-  return <BoutiqueAuthLayout>
+  return <BoutiqueAuthLayout centerForm>
     <button className="bq-login-back-btn" onClick={() => navigate('/login')} title={t('Back to Login')}><ArrowLeft size={20} weight="bold" /></button>
     <BoutiqueAuthHeader title={t(step === 'request' ? 'Reset Password' : step === 'verify' ? 'Verify & Reset Password' : 'Password Reset Complete')} subtitle={t(step === 'request' ? 'Use email verification to safely recover your account.' : step === 'verify' ? 'Enter the code sent by email and choose a new password.' : 'Your account is ready to use again.')} />
     {step === 'request' ? <BoutiqueStack tag="form" gap={22} onSubmit={requestCode} className="bq-fade-in">

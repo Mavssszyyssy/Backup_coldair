@@ -7,9 +7,13 @@ import { BQ_COLORS } from "./BoutiqueTheme";
  * Unified layout for Login and Registration.
  * Handles the 50/50 flex split and mobile vertical stacking.
  */
-export default function BoutiqueAuthLayout({ children, className = "" }) {
+export default function BoutiqueAuthLayout({ children, className = "", centerForm = false }) {
   return (
-    <BoutiqueBox className={`bq-auth-layout ${className}`.trim()} width="100%" height="100vh">
+    <BoutiqueBox
+      className={["bq-auth-layout", centerForm && "bq-auth-layout--centered", className].filter(Boolean).join(" ")}
+      width="100%"
+      height="100vh"
+    >
       <BoutiqueBox
         className="bq-auth-flex"
         direction="row"
@@ -65,6 +69,16 @@ export default function BoutiqueAuthLayout({ children, className = "" }) {
         .bq-spin { animation: bq-spin 1s linear infinite; }
         .bq-fade-in { animation: fadeIn 0.4s ease; }
         .bq-slide-down { animation: slideDown 0.3s ease; }
+
+        @media (min-width: 1025px) {
+          .bq-auth-layout--centered { height: 100dvh !important; }
+          .bq-auth-layout--centered .bq-auth-flex { min-height: 0; }
+          .bq-auth-layout--centered .bq-auth-form-constraint {
+            height: auto !important;
+            flex-shrink: 0;
+            margin-block: auto !important;
+          }
+        }
 
         /* RESPONSIVE STACKING */
         @media (max-width: 1024px) {

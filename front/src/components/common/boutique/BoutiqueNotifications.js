@@ -149,51 +149,44 @@ export default function BoutiqueNotifications({
           )}
           {notifications.map((notif) => (
             <div className={`bq-notif-entry ${notif.unread ? "unread" : ""}${canSelect && notif.id ? " has-alert-selection" : ""}`} key={notif.id}>
-              <button
-                type="button"
-                className="bq-notif-item"
-                aria-label={`${t(archived ? "Archived" : notif.unread ? "Unread" : "Read")} ${t("alert:")} ${notif.title}`}
-                disabled={pendingAction}
-                onClick={() => onNotificationClick?.(notif)}
-              >
-                <div className="bq-notif-dot" />
-                <BoutiqueBox flex={1} className="bq-notif-content">
+              {canSelect && notif.id && <AlertCheckbox item={notif} selection={selection} disabled={pendingAction} t={t} />}
+              <div className="bq-notif-content">
+                <button
+                  type="button"
+                  className="bq-notif-item"
+                  aria-label={`${t(archived ? "Archived" : notif.unread ? "Unread" : "Read")} ${t("alert:")} ${notif.title}`}
+                  disabled={pendingAction}
+                  onClick={() => onNotificationClick?.(notif)}
+                >
                   {["maintenance_due", "amp_due_soon", "amp_overdue"].includes(notif.category) ? (
                     <span className={`bq-notif-category ${notif.severity || "info"}`}>{t("AC maintenance")}</span>
                   ) : null}
-                  <BoutiqueText weight={700} size="15px" color={BQ_COLORS.ink} margin="0 0 4px">
-                    {notif.title}
-                  </BoutiqueText>
-                  <BoutiqueText
-                    size="14px"
-                    color={BQ_COLORS.inkMuted}
-                    style={{ lineHeight: 1.5 }}
-                    className="bq-notif-msg"
-                  >
-                    {notif.message}
-                  </BoutiqueText>
-                </BoutiqueBox>
-              </button>
-              {canSelect && notif.id && <AlertCheckbox item={notif} selection={selection} disabled={pendingAction} t={t} />}
-              <div className="bq-notif-meta">
-                <span className="bq-notif-time">{notif.time}</span>
-                {onMoveAlert && notif.id && (
-                  <button
-                    type="button"
-                    className="bq-notif-move"
-                    aria-label={`${moveLabel}: ${notif.title}`}
-                    disabled={pendingAction}
-                    onClick={async (event) => {
-                      const button = event.currentTarget;
-                      const moved = await onMoveAlert(notif);
-                      if (moved && (document.activeElement === button || document.activeElement === document.body)) {
-                        folderControls.current?.querySelector('[aria-pressed="true"]')?.focus();
-                      }
-                    }}
-                  >
-                    <MoveIcon size={16} aria-hidden="true" /> {moveLabel}
-                  </button>
-                )}
+                  <span className="bq-notif-heading">
+                    <span className="bq-notif-title">{notif.title}</span>
+                    <span className="bq-notif-dot" aria-hidden="true" />
+                  </span>
+                  <span className="bq-notif-msg">{notif.message}</span>
+                </button>
+                <div className="bq-notif-meta">
+                  <span className="bq-notif-time">{notif.time}</span>
+                  {onMoveAlert && notif.id && (
+                    <button
+                      type="button"
+                      className="bq-notif-move"
+                      aria-label={`${moveLabel}: ${notif.title}`}
+                      disabled={pendingAction}
+                      onClick={async (event) => {
+                        const button = event.currentTarget;
+                        const moved = await onMoveAlert(notif);
+                        if (moved && (document.activeElement === button || document.activeElement === document.body)) {
+                          folderControls.current?.querySelector('[aria-pressed="true"]')?.focus();
+                        }
+                      }}
+                    >
+                      <MoveIcon size={16} aria-hidden="true" /> {moveLabel}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -233,23 +226,35 @@ export default function BoutiqueNotifications({
         .bq-notif-list { min-height: 0; scrollbar-width: thin; scrollbar-gutter: stable; }
 
         .bq-notif-entry {
+            display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px;
+            padding: 14px var(--alert-gutter) 12px;
             border-inline-start: 4px solid transparent; border-bottom: 1px solid ${BQ_COLORS.border};
             background: ${BQ_COLORS.surface};
         }
+        .bq-notif-entry.has-alert-selection {
+            grid-template-columns: 44px minmax(0, 1fr);
+            padding-inline-start: max(0px, calc(var(--alert-gutter) - 12px));
+        }
+        .bq-notif-entry > .alert-item-selection { margin-block-start: -11px; }
         .bq-notif-entry.unread { background: #f8fbff; border-inline-start-color: ${BQ_COLORS.accent}; }
         :root[data-theme="dark"] .bq-notif-entry.unread { background: ${BQ_COLORS.bgAlt}; }
         .bq-notif-item {
-            display: flex; gap: 12px; padding: 14px var(--alert-gutter) 3px; background: transparent;
-            border: none; text-align: left; cursor: pointer; width: 100%;
+            display: block; width: 100%; padding: 0; border: 0; background: transparent;
+            color: ${BQ_COLORS.ink}; font: inherit; text-align: start; cursor: pointer;
         }
-        .bq-notif-item:hover, .bq-notif-move:hover { background: ${BQ_COLORS.bg}; }
+        .bq-notif-item:hover:not(:disabled) .bq-notif-title { text-decoration: underline; text-underline-offset: 2px; }
+        .bq-notif-move:hover:not(:disabled) { background: ${BQ_COLORS.bg}; }
+        .bq-notif-item:focus-visible, .bq-notif-move:focus-visible { outline: 2px solid ${BQ_COLORS.accent}; outline-offset: 2px; }
         .bq-notif-content { min-width: 0; overflow-wrap: anywhere; }
-        .bq-notif-entry.has-alert-selection { position: relative; }
-        .bq-notif-entry.has-alert-selection > .alert-item-selection { position: absolute; top: 0; inset-inline-start: 0; }
-        .bq-notif-entry.has-alert-selection > .bq-notif-item { padding-inline-start: 44px; }
+        .bq-notif-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+        .bq-notif-title { font-size: max(var(--app-type-caption), 15px); line-height: 1.4; font-weight: 700; }
+        .bq-notif-msg {
+            display: block; margin-block-start: 3px;
+            color: ${BQ_COLORS.inkMuted}; font-size: max(var(--app-type-caption), 14px); line-height: 1.5;
+        }
         .bq-notif-meta {
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px;
-            padding: 0 var(--alert-gutter) 10px calc(var(--alert-gutter) + 20px);
+            margin-block-start: 8px;
         }
         .bq-notif-time { color: ${BQ_COLORS.inkMuted}; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
         .bq-notif-move {
@@ -259,10 +264,9 @@ export default function BoutiqueNotifications({
 
         .bq-notif-dot {
             width: 8px; height: 8px; border-radius: 50%; background: ${BQ_COLORS.accent};
-            margin-top: 6px; flex-shrink: 0; opacity: 0; transform: scale(0);
-            transition: all 0.3s ease;
+            margin-block-start: 7px; flex-shrink: 0; visibility: hidden;
         }
-        .bq-notif-entry.unread .bq-notif-dot { opacity: 1; transform: scale(1); }
+        .bq-notif-entry.unread .bq-notif-dot { visibility: visible; }
         .bq-notif-category {
             display: inline-flex; width: fit-content; margin-bottom: 7px; padding: 3px 8px;
             border-radius: 999px; background: #dbeafe; color: #1d4ed8;

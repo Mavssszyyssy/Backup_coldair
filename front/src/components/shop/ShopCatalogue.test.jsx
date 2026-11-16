@@ -21,12 +21,14 @@ test("keeps unavailable products visible after available products without purcha
   languageState.value = "English";
   const onAddToCart = vi.fn();
   const onBuyNow = vi.fn();
+  const onProductClick = vi.fn();
+  const soldOutProduct = product("sold-out", false);
   render(
     <ShopCatalogue
-      products={[product("sold-out", false), { ...product("ready", true), price: 19999.5, oldPrice: 21000, stockLabel: "Low stock" }]}
+      products={[soldOutProduct, { ...product("ready", true), price: 19999.5, oldPrice: 21000, stockLabel: "Low stock" }]}
       onAddToCart={onAddToCart}
       onBuyNow={onBuyNow}
-      onProductClick={vi.fn()}
+      onProductClick={onProductClick}
       sortBy="default"
       onSortChange={vi.fn()}
     />,
@@ -53,9 +55,12 @@ test("keeps unavailable products visible after available products without purcha
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("loading", "eager");
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("fetchpriority", "high");
   expect(within(sections[1]).getByRole("img", { name: "Cold Air sold-out" })).toHaveAttribute("loading", "lazy");
-  expect(within(sections[1]).getByRole("button", { name: "Out of stock" })).toBeDisabled();
-  expect(within(sections[1]).queryByRole("button", { name: "Unavailable" })).not.toBeInTheDocument();
-  expect(within(sections[1]).queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
+  const soldOut = within(sections[1]);
+  expect(soldOut.getAllByText("Out of stock")).toHaveLength(1);
+  const viewDetails = soldOut.getByRole("button", { name: "View details: Cold Air sold-out" });
+  expect(soldOut.getAllByRole("button")).toEqual([viewDetails]);
+  fireEvent.click(viewDetails);
+  expect(onProductClick).toHaveBeenCalledExactlyOnceWith(soldOutProduct);
   expect(onAddToCart).not.toHaveBeenCalled();
   expect(onBuyNow).not.toHaveBeenCalled();
 });

@@ -121,8 +121,7 @@ export default function ShopCatalogue({
             ) : null}
             {unavailableProducts.length > 0 ? (
               <BoutiqueBox tag="section" aria-label={t("Out of stock products")}>
-                <BoutiqueText variant="h2" margin="0 0 6px" style={{ fontSize: "18px" }}>{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
-                <BoutiqueText color={BQ_COLORS.inkMuted} margin="0 0 18px">{t("You can view these AC units, but they cannot be ordered until stock returns.")}</BoutiqueText>
+                <BoutiqueText variant="h2" margin="0 0 18px" style={{ fontSize: "18px" }}>{t("Out of stock")} ({unavailableProducts.length})</BoutiqueText>
                 <BoutiqueGrid className="bq-grid">
                   {unavailableProducts.map((product, index) => (
                     <ProductCard key={product.id} product={product} priority={availableProducts.length === 0 && index === 0} eager={availableProducts.length === 0 && index < 3} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onClick={onProductClick} />

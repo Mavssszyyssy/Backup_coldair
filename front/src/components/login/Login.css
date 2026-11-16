@@ -10,7 +10,6 @@
 .bq-auth-layout--sign-in .bq-reg-brand { background: #000; }
 :root[data-theme="dark"] .bq-auth-layout--sign-in .bq-reg-brand { background: #101c31; }
 .bq-auth-layout--sign-in .bq-auth-form-constraint {
-  height: auto !important;
   padding-block: clamp(20px, 3vw, 32px) !important;
 }
 .bq-auth-layout--sign-in .bq-auth-header-block { margin-bottom: 14px !important; gap: 4px !important; }
@@ -100,15 +99,6 @@
 .bq-auth-action--ghost { border: 1px solid var(--bq-color-border); background: var(--bq-color-bg-alt); color: var(--bq-color-ink-muted); }
 .bq-auth-action:is(:hover, :focus-visible):not(:disabled) { background: var(--bq-color-bg); }
 .bq-auth-action:disabled { opacity: .7; cursor: not-allowed; }
-
-@media (min-width: 1025px) {
-  .bq-auth-layout--sign-in { height: 100dvh !important; }
-
-  .bq-auth-layout--sign-in .bq-auth-form-constraint {
-    flex-shrink: 0;
-    margin-block: auto !important;
-  }
-}
 
 @media (max-width: 1024px) {
   .bq-login-back-link { width: 44px; height: 44px; }

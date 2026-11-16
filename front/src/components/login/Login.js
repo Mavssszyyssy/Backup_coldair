@@ -187,7 +187,7 @@ function Login() {
   };
 
   return (
-    <BoutiqueAuthLayout className="bq-auth-layout--sign-in">
+    <BoutiqueAuthLayout className="bq-auth-layout--sign-in" centerForm>
       <Link className="bq-login-back-link" to="/home" aria-label={t("Back to Home")}>
         <ArrowLeft size={20} weight="bold" aria-hidden="true" />
       </Link>
