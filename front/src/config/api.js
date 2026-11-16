@@ -121,8 +121,6 @@ const requestWithTimeout = async (url, options, timeoutMs, callerSignal) => {
 };
 
 const performApiRequest = async (path, options = {}) => {
-  const token = getToken();
-  const activeBranch = getActiveBranch();
   const {
     timeoutMs: requestedTimeoutMs,
     signal: callerSignal,
@@ -131,6 +129,10 @@ const performApiRequest = async (path, options = {}) => {
   } = options;
   if (!silentConnection) beginConnection(path);
   const method = String(requestOptions.method || "GET").toUpperCase();
+  // The catalogue is public, and its stock scope is selected by the query string.
+  const publicCatalogue = method === "GET" && path.split("?")[0] === "/products/public";
+  const token = publicCatalogue ? null : getToken();
+  const activeBranch = publicCatalogue ? "" : getActiveBranch();
   const timeoutMs = boundedTimeout(
     requestedTimeoutMs,
     method === "GET" ? 20000 : 30000,
@@ -162,7 +164,7 @@ const performApiRequest = async (path, options = {}) => {
           response = await requestWithTimeout(requestUrl, {
             ...requestOptions,
             ...(shouldDisableCache ? { cache: "no-store" } : {}),
-            credentials: "include",
+            credentials: publicCatalogue ? "omit" : "include",
             headers: {
               // A bodyless GET needs no JSON content type. Sending one forces
               // an avoidable CORS preflight for public catalog and health reads.

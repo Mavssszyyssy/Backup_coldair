@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { apiRequest } from "./api";
 import { loadPageRequests } from "./loadPageRequests";
+import { primeGuestCatalogue } from "../domain/primeGuestCatalogue";
 
 const auth = vi.hoisted(() => ({ token: null, branch: "" }));
 vi.mock("../utils/authSession", () => ({
@@ -215,7 +216,9 @@ test("an authorization rejection drops cached private records", async () => {
   expect(fetchMock).toHaveBeenCalledTimes(3);
 });
 
-test("bodyless public GET avoids a JSON preflight header", async () => {
+test("public catalogue GET avoids preflight headers even with a signed-in session", async () => {
+  auth.token = "test-session";
+  auth.branch = "Cavite";
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ products: [] }) });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -224,7 +227,28 @@ test("bodyless public GET avoids a JSON preflight header", async () => {
   const [, options] = fetchMock.mock.calls[0];
   expect(options.method).toBeUndefined();
   expect(options.headers).not.toHaveProperty("Content-Type");
-  expect(options.credentials).toBe("include");
+  expect(options.headers).not.toHaveProperty("Authorization");
+  expect(options.headers).not.toHaveProperty("X-Branch");
+  expect(options.credentials).toBe("omit");
+  expect(options.cache).toBe("no-store");
+});
+
+test("a guest landing request starts early and is shared by the shop", async () => {
+  let finish;
+  const fetchMock = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  primeGuestCatalogue("/login");
+  expect(fetchMock).not.toHaveBeenCalled();
+
+  primeGuestCatalogue("/");
+  const shopResult = apiRequest("/products/public", { display: true, silentConnection: true });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  finish(reply({ products: [{ id: "ac-1" }] }));
+  await expect(shopResult).resolves.toEqual({ products: [{ id: "ac-1" }] });
+
+  auth.token = "test-session";
+  primeGuestCatalogue("/shop");
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
 test("JSON write requests keep their content type", async () => {

@@ -99,10 +99,17 @@ const Shop = () => {
       try {
         let branch = "";
         if (isAuthenticated) {
-          const addressResult = await apiRequest("/users/addresses", { silentConnection: true, display: true, fresh });
-          const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
-          const address = addresses.find((entry) => entry.isDefault) || addresses[0];
-          if (address) branch = await resolveConfiguredBranch(address, { display: true, fresh });
+          const addressResult = await apiRequest("/users/addresses?resolveDeliveryBranch=true", {
+            silentConnection: true, display: true, fresh,
+          });
+          if (typeof addressResult.deliveryBranch === "string" && addressResult.deliveryBranch) {
+            branch = addressResult.deliveryBranch;
+          } else {
+            // Preserve coverage errors for unmatched addresses and older APIs.
+            const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
+            const address = addresses.find((entry) => entry.isDefault) || addresses[0];
+            if (address) branch = await resolveConfiguredBranch(address, { display: true, fresh });
+          }
         }
         let shownResult;
         const applyProducts = (response) => {

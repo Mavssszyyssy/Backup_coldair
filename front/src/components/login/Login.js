@@ -198,7 +198,7 @@ function Login() {
         subtitle={t("Sign in to your Cold Air account")}
       />
 
-      <BoutiqueStack gap={16} className="bq-login-form-inner">
+      <BoutiqueStack gap={12} className="bq-login-form-inner">
         {lockoutSeconds > 0 && (
           <div className="bq-login-lockout">
             <LockKey size={20} weight="duotone" aria-hidden="true" />

@@ -2,6 +2,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import Shop from "./Shop";
 import { apiRequest } from "../../config/api";
+import { resolveConfiguredBranch } from "../../domain/branches/branchRouting";
 
 const authState = vi.hoisted(() => ({ authenticated: false }));
 const purchase = vi.hoisted(() => ({ navigate: vi.fn(), addToCart: vi.fn(), cart: [], search: "" }));
@@ -47,6 +48,7 @@ vi.mock("./ProductModal", () => ({ default: () => null }));
 beforeEach(() => {
   vi.useFakeTimers();
   apiRequest.mockReset();
+  resolveConfiguredBranch.mockClear();
   authState.authenticated = false;
   purchase.cart = [];
   purchase.search = "";
@@ -137,6 +139,8 @@ test("web Buy Now routes only the selected product even when the cart already ha
   authState.authenticated = true;
   purchase.cart = [{ id: "p1", quantity: 1 }, { id: "p2", quantity: 1 }];
   apiRequest.mockImplementation(async (path) => {
+    if (path === "/notifications/me") return { notifications: [] };
+    if (path === "/users/addresses?resolveDeliveryBranch=true") return { deliveryBranch: "Cavite" };
     if (path === "/users/addresses") return { addresses: [{ city: "Bacoor", isDefault: true }] };
     if (path === "/products/public?branch=Cavite") return {
       products: [{ id: "p2", name: "Window AC", category: "window", price: 200, stock: 1 }],
@@ -145,7 +149,14 @@ test("web Buy Now routes only the selected product even when the cart already ha
   });
   const view = render(<Shop />);
   await act(async () => {});
+  const catalogueRequests = apiRequest.mock.calls.map(([path]) => path).filter((path) => path !== "/notifications/me");
+  expect(catalogueRequests).toEqual([
+    "/users/addresses?resolveDeliveryBranch=true", "/products/public?branch=Cavite",
+  ]);
+  expect(resolveConfiguredBranch).not.toHaveBeenCalled();
   await act(async () => { fireEvent.click(view.getByRole("button", { name: "Buy Now" })); });
+  expect(resolveConfiguredBranch).toHaveBeenCalledWith({ city: "Bacoor", isDefault: true });
+  expect(apiRequest).toHaveBeenCalledWith("/products/public?branch=Cavite", { fresh: true });
   expect(purchase.navigate).toHaveBeenCalledWith("/checkout", {
     state: { buyNowItem: expect.objectContaining({ id: "p2", quantity: 1 }) },
   });
@@ -156,7 +167,7 @@ test("an older anonymous response cannot replace branch-specific stock after sig
   let finishAnonymous;
   apiRequest.mockImplementation((path) => {
     if (path === "/products/public") return new Promise((resolve) => { finishAnonymous = resolve; });
-    if (path === "/users/addresses") return Promise.resolve({ addresses: [{ city: "Bacoor", isDefault: true }] });
+    if (path === "/users/addresses?resolveDeliveryBranch=true") return Promise.resolve({ addresses: [{ city: "Bacoor", isDefault: true }] });
     if (path === "/products/public?branch=Cavite") return Promise.resolve({ products: [] });
     throw new Error(`Unexpected path: ${path}`);
   });
@@ -167,4 +178,20 @@ test("an older anonymous response cannot replace branch-specific stock after sig
   await act(async () => { finishAnonymous({ products: [] }); });
   expect(view.getByText(/Cavite delivery branch/)).toBeInTheDocument();
   view.unmount();
+});
+
+test("an unmatched saved address retains the coverage error instead of showing unrelated stock", async () => {
+  authState.authenticated = true;
+  const address = { city: "Outside Service Area", isDefault: true };
+  resolveConfiguredBranch.mockRejectedValueOnce(new Error("No coverage"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    apiRequest.mockResolvedValue({ addresses: [address], deliveryBranch: "" });
+    render(<Shop />);
+    await act(async () => {});
+    expect(resolveConfiguredBranch).toHaveBeenCalledWith(address, { display: true, fresh: false });
+    expect(apiRequest.mock.calls.some(([path]) => path.startsWith("/products/public"))).toBe(false);
+  } finally {
+    log.mockRestore();
+  }
 });

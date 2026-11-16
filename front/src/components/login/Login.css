@@ -4,14 +4,14 @@
   min-height: 100dvh;
   justify-content: center !important;
   align-items: center !important;
-  padding: clamp(16px, 4vw, 48px) !important;
+  padding: clamp(12px, 3vw, 32px) !important;
   background: var(--bq-color-bg);
 }
 
 .bq-auth-layout--sign-in .bq-auth-flex {
   flex: none !important;
   flex-direction: row !important;
-  max-width: 920px;
+  max-width: 800px;
   overflow: hidden;
   border: 1px solid var(--bq-color-border);
   border-radius: 24px;
@@ -24,15 +24,16 @@
 }
 
 .bq-auth-layout--sign-in .bq-reg-brand { padding: 28px 18px; background: #101c31; }
-.bq-auth-layout--sign-in .bq-reg-logo { width: 76px; height: 76px; margin-bottom: 18px; padding: 9px; border-radius: 18px; }
+.bq-auth-layout--sign-in .bq-reg-logo { width: 76px; height: 76px; margin-bottom: 14px; padding: 9px; border-radius: 18px; }
 .bq-auth-layout--sign-in .bq-reg-brand-name { font-size: clamp(26px, 3vw, 37px); }
 .bq-auth-layout--sign-in .bq-reg-brand-tagline { color: #b9c7da; font-size: 11px; letter-spacing: .14em; margin: 8px 0 0; }
 .bq-auth-layout--sign-in .bq-auth-form-area { min-width: 0; }
 .bq-auth-layout--sign-in .bq-auth-form-constraint {
   height: auto !important;
-  padding: clamp(22px, 4vw, 38px) clamp(18px, 3vw, 32px) !important;
+  max-width: none !important;
+  padding: clamp(18px, 3vw, 24px) clamp(16px, 3.5vw, 36px) !important;
 }
-.bq-auth-layout--sign-in .bq-auth-header-block { margin-bottom: 20px !important; gap: 6px !important; }
+.bq-auth-layout--sign-in .bq-auth-header-block { margin-bottom: 14px !important; gap: 4px !important; }
 .bq-auth-layout--sign-in .bq-auth-header-extra:empty { display: none !important; }
 
 .bq-login-back-link {
@@ -41,17 +42,18 @@
   align-self: flex-start;
   gap: 7px;
   min-height: 44px;
-  margin: -8px 0 10px;
+  margin: -6px 0 4px;
   color: var(--bq-color-ink-muted);
   font-size: var(--app-type-label);
   font-weight: 700;
 }
 
 .bq-login-back-link:hover { color: var(--bq-color-ink); }
-.bq-signup-link { color: var(--bq-color-ink); font-weight: 800; text-decoration: underline; }
-.bq-login-step { display: grid; gap: 14px; width: 100%; }
+.bq-login-signup .bq-signup-link { color: var(--bq-color-ink); font-weight: 800; text-decoration: underline; }
+.bq-login-step { display: grid; gap: 10px; width: 100%; }
 .bq-login-password-field { display: grid; gap: 0; }
-.bq-auth-layout--sign-in .bq-input-field { padding-block: 12px; min-height: 48px; }
+.bq-auth-layout--sign-in .bq-input-group { gap: 6px !important; }
+.bq-auth-layout--sign-in .bq-input-field { padding-block: 10px; min-height: 44px; }
 .bq-login-forgot {
   justify-self: end;
   display: inline-flex;
@@ -82,8 +84,8 @@
 
 .bq-login-form-inner .bq-login-btn--primary {
   width: 100%;
-  min-height: 48px;
-  padding: 12px 16px;
+  min-height: 46px;
+  padding: 10px 16px;
   border-radius: 12px;
   border: 0;
   font: inherit;
@@ -99,7 +101,7 @@
 .bq-login-form-inner .bq-login-btn--primary:hover:not(:disabled) { background: var(--bq-color-brand-hover); }
 .bq-login-form-inner .bq-login-btn--primary:disabled { background: var(--bq-color-bg-alt); border: 1px solid var(--bq-color-border); color: var(--bq-color-ink-muted); cursor: not-allowed; }
 
-.bq-login-signup { padding-top: 14px !important; border-top: 1px solid var(--bq-color-border); text-align: center; }
+.bq-login-signup { padding-top: 10px !important; border-top: 1px solid var(--bq-color-border); text-align: center; }
 .bq-auth-secondary-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .bq-auth-action {
   min-height: 46px;
@@ -116,7 +118,7 @@
 .bq-auth-action:disabled { opacity: .7; cursor: not-allowed; }
 
 @media (max-width: 680px) {
-  .bq-auth-layout--sign-in .bq-auth-flex { flex-direction: column !important; }
+  .bq-auth-layout--sign-in .bq-auth-flex { flex-direction: column !important; max-width: 480px; }
   .bq-auth-layout--sign-in .bq-auth-brand-area { flex: none !important; }
   .bq-auth-layout--sign-in .bq-reg-brand { padding: 14px 16px; }
   .bq-auth-layout--sign-in .bq-reg-brand-content { display: grid; grid-template-columns: 42px auto; text-align: left; align-items: center; column-gap: 12px; width: max-content; max-width: 100%; }

@@ -13,7 +13,7 @@ import { BQ_COLORS } from "../common/boutique/BoutiqueTheme";
 import {
   ACCOUNT_SUFFIX_MAX_LENGTH,
   validateAccountSuffix,
-} from "../../domain/register/validateRegistrationProfile";
+} from "../../domain/accountSuffix";
 import { PERSON_NAME_MAX_LENGTH, validatePersonName } from "../../domain/personNameValidation";
 import {
   validateLocalPhMobile,
