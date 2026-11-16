@@ -33,9 +33,10 @@ test('contact form labels switch languages while the customer name stays unchang
 
 test('contact inquiry validation uses the same code on API, web and mobile', () => {
   const read = (path) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n/g, '\n');
-  const source = read('../backend/src/domain/contactInquiryValidation.js').replace(/^module\.exports = /m, 'export ');
-  expect(read('src/domain/contactInquiryValidation.js')).toBe(source);
-  expect(read('../bork5/caact-mobile/utils/contactInquiryValidation.js')).toBe(source);
+  const source = read('../backend/src/domain/contactInquiryValidation.js');
+  const readClient = (path) => read(path).replace(/^export(?= \{)/m, 'module.exports =');
+  expect(readClient('src/domain/contactInquiryValidation.js')).toBe(source);
+  expect(readClient('../bork5/caact-mobile/utils/contactInquiryValidation.js')).toBe(source);
 });
 
 test('contact form blocks filler and over-limit drafts and sends a genuine concern', async () => {
