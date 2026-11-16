@@ -102,7 +102,7 @@ it("localizes Admin inventory filters without translating branch names", async (
   expect(screen.getByRole("tab", { name: "Imbentaryo / Stock" })).toBeInTheDocument();
   expect(screen.getByLabelText("Tingnan ang stock ng branch")).toHaveValue("Cavite");
   expect(screen.getByRole("searchbox", { name: "Maghanap sa imbentaryo" })).toBeInTheDocument();
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite", expect.objectContaining({ onCached: expect.any(Function) })));
 });
 
 it("limits the Admin profile phone field to 11 digits before saving", async () => {
@@ -155,10 +155,10 @@ it("defaults inventory stock to the signed-in Admin branch and keeps cross-branc
   expect(branchSelect).toHaveValue("Cavite");
   expect(branchSelect).not.toBeDisabled();
   expect(within(branchSelect).getAllByRole("option")[0]).toHaveTextContent("Cavite");
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Cavite", expect.objectContaining({ onCached: expect.any(Function) })));
 
   fireEvent.change(branchSelect, { target: { value: "Bulacan" } });
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Bulacan"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/products?branch=Bulacan", expect.objectContaining({ onCached: expect.any(Function) })));
 });
 
 it("opens an Admin inventory product in Serial/QR Management for the branch being viewed", async () => {
