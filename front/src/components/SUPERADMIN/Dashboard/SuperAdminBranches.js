@@ -57,7 +57,9 @@ const SuperAdminBranches = () => {
     if (branchNames.length && !branchNames.includes(branch)) setBranch(branchNames[0]);
   }, [branch, branchNames]);
 
-  const assignmentByBranch = useMemo(() => Object.fromEntries(branchNames.map((name) => [name, admins.find((admin) => admin.assignedBranch === name) || null])), [admins, branchNames]);
+  const branchOf = (admin) => branchNames.includes(admin.activeBranch) ? admin.activeBranch : admin.assignedBranch;
+  const activeAdmins = admins.filter((admin) => !["disabled", "deleted"].includes(admin.accountStatus));
+  const assignmentByBranch = Object.fromEntries(branchNames.map((name) => [name, activeAdmins.find((admin) => branchOf(admin) === name) || null]));
   const selectedAssignment = assignmentByBranch[branch];
   useEffect(() => { setAdminId(selectedAssignment?.id || ''); }, [branch, selectedAssignment?.id]);
   useEffect(() => {
@@ -79,6 +81,29 @@ const SuperAdminBranches = () => {
     } catch (requestError) {
       setError(requestError.message || 'Unable to update branch ownership.');
     } finally { setSaving(false); }
+  };
+
+  const removeAssignment = async () => {
+    if (!selectedAssignment || saving || loading) return;
+    const ownerName = selectedAssignment.name || selectedAssignment.email || t('Administrator');
+    const confirmation = t('Remove {administrator} from {branch}? This administrator will lose branch access and be signed out.')
+      .replace(/\{(administrator|branch)\}/g, (_, key) => key === 'administrator' ? ownerName : branch);
+    if (!window.confirm(confirmation)) return;
+    setMessage('');
+    setError('');
+    setSaving(true);
+    try {
+      const result = await apiRequest(`/users/${selectedAssignment.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ unassignBranch: branch }),
+      });
+      setAdmins((current) => current.map((admin) => admin.id === result.user.id ? result.user : admin));
+      setMessage(t('Branch assignment removed.'));
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to remove the branch assignment.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveCoverage = async (event) => {
@@ -187,17 +212,19 @@ const SuperAdminBranches = () => {
       {createdLoginId ? <p className="branch-success" role="status">{t('Account Login ID:')} <strong>{createdLoginId}</strong>. {t('Use this Login ID to sign in with the shared demo email account.')}</p> : null}
     </section>
     <section className="branch-workspace">
-      <div className="branch-workspace-heading"><div><p>{t('HQ branch control')}</p><h2>{t('Assign branch accountability')}</h2><span>{t('Only unassigned administrators can take an open branch. Existing ownership is not changed silently.')}</span></div><button type="button" onClick={() => load(true)} disabled={loading}>{t(loading ? 'Loading…' : 'Refresh')}</button></div>
+      <div className="branch-workspace-heading"><div><p>{t('HQ branch control')}</p><h2>{t('Assign branch accountability')}</h2><span>{t('Remove the current assignment to free the branch and make the administrator available for reassignment.')}</span></div><button type="button" onClick={() => load(true)} disabled={loading || saving}>{t(loading ? 'Loading…' : 'Refresh')}</button></div>
       <form className="branch-assignment-form branch-owner-form" onSubmit={save}>
-        <label>{t('Branch')}<SearchableSelect value={branch} onChange={(event) => setBranch(event.target.value)}>{branchNames.map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
-        <label>{t('Responsible administrator')}<SearchableSelect value={adminId} onChange={(event) => setAdminId(event.target.value)} disabled={Boolean(selectedAssignment)}><option value="">{t('Select an administrator')}</option>{admins.filter((admin) => !admin.assignedBranch || admin.id === selectedAssignment?.id).map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email} {t(admin.assignedBranch ? '— current owner' : '— unassigned')}</option>)}</SearchableSelect></label>
-        <button type="submit" disabled={saving || loading || Boolean(selectedAssignment)}>{t(saving ? 'Saving…' : 'Save assignment')}</button>
+        <label>{t('Branch')}<SearchableSelect value={branch} disabled={saving || loading} onChange={(event) => setBranch(event.target.value)}>{branchNames.map((name) => <option key={name} value={name}>{name}</option>)}</SearchableSelect></label>
+        <label>{t('Responsible administrator')}<SearchableSelect value={adminId} onChange={(event) => setAdminId(event.target.value)} disabled={saving || loading || Boolean(selectedAssignment)}><option value="">{t('Select an administrator')}</option>{activeAdmins.filter((admin) => !branchOf(admin) || admin.id === selectedAssignment?.id).map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email} {t(branchOf(admin) ? '— current owner' : '— unassigned')}</option>)}</SearchableSelect></label>
+        {selectedAssignment
+          ? <button type="button" className="branch-remove-assignment" disabled={saving || loading} onClick={removeAssignment}>{t('Remove assignment')}</button>
+          : <button type="submit" disabled={saving || loading || !adminId}>{t(saving ? 'Saving…' : 'Save assignment')}</button>}
       </form>
       <form className="branch-assignment-form" onSubmit={saveCoverage}>
         <label className="branch-coverage-field">{t('Service coverage (comma-separated)')}<input maxLength={2000} value={coverageAreas} onChange={(event) => setCoverageAreas(event.target.value)} placeholder={t('e.g. Bulacan, Plaridel, Malolos')} /><small className="branch-coverage-help">{t('Customer addresses are matched only against these configured areas. Unmatched addresses cannot be checked out.')}</small></label>
         <button type="submit" disabled={saving || loading}>{t(saving ? 'Saving…' : 'Save coverage')}</button>
       </form>
-      {message ? <p className="branch-success">{message}</p> : null}{error ? <p className="branch-error">{t(error)}</p> : null}
+      {message ? <p className="branch-success" role="status">{message}</p> : null}{error ? <p className="branch-error" role="alert">{t(error)}</p> : null}
     </section>
     <section className="branch-directory" aria-label={t('Branch assignments')}><header><div><p>{t('Branch directory')}</p><h2>{t('Current ownership')}</h2></div></header>{loading ? <LoadingSkeleton label={t('Loading branch assignments…')} variant="table" /> : <div>{branchNames.map((name) => { const admin = assignmentByBranch[name]; const areas = coverage.find((item) => item.name === name)?.coverageAreas || []; return <article key={name}><div><strong>{name}</strong><span>{t(admin ? 'Assigned' : 'Needs an administrator')}</span></div>{admin ? <div className="branch-admin-detail"><b>{admin.name || t('Administrator')}</b><small>{admin.email || t('No email recorded')} · {lastActive(admin.lastLogin, t)}</small></div> : <p>{t('Choose this branch above to assign an administrator.')}</p>}<small className="branch-coverage-list">{t('Coverage')}: {areas.join(', ') || t('Not configured')}</small></article>; })}</div>}</section>
     <section className="branch-directory branch-email-directory" aria-label={t('Administrator email management')}><header><div><p>{t('Administrator accounts')}</p><h2>{t('Contact email addresses')}</h2><span>{t("Editing an email does not change the administrator's account ID, branch, permissions, password, or session ownership.")}</span></div></header>{loading ? <LoadingSkeleton label={t('Loading administrator accounts…')} variant="table" /> : <div>{admins.map((admin) => <article key={admin.id}><div><strong>{admin.name || t('Administrator')}</strong><span>{admin.assignedBranch || t('Unassigned')}</span></div><label>{t('Email address')}<input maxLength={254} type="email" value={admin.email || ''} onChange={(event) => setAdmins((current) => current.map((item) => item.id === admin.id ? { ...item, email: event.target.value } : item))} placeholder="name@example.com" disabled={savingEmailId === admin.id} /></label><button type="button" onClick={() => saveAdminEmail(admin)} disabled={Boolean(savingEmailId)}>{t(savingEmailId === admin.id ? 'Saving…' : 'Save email')}</button></article>)}</div>}</section>

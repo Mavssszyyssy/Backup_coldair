@@ -1,4 +1,5 @@
 import { Minus, Plus } from "@phosphor-icons/react";
+import { useState } from "react";
 import {
   BQ_COLORS,
   BQ_FONTS,
@@ -22,10 +23,12 @@ export default function BoutiqueNumberInput({
   width = "auto",
   placeholder = "",
   strict = false,
+  commitOnBlur = false,
   onInvalid,
   ariaLabel,
 }) {
   const accessibleName = ariaLabel || placeholder || "Quantity";
+  const [draft, setDraft] = useState(null);
   // Helper to format with commas
   const formatValue = (val) => {
     if (val === "" || val === null || val === undefined) return "";
@@ -40,9 +43,19 @@ export default function BoutiqueNumberInput({
     if (val === "" || val === null) return "";
     return parseInt(val.toString().replace(/,/g, "")) || 0;
   };
+  const stepValue = commitOnBlur && draft ? Number(draft) : getRawNumber(value);
 
   const handleTextChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
+    if (commitOnBlur) {
+      const parsed = Number(rawValue);
+      if (rawValue === "" || (/^\d+$/.test(rawValue) && Number.isSafeInteger(parsed) && (max === null || parsed <= max))) {
+        setDraft(rawValue);
+      } else {
+        onInvalid?.();
+      }
+      return;
+    }
     if (strict) {
       if (rawValue !== "" && !/^\d+$/.test(rawValue)) { onInvalid?.(); return; }
       if (rawValue !== "" && (!Number.isSafeInteger(Number(rawValue)) || (max !== null && Number(rawValue) > max))) { onInvalid?.(); return; }
@@ -59,6 +72,11 @@ export default function BoutiqueNumberInput({
   };
 
   const handleBlur = () => {
+    if (commitOnBlur) {
+      if (draft !== null && draft !== "") onChange(Math.min(max ?? Infinity, Math.max(min, Number(draft))));
+      setDraft(null);
+      return;
+    }
     if (strict) {
       const raw = String(value ?? "").trim();
       const parsed = Number(raw);
@@ -76,23 +94,26 @@ export default function BoutiqueNumberInput({
   };
 
   const increment = () => {
+    setDraft(null);
     if (strict && (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)))) return;
-    const current = getRawNumber(value) || 0;
-    const next = current + step;
+    const next = Math.max(min, (stepValue || 0) + step);
     if (max !== null && next > max) onChange(max);
     else onChange(next);
   };
 
   const decrement = () => {
+    setDraft(null);
     if (strict && (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)))) return;
-    const current = getRawNumber(value) || 0;
-    const next = current - step;
+    const next = (stepValue || 0) - step;
     if (next < min) onChange(min);
     else onChange(next);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "ArrowUp") {
+    if (commitOnBlur && e.key === "Enter") {
+      e.preventDefault();
+      handleBlur();
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       increment();
     } else if (e.key === "ArrowDown") {
@@ -116,7 +137,7 @@ export default function BoutiqueNumberInput({
         style={{ width: btnSizes[size], height: btnSizes[size] }}
         onClick={decrement}
         aria-label={`Decrease ${accessibleName}`}
-        disabled={getRawNumber(value) <= min}
+        disabled={stepValue <= min}
       >
         <Minus size={size === "sm" ? 14 : 18} weight="bold" />
       </button>
@@ -126,7 +147,7 @@ export default function BoutiqueNumberInput({
         type="text"
         className="bq-num-field"
         style={{ fontSize: fontSizes[size] }}
-        value={formatValue(value)}
+        value={formatValue(draft ?? value)}
         onChange={handleTextChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
@@ -141,7 +162,7 @@ export default function BoutiqueNumberInput({
         style={{ width: btnSizes[size], height: btnSizes[size] }}
         onClick={increment}
         aria-label={`Increase ${accessibleName}`}
-        disabled={max !== null && getRawNumber(value) >= max}
+        disabled={max !== null && stepValue >= max}
       >
         <Plus size={size === "sm" ? 14 : 18} weight="bold" />
       </button>

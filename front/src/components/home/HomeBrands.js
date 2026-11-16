@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import {
   BQ_COLORS,
   BQ_FONTS,
@@ -16,11 +17,15 @@ export default function HomeBrands({ brands }) {
         <h2 className="brands-title">{t("Our Partners")}</h2>
         <div className="brands-grid">
           {brands.map((brand) => (
-            <div key={brand.id} className="brand-card">
+            <Link
+              key={brand.id}
+              className="brand-card"
+              to={`/shop?${new URLSearchParams({ brand: brand.name })}`}
+            >
               <div className="brand-logo-wrap">
                 <img
                   src={brand.logoUrl}
-                  alt={brand.name}
+                  alt=""
                   loading="lazy"
                   decoding="async"
                   width="120"
@@ -31,7 +36,7 @@ export default function HomeBrands({ brands }) {
                 <span className="brand-name">{brand.name}</span>
                 <span className="brand-desc">{t(brand.description)}</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
@@ -74,16 +79,15 @@ export default function HomeBrands({ brands }) {
           padding: 20px;
           background: ${BQ_COLORS.surfaceAlt};
           border-radius: ${BQ_GEOMETRY.radiusCard};
-          transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-          cursor: pointer;
+          text-decoration: none;
           border: 1px solid ${BQ_COLORS.border};
         }
 
-        .brand-card:hover {
-          transform: translateY(-10px) scale(1.02);
+        .brand-card:hover, .brand-card:focus-visible {
           box-shadow: ${BQ_SHADOWS.hover};
-          border-color: transparent;
         }
+
+        .brand-card:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 
         .brand-logo-wrap {
           width: 88px; height: 88px;
@@ -92,9 +96,7 @@ export default function HomeBrands({ brands }) {
           display: flex; align-items: center; justify-content: center;
           padding: 16px;
           flex-shrink: 0;
-          transition: transform 0.5s ease;
         }
-        .brand-card:hover .brand-logo-wrap { transform: scale(1.1); background: ${BQ_COLORS.surface}; }
         :root[data-theme='dark'] .home-brands .brand-logo-wrap {
           /* Some supplied logos have white backgrounds or dark lettering. */
           background: #fff;

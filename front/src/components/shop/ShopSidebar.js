@@ -44,6 +44,8 @@ export default function ShopSidebar({
   selectedHorsepowers = [],
   onSelectHorsepower,
   priceRange,
+  priceCeiling,
+  priceStep,
   onPriceChange,
   searchTerm,
   onSearchChange,
@@ -221,8 +223,10 @@ export default function ShopSidebar({
                 placeholder={t("Max Price")}
                 value={priceRange.max}
                 onChange={(val) => onPriceChange("max", val)}
-                min={0}
-                step={1000}
+                min={priceRange.min}
+                max={priceCeiling}
+                step={priceStep}
+                commitOnBlur
                 width="100%"
               />
             </BoutiqueBox>
@@ -247,7 +251,9 @@ export default function ShopSidebar({
                 value={priceRange.min}
                 onChange={(val) => onPriceChange("min", val)}
                 min={0}
-                step={1000}
+                max={priceRange.max}
+                step={priceStep}
+                commitOnBlur
                 width="100%"
               />
             </BoutiqueBox>

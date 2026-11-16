@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import ShopCatalogue from "./ShopCatalogue";
 
 const languageState = vi.hoisted(() => ({ value: "English" }));
@@ -23,7 +23,7 @@ test("keeps unavailable products visible after available products without purcha
   const onBuyNow = vi.fn();
   render(
     <ShopCatalogue
-      products={[product("sold-out", false), { ...product("ready", true), price: 19999.5, oldPrice: 21000 }]}
+      products={[product("sold-out", false), { ...product("ready", true), price: 19999.5, oldPrice: 21000, stockLabel: "Low stock" }]}
       onAddToCart={onAddToCart}
       onBuyNow={onBuyNow}
       onProductClick={vi.fn()}
@@ -41,6 +41,14 @@ test("keeps unavailable products visible after available products without purcha
   expect(sections[1]).toHaveTextContent("sold-out");
   expect(within(sections[0]).getByText("₱19,999.50")).toBeInTheDocument();
   expect(within(sections[0]).getByText("₱21,000.00")).toBeInTheDocument();
+  const available = within(sections[0]);
+  const buyNow = available.getByRole("button", { name: "Buy Now" });
+  const addToCart = available.getByRole("button", { name: "Add to Cart" });
+  fireEvent.mouseOver(buyNow);
+  expect(available.getByText("Low stock")).toBeVisible();
+  expect(available.getByText("₱19,999.50")).toBeVisible();
+  expect(buyNow).toBeVisible();
+  expect(addToCart).toBeVisible();
   expect(within(sections[1]).getByText("₱20,000.00")).toBeInTheDocument();
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("loading", "eager");
   expect(within(sections[0]).getByRole("img", { name: "Cold Air ready" })).toHaveAttribute("fetchpriority", "high");

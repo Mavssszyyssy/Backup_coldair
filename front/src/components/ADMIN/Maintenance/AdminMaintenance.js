@@ -1,6 +1,6 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import ServiceRequests from './ServiceRequests';
 import RequestDetails from './RequestDetails';
@@ -8,11 +8,19 @@ import WarrantyClaims from './WarrantyClaims';
 import { apiRequest } from '../../../config/api';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
-import { serviceRequestSummary } from '../../../domain/serviceRequestSummary';
+import { matchesServiceRequestStatus, serviceRequestSummary } from '../../../domain/serviceRequestSummary';
 import '../adminShared.css';
 import './styles.css';
 
 const STATUS_OPTIONS = ['Submitted', 'Reviewed', 'Assigned', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
+const SUMMARY_CARDS = [
+  { filter: 'all', count: 'total', label: 'All requests', description: 'Recorded service requests' },
+  { filter: 'unassigned', count: 'unassigned', tone: 'attention', label: 'Needs assignment', description: 'Waiting for a technician' },
+  { filter: 'active', count: 'active', tone: 'active', label: 'In progress', description: 'Technician work underway' },
+  { filter: 'On Hold', count: 'onHold', tone: 'hold', label: 'On hold', description: 'Admin follow-up needed' },
+  { filter: 'Completed', count: 'completed', tone: 'complete', label: 'Completed', description: 'Work and proof finalized' },
+  { filter: 'Cancelled', count: 'cancelled', tone: 'cancelled', label: 'Cancelled work', description: 'Cancelled service requests' },
+];
 
 const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const { currentLanguage } = useUser();
@@ -30,6 +38,8 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const [claimDecision, setClaimDecision] = useState(null);
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionError, setDecisionError] = useState('');
+  const queueId = useId();
+  const queueHeading = useRef(null);
 
   const load = useCallback(async ({ quiet = false, fresh = false } = {}) => {
     if (!quiet) { setError(''); setLoading(true); }
@@ -85,7 +95,7 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   const filteredRequests = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return requests.filter((request) => {
-      const statusMatches = statusFilter === 'all' || String(request.status || '') === statusFilter;
+      const statusMatches = matchesServiceRequestStatus(request, statusFilter);
       const technicianMatches = technicianFilter === 'all' || String(request.assignedTechnicianId || '') === technicianFilter;
       const textMatches = !needle || [
         request.customer,
@@ -101,6 +111,12 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   }, [requests, search, statusFilter, technicianFilter]);
 
   const summary = useMemo(() => serviceRequestSummary(requests), [requests]);
+
+  const selectSummaryFilter = (filter) => {
+    setStatusFilter(filter);
+    queueHeading.current?.focus({ preventScroll: true });
+    queueHeading.current?.scrollIntoView?.({ block: 'center' });
+  };
 
   const resetFilters = () => {
     setSearch('');
@@ -142,25 +158,19 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
   return (
     <AdminLayout title={t("Maintenance Operations")} subtitle={t("Review service requests, assign technicians, and monitor proof of work")} embedded={embedded}>
       <section className="maintenance-page">
-        <div className="maintenance-overview" aria-label={t("Maintenance summary")}>
-          <div className="maintenance-summary-card">
-            <span>{t("All requests")}</span><strong>{summary.total}</strong><small>{t("Recorded service requests")}</small>
-          </div>
-          <div className="maintenance-summary-card maintenance-summary-card--attention">
-            <span>{t("Needs assignment")}</span><strong>{summary.unassigned}</strong><small>{t("Waiting for a technician")}</small>
-          </div>
-          <div className="maintenance-summary-card maintenance-summary-card--active">
-            <span>{t("In progress")}</span><strong>{summary.active}</strong><small>{t("Technician work underway")}</small>
-          </div>
-          <div className="maintenance-summary-card maintenance-summary-card--hold">
-            <span>{t("On hold")}</span><strong>{summary.onHold}</strong><small>{t("Admin follow-up needed")}</small>
-          </div>
-          <div className="maintenance-summary-card maintenance-summary-card--complete">
-            <span>{t("Completed")}</span><strong>{summary.completed}</strong><small>{t("Work and proof finalized")}</small>
-          </div>
-          <div className="maintenance-summary-card maintenance-summary-card--cancelled">
-            <span>{t("Cancelled work")}</span><strong>{summary.cancelled}</strong><small>{t("Cancelled service requests")}</small>
-          </div>
+        <div className="maintenance-overview" role="group" aria-label={t("Maintenance summary")}>
+          {SUMMARY_CARDS.map(({ filter, count, tone, label, description }) => (
+            <button
+              key={filter}
+              type="button"
+              className={tone ? `maintenance-summary-card maintenance-summary-card--${tone}` : 'maintenance-summary-card'}
+              aria-controls={queueId}
+              aria-pressed={statusFilter === filter}
+              onClick={() => selectSummaryFilter(filter)}
+            >
+              <span>{t(label)}</span><strong>{summary[count]}</strong><small>{t(description)}</small>
+            </button>
+          ))}
         </div>
 
         {error ? <div className="maintenance-alert" role="alert">{t(error)}<button type="button" onClick={() => load({ fresh: true })}>{t("Try again")}</button></div> : null}
@@ -190,16 +200,24 @@ const AdminMaintenance = ({ embedded = false, recordId = '' }) => {
         </div> : null}
 
         <div className="maintenance-workspace">
-          <div className="maintenance-queue-panel">
+          <div id={queueId} className="maintenance-queue-panel">
             <div className="maintenance-panel-heading">
-              <div><p className="maintenance-eyebrow">{t("Service queue")}</p><h2>{t("Requests")}</h2></div>
+              <div><p className="maintenance-eyebrow">{t("Service queue")}</p><h2 ref={queueHeading} tabIndex={-1}>{t("Requests")}</h2></div>
               <button type="button" className="maintenance-button maintenance-button--secondary" onClick={() => load({ fresh: true })} disabled={loading}>
                 {t(loading ? 'Refreshing…' : 'Refresh')}
               </button>
             </div>
             <div className="maintenance-filters">
               <label className="maintenance-search-field"><span>{t("Search")}</span><input maxLength={160} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Customer, unit, issue, address")} /></label>
-              <label><span>{t("Status")}</span><SearchableSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">{t("All statuses")}</option>{STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(status)}</option>)}</SearchableSelect></label>
+              <label>
+                <span>{t("Status")}</span>
+                <SearchableSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="all">{t("All statuses")}</option>
+                  <option value="unassigned">{t("Needs assignment")}</option>
+                  <option value="active">{t("Assigned")} / {t("In Progress")}</option>
+                  {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(status)}</option>)}
+                </SearchableSelect>
+              </label>
               <label><span>{t("Technician")}</span><SearchableSelect value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)}><option value="all">{t("All technicians")}</option>{technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name || `${technician.name_first || ''} ${technician.name_last || ''}`.trim() || technician.email}</option>)}</SearchableSelect></label>
               <button type="button" className="maintenance-filter-reset" onClick={resetFilters} disabled={!search && statusFilter === 'all' && technicianFilter === 'all'}>{t("Clear filters")}</button>
             </div>

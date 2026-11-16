@@ -97,9 +97,8 @@
 
 .units-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    align-items: start;
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 24px;
 }
 
 .unit-card {
@@ -108,8 +107,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: auto;
-    align-self: start;
+    min-width: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: transform 0.38s cubic-bezier(.2,.8,.2,1), box-shadow 0.38s ease;
     cursor: pointer;
@@ -297,15 +295,28 @@
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 5px;
-    padding-right: 100px;
+    overflow-wrap: anywhere;
 }
 
 .unit-model-code {
-  max-width: calc(100% - 88px);
   color: rgba(255, 255, 255, 0.82);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 769px) {
+  .unit-header { min-height: 152px; }
+  @supports (grid-template-rows: subgrid) {
+    .unit-card {
+      display: grid;
+      grid-row: span 4;
+      grid-template-rows: subgrid;
+      row-gap: 0;
+    }
+    .unit-header { min-height: 132px; }
+  }
 }
 
 .unit-header-actions {
@@ -384,6 +395,7 @@
 
 .unit-product-visual--card {
   height: 190px;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   margin: 0;
 }
 

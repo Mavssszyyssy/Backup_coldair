@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import AdminMaintenance from './AdminMaintenance';
 import { apiRequest } from '../../../config/api';
 
@@ -20,6 +20,62 @@ beforeEach(() => {
     if (path === '/service-requests') return { requests: [{ id: 'request-1', status: 'On Hold', unitName: 'Another AC' }] };
     return { users: [] };
   });
+});
+
+test('summary cards filter the queue using the same criteria as the counts and keep the dropdown in sync', async () => {
+  const fixtures = [
+    ['Waiting customer', 'Reviewed'],
+    ['Assigned customer', 'Assigned', 'tech-1'],
+    ['Active customer', 'In Progress', 'tech-1'],
+    ['Held customer', 'On Hold', 'tech-2'],
+    ['Served customer', 'Completed'],
+    ['Closed customer', 'Cancelled'],
+  ];
+  apiRequest.mockImplementation(async (path) => path === '/service-requests' ? {
+    requests: fixtures.map(([customerName, status, assignedTechnicianId], index) => ({ id: `r-${index}`, customerName, status, assignedTechnicianId })),
+  } : {});
+  render(<AdminMaintenance embedded />);
+  await screen.findByText('Waiting customer');
+
+  const cards = within(screen.getByRole('group', { name: 'Maintenance summary' }));
+  const heading = screen.getByRole('heading', { name: 'Requests' });
+  const status = screen.getByRole('combobox', { name: 'Status' });
+  const cases = [
+    [/Needs assignment/, 'unassigned', [0]],
+    [/In progress/, 'active', [1, 2]],
+    [/On hold/, 'On Hold', [3]],
+    [/Completed/, 'Completed', [4]],
+    [/Cancelled work/, 'Cancelled', [5]],
+    [/All requests/, 'all', [0, 1, 2, 3, 4, 5]],
+  ];
+
+  for (const [name, value, matchingIndexes] of cases) {
+    const card = cards.getByRole('button', { name });
+    fireEvent.click(card);
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+    expect(cards.getAllByRole('button', { pressed: true })).toEqual([card]);
+    expect(status).toHaveValue(value);
+    expect(heading).toHaveFocus();
+    fixtures.forEach(([customerName], index) => {
+      if (matchingIndexes.includes(index)) expect(screen.getByText(customerName)).toBeVisible();
+      else expect(screen.queryByText(customerName)).not.toBeInTheDocument();
+    });
+  }
+
+  fireEvent.change(status, { target: { value: 'Assigned' } });
+  expect(screen.getByText('Assigned customer')).toBeVisible();
+  expect(screen.queryByText('Active customer')).not.toBeInTheDocument();
+  expect(cards.queryByRole('button', { pressed: true })).not.toBeInTheDocument();
+
+  const search = screen.getByRole('searchbox', { name: 'Search' });
+  fireEvent.change(search, { target: { value: 'Active customer' } });
+  fireEvent.click(cards.getByRole('button', { name: /All requests/ }));
+  expect(search).toHaveValue('Active customer');
+  expect(screen.getByText('Active customer')).toBeVisible();
+  expect(screen.queryByText('Assigned customer')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+  expect(search).toHaveValue('');
+  expect(screen.getByText('Assigned customer')).toBeVisible();
 });
 
 test('shows on-hold work separately and saves a claim decision in an in-page dialog', async () => {

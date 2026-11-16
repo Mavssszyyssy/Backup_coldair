@@ -67,7 +67,7 @@ export default function ProductCard({
 
   return (
     <BoutiqueBox
-      className={`bq-card ${product.featured ? "featured" : ""} ${outOfStock ? "bq-card--unavailable" : ""}`}
+      className={`bq-card ${product.featured ? "featured" : ""}`}
       onClick={() => onClick(product)}
       tag="div"
     >
@@ -179,81 +179,65 @@ export default function ProductCard({
           </BoutiqueBox>
         </BoutiqueBox>
 
-        <BoutiqueBox
-          className="bq-interactive-wrapper"
-          margin="auto 0 0"
-          height={100}
-          justify="flex-end"
-          style={{ position: "relative", overflow: "hidden" }}
-        >
-          <BoutiqueStack gap={12} className="bq-reveal-group">
-            <BoutiqueBox
-              direction="row"
-              align="center"
-              justify="space-between"
-              height={44}
-              width="100%"
-            >
-              <BoutiqueBox direction="row" align="baseline" gap={6}>
-                <BoutiqueText variant="h2" className="bq-current-price">
-                  ₱{formatPesoAmount(product.price)}
-                </BoutiqueText>
-                {product.oldPrice && (
-                  <BoutiqueText
-                    variant="caption"
-                    className="bq-old-price"
-                    weight={600}
-                    style={{ textDecoration: "line-through" }}
-                  >
-                    ₱{formatPesoAmount(product.oldPrice)}
-                  </BoutiqueText>
-                )}
-              </BoutiqueBox>
-
-              <BoutiqueTechnicalCard
-                variant={outOfStock ? "danger" : "success"}
-                size="sm"
-              >
-                {t(product.stockLabel || (outOfStock ? "Out of stock" : "In stock"))}
-              </BoutiqueTechnicalCard>
-            </BoutiqueBox>
-
-            <BoutiqueBox width="100%">
-              <BoutiqueButton
-                variant="outline"
-                size="sm"
-                fullWidth
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBuyNow(product);
-                }}
-                disabled={outOfStock}
-              >
-                {outOfStock ? t("Out of stock") : <>{t("Buy Now")} <Lightning size={18} weight="fill" /></>}
-              </BoutiqueButton>
-            </BoutiqueBox>
-          </BoutiqueStack>
-
+        <BoutiqueStack gap={12} margin="auto 0 0">
           <BoutiqueBox
-            className="bq-anchor-action"
-            margin="12px 0 0"
-            height={44}
-            style={{ position: "relative", zIndex: 2 }}
+            direction="row"
+            align="center"
+            justify="space-between"
+            width="100%"
+            gap={8}
+            wrap="wrap"
           >
-            <BoutiqueButton
-              variant="primary"
+            <BoutiqueBox direction="row" align="baseline" gap={6} wrap="wrap">
+              <BoutiqueText variant="h2" className="bq-current-price">
+                ₱{formatPesoAmount(product.price)}
+              </BoutiqueText>
+              {product.oldPrice > 0 && (
+                <BoutiqueText
+                  variant="caption"
+                  className="bq-old-price"
+                  weight={600}
+                  style={{ textDecoration: "line-through" }}
+                >
+                  ₱{formatPesoAmount(product.oldPrice)}
+                </BoutiqueText>
+              )}
+            </BoutiqueBox>
+
+            <BoutiqueTechnicalCard
+              variant={outOfStock ? "danger" : "success"}
               size="sm"
-              fullWidth
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(product, 1);
-              }}
-              disabled={outOfStock}
             >
-              {outOfStock ? t("Unavailable") : <>{t("Add to Cart")} <ShoppingCart size={18} weight="bold" /></>}
-            </BoutiqueButton>
+              {t(product.stockLabel || (outOfStock ? "Out of stock" : "In stock"))}
+            </BoutiqueTechnicalCard>
           </BoutiqueBox>
-        </BoutiqueBox>
+
+          <BoutiqueButton
+            variant="outline"
+            size="sm"
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuyNow(product);
+            }}
+            disabled={outOfStock}
+          >
+            {outOfStock ? t("Out of stock") : <>{t("Buy Now")} <Lightning size={18} weight="fill" /></>}
+          </BoutiqueButton>
+
+          <BoutiqueButton
+            variant="primary"
+            size="sm"
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(product, 1);
+            }}
+            disabled={outOfStock}
+          >
+            {outOfStock ? t("Unavailable") : <>{t("Add to Cart")} <ShoppingCart size={18} weight="bold" /></>}
+          </BoutiqueButton>
+        </BoutiqueStack>
 
         <BoutiqueBox
           className="bq-warranty"
@@ -277,30 +261,17 @@ export default function ProductCard({
         .bq-card {
           border-radius: ${BQ_GEOMETRY.radiusCard};
           overflow: hidden;
-          transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
           position: relative;
           box-shadow: ${BQ_SHADOWS.soft};
           cursor: pointer;
-          animation: bq-fade-in 0.6s ease;
           border: 1px solid ${BQ_COLORS.border};
-          min-height: 540px;
         }
 
-        @keyframes bq-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .bq-card:hover {
-          transform: translateY(-8px);
-          box-shadow: ${BQ_SHADOWS.hover};
-          border-color: transparent;
+        @media (hover: hover) {
+          .bq-card:hover { box-shadow: ${BQ_SHADOWS.hover}; }
         }
 
-        .bq-card:hover .bq-card-image { background: ${BQ_COLORS.surface} !important; }
-
-        .bq-img {
-          width: 100%; height: 100%; object-fit: contain;
-          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .bq-card:hover .bq-img { transform: scale(1.05); }
+        .bq-img { width: 100%; height: 100%; object-fit: contain; }
 
         .bq-img-fallback { opacity: 0.1; color: ${BQ_COLORS.ink}; }
 
@@ -313,19 +284,6 @@ export default function ProductCard({
           line-height: 1.15; letter-spacing: -0.02em;
         }
 
-        .bq-reveal-group {
-          transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-          transform: translateY(56px);
-          position: relative;
-          z-index: 1;
-        }
-
-        .bq-card:hover .bq-reveal-group {
-          transform: translateY(0);
-        }
-
-        .bq-card--unavailable .bq-reveal-group { transform: translateY(0); }
-
         .bq-current-price {
           letter-spacing: -0.05em;
           line-height: 1;
@@ -335,11 +293,6 @@ export default function ProductCard({
           line-height: 1;
         }
 
-        @media (hover: none), (max-width: 900px) {
-          .bq-card { min-height: 520px; }
-          .bq-card:hover { transform: none; }
-          .bq-reveal-group { transform: translateY(0); }
-        }
       `,
         }}
       />

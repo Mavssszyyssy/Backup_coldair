@@ -47,6 +47,7 @@ export default function BoutiqueNotifications({
       width="min(440px, 100vw)"
       title={t("Alerts")}
       currentLanguage={currentLanguage}
+      className="bq-alert-drawer"
     >
       <BoutiqueBox
         className="bq-notif-wrapper"
@@ -67,7 +68,9 @@ export default function BoutiqueNotifications({
             direction="row"
             align="center"
             justify="space-between"
-            padding="16px 32px"
+            wrap="wrap"
+            gap="4px 12px"
+            padding="6px var(--alert-gutter)"
             background={BQ_COLORS.bgAlt}
             className="bq-notif-header-extra"
             style={{ borderBottom: `1px solid ${BQ_COLORS.border}` }}
@@ -153,32 +156,9 @@ export default function BoutiqueNotifications({
                   {["maintenance_due", "amp_due_soon", "amp_overdue"].includes(notif.category) ? (
                     <span className={`bq-notif-category ${notif.severity || "info"}`}>{t("AC maintenance")}</span>
                   ) : null}
-                  <BoutiqueBox
-                    direction="row"
-                    justify="space-between"
-                    align="baseline"
-                    margin="0 0 4px"
-                    gap={12}
-                    className="bq-notif-row"
-                  >
-                    <BoutiqueText
-                      weight={700}
-                      size="15px"
-                      color={BQ_COLORS.ink}
-                      className="bq-notif-title"
-                    >
-                      {notif.title}
-                    </BoutiqueText>
-                    <BoutiqueText
-                      size="11px"
-                      weight={600}
-                      color={BQ_COLORS.inkFaint}
-                      className="bq-notif-time"
-                      style={{ textTransform: "uppercase" }}
-                    >
-                      {notif.time}
-                    </BoutiqueText>
-                  </BoutiqueBox>
+                  <BoutiqueText weight={700} size="15px" color={BQ_COLORS.ink} margin="0 0 4px">
+                    {notif.title}
+                  </BoutiqueText>
                   <BoutiqueText
                     size="14px"
                     color={BQ_COLORS.inkMuted}
@@ -189,23 +169,26 @@ export default function BoutiqueNotifications({
                   </BoutiqueText>
                 </BoutiqueBox>
               </button>
-              {onMoveAlert && notif.id && (
-                <button
-                  type="button"
-                  className="bq-notif-move"
-                  aria-label={`${moveLabel}: ${notif.title}`}
-                  disabled={pendingAction}
-                  onClick={async (event) => {
-                    const button = event.currentTarget;
-                    const moved = await onMoveAlert(notif);
-                    if (moved && (document.activeElement === button || document.activeElement === document.body)) {
-                      folderControls.current?.querySelector('[aria-pressed="true"]')?.focus();
-                    }
-                  }}
-                >
-                  <MoveIcon size={16} aria-hidden="true" /> {moveLabel}
-                </button>
-              )}
+              <div className="bq-notif-meta">
+                <span className="bq-notif-time">{notif.time}</span>
+                {onMoveAlert && notif.id && (
+                  <button
+                    type="button"
+                    className="bq-notif-move"
+                    aria-label={`${moveLabel}: ${notif.title}`}
+                    disabled={pendingAction}
+                    onClick={async (event) => {
+                      const button = event.currentTarget;
+                      const moved = await onMoveAlert(notif);
+                      if (moved && (document.activeElement === button || document.activeElement === document.body)) {
+                        folderControls.current?.querySelector('[aria-pressed="true"]')?.focus();
+                      }
+                    }}
+                  >
+                    <MoveIcon size={16} aria-hidden="true" /> {moveLabel}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </BoutiqueBox>
@@ -219,7 +202,7 @@ export default function BoutiqueNotifications({
         .bq-mark-all-btn {
             background: none; border: none; color: ${BQ_COLORS.inkMuted};
             font-family: inherit; font-size: 12px; font-weight: 700;
-            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 44px;
             transition: color 0.2s;
         }
         .bq-mark-all-btn:hover { color: ${BQ_COLORS.ink}; }
@@ -239,28 +222,30 @@ export default function BoutiqueNotifications({
         }
         .bq-notif-feedback { padding: 12px clamp(12px, 5vw, 32px); color: ${BQ_COLORS.ink}; }
         .bq-notif-feedback button { margin-inline-start: 8px; }
-        .bq-notif-header-extra { flex-wrap: wrap; gap: 8px; }
-
-        .bq-notif-list::-webkit-scrollbar { display: none; }
-        .bq-notif-list { scrollbar-width: none; }
+        .bq-alert-drawer .bq-drawer-content { min-height: 0; overflow: hidden; }
+        .bq-notif-wrapper { --alert-gutter: clamp(12px, 5vw, 28px); min-height: 0; }
+        .bq-notif-list { min-height: 0; scrollbar-width: thin; scrollbar-gutter: stable; }
 
         .bq-notif-entry {
-            display: flex; flex-direction: column; align-items: flex-end;
             border-inline-start: 4px solid transparent; border-bottom: 1px solid ${BQ_COLORS.border};
             background: ${BQ_COLORS.surface};
         }
         .bq-notif-entry.unread { background: #f8fbff; border-inline-start-color: ${BQ_COLORS.accent}; }
         :root[data-theme="dark"] .bq-notif-entry.unread { background: ${BQ_COLORS.bgAlt}; }
         .bq-notif-item {
-            display: flex; gap: 12px; padding: 16px clamp(12px, 5vw, 28px); background: transparent;
+            display: flex; gap: 12px; padding: 14px var(--alert-gutter) 3px; background: transparent;
             border: none; text-align: left; cursor: pointer; width: 100%;
         }
         .bq-notif-item:hover, .bq-notif-move:hover { background: ${BQ_COLORS.bg}; }
         .bq-notif-content { min-width: 0; overflow-wrap: anywhere; }
-        .bq-notif-row { flex-wrap: wrap; }
+        .bq-notif-meta {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px;
+            padding: 0 var(--alert-gutter) 10px calc(var(--alert-gutter) + 20px);
+        }
+        .bq-notif-time { color: ${BQ_COLORS.inkMuted}; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
         .bq-notif-move {
             display: inline-flex; align-items: center; gap: 6px;
-            margin: 0 clamp(12px, 5vw, 28px) 12px;
+            margin-inline-start: auto;
         }
 
         .bq-notif-dot {

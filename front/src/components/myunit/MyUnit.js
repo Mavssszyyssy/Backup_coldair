@@ -8,7 +8,6 @@ import AmpReportCenter from "../AMP/AmpReportCenter";
 import "../AMP/styles.css";
 import BoutiqueBox from "../common/boutique/BoutiqueBox";
 import BoutiqueFooter from "../common/boutique/BoutiqueFooter";
-import BoutiqueGrid from "../common/boutique/BoutiqueGrid";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
 import BoutiqueScreen from "../common/boutique/BoutiqueScreen";
 import BoutiqueStack from "../common/boutique/BoutiqueStack";
@@ -293,10 +292,7 @@ function MyUnit() {
                 <button type="button" className="bq-my-unit-retry" onClick={() => setUnitSearch("")}>{t("Clear search")}</button>
               </div>
             ) : (
-            <BoutiqueGrid
-              columns="repeat(auto-fill, minmax(min(100%, 320px), 1fr))"
-              gap={24}
-            >
+            <div className="units-grid">
               {pagedUnits.map((unit, index) => (
                 <UnitCard
                   key={unit.id}
@@ -308,7 +304,7 @@ function MyUnit() {
                   onWarrantyStatus={handleWarrantyStatus}
                 />
               ))}
-            </BoutiqueGrid>
+            </div>
             )}
 
             {visibleUnits.length > UNITS_PER_PAGE ? <nav className="unit-list-pagination" aria-label={t("My AC Units pagination")}>

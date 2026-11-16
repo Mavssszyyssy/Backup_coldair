@@ -1,6 +1,11 @@
 .maintenance-page { display: grid; gap: 18px; color: #172033; }
 .maintenance-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .maintenance-summary-card { min-width: 0; padding: 18px; border: 1px solid #dfe8f5; border-radius: 16px; background: #fff; box-shadow: 0 8px 20px rgba(15, 23, 42, .05); display: grid; gap: 4px; }
+.maintenance-summary-card { --summary-focus: #4338ca; cursor: pointer; font: inherit; text-align: start; }
+:root[data-theme='dark'] .maintenance-summary-card { --summary-focus: #a5b4fc; }
+.maintenance-summary-card:hover { outline: 1px solid var(--summary-focus); outline-offset: -1px; }
+.maintenance-summary-card[aria-pressed='true'] { outline: 2px solid var(--summary-focus); outline-offset: -2px; }
+.maintenance-summary-card:focus-visible { outline: 3px solid var(--summary-focus); outline-offset: 2px; }
 .maintenance-summary-card span, .maintenance-summary-card small { color: #64748b; font-size: 13px; font-weight: 650; }.maintenance-summary-card strong { color: #172033; font-size: 28px; line-height: 1.1; }.maintenance-summary-card--attention { border-color: #fed7aa; background: #fffaf1; }.maintenance-summary-card--active { border-color: #bfdbfe; background: #f5f9ff; }.maintenance-summary-card--complete { border-color: #bbf7d0; background: #f5fff8; }
 .maintenance-alert, .maintenance-message { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-radius: 12px; padding: 12px 14px; font-weight: 650; font-size: 14px; }.maintenance-alert, .maintenance-message--error { color: #991b1b; border: 1px solid #fecaca; background: #fff1f2; }.maintenance-message--success { color: #166534; border: 1px solid #bbf7d0; background: #f0fdf4; }.maintenance-alert button { border: 0; background: transparent; color: inherit; cursor: pointer; font-weight: 800; text-decoration: underline; }
 .maintenance-workspace { display: grid; grid-template-columns: minmax(360px, .92fr) minmax(440px, 1.08fr); gap: 18px; align-items: start; }.maintenance-queue-panel, .maintenance-details { min-width: 0; border: 1px solid #dfe8f5; border-radius: 18px; background: #fff; box-shadow: 0 10px 24px rgba(15, 23, 42, .06); }.maintenance-queue-panel { max-width: 100%; padding: 18px; overflow-x: clip; box-sizing: border-box; }.maintenance-details { padding: 22px; }

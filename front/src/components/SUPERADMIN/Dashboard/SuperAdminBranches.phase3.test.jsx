@@ -10,6 +10,39 @@ vi.mock('../../../domain/emailPolicy', () => ({ validateEmailForSubmission: vi.f
 
 beforeEach(() => { language.value = 'English'; });
 
+test('removes branch ownership only after confirmation and makes the administrator assignable again', async () => {
+  const owner = { id: 'admin-1', name: 'Ana Cruz', assignedBranch: 'Bulacan', activeBranch: 'Bulacan' };
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+  apiRequest.mockImplementation(async (path, options) => {
+    if (path === '/users?role=admin') return { users: [owner] };
+    if (path === '/branches') return { branches: [{ name: 'Bulacan' }, { name: 'Cavite' }] };
+    if (path === '/users/admin-1') {
+      const payload = JSON.parse(options.body);
+      const assignedBranch = payload.unassignBranch ? '' : payload.assignedBranch;
+      return { user: { ...owner, assignedBranch, activeBranch: assignedBranch } };
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  try {
+    render(<SuperAdminBranches />);
+    const remove = await screen.findByRole('button', { name: 'Remove assignment' });
+    fireEvent.click(remove);
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Remove Ana Cruz from Bulacan?'));
+    expect(apiRequest).not.toHaveBeenCalledWith('/users/admin-1', expect.anything());
+    fireEvent.click(remove);
+    expect(await screen.findByText('Branch assignment removed.')).toBeVisible();
+    expect(apiRequest).toHaveBeenCalledWith('/users/admin-1', {
+      method: 'PATCH', body: JSON.stringify({ unassignBranch: 'Bulacan' }),
+    });
+    fireEvent.change(screen.getByLabelText('Branch', { exact: true }), { target: { value: 'Cavite' } });
+    fireEvent.change(screen.getByLabelText('Responsible administrator'), { target: { value: 'admin-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save assignment' }));
+    expect(await screen.findByText('Ana Cruz is now responsible for Cavite.')).toBeVisible();
+  } finally {
+    confirm.mockRestore();
+  }
+});
+
 test('new branch appears for administrator onboarding without fabricated records', async () => {
   apiRequest.mockImplementation(async (path, options) => {
     if (path === '/users?role=admin') return { users: [] };

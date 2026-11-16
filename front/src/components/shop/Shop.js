@@ -31,6 +31,11 @@ const parseHP = (hpStr) => {
   return match ? parseFloat(match[1]) : 0;
 };
 
+const brandKey = (name) => name.trim().toLowerCase();
+const PRICE_STEP = 1000;
+const DEFAULT_PRICE_CEILING = 100000;
+const EMPTY_PRICE_RANGE = { min: 0, max: null };
+
 const Shop = () => {
   const {
     cart,
@@ -67,10 +72,18 @@ const Shop = () => {
   }, [cartNotice]);
 
   // Filters
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedBrands, setSelectedBrands] = useState([]);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const selectedCategory = searchParams.get("cat") || "all";
+  const brandFilters = useMemo(() => {
+    const filters = new Map();
+    for (const value of searchParams.getAll("brand")) {
+      const name = value.trim();
+      if (name && brandKey(name) !== "all") filters.set(brandKey(name), name);
+    }
+    return filters;
+  }, [searchParams]);
   const [selectedHorsepowers, setSelectedHorsepowers] = useState([]);
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 100000 });
+  const [priceFilter, setPriceFilter] = useState(EMPTY_PRICE_RANGE);
   const [sortBy, setSortBy] = useState("default");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -134,12 +147,23 @@ const Shop = () => {
     };
   }, [fetchProducts]);
 
-  // Sync category from URL if present
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const cat = params.get("cat");
-    if (cat) setSelectedCategory(cat);
-  }, [location.search]);
+  const updateCatalogueFilters = (category, brands) => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("cat");
+    params.delete("brand");
+    if (category !== "all") params.set("cat", category);
+    for (const brand of brands) params.append("brand", brand);
+    navigate({ search: params.toString() }, { replace: true, preventScrollReset: true });
+  };
+
+  const toggleBrand = (brand) => {
+    const next = new Map(brandFilters);
+    const key = brandKey(brand);
+    if (brand === "all") next.clear();
+    else if (next.has(key)) next.delete(key);
+    else next.set(key, brand);
+    updateCatalogueFilters(selectedCategory, next.values());
+  };
 
   const products = useMemo(() => {
     return deduplicateProducts(backendProducts, { verbose: false }).map((product) => ({
@@ -148,15 +172,31 @@ const Shop = () => {
     }));
   }, [backendProducts]);
 
+  const priceCeiling = useMemo(() => products.reduce((ceiling, product) => {
+    if (!Number.isFinite(product.price) || product.price > Number.MAX_SAFE_INTEGER) return ceiling;
+    return Math.max(ceiling, Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(product.price / PRICE_STEP) * PRICE_STEP));
+  }, DEFAULT_PRICE_CEILING), [products]);
+  const maxPrice = Math.min(priceFilter.max ?? priceCeiling, priceCeiling);
+  const minPrice = Math.min(priceFilter.min, maxPrice);
+  const updatePrice = (field, value) => {
+    if (!Number.isSafeInteger(value)) return;
+    if (field === "min") {
+      setPriceFilter({ ...priceFilter, min: Math.max(0, Math.min(maxPrice, value)) });
+    } else {
+      const nextMax = Math.max(minPrice, Math.min(priceCeiling, value));
+      setPriceFilter({ min: minPrice, max: nextMax === priceCeiling ? null : nextMax });
+    }
+  };
+
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
         const catMatch =
           selectedCategory === "all" || p.category === selectedCategory;
-        const brandMatch = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
+        const brandMatch = brandFilters.size === 0 || brandFilters.has(brandKey(p.brand));
         const horsepowerMatch = selectedHorsepowers.length === 0 || selectedHorsepowers.includes(Number(p.horsepower));
         const priceMatch =
-          p.price >= priceRange.min && p.price <= priceRange.max;
+          p.price >= minPrice && p.price <= maxPrice;
         const searchMatch =
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -180,10 +220,11 @@ const Shop = () => {
   }, [
     products,
     selectedCategory,
-    selectedBrands,
+    brandFilters,
     selectedHorsepowers,
     searchTerm,
-    priceRange,
+    minPrice,
+    maxPrice,
     sortBy,
   ]);
 
@@ -202,9 +243,13 @@ const Shop = () => {
   }, [products]);
 
   const brands = useMemo(() => {
-    const unique = [...new Set(products.map((p) => p.brand).filter(Boolean))];
-    return ["all", ...unique];
-  }, [products]);
+    const names = new Map(products.filter((p) => p.brand).map((p) => [brandKey(p.brand), p.brand]));
+    for (const [key, name] of brandFilters) {
+      if (!names.has(key)) names.set(key, name);
+    }
+    return ["all", ...names.values()];
+  }, [brandFilters, products]);
+  const selectedBrands = brands.filter((brand) => brandFilters.has(brandKey(brand)));
   const horsepowers = useMemo(() => [...new Set(products.map((product) => Number(product.horsepower)).filter((value) => value > 0))].sort((a, b) => a - b), [products]);
 
   const preparePurchase = async (product, qty, buyNow) => {
@@ -326,24 +371,23 @@ const Shop = () => {
         <ShopSidebar
           categories={categories}
           selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          onSelectCategory={(category) => updateCatalogueFilters(category, brandFilters.values())}
           brands={brands}
           selectedBrands={selectedBrands}
-          onSelectBrand={(brand) => setSelectedBrands((current) => brand === "all" ? [] : current.includes(brand) ? current.filter((entry) => entry !== brand) : [...current, brand])}
+          onSelectBrand={toggleBrand}
           horsepowers={horsepowers}
           selectedHorsepowers={selectedHorsepowers}
           onSelectHorsepower={(horsepower) => setSelectedHorsepowers((current) => current.includes(horsepower) ? current.filter((entry) => entry !== horsepower) : [...current, horsepower])}
-          priceRange={priceRange}
-          onPriceChange={(key, val) =>
-            setPriceRange((prev) => ({ ...prev, [key]: parseInt(val) || 0 }))
-          }
+          priceRange={{ min: minPrice, max: maxPrice }}
+          priceCeiling={priceCeiling}
+          priceStep={PRICE_STEP}
+          onPriceChange={updatePrice}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           onClearFilters={() => {
-            setSelectedCategory("all");
-            setSelectedBrands([]);
+            updateCatalogueFilters("all", []);
             setSelectedHorsepowers([]);
-            setPriceRange({ min: 0, max: 100000 });
+            setPriceFilter(EMPTY_PRICE_RANGE);
             setSearchTerm("");
           }}
         />

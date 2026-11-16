@@ -7,7 +7,10 @@ import { downloadReceiptPdf } from '../../utils/receiptPdf';
 const session = vi.hoisted(() => ({ user: { role: 'admin' } }));
 vi.mock('../../context/UserContext', () => ({ useUser: () => session }));
 vi.mock('../../config/api', () => ({ apiRequest: vi.fn() }));
-vi.mock('../../utils/receiptPdf', () => ({ downloadReceiptPdf: vi.fn(async () => true) }));
+vi.mock('../../utils/receiptPdf', async (original) => ({
+  ...(await original()),
+  downloadReceiptPdf: vi.fn(async () => true),
+}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const mount = () => render(<MemoryRouter initialEntries={['/receipt/order1']}><Routes><Route path="/receipt/:orderId" element={<ReceiptView />} /></Routes></MemoryRouter>);
 for (const role of ['admin', 'superadmin', 'customer']) it(role + ' reads a receipt using the correct endpoint without claiming unpaid COD was paid', async () => {

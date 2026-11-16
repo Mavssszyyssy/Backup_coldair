@@ -19,6 +19,10 @@ import { useUserContext } from "../../context/UserContext";
 import { createContactMessage, getMyContactMessage, getMyContactMessages } from "../../services/api";
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
+import {
+  countInquiryWords, validateContactInquiry,
+  MESSAGE_MAX_CHARACTERS, MESSAGE_MAX_WORDS, SUBJECT_MAX_CHARACTERS, SUBJECT_MAX_WORDS,
+} from "../../utils/contactInquiryValidation";
 
 const CONTACT_CATEGORIES = [
   { id: "general", name: "General question" },
@@ -34,7 +38,6 @@ const customerName = (user = {}) =>
   user.name || `${user.name_first || ""} ${user.name_last || ""}`.trim() || "Customer";
 
 const newRequestKey = () => `mobile-contact-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const MESSAGE_LIMIT = 3000;
 const mergeMessages = (existing, incoming) => {
   const byId = new Map([...existing, ...incoming].map((item) => [String(item.id || item._id), item]));
   return [...byId.values()].sort((left, right) =>
@@ -169,6 +172,8 @@ export default function CustomerContactScreen() {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(null);
   const [requestKey, setRequestKey] = useState(newRequestKey);
+  const countLabel = (value, wordLimit, characterLimit) =>
+    `${countInquiryWords(value)}/${wordLimit} ${t("words")} · ${value.length}/${characterLimit} ${t("characters")}`;
   const assignedBranch = String(
     current?.activeBranch || current?.assignedBranch || current?.branch || "",
   ).trim();
@@ -196,10 +201,8 @@ export default function CustomerContactScreen() {
     setError("");
     setConfirmation(null);
     if (!CONTACT_CATEGORIES.some((item) => item.id === category?.id)) return setError("Choose a valid support topic.");
-    if (subject.trim().length < 3) return setError("Subject must be at least 3 characters.");
-    if (subject.trim().length > 160) return setError("Subject must be 160 characters or fewer.");
-    if (message.trim().length < 10) return setError("Please add a little more detail so our team can help.");
-    if (message.trim().length > MESSAGE_LIMIT) return setError("Message must be 3000 characters or fewer.");
+    const inquiryError = validateContactInquiry({ subject, message });
+    if (inquiryError) return setError(inquiryError);
     if (!token) return setError("Please sign in again before sending your message.");
     submissionInFlight.current = true;
     setSubmitting(true);
@@ -265,7 +268,7 @@ export default function CustomerContactScreen() {
             <Text style={{ color: COLORS.textSecondary, marginTop: 3, lineHeight: 19 }}>{t('We will notify you here when support replies.')}</Text>
           </View>
         ) : null}
-        {error ? <Text style={{ color: COLORS.danger, marginBottom: SPACING.sm, lineHeight: 19 }}>{t(error)}</Text> : null}
+        {error ? <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.sm, lineHeight: 19 }}>{t(error)}</Text> : null}
 
         <BottomSheetSelect translate={t}
           disabled={submitting}
@@ -275,8 +278,28 @@ export default function CustomerContactScreen() {
           searchPlaceholder={t('Search support topics')}
           onSelect={(selected) => setCategory(CONTACT_CATEGORIES.find((item) => item.id === selected.id) || CONTACT_CATEGORIES[0])}
         />
-        <TextField label={t('Subject')} value={subject} editable={!submitting} onChangeText={(value) => { setSubject(value); setError(""); }} placeholder={t('Briefly describe what you need')} maxLength={160} />
-        <TextField label={t('Message')} value={message} editable={!submitting} onChangeText={(value) => { setMessage(value); setError(""); }} placeholder={t('Include any order number, AC model, or other helpful details.')} multiline numberOfLines={6} textAlignVertical="top" maxLength={MESSAGE_LIMIT} helperText={`${message.length}/${MESSAGE_LIMIT}`} style={{ minHeight: 130 }} />
+        <TextField
+          label={t('Subject')}
+          value={subject}
+          editable={!submitting}
+          onChangeText={(value) => { setSubject(value); setError(""); }}
+          placeholder={t('Briefly describe what you need')}
+          maxLength={SUBJECT_MAX_CHARACTERS}
+          helperText={countLabel(subject, SUBJECT_MAX_WORDS, SUBJECT_MAX_CHARACTERS)}
+        />
+        <TextField
+          label={t('Message')}
+          value={message}
+          editable={!submitting}
+          onChangeText={(value) => { setMessage(value); setError(""); }}
+          placeholder={t('Include any order number, AC model, or other helpful details.')}
+          multiline
+          numberOfLines={6}
+          textAlignVertical="top"
+          maxLength={MESSAGE_MAX_CHARACTERS}
+          helperText={countLabel(message, MESSAGE_MAX_WORDS, MESSAGE_MAX_CHARACTERS)}
+          style={{ minHeight: 130 }}
+        />
         <Button
           title={t('Send to Support')}
           loading={submitting}

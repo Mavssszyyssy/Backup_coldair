@@ -75,7 +75,7 @@ test('sending locks the form, prevents duplicate requests, and preserves a faile
     fireEvent.changeText(view.getByLabelText('Subject'), 'Need service');
     fireEvent.changeText(view.getByLabelText('Message'), 'Please inspect the AC unit');
   });
-  expect(view.getByText('26/3000')).toBeTruthy();
+  expect(view.getByText('5/400 words · 26/3000 characters')).toBeTruthy();
   await act(async () => { fireEvent.press(view.getByText('Send to Support')); fireEvent.press(view.getByText('Send to Support')); });
   expect(createContactMessage).toHaveBeenCalledTimes(1);
   expect(view.getByLabelText('Message').props.editable).toBe(false);
@@ -87,6 +87,29 @@ test('sending locks the form, prevents duplicate requests, and preserves a faile
   await act(async () => { fireEvent.press(view.getByText('Send to Support')); });
   await waitFor(() => expect(view.getByLabelText('Message').props.value).toBe(''));
   expect(createContactMessage).toHaveBeenCalledTimes(2);
+  view.unmount();
+});
+
+test('mobile rejects filler and oversized inquiries before sending', async () => {
+  mockLanguage = 'English';
+  const view = await render(<CustomerContactScreen />);
+  await view.findByText('My Support Messages');
+  const changeInquiry = async (subject, message) => {
+    await act(async () => {
+      fireEvent.changeText(view.getByLabelText('Subject'), subject);
+      fireEvent.changeText(view.getByLabelText('Message'), message);
+    });
+    await act(async () => { fireEvent.press(view.getByText('Send to Support')); });
+  };
+
+  await changeInquiry('AC E7', 'Lorem ipsum dolor sit amet');
+  expect(view.getByRole('alert').props.children).toMatch(/placeholder/);
+  await changeInquiry('AC E7', 'Jshshshshshsh');
+  expect(view.getByRole('alert').props.children).toMatch(/Describe your concern/);
+  await changeInquiry('AC E7', 'May tagas '.repeat(200) + 'po');
+  expect(view.getByRole('alert').props.children).toBe('Message must be 400 words or fewer.');
+  expect(view.getByText(/^401\/400 words/)).toBeTruthy();
+  expect(createContactMessage).not.toHaveBeenCalled();
   view.unmount();
 });
 

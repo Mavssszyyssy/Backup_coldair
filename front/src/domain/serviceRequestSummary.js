@@ -1,10 +1,20 @@
+export function matchesServiceRequestStatus(request, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'unassigned') {
+    return !request.assignedTechnicianId && !['Completed', 'Cancelled'].includes(request.status);
+  }
+  if (filter === 'active') return ['Assigned', 'In Progress'].includes(request.status);
+  return request.status === filter;
+}
+
 export function serviceRequestSummary(requests = []) {
+  const count = (filter) => requests.filter((request) => matchesServiceRequestStatus(request, filter)).length;
   return {
     total: requests.length,
-    unassigned: requests.filter((request) => !request.assignedTechnicianId && !['Completed', 'Cancelled'].includes(request.status)).length,
-    active: requests.filter((request) => ['Assigned', 'In Progress'].includes(request.status)).length,
-    onHold: requests.filter((request) => request.status === 'On Hold').length,
-    completed: requests.filter((request) => request.status === 'Completed').length,
-    cancelled: requests.filter((request) => request.status === 'Cancelled').length,
+    unassigned: count('unassigned'),
+    active: count('active'),
+    onHold: count('On Hold'),
+    completed: count('Completed'),
+    cancelled: count('Cancelled'),
   };
 }

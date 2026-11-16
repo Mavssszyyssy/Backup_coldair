@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { apiRequest } from "../../config/api";
-import { downloadReceiptPdf } from "../../utils/receiptPdf";
+import { downloadReceiptPdf, RECEIPT_LOGO_URL } from "../../utils/receiptPdf";
 import { translateText } from "../../utils/customerI18n";
 import BoutiqueButton from "../common/boutique/BoutiqueButton";
 import BoutiqueHeader from "../common/boutique/BoutiqueHeader";
@@ -139,11 +139,22 @@ function ReceiptView() {
     try {
       await downloadReceiptPdf({
         order,
-        address: resolveDeliveryAddress(order),
+        orderName,
         paymentMethod: paymentMethodLabel,
         paymentStatus: paymentStatusLabel,
         totalLabel,
         reference: references.receiptNumber,
+        orderNumber: references.orderNumber,
+        issuedAt,
+        statusTone,
+        details: [
+          [["Customer", [customerName, customerContact].join(" · ")], ["Branch", branch]],
+          [["Payment Reference", paymentReference], ["Delivery progress", deliveryProgress]],
+          [["Delivery Address Details", formatAddress(deliveryAddress)], ["Billing Address", billingAddress]],
+          [["Recipient", deliveryAddress.name], ["Contact number", deliveryAddress.phone]],
+          [["Warranty / Installation", warranty], ["Technician", technician]],
+        ],
+        tracking: order.tracking?.timeline?.map(trackingStepLabel),
         t,
         fileName: `cold-air-receipt-${String(order?.receipt?.receiptNumber || order?.orderCode || orderId).replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf`,
       });
@@ -168,6 +179,18 @@ function ReceiptView() {
     : isConfirmedPaymentStatus(paymentStatusLabel);
   const totalLabel = isPaymentConfirmed ? "Total Paid" : "Amount Due";
   const statusTone = isPaymentConfirmed ? "success" : ["failed", "cancelled", "expired"].some((status) => paymentStatusLabel.toLowerCase().includes(status)) ? "danger" : "pending";
+  const issuedAt = t(formatDateTime(order?.invoice?.transactionDate || order?.receipt?.issuedAt || order?.createdAt));
+  const customerName = order?.invoice?.customer?.name || order?.customerName;
+  const customerContact = [order?.invoice?.customer?.email, order?.invoice?.customer?.phone].filter(Boolean).join(" · ") || t("Contact pending");
+  const branch = order?.invoice?.branch || t("Branch pending");
+  const paymentReference = isCashOnDelivery ? t("Cash collected upon delivery") : order?.paymentReference || t("Pending");
+  const billingAddress = t(formatAddress(order?.invoice?.billingAddress || order?.address));
+  const deliveryProgress = order?.tracking?.currentLabel || customerStatus(order?.invoice?.orderStatus || "Pending");
+  const warranty = order?.invoice?.warranty || t("Warranty activates after installation.");
+  const technician = order?.invoice?.technician?.name
+    ? [order.invoice.technician.name, order.invoice.technician.status].filter(Boolean).join(" · ")
+    : "";
+  const trackingStepLabel = (step) => `${step.label}${step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}`;
 
   if (loading || error || !order || !order.receiptAvailable) {
     return (
@@ -196,7 +219,7 @@ function ReceiptView() {
 
           <article className="receipt-paper">
             <div className="receipt-brand">
-              <img className="receipt-icon" src="/Cold%20Air%20Logo.jpg" alt="Cold Air logo" style={{ objectFit: "contain", background: "white" }} />
+              <img className="receipt-icon" src={RECEIPT_LOGO_URL} alt="Cold Air logo" style={{ objectFit: "contain", background: "white" }} />
               <div>
                 <p className="receipt-eyebrow">{t("Official E-Receipt")}</p>
                 <h1>Coldair ACT</h1>
@@ -227,7 +250,7 @@ function ReceiptView() {
               </div>
               <div>
                 <span>{t("Date issued")}</span>
-                <strong>{t(formatDateTime(order.invoice?.transactionDate || order.receipt?.issuedAt || order.createdAt))}</strong>
+                <strong>{issuedAt}</strong>
                 {references.orderNumber ? <><span>{t("Order number")}</span><strong>{references.orderNumber}</strong></> : null}
               </div>
             </div>
@@ -235,30 +258,30 @@ function ReceiptView() {
             <div className="receipt-grid">
               <div>
                 <span>{t("Customer")}</span>
-                <strong>{order.invoice?.customer?.name || order.customerName}</strong>
-                <small>{[order.invoice?.customer?.email, order.invoice?.customer?.phone].filter(Boolean).join(" · ") || t("Contact pending")}</small>
+                <strong>{customerName}</strong>
+                <small>{customerContact}</small>
               </div>
               <div>
                 <span>{t("Branch")}</span>
-                <strong>{order.invoice?.branch || t("Branch pending")}</strong>
+                <strong>{branch}</strong>
               </div>
               <div>
                 <span>{t("Payment Reference")}</span>
-                <strong>{isCashOnDelivery ? t("Cash collected upon delivery") : order.paymentReference || t("Pending")}</strong>
+                <strong>{paymentReference}</strong>
               </div>
               <DeliveryAddressDetails address={deliveryAddress} t={t} />
               <div>
                 <span>{t("Billing Address")}</span>
-                <strong>{t(formatAddress(order.invoice?.billingAddress || order.address))}</strong>
+                <strong>{billingAddress}</strong>
               </div>
               <div>
                 <span>{t("Delivery progress")}</span>
-                <strong>{order.tracking?.currentLabel || customerStatus(order.invoice?.orderStatus || "Pending")}</strong>
+                <strong>{deliveryProgress}</strong>
               </div>
               <div>
                 <span>{t("Warranty / Installation")}</span>
-                <strong>{order.invoice?.warranty || t("Warranty activates after installation.")}</strong>
-                {order.invoice?.technician?.name && <small>{order.invoice.technician.name} · {order.invoice.technician.status}</small>}
+                <strong>{warranty}</strong>
+                {technician && <small>{technician}</small>}
               </div>
             </div>
 
@@ -287,7 +310,7 @@ function ReceiptView() {
                 {order.tracking?.timeline?.length > 0 && (
                   <div className="receipt-tracking">
                     <strong>{t("Delivery tracking")}</strong>
-                    {order.tracking.timeline.map((step) => <span key={step.stage}>✓ {step.label}{step.timestamp ? ` · ${formatDateTime(step.timestamp)}` : ""}</span>)}
+                    {order.tracking.timeline.map((step) => <span key={step.stage}>✓ {trackingStepLabel(step)}</span>)}
                   </div>
                 )}
               </div>

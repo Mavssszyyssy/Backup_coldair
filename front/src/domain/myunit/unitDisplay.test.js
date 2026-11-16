@@ -55,14 +55,14 @@ describe("customer AC unit display", () => {
     expect(css).toContain("overflow-wrap: anywhere");
   });
 
-  it("keeps the AC cards compact and fills the footer with the blue service history action", () => {
+  it("aligns card sections across desktop columns and fills the footer with the blue service history action", () => {
     const css = fs.readFileSync(
       path.resolve(process.cwd(), "src", "components", "myunit", "MyUnit.css"),
       "utf8",
     );
 
-    expect(css).toMatch(/\.units-grid\s*\{[^}]*align-items:\s*start/s);
-    expect(css).toMatch(/\.unit-card\s*\{[^}]*height:\s*auto[^}]*align-self:\s*start/s);
+    expect(css).toMatch(/\.units-grid\s*\{[^}]*minmax\(min\(100%,\s*320px\),\s*1fr\)/s);
+    expect(css).toMatch(/@supports \(grid-template-rows: subgrid\)\s*\{\s*\.unit-card\s*\{[^}]*grid-row:\s*span 4[^}]*grid-template-rows:\s*subgrid/s);
     expect(css).toMatch(/\.unit-btn\s*\{[^}]*flex:\s*1/s);
     expect(css).toMatch(/\.unit-footer \.history-btn\s*\{[^}]*background:\s*#1d4ed8[^}]*color:\s*#fff/s);
   });

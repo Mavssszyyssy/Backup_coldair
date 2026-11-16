@@ -7,6 +7,8 @@
 .branch-admin-form label:nth-child(3) { grid-column: 1 / -1; }
 .branch-admin-form button { justify-self: start; }
 .branch-owner-form { grid-template-columns: minmax(170px, 1fr) minmax(230px, 1.5fr) auto; }
+.branch-owner-form .branch-remove-assignment { background: #a61b1b; color: #fff; }
+.branch-owner-form .branch-remove-assignment:hover:not(:disabled) { background: #891717; }
 @media (max-width: 900px) {
   .branch-create-form, .branch-owner-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .branch-create-form button, .branch-owner-form button { grid-column: 1 / -1; justify-self: start; }

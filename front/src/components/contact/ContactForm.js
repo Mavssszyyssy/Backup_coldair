@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { validateEmailForSubmission } from "../../domain/emailPolicy";
+import {
+  countInquiryWords, validateContactInquiry,
+  MESSAGE_MAX_CHARACTERS, MESSAGE_MAX_WORDS, SUBJECT_MAX_CHARACTERS, SUBJECT_MAX_WORDS,
+} from "../../domain/contactInquiryValidation";
 import { translateText } from "../../utils/customerI18n";
 
 const CATEGORY_OPTIONS = [
@@ -22,6 +26,7 @@ function ContactForm() {
   const { user, currentLanguage } = useUser();
   const t = (value) => translateText(value, currentLanguage);
   const requestKey = useRef(makeRequestKey());
+  const submissionInFlight = useRef(false);
   const [formData, setFormData] = useState({
     name: getName(user), email: user?.email || "", phone: user?.phone || "",
     category: "general", subject: "", message: "",
@@ -29,6 +34,10 @@ function ContactForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+  const subjectWords = countInquiryWords(formData.subject);
+  const messageWords = countInquiryWords(formData.message);
+  const countLabel = (words, wordLimit, characters, characterLimit) =>
+    `${words}/${wordLimit} ${t("words")} · ${characters}/${characterLimit} ${t("characters")}`;
 
   useEffect(() => {
     setFormData((current) => ({
@@ -47,15 +56,22 @@ function ContactForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (submissionInFlight.current) return;
     setError("");
     setConfirmation(null);
-    const emailValidationError = await validateEmailForSubmission(formData.email);
-    if (emailValidationError) {
-      setError(emailValidationError);
+    const inquiryError = validateContactInquiry(formData);
+    if (inquiryError) {
+      setError(inquiryError);
       return;
     }
+    submissionInFlight.current = true;
     setSubmitting(true);
     try {
+      const emailValidationError = await validateEmailForSubmission(formData.email);
+      if (emailValidationError) {
+        setError(emailValidationError);
+        return;
+      }
       const result = await apiRequest("/contact-messages", {
         method: "POST",
         headers: { "Idempotency-Key": requestKey.current },
@@ -67,6 +83,7 @@ function ContactForm() {
     } catch (requestError) {
       setError(requestError.message || "Your message could not be sent. Please try again.");
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -93,33 +110,34 @@ function ContactForm() {
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="contact-name">{t("Your Name")} *</label>
-            <input id="contact-name" type="text" value={formData.name} onChange={(event) => update("name", event.target.value)} maxLength={120} required />
+            <input id="contact-name" type="text" value={formData.name} onChange={(event) => update("name", event.target.value)} maxLength={120} disabled={submitting} required />
           </div>
           <div className="form-group">
             <label htmlFor="contact-email">{t("Email Address")} *</label>
-            <input id="contact-email" type="email" value={formData.email} onChange={(event) => update("email", event.target.value)} maxLength={180} required />
+            <input id="contact-email" type="email" value={formData.email} onChange={(event) => update("email", event.target.value)} maxLength={180} disabled={submitting} required />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="contact-phone">{t("Phone Number")}</label>
-            <input id="contact-phone" type="tel" placeholder="09XX XXX XXXX" value={formData.phone} onChange={(event) => update("phone", event.target.value)} maxLength={30} />
+            <input id="contact-phone" type="tel" placeholder="09XX XXX XXXX" value={formData.phone} onChange={(event) => update("phone", event.target.value)} maxLength={30} disabled={submitting} />
           </div>
           <div className="form-group">
             <label htmlFor="contact-category">{t("What can we help with?")} *</label>
-            <SearchableSelect id="contact-category" value={formData.category} onChange={(event) => update("category", event.target.value)} required>
+            <SearchableSelect id="contact-category" value={formData.category} onChange={(event) => update("category", event.target.value)} disabled={submitting} required>
               {CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </SearchableSelect>
           </div>
         </div>
         <div className="form-group">
           <label htmlFor="contact-subject">{t("Subject")} *</label>
-          <input id="contact-subject" type="text" placeholder={t("Briefly describe what you need")} value={formData.subject} onChange={(event) => update("subject", event.target.value)} maxLength={160} required />
+          <input id="contact-subject" type="text" placeholder={t("Briefly describe what you need")} value={formData.subject} onChange={(event) => update("subject", event.target.value)} maxLength={SUBJECT_MAX_CHARACTERS} disabled={submitting} aria-describedby="contact-subject-count" aria-invalid={subjectWords > SUBJECT_MAX_WORDS || undefined} required />
+          <small id="contact-subject-count" className="contact-character-count">{countLabel(subjectWords, SUBJECT_MAX_WORDS, formData.subject.length, SUBJECT_MAX_CHARACTERS)}</small>
         </div>
         <div className="form-group">
           <label htmlFor="contact-message">{t("Message")} *</label>
-          <textarea id="contact-message" rows="5" placeholder={t("Include any order number, AC model, or other details that will help us assist you.")} value={formData.message} onChange={(event) => update("message", event.target.value)} minLength={10} maxLength={3000} required />
-          <small className="contact-character-count">{formData.message.length}/3000</small>
+          <textarea id="contact-message" rows="5" placeholder={t("Include any order number, AC model, or other details that will help us assist you.")} value={formData.message} onChange={(event) => update("message", event.target.value)} maxLength={MESSAGE_MAX_CHARACTERS} disabled={submitting} aria-describedby="contact-message-count" aria-invalid={messageWords > MESSAGE_MAX_WORDS || undefined} required />
+          <small id="contact-message-count" className="contact-character-count">{countLabel(messageWords, MESSAGE_MAX_WORDS, formData.message.length, MESSAGE_MAX_CHARACTERS)}</small>
         </div>
         <button type="submit" className="submit-btn" disabled={submitting}>{t(submitting ? "Sending…" : "Send to Support")}</button>
       </form>
