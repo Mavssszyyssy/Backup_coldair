@@ -47,10 +47,16 @@ const ForgotPassword = lazyWithReload(() => import("./components/recover/ForgotP
 const Register = lazyWithReload(() => import("./components/register/Register"), "Register");
 const Services = lazyWithReload(() => import("./components/services/Services"), "Services");
 const Settings = lazyWithReload(() => import("./components/settings/Settings"), "Settings");
-const Shop = lazyWithReload(() => import("./components/shop/Shop"), "Shop");
+const loadShop = () => import("./components/shop/Shop");
+const Shop = lazyWithReload(loadShop, "Shop");
 import { AdminSettingsProvider } from "./context/AdminSettingsContext";
 import { CartProvider } from "./context/CartContext";
 import { UserProvider, useUser } from "./context/UserContext";
+
+export function preloadShopRoute() {
+  // Route rendering still owns loading feedback and chunk recovery.
+  void loadShop().catch(() => {});
+}
 
 function RouteLoading() {
   const { currentLanguage } = useUser();

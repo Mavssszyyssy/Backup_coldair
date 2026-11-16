@@ -26,9 +26,22 @@ test('role navigation and AMP labels switch both ways while unknown text falls b
 });
 
 test('mobile uses the generated copy of the same translation catalog', () => {
-  const source = readFileSync(resolve(process.cwd(), 'src/utils/customerI18n.js'), 'utf8');
-  const mobile = readFileSync(resolve(process.cwd(), '../bork5/caact-mobile/services/interfaceI18n.js'), 'utf8');
-  expect(mobile).toBe(source);
+  const source = readFileSync(resolve(process.cwd(), 'src/utils/filipinoTranslations.js'), 'utf8').replace(/\r\n/g, '\n');
+  const mobile = readFileSync(resolve(process.cwd(), '../bork5/caact-mobile/services/interfaceI18n.js'), 'utf8').replace(/\r\n/g, '\n');
+  const mobileDictionary = mobile.slice(0, mobile.indexOf('\n\nexport const isFilipino')).replace(/^const FILIPINO = /, 'export default ');
+  expect(mobileDictionary).toBe(source.trimEnd());
+});
+
+test('the English startup does not load the Filipino catalogue', async () => {
+  vi.resetModules();
+  const { translateText: translate, loadInterfaceLanguage } = await import('./customerI18n');
+  await loadInterfaceLanguage('English');
+  expect(translate('Delivery Addresses', 'Filipino')).toBe('Delivery Addresses');
+  const firstLoad = loadInterfaceLanguage('Filipino');
+  expect(loadInterfaceLanguage('Filipino')).toBe(firstLoad);
+  await firstLoad;
+  expect(translate('Delivery Addresses', 'Filipino')).toBe('Mga Address ng Paghahatiran');
+  expect(translate('Delivery Addresses', 'English')).toBe('Delivery Addresses');
 });
 
 test('technician work-order filters, statuses, and actions use stable Filipino labels', () => {

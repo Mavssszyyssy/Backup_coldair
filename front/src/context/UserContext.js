@@ -13,10 +13,14 @@ import {
   removeAuthSessionItem,
   setAuthSessionItem,
 } from "../utils/authSession";
+import { loadInterfaceLanguage } from "../utils/customerI18n";
 
 const UserContext = createContext();
 const ACTIVE_ACCOUNT_SESSION_KEY = "activeAccountSession";
 const LOGIN_GREETING_KEY = "aeropulse:welcome-after-login";
+const browserLanguage = () => (navigator.language || "en-US").startsWith("fil") ? "Filipino" : "English";
+const prepareInterface = (account) => loadInterfaceLanguage(account?.preferences?.language || browserLanguage())
+  .catch((error) => console.warn("Unable to load the selected interface language.", error));
 
 export const useUser = () => {
   const context = useContext(UserContext);
@@ -74,20 +78,22 @@ export const UserProvider = ({ children }) => {
   // Language derived from browser locale or user preference
   const currentLanguage = useMemo(() => {
     if (user?.preferences?.language) return user.preferences.language;
-    const locale = navigator.language || "en-US";
-    return locale.startsWith("fil") ? "Filipino" : "English";
+    return browserLanguage();
   }, [user?.preferences?.language]);
 
   useEffect(() => {
     const bootstrap = async () => {
+      const guestLanguage = prepareInterface(null);
       const token = getAuthSessionItem("accessToken");
       if (!token) {
+        await guestLanguage;
         setLoading(false);
         return;
       }
 
       try {
         const result = await apiRequest("/auth/me");
+        await prepareInterface(result.user);
         setUser(result.user);
         setUserRole(result.user.role || null);
         setCurrentSession(result.user);
@@ -107,16 +113,19 @@ export const UserProvider = ({ children }) => {
         // backend recovers so protected pages remain usable.
         if (error?.status === 401 || error?.status === 403) {
           clearSession();
+          await guestLanguage;
         } else {
           try {
             const storedUser = JSON.parse(getAuthSessionItem("currentUser") || "null");
             if (!storedUser?.role) throw new Error("No verified user is stored.");
+            await prepareInterface(storedUser);
             setUser(storedUser);
             setUserRole(storedUser.role);
             setCurrentSession(storedUser);
             setIsAuthenticated(true);
           } catch (_storageError) {
             clearSession();
+            await guestLanguage;
           }
         }
       } finally {
@@ -153,6 +162,7 @@ export const UserProvider = ({ children }) => {
       body: JSON.stringify({ identifier, password }),
     });
     if (result.requiresEmailVerification) return result;
+    await prepareInterface(result.user);
     const userBranch =
       result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
@@ -170,6 +180,7 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify({ challengeToken, code }),
     });
+    await prepareInterface(result.user);
     const userBranch = result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
     setUser(result.user);
@@ -190,6 +201,7 @@ export const UserProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify(userData),
     });
+    await prepareInterface(result.user);
     const userBranch =
       result.user?.activeBranch || result.user?.assignedBranch || "";
     saveSession(result.token, result.user, userBranch);
@@ -218,6 +230,7 @@ export const UserProvider = ({ children }) => {
       method: "PATCH",
       body: JSON.stringify(updatedData),
     });
+    await prepareInterface(result.user);
     setUser(result.user);
     setUserRole(result.user.role || null);
     setCurrentSession(result.user);
@@ -263,10 +276,13 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   const updatePreferences = async (preferences) => {
+    const translations = prepareInterface(preferences.language ? { preferences } : user);
     const result = await apiRequest("/users/preferences", {
       method: "PATCH",
       body: JSON.stringify(preferences),
     });
+    await translations;
+    await prepareInterface(result.user);
     setUser(result.user);
     setCurrentSession(result.user);
     setAuthSessionItem("currentUser", JSON.stringify(result.user));
@@ -278,6 +294,7 @@ export const UserProvider = ({ children }) => {
       method: "PATCH",
       body: JSON.stringify(privacy),
     });
+    await prepareInterface(result.user);
     setUser(result.user);
     setCurrentSession(result.user);
     setAuthSessionItem("currentUser", JSON.stringify(result.user));
@@ -289,6 +306,7 @@ export const UserProvider = ({ children }) => {
       method: "PATCH",
       body: JSON.stringify(notifications),
     });
+    await prepareInterface(result.user);
     setUser(result.user);
     setCurrentSession(result.user);
     setAuthSessionItem("currentUser", JSON.stringify(result.user));
@@ -296,10 +314,13 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateSettings = async (settingsPayload) => {
+    const translations = prepareInterface(settingsPayload.preferences ? settingsPayload : user);
     const result = await apiRequest("/users/settings/update", {
       method: "PUT",
       body: JSON.stringify(settingsPayload),
     });
+    await translations;
+    await prepareInterface(result.user);
     setUser(result.user);
     setCurrentSession(result.user);
     setAuthSessionItem("currentUser", JSON.stringify(result.user));
@@ -313,6 +334,7 @@ export const UserProvider = ({ children }) => {
     });
     if (result.token) setAuthSessionItem("accessToken", result.token);
     if (result.user) {
+      await prepareInterface(result.user);
       setUser(result.user);
       setCurrentSession(result.user);
       setAuthSessionItem("currentUser", JSON.stringify(result.user));

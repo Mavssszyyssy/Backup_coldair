@@ -82,6 +82,14 @@ it("localizes the updated login text in Filipino", () => {
   expect(screen.getByRole("button", { name: "Mag-sign in" })).toBeEnabled();
 });
 
+it("provides the original icon-only Back to Home link with an accessible name", () => {
+  render(<MemoryRouter><Login /></MemoryRouter>);
+  const back = screen.getByRole("link", { name: "Back to Home" });
+  expect(back).toHaveAttribute("href", "/home");
+  expect(back.textContent).toBe("");
+  expect(back.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+});
+
 it("keeps polished secondary actions when the login form switches to email verification", async () => {
   render(<MemoryRouter><Login /></MemoryRouter>);
 

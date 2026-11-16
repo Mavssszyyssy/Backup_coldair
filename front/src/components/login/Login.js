@@ -188,9 +188,8 @@ function Login() {
 
   return (
     <BoutiqueAuthLayout className="bq-auth-layout--sign-in">
-      <Link className="bq-login-back-link" to="/home">
-        <ArrowLeft size={16} weight="bold" aria-hidden="true" />
-        {t("Back to Home")}
+      <Link className="bq-login-back-link" to="/home" aria-label={t("Back to Home")}>
+        <ArrowLeft size={20} weight="bold" aria-hidden="true" />
       </Link>
 
       <BoutiqueAuthHeader
