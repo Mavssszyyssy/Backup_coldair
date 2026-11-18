@@ -46,3 +46,28 @@ test("the stock shortcut displays branch counts returned by the server", async (
   expect(screen.getByRole("button", { name: "Buksan ang pahina" })).toBeInTheDocument();
   expect(JSON.parse(apiRequest.mock.lastCall[1].body).message).toBe("Which branch has the most AC stock?");
 });
+
+test("follow-up questions retain the customer's question and the assistant reply", async () => {
+  apiRequest.mockReset();
+  apiRequest.mockResolvedValueOnce({
+    provider: "catalog", reply: { text: "Here are the available AC models. What is your budget?", route: "/shop" },
+  }).mockResolvedValueOnce({
+    provider: "catalog", reply: { text: "Here are the AC options under your budget.", route: "/shop" },
+  });
+  render(<MemoryRouter initialEntries={["/shop"]}><CustomerChatbot /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: "Buksan ang AEROPULSE assistant" }));
+  const input = screen.getByRole("textbox", { name: "Tanong para sa assistant" });
+  fireEvent.change(input, { target: { value: "What is the best seller AC unit?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ipadala" }));
+  await screen.findByText("Here are the available AC models. What is your budget?");
+  fireEvent.change(input, { target: { value: "but for you which one is the best?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ipadala" }));
+  await screen.findByText("Here are the AC options under your budget.");
+  expect(JSON.parse(apiRequest.mock.lastCall[1].body)).toEqual(expect.objectContaining({
+    message: "but for you which one is the best?",
+    history: [
+      { role: "user", content: "What is the best seller AC unit?" },
+      { role: "assistant", content: "Here are the available AC models. What is your budget?" },
+    ],
+  }));
+});

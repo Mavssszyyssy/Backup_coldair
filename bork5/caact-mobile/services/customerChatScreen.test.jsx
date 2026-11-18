@@ -75,3 +75,24 @@ test("mobile stock shortcut shows the catalogue reply and opens Shop", async () 
   await fireEvent.press(screen.getByText("Buksan ang pahina"));
   expect(mockPush).toHaveBeenCalledWith("/customer/shop");
 });
+
+test("mobile chat preserves conversation context for a short product follow-up", async () => {
+  mockSend.mockResolvedValueOnce({
+    success: true, provider: "catalog", reply: { text: "Available AC options. What is your budget?", route: "/shop" },
+  });
+  await render(<CustomerChatScreen />);
+  const input = screen.getByLabelText("Message AEROPULSE assistant");
+  await fireEvent.changeText(input, "What is the best seller AC unit?");
+  await fireEvent.press(screen.getByRole("button", { name: "Send message" }));
+  await screen.findByText("Available AC options. What is your budget?");
+  await fireEvent.changeText(input, "What about under 30k?");
+  await fireEvent.press(screen.getByRole("button", { name: "Send message" }));
+  await waitFor(() => expect(mockSend).toHaveBeenCalledTimes(2));
+  expect(mockSend.mock.lastCall[1]).toEqual(expect.objectContaining({
+    message: "What about under 30k?",
+    history: [
+      { role: "user", content: "What is the best seller AC unit?" },
+      { role: "assistant", content: "Available AC options. What is your budget?" },
+    ],
+  }));
+});

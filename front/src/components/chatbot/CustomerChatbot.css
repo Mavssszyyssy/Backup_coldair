@@ -92,6 +92,8 @@
     margin: 0;
     font-size: 13px;
     line-height: 1.45;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
 }
 
 .customer-chatbot-message.bot {
