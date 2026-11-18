@@ -1,8 +1,9 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { apiRequest } from '../../../config/api';
+import { loadPageRequests } from '../../../config/loadPageRequests';
 import { BRANCHES } from '../../../domain/branches/branches';
 import { EMAIL_FORMAT_MESSAGE, isValidEmailFormat, validateEmailForSubmission } from '../../../domain/emailPolicy';
 import { PERSON_NAME_MAX_LENGTH, validatePersonName } from '../../../domain/personNameValidation';
@@ -71,22 +72,27 @@ const SuperAdminBranches = () => {
     setValidatedFields((current) => ({ ...current, ...Object.fromEntries(keys.map((key) => [key, false])) }));
   };
 
+  const loadRevision = useRef(0);
   const load = useCallback(async (fresh = false) => {
+    const revision = ++loadRevision.current;
     setLoading(true);
     setError('');
-    try {
-      const [usersResult, coverageResult] = await Promise.all([
-        apiRequest('/users?role=admin', fresh ? { fresh } : undefined),
-        apiRequest('/branches', fresh ? { fresh } : undefined),
-      ]);
+    const showBranches = ([usersResult, coverageResult]) => {
+      if (revision !== loadRevision.current) return;
       setAdmins(Array.isArray(usersResult.users) ? usersResult.users : []);
       setCoverage(Array.isArray(coverageResult.branches) ? coverageResult.branches : []);
+      setLoading(false);
+    };
+    try {
+      showBranches(await loadPageRequests(['/users?role=admin', '/branches'], { fresh, onCached: showBranches }));
     } catch (requestError) {
+      if (revision !== loadRevision.current) return;
       setAdmins([]);
+      setCoverage([]);
       setError(requestError.message || 'Unable to load branch administrators.');
-    } finally { setLoading(false); }
+    } finally { if (revision === loadRevision.current) setLoading(false); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); return () => { loadRevision.current += 1; }; }, [load]);
 
   useEffect(() => {
     if (branchNames.length && !branchNames.includes(branch)) setBranch(branchNames[0]);

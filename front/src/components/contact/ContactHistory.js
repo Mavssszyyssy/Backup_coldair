@@ -39,11 +39,16 @@ export default function ContactHistory({ messageId = "" }) {
     loadingRef.current = true;
     if (!background) setLoading(true);
     try {
-      const result = await apiRequest("/contact-messages/me", { silentConnection: background, fresh });
+      const showMessages = (result) => {
+        if (!mountedRef.current) return;
+        setMessages(Array.isArray(result.messages) ? result.messages : []);
+        setLoading(false);
+      };
+      showMessages(await apiRequest("/contact-messages/me", { silentConnection: background, fresh, onCached: showMessages }));
       if (!mountedRef.current) return;
-      setMessages(Array.isArray(result.messages) ? result.messages : []);
       setError("");
     } catch (requestError) {
+      if ([401, 403].includes(requestError.status) && mountedRef.current) setMessages([]);
       if (mountedRef.current) setError(requestError.message || "Unable to load your support messages.");
     } finally {
       loadingRef.current = false;

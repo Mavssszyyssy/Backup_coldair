@@ -17,6 +17,7 @@ import {
   Wrench,
 } from "@phosphor-icons/react";
 import { apiRequest } from "../../config/api";
+import { loadPageRequests } from "../../config/loadPageRequests";
 import { useUser } from "../../context/UserContext";
 import useActiveBranches from "../../domain/branches/useActiveBranches";
 import AmpDashboardShell from "./AmpDashboardShell";
@@ -475,6 +476,7 @@ function ManagerAmpDashboard() {
   const [error, setError] = useState("");
   const [planSelection, setPlanSelection] = useState({ unitId: "", revision: 0 });
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const lastRefreshRevision = useRef(refreshRevision);
   const [selectedAction, setSelectedAction] = useState(null);
   const actionTriggerRef = useRef(null);
   const closeAction = () => { setSelectedAction(null); actionTriggerRef.current?.focus(); };
@@ -483,31 +485,32 @@ function ManagerAmpDashboard() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    const fresh = lastRefreshRevision.current !== refreshRevision;
+    lastRefreshRevision.current = refreshRevision;
     const branchQuery = isCompanyWide && selectedBranch !== "all"
       ? `&branch=${encodeURIComponent(selectedBranch)}`
       : "";
     let snapshot;
-    const showPipeline = (result) => {
+    const showPipeline = ([result, reportUnitResult]) => {
       if (cancelled) return;
       setPipeline(result.units || []);
       setPipelinePagination(result.pagination || { page: 1, pageSize: PIPELINE_PAGE_SIZE, total: result.units?.length || 0, totalPages: 1 });
       setBranchSummary(result.branchSummary || []);
       setActionSummary(result.actionSummary || { serviceDemand: [], priorityUnits: [], earliestDueUnit: null });
       setAggregate(result.aggregate || { modelTrends: [], brandTrends: [], componentReplacements: [], serviceDemand: [] });
+      setReportUnits(reportUnitResult.units || []);
+      setLoading(false);
     };
-    Promise.all([
-      apiRequest(`/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=${PIPELINE_PAGE_SIZE}${branchQuery}`, {
-        onCached: (result) => {
-          snapshot = result;
-          showPipeline(result);
-        },
-      }),
-      apiRequest("/amp/report-units"),
-    ])
-      .then(([pipelineResult, reportUnitResult]) => {
+    loadPageRequests([
+      `/amp/manager/pipeline?days=${serviceWindow}&page=${pipelinePage}&pageSize=${PIPELINE_PAGE_SIZE}${branchQuery}`,
+      "/amp/report-units",
+    ], {
+      fresh,
+      onCached: (result) => { snapshot = result; showPipeline(result); },
+    })
+      .then((result) => {
         if (cancelled) return;
-        if (pipelineResult !== snapshot) showPipeline(pipelineResult);
-        setReportUnits(reportUnitResult.units || []);
+        if (result !== snapshot) showPipeline(result);
         setError("");
       })
       .catch((err) => {

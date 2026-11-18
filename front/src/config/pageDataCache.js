@@ -1,7 +1,9 @@
 const SHORT_TTL = 12_000;
 const PAGE_TTL = 30_000;
 const REFERENCE_TTL = 120_000;
-const MAX_SNAPSHOT_AGE = 180_000;
+// A recent display snapshot can render immediately on a return visit. Its
+// normal TTL still decides freshness: older snapshots ALWAYS revalidate.
+const MAX_SNAPSHOT_AGE = 10 * 60_000;
 const MAX_ENTRIES = 80;
 const MAX_CACHE_CHARS = 4_000_000;
 

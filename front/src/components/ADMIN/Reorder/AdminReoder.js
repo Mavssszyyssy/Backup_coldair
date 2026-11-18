@@ -1,10 +1,11 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AdminLayout from '../Common/AdminLayout';
 import LowStockItems from './LowStockItems';
 import ReorderForm from './ReorderForm';
 import { apiRequest } from '../../../config/api';
+import { loadPageRequests } from '../../../config/loadPageRequests';
 import { useUser } from '../../../context/UserContext';
 import { translateText } from '../../../utils/customerI18n';
 import { formatCartHorsepower } from '../../../domain/cart/cartProductDetails';
@@ -27,24 +28,29 @@ const AdminReoder = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const loadRevision = useRef(0);
   const load = useCallback(async (fresh = false) => {
+    const revision = ++loadRevision.current;
     setError('');
     setLoading(true);
-    try {
-      const [stockResult, reorderResult] = await Promise.all([
-        apiRequest('/products/low-stock', fresh ? { fresh } : undefined),
-        apiRequest('/reorders/mine', fresh ? { fresh } : undefined),
-      ]);
+    const showQueue = ([stockResult, reorderResult]) => {
+      if (revision !== loadRevision.current) return;
       setItems(stockResult.products || []);
       setReorders(reorderResult.reorders || []);
+      setLoading(false);
+    };
+    try {
+      showQueue(await loadPageRequests(['/products/low-stock', '/reorders/mine'], { fresh, onCached: showQueue }));
     } catch (requestError) {
+      if (revision !== loadRevision.current) return;
+      if ([401, 403].includes(requestError.status)) { setItems([]); setReorders([]); }
       setError(requestError.message || 'Unable to load reorder management.');
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); return () => { loadRevision.current += 1; }; }, [load]);
   useEffect(() => { setHistoryPage(1); }, [statusFilter]);
 
   const visibleReorders = useMemo(

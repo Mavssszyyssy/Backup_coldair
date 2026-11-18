@@ -79,7 +79,10 @@ it("renders the real checker, serial registry, and reorder panels", async () => 
 
   renderInventory("/superadmin/inventory?tab=reorders");
   expect(await screen.findByRole("heading", { name: "Reorder queue" })).toBeInTheDocument();
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/reorders"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/reorders", {
+    fresh: false,
+    onCached: expect.any(Function),
+  }));
 });
 
 it("takes an inventory row directly to its unit records in the selected branch", async () => {

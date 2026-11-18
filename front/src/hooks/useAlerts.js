@@ -40,20 +40,21 @@ export default function useAlerts(isAuthenticated, accountId, resolveRoute = res
       const url = target === "archived"
         ? `/notifications/me?view=archived${session.archivePage > 1 ? `&page=${session.archivePage}` : ""}`
         : "/notifications/me";
-      const response = await apiRequest(url, { silentConnection: true, fresh: invalidate });
-      const items = (response.notifications || []).map((item) => ({
+      const showAlerts = (response) => {
+        if (!isCurrent()) return;
+        const items = (response.notifications || []).map((item) => ({
         ...item,
         id: getNotificationId(item),
         unread: target === "active" && Boolean(item.unread),
         time: new Date(item.createdAt).toLocaleString(),
-      }));
-      if (isCurrent()) {
+        }));
         const unreadCount = response.unreadCount ?? items.filter((item) => item.unread).length;
         setFolders((current) => ({ ...current, [target]: { items, status: "ready", unreadCount, hasMore: Boolean(response.hasMore) } }));
-      }
-    } catch {
+      };
+      showAlerts(await apiRequest(url, { silentConnection: true, fresh: invalidate, onCached: showAlerts }));
+    } catch (error) {
       if (isCurrent()) {
-        setFolders((current) => ({ ...current, [target]: { ...current[target], status: "error" } }));
+        setFolders((current) => ({ ...current, [target]: { ...current[target], ...([401, 403].includes(error?.status) ? { items: [], unreadCount: 0 } : {}), status: "error" } }));
       }
     } finally {
       delete session.requests[target];

@@ -27,24 +27,32 @@ export default function SuperAdminReorders({ embedded = false }) {
   const [error, setError] = useState('');
   const hasLoadedQueue = useRef(false);
 
+  const loadRevision = useRef(0);
   const load = useCallback(async (fresh = false) => {
+    const revision = ++loadRevision.current;
     setLoading(true);
     setError('');
     try {
-      const result = await (fresh ? apiRequest('/reorders', { fresh }) : apiRequest('/reorders'));
-      setReorders(result.reorders || []);
-      hasLoadedQueue.current = true;
+      const showQueue = (result) => {
+        if (revision !== loadRevision.current) return;
+        setReorders(result.reorders || []);
+        hasLoadedQueue.current = true;
+        setLoading(false);
+      };
+      showQueue(await apiRequest('/reorders', { fresh, onCached: showQueue }));
     } catch (requestError) {
+      if (revision !== loadRevision.current) return;
+      if ([401, 403].includes(requestError.status)) { setReorders([]); hasLoadedQueue.current = false; }
       setError(
         hasLoadedQueue.current
           ? 'Could not refresh the queue. Showing the last successfully loaded requests. Please try Refresh again.'
           : (requestError.message || 'Unable to load reorder requests.'),
       );
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); return () => { loadRevision.current += 1; }; }, [load]);
   useEffect(() => { setPage(1); }, [filter]);
 
   const visible = useMemo(() => filter === 'all' ? reorders : reorders.filter((item) => item.status === filter), [filter, reorders]);

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { apiRequest } from '../../../config/api';
 import GlobalDialog from '../../common/GlobalDialog';
 import { validateEmailForSubmission } from '../../../domain/emailPolicy';
@@ -13,6 +13,21 @@ vi.mock('../../../domain/emailPolicy', async (original) => ({
 }));
 
 beforeEach(() => { language.value = 'English'; vi.clearAllMocks(); });
+
+test('branch ownership is visible from the cached group while both refresh requests are pending', async () => {
+  const pending = [];
+  apiRequest.mockImplementation((path, options = {}) => {
+    const data = path === '/users?role=admin'
+      ? { users: [{ id: 'cached-admin', name: 'Ana Cruz', assignedBranch: 'Bulacan', activeBranch: 'Bulacan' }] }
+      : { branches: [{ name: 'Bulacan', coverageAreas: ['malolos'] }] };
+    options.onCached?.(data, 50_000);
+    return new Promise((resolve) => pending.push(() => resolve(data)));
+  });
+  render(<SuperAdminBranches />);
+  expect(await screen.findByRole('button', { name: /remove assignment/i })).toBeEnabled();
+  expect(screen.getAllByText('Ana Cruz').length).toBeGreaterThan(0);
+  await act(async () => pending.forEach((finish) => finish()));
+});
 
 test('removes branch ownership only after confirmation and makes the administrator assignable again', async () => {
   const owner = { id: 'admin-1', name: 'Ana Cruz', assignedBranch: 'Bulacan', activeBranch: 'Bulacan' };

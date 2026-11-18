@@ -272,7 +272,13 @@ const apiRequest = (path, { fresh = false, display = false, onCached, ...options
 
   const ttl = readCacheTtl(path, { token, display, ...options });
   const canReuse = ttl && !writesInFlight[group] && !writesInFlight.data;
-  const key = JSON.stringify([path, display]);
+  const separator = path.indexOf("?");
+  const route = separator < 0 ? path : path.slice(0, separator);
+  const query = separator < 0 ? "" : path.slice(separator + 1);
+  const queryParams = new URLSearchParams(query);
+  queryParams.sort();
+  const queryKey = queryParams.toString();
+  const key = JSON.stringify([queryKey ? `${route}?${queryKey}` : route, display]);
   const cached = canReuse && !fresh ? pageData.read(key, ttl, Boolean(onCached)) : null;
   if (cached) {
     onCached?.(cached.data, cached.loadedAt);

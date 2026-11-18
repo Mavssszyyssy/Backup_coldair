@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { confirmLogout } from "../../../utils/dialog";
+import { accountDisplayName, accountInitials } from "../../../utils/accountDisplayName";
 import { translateText } from "../../../utils/customerI18n";
 import BoutiqueBox from "./BoutiqueBox";
 import BoutiqueDrawer from "./BoutiqueDrawer";
@@ -49,14 +50,11 @@ export default function BoutiqueSideMenu({
 
   const getUserDisplayName = () => {
     if (!user) return "Guest User";
-    return (
-      user.name || user.name_first || user.email?.split("@")[0] || "Customer"
-    );
+    return accountDisplayName(user);
   };
 
   const getUserInitial = () => {
-    const name = getUserDisplayName().trim().split(/\s+/).filter(Boolean);
-    return (name.length > 1 ? `${name[0][0]}${name[name.length - 1][0]}` : (name[0] || "?").slice(0, 2)).toUpperCase();
+    return accountInitials(user);
   };
 
   return (
@@ -120,6 +118,7 @@ export default function BoutiqueSideMenu({
               <button
                 key={item.id}
                 className={`bq-nav-item ${active ? "active" : ""}`}
+                data-preload-path={item.path}
                 onClick={() => handleNavigation(item.path)}
               >
                 <item.icon size={24} weight={active ? "fill" : "bold"} />

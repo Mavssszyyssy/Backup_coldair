@@ -8,6 +8,7 @@ import useActiveBranches from "../../../domain/branches/useActiveBranches";
 import { TECHNICIAN_TIME_SLOTS as TIME_SLOTS } from "../../../domain/technicianTimeSlots";
 import { technicianHasConflict } from "../../../domain/scheduleConflicts";
 import { apiRequest } from "../../../config/api";
+import { loadPageRequests } from "../../../config/loadPageRequests";
 import { formatBusinessDate, formatBusinessDateKey, formatBusinessDateTime, getWorkOrderDateSelectionError, getWorkOrderDateWindow } from "../../../utils/dateTime";
 import { alertDialog, confirmDialog } from "../../../utils/dialog";
 import { isValidEmailFormat, validateEmailForSubmission } from "../../../domain/emailPolicy";
@@ -236,17 +237,13 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
     setWorkspaceView(initialView === "schedule" ? "schedule" : "technicians");
   }, [initialView]);
 
+  const loadRevision = useRef(0);
   const load = useCallback(async (fresh = false) => {
+    const revision = ++loadRevision.current;
     setLoading(true);
     setError("");
-    try {
-      const [usersResult, customerResult, tasksResult, catalogResult, unitResult] = await Promise.all([
-        apiRequest("/users?role=technician", fresh ? { fresh } : undefined),
-        apiRequest("/users?role=customer", fresh ? { fresh } : undefined),
-        apiRequest("/tasks", fresh ? { fresh } : undefined),
-        apiRequest("/service-requests/catalog", fresh ? { fresh } : undefined),
-        apiRequest("/amp/report-units", fresh ? { fresh } : undefined),
-      ]);
+    const showWorkspace = ([usersResult, customerResult, tasksResult, catalogResult, unitResult]) => {
+      if (revision !== loadRevision.current) return;
       setTechnicians((usersResult.users || []).map((item) => ({
         ...item,
         name: displayName(item),
@@ -269,14 +266,24 @@ const AdminTechnician = ({ embedded = false, initialView = "technicians", record
       setServiceOfferings([INSTALLATION_SERVICE, ...configuredOfferings.filter((item) => item.id !== INSTALLATION_SERVICE.id)]);
       setUnits(unitResult.units || []);
       setTasks(tasksResult.tasks || []);
+      setLoading(false);
+    };
+    try {
+      showWorkspace(await loadPageRequests([
+        "/users?role=technician", "/users?role=customer", "/tasks", "/service-requests/catalog", "/amp/report-units",
+      ], { fresh, onCached: showWorkspace }));
     } catch (requestError) {
+      if (revision !== loadRevision.current) return;
+      if ([401, 403].includes(requestError.status)) {
+        setTechnicians([]); setCustomers([]); setTasks([]); setUnits([]);
+      }
       setError(requestError.message || "Unable to load technician management.");
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); return () => { loadRevision.current += 1; }; }, [load]);
   useEffect(() => { setPage(1); }, [search, accountFilter, workloadFilter, branchFilter]);
   useEffect(() => { setWorkPage(1); }, [workSearch, workStatusFilter, workTypeFilter, workTechnicianFilter]);
   useEffect(() => {

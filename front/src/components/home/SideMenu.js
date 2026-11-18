@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { confirmLogout } from '../../utils/dialog';
+import { accountDisplayName, accountInitials } from '../../utils/accountDisplayName';
 import { translateText } from '../../utils/customerI18n';
 import icons from '../common/icons';
 
@@ -38,11 +39,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
 
   const getUserDisplayName = () => {
     if (!user) return 'Guest User';
-    if (user.name) return user.name;
-    if (user.name_first && user.name_last) return `${user.name_first} ${user.name_last}`;
-    if (user.name_first) return user.name_first;
-    if (user.email) return user.email.split('@')[0];
-    return 'Cold Air Customer';
+    return accountDisplayName(user, 'Cold Air Customer');
   };
 
   const getUserRole = () => {
@@ -54,12 +51,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
   };
 
   const getUserInitial = () => {
-    const name = getUserDisplayName();
-    if (name && name !== 'Guest User') {
-      const parts = name.trim().split(/\s+/).filter(Boolean);
-      return `${parts[0]?.[0] || ''}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`.toUpperCase();
-    }
-    return null;
+    return user ? accountInitials(user) : null;
   };
 
   useEffect(() => {
@@ -145,6 +137,7 @@ function SideMenu({ isOpen, onClose, activePage, onLogout }) {
                 <div
                   key={item.id}
                   className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+                  data-preload-path={item.path}
                   onClick={() => handleNavigation(item.path, item.id)}
                   role="presentation"
                 >

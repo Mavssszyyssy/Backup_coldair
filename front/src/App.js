@@ -6,9 +6,10 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import "./App.css";
 import { lazyWithReload } from "./utils/lazyWithReload";
+import { listenForNavigationIntent } from "./utils/navigationPreload";
 const AdminDashboard = lazyWithReload(() => import("./components/ADMIN/Dashboard/AdminDashboard"), "AdminDashboard");
 const AdminInventory = lazyWithReload(() => import("./components/ADMIN/Inventory/AdminInventory"), "AdminInventory");
 const AdminProfile = lazyWithReload(() => import("./components/ADMIN/Profile/AdminProfile"), "AdminProfile");
@@ -119,6 +120,8 @@ export function AppContent() {
     hideAuthRequiredPrompt,
   } = useUser();
   const location = useLocation();
+
+  useEffect(() => listenForNavigationIntent({ role: userRole }), [userRole]);
 
   if (loading) {
     return <RouteLoading />;

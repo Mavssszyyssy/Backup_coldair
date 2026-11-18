@@ -6,11 +6,47 @@ import GlobalDialog from '../../common/GlobalDialog';
 import { apiRequest } from '../../../config/api';
 const languageState = vi.hoisted(() => ({ current: 'English' }));
 vi.mock('../Common/AdminLayout', () => ({ default: ({ children }) => <div>{children}</div> }));
-vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ user: { role: 'superadmin', assignedBranch: 'Cavite' }, currentLanguage: languageState.current }) }));
+vi.mock('../../../context/UserContext', () => ({ useUser: () => ({ user: { role: languageState.role || 'superadmin', assignedBranch: 'Cavite' }, currentLanguage: languageState.current }) }));
 vi.mock('../../../config/api', () => ({ apiRequest: vi.fn() }));
 beforeEach(() => {
   languageState.current = 'English';
+  languageState.role = 'superadmin';
   apiRequest.mockReset().mockImplementation(async (path) => path.startsWith('/users') ? { users: [] } : { tasks: [] });
+});
+
+test.each(['admin', 'superadmin'])('the %s workspace renders its complete cached snapshot before slow refreshes finish', async (role) => {
+  languageState.role = role;
+  const pending = [];
+  apiRequest.mockImplementation((path, options = {}) => {
+    const data = path === '/users?role=technician'
+      ? { users: [{ id: 'cache-tech', name: 'Cached Technician', assignedBranch: 'Cavite', accountStatus: 'active' }] }
+      : path.startsWith('/users') ? { users: [] } : path === '/branches' ? { branches: [] } : { tasks: [], units: [], offerings: [] };
+    options.onCached?.(data, 50_000);
+    return new Promise((resolve) => pending.push(() => resolve(data)));
+  });
+  render(<AdminTechnician />);
+  expect((await screen.findAllByText('Cached Technician')).length).toBeGreaterThan(0);
+  expect(screen.getByText('Refresh')).toBeEnabled();
+  await act(async () => pending.forEach((finish) => finish()));
+});
+
+test('a late cached-workspace refresh cannot overwrite a newer explicit refresh', async () => {
+  const oldRequests = [];
+  apiRequest.mockImplementation((path, options = {}) => {
+    const data = path === '/users?role=technician'
+      ? { users: [{ id: 'cache-tech', name: options.fresh ? 'Current Technician' : 'Cached Technician', assignedBranch: 'Cavite', accountStatus: 'active' }] }
+      : path.startsWith('/users') ? { users: [] } : { tasks: [], units: [], offerings: [], branches: [] };
+    if (options.fresh) return Promise.resolve(data);
+    options.onCached?.(data, 50_000);
+    return new Promise((resolve) => oldRequests.push(() => resolve(data)));
+  });
+  render(<AdminTechnician />);
+  expect((await screen.findAllByText('Cached Technician')).length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByText('Refresh'));
+  expect((await screen.findAllByText('Current Technician')).length).toBeGreaterThan(0);
+  await act(async () => oldRequests.forEach((finish) => finish()));
+  expect(screen.queryByText('Cached Technician')).not.toBeInTheDocument();
+  expect(screen.getAllByText('Current Technician').length).toBeGreaterThan(0);
 });
 
 test('uses Filipino controls in the technician workspace without changing saved names', async () => {

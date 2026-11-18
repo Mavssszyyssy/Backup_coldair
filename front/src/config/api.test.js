@@ -264,3 +264,52 @@ test("JSON write requests keep their content type", async () => {
   expect(options.headers["Content-Type"]).toBe("application/json");
   expect(options.body).toBe('{"cart":[]}');
 });
+
+test("equivalent filters share their cached response and in-flight request without changing the URL sent", async () => {
+  auth.token = "query-session";
+  let finish;
+  const fetchMock = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const first = apiRequest("/tasks?limit=75&status=pending");
+  const second = apiRequest("/tasks?status=pending&limit=75");
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][0]).toMatch(/\/tasks\?limit=75&status=pending$/);
+  finish(reply({ tasks: ["task-1"] }));
+  expect(await second).toEqual(await first);
+  expect(await apiRequest("/tasks?status=pending&limit=75")).toEqual({ tasks: ["task-1"] });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("returning after five minutes paints a snapshot immediately and still fetches current data", async () => {
+  auth.token = "return-visit";
+  const now = vi.spyOn(Date, "now").mockReturnValue(50_000);
+  let finish;
+  const fetchMock = vi.fn().mockResolvedValueOnce(reply({ count: 1 }))
+    .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+    .mockResolvedValue(reply({ count: 3 }));
+  vi.stubGlobal("fetch", fetchMock);
+  await apiRequest("/dashboard/me");
+  now.mockReturnValue(350_000);
+  const onCached = vi.fn();
+  const refresh = apiRequest("/dashboard/me", { onCached });
+  expect(onCached).toHaveBeenCalledWith({ count: 1 }, 50_000);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  finish(reply({ count: 2 }));
+  expect(await refresh).toEqual({ count: 2 });
+  now.mockReturnValue(950_000);
+  onCached.mockClear();
+  expect(await apiRequest("/dashboard/me", { onCached })).toEqual({ count: 3 });
+  expect(onCached).not.toHaveBeenCalled();
+});
+
+test("cache normalization retains embedded question marks and repeated filter order", async () => {
+  auth.token = "search-session";
+  const fetchMock = vi.fn(async (url) => reply({ url }));
+  vi.stubGlobal("fetch", fetchMock);
+  const first = await apiRequest("/orders?search=question?one&status=pending");
+  expect(await apiRequest("/orders?status=pending&search=question%3Fone")).toEqual(first);
+  expect(await apiRequest("/orders?search=question?two&status=pending")).not.toEqual(first);
+  await apiRequest("/orders?filter=one&filter=two");
+  await apiRequest("/orders?filter=two&filter=one");
+  expect(fetchMock).toHaveBeenCalledTimes(4);
+});

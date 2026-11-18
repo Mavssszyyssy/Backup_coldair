@@ -1,6 +1,7 @@
 import { lazy } from "react";
 
 const RECOVERY_PREFIX = "aeropulse:lazy-route-reload:";
+const routeLoaders = new Map();
 const CHUNK_LOAD_ERROR =
   /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module|loading chunk [^ ]+ failed|dynamically imported module|javascript-or-wasm module script|mime type ["']?text\/html/i;
 
@@ -40,5 +41,19 @@ export const loadLazyModule = async (importer, routeName, environment = browserE
   }
 };
 
-export const lazyWithReload = (importer, routeName) =>
-  lazy(() => loadLazyModule(importer, routeName));
+export const preloadLazyRoute = (routeName) => routeLoaders.get(routeName)?.();
+
+export const lazyWithReload = (importer, routeName) => {
+  let pending;
+  const load = () => {
+    if (!pending) pending = Promise.resolve().then(importer).catch((error) => {
+      pending = undefined;
+      throw error;
+    });
+    return pending;
+  };
+  routeLoaders.set(routeName, load);
+  // Prefetch errors are handled by the caller. Recovery is reserved for an
+  // actual navigation, so pointing at a stale link never reloads the page.
+  return lazy(() => loadLazyModule(load, routeName));
+};
