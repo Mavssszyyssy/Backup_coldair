@@ -1,6 +1,6 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SuperAdminLayout from '../Common/SuperAdminLayout';
 import { useUser } from '../../../context/UserContext';
@@ -36,6 +36,7 @@ const SuperAdminSettings = () => {
   const [policySaving, setPolicySaving] = useState(false);
   const [policyNotice, setPolicyNotice] = useState('');
   const [policyError, setPolicyError] = useState('');
+  const domainDraftEdited = useRef(false);
   useAutoDismissMessage(notice, setNotice);
   useAutoDismissMessage(preferencesNotice, setPreferencesNotice);
   useAutoDismissMessage(policyNotice, setPolicyNotice);
@@ -58,9 +59,14 @@ const SuperAdminSettings = () => {
     const loadEmailDomains = async () => {
       setPolicyLoading(true);
       setPolicyError('');
+      const showPolicy = (result) => {
+        if (active && !domainDraftEdited.current) {
+          setEmailDomains(Array.isArray(result.domains) ? result.domains : []);
+          setPolicyLoading(false);
+        }
+      };
       try {
-        const result = await apiRequest('/system-settings/email-domains');
-        if (active) setEmailDomains(Array.isArray(result.domains) ? result.domains : []);
+        showPolicy(await apiRequest('/system-settings/email-domains', { onCached: showPolicy }));
       } catch (requestError) {
         if (active) setPolicyError(requestError.message || 'Unable to load the email domain whitelist.');
       } finally {
@@ -72,6 +78,7 @@ const SuperAdminSettings = () => {
   }, []);
 
   const addEmailDomain = () => {
+    if (policyLoading || policySaving) return;
     const domain = normalizeDomain(customDomain);
     setPolicyNotice('');
     if (!isValidDomainFormat(domain)) {
@@ -82,6 +89,7 @@ const SuperAdminSettings = () => {
       setPolicyError('That email domain is already in the whitelist.');
       return;
     }
+    domainDraftEdited.current = true;
     setEmailDomains((current) => [...current, { domain, enabled: true, source: 'custom' }]
       .sort((left, right) => left.domain.localeCompare(right.domain)));
     setCustomDomain('');
@@ -90,6 +98,8 @@ const SuperAdminSettings = () => {
   };
 
   const toggleEmailDomain = (domain) => {
+    if (policyLoading || policySaving) return;
+    domainDraftEdited.current = true;
     setPolicyNotice('');
     setPolicyError('');
     setEmailDomains((current) => current.map((entry) => (
@@ -98,6 +108,8 @@ const SuperAdminSettings = () => {
   };
 
   const removeEmailDomain = (domain) => {
+    if (policyLoading || policySaving) return;
+    domainDraftEdited.current = true;
     setPolicyNotice('');
     setPolicyError('');
     setEmailDomains((current) => current.filter((entry) => entry.domain !== domain));
@@ -185,14 +197,14 @@ const SuperAdminSettings = () => {
           </button>
           {domainMenuOpen ? <div className="hq-domain-menu" role="group" aria-label={t('Allowed email domains')}>
             {emailDomains.length ? emailDomains.map((entry) => <div className="hq-domain-option" key={entry.domain}>
-              <label><input type="checkbox" checked={Boolean(entry.enabled)} onChange={() => toggleEmailDomain(entry.domain)} /><span><b>{entry.domain}</b><small>{t(entry.source === 'default' ? 'Common provider' : 'Custom domain')}</small></span></label>
-              <button type="button" onClick={() => removeEmailDomain(entry.domain)} aria-label={`${t('Remove')} ${entry.domain}`}>{t('Remove')}</button>
+              <label><input type="checkbox" disabled={policySaving} checked={Boolean(entry.enabled)} onChange={() => toggleEmailDomain(entry.domain)} /><span><b>{entry.domain}</b><small>{t(entry.source === 'default' ? 'Common provider' : 'Custom domain')}</small></span></label>
+              <button type="button" disabled={policySaving} onClick={() => removeEmailDomain(entry.domain)} aria-label={`${t('Remove')} ${entry.domain}`}>{t('Remove')}</button>
             </div>) : <p className="hq-domain-empty">{t('No domains are configured.')}</p>}
           </div> : null}
         </div>
         <div className="hq-domain-add-row">
-          <label>{t('Company, organization, or school domain')}<input maxLength={253} value={customDomain} onChange={(event) => { setCustomDomain(event.target.value); setPolicyError(''); }} placeholder="example.edu.ph" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addEmailDomain(); } }} /></label>
-          <button type="button" onClick={addEmailDomain}>{t('Add domain')}</button>
+          <label>{t('Company, organization, or school domain')}<input maxLength={253} disabled={policyLoading || policySaving} value={customDomain} onChange={(event) => { setCustomDomain(event.target.value); setPolicyError(''); }} placeholder="example.edu.ph" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addEmailDomain(); } }} /></label>
+          <button type="button" disabled={policyLoading || policySaving} onClick={addEmailDomain}>{t('Add domain')}</button>
         </div>
         <button type="button" className="hq-domain-save-button" onClick={saveEmailDomains} disabled={policyLoading || policySaving}>{t(policySaving ? 'Saving whitelist…' : 'Save email whitelist')}</button>
         {policyNotice ? <span className="hq-success" role="status">{t(policyNotice)}</span> : null}

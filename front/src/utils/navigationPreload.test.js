@@ -62,3 +62,15 @@ test("code warming shares its pending import and retries a failed download", asy
   await expect(preloadLazyRoute("FixtureWarmRoute")).resolves.toBe(module);
   expect(importer).toHaveBeenCalledTimes(2);
 });
+
+test("data begins alongside a pending page download rather than after it", async () => {
+  vi.useFakeTimers();
+  const preload = vi.fn(() => new Promise(() => {}));
+  const preloadData = vi.fn().mockResolvedValue([]);
+  document.body.innerHTML = '<a href="/admin/services?tab=customer-messages">Messages</a>';
+  cleanup = listenForNavigationIntent({ role: "admin", preload, preloadData });
+  document.querySelector("a").dispatchEvent(new Event("pointerdown", { bubbles: true }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(preload).toHaveBeenCalledExactlyOnceWith("AdminServices");
+  expect(preloadData).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/admin/services", search: "?tab=customer-messages" }), "admin");
+});

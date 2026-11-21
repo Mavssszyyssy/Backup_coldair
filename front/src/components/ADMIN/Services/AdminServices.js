@@ -34,7 +34,7 @@ const AdminServices = () => {
     <AdminLayout title={t("Services")} subtitle={t("Manage customer orders, service requests, customer messages, and field technicians in one operational workspace.")}>
       <div className="module-tabs" role="tablist" aria-label={t("Service management sections")}>
         {TABS.map((tab) => (
-          <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>
+          <button key={tab.id} type="button" role="tab" data-preload-path={`/admin/services?tab=${tab.id}`} aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>
             {t(tab.label)}
           </button>
         ))}

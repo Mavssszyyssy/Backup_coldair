@@ -23,11 +23,14 @@ function MyAddressesSettings({ onAddressesChanged, language = "English" }) {
 
   const loadAddresses = useCallback(async () => {
     setAddressLoading(true);
-    try {
-      const result = await apiRequest("/users/addresses");
+    const showAddresses = (result) => {
       const nextAddresses = result.addresses || [];
       setAddresses(nextAddresses);
       onAddressesChanged?.(nextAddresses);
+      setAddressLoading(false);
+    };
+    try {
+      showAddresses(await apiRequest("/users/addresses", { onCached: showAddresses }));
     } catch (_error) {
       setAddresses([]);
     } finally {

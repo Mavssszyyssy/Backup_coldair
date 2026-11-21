@@ -97,35 +97,41 @@ const Shop = () => {
     const generation = ++catalogGenerationRef.current;
     const promise = (async () => {
       try {
+        let branchVersion = 0;
+        const loadBranchProducts = async (branch) => {
+          const version = ++branchVersion;
+          let shownResult;
+          const applyProducts = (response) => {
+            if (generation !== catalogGenerationRef.current || version !== branchVersion || shownResult === response) return;
+            shownResult = response;
+            setBackendProducts((response.products || []).map(mapCatalogProductToCartProduct));
+            setFulfillmentBranch(branch);
+            setCatalogLoading(false);
+          };
+          const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, {
+            silentConnection: true, display: true, fresh, onCached: applyProducts,
+          });
+          applyProducts(response);
+        };
         let branch = "";
         if (isAuthenticated) {
           const addressResult = await apiRequest("/users/addresses?resolveDeliveryBranch=true", {
             silentConnection: true, display: true, fresh,
+            onCached: (cached) => {
+              // Start the cached branch's catalogue immediately while the address
+              // refresh runs. A newer branch invalidates this display callback.
+              if (cached.deliveryBranch) void loadBranchProducts(cached.deliveryBranch).catch(() => {});
+            },
           });
           if (typeof addressResult.deliveryBranch === "string" && addressResult.deliveryBranch) {
             branch = addressResult.deliveryBranch;
           } else {
-            // Preserve coverage errors for unmatched addresses and older APIs.
             const addresses = Array.isArray(addressResult.addresses) ? addressResult.addresses : [];
             const address = addresses.find((entry) => entry.isDefault) || addresses[0];
             if (address) branch = await resolveConfiguredBranch(address, { display: true, fresh });
           }
         }
-        let shownResult;
-        const applyProducts = (response) => {
-          if (generation !== catalogGenerationRef.current || shownResult === response) return;
-          shownResult = response;
-          setBackendProducts((response.products || []).map(mapCatalogProductToCartProduct));
-          setFulfillmentBranch(branch);
-          setCatalogLoading(false);
-        };
-        const response = await apiRequest(`/products/public${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`, {
-          silentConnection: true,
-          display: true,
-          fresh,
-          onCached: applyProducts,
-        });
-        applyProducts(response);
+        await loadBranchProducts(branch);
         if (generation === catalogGenerationRef.current) {
           setCatalogError("");
         }

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { apiRequest } from "../../config/api";
 import MyAddressesSettings from "./MyAddressesSettings";
@@ -29,6 +29,18 @@ const address = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+test("shows cached delivery addresses before a pending refresh finishes", async () => {
+  let finish;
+  apiRequest.mockImplementation((_path, options) => {
+    options.onCached({ addresses: [address] });
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  render(<MyAddressesSettings />);
+  expect(screen.getByText(/Old street/)).toBeVisible();
+  await act(async () => { finish({ addresses: [{ ...address, street: "Current street" }] }); });
+  expect(screen.getByText(/Current street/)).toBeVisible();
 });
 
 test("uses Delivery Addresses and shows screen-scoped feedback after an address update", async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, test, vi } from 'vitest';
 import SuperAdminSettings from './SuperAdminSettings';
@@ -47,7 +47,7 @@ test('saves display preferences directly from their card without changing alert 
 
 test('Superadmin manages the system-wide email whitelist through a multi-select dropdown', async () => {
   apiRequest.mockImplementation(async (path, options) => {
-    if (path === '/system-settings/email-domains' && !options) {
+    if (path === '/system-settings/email-domains' && !options?.method) {
       return { domains: [
         { domain: 'gmail.com', enabled: true, source: 'default' },
         { domain: 'school.edu.ph', enabled: false, source: 'custom' },
@@ -93,4 +93,18 @@ test('Filipino preference translates the settings content while preserving saved
   expect(screen.getByLabelText('Tema')).toHaveValue('dark');
   expect(screen.getByLabelText('Wika')).toHaveValue('Filipino');
   expect(screen.getByText('Mga kagustuhan sa alerto')).toBeInTheDocument();
+});
+
+
+test('cached email policy renders immediately and a refresh preserves a user edit', async () => {
+  let finish;
+  apiRequest.mockImplementation((_path, options) => {
+    options.onCached({ domains: [{ domain: 'school.edu.ph', enabled: true, source: 'custom' }] });
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  render(<MemoryRouter><SuperAdminSettings /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: /1 active of 1 domains/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /school.edu.ph/ }));
+  await act(async () => { finish({ domains: [{ domain: 'school.edu.ph', enabled: true, source: 'custom' }] }); });
+  expect(screen.getByRole('checkbox', { name: /school.edu.ph/ })).not.toBeChecked();
 });

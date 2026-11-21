@@ -20,7 +20,7 @@ vi.mock("../../../context/UserContext", () => ({
 beforeEach(() => {
   currentLanguage = "English";
   apiRequest.mockImplementation(async (path) => {
-    if (path === "/products") return { products: [] };
+    if (["/products", "/products?view=inventory"].includes(path)) return { products: [] };
     if (path === "/reorders") return { reorders: [] };
     if (path.startsWith("/notifications")) return { notifications: [] };
     return {};
@@ -30,7 +30,7 @@ beforeEach(() => {
 it("localizes the Super Admin inventory shell without changing product or branch names", async () => {
   currentLanguage = "Filipino";
   apiRequest.mockImplementation(async (path) => {
-    if (path === "/products") return { products: [{ id: "unit-1", name: "American Home Inverter", sku: "AH-1", branchStock: { Bulacan: 0 } }] };
+    if (["/products", "/products?view=inventory"].includes(path)) return { products: [{ id: "unit-1", name: "American Home Inverter", sku: "AH-1", branchStock: { Bulacan: 0 } }] };
     if (path.startsWith("/notifications")) return { notifications: [] };
     return {};
   });
@@ -86,7 +86,7 @@ it("renders the real checker, serial registry, and reorder panels", async () => 
 });
 
 it("takes an inventory row directly to its unit records in the selected branch", async () => {
-  apiRequest.mockImplementation(async (path) => path === "/products" ? { products: [
+  apiRequest.mockImplementation(async (path) => ["/products", "/products?view=inventory"].includes(path) ? { products: [
     { id: "p1", name: "Selected AC", sku: "AC-1", branchStock: { Bulacan: 1 }, serialUnits: [
       { serialNumber: "SERIAL-B", branch: "Bulacan", status: "available" },
       { serialNumber: "SERIAL-C", branch: "Cavite", status: "sold" },
@@ -105,7 +105,7 @@ it("takes an inventory row directly to its unit records in the selected branch",
 
 it("presents a pending reorder as a structured review card", async () => {
   apiRequest.mockImplementation(async (path) => {
-    if (path === "/products") return { products: [] };
+    if (["/products", "/products?view=inventory"].includes(path)) return { products: [] };
     if (path === "/reorders") return {
       reorders: [{
         id: "reorder-1",
@@ -142,7 +142,7 @@ it("paginates the reorder queue when large review cards would create a long page
     requestedBy: { name: "Cavite Admin" },
   }));
   apiRequest.mockImplementation(async (path) => {
-    if (path === "/products") return { products: [] };
+    if (["/products", "/products?view=inventory"].includes(path)) return { products: [] };
     if (path === "/reorders") return { reorders };
     if (path.startsWith("/notifications")) return { notifications: [] };
     return {};

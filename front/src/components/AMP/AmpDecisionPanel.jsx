@@ -25,8 +25,9 @@ export default function AmpDecisionPanel({ unitId }) {
     let active = true;
     setLoading(true);
     setError("");
-    apiRequest(`/amp/units/${encodeURIComponent(unitId)}/decision-support`)
-      .then((result) => { if (active) setData(result); })
+    const showAssessment = (result) => { if (active) { setData(result); setLoading(false); } };
+    apiRequest(`/amp/units/${encodeURIComponent(unitId)}/decision-support`, { onCached: showAssessment })
+      .then(showAssessment)
       .catch((failure) => { if (active) setError(failure?.message || "Unable to load this unit's assessments."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

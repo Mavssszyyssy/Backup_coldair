@@ -64,8 +64,8 @@ export default function SuperAdminCatalog({ onCreated }) {
   }, [branchNames, form.branch]);
 
   const loadCatalog = useCallback(async () => {
-    const result = await apiRequest('/products?includeArchived=true');
-    setAllProducts(Array.isArray(result.products) ? result.products : []);
+    const showCatalog = (result) => setAllProducts(Array.isArray(result.products) ? result.products : []);
+    showCatalog(await apiRequest('/products?includeArchived=true&view=inventory', { onCached: showCatalog }));
   }, []);
   useEffect(() => { loadCatalog().catch((requestError) => setError(requestError.message || 'Unable to load product catalog.')); }, [loadCatalog]);
   const listedProducts = useMemo(() => allProducts.filter((product) =>

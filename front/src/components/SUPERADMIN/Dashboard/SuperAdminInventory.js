@@ -47,7 +47,7 @@ const SuperAdminInventory = () => {
       setLoading(false);
     };
     try {
-      showProducts(await apiRequest('/products', { fresh, onCached: showProducts }));
+      showProducts(await apiRequest('/products?view=inventory', { fresh, onCached: showProducts }));
     } catch (requestError) {
       if ([401, 403].includes(requestError.status)) setProducts([]);
       setError(requestError.message || 'Unable to load inventory.');
@@ -57,7 +57,7 @@ const SuperAdminInventory = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'checker' || activeTab === 'catalog') load();
+    if (activeTab === 'checker') load();
   }, [activeTab, load]);
 
   const outOfStock = useMemo(
@@ -70,7 +70,7 @@ const SuperAdminInventory = () => {
   return (
     <SuperAdminLayout title={t('Inventory Management')} subtitle={t('Review branch stock, serial / QR records, and replenishment requests in one executive workspace.')}>
       <div className="module-tabs" role="tablist" aria-label={t('Super Admin inventory management sections')}>
-        {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>{t(tab.label)}</button>)}
+        {TABS.map((tab) => <button key={tab.id} type="button" role="tab" data-preload-path={`/superadmin/inventory?tab=${tab.id}`} aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => selectTab(tab.id)}>{t(tab.label)}</button>)}
       </div>
       {activeTab === 'catalog' ? <SuperAdminCatalog onCreated={load} /> : null}
       {activeTab === 'checker' ? (

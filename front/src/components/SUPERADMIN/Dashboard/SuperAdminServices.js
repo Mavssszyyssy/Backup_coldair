@@ -42,6 +42,7 @@ const SuperAdminServices = () => {
             key={tab.id}
             type="button"
             role="tab"
+            data-preload-path={`/superadmin/services?tab=${tab.id}`}
             aria-selected={activeTab === tab.id}
             className={activeTab === tab.id ? 'active' : ''}
             onClick={() => selectTab(tab.id)}

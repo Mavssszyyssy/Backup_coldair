@@ -100,15 +100,19 @@ function AdminAnalyticsDashboard() {
   const loadReport = useCallback(async () => {
     setBusy(true);
     setError('');
-    try {
-      const response = await apiRequest(
-        `/reports/sales?interval=${encodeURIComponent(interval)}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&topN=10`
-      );
+    const showReport = (response) => {
       setReport({
         series: Array.isArray(response.series) ? response.series : [],
         topProducts: Array.isArray(response.topProducts) ? response.topProducts : [],
         updatedAt: response.updatedAt || new Date().toISOString(),
       });
+      setBusy(false);
+    };
+    try {
+      const response = await apiRequest(
+        `/reports/sales?interval=${encodeURIComponent(interval)}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&topN=10`, { onCached: showReport }
+      );
+      showReport(response);
     } catch (e) {
       setError(e?.message || 'Failed to load analytics.');
     } finally {

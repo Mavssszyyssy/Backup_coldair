@@ -121,10 +121,9 @@ function OwnerAmpDashboard() {
   useEffect(() => {
     let cancelled = false;
     setReportUnitsLoading(true);
-    apiRequest("/amp/report-units")
-      .then((result) => {
-        if (!cancelled) setReportUnits(result.units || []);
-      })
+    const showUnits = (result) => { if (!cancelled) { setReportUnits(result.units || []); setReportUnitsLoading(false); } };
+    apiRequest("/amp/report-units", { onCached: showUnits })
+      .then(showUnits)
       .catch(() => {
         if (!cancelled) setReportUnits([]);
       })
@@ -138,13 +137,15 @@ function OwnerAmpDashboard() {
     if (historyLoaded || historyRequestRef.current) return historyRequestRef.current;
     setHistoryLoading(true);
     setHistoryError("");
-    const request = apiRequest("/amp/owner/forecast?months=12&includeHistory=true")
-      .then((result) => {
-        setPartsTrend(result.recordedPartsTrend || []);
-        setModelTrends(result.modelTrends || []);
-        setBrandTrends(result.brandTrends || []);
-        setHistoryLoaded(true);
-      })
+    const showHistory = (result) => {
+      setPartsTrend(result.recordedPartsTrend || []);
+      setModelTrends(result.modelTrends || []);
+      setBrandTrends(result.brandTrends || []);
+      setHistoryLoaded(true);
+      setHistoryLoading(false);
+    };
+    const request = apiRequest("/amp/owner/forecast?months=12&includeHistory=true", { onCached: showHistory })
+      .then(showHistory)
       .catch((requestError) => {
         setHistoryError(requestError.message || "Unable to load recorded maintenance history.");
       })

@@ -25,9 +25,9 @@ const IncomingRestockModal = ({ isOpen, onClose, onRefresh }) => {
   const loadRestocks = async () => {
     setLoading(true);
     setError('');
+    const showRestocks = (result) => { setRestocks(result.restockOrders || []); setLoading(false); };
     try {
-      const result = await apiRequest('/restock-orders/my-deliveries');
-      setRestocks(result.restockOrders || []);
+      showRestocks(await apiRequest('/restock-orders/my-deliveries', { onCached: showRestocks }));
     } catch (err) {
       setError(err.message);
     } finally {

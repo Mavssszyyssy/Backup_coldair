@@ -21,9 +21,9 @@ const getBranchStock = (product, branch) => {
 
 const InventoryTabs = ({ activeTab, onSelect, t }) => (
   <div className="module-tabs" role="tablist" aria-label={t('Inventory management sections')}>
-    <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'active' : ''} onClick={() => onSelect('inventory')}>{t('Inventory / Stock')}</button>
-    <button type="button" role="tab" aria-selected={activeTab === 'reorder'} className={activeTab === 'reorder' ? 'active' : ''} onClick={() => onSelect('reorder')}>{t('Reorder Management')}</button>
-    <button type="button" role="tab" aria-selected={activeTab === 'serial-qr'} className={activeTab === 'serial-qr' ? 'active' : ''} onClick={() => onSelect('serial-qr')}>{t('Serial / QR Management')}</button>
+    <button type="button" role="tab" data-preload-path="/admin/inventory?tab=inventory" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'active' : ''} onClick={() => onSelect('inventory')}>{t('Inventory / Stock')}</button>
+    <button type="button" role="tab" data-preload-path="/admin/inventory?tab=reorder" aria-selected={activeTab === 'reorder'} className={activeTab === 'reorder' ? 'active' : ''} onClick={() => onSelect('reorder')}>{t('Reorder Management')}</button>
+    <button type="button" role="tab" data-preload-path="/admin/inventory?tab=serial-qr" aria-selected={activeTab === 'serial-qr'} className={activeTab === 'serial-qr' ? 'active' : ''} onClick={() => onSelect('serial-qr')}>{t('Serial / QR Management')}</button>
   </div>
 );
 
@@ -76,7 +76,7 @@ const AdminInventory = () => {
       setLoading(false);
     };
     try {
-      const path = `/products?branch=${encodeURIComponent(branch)}`;
+      const path = `/products?view=inventory&branch=${encodeURIComponent(branch)}`;
       showProducts(await apiRequest(path, { fresh, onCached: showProducts }));
     } catch (requestError) {
       if (version !== loadVersion.current) return;

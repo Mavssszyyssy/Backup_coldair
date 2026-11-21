@@ -195,3 +195,29 @@ test("an unmatched saved address retains the coverage error instead of showing u
     log.mockRestore();
   }
 });
+
+test("returning shop shows cached branch stock before addresses refresh and ignores older branch results", async () => {
+  authState.authenticated = true;
+  let finishAddress;
+  let finishOldStock;
+  apiRequest.mockImplementation((path, options) => {
+    if (path === "/notifications/me") return Promise.resolve({ notifications: [] });
+    if (path === "/users/addresses?resolveDeliveryBranch=true") {
+      options.onCached({ deliveryBranch: "Cavite" });
+      return new Promise((resolve) => { finishAddress = resolve; });
+    }
+    if (path === "/products/public?branch=Cavite") {
+      options.onCached({ products: [{ id: "old", name: "Cached Cavite Inverter", price: 100, stock: 1 }] });
+      return new Promise((resolve) => { finishOldStock = resolve; });
+    }
+    if (path === "/products/public?branch=Laguna") return Promise.resolve({ products: [{ id: "new", name: "Current Laguna Inverter", price: 100, stock: 1 }] });
+    throw new Error(`Unexpected path: ${path}`);
+  });
+  const view = render(<Shop />);
+  expect(view.getByText("Cached Cavite Inverter")).toBeVisible();
+  await act(async () => { finishAddress({ deliveryBranch: "Laguna" }); });
+  expect(view.getByText("Current Laguna Inverter")).toBeVisible();
+  await act(async () => { finishOldStock({ products: [{ id: "old", name: "Late Cavite Inverter", price: 100, stock: 1 }] }); });
+  expect(view.queryByText("Late Cavite Inverter")).not.toBeInTheDocument();
+  expect(view.getByText("Current Laguna Inverter")).toBeVisible();
+});

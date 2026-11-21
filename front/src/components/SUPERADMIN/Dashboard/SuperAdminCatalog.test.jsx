@@ -13,7 +13,7 @@ beforeEach(() => { language.value = 'English'; });
 test('archive control confirms, hides active item, and restore returns it', async () => {
   let archived = false;
   apiRequest.mockImplementation(async (path) => {
-    if (path === '/products?includeArchived=true') return { products: [{ id: 'product-1', name: 'Window AC', sku: 'AC-1', stock: 3, isActive: !archived }] };
+    if (path === '/products?includeArchived=true&view=inventory') return { products: [{ id: 'product-1', name: 'Window AC', sku: 'AC-1', stock: 3, isActive: !archived }] };
     if (path === '/products/product-1/archive') { archived = true; return { archived: true }; }
     if (path === '/products/product-1/restore') { archived = false; return { archived: false }; }
     throw new Error(`Unexpected request: ${path}`);
@@ -56,7 +56,7 @@ test('catalog actions switch to Filipino while product names remain unchanged', 
 });
 
 test('new catalog photo links require a loadable HTTPS image before saving', async () => {
-  apiRequest.mockImplementation(async (path) => path === '/products?includeArchived=true'
+  apiRequest.mockImplementation(async (path) => path === '/products?includeArchived=true&view=inventory'
     ? { products: [] }
     : { product: { id: 'new-product', name: 'New AC', serialUnits: [] } });
   render(<SuperAdminCatalog />);

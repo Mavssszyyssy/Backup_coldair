@@ -1,6 +1,6 @@
 import SearchableSelect from "../../common/SearchableSelect";
 import LoadingSkeleton from "../../common/LoadingSkeleton";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../../../config/api";
 import { COMPANY_PROFILE } from "../../../config/company";
 import { useUser } from "../../../context/UserContext";
@@ -321,6 +321,8 @@ function AdminReports() {
   const [filterOptions, setFilterOptions] = useState({ customers: [], technicians: [], skus: [], brands: [] });
   const [reportPage, setReportPage] = useState(1);
   const [busy, setBusy] = useState(false);
+  const reportRequest = useRef(0);
+  useEffect(() => () => { reportRequest.current += 1; }, []);
   const [error, setError] = useState("");
   const [data, setData] = useState({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
 
@@ -328,8 +330,7 @@ function AdminReports() {
     if (!range.from || !range.to || range.from > range.to) return undefined;
     let active = true;
     const query = new URLSearchParams({ from: range.from, to: range.to, branch: branch || assignedBranch });
-    apiRequest(`/reports/filter-options?${query}`)
-      .then((result) => {
+    const showOptions = (result) => {
         if (!active) return;
         const options = {
           customers: Array.isArray(result.customers) ? result.customers : [],
@@ -343,7 +344,9 @@ function AdminReports() {
         setInventorySku((value) => !value || options.skus.includes(value) ? value : "");
         setInventoryBrand((value) => !value || options.brands.includes(value) ? value : "");
         setTechnicianId((value) => !value || options.technicians.some((item) => item.value === value) ? value : "");
-      })
+      };
+    apiRequest(`/reports/filter-options?${query}`, { onCached: showOptions })
+      .then(showOptions)
       .catch(() => { if (active) setFilterOptions({ customers: [], technicians: [], skus: [], brands: [] }); });
     return () => { active = false; };
   }, [assignedBranch, branch, range.from, range.to]);
@@ -352,6 +355,8 @@ function AdminReports() {
   const brandOptions = filterOptions.brands;
 
   const setTab = (tab) => {
+    reportRequest.current += 1;
+    setBusy(false);
     if (tab !== activeTab) setRange(defaultRange());
     setActiveTab(tab);
     setReportPage(1);
@@ -387,10 +392,12 @@ function AdminReports() {
     if (busy) return;
     if (rangeError && activeTab !== "inventory") return setError(rangeError);
     setBusy(true);
+    const version = ++reportRequest.current;
     setError("");
     setReportPage(1);
     const interpretation = { interpretation: "1", language: currentLanguage === "Filipino" ? "filipino" : "english" };
     const saveReport = (result, reportData) => {
+      if (version !== reportRequest.current) return;
       setData({
         ...reportData,
         basis: result.basis || "",
@@ -403,7 +410,7 @@ function AdminReports() {
     try {
       if (activeTab === "intelligence") {
         const query = new URLSearchParams({ from: range.from, to: range.to, branch });
-        const result = await apiRequest(`/reports/business-intelligence?${query}`);
+        const result = await apiRequest(`/reports/business-intelligence?${query}`, { onCached: (cached) => saveReport(cached, { summary: cached.summary || {}, rows: businessIntelligenceRows(cached), secondaryRows: [], intelligence: cached, warning: cached.warning || "" }) });
         saveReport(result, { summary: result.summary || {}, rows: businessIntelligenceRows(result), secondaryRows: [], intelligence: result, warning: result.warning || "" });
       } else if (activeTab === "sales") {
         const query = new URLSearchParams({
@@ -411,7 +418,7 @@ function AdminReports() {
           paymentMethod: salesPaymentMethod, search: salesSearch.trim(), sku: salesSku.trim(), customer: salesCustomer.trim(), topN: "10", branch,
           ...interpretation,
         });
-        const result = await apiRequest(`/reports/sales?${query}`);
+        const result = await apiRequest(`/reports/sales?${query}`, { onCached: (cached) => saveReport(cached, { summary: cached.summary || {}, rows: cached.transactions || [], secondaryRows: cached.products || [], salesStatus }) });
         saveReport(result, { summary: result.summary || {}, rows: result.transactions || [], secondaryRows: result.products || [], salesStatus });
       } else if (activeTab === "inventory") {
         const query = new URLSearchParams({
@@ -419,17 +426,18 @@ function AdminReports() {
           search: inventorySearch.trim(), brand: inventoryBrand.trim(), sku: inventorySku.trim(),
           ...interpretation,
         });
-        const result = await apiRequest(`/reports/inventory?${query}`);
+        const result = await apiRequest(`/reports/inventory?${query}`, { onCached: (cached) => saveReport(cached, { summary: inventoryReportSummary(cached.summary), rows: inventoryReportRows(cached.rows), secondaryRows: [] }) });
         saveReport(result, { summary: inventoryReportSummary(result.summary), rows: inventoryReportRows(result.rows), secondaryRows: [] });
       } else {
         const query = new URLSearchParams({ from: range.from, to: range.to, branch, search: technicianSearch.trim(), technician: technicianId });
-        const result = await apiRequest(`/reports/technicians?${query}`);
+        const result = await apiRequest(`/reports/technicians?${query}`, { onCached: (cached) => saveReport(cached, { summary: cached.summary || {}, rows: cached.rows || [], secondaryRows: [] }) });
         saveReport(result, { summary: result.summary || {}, rows: result.rows || [], secondaryRows: [] });
       }
     } catch (requestError) {
+      if (version !== reportRequest.current) return;
       setError(requestError?.message || "Failed to generate report.");
       setData({ summary: null, rows: [], secondaryRows: [], basis: "", updatedAt: "", intelligence: null, warning: "" });
-    } finally { setBusy(false); }
+    } finally { if (version === reportRequest.current) setBusy(false); }
   };
 
   const metadata = (updatedAt) => ({

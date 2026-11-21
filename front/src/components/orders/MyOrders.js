@@ -113,13 +113,14 @@ function MyOrders() {
     const orderId = new URLSearchParams(location.search).get("orderId");
     if (!orderId) return undefined;
     let active = true;
-    apiRequest(`/orders/me/${encodeURIComponent(orderId)}`)
-      .then((response) => {
+    const showOrder = (response) => {
         if (!active || !response.order) return;
         const order = normalizeCustomerOrder(response.order);
         setSelectedOrder(order);
         setShowTrackModal(true);
-      })
+      };
+    apiRequest(`/orders/me/${encodeURIComponent(orderId)}`, { onCached: showOrder })
+      .then(showOrder)
       .catch(() => {
         if (active) setShowTrackModal(false);
       });

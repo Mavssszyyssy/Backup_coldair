@@ -28,8 +28,8 @@ const RestockOrderModal = ({ isOpen, onClose, onSuccess }) => {
 
   const loadProducts = async () => {
     try {
-      const result = await apiRequest('/products');
-      setAllProducts(result.products || []);
+      const showProducts = (result) => setAllProducts(result.products || []);
+      showProducts(await apiRequest('/products?view=inventory', { onCached: showProducts }));
     } catch (err) {
       console.error('Failed to load products:', err);
     }

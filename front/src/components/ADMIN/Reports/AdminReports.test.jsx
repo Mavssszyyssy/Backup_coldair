@@ -137,7 +137,7 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Cold Air" } });
   fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?")));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?"), { onCached: expect.any(Function) }));
   const reportRequest = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/inventory?"))[0];
   expect(reportRequest).not.toContain("low-stock");
   expect(reportRequest).toContain("category=split");

@@ -52,8 +52,9 @@ function DynamicServiceSticker({ unit }) {
     let alive = true;
     if (!isMongoId(unitId)) return undefined;
     setLoading(true); setError("");
-    apiRequest(`/amp/units/${unitId}/next-service`)
-      .then((value) => { if (alive) setResult(value); })
+    const showSchedule = (value) => { if (alive) { setResult(value); setLoading(false); } };
+    apiRequest(`/amp/units/${unitId}/next-service`, { onCached: showSchedule })
+      .then(showSchedule)
       .catch((err) => { if (alive) setError(err.message || "Unable to load maintenance timing."); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };

@@ -29,8 +29,9 @@ export default function MaintenanceDecisionSupport({ request, task, initialPost 
   useEffect(() => { setPre(request?.aiPreAssessment || null); setPost(initialPost); setError(''); }, [request?.id, request?.aiPreAssessment, task?.id, initialPost]);
   useEffect(() => {
     let active = true;
-    if (task?.id && task.status === 'completed') apiRequest(`/amp/tasks/${encodeURIComponent(task.id)}/decision-support`)
-      .then((result) => { if (active) setPost(result.futurePrediction || null); })
+    const showSavedAssessment = (result) => { if (active) setPost(result.futurePrediction || null); };
+    if (task?.id && task.status === 'completed') apiRequest(`/amp/tasks/${encodeURIComponent(task.id)}/decision-support`, { onCached: showSavedAssessment })
+      .then(showSavedAssessment)
       .catch(() => { if (active && !initialPost) setError('Could not load the saved future-issue assessment.'); });
     return () => { active = false; };
   }, [task?.id, task?.status, initialPost]);

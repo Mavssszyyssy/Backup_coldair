@@ -10,6 +10,7 @@ import { Suspense, useEffect } from "react";
 import "./App.css";
 import { lazyWithReload } from "./utils/lazyWithReload";
 import { listenForNavigationIntent } from "./utils/navigationPreload";
+import { primeNavigationData } from "./utils/navigationData";
 const AdminDashboard = lazyWithReload(() => import("./components/ADMIN/Dashboard/AdminDashboard"), "AdminDashboard");
 const AdminInventory = lazyWithReload(() => import("./components/ADMIN/Inventory/AdminInventory"), "AdminInventory");
 const AdminProfile = lazyWithReload(() => import("./components/ADMIN/Profile/AdminProfile"), "AdminProfile");
@@ -121,7 +122,7 @@ export function AppContent() {
   } = useUser();
   const location = useLocation();
 
-  useEffect(() => listenForNavigationIntent({ role: userRole }), [userRole]);
+  useEffect(() => listenForNavigationIntent({ role: userRole, preloadData: primeNavigationData }), [userRole]);
 
   if (loading) {
     return <RouteLoading />;

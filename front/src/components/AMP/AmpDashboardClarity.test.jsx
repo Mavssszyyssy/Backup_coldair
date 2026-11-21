@@ -199,11 +199,11 @@ it("renders the 12-month workload before the AC selector and defers hidden histo
   expect((await screen.findAllByText("Sep 2026"))[0]).toBeVisible();
   expect(screen.getByRole("status", { name: "" })).toHaveTextContent("Loading installed AC units");
   expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=false", expect.objectContaining({ onCached: expect.any(Function) }));
-  expect(apiRequest).not.toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true");
+  expect(apiRequest).not.toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true", { onCached: expect.any(Function) });
 
   expect(screen.getByText("Current service needs")).toBeVisible();
   fireEvent.click(screen.getByText("Recorded parts history"));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/owner/forecast?months=12&includeHistory=true", { onCached: expect.any(Function) }));
   expect(await screen.findByText("Control Board")).toBeVisible();
 
   await act(async () => resolveReportUnits({ units: [] }));
@@ -223,7 +223,7 @@ it("shows exact estimated values immediately without mixing them into paid reven
   expect(screen.getByText('Planning amount per suggested service').parentElement).toHaveTextContent('₱2,500');
   expect(screen.getByRole('table', { name: /Months with suggested services/ })).toHaveTextContent('₱5,000');
   expect(screen.getByRole('listitem', { name: /Sep 2026: 2 suggested services; estimated value ₱5,000/ })).toBeInTheDocument();
-  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true');
+  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true', { onCached: expect.any(Function) });
 });
 
 it("loads optional model history only when that panel is opened directly", async () => {
@@ -231,9 +231,9 @@ it("loads optional model history only when that panel is opened directly", async
     ? { recordedPartsTrend: [], modelTrends: [{ label: 'AC One', recordedServices: 2, servicesPerUnit: 1 }], brandTrends: [] }
     : { units: [], forecast: [], recommendedServiceDemand: [] });
   show(<OwnerAmpDashboard />);
-  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true');
+  expect(apiRequest).not.toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true', { onCached: expect.any(Function) });
   fireEvent.click(screen.getByText('Service records by model and brand'));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true'));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith('/amp/owner/forecast?months=12&includeHistory=true', { onCached: expect.any(Function) }));
   expect(await screen.findByText('AC One')).toBeVisible();
 });
 

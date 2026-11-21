@@ -17,7 +17,7 @@ it("loads only the selected unit's assessments when expanded", async () => {
   render(<AmpDecisionPanel unitId="unit-1" />);
   expect(apiRequest).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("AI parts and future-issue assessment"));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/units/unit-1/decision-support"));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/amp/units/unit-1/decision-support", { onCached: expect.any(Function) }));
   expect(await screen.findByText("Request request-1; visit task-1")).toBeVisible();
 });
 

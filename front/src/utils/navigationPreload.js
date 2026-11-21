@@ -31,9 +31,9 @@ export function navigationRouteName(pathname, role) {
   return undefined;
 }
 
-// Warm only code the user shows an intent to open. No API records, payments,
-// or authentication requests are prefetched, and data-saver users opt out.
-export function listenForNavigationIntent({ role, root = document, location = window.location, connection = navigator.connection, preload = preloadLazyRoute } = {}) {
+// Warm code and allowlisted display reads together on navigation intent. This
+// avoids waiting for a route download before starting its data request.
+export function listenForNavigationIntent({ role, root = document, location = window.location, connection = navigator.connection, preload = preloadLazyRoute, preloadData } = {}) {
   if (connection?.saveData || /^(?:slow-)?2g$/.test(connection?.effectiveType || "")) return () => {};
   let timer;
   const onIntent = (event) => {
@@ -42,11 +42,14 @@ export function listenForNavigationIntent({ role, root = document, location = wi
     if (!target || target.disabled || target.hasAttribute("download") || target.target === "_blank") return;
     let url;
     try { url = new URL(target.dataset.preloadPath || target.getAttribute("href"), location.href); } catch { return; }
-    if (url.origin !== location.origin || url.pathname === location.pathname) return;
+    if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
     const name = navigationRouteName(url.pathname, role);
     if (!name) return;
     clearTimeout(timer);
-    timer = setTimeout(() => { Promise.resolve().then(() => preload(name)).catch(() => {}); }, event.type === "pointerover" ? 80 : 0);
+    timer = setTimeout(() => {
+      Promise.resolve().then(() => preload(name)).catch(() => {});
+      if (preloadData) Promise.resolve().then(() => preloadData(url, role)).catch(() => {});
+    }, event.type === "pointerover" ? 80 : 0);
   };
   const cancel = (event) => {
     const target = event.target?.closest?.("a[href],button[data-preload-path]");

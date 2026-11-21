@@ -25,9 +25,9 @@ const PendingApprovalsModal = ({ isOpen, onClose, onRefresh }) => {
   const loadPendingRequests = async () => {
     setLoading(true);
     setError('');
+    const showRequests = (result) => { setRequests(result.requests || []); setLoading(false); };
     try {
-      const result = await apiRequest('/inventory-change-requests/pending');
-      setRequests(result.requests || []);
+      showRequests(await apiRequest('/inventory-change-requests/pending', { onCached: showRequests }));
     } catch (err) {
       setError(err.message);
     } finally {
