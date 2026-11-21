@@ -157,11 +157,11 @@ const reportInterpretation = (value, t) => ({
 });
 
 const reportTableHtml = (rows, { title = "Report details", className = "", emptyLabel = "No matching records.", t = (value) => value } = {}) => {
-  const heading = `<h2 class="table-title">${escapeHtml(title)}</h2>`;
+  const heading = `<h3 class="table-title">${escapeHtml(title)}</h3>`;
   if (!rows.length) return `${heading}<div class="meta">${escapeHtml(emptyLabel)}</div>`;
   const headers = reportColumns(rows);
   const tableClass = ["report-table", className].filter(Boolean).join(" ");
-  return `${heading}<table class="${tableClass}"><thead><tr>${headers.map((header) => `<th>${escapeHtml(t(humanize(header)))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  return `${heading}<table class="${tableClass}"><thead><tr>${headers.map((header) => `<th>${escapeHtml(t(humanize(header)))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td${typeof row[header] === "number" ? ' class="report-number"' : ""}>${escapeHtml(displayValue(row[header], header))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 };
 
 const salesReportHtml = (rows, summaryHtml, secondaryRows = [], t = (value) => value) => {
@@ -224,8 +224,8 @@ const businessIntelligenceSummary = (summary = {}) => ({
   conditionFollowUps: summary.amp?.conditionFollowUps || 0,
 });
 
-const businessIntelligenceReportHtml = (intelligence, summaryHtml, t) => summaryHtml + businessIntelligenceGroups(intelligence).map((group) =>
-  `<section class="report-section report-section--splittable"><h2>${escapeHtml(t(group.title))}</h2><h3>${escapeHtml(t(group.performanceTitle))}</h3>${group.insights.map((item) => `<p>${escapeHtml(item.statement)}</p>${item.action ? `<p><strong>${escapeHtml(t("Manager action:"))}</strong> ${escapeHtml(item.action)}</p>` : ""}`).join("")}${group.tables.filter((table) => table.rows.length).map((table) => reportTableHtml(table.rows, { title: t(table.title), t })).join("")}${group.guidance ? `<p>${escapeHtml(t(group.guidance))}</p>` : ""}</section>`
+const businessIntelligenceReportHtml = (intelligence, summaryHtml, t) => `<h2>${escapeHtml(t("Report summary"))}</h2>${summaryHtml}` + businessIntelligenceGroups(intelligence).map((group, index) =>
+  `<section class="report-section report-section--splittable report-analysis-group"><div class="report-analysis-intro"><div class="report-group-heading"><span>${String(index + 1).padStart(2, "0")}</span><h2>${escapeHtml(t(group.title))}</h2></div>${group.insights.map((item) => `<div class="report-insight"><p>${escapeHtml(item.statement)}</p>${item.action ? `<p class="report-review-action"><strong>${escapeHtml(t("Manager action:"))}</strong> ${escapeHtml(item.action)}</p>` : ""}</div>`).join("")}</div>${group.tables.filter((table) => table.rows.length).map((table) => reportTableHtml(table.rows, { title: t(table.title), t })).join("")}${group.guidance ? `<p class="report-guidance">${escapeHtml(t(group.guidance))}</p>` : ""}</section>`
 ).join("");
 
 function ReportTable({ title, rows, columns, inventory = false, t = (value) => value }) {

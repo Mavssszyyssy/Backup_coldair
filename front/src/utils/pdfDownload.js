@@ -28,7 +28,7 @@ export const pdfPageSlices = (height, pagePixels, { keepTogether = [], tables = 
   return slices;
 };
 
-const measureReport = (element, rootTop, pagePixels) => {
+export const measurePdfReport = (element, rootTop, pagePixels) => {
   const position = (y) => Math.round((y - rootTop) * RENDER_SCALE);
   const bounds = (node) => {
     const { top, bottom } = node.getBoundingClientRect();
@@ -36,33 +36,56 @@ const measureReport = (element, rootTop, pagePixels) => {
   };
   const keepTogether = Array.from(element.querySelectorAll(
     '.report-header, .report-title, .summary-item, .report-section:not(.report-section--splittable), '
-    + '.report-field, .history-entry, p, li, tbody tr, .report-footer',
+    + '.report-field, .history-entry, .report-analysis-intro, .report-insight, p, li, tbody tr, .report-footer',
   ), bounds);
+  for (const heading of element.querySelectorAll('h1, h2, h3, h4, .report-group-heading')) {
+    // A heading band is measured as one unit. Heading chains (section title,
+    // subheading, then paragraph) pull one another onto the following page.
+    if (heading.parentElement?.matches('.report-group-heading')) continue;
+    const next = heading.nextElementSibling;
+    if (next) {
+      const firstContent = next.matches('table')
+        ? next.querySelector('tbody tr') || next
+        : next;
+      keepTogether.push({ start: bounds(heading).start, end: bounds(firstContent).end });
+    }
+  }
   const signature = element.querySelector('.signature-section');
   const footer = element.querySelector('.report-footer');
   if (signature) {
     keepTogether.push({ start: bounds(signature).start, end: bounds(footer || signature).end });
+    const lastSection = element.querySelector('.report-content')?.lastElementChild;
+    if (lastSection) {
+      // Keep a short final analysis with its sign-off, rather than creating
+      // an almost empty signature-only page. Large registers still flow.
+      const ending = { start: bounds(lastSection).start, end: bounds(footer || signature).end };
+      if (ending.end - ending.start <= pagePixels * .65) keepTogether.push(ending);
+      else {
+        const lastRecord = [...lastSection.querySelectorAll('tbody tr, .report-insight, p')].at(-1);
+        if (lastRecord) keepTogether.push({ start: bounds(lastRecord).start, end: ending.end });
+      }
+    }
   }
 
   const tables = [];
   for (const table of element.querySelectorAll('table')) {
     const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows));
     if (!table.tHead || !rows.length) continue;
-    const headerTop = bounds(table.tHead).start;
+    const columnTop = bounds(table.tHead).start;
     const firstRow = bounds(rows[0]);
     const title = table.previousElementSibling;
-    const titleTop = title?.matches('h2, h3, .report-section-heading') ? bounds(title).start : headerTop;
+    const titleTop = title?.matches('h2, h3, .report-section-heading') ? bounds(title).start : columnTop;
     keepTogether.push({ start: titleTop, end: firstRow.end });
 
-    if (firstRow.start - headerTop < pagePixels) {
-      tables.push({ headerTop, bodyTop: firstRow.start, bodyEnd: bounds(rows.at(-1)).end });
+    if (firstRow.start - titleTop < pagePixels) {
+      tables.push({ headerTop: titleTop, bodyTop: firstRow.start, bodyEnd: bounds(rows.at(-1)).end });
     }
   }
 
   return { keepTogether, tables };
 };
 
-export const downloadElementPdf = async ({ element, fileName, orientation = 'portrait' }) => {
+export const downloadElementPdf = async ({ element, fileName, orientation = 'portrait', pageFooter }) => {
   if (!element) throw new Error('The document is not ready to export. Please try again.');
   await element.ownerDocument.fonts?.ready;
   await Promise.all(Array.from(element.querySelectorAll('img')).map((image) => image.decode?.().catch(() => {}) || Promise.resolve()));
@@ -87,11 +110,11 @@ export const downloadElementPdf = async ({ element, fileName, orientation = 'por
   const pageWidth = landscape ? A4_HEIGHT_MM : A4_WIDTH_MM;
   const pageHeight = landscape ? A4_WIDTH_MM : A4_HEIGHT_MM;
   const contentWidth = pageWidth - 2 * MARGIN_MM;
-  const contentHeight = pageHeight - 2 * MARGIN_MM;
+  const contentHeight = pageHeight - 2 * MARGIN_MM - (pageFooter ? 7 : 0);
   const pixelsPerMm = width * RENDER_SCALE / contentWidth;
   const pagePixels = Math.max(1, Math.floor(contentHeight * pixelsPerMm));
   const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4', compress: true });
-  const pages = pdfPageSlices(height, pagePixels, measureReport(element, root.top, pagePixels));
+  const pages = pdfPageSlices(height, pagePixels, measurePdfReport(element, root.top, pagePixels));
   const headerImages = new Map();
 
   for (const [page, slice] of pages.entries()) {
@@ -107,6 +130,17 @@ export const downloadElementPdf = async ({ element, fileName, orientation = 'por
     }
     pdf.addImage(body.toDataURL('image/jpeg', 0.96), 'JPEG', MARGIN_MM,
       MARGIN_MM + slice.headerHeight / pixelsPerMm, contentWidth, slice.height / pixelsPerMm);
+    if (pageFooter) {
+      const footerY = pageHeight - MARGIN_MM;
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setLineWidth(.2);
+      pdf.line(MARGIN_MM, footerY - 4, pageWidth - MARGIN_MM, footerY - 4);
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(7);
+      const label = pdf.splitTextToSize(String(pageFooter.label || 'AEROPULSE report'), contentWidth - 32)[0];
+      pdf.text(label, MARGIN_MM, footerY);
+      pdf.text(`Page ${page + 1} of ${pages.length}`, pageWidth - MARGIN_MM, footerY, { align: 'right' });
+    }
   }
 
   pdf.save(fileName || 'aeropulse-document.pdf');

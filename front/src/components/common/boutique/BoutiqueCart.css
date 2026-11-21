@@ -109,7 +109,9 @@
 .bq-cart-drawer button:focus-visible,
 .bq-cart-drawer input:focus-visible { outline: 2px solid var(--bq-color-accent); outline-offset: 2px; }
 .bq-cart-quantity input:focus-visible { outline-offset: -2px; }
-.bq-cart-empty { display: grid; justify-items: center; padding: 32px 0; color: var(--bq-color-ink-muted); }
+.bq-cart-items--empty { place-items: center; align-content: center; }
+.bq-cart-empty { display: grid; justify-items: center; gap: 12px; padding: 24px 0; text-align: center; color: var(--bq-color-ink-muted); }
+.bq-cart-empty p { margin: 0; }
 
 .bq-cart-footer {
   flex-shrink: 0;

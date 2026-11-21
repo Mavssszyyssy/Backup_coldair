@@ -2,8 +2,9 @@ import React from 'react';
 import { useUser } from '../../../context/UserContext';
 import SuperAdminNotificationsBell from './SuperAdminNotificationsBell';
 import { translateText } from '../../../utils/customerI18n';
+import { OperationsMenuButton } from '../../common/OperationsNavigation';
 
-const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control' }) => {
+const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control', navigation }) => {
   const { user, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
   const initial = (user?.name || 'S').charAt(0).toUpperCase();
@@ -11,6 +12,7 @@ const SuperAdminHeader = ({ title = 'Super Admin', subtitle = 'Executive control
   return (
     <header className="super-header">
       <div className="super-header-left">
+        <OperationsMenuButton navigation={navigation} t={t} />
         <div>
           <h1>{t(title)}</h1>
           <p>{t(subtitle)}</p>

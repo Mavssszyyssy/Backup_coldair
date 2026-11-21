@@ -1,4 +1,4 @@
-import { pdfPageSlices } from './pdfDownload';
+import { measurePdfReport, pdfPageSlices } from './pdfDownload';
 
 const bounds = (start, end) => ({ start, end });
 const positions = (pages) => pages.map(({ top, height }) => [top, height]);
@@ -44,4 +44,36 @@ test('allows an oversized block to continue across pages without splitting its s
   });
   expect(positions(pages)).toEqual([[0, 940], [940, 910]]);
   expect(pages[1].headerHeight).toBe(40);
+});
+
+const measuredDocument = (html, positions) => {
+  const element = document.createElement('main');
+  element.innerHTML = html;
+  for (const [selector, [top, bottom]] of Object.entries(positions)) {
+    element.querySelector(selector).getBoundingClientRect = () => ({ top, bottom });
+  }
+  return element;
+};
+
+test('keeps section heading chains with their first paragraph at an actual measured page boundary', () => {
+  const element = measuredDocument('<h2>Inventory intelligence</h2><h3>Inventory performance</h3><p>Recorded stock and actions.</p>', {
+    h2: [440, 470], h3: [480, 500], p: [510, 560],
+  });
+  expect(positions(pdfPageSlices(1120, 1000, measurePdfReport(element, 0, 1000))))
+    .toEqual([[0, 880], [880, 240]]);
+});
+
+test('moves the final short analysis with its signature instead of leaving a signature-only page', () => {
+  const element = measuredDocument('<div class="report-content"><section class="report-section report-section--splittable">Final analysis</section></div><section class="signature-section">Prepared by</section><footer class="report-footer">Report details</footer>', {
+    '.report-section': [340, 540], '.signature-section': [550, 580], '.report-footer': [590, 600],
+  });
+  expect(positions(pdfPageSlices(1200, 1000, measurePdfReport(element, 0, 1000))))
+    .toEqual([[0, 680], [680, 520]]);
+});
+
+test('includes the table caption when repeating headings on a continuation page', () => {
+  const element = measuredDocument('<h3>Inventory movement</h3><table><thead><tr><th>Product</th></tr></thead><tbody><tr><td>First</td></tr><tr><td>Last</td></tr></tbody></table>', {
+    h3: [20, 40], thead: [45, 70], 'tbody tr:first-child': [70, 110], 'tbody tr:last-child': [110, 150],
+  });
+  expect(measurePdfReport(element, 0, 1000).tables).toEqual([{ headerTop: 40, bodyTop: 140, bodyEnd: 300 }]);
 });

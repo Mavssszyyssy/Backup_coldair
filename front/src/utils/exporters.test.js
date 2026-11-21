@@ -55,6 +55,7 @@ it("downloads a report PDF without opening the print dialog or retaining a blank
   expect(downloadElementPdf).toHaveBeenCalledWith(expect.objectContaining({
     fileName: "sales-report.pdf",
     orientation: "landscape",
+    pageFooter: { label: "Sales Report" },
   }));
   expect(downloadElementPdf.mock.calls[0][0].element.nodeType).toBe(1);
   expect(downloadElementPdf.mock.calls[0][0].element.innerHTML).toContain("Order");

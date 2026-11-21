@@ -147,7 +147,7 @@ export default function BoutiqueCart({
         </>
       ) : (
         <>
-          <div className="bq-cart-items" ref={listRef}>
+          <div className={`bq-cart-items${!loading && cart.length === 0 ? " bq-cart-items--empty" : ""}`} ref={listRef}>
             {loading ? <LoadingSkeleton label={t("Loading your cart…")} /> : cart.length === 0 ? (
               <div className="bq-cart-empty">
                 <ShoppingCartSimple size={48} aria-hidden="true" />

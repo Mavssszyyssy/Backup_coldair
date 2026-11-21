@@ -230,6 +230,22 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       tr { break-inside: avoid; page-break-inside: avoid; }
       .report-document--tabular .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .report-document--tabular .summary-item { padding: 8px 9px; }
+      .report-document--tabular { padding: 18px 20px 0; }
+      .report-document--tabular .report-header { margin-bottom: 16px; padding-bottom: 12px; }
+      .report-document--tabular .report-section--splittable { border: 0; padding: 0; margin: 18px 0; }
+      .report-group-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 12px; background: #eef4fa; border-left: 4px solid #0f4c81; }
+      .report-group-heading > span { color: #0f4c81; font-size: 10px; font-weight: 700; }
+      .report-group-heading h2 { margin: 0; font-size: 15px; }
+      .report-insight { margin: 0 0 8px; padding-left: 12px; border-left: 2px solid #d7e1ec; }
+      .report-insight > p:first-child { margin-bottom: 4px; }
+      .report-insight p:last-child { margin-bottom: 0; }
+      .report-review-action { color: #475569; font-size: 10px; }
+      .report-guidance { margin-top: 6px; padding: 9px 11px; background: #f3f6fa; color: #475569; font-size: 10px; }
+      .report-document--tabular .table-title { font-size: 12px; margin: 14px 0 6px; }
+      .report-document--tabular table { margin-top: 0; }
+      .report-document--tabular th { background: #eaf0f7; color: #1e3a5f; border-color: #cbd5e1; }
+      .report-document--tabular td { border-color: #d7e1ec; }
+      .report-number { text-align: right; font-variant-numeric: tabular-nums; }
       .report-page--sales .table-title { margin: 9px 0 5px; font-size: 11px; }
       .report-page--sales .report-table { margin-top: 0; }
       .report-table--operations, .report-table--financial { table-layout: fixed; font-size: 8px; }
@@ -246,6 +262,10 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       .signature-card { width: 280px; border-top: 1px solid #64748b; padding-top: 8px; text-align: center; color: #334155; }
       .signature-card strong { display: block; color: #0f172a; font-size: 12px; }
       .signature-card span { display: block; color: #64748b; font-size: 10px; margin-top: 3px; }
+      .signature-label { color: #64748b; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+      .report-document--tabular .signature-section { margin: 12px 0 8px; }
+      .report-document--tabular .signature-card { width: 250px; padding-top: 7px; }
+      .report-document--tabular .report-footer { margin-top: 12px; }
       .report-footer { margin-top: 24px; color: #64748b; font-size: 8px; border-top: 1px solid #cbd5e1; padding-top: 6px; display: flex; justify-content: space-between; gap: 12px; }
       @media (max-width: 700px) {
         body { padding: 0; }
@@ -269,8 +289,8 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       <header class="report-header"><div class="company-block">${metadata.logoUrl ? `<img class="company-logo" src="${escapeHtml(metadata.logoUrl)}" alt="" />` : ''}<div><div class="brand">${escapeHtml(metadata.companyName || metadata.name || 'Cold Air Airconditioning Trading')}<span>AEROPULSE operational reporting</span></div><div class="company-details">${escapeHtml(metadata.address || '')}${metadata.proprietor ? `<br/>${escapeHtml(metadata.proprietor)}` : ''}${metadata.contact ? ` | ${escapeHtml(metadata.contact)}` : ''}${metadata.taxRegistration ? ` | ${escapeHtml(metadata.taxRegistration)}` : ''}</div></div></div><div class="generated">${metadata.reportId ? `Report ID: ${escapeHtml(metadata.reportId)}<br/>` : ''}${metadata.branch ? `Branch: ${escapeHtml(metadata.branch)}<br/>` : ''}Generated: ${escapeHtml(metadata.generatedAt || new Date().toLocaleString())}</div></header>
       <section class="report-title"><h1>${escapeHtml(title || 'Report')}</h1>${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ''}</section>
       <div class="report-content">${html || ''}</div>
-      ${metadata.representative ? `<section class="signature-section"><div class="signature-card"><strong>${escapeHtml(metadata.representative)}</strong><span>${escapeHtml(metadata.representativeRole || 'Authorized Representative')}</span><span>${escapeHtml(metadata.branch ? `${metadata.branch} Branch` : 'AEROPULSE')}</span></div></section>` : ''}
-      <footer class="report-footer"><span>${escapeHtml(metadata.branch ? `Branch: ${metadata.branch}` : 'AEROPULSE confidential business report')} | ${escapeHtml(metadata.reportType || title || 'Report')}</span><span>${escapeHtml(metadata.reportId ? `Report ID: ${metadata.reportId} | ` : '')}${escapeHtml(metadata.generatedAt ? `Generated: ${metadata.generatedAt} | ` : '')}${escapeHtml(metadata.systemName || 'AEROPULSE')}</span></footer>
+      ${metadata.representative ? `<section class="signature-section"><div class="signature-card"><div class="signature-label">Prepared by</div><strong>${escapeHtml(metadata.representative)}</strong><span>${escapeHtml(metadata.representativeRole || 'Authorized Representative')}</span><span>${escapeHtml(metadata.branch || 'AEROPULSE')}</span></div></section>` : ''}
+      ${metadata.documentStyle === 'tabular' ? '' : `<footer class="report-footer"><span>${escapeHtml(metadata.branch ? `Branch: ${metadata.branch}` : 'AEROPULSE confidential business report')} | ${escapeHtml(metadata.reportType || title || 'Report')}</span><span>${escapeHtml(metadata.reportId ? `Report ID: ${metadata.reportId} | ` : '')}${escapeHtml(metadata.generatedAt ? `Generated: ${metadata.generatedAt} | ` : '')}${escapeHtml(metadata.systemName || 'AEROPULSE')}</span></footer>`}
     </main>
   </body>
 </html>`);
@@ -281,6 +301,7 @@ export const exportHtmlToPdfViaPrint = async ({ title, html, subtitle = '', file
       element: w.document.querySelector('.report-document'),
       fileName: fileName || 'aeropulse-report.pdf',
       orientation: pageOrientation,
+      pageFooter: metadata.documentStyle === 'tabular' ? { label: metadata.reportId || title || 'AEROPULSE report' } : undefined,
     });
   } catch (_error) {
     window.alert('Unable to generate this PDF. Please try again or contact support if it continues.');

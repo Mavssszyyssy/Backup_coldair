@@ -13,6 +13,7 @@ import { useUser } from "../../../context/UserContext";
 import { confirmLogout } from "../../../utils/dialog";
 import { translateText } from "../../../utils/customerI18n";
 import "./styles.css";
+import { OperationsMenuClose } from '../../common/OperationsNavigation';
 
 const logo = "/Cold Air Logo-compact.webp";
 
@@ -26,7 +27,7 @@ const navItems = [
   { to: "/admin/settings", label: "System Settings", icon: Gear },
 ];
 
-const AdminSidebar = ({ isOpen, onClose }) => {
+const AdminSidebar = ({ isOpen, onClose, onNavigate, sidebarId }) => {
   const { logout, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
   const navigate = useNavigate();
@@ -36,12 +37,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     navigate("/home");
   });
 
-  const handleLinkClick = () => {
-    if (window.innerWidth < 768) onClose?.();
-  };
-
   return (
-    <aside className={`admin-sidebar ${isOpen ? "open" : ""}`}>
+    <aside id={sidebarId} className={`admin-sidebar ${isOpen ? "open" : ""}`} inert={!isOpen} aria-hidden={!isOpen}>
       <div className="admin-sidebar-brand-row">
         <div className="admin-sidebar-brand">
           <span className="brand-icon">
@@ -54,14 +51,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           </span>
           <span className="admin-sidebar-brand-copy"><span>AeroPulse</span><small>{t("Branch operations")}</small></span>
         </div>
-        <button
-          className="admin-sidebar-close"
-          onClick={onClose}
-          type="button"
-          aria-label={t("Close menu")}
-        >
-          {"\u2715"}
-        </button>
+        <OperationsMenuClose onClose={onClose} t={t} />
       </div>
 
       <nav className="admin-sidebar-nav" aria-label="Admin navigation">
@@ -72,7 +62,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             className={({ isActive }) =>
               `admin-sidebar-link ${isActive ? "active" : ""}`
             }
-            onClick={handleLinkClick}
+            onClick={onNavigate}
           >
             <span className="nav-icon">
               <item.icon size={20} weight="bold" className="inline-icon" />
