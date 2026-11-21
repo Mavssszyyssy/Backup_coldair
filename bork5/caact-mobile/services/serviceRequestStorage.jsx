@@ -96,11 +96,11 @@ export function normalizeServiceRequest(item = {}) {
   };
 }
 
-export async function getAllServiceRequests() {
+export async function getAllServiceRequests({ sync = true, display = false } = {}) {
   try {
-    const token = await api.getStoredToken();
+    const token = sync ? await api.getStoredToken() : null;
     if (token) {
-      const result = await api.fetchMyServiceRequests(token);
+      const result = await api.fetchMyServiceRequests(token, { display });
       if (result.success) {
         await saveAllServiceRequests(result.requests);
         return result.requests.map(normalizeServiceRequest);
@@ -163,8 +163,8 @@ export async function getServiceRequestById(requestId) {
   return requests.find((item) => String(item.id) === String(requestId)) || null;
 }
 
-export async function getServiceRequestsByUser(userId) {
-  const requests = await getAllServiceRequests();
+export async function getServiceRequestsByUser(userId, options = {}) {
+  const requests = await getAllServiceRequests(options);
   return requests.filter((item) => String(item.userId) === String(userId));
 }
 

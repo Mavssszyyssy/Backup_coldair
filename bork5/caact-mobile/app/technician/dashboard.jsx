@@ -77,7 +77,7 @@ export default function TechDashboard() {
       getTasksByTechnician(current.id, { sync: false }).then((tasks) => {
         if (!liveSettled) applyTasks(tasks);
       }).catch(() => {});
-      const stop = startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id)
+      const stop = startLiveRefresh(({ isCurrent }) => getTasksByTechnician(current.id, { display: true })
         .then((tasks) => {
           if (!isCurrent()) return;
           liveSettled = true;

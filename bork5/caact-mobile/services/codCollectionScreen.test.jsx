@@ -16,7 +16,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (callback) => require('react').useEffect(callback, [callback]),
 }));
 jest.mock('./taskStorage', () => ({ getTaskById: (...args) => mockGet(...args), confirmCodCollection: (...args) => mockCollect(...args), confirmInstallationArrival: (...args) => mockConfirmPresence(...args), checkInTask: jest.fn(), TASK_STATUS: { PENDING: 'pending', IN_PROGRESS: 'in-progress', INSTALLING: 'installing' } }));
-jest.mock('./unitServiceLogStorage', () => ({ getServiceLogsByTask: async () => [] }));
+jest.mock('./unitServiceLogStorage', () => ({ getServiceLogsByTask: async () => [], serviceLogsFromTask: () => [] }));
 jest.mock('./locationService', () => ({ getCurrentLocationSnapshot: jest.fn() }));
 test('cash confirmation is explicit after check-in, then disappears once collected', async () => {
   const task = { id: 'task1', orderId: 'order1', status: 'in-progress', checkIn: { checkedInAt: '2026-09-08', latitude: 14.5, longitude: 121 }, codPayment: { amount: 25000, collectedAt: null } };

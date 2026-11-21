@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { invalidateMobileDisplay } from "./displayCache";
 
 // Operational records always come from the backend. These keys are only
 // short-lived, device-side read caches, so remove them whenever an account is
@@ -23,6 +24,7 @@ const KEY_PREFIXES = [
 ];
 
 export async function clearOperationalSessionCache() {
+  invalidateMobileDisplay();
   const keys = await AsyncStorage.getAllKeys();
   const removable = keys.filter(
     (key) => EXACT_KEYS.has(key) || KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),

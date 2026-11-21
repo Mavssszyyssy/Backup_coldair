@@ -68,6 +68,7 @@ export default function CustomerHomeScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      let liveSettled = false;
       setLoading(true);
       const applyResults = ([unitsResult, ordersResult]) => {
         if (!active) return;
@@ -84,9 +85,9 @@ export default function CustomerHomeScreen() {
       };
       const load = () => {
         return Promise.allSettled([
-          getUnitsByUser(current?.id),
-          getOrdersByUser(current),
-        ]).then(applyResults).finally(() => {
+          getUnitsByUser(current?.id, { display: true }),
+          getOrdersByUser(current, { display: true }),
+        ]).then((results) => { liveSettled = true; applyResults(results); }).finally(() => {
           if (active) setLoading(false);
         });
       };
@@ -96,6 +97,7 @@ export default function CustomerHomeScreen() {
         getUnitsByUser(current?.id, { sync: false }),
         getOrdersByUser(current, { sync: false }),
       ]).then((results) => {
+        if (liveSettled) return;
         applyResults(results);
         if (active && results.some((result) => result.status === "fulfilled" && result.value.length > 0)) {
           setLoading(false);

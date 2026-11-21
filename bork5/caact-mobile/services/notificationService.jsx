@@ -1,3 +1,4 @@
+import { readMobileDisplay, invalidateMobileDisplay } from "./displayCache";
 // services/notificationService.jsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyNotificationsChanged } from "./notificationEvents";
@@ -86,8 +87,10 @@ export async function createNotification(payload = {}) {
   return created;
 }
 
-export async function getNotificationsForUser(user = {}, { strict = false, limit = 0, withMetadata = false, archivePage = 0 } = {}) {
+export async function getNotificationsForUser(user = {}, { strict = false, limit = 0, withMetadata = false, archivePage = 0, display = false, onCached } = {}) {
   const token = await getStoredToken();
+  if (token && display) return readMobileDisplay(`/notifications/me:display:${JSON.stringify([user.id, user.role, limit, withMetadata, archivePage])}`, token,
+    () => getNotificationsForUser(user, { strict, limit, withMetadata, archivePage }), { onCached });
   if (token) {
     try {
       let result;
@@ -131,6 +134,7 @@ export async function getNotificationsForUser(user = {}, { strict = false, limit
 }
 
 function invalidateNotificationReads(token) {
+  invalidateMobileDisplay("notifications");
   archiveVersion += 1;
   if (activeNotificationRead?.token === token) activeNotificationRead = null;
 }

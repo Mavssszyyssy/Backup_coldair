@@ -70,6 +70,19 @@ test("completed and paid orders show success status indicators", async () => {
   expect(screen.getByText("Paid (success)")).toBeTruthy();
 });
 
+test("cached order rows appear while their network refresh is still pending", async () => {
+  let finish;
+  mockGetOrderPage.mockImplementation((_page, _limit, _filters, options) => {
+    options.onCached(page([order({ id: '12345678', workflowStatus: 'to_deliver' })]));
+    return new Promise(resolve => { finish = resolve; });
+  });
+  await render(<CustomerOrdersScreen />);
+  expect(screen.getByText('Order #12345678')).toBeTruthy();
+  await act(async () => { finish(page([order({ id: '87654321', workflowStatus: 'complete' })])); });
+  expect(screen.getByText('Completed (success)')).toBeTruthy();
+  expect(screen.queryByText('Order #12345678')).toBeNull();
+});
+
 test("an installation still in progress is not shown as completed by its legacy status", async () => {
   mockGetOrderPage.mockResolvedValueOnce(page([order({ workflowStatus: "to_install", status: "released", paymentStatus: "paid" })]));
   await render(<CustomerOrdersScreen />);
@@ -86,7 +99,7 @@ test("order, payment, and date filters stay in sync with the latest orders reque
 
   await waitFor(() => expect(mockGetOrderPage).toHaveBeenLastCalledWith(1, 10, {
     search: "", orderStatus: "to_deliver", paymentStatus: "paid", dateRange: "30d",
-  }));
+  }, { display: true, onCached: expect.any(Function) }));
   await waitFor(() => expect(screen.getByText("Order #12345678")).toBeTruthy());
 });
 

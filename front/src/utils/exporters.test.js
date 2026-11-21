@@ -62,3 +62,33 @@ it("downloads a report PDF without opening the print dialog or retaining a blank
   expect(print).not.toHaveBeenCalled();
   expect(document.querySelector('iframe[title="PDF export renderer"]')).toBeNull();
 });
+
+it("keeps every table, later-row columns, dates and numeric formats in the Excel file", async () => {
+  const createObjectURL = vi.fn(() => "blob:report");
+  vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  exportToExcel({
+    title: "Complete report", rowHeading: "Sales list",
+    rows: [{ orderCode: "ORD-FIRST", transactionDate: "2026-11-21T00:00:00Z" }, { orderCode: "ORD-LAST", transactionDate: "2026-11-21T00:00:00Z", amountCollected: 1234.5 }],
+    additionalTables: [
+      { title: "Product sales summary", rows: [{ sku: "SKU-ONE", sales: 1234.5, unitsSold: 2 }] },
+      { title: "Technician performance", rows: [{ technician: "Cavite Technician", averageCompletionHours: 2.5, onTimeRate: 66.67 }] },
+    ],
+    columnLabel: (key) => ({ transactionDate: "Transaction date", averageCompletionHours: "Average completion time (hours)" }[key] || key),
+    formatText: (value, key) => key === "transactionDate" ? "21 Nov 2026, 08:00 GMT+8" : value,
+    metadata: { basis: "Verified report records", analysisStatus: "Analysis is unavailable" },
+  });
+  const text = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(createObjectURL.mock.calls[0][0]); });
+  const xml = new DOMParser().parseFromString(text, "application/xml");
+  expect(xml.querySelector("parsererror")).toBeNull();
+  const ns = "urn:schemas-microsoft-com:office:spreadsheet";
+  const rows = [...xml.getElementsByTagNameNS(ns, "Row")];
+  const cells = (label) => [...rows.find((row) => row.firstElementChild?.textContent === label).children];
+  expect(cells("ORD-LAST")).toHaveLength(3);
+  expect(cells("ORD-FIRST")[1].textContent).toBe("21 Nov 2026, 08:00 GMT+8");
+  expect(cells("ORD-LAST")[2].getAttributeNS(ns, "StyleID")).toBe("currency");
+  expect(cells("SKU-ONE")[2].getAttributeNS(ns, "StyleID")).toBe("integer");
+  expect(cells("Cavite Technician")[2].getAttributeNS(ns, "StyleID")).toBe("percent");
+  expect(Number(cells("Cavite Technician")[2].textContent)).toBeCloseTo(0.6667);
+  for (const label of ["Product sales summary", "Technician performance", "Average completion time (hours)", "Verified report records", "Analysis is unavailable"]) expect(xml.documentElement.textContent).toContain(label);
+});

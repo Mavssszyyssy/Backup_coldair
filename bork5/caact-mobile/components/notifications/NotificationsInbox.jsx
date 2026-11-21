@@ -35,7 +35,11 @@ export default function NotificationsInbox({ t, Button, technician = false }) {
   const loadNotifications = useCallback(async ({ background, isCurrent }) => {
     if (!background) setLoading(true);
     try {
-      const page = await getNotificationsForUser(current, { strict: true, limit: visibleLimit, withMetadata: true, archivePage });
+      const showCached = (page) => {
+        if (!isCurrent()) return;
+        setNotifications(Array.isArray(page) ? page : page.items || []); setHasMore(Boolean(page.hasMore)); setLoadError(false); setLoading(false);
+      };
+      const page = await getNotificationsForUser(current, { strict: true, limit: visibleLimit, withMetadata: true, archivePage, display: true, onCached: showCached });
       if (!isCurrent()) return;
       setNotifications(Array.isArray(page) ? page : page.items || []);
       setHasMore(Boolean(page.hasMore));

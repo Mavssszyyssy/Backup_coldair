@@ -22,5 +22,8 @@ test('shows unread count, preserves it on network failure, clears on confirmed r
   getNotificationsForUser.mockResolvedValue([{ unread: true }]);
   await screen.rerender(<NotificationBadge />);
   await screen.findByLabelText('1 unread alerts');
-  expect(getNotificationsForUser).toHaveBeenLastCalledWith(mockUser, { strict: true });
+  expect(getNotificationsForUser).toHaveBeenLastCalledWith(mockUser, { strict: true, display: true, onCached: expect.any(Function) });
+  const [, options] = getNotificationsForUser.mock.calls.at(-1);
+  await act(async () => options.onCached([{ unread: true }, { unread: true }]));
+  expect(screen.getByLabelText('2 unread alerts')).toBeTruthy();
 });

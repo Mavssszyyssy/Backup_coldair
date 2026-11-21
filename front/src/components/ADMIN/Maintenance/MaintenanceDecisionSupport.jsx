@@ -12,7 +12,7 @@ const Evidence = ({ assessment, t }) => assessment?.evidence?.length ? <details 
 function AssessmentCard({ title, value, available, buttonLabel, busy, onGenerate, highlights, children, t }) {
   return <section className="maintenance-ai-card">
     <div className="maintenance-ai-heading"><div><h4>{t(title)}</h4><small>{t('AI-assisted decision support · technician verification required')}</small></div>
-      {available ? <button type="button" className="maintenance-button maintenance-button--secondary" onClick={onGenerate} disabled={busy}>{t(busy ? 'Generating…' : buttonLabel)}</button> : null}
+      {available ? <button type="button" className="maintenance-button maintenance-button--ai" onClick={onGenerate} disabled={busy} aria-busy={busy}>{t(busy ? 'Generating…' : buttonLabel)}</button> : null}
     </div>
     {value?.status === 'completed' ? <><p className="maintenance-ai-meta">{t('Generated')} {formatBusinessDateTime(value.generatedAt)} · {t('Technician review')}: {t(value.review?.decision || 'pending')}</p>{highlights}<details className="maintenance-ai-evidence"><summary>{t('Interpretation and supporting details')}</summary>{children}<Evidence assessment={value} t={t} /></details></>
       : busy ? <LoadingSkeleton label={t('Generating…')} variant="detail" /> : <p className="maintenance-muted">{value?.error || t(available ? 'No assessment generated yet.' : 'Available when the maintenance record reaches this stage.')}</p>}

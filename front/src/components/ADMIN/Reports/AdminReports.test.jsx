@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import AdminReports from "./AdminReports";
@@ -137,7 +137,7 @@ it("loads the complete inventory report endpoint instead of the low-stock produc
   fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Cold Air" } });
   fireEvent.change(screen.getByLabelText("SKU"), { target: { value: "AC-1" } });
   fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
-  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?"), { onCached: expect.any(Function) }));
+  await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("/reports/inventory?"), { revalidate: true, onCached: expect.any(Function) }));
   const reportRequest = apiRequest.mock.calls.find(([path]) => path.startsWith("/reports/inventory?"))[0];
   expect(reportRequest).not.toContain("low-stock");
   expect(reportRequest).toContain("category=split");
@@ -188,6 +188,12 @@ it("paginates inventory rows on screen and exports all rows without embedded pag
   expect(exportedHtml).not.toContain('class="report-page"');
   expect(exportedHtml).toContain("AC-01");
   expect(exportedHtml).toContain("AC-23");
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  const excel = exportToExcel.mock.calls.at(-1)[0];
+  expect(excel.rows).toEqual(rows);
+  expect(excel.rowHeading).toBe("Branch stock register");
+  expect(excel.columnLabel("currentStock")).toBe("Stock");
+  expect(excel.columnLabel("stockValue")).toBe("Stock value");
 });
 
 it.each(["admin", "superadmin"])("requests technician performance for the selected date range and search as %s", async (reportRole) => {
@@ -222,6 +228,19 @@ it.each(["admin", "superadmin"])("requests technician performance for the select
   expect(screen.getByRole("columnheader", { name: "On-time rate" })).toBeInTheDocument();
   expect(screen.getByText("2.5")).toBeInTheDocument();
   expect(screen.getByText("66.67%")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  const excel = exportToExcel.mock.calls.at(-1)[0];
+  expect(excel.rows).toEqual(report.rows);
+  expect(excel.summary).toEqual(report.summary);
+  expect(excel.columnLabel("averageCompletionHours")).toBe("Average completion time (hours)");
+  expect(excel.columnLabel("onTimeRate")).toBe("On-time rate");
+  expect(excel.rowHeading).toBe("Technician performance");
+  expect(excel.metadata.filters).toContain("Active Technician");
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const pdf = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
+  for (const value of ["Active Technician", "Average completion time (hours)", "66.67%", "2.5", "Completed in period"]) expect(pdf.html).toContain(value);
+  expect(pdf.title).toBe(excel.title);
+  expect(pdf.metadata.generatedAt).toBe(excel.metadata.generatedAt);
 });
 
 it("renders grounded sales, service, inventory, and AMP business intelligence", async () => {
@@ -310,4 +329,96 @@ it("blocks a reversed reporting range before requesting data", () => {
   expect(screen.getByRole("alert")).toHaveTextContent("start date must be on or before");
   expect(screen.getByRole("button", { name: "Generate report" })).toBeDisabled();
   expect(apiRequest.mock.calls.some(([path]) => ["/reports/sales?", "/reports/inventory?", "/reports/technicians?", "/reports/business-intelligence?"].some((prefix) => path.startsWith(prefix)))).toBe(false);
+});
+
+it.each(["admin", "superadmin"])("exports the refreshed sales snapshot and product summary as %s", async (reportRole) => {
+  role = reportRole;
+  const old = { summary: { paidRevenue: 100, transactionCount: 1 }, transactions: [{ orderCode: "ORD-OLD", transactionDate: "2026-11-20T00:00:00Z", total: 100 }], products: [{ product: "Old model", sales: 100 }], updatedAt: "2026-11-20T00:00:00Z", basis: "Stored paid transactions." };
+  const latest = { ...old, summary: { paidRevenue: 4321.5, transactionCount: 2 }, transactions: [{ orderCode: "ORD-LATEST", transactionDate: "2026-11-21T00:00:00Z", total: 4321.5 }], products: [{ product: "Latest model", sku: "LATEST-SKU", unitsSold: 2, merchandiseSales: 4321.5 }], updatedAt: "2026-11-21T00:00:00Z" };
+  let finish;
+  let generated = false;
+  apiRequest.mockImplementation((path, options) => {
+    if (!path.startsWith("/reports/sales?")) return Promise.resolve({});
+    expect(options.revalidate).toBe(true);
+    if (!generated) { generated = true; return Promise.resolve(old); }
+    options.onCached(old);
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  renderReport();
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  await screen.findByText("ORD-OLD");
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  expect(screen.getByText("ORD-OLD")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Export Excel" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  await act(async () => { finish(latest); });
+  expect(screen.getByText("ORD-LATEST")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const excel = exportToExcel.mock.calls.at(-1)[0];
+  const pdf = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
+  expect(excel.rows).toEqual(latest.transactions);
+  expect(excel.additionalTables).toEqual([{ title: "Product sales summary", rows: latest.products }]);
+  expect(excel.summary.paidRevenue).toBe(4321.5);
+  expect(excel.columnLabel("transactionDate")).toBe("Transaction date");
+  const dateText = excel.formatText(latest.transactions[0].transactionDate, "transactionDate");
+  expect(pdf.html).toContain(dateText);
+  for (const text of ["ORD-LATEST", "Latest model", "LATEST-SKU", "₱4,321.50"]) expect(pdf.html).toContain(text);
+  expect(pdf.html).not.toContain("ORD-OLD");
+  expect(pdf.title).toBe(excel.title);
+  expect(pdf.metadata.generatedAt).toBe(excel.metadata.generatedAt);
+});
+
+it.each(["admin", "superadmin"])("exports all BI tables and fields shown across four preview pages as %s", async (reportRole) => {
+  role = reportRole;
+  const intelligence = {
+    summary: { sales: { amountCollected: 12345.5, unitsSold: 3 }, service: { completedServices: 7 }, inventory: { currentStockUnits: 13 }, amp: { dueWithin30Days: 4, overdue: 2, conditionFollowUps: 1 } },
+    insights: Object.fromEntries(["sales", "service", "inventory", "amp"].map((category) => [category, [{ id: category, statement: `${category} evidence`, action: `${category} action` }]])),
+    charts: { salesTrend: [{ bucket: "2026-11-20T00:00:00Z", amountCollected: 12345.5 }], serviceTrend: [{ bucket: "2026-11", count: 7 }], serviceByType: [{ label: "Chemical cleaning", count: 7 }] },
+    tables: {
+      topModels: [{ brand: "Example brand", model: "Premium model", sku: "BI-SKU", unitsSold: 3, sales: 12345.5 }], topBrands: [{ brand: "Example brand", unitsSold: 3 }],
+      servicedModels: [{ model: "Serviced model", count: 7 }], commonIssues: [{ issue: "No cooling", count: 5 }], serviceParts: [{ part: "Control board", count: 2 }],
+      inventoryMovement: [{ branch: "Cavite", product: "Moving model", sku: "MOVING-SKU", unitsSoldInPeriod: 3, currentStock: 13, stockStatus: "In stock" }],
+      slowMovingInventory: [{ branch: "Cavite", product: "Slow model", sku: "SLOW-SKU", currentStock: 4, stockStatus: "Low stock" }],
+    },
+    warning: "AI unavailable; verified records shown.", basis: "Verified records only.", updatedAt: "2026-11-21T00:00:00Z",
+  };
+  apiRequest.mockResolvedValue(intelligence);
+  renderReport();
+  fireEvent.click(screen.getByRole("button", { name: "Business Intelligence" }));
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  await screen.findByText("Premium model");
+  for (let page = 2; page <= 4; page++) fireEvent.click(screen.getByRole("button", { name: `Business intelligence page ${page}` }));
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  const excel = exportToExcel.mock.calls.at(-1)[0];
+  const pdf = exportHtmlToPdfViaPrint.mock.calls.at(-1)[0];
+  expect(excel.rows).toEqual([]);
+  expect(excel.metadata.analysisStatus).toBe(intelligence.warning);
+  expect(excel.summary.amountCollected).toBe(12345.5);
+  expect(excel.summary.unitsSold).toBe(3);
+  expect(excel.additionalTables.find((table) => table.title === "Best-selling AC models").rows[0]).toEqual(intelligence.tables.topModels[0]);
+  expect(excel.additionalTables.find((table) => table.title === "Inventory movement and current stock").rows[0]).toEqual(intelligence.tables.inventoryMovement[0]);
+  const allExcelContent = JSON.stringify(excel.additionalTables);
+  for (const value of ["Chemical cleaning", "Premium model", "BI-SKU", "Serviced model", "No cooling", "Control board", "MOVING-SKU", "In stock", "SLOW-SKU", "Low stock", "amp evidence", "amp action"]) {
+    expect(allExcelContent).toContain(value);
+    expect(pdf.html).toContain(value);
+  }
+  expect(pdf.html).toContain("₱12,345.50");
+  expect(pdf.html).toContain(intelligence.warning);
+  expect(pdf.html).toContain("Recorded service mix");
+  expect(excel.additionalTables.flatMap((table) => table.rows).some((row) => Object.hasOwn(row, "value"))).toBe(false);
+});
+
+it("exports a completed empty technician report with its zero summary and no-records message", async () => {
+  apiRequest.mockResolvedValue({ summary: { technicianCount: 0, completedInPeriod: 0 }, rows: [], basis: "Completed work orders in the period.", updatedAt: "2026-11-21T00:00:00Z" });
+  renderReport();
+  fireEvent.click(screen.getByRole("button", { name: "Technician Performance" }));
+  fireEvent.click(screen.getByRole("button", { name: "Generate report" }));
+  await screen.findByText("No records match the selected filters.");
+  fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+  expect(exportToExcel.mock.calls.at(-1)[0].summary).toEqual({ technicianCount: 0, completedInPeriod: 0 });
+  expect(exportToExcel.mock.calls.at(-1)[0].rows).toEqual([]);
+  expect(exportHtmlToPdfViaPrint.mock.calls.at(-1)[0].html).toContain("No matching records.");
 });

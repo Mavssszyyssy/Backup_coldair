@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { apiRequest } from '../../../config/api';
 import MaintenanceDecisionSupport from './MaintenanceDecisionSupport';
 
@@ -58,4 +58,24 @@ it('localizes assessment controls while keeping saved technical findings unchang
   fireEvent.click(screen.getByText('Interpretasyon at mga sumusuportang detalye'));
   expect(screen.getAllByText(finding)[0]).toBeVisible();
   expect(screen.getByText('Fan may need inspection.')).toBeVisible();
+});
+
+it('keeps generation visibly busy and prevents repeated submissions until it finishes', async () => {
+  let finish;
+  apiRequest.mockImplementation((path, options) => options?.method === 'POST'
+    ? new Promise(resolve => { finish = resolve; })
+    : Promise.resolve({ futurePrediction: null }));
+  render(<MaintenanceDecisionSupport task={{ id: 'task-1', status: 'completed' }} />);
+  const generate = screen.getByRole('button', { name: 'Generate future-issue assessment' });
+  expect(generate).toHaveClass('maintenance-button--ai');
+  expect(generate).not.toHaveClass('maintenance-button--secondary');
+  fireEvent.click(generate);
+  const pending = screen.getByRole('button', { name: 'Generating…' });
+  expect(pending).toBeDisabled();
+  expect(pending).toHaveAttribute('aria-busy', 'true');
+  fireEvent.click(pending);
+  expect(apiRequest.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
+  await act(async () => { finish({ futurePrediction: { status: 'completed', generatedAt: '2026-11-21', assessment: { possible_future_issue: 'Monitor fan noise.' } } }); });
+  expect(screen.getByRole('button', { name: 'Refresh future-issue assessment' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Refresh future-issue assessment' })).toHaveAttribute('aria-busy', 'false');
 });

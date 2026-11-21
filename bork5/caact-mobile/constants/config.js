@@ -1,3 +1,4 @@
+import { beginMobileDisplayWrite } from "../services/displayCache";
 // constants/config.js
 // Central place for environment-level configuration.
 //
@@ -138,7 +139,7 @@ const fetchWithTimeout = async (
   }
 };
 
-export async function apiFetch(path, options = {}) {
+async function performApiFetch(path, options = {}) {
   let submittedBody = options.body;
   if (typeof submittedBody === "string") {
     try { submittedBody = JSON.parse(submittedBody); } catch { submittedBody = null; }
@@ -224,4 +225,10 @@ export async function apiFetch(path, options = {}) {
   }
   failBackendConnection(path);
   throw networkError || new Error("Unable to connect to the server.");
+}
+
+export async function apiFetch(path, options = {}) {
+  const read = ["GET", "HEAD"].includes(String(options.method || "GET").toUpperCase());
+  const finish = read ? () => {} : beginMobileDisplayWrite(path);
+  try { return await performApiFetch(path, options); } finally { finish(); }
 }

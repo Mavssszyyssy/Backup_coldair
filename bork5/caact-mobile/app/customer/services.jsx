@@ -86,31 +86,40 @@ export default function CustomerServicesScreen() {
   const loadServiceCatalog = useCallback(async () => {
     const token = await getStoredToken();
     if (!token) return;
-    const result = await fetchServiceCatalog(token);
+    const showCatalog = (result) => {
+      if (!result.success) return;
+      setServiceCatalogError("");
+      const choices = customerServiceChoices(result.offerings || []);
+      setServiceOfferings(choices);
+      setSelectedServiceId((currentId) => choices.some(item => item.id === currentId) ? currentId : choices[0]?.id || "");
+    };
+    const result = await fetchServiceCatalog(token, { display: true, ttl: 120_000, onCached: showCatalog });
     if (!result.success) {
       setServiceCatalogError(result.error || "Unable to load services.");
       return;
     }
-    setServiceCatalogError("");
-    const choices = customerServiceChoices(result.offerings || []);
-    setServiceOfferings(choices);
-    setSelectedServiceId((currentId) => choices.some(item => item.id === currentId) ? currentId : choices[0]?.id || "");
+    showCatalog(result);
   }, []);
 
   useFocusEffect(useCallback(() => {
     let active = true;
+    let liveSettled = false;
     setLoadingUnits(true);
     loadServiceCatalog();
     getUnitsByUser(current?.id, { sync: false }).then((items) => {
-      if (!active || items.length === 0) return;
+      if (!active || liveSettled || items.length === 0) return;
       setUnits(items);
       setLoadingUnits(false);
     }).catch(() => {});
+    getCustomerServiceHistory(current?.id, { includeTasks: false, sync: false }).then((result) => {
+      if (active && !liveSettled) setRequests(result.requests || []);
+    }).catch(() => {});
     const stop = startLiveRefresh(({ background }) => Promise.allSettled([
-      getUnitsByUser(current?.id),
-      getCustomerServiceHistory(current?.id, { includeTasks: false }),
+      getUnitsByUser(current?.id, { display: true }),
+      getCustomerServiceHistory(current?.id, { includeTasks: false, display: true }),
     ]).then(([unitsResult, historyResult]) => {
       if (!active) return;
+      liveSettled = true;
       if (unitsResult.status === "fulfilled") {
         const items = unitsResult.value;
         setUnits(items);

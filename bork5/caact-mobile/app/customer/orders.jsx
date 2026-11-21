@@ -324,7 +324,7 @@ export default function CustomerOrdersScreen() {
     setLoading(true);
     try {
       const result = await getOrderPage(page, 10, filters);
-      const selected = selectedOrderId && !filtersActive ? await getOrderById(selectedOrderId) : null;
+      const selected = selectedOrderId && !filtersActive ? result.orders.find((item) => String(item.id) === String(selectedOrderId)) || await getOrderById(selectedOrderId) : null;
       if (generation !== orderLoadGenerationRef.current) return;
       setOrders(selected && !result.orders.some((item) => String(item.id) === String(selected.id)) ? [selected, ...result.orders] : result.orders);
       if (selected) setExpandedOrderId(String(selected.id));
@@ -344,7 +344,11 @@ export default function CustomerOrdersScreen() {
       const load = ({ background } = {}) => {
         const generation = ++orderLoadGenerationRef.current;
         if (!background) setLoading(true);
-        return getOrderPage(page, 10, filters).then(async (result) => {
+        const showCached = (result) => {
+          if (!active || generation !== orderLoadGenerationRef.current) return;
+          setOrders(result.orders); setTotal(result.pagination.total); setTotalPages(result.pagination.totalPages); setLoadError(""); setLoading(false);
+        };
+        return getOrderPage(page, 10, filters, { display: true, onCached: showCached }).then(async (result) => {
           if (active && generation === orderLoadGenerationRef.current) {
             const selected = selectedOrderId && !filtersActive ? await getOrderById(selectedOrderId) : null;
             if (!active || generation !== orderLoadGenerationRef.current) return;

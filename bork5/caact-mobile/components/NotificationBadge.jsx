@@ -17,8 +17,10 @@ export default function NotificationBadge() {
       const request = ++version;
       if (!id) return;
       try {
-        const items = await getNotificationsForUser({ id, role }, { strict: true });
-        if (active && request === version) setSnapshot({ owner: id, count: items.filter(item => item.unread && !item.read).length });
+        const showItems = (items) => {
+          if (active && request === version) setSnapshot({ owner: id, count: items.filter(item => item.unread && !item.read).length });
+        };
+        showItems(await getNotificationsForUser({ id, role }, { strict: true, display: true, onCached: showItems }));
       } catch { /* Preserve the last confirmed count during an interruption. */ }
     };
     const stop = startLiveRefresh(refresh);

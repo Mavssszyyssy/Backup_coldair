@@ -1,3 +1,4 @@
+import { readMobileDisplay } from "./displayCache";
 // services/api.jsx
 // HTTP client for the Express API server in ../../backend.
 //
@@ -124,7 +125,10 @@ function request(method, path, options = {}) {
 const getErrorMessage = (data, fallback) =>
   data?.error || data?.message || data?.errors?.email || fallback;
 
-const get = (path, token) => request("GET", path, { token });
+const get = (path, token, options = {}) => {
+  if (options.display) return readMobileDisplay(path, token, () => request("GET", path, { token }), options);
+  return request("GET", path, { token });
+};
 const post = (path, body, token) => request("POST", path, { token, body });
 const patch = (path, body, token) => request("PATCH", path, { token, body });
 const del = (path, token) => request("DELETE", path, { token });
@@ -566,12 +570,12 @@ export async function completeTechnicianOnboarding(token, payload) {
 // Technician tasks
 // ---------------------------------------------------------------------------
 
-export async function fetchTasks(token, { technicianId, limit = 100 } = {}) {
+export async function fetchTasks(token, { technicianId, limit = 100, ...options } = {}) {
   const params = new URLSearchParams();
   if (technicianId) params.set("technician_id", technicianId);
   params.set("limit", String(Math.min(Math.max(Number(limit) || 100, 1), 200)));
   const query = `?${params.toString()}`;
-  const { ok, data } = await get(`/tasks${query}`, token);
+  const { ok, data } = await get(`/tasks${query}`, token, { ...options, onCached: options.onCached ? (result) => { if (result.ok) options.onCached({ success: true, tasks: result.data.tasks || [] }); } : undefined });
   if (ok) return { success: true, tasks: data.tasks || [] };
   return {
     success: false,
@@ -713,8 +717,8 @@ export async function createPartsRequest(token, payload) {
 // Customer service requests
 // ---------------------------------------------------------------------------
 
-export async function fetchMyServiceRequests(token) {
-  const { ok, data } = await get("/service-requests/me", token);
+export async function fetchMyServiceRequests(token, options = {}) {
+  const { ok, data } = await get("/service-requests/me", token, { ...options, onCached: options.onCached ? (result) => { if (result.ok) options.onCached({ success: true, requests: result.data.requests || [] }); } : undefined });
   if (ok) return { success: true, requests: data.requests || [] };
   return {
     success: false,
@@ -735,8 +739,8 @@ export async function createOrder(token, payload) {
   };
 }
 
-export async function fetchServiceCatalog(token) {
-  const { ok, data } = await get("/service-requests/catalog", token);
+export async function fetchServiceCatalog(token, options = {}) {
+  const { ok, data } = await get("/service-requests/catalog", token, { ...options, onCached: options.onCached ? (result) => { if (result.ok) options.onCached({ success: true, offerings: result.data.offerings || [] }); } : undefined });
   if (ok) return { success: true, offerings: data.offerings || [] };
   return { success: false, error: getErrorMessage(data, "Unable to load the current service catalog."), offerings: [] };
 }
@@ -977,9 +981,9 @@ export async function createContactMessage(token, payload) {
   };
 }
 
-export async function getMyContactMessages(token, before = "") {
+export async function getMyContactMessages(token, before = "", options = {}) {
   const query = before ? `?before=${encodeURIComponent(before)}` : "";
-  const { ok, data } = await get(`/contact-messages/me${query}`, token);
+  const { ok, data } = await get(`/contact-messages/me${query}`, token, { ...options, onCached: options.onCached ? (result) => { if (result.ok) options.onCached({ success: true, messages: result.data.messages || [], pagination: result.data.pagination || { hasMore: false, nextCursor: "" } }); } : undefined });
   if (ok) return { success: true, messages: Array.isArray(data.messages) ? data.messages : [], pagination: data.pagination || { hasMore: false, nextCursor: "" } };
   return { success: false, error: getErrorMessage(data, "Unable to load your support messages.") };
 }
@@ -1187,8 +1191,8 @@ export async function completeAmpService(token, unitId, payload) {
   };
 }
 
-export async function fetchCustomerAmpUnits(token) {
-  const { ok, data } = await get("/amp/customer/units", token);
+export async function fetchCustomerAmpUnits(token, options = {}) {
+  const { ok, data } = await get("/amp/customer/units", token, { ...options, onCached: options.onCached ? (result) => { if (result.ok) options.onCached({ success: true, units: result.data.units || [] }); } : undefined });
   if (ok) return { success: true, units: data.units || [] };
   return {
     success: false,

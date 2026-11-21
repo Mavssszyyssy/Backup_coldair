@@ -247,7 +247,7 @@ export default function TasksScreen() {
 
   const refresh = ({ isCurrent = () => true } = {}) => {
     if (!current?.id) return;
-    return getTasksByTechnician(current.id)
+    return getTasksByTechnician(current.id, { display: true })
       .then((all) => {
         if (isCurrent()) setTasks(sortTechnicianWorkOrders(all));
       })
@@ -257,14 +257,15 @@ export default function TasksScreen() {
     React.useCallback(() => {
       if (!current?.id) return;
       let active = true;
+      let liveSettled = false;
       getTasksByTechnician(current.id, { sync: false })
         .then((all) => {
-          if (!active) return;
+          if (!active || liveSettled) return;
           setTasks(sortTechnicianWorkOrders(all));
           if (all.length) setLoaded(true);
         })
         .catch(() => {});
-      const stop = startLiveRefresh(refresh);
+      const stop = startLiveRefresh(async (options) => { await refresh(options); liveSettled = true; });
       return () => {
         active = false;
         stop();

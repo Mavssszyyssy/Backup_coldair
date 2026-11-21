@@ -277,6 +277,7 @@ export default function CustomerUnitDetailsScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      let liveSettled = false;
 
       const applyUnit = (loadedUnit) => {
         if (!active) return false;
@@ -292,15 +293,16 @@ export default function CustomerUnitDetailsScreen() {
       };
 
       getUnitByCode(unitId, { sync: false }).then((cachedUnit) => {
-        if (applyUnit(cachedUnit)) setLoading(false);
+        if (!liveSettled && applyUnit(cachedUnit)) setLoading(false);
       }).catch(() => {});
 
       const stop = startLiveRefresh(({ background }) => Promise.all([
-        getUnitByCode(unitId),
-        getCustomerServiceHistory(current?.id),
+        getUnitByCode(unitId, { display: true }),
+        getCustomerServiceHistory(current?.id, { display: true }),
       ])
         .then(([loadedUnit, loadedHistory]) => {
           if (!active) return;
+          liveSettled = true;
 
           const ownsUnit = applyUnit(loadedUnit);
 

@@ -135,7 +135,11 @@ export default function CustomerContactScreen() {
     }
     if (!background && isCurrent()) setHistoryLoading(true);
     try {
-      const result = await getMyContactMessages(token);
+      const showCached = (result) => {
+        if (!isCurrent() || !result.success) return;
+        setHistory((previous) => mergeMessages(previous, result.messages || [])); setPagination((previous) => previous.initialized ? previous : ({ initialized: true, ...result.pagination })); setHistoryError(""); setHistoryLoading(false);
+      };
+      const result = await getMyContactMessages(token, "", { display: true, onCached: showCached });
       if (!isCurrent()) return;
       if (result.success) {
         setHistory((previous) => mergeMessages(previous, Array.isArray(result.messages) ? result.messages : []));

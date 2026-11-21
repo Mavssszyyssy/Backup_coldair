@@ -105,11 +105,11 @@ export async function cacheUnitUpdate(unitId, patch = {}) {
   return updated;
 }
 
-export async function getUnitsByUser(userId, { sync = true } = {}) {
+export async function getUnitsByUser(userId, { sync = true, display = false } = {}) {
   if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
-      const result = await api.fetchCustomerAmpUnits(token);
+      const result = await api.fetchCustomerAmpUnits(token, { display });
       if (result.success) {
         const backendUnits = result.units.map((unit) => normalizeUnit({ ...unit, userId }));
         const localUnits = await getAllUnits();
@@ -136,11 +136,11 @@ export async function addUnit() {
   throw new Error("AC units are added after a verified installation, not from this device.");
 }
 
-export async function getUnitByCode(rawValue, { sync = true } = {}) {
+export async function getUnitByCode(rawValue, { sync = true, display = false } = {}) {
   if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
-      const result = await api.fetchCustomerAmpUnits(token);
+      const result = await api.fetchCustomerAmpUnits(token, { display });
       if (result.success) {
         const localUnits = await getAllUnits();
         await saveAllUnits(mergeByIdOrSerial(localUnits, result.units));

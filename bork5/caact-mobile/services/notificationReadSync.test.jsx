@@ -1,9 +1,26 @@
 import { markNotificationRead, getNotificationsForUser, archiveNotificationForUser, archiveAllNotificationsForUser } from './notificationService';
 import * as api from './api';
 import { subscribeNotificationChanges } from './notificationEvents';
+import { invalidateMobileDisplay } from './displayCache';
 jest.mock('@react-native-async-storage/async-storage',()=>require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('./api',()=>({getStoredToken:jest.fn(async()=>'test'),fetchNotifications:jest.fn(),markNotificationRead:jest.fn(),archiveNotification:jest.fn(),archiveAllNotifications:jest.fn()}));
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => { jest.clearAllMocks(); invalidateMobileDisplay(); });
+
+test('returning badge and inbox reads reuse their own display snapshots until an archive is confirmed', async () => {
+  api.fetchNotifications.mockResolvedValue({ success: true, notifications: [{ id: 'n1', title: 'Update', unread: true }] });
+  const user = { id: 'customer1', role: 'customer' };
+  await getNotificationsForUser(user, { strict: true, display: true });
+  const onCached = jest.fn();
+  await getNotificationsForUser(user, { strict: true, display: true, onCached });
+  expect(api.fetchNotifications).toHaveBeenCalledTimes(1);
+  expect(onCached).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: 'n1' })]));
+  await getNotificationsForUser(user, { strict: true, display: true, limit: 30, withMetadata: true });
+  expect(api.fetchNotifications).toHaveBeenCalledTimes(2);
+  api.archiveNotification.mockResolvedValue({ success: true });
+  await archiveNotificationForUser('n1');
+  await getNotificationsForUser(user, { strict: true, display: true });
+  expect(api.fetchNotifications).toHaveBeenCalledTimes(3);
+});
 test('failed remote read never announces a read-state change',async()=>{
  const changed=jest.fn();const unsubscribe=subscribeNotificationChanges(changed);
  api.markNotificationRead.mockResolvedValue({success:false,error:'Offline'});

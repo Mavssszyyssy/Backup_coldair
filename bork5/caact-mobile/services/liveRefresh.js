@@ -1,6 +1,7 @@
 import { AppState } from "react-native";
 import { subscribeBackendRecovery } from "./backendConnectionState";
 import { subscribeNotificationChanges } from "./notificationEvents";
+import { invalidateMobileDisplay } from "./displayCache";
 
 // Push/notification and connectivity events already trigger an immediate
 // refresh. A 30-second safety poll keeps open screens current without making
@@ -20,6 +21,7 @@ export function startLiveRefresh(load, { intervalMs = LIVE_REFRESH_INTERVAL_MS }
   const isCurrent = () => !disposed && foreground;
   const refresh = async (event = false) => {
     if (!isCurrent()) return;
+    if (event) invalidateMobileDisplay();
     if (running) { if (event) queued = true; return; }
     running = true;
     const background = !first;

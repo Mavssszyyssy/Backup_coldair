@@ -391,15 +391,26 @@ export default function CustomerShopScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      let branchVersion = 0;
+      const loadBranch = async (branch) => {
+        const version = ++branchVersion;
+        const showProducts = (products) => {
+          if (!active || version !== branchVersion) return;
+          setBackendProducts(products); setInventoryBranch(branch); setLoading(false);
+        };
+        showProducts(await fetchShopProducts(branch, { reuseRecent: true, onCached: showProducts }));
+      };
       const loadCatalogue = async ({ background }) => {
         if (!background) setLoading(true);
         try {
           const address = getShopDeliveryAddress(current, selectedAddressId);
-          const branch = address ? await resolveConfiguredInventoryBranch(address) : "";
-          const products = await fetchShopProducts(branch, { reuseRecent: true });
-          if (active) { setBackendProducts(products); setInventoryBranch(branch); }
+          const branch = address ? await resolveConfiguredInventoryBranch(address, {
+            display: true,
+            onCached: (cachedBranch) => { if (active) void loadBranch(cachedBranch).catch(() => {}); },
+          }) : "";
+          await loadBranch(branch);
         } catch (_error) {
-          // Keep the last confirmed catalogue when connectivity drops.
+          // Preserve the last confirmed catalogue while connectivity recovers.
         } finally {
           if (active) setLoading(false);
         }

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { invalidateMobileDisplay } from "./displayCache";
 
 export const AUTH_TOKEN_KEY = "auth_token";
 
@@ -40,6 +41,7 @@ export async function readAuthToken() {
 }
 
 export async function writeAuthToken(token) {
+  invalidateMobileDisplay();
   const normalizedToken = String(token || "").trim();
   if (!normalizedToken) {
     await clearAuthToken();
@@ -56,6 +58,7 @@ export async function writeAuthToken(token) {
 }
 
 export async function clearAuthToken() {
+  invalidateMobileDisplay();
   const removals = [AsyncStorage.removeItem(AUTH_TOKEN_KEY)];
   if (await secureStoreIsAvailable()) {
     removals.push(SecureStore.deleteItemAsync(AUTH_TOKEN_KEY));

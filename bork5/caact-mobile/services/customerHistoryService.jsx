@@ -6,7 +6,7 @@ import {
 import { getAllTasks, TASK_STATUS } from "./taskStorage";
 import { isActiveServiceRequest } from "./customerHistoryLogic";
 
-export async function getCustomerServiceHistory(userId, { includeTasks = true } = {}) {
+export async function getCustomerServiceHistory(userId, { includeTasks = true, sync = true, display = false } = {}) {
   if (!userId) {
     return {
       requests: [],
@@ -15,8 +15,10 @@ export async function getCustomerServiceHistory(userId, { includeTasks = true } 
     };
   }
 
-  const requests = await getServiceRequestsByUser(userId);
-  const tasks = includeTasks ? await getAllTasks() : [];
+  const [requests, tasks] = await Promise.all([
+    getServiceRequestsByUser(userId, { sync, display }),
+    includeTasks ? getAllTasks({ sync, display }) : [],
+  ]);
 
   const requestTaskIds = new Set(
     requests.map((request) => String(request.linkedTaskId || "")).filter(Boolean)

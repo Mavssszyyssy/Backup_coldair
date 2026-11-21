@@ -31,7 +31,9 @@ const isCurrencyField = (label = '') => {
   return /(sales|revenue|value|amount|price|fee|cost|subtotal|discount)/.test(key) || /^(vat|total)$/.test(key);
 };
 
-const toSpreadsheetCell = (value, label = '') => {
+export const reportColumns = (rows = []) => [...new Set(rows.flatMap((row) => Object.keys(row || {})))];
+
+const toSpreadsheetCell = (value, label = '', formatText = (text) => text) => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     if (label === 'onTimeRate') {
       return `<Cell ss:StyleID="percent"><Data ss:Type="Number">${value / 100}</Data></Cell>`;
@@ -39,7 +41,7 @@ const toSpreadsheetCell = (value, label = '') => {
     const style = isCurrencyField(label) ? 'currency' : Number.isInteger(value) ? 'integer' : 'number';
     return `<Cell ss:StyleID="${style}"><Data ss:Type="Number">${value}</Data></Cell>`;
   }
-  return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+  return `<Cell><Data ss:Type="String">${escapeXml(formatText(value, label))}</Data></Cell>`;
 };
 
 export const formatReportValue = (value, label = '') => {
@@ -61,9 +63,12 @@ export const formatReportValue = (value, label = '') => {
 export const exportToExcel = ({
   filename, title = 'AeroPulse Report', summary = {}, rows = [], metadata = {},
   summaryHeading = 'REPORT SUMMARY', summaryLabels = {}, rowHeading, notes,
+  additionalTables = [], columnLabel = humanizeLabel, formatText = (value) => value,
 }) => {
   const normalizedRows = Array.isArray(rows) ? rows : [];
-  const headers = normalizedRows.length ? Object.keys(normalizedRows[0]) : [];
+  const tables = [{ title: rowHeading, rows: normalizedRows }, ...additionalTables]
+    .map((table) => ({ ...table, rows: Array.isArray(table.rows) ? table.rows : [] }))
+    .map((table) => ({ ...table, headers: reportColumns(table.rows) }));
   const metadataRows = [
     ['Company', metadata.companyName || metadata.name],
     ['Company address', metadata.address],
@@ -76,8 +81,10 @@ export const exportToExcel = ({
     ['Reporting period', metadata.reportingPeriod],
     ['Applied filters', metadata.filters],
     ['Report ID', metadata.reportId],
+    ['Report basis', metadata.basis],
+    ['Analysis status', metadata.analysisStatus],
   ].filter(([, value]) => value);
-  const columnCount = Math.max(2, headers.length || 2);
+  const columnCount = Math.max(2, ...tables.map((table) => table.headers.length));
   const mergedColumns = columnCount - 1;
   const metadataMerge = mergedColumns > 1 ? ` ss:MergeAcross="${mergedColumns - 1}"` : '';
   const summaryRows = Object.entries(summary || {})
@@ -86,10 +93,16 @@ export const exportToExcel = ({
   const reportMetadataRows = metadataRows
     .map(([label, value]) => `<Row><Cell ss:StyleID="label"><Data ss:Type="String">${escapeXml(label)}</Data></Cell><Cell${metadataMerge}><Data ss:Type="String">${escapeXml(value)}</Data></Cell></Row>`)
     .join('');
-  const headerCells = headers.map((header) => `<Cell ss:StyleID="header"><Data ss:Type="String">${escapeXml(humanizeLabel(header))}</Data></Cell>`).join('');
-  const dataRows = normalizedRows.map((row) => `<Row>${headers.map((header) => toSpreadsheetCell(row[header], header)).join('')}</Row>`).join('');
   const columns = Array.from({ length: columnCount }, () => '<Column ss:Width="155"/>').join('');
   const section = (label) => `<Row><Cell ss:StyleID="header" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(label)}</Data></Cell></Row>`;
+  const tableRows = tables.map(({ title: tableTitle, rows: tableData, headers }) => {
+    if (!tableTitle && !headers.length) return '';
+    const heading = tableTitle ? section(tableTitle) : '';
+    if (!headers.length) return heading + `<Row><Cell ss:StyleID="note" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(metadata.emptyRowsLabel || 'No matching records.')}</Data></Cell></Row>`;
+    const header = `<Row>${headers.map((key) => `<Cell ss:StyleID="header"><Data ss:Type="String">${escapeXml(columnLabel(key))}</Data></Cell>`).join('')}</Row>`;
+    const body = tableData.map((row) => `<Row ss:AutoFitHeight="1">${headers.map((key) => toSpreadsheetCell(row[key], key, formatText)).join('')}</Row>`).join('');
+    return heading + header + body + '<Row/>';
+  }).join('');
   const noteRows = (notes?.lines || []).map((line) => {
     const charactersPerLine = columnCount * 23;
     const lineCount = Math.ceil(String(line).length / charactersPerLine) + 1;
@@ -98,7 +111,7 @@ export const exportToExcel = ({
   const spreadsheet = `<?xml version="1.0"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
   <Styles>
-    <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="10"/></Style>
+    <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Font ss:FontName="Arial" ss:Size="10"/></Style>
     <Style ss:ID="title"><Font ss:FontName="Arial" ss:Size="16" ss:Bold="1" ss:Color="#0F172A"/><Alignment ss:Vertical="Center"/></Style>
     <Style ss:ID="subtitle"><Font ss:FontName="Arial" ss:Size="10" ss:Color="#475569"/></Style>
     <Style ss:ID="header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F4C81" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/></Style>
@@ -117,10 +130,7 @@ export const exportToExcel = ({
     <Row/>
     ${summaryRows ? `${section(summaryHeading)}${summaryRows}<Row/>` : ''}
     ${noteRows ? `${section(notes.title)}${noteRows}<Row/>` : ''}
-    ${rowHeading ? section(rowHeading) : ''}
-    ${rowHeading && !headers.length ? `<Row><Cell ss:StyleID="note" ss:MergeAcross="${mergedColumns}"><Data ss:Type="String">${escapeXml(metadata.emptyRowsLabel || 'No matching records.')}</Data></Cell></Row>` : ''}
-    ${headers.length ? `<Row>${headerCells}</Row>` : ''}
-    ${dataRows}
+    ${tableRows}
   </Table></Worksheet>
 </Workbook>`;
   downloadBlob(new Blob([spreadsheet], { type: 'application/vnd.ms-excel;charset=utf-8' }), filename || 'aeropulse-report.xls');

@@ -1,3 +1,4 @@
+import { readMobileDisplay } from "./displayCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiFetch } from "../constants/config";
 import {
@@ -154,9 +155,10 @@ export function normalizeOrder(order = {}) {
   };
 }
 
-async function fetchBackendOrders() {
+async function fetchBackendOrders({ display = false } = {}) {
   const token = await getStoredToken();
   if (!token) return [];
+  if (display) return readMobileDisplay("/orders/me?limit=100", token, () => fetchBackendOrders());
   const response = await apiFetch("/orders/me?limit=100", {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -165,7 +167,7 @@ async function fetchBackendOrders() {
   return Array.isArray(data?.orders) ? data.orders.map(normalizeOrder) : [];
 }
 
-export async function getAllOrders({ sync = true } = {}) {
+export async function getAllOrders({ sync = true, display = false } = {}) {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   const parsed = safeParse(raw, []);
   const localOrders = Array.isArray(parsed) ? parsed.map(normalizeOrder) : [];
@@ -173,7 +175,7 @@ export async function getAllOrders({ sync = true } = {}) {
   if (!sync) return localOrders;
 
   try {
-    const backendOrders = await fetchBackendOrders();
+    const backendOrders = await fetchBackendOrders({ display });
     // The backend is the transaction source of truth. Merging device-only
     // entries here made old orders appear on the wrong device or remain after
     // a server-side cancellation. Cache the latest server result instead.
@@ -219,7 +221,7 @@ export async function getOrderById(orderId) {
   }
 }
 
-export async function getOrderPage(page = 1, limit = 10, filters = {}) {
+export async function getOrderPage(page = 1, limit = 10, filters = {}, options = {}) {
   const token = await getStoredToken();
   if (!token) throw new Error("Please sign in again to view your orders.");
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
@@ -228,6 +230,7 @@ export async function getOrderPage(page = 1, limit = 10, filters = {}) {
   for (const key of ["search", "orderStatus", "paymentStatus", "dateRange"]) {
     if (filters[key]) query.set(key, String(filters[key]));
   }
+  if (options.display) return readMobileDisplay(`/orders/me?${query.toString()}`, token, () => getOrderPage(page, limit, filters), options);
   const response = await apiFetch(`/orders/me?${query.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -239,8 +242,8 @@ export async function getOrderPage(page = 1, limit = 10, filters = {}) {
   };
 }
 
-export async function getOrdersByUser(user = {}, { sync = true } = {}) {
-  const orders = await getAllOrders({ sync });
+export async function getOrdersByUser(user = {}, { sync = true, display = false } = {}) {
+  const orders = await getAllOrders({ sync, display });
   return orders
     .filter((order) => {
       if (user?.id && String(order.userId) === String(user.id)) return true;

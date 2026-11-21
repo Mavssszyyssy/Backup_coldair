@@ -249,7 +249,7 @@ const performApiRequest = async (path, options = {}) => {
   return data;
 };
 
-const apiRequest = (path, { fresh = false, display = false, onCached, ...options } = {}) => {
+const apiRequest = (path, { fresh = false, revalidate = false, display = false, onCached, ...options } = {}) => {
   const method = String(options.method || "GET").toUpperCase();
   let submittedBody = options.body;
   if (typeof submittedBody === "string") {
@@ -295,7 +295,9 @@ const apiRequest = (path, { fresh = false, display = false, onCached, ...options
   const cached = canReuse && !fresh ? pageData.read(key, ttl, Boolean(onCached)) : null;
   if (cached) {
     onCached?.(cached.data, cached.loadedAt);
-    if (cached.fresh) return Promise.resolve(cached.data);
+    // Explicit report generation can show its snapshot immediately, but must
+    // still check the server even when the normal display TTL has not expired.
+    if (cached.fresh && !revalidate) return Promise.resolve(cached.data);
   }
 
   // A live-only or explicitly refreshed read cannot join an older display read.

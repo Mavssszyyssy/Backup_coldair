@@ -79,6 +79,26 @@ test("revisits can render a recent dashboard snapshot while a network refresh is
   expect(connectionUpdate).not.toHaveBeenCalled();
 });
 
+test.each(["sales", "inventory", "business-intelligence", "technicians"])("explicit %s generation revalidates even a fresh cached preview", async (report) => {
+  auth.token = "report-session";
+  vi.spyOn(Date, "now").mockReturnValue(50_000);
+  let finish;
+  const fetchMock = vi.fn().mockResolvedValueOnce(reply({ revision: 1 }))
+    .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const path = `/reports/${report}`;
+  await apiRequest(path);
+  const onCached = vi.fn();
+  const pending = apiRequest(path, { revalidate: true, onCached });
+  expect(onCached).toHaveBeenCalledWith({ revision: 1 }, 50_000);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls[1][1]).not.toHaveProperty("revalidate");
+  finish(reply({ revision: 2 }));
+  expect(await pending).toEqual({ revision: 2 });
+  expect(await apiRequest(path)).toEqual({ revision: 2 });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
 test("a page with several lists can render a matching snapshot before its slowest read finishes", async () => {
   auth.token = "dispatch-session";
   const now = vi.spyOn(Date, "now").mockReturnValue(50_000);

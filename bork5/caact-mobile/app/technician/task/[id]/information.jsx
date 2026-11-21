@@ -19,7 +19,7 @@ import StatusChip from "../../../../components/ui/StatusChip";
 import { COLORS, FONT, RADIUS, SPACING } from "../../../../constants/theme";
 import { checkInTask, confirmCodCollection, confirmInstallationArrival, getTaskById, getVisitAttempt, TASK_STATUS } from "../../../../services/taskStorage";
 import { getCurrentLocationSnapshot } from "../../../../services/locationService";
-import { getServiceLogsByTask } from "../../../../services/unitServiceLogStorage";
+import { serviceLogsFromTask } from "../../../../services/unitServiceLogStorage";
 import { formatWarrantyStatus, getInstallationWorkflowState, isInstallationWorkOrder } from "../../../../services/technicianTaskLogic";
 import { confirmAction } from "../../../../utils/confirmAction";
 import { useInterfaceLanguage } from "../../../../hooks/useInterfaceLanguage";
@@ -205,7 +205,7 @@ export default function TaskInformationScreen() {
           const loadedUnit = loadedTask.unit || null;
           const loadedRequests = loadedTask.requestId ? [{ id: loadedTask.requestId }] : [];
           const loadedLogs = !isInstallationWorkOrder(loadedTask) && loadedTask?.id
-            ? await getServiceLogsByTask(loadedTask.id)
+            ? serviceLogsFromTask(loadedTask, loadedTask.id)
             : [];
           if (active) {
             setTask(loadedTask);

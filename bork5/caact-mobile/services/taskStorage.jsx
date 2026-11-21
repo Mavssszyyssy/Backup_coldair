@@ -259,11 +259,11 @@ const taskForOfflineCache = (task = {}) => {
   };
 };
 
-export async function getAllTasks() {
+export async function getAllTasks({ sync = true, display = false } = {}) {
   try {
-    const token = await api.getStoredToken();
+    const token = sync ? await api.getStoredToken() : null;
     if (token) {
-      const result = await api.fetchTasks(token);
+      const result = await api.fetchTasks(token, { display });
       if (result.success) {
         return saveAllTasks(result.tasks);
       }
@@ -483,11 +483,11 @@ export async function updateTaskStatus(taskId, status, actor = "Technician", pat
   return updated;
 }
 
-export async function getTasksByTechnician(technicianId, { sync = true } = {}) {
+export async function getTasksByTechnician(technicianId, { sync = true, display = false } = {}) {
   if (sync) try {
     const token = await api.getStoredToken();
     if (token) {
-      const result = await api.fetchTasks(token, { technicianId });
+      const result = await api.fetchTasks(token, { technicianId, display });
       if (result.success) {
         const saved = await saveAllTasks(result.tasks);
         return saved.filter(
