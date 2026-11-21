@@ -14,12 +14,11 @@ afterEach(() => { cleanup(); window.sessionStorage.removeItem('admin-sidebar-ope
 it('preserves the desktop sidebar choice when an admin page remounts', () => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
   const first = show();
-  expect(screen.getByRole('button', { name: 'Toggle menu' })).toHaveAttribute('aria-expanded', 'true');
   fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }));
-  expect(screen.getByRole('button', { name: 'Toggle menu' })).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByRole('button', { name: 'Toggle menu' })).toHaveAttribute('aria-expanded', 'true');
   first.unmount();
   show();
-  expect(screen.getByRole('button', { name: 'Toggle menu' })).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByRole('button', { name: 'Toggle menu' })).toHaveAttribute('aria-expanded', 'true');
 });
 
 it('starts with the navigation closed on a small screen even if desktop was expanded', () => {

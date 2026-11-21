@@ -14,7 +14,6 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { confirmLogout } from "../../../utils/dialog";
 import { translateText } from "../../../utils/customerI18n";
-import { OperationsMenuClose } from '../../common/OperationsNavigation';
 const logo = "/Cold Air Logo-compact.webp";
 
 const links = [
@@ -29,7 +28,7 @@ const links = [
   { to: "/superadmin/settings", label: "System Settings", icon: Gear },
 ];
 
-const SuperAdminSidebar = ({ isOpen, onClose, onNavigate, sidebarId }) => {
+const SuperAdminSidebar = () => {
   const navigate = useNavigate();
   const { logout, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
@@ -40,13 +39,12 @@ const SuperAdminSidebar = ({ isOpen, onClose, onNavigate, sidebarId }) => {
   });
 
   return (
-    <aside id={sidebarId} className={`super-sidebar ${isOpen ? 'open' : ''}`} inert={!isOpen} aria-hidden={!isOpen}>
+    <aside className="super-sidebar open">
       <div className="super-sidebar-top">
         <div className="super-sidebar-brand">
           <img src={logo} alt="" />
           <span className="super-sidebar-brand-copy"><span>AeroPulse HQ</span><small>{t("Company operations")}</small></span>
         </div>
-        <OperationsMenuClose onClose={onClose} t={t} />
       </div>
       <nav className="super-nav" aria-label="Superadmin navigation">
         {links.map((link) => (
@@ -56,7 +54,6 @@ const SuperAdminSidebar = ({ isOpen, onClose, onNavigate, sidebarId }) => {
             className={({ isActive }) =>
               `super-nav-link ${isActive ? "active" : ""}`
             }
-            onClick={onNavigate}
           >
             <span className="super-nav-icon-wrap">
               <link.icon size={20} weight="bold" className="inline-icon" />

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useUser } from '../../../context/UserContext';
 import AdminSidebar from './AdminSidebar';
@@ -8,18 +8,38 @@ import '../adminShared.css';
 import './styles.css';
 import '../../common/operationsDesignSystem.css';
 import { translateText } from '../../../utils/customerI18n';
-import { OperationsMenuButton, OperationsMenuOverlay, useOperationsNavigation } from '../../common/OperationsNavigation';
 
 const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
   const { user, currentLanguage } = useUser();
   const t = (text) => translateText(text, currentLanguage);
-  const navigation = useOperationsNavigation('admin', !embedded && user?.role !== 'superadmin');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try { return window.innerWidth >= 768 && window.sessionStorage.getItem('admin-sidebar-open') === 'true'; }
+    catch { return false; }
+  });
 
   const initials = useMemo(() => {
     const name = user?.name?.trim();
     if (!name) return 'A';
     return name.charAt(0).toUpperCase();
   }, [user?.name]);
+
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+  useEffect(() => {
+    try {
+      if (window.innerWidth >= 768) window.sessionStorage.setItem('admin-sidebar-open', String(isSidebarOpen));
+    } catch { /* Sidebar still works when browser storage is unavailable. */ }
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
+    if (isSidebarOpen && window.innerWidth < 768) {
+      document.body.classList.add('no-scroll');
+    } else {
+      document.body.classList.remove('no-scroll');
+    }
+    return () => document.body.classList.remove('no-scroll');
+  }, [isSidebarOpen]);
 
   // Merged operational pages reuse their existing API-connected components
   // inside one parent screen. Embedded mode prevents a second sidebar/header.
@@ -33,30 +53,48 @@ const AdminLayout = ({ title, subtitle, children, embedded = false }) => {
   }
 
   return (
-    <div className={`admin-layout ops-navigation-shell ${navigation.isOpen ? 'ops-navigation-open' : 'ops-navigation-closed'}`}>
+    <div className="admin-layout">
       <a className="ops-skip-link" href="#admin-main-content">{t('Skip to main content')}</a>
-      <OperationsMenuOverlay navigation={navigation} />
-      <AdminSidebar isOpen={navigation.isOpen} sidebarId={navigation.sidebarId} onClose={navigation.close} onNavigate={navigation.onNavigate} />
+      <button
+        className={`burger-button ${isSidebarOpen ? 'open' : ''}`}
+        onClick={toggleSidebar}
+        aria-label={t('Toggle menu')}
+        aria-expanded={isSidebarOpen}
+        type="button"
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <div
+        className={`admin-sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+        onClick={closeSidebar}
+        role="presentation"
+      />
+
+      <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
       <main className="admin-main-content" id="admin-main-content">
         <div className="admin-content-wrapper">
-          <header className="admin-header">
-            <div className="admin-header-left">
-              <OperationsMenuButton navigation={navigation} t={t} />
-              <div>
-                {title && <h1>{t(title)}</h1>}
-                {subtitle && <p>{t(subtitle)}</p>}
+          {(title || subtitle) && (
+            <header className="admin-header">
+              <div className="admin-header-left">
+                <div>
+                  {title && <h1>{t(title)}</h1>}
+                  {subtitle && <p>{t(subtitle)}</p>}
+                </div>
               </div>
-            </div>
-            <div className="admin-header-user">
-              <AdminNotificationsBell />
-              <div className="admin-user-avatar">{initials}</div>
-              <div className="admin-header-identity">
-                <strong>{user?.name || 'Admin'}</strong>
-                <small>{t('Branch administrator')}</small>
+              <div className="admin-header-user">
+                <AdminNotificationsBell />
+                <div className="admin-user-avatar">{initials}</div>
+                <div className="admin-header-identity">
+                  <strong>{user?.name || 'Admin'}</strong>
+                  <small>{t('Branch administrator')}</small>
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
+          )}
 
           {children ?? <Outlet />}
         </div>
