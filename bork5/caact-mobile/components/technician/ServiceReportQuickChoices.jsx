@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Keyboard, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import TextField from "../ui/TextField";
+import { validateHumanText } from "../../utils/textFieldValidation";
 import { COLORS, FONT, RADIUS, SPACING } from "../../constants/theme";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import { dropdownSearch } from "../../services/dropdownSearch";
@@ -20,7 +21,8 @@ export function ReportDropdown({ label, options, value, onChange, open, onToggle
   const selected = options.filter(option => lines.some(line => line.trim() === option));
   const other = lines.filter(line => !options.includes(line.trim())).join("\n");
   const showOther = otherEnabled || Boolean(other.trim());
-  const missingOther = showOther && !other.trim();
+  const otherError = showOther ? validateHumanText(other, { max: 1000, label }) : "";
+  const missingOther = showOther && (!other.trim() || !!otherError);
   useEffect(() => { onMissingOther(missingOther); }, [missingOther, onMissingOther]);
   const write = (nextSelected, custom) => onChange([...nextSelected, ...(custom ? [custom] : [])].join("\n"));
   const toggleOption = option => write(selected.includes(option) ? selected.filter(item => item !== option) : [...selected, option], other);
@@ -46,7 +48,7 @@ export function ReportDropdown({ label, options, value, onChange, open, onToggle
       {!visibleOptions.length && !showOtherOption ? <Text accessibilityLiveRegion="polite" style={{ color: COLORS.textSecondary, padding: SPACING.sm }}>{t("No matching records found.")}</Text> : null}
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t("Done selecting")} ${t(label)}`} onPress={toggle} style={{ padding: SPACING.sm + 3, alignItems: "center", backgroundColor: COLORS.techLight }}><Text style={{ fontWeight: FONT.bold, color: COLORS.tech }}>{t("Done")}</Text></TouchableOpacity>
     </View> : null}
-    {showOther ? <TextField maxLength={1000} label={language === "Filipino" ? `${t("Other")} ${t(label)}` : "Other " + label.toLowerCase()} value={other} onChangeText={text => write(selected, text)} placeholder={t("Describe what you actually observed or performed")} multiline numberOfLines={3} error={missingOther ? t("Enter details for Other, or deselect it.") : ""} style={{ marginTop: SPACING.sm }} /> : null}
+    {showOther ? <TextField maxLength={1000} label={language === "Filipino" ? `${t("Other")} ${t(label)}` : "Other " + label.toLowerCase()} value={other} onChangeText={text => write(selected, text)} placeholder={t("Describe what you actually observed or performed")} multiline numberOfLines={3} error={otherError ? t(otherError) : missingOther ? t("Enter details for Other, or deselect it.") : ""} style={{ marginTop: SPACING.sm }} /> : null}
     {!open && selected.length ? <Text style={{ color: COLORS.textSecondary, fontSize: FONT.sm, marginTop: SPACING.xs }}>{selected.join("\n")}</Text> : null}
   </View>;
 }

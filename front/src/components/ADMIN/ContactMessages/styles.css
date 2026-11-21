@@ -11,7 +11,7 @@
 .contact-inbox__alert button { border: 0; background: transparent; color: inherit; font-weight: 800; cursor: pointer; }
 .contact-inbox__toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) 190px auto; gap: 12px; align-items: end; padding: 16px; border: 1px solid #e2e8f0; border-radius: 15px; background: #fff; }
 .contact-inbox__toolbar label, .contact-detail__reply { display: flex; flex-direction: column; gap: 6px; color: #475569; font-size: 12px; font-weight: 800; }
-.contact-inbox__toolbar input, .contact-inbox__toolbar select, .contact-detail__reply textarea { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 14px; }
+.contact-inbox__toolbar input, .contact-inbox__toolbar select, .contact-detail__reply-input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 14px; }
 .contact-inbox__toolbar button, .contact-detail__actions button { min-height: 44px; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 10px; color: #334155; background: #fff; font-weight: 800; cursor: pointer; }
 .contact-inbox__toolbar button:disabled, .contact-detail__actions button:disabled { cursor: not-allowed; opacity: .55; }
 .contact-inbox__workspace { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(420px, 1.35fr); overflow: hidden; border: 1px solid #e2e8f0; border-radius: 18px; background: #fff; }
@@ -22,6 +22,9 @@
 .contact-message-card strong { color: #0f172a; font-size: 15px; }
 .contact-message-card > span:not(.contact-status), .contact-message-card small { color: #64748b; font-size: 12px; }
 .contact-message-card p { display: -webkit-box; overflow: hidden; margin: 2px 0; color: #475569; font-size: 13px; line-height: 1.45; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.contact-message-card :is(strong, span:not(.contact-status)) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.contact-message-card > *, .contact-detail__heading > div { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.contact-inbox__queue { min-width: 0; }
 .contact-status { display: inline-flex; align-items: center; width: fit-content; padding: 5px 9px; border-radius: 999px; color: #475569; background: #e2e8f0; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
 .contact-status--new { color: #92400e; background: #fef3c7; }
 .contact-status--in_progress { color: #1d4ed8; background: #dbeafe; }
@@ -42,7 +45,16 @@
 .contact-detail__message p { white-space: pre-wrap; margin: 8px 0; color: #1e293b; line-height: 1.6; }
 .contact-detail__message small { color: #94a3b8; }
 .contact-detail__reply { margin-top: 18px; }
-.contact-detail__reply textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+.contact-detail__reply-input { margin-top: 6px; min-height: 112px; max-height: 320px; resize: vertical; line-height: 1.5; font-weight: 400; }
+.contact-detail__reply-input::placeholder { font-weight: 400; }
+.contact-detail__count { display: block; text-align: right; color: #64748b; font-size: 12px; }
+.contact-detail__validation { margin: 5px 0 0; color: #b91c1c; font-size: 13px; }
+.contact-detail__validation:empty { display: none; }
+.contact-detail__text, .contact-detail__timeline small { overflow-wrap: anywhere; white-space: pre-wrap; }
+.contact-detail__text.is-collapsed { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.contact-detail__text.is-expanded { max-height: 22rem; overflow-y: auto; }
+.contact-detail__expand { display: block; margin: 6px 0; padding: 6px 0; border: 0; background: transparent; color: #1d4ed8; font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.contact-detail__expand:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
 .contact-detail__reply small { align-self: flex-end; color: #94a3b8; }
 .contact-detail__actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
 .contact-detail__actions button.primary { color: #fff; border-color: #2563eb; background: #2563eb; }
@@ -98,6 +110,9 @@
   background: #48292d;
   color: #fecaca;
 }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-detail__reply-input { color: var(--ops-text); background: var(--ops-surface-subtle); border-color: var(--ops-border-strong); }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) :is(.contact-detail__expand, .contact-detail__count) { color: #93c5fd; }
+:root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-detail__validation { color: #fecaca; }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--new { background: #513c22; color: #fcd69a; }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--in_progress { background: #263f62; color: #bfdbfe; }
 :root[data-theme='dark'] :is(.admin-layout, .super-layout) .contact-status--resolved { background: #203c34; color: #bbf7d0; }

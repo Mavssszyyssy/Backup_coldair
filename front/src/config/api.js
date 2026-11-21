@@ -1,5 +1,6 @@
 import { clearAuthSession, getAuthSessionItem, getSessionActiveBranch } from "../utils/authSession";
 import { createPageDataCache, readCacheTtl } from "./pageDataCache";
+import { validateTextRequest } from "../domain/textFieldValidation";
 
 const LIVE_API_BASE_URL = "https://api.coldair-act.online/api";
 const RETIRED_BACKEND_HOST = "https://backend-deployment-ivory.vercel.app";
@@ -250,6 +251,18 @@ const performApiRequest = async (path, options = {}) => {
 
 const apiRequest = (path, { fresh = false, display = false, onCached, ...options } = {}) => {
   const method = String(options.method || "GET").toUpperCase();
+  let submittedBody = options.body;
+  if (typeof submittedBody === "string") {
+    try { submittedBody = JSON.parse(submittedBody); } catch { submittedBody = null; }
+  }
+  const validation = validateTextRequest(path, method, submittedBody);
+  if (validation) {
+    const error = new Error(validation.message);
+    error.status = 400;
+    error.code = "INPUT_VALIDATION";
+    error.fieldErrors = { [validation.field]: validation.message };
+    return Promise.reject(error);
+  }
   const token = getToken();
   const branch = getActiveBranch();
   const scope = JSON.stringify([token, branch]);

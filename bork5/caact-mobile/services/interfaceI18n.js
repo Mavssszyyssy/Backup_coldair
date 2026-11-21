@@ -1,4 +1,10 @@
 const FILIPINO = {
+  "enter meaningful text.": "maglagay ng malinaw at makabuluhang teksto.",
+  "enter meaningful text. Avoid random letters, placeholders, or repeated text.": "maglagay ng malinaw at makabuluhang teksto. Iwasan ang sapalarang mga titik, pansamantalang teksto, o paulit-ulit na nilalaman.",
+  "remove duplicate entries.": "alisin ang mga nauulit na entry.",
+  "choose a recognized Philippine location.": "pumili ng kinikilalang lugar sa Pilipinas.",
+  "Enter a recognized region, province, city, municipality, or barangay as each service area.": "Maglagay ng kinikilalang rehiyon, lalawigan, lungsod, munisipalidad, o barangay sa bawat service area.",
+  "Choose a valid suffix, such as Jr., Sr., II, or III.": "Pumili ng wastong suffix, tulad ng Jr., Sr., II, o III.",
   "All orders": "Lahat ng order",
   "All orders include cancelled orders; paid revenue excludes them. Grouped by stock source branch.": "Kasama sa lahat ng order ang mga nakansela; hindi kasama ang mga ito sa bayad na kita. Nakapangkat ayon sa branch na pinagmulan ng stock.",
   "Other status": "Ibang katayuan",
@@ -30,12 +36,20 @@ const FILIPINO = {
   "Next visit date must be within 90 calendar days from today.": "Ang petsa ng susunod na pagbisita ay dapat nasa loob ng 90 araw mula ngayon.",
   "Choose a valid support topic.": "Pumili ng wastong paksa para sa suporta.",
   "Subject must be at least 3 characters.": "Ang paksa ay dapat may hindi bababa sa 3 character.",
-  "Subject must be 160 characters or fewer.": "Ang paksa ay dapat hindi hihigit sa 160 character.",
-  "Message must be 3000 characters or fewer.": "Ang mensahe ay dapat hindi hihigit sa 3000 character.",
+  "Subject must be 80 characters or fewer.": "Ang paksa ay dapat hindi hihigit sa 80 character.",
+  "Message must be 1000 characters or fewer.": "Ang mensahe ay dapat hindi hihigit sa 1000 character.",
   "Subject and message are required.": "Kailangang maglagay ng paksa at mensahe.",
   "Please add a little more detail so the support team can help.": "Magdagdag ng detalye para matulungan ka ng support team.",
-  "Subject must be 20 words or fewer.": "Hanggang 20 salita lang ang paksa.",
-  "Message must be 400 words or fewer.": "Hanggang 400 salita lang ang mensahe.",
+  "Subject must be 12 words or fewer.": "Hanggang 12 salita lang ang paksa.",
+  "Message must be 150 words or fewer.": "Hanggang 150 salita lang ang mensahe.",
+  "Reply must be 1000 characters or fewer.": "Hanggang 1000 karakter lang ang sagot.",
+  "Reply must be 150 words or fewer.": "Hanggang 150 salita lang ang sagot.",
+  "Write a reply before sending it to the customer.": "Sumulat muna ng sagot bago ipadala sa customer.",
+  "Write a clear reply with at least two words. Avoid placeholder, random, or repeated text.": "Sumulat ng malinaw na sagot na may hindi bababa sa dalawang salita. Iwasan ang pansamantala, walang kahulugan, o paulit-ulit na teksto.",
+  "Name must be 60 characters or fewer.": "Hanggang 60 karakter lang ang pangalan.",
+  "Your name is required.": "Kailangan ang iyong pangalan.",
+  "Enter your name using letters, spaces, apostrophes, periods, or hyphens. Avoid repeated or placeholder text.": "Ilagay ang iyong pangalan gamit ang mga titik, puwang, kudlit, tuldok, o gitling. Iwasan ang paulit-ulit o pansamantalang teksto.",
+  "Show full message": "Ipakita ang buong mensahe",
   "Enter a clear subject about your concern. Avoid placeholder or repeated text.": "Ilagay nang malinaw ang paksa ng iyong alalahanin. Iwasan ang pansamantala o paulit-ulit na teksto.",
   "Describe your concern in the message. Avoid placeholder or repeated text.": "Ilarawan ang iyong alalahanin sa mensahe. Iwasan ang pansamantala o paulit-ulit na teksto.",
   "words": "salita",
@@ -4049,6 +4063,10 @@ const createTranslator = (getDictionary) => (text = "", language = "English") =>
   const dictionary = getDictionary();
   if (!dictionary) return text;
   if (Object.prototype.hasOwnProperty.call(dictionary, text)) return dictionary[text];
+  const quality = typeof text === "string" && text.match(/^(.+): (enter meaningful text\.(?: Avoid random letters, placeholders, or repeated text\.)?|remove duplicate entries\.|choose a recognized Philippine location\.)$/);
+  if (quality) return `${dictionary[quality[1]] || quality[1]}: ${dictionary[quality[2]] || quality[2]}`;
+  const words = typeof text === "string" && text.match(/^(.+) must be (\d+) words or fewer\.$/);
+  if (words) return `Hanggang ${words[2]} salita lang ang puwedeng ilagay sa ${dictionary[words[1]] || words[1]}.`;
   const limit = typeof text === "string" && text.match(/^(.+) must be (\d+) characters or fewer\.$/);
   return limit ? `Hanggang ${limit[2]} karakter lang ang puwedeng ilagay sa ${dictionary[limit[1]] || limit[1]}.` : text;
 };

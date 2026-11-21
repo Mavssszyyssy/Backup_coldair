@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as api from "./api";
 import { normalizeTechnicianVisitStatus } from "./technicianVisitStatus";
+import { validateTextRequest } from "../utils/textFieldValidation";
 
 const STORAGE_KEY = "unit_service_logs_storage_v1";
 const DRAFT_KEY = "unit_service_log_draft_v1";
@@ -107,6 +108,9 @@ export async function upsertServiceLog(log = {}) {
   const existing = log.id
     ? logs.find((item) => String(item.id) === String(log.id))
     : null;
+  const changed = Object.fromEntries(Object.entries(log).filter(([field, value]) => value !== existing?.[field]));
+  const validation = validateTextRequest("/tasks/service-note", "PATCH", changed);
+  if (validation) throw new Error(validation.message);
   const normalized = normalizeServiceLog({
     ...existing,
     ...log,

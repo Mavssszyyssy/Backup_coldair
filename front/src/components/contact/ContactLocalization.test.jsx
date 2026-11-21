@@ -23,7 +23,7 @@ test('contact form labels switch languages while the customer name stays unchang
   expect(screen.getByRole('heading', { name: 'Magpadala sa Amin ng Mensahe' })).toBeInTheDocument();
   expect(screen.getByLabelText('Iyong Pangalan *')).toHaveValue('Andrei Tupas');
   expect(screen.getByRole('button', { name: 'Ipadala sa Suporta' })).toBeInTheDocument();
-  expect(screen.getByText('0/20 salita · 0/160 karakter')).toBeVisible();
+  expect(screen.getByText('0/12 salita · 0/80 karakter')).toBeVisible();
   view.unmount();
 
   currentLanguage = 'English';
@@ -55,15 +55,24 @@ test('contact form blocks filler and over-limit drafts and sends a genuine conce
   fireEvent.submit(form);
   expect(screen.getByRole('alert')).toHaveTextContent(/placeholder/);
 
-  fireEvent.change(subject, { target: { value: 'AC '.repeat(20) + 'leak' } });
+  fireEvent.change(subject, { target: { value: 'AC '.repeat(12) + 'leak' } });
   fireEvent.submit(form);
-  expect(screen.getByRole('alert')).toHaveTextContent('Subject must be 20 words or fewer.');
+  expect(screen.getByRole('alert')).toHaveTextContent('Subject must be 12 words or fewer.');
   expect(subject).toHaveAttribute('aria-invalid', 'true');
+  expect(apiRequest).not.toHaveBeenCalled();
+
+  expect(screen.getByLabelText('Your Name *')).toHaveAttribute('maxLength', '60');
+  expect(subject).toHaveAttribute('maxLength', '80');
+  expect(message).toHaveAttribute('maxLength', '1000');
+  fireEvent.change(subject, { target: { value: 'AC E7' } });
+  fireEvent.change(message, { target: { value: 'help jhjhjh1' } });
+  fireEvent.submit(form);
+  expect(screen.getByRole('alert')).toHaveTextContent(/Describe your concern/);
   expect(apiRequest).not.toHaveBeenCalled();
 
   fireEvent.change(subject, { target: { value: 'AC E7' } });
   fireEvent.change(message, { target: { value: 'Ayaw lumamig.' } });
-  expect(screen.getByText('2/400 words · 13/3000 characters')).toBeVisible();
+  expect(screen.getByText('2/150 words · 13/1000 characters')).toBeVisible();
   fireEvent.submit(form);
   fireEvent.submit(form);
   expect(await screen.findByText('MSG-QA')).toBeVisible();

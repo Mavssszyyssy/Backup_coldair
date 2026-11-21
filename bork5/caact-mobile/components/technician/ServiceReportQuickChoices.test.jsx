@@ -48,6 +48,9 @@ test("Other requires details even alongside a predefined selection", async () =>
   await fireEvent.press(screen.getByLabelText("Technician Findings: Dust buildup on the air filter."));
   await fireEvent.press(screen.getByLabelText("Technician Findings: Other"));
   expect(validation).toHaveBeenLastCalledWith(expect.stringContaining("Other"));
+  await fireEvent.changeText(screen.getByLabelText("Other technician findings"), "jhjhjh");
+  expect(validation).toHaveBeenLastCalledWith(expect.stringContaining("Other"));
+  expect(screen.getByText(/Technician Findings: enter meaningful text/)).toBeTruthy();
   await fireEvent.changeText(screen.getByLabelText("Other technician findings"), "Loose cover was vibrating.");
   expect(validation).toHaveBeenLastCalledWith("");
   await fireEvent.changeText(screen.getByLabelText("Other technician findings"), "");

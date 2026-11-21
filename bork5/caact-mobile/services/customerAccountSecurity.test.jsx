@@ -169,14 +169,23 @@ test("customer mobile changes a password with current-password verification", as
   expect(await screen.findByText("Password changed successfully.")).toBeTruthy();
 });
 
-test("customer mobile explains the email code without claiming a verified security state", async () => {
+test("Account keeps password reset actionable and places Language in Preferences without the email-code row", async () => {
   await render(<CustomerSettingsScreen />);
   expect(screen.getByText("Personal details")).toBeTruthy();
   expect(screen.getByText("Password & sign-in")).toBeTruthy();
-  expect(screen.getByText("Email code at sign-in")).toBeTruthy();
-  expect(screen.getByText(/may be asked for a one-time code sent to your email/i)).toBeTruthy();
+  expect(screen.queryByText("Email code at sign-in")).toBeNull();
+  expect(screen.queryByText(/may be asked for a one-time code sent to your email/i)).toBeNull();
+  expect(screen.queryByText(/learn how email codes/i)).toBeNull();
   expect(screen.queryByText("Email Sign-in Verification")).toBeNull();
-  expect(translateText("Email code at sign-in", "Filipino")).toBe("Email code sa pag-sign in");
+  expect(screen.getAllByRole("header").map((node) => node.props.children)).toEqual([
+    "Personal details", "Delivery Addresses", "Password & sign-in", "Preferences", "Help & Support", "Session",
+  ]);
+  expect(screen.getByLabelText("Language").props.accessibilityRole).toBe("radiogroup");
+  expect(screen.getByRole("radio", { name: "English" }).props.accessibilityState.checked).toBe(true);
+  expect(screen.getByRole("radio", { name: "Filipino" }).props.accessibilityState.checked).toBe(false);
+  expect(translateText("Preferences", "Filipino")).toBe("Mga Kagustuhan");
+  await fireEvent.press(screen.getByRole("button", { name: "Reset Password" }));
+  expect(screen.getByLabelText("Current Password")).toBeTruthy();
   expect(translateText("Password & sign-in", "Filipino")).toBe("Password at pag-sign in");
 });
 

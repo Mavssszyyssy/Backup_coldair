@@ -19,11 +19,20 @@ jest.mock('expo-router', () => ({
 jest.mock('../context/UserContext', () => ({ useUserContext: () => ({ current: { id: 'tech-fixture', role: 'technician', alias: 'tech.cavite.test', phone: '09123456789' }, changeMyPassword: mockChange, updateMyAccount: mockUpdate, updateLanguage: mockLanguageUpdate }) }));
 
 test('technician language selection confirms successful save in the selected language', async () => {
-  mockLanguageUpdate.mockReset().mockResolvedValue({ success: true });
-  await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
-  await fireEvent.press(screen.getByRole('radio', { name: 'Filipino' }));
-  await waitFor(() => expect(screen.getByText('Matagumpay na napalitan ang wika.')).toBeTruthy());
-  expect(mockLanguageUpdate).toHaveBeenCalledWith('Filipino');
+  jest.useFakeTimers();
+  let view;
+  try {
+    mockLanguageUpdate.mockReset().mockResolvedValue({ success: true });
+    view = await render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><TechProfile /></SafeAreaProvider>);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Filipino' }));
+    expect(screen.getByText('Matagumpay na napalitan ang wika.')).toBeTruthy();
+    expect(mockLanguageUpdate).toHaveBeenCalledWith('Filipino');
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    expect(screen.queryByText('Matagumpay na napalitan ang wika.')).toBeNull();
+  } finally {
+    await view?.unmount();
+    jest.useRealTimers();
+  }
 });
 
 test('technician profile groups account details and explains email sign-in without a verification claim', async () => {

@@ -105,8 +105,9 @@ const SuperAdminBranches = () => {
   useEffect(() => { setAdminId(selectedAssignment?.id || ''); }, [branch, selectedAssignment?.id]);
   useEffect(() => {
     const currentCoverage = coverage.find((item) => item.name === branch);
-    setCoverageAreas((currentCoverage?.coverageAreas || []).join(', '));
-    setValidatedFields((current) => ({ ...current, savedCoverage: false }));
+    const savedAreas = (currentCoverage?.coverageAreas || []).join(', ');
+    setCoverageAreas(savedAreas);
+    setValidatedFields((current) => ({ ...current, savedCoverage: Boolean(savedAreas && validateServiceAreas(savedAreas).error) }));
   }, [branch, coverage]);
 
   const save = async (event) => {

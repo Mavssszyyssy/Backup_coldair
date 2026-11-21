@@ -15,6 +15,12 @@ test("a loaded work order supplies its notes without requesting the task again",
   expect(api.fetchTask).not.toHaveBeenCalled();
 });
 
+test("new nonsense service notes cannot reach the saving request", async () => {
+  api.patchTask.mockClear();
+  await expect(upsertServiceLog({ taskId: 'task1', notes: 'ssd sd' })).rejects.toThrow(/meaningful/);
+  expect(api.patchTask).not.toHaveBeenCalled();
+});
+
 test("actual costs and hours survive save, reload and edit; deleting a note recalculates costs", async () => {
   let task = { serviceLogs: [] };
   api.fetchTask.mockImplementation(async () => ({ success: true, task }));

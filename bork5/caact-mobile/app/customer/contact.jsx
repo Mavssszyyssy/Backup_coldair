@@ -20,7 +20,7 @@ import { createContactMessage, getMyContactMessage, getMyContactMessages } from 
 import { startLiveRefresh } from "../../services/liveRefresh";
 import { useInterfaceLanguage } from "../../hooks/useInterfaceLanguage";
 import {
-  countInquiryWords, validateContactInquiry,
+  countInquiryWords, validateContactInquiry, validateContactName,
   MESSAGE_MAX_CHARACTERS, MESSAGE_MAX_WORDS, SUBJECT_MAX_CHARACTERS, SUBJECT_MAX_WORDS,
 } from "../../utils/contactInquiryValidation";
 
@@ -201,7 +201,7 @@ export default function CustomerContactScreen() {
     setError("");
     setConfirmation(null);
     if (!CONTACT_CATEGORIES.some((item) => item.id === category?.id)) return setError("Choose a valid support topic.");
-    const inquiryError = validateContactInquiry({ subject, message });
+    const inquiryError = validateContactInquiry({ subject, message }) || validateContactName(customerName(current));
     if (inquiryError) return setError(inquiryError);
     if (!token) return setError("Please sign in again before sending your message.");
     submissionInFlight.current = true;

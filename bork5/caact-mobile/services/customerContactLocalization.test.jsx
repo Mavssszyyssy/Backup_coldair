@@ -75,7 +75,7 @@ test('sending locks the form, prevents duplicate requests, and preserves a faile
     fireEvent.changeText(view.getByLabelText('Subject'), 'Need service');
     fireEvent.changeText(view.getByLabelText('Message'), 'Please inspect the AC unit');
   });
-  expect(view.getByText('5/400 words · 26/3000 characters')).toBeTruthy();
+  expect(view.getByText('5/150 words · 26/1000 characters')).toBeTruthy();
   await act(async () => { fireEvent.press(view.getByText('Send to Support')); fireEvent.press(view.getByText('Send to Support')); });
   expect(createContactMessage).toHaveBeenCalledTimes(1);
   expect(view.getByLabelText('Message').props.editable).toBe(false);
@@ -106,9 +106,13 @@ test('mobile rejects filler and oversized inquiries before sending', async () =>
   expect(view.getByRole('alert').props.children).toMatch(/placeholder/);
   await changeInquiry('AC E7', 'Jshshshshshsh');
   expect(view.getByRole('alert').props.children).toMatch(/Describe your concern/);
-  await changeInquiry('AC E7', 'May tagas '.repeat(200) + 'po');
-  expect(view.getByRole('alert').props.children).toBe('Message must be 400 words or fewer.');
-  expect(view.getByText(/^401\/400 words/)).toBeTruthy();
+  await changeInquiry('AC E7', 'help jhjhjh1');
+  expect(view.getByRole('alert').props.children).toMatch(/Describe your concern/);
+  expect(view.getByLabelText('Subject').props.maxLength).toBe(80);
+  expect(view.getByLabelText('Message').props.maxLength).toBe(1000);
+  await changeInquiry('AC E7', 'May tagas '.repeat(75) + 'po');
+  expect(view.getByRole('alert').props.children).toBe('Message must be 150 words or fewer.');
+  expect(view.getByText(/^151\/150 words/)).toBeTruthy();
   expect(createContactMessage).not.toHaveBeenCalled();
   view.unmount();
 });

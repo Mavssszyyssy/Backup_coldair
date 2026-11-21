@@ -61,6 +61,7 @@ export function validateRequired(value, fieldLabel = "This field") {
 }
 
 export const PERSON_NAME_MAX_LENGTH = 20;
+import { validateHumanText } from "./textFieldValidation";
 
 export function validatePersonName(value, fieldLabel = "Name", { required = true, maxLength = PERSON_NAME_MAX_LENGTH } = {}) {
   const text = String(value || "").trim();
@@ -73,7 +74,7 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
     return `${fieldLabel} cannot contain numbers.`;
   }
 
-  if (!/^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u.test(text)) {
+  if (!text.split(/\s+/u).every((part) => /^[\p{L}\p{M}]+(?:[’'-][\p{L}\p{M}]+)*\.?$/u.test(part))) {
     return `${fieldLabel} can only use letters, spaces, apostrophes, periods, and hyphens.`;
   }
 
@@ -95,7 +96,7 @@ export function validatePersonName(value, fieldLabel = "Name", { required = true
     (index >= 3 && word === words[index - 2] && words[index - 1] === words[index - 3])
   ))) return `${fieldLabel} contains repeated words.`;
 
-  return "";
+  return validateHumanText(text, { max: maxLength, label: fieldLabel, kind: "person" });
 }
 
 export function validateEmail(email, activeDomains = null) {

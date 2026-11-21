@@ -90,8 +90,8 @@ test("profile requires verified email and never infers staff role from email", a
   }));
   expect(view.getByPlaceholderText("First name").props.maxLength).toBe(20);
   expect(view.getByPlaceholderText("Last name").props.maxLength).toBe(20);
-  await fireEvent.changeText(view.getByPlaceholderText("First name"), "Test");
-  await fireEvent.changeText(view.getByPlaceholderText("Last name"), "Customer");
+  await fireEvent.changeText(view.getByPlaceholderText("First name"), "Ana");
+  await fireEvent.changeText(view.getByPlaceholderText("Last name"), "Santos");
   await fireEvent.changeText(view.getByLabelText("Username"), "customer.alias");
   await fireEvent.changeText(view.getByLabelText("Password"), "StrongPass1!");
   await fireEvent.changeText(view.getByLabelText("Confirm Password"), "StrongPass1!");
@@ -105,7 +105,7 @@ test("optional address can be skipped and registration keeps legal and email pro
   await act(async () => updateDraftForTest({
     legalConsent: { app: true, service: true, warranty: true, privacy: true },
     email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
-    name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
+    name_first: "Ana", name_last: "Santos", alias: "test.customer", password: "StrongPass1!",
   }));
   await fireEvent.press(view.getByText("Skip for now"));
   await waitFor(() => expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({
@@ -123,7 +123,7 @@ test("only the selected address action shows progress during registration", asyn
   await act(async () => updateDraftForTest({
     legalConsent: { app: true, service: true, warranty: true, privacy: true },
     email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
-    name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
+    name_first: "Ana", name_last: "Santos", alias: "test.customer", password: "StrongPass1!",
   }));
   fireEvent.press(view.getByText("Skip for now"));
   await waitFor(() => expect(view.getByText("Creating account...")).toBeTruthy());
@@ -138,7 +138,7 @@ test("creating with an address requires complete location fields", async () => {
   await act(async () => updateDraftForTest({
     legalConsent: { app: true, service: true, warranty: true, privacy: true },
     email: "customer@example.com", emailVerified: true, registrationVerificationToken: "email-proof",
-    name_first: "Test", name_last: "Customer", alias: "test.customer", password: "StrongPass1!",
+    name_first: "Ana", name_last: "Santos", alias: "test.customer", password: "StrongPass1!",
   }));
   await fireEvent.press(view.getByText("Save Location"));
   expect(mockRegister).not.toHaveBeenCalled();

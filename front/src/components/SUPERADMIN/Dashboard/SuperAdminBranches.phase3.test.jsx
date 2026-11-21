@@ -133,3 +133,30 @@ test('branch and administrator forms reject repeated text and invalid email befo
   expect(validateEmailForSubmission).not.toHaveBeenCalled();
   expect(apiRequest.mock.calls.every(([, options]) => !options?.method)).toBe(true);
 });
+
+test('branch creation and existing coverage reject nonsense and invented locations before saving', async () => {
+  apiRequest.mockImplementation(async (path) => path === '/users?role=admin' ? { users: [] } : { branches: [{ name: 'Cavite', coverageAreas: ['cavite'] }] });
+  render(<SuperAdminBranches />);
+  await screen.findByText('Current ownership');
+  fireEvent.change(screen.getByLabelText('Branch name'), { target: { value: 'MOA' } });
+  fireEvent.change(screen.getByLabelText('Service areas (comma-separated)'), { target: { value: 'ssd sd' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add branch' }));
+  expect(screen.getByLabelText('Service areas (comma-separated)')).toHaveAttribute('aria-invalid', 'true');
+  fireEvent.change(screen.getByLabelText('Service areas (comma-separated)'), { target: { value: 'Imaginaryville' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add branch' }));
+  expect(screen.getByText(/Enter a recognized region/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Service coverage (comma-separated)'), { target: { value: 'ssd sd' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save coverage' }));
+  expect(screen.getByLabelText('Service coverage (comma-separated)')).toHaveAttribute('aria-invalid', 'true');
+  expect(apiRequest.mock.calls.every(([, options]) => !options?.method)).toBe(true);
+});
+
+test('previously stored nonsense coverage is visibly flagged without changing or deleting the record', async () => {
+  apiRequest.mockImplementation(async (path) => path === '/users?role=admin' ? { users: [] } : { branches: [{ name: 'Bulacan', coverageAreas: ['ssd sd'] }] });
+  render(<SuperAdminBranches />);
+  const field = await screen.findByLabelText('Service coverage (comma-separated)');
+  await waitFor(() => expect(field).toHaveValue('ssd sd'));
+  expect(field).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByText(/Service area: enter meaningful text/)).toBeVisible();
+  expect(apiRequest.mock.calls.every(([, options]) => !options?.method)).toBe(true);
+});

@@ -4,7 +4,7 @@ import { apiRequest } from "../../config/api";
 import { useUser } from "../../context/UserContext";
 import { validateEmailForSubmission } from "../../domain/emailPolicy";
 import {
-  countInquiryWords, validateContactInquiry,
+  countInquiryWords, validateContactInquiry, validateContactName, CONTACT_NAME_MAX_CHARACTERS,
   MESSAGE_MAX_CHARACTERS, MESSAGE_MAX_WORDS, SUBJECT_MAX_CHARACTERS, SUBJECT_MAX_WORDS,
 } from "../../domain/contactInquiryValidation";
 import { translateText } from "../../utils/customerI18n";
@@ -59,7 +59,7 @@ function ContactForm() {
     if (submissionInFlight.current) return;
     setError("");
     setConfirmation(null);
-    const inquiryError = validateContactInquiry(formData);
+    const inquiryError = validateContactInquiry(formData) || validateContactName(formData.name);
     if (inquiryError) {
       setError(inquiryError);
       return;
@@ -110,7 +110,7 @@ function ContactForm() {
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="contact-name">{t("Your Name")} *</label>
-            <input id="contact-name" type="text" value={formData.name} onChange={(event) => update("name", event.target.value)} maxLength={120} disabled={submitting} required />
+            <input id="contact-name" type="text" value={formData.name} onChange={(event) => update("name", event.target.value)} maxLength={CONTACT_NAME_MAX_CHARACTERS} disabled={submitting} required />
           </div>
           <div className="form-group">
             <label htmlFor="contact-email">{t("Email Address")} *</label>

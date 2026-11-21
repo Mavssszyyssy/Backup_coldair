@@ -470,16 +470,6 @@ export default function CustomerSettingsScreen() {
           <CustomerSettingsRow icon="person-circle-sharp" title={fullName(current)} subtitle={`${current?.alias || t("No username")} · ${current?.email || t("No email")}`} right={<CustomerEditAction onPress={() => { setProfileForm(buildEditableProfile(current)); setAddressForm(null); setEditingProfile(true); }} />} />
           <CustomerSettingsRow icon="call-sharp" title={t("Phone")} subtitle={current?.phone || t("No phone on file")} />
         </Section>
-        <Section title={t("Interface language")}>
-          <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>{t("Choose the language used for buttons, labels, and navigation.")}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
-            {["English", "Filipino"].map((choice) => (
-              <TouchableOpacity key={choice} accessibilityRole="radio" accessibilityState={{ checked: language === choice, disabled: savingLanguage }} disabled={savingLanguage} onPress={() => selectLanguage(choice)} style={{ minWidth: 112, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: 10, borderWidth: 1, borderColor: language === choice ? COLORS.primary : COLORS.border, backgroundColor: language === choice ? COLORS.primaryLight : COLORS.surface }}>
-                <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, textAlign: "center" }}>{t(choice)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Section>
         <Section title={t("Delivery Addresses")}>
           <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>{language === "Filipino" ? `${addresses.length} sa ${MAX_SAVED_ADDRESSES} naka-save na address` : `${addresses.length} of ${MAX_SAVED_ADDRESSES} saved addresses`}</Text>
           {addresses.length ? addresses.map((address) => {
@@ -491,9 +481,20 @@ export default function CustomerSettingsScreen() {
           {addresses.length >= MAX_SAVED_ADDRESSES ? <Text style={{ color: COLORS.textSecondary, marginTop: SPACING.xs }}>{t("You can save up to 8 delivery addresses. Edit or delete one to add another.")}</Text> : null}
         </Section>
         <Section title={t("Password & sign-in")}>
-          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.sm }}>{t("Manage your password and learn how email codes are used at sign-in.")}</Text>
           <CustomerSettingsRow icon="key-sharp" title={t("Reset Password")} subtitle={t("Verify your current password and choose a new one.")} onPress={() => { setAddressForm(null); setEditingProfile(false); setSecurityMode("password"); }} />
-          <CustomerSettingsRow icon="mail-outline" title={t("Email code at sign-in")} subtitle={t("After entering your password, you may be asked for a one-time code sent to your email.")} />
+        </Section>
+        <Section title={t("Preferences")} right={<Ionicons name="language-outline" size={22} color={COLORS.primary} />}>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: FONT.bold, marginBottom: SPACING.xs }}>{t("Language")}</Text>
+          <Text style={{ color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.sm }}>{t("Choose your preferred language.")}</Text>
+          <View accessibilityRole="radiogroup" accessibilityLabel={t("Language")} style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm }}>
+            {["English", "Filipino"].map((choice) => {
+              const selected = language === choice;
+              return <TouchableOpacity key={choice} accessibilityRole="radio" accessibilityLabel={t(choice)} accessibilityState={{ checked: selected, disabled: savingLanguage }} disabled={savingLanguage} onPress={() => selectLanguage(choice)} style={{ flex: 1, minWidth: 112, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: SPACING.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, borderRadius: 10, borderWidth: 1, borderColor: selected ? COLORS.primary : COLORS.border, backgroundColor: selected ? COLORS.primary : COLORS.surface }}>
+                <Text style={{ color: selected ? COLORS.surface : COLORS.textPrimary, fontWeight: FONT.bold }}>{t(choice)}</Text>
+                {selected ? <Ionicons name="checkmark" size={18} color={COLORS.surface} /> : null}
+              </TouchableOpacity>;
+            })}
+          </View>
         </Section>
         <Section title={t("Help & Support")}>
           <CustomerSettingsRow icon="help-buoy-sharp" title={t("Frequently Asked Questions")} subtitle={t("Orders, payments, delivery, warranty, and AC care")} onPress={() => router.push("/customer/faq")} />

@@ -10,6 +10,7 @@
 // backend, so a physical device never tries to reach its own localhost.
 
 import Constants from "expo-constants";
+import { validateTextRequest } from "../utils/textFieldValidation";
 import { Platform } from "react-native";
 import {
   beginBackendConnection,
@@ -138,6 +139,17 @@ const fetchWithTimeout = async (
 };
 
 export async function apiFetch(path, options = {}) {
+  let submittedBody = options.body;
+  if (typeof submittedBody === "string") {
+    try { submittedBody = JSON.parse(submittedBody); } catch { submittedBody = null; }
+  }
+  const validation = validateTextRequest(path, options.method || "GET", submittedBody);
+  if (validation) {
+    // Return the same validation response as the server. It must not become a
+    // connection failure or an uncertain mutation in service-specific clients.
+    const data = { message: validation.message, errors: { [validation.field]: validation.message } };
+    return { ok: false, status: 400, json: async () => data, text: async () => JSON.stringify(data) };
+  }
   beginBackendConnection(path);
   let networkError;
   // timeoutMs is an AEROPULSE client option, not part of the Fetch API. Keep
