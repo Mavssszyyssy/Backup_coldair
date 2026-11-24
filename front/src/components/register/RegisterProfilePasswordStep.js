@@ -9,10 +9,9 @@ import {
   WarningDiamond,
   X,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../../config/api";
 import useActiveBranches from "../../domain/branches/useActiveBranches";
-import { defaultAliasFromEmail } from "../../domain/register/defaultAliasFromEmail";
 import { PERSON_NAME_MAX_LENGTH } from "../../domain/personNameValidation";
 import { validateProfileAndSecurityStep } from "../../domain/register/validateRegistrationProfile";
 import {
@@ -42,6 +41,7 @@ export default function RegisterProfilePasswordStep({
   const branchNames = useActiveBranches();
   const [localErrors, setLocalErrors] = useState({});
   const [aliasStatus, setAliasStatus] = useState(null); // null, 'checking', 'available', 'taken'
+  const aliasCheckVersion = useRef(0);
 
   // Combine external and local errors
   const errors = { ...externalErrors, ...localErrors };
@@ -67,17 +67,14 @@ export default function RegisterProfilePasswordStep({
     }
   };
 
-  const aliasPlaceholder = useMemo(() => {
-    return formData.email ? defaultAliasFromEmail(formData.email) : "juan.dc";
-  }, [formData.email]);
-
   /**
    * INITIATE CHECK ON BLUR
    * Only triggers when user leaves the field.
    */
   const handleAliasBlur = useCallback(async () => {
-    const aliasToCheck = formData.alias || aliasPlaceholder;
-    if (!aliasToCheck || aliasToCheck.length < 2) {
+    const version = ++aliasCheckVersion.current;
+    const aliasToCheck = (formData.alias || "").trim();
+    if (!/^[a-z0-9._-]{6,30}$/i.test(aliasToCheck)) {
       setAliasStatus(null);
       return;
     }
@@ -86,18 +83,20 @@ export default function RegisterProfilePasswordStep({
     try {
       const res = await apiRequest(
         `/auth/check-alias?alias=${encodeURIComponent(aliasToCheck)}`,
+        { fresh: true },
       );
-      setAliasStatus(res.available ? "available" : "taken");
+      if (version === aliasCheckVersion.current) setAliasStatus(res.available ? "available" : "taken");
     } catch (err) {
-      setAliasStatus(null);
+      if (version === aliasCheckVersion.current) setAliasStatus(null);
     }
-  }, [aliasPlaceholder, formData.alias]);
+  }, [formData.alias]);
 
   /**
    * RESET STATUS ON CHANGE
    * Clears availability markers while typing to ensure state is accurate.
    */
   const handleAliasChange = (val) => {
+    aliasCheckVersion.current += 1;
     onFieldChange("alias", val.toLowerCase().trim());
     if (aliasStatus !== null) setAliasStatus(null);
     if (localErrors.alias) {
@@ -108,11 +107,6 @@ export default function RegisterProfilePasswordStep({
       });
     }
   };
-
-  // Perform initial check on mount for the auto-generated alias
-  useEffect(() => {
-    handleAliasBlur();
-  }, [handleAliasBlur]);
 
   const passwordStrength = useMemo(() => {
     if (!formData.password)
@@ -205,7 +199,6 @@ export default function RegisterProfilePasswordStep({
             maxLength={30}
             label={t("Username")}
             icon={UserCircle}
-            placeholder={aliasPlaceholder}
             value={formData.alias}
             onChange={(e) => handleAliasChange(e.target.value)}
             onBlur={handleAliasBlur}

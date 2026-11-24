@@ -56,7 +56,7 @@ test('uses Filipino controls in the technician workspace without changing saved 
     : path.startsWith('/users') ? { users: [] } : { tasks: [] });
   render(<AdminTechnician />);
   expect(await screen.findByRole('heading', { name: 'Maghanap ng technician' })).toBeInTheDocument();
-  expect(screen.getAllByText('Carl Ramos').length).toBeGreaterThan(0);
+  expect((await screen.findAllByText('Carl Ramos')).length).toBeGreaterThan(0);
   expect(screen.getAllByText('Cavite').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Magdagdag ng technician' })).toBeInTheDocument();
 });
