@@ -18,6 +18,8 @@ export const CartProvider = ({ children }) => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const sessionGeneration = useRef(0);
   const readyToSync = useRef(false);
+  const cartSyncTimeout = useRef(null);
+  const cartSyncInFlight = useRef(Promise.resolve());
 
   useEffect(() => {
     const clearOnLogout = () => {
@@ -69,19 +71,24 @@ export const CartProvider = ({ children }) => {
     }
 
     const generation = sessionGeneration.current;
-    const syncTimeout = setTimeout(async () => {
+    const syncTimeout = setTimeout(() => {
+      cartSyncTimeout.current = null;
       if (generation !== sessionGeneration.current) return;
-      try {
-        await apiRequest("/auth/session/cart", {
+      const sync = cartSyncInFlight.current.catch(() => {}).then(() =>
+        apiRequest("/auth/session/cart", {
           method: "POST",
           body: JSON.stringify({ cart }),
-        });
-      } catch (err) {
-        console.error("Failed to sync cart to session", err);
-      }
+        }),
+      );
+      cartSyncInFlight.current = sync;
+      sync.catch((err) => console.error("Failed to sync cart to session", err));
     }, 500); // 500ms debounce
+    cartSyncTimeout.current = syncTimeout;
 
-    return () => clearTimeout(syncTimeout);
+    return () => {
+      clearTimeout(syncTimeout);
+      if (cartSyncTimeout.current === syncTimeout) cartSyncTimeout.current = null;
+    };
   }, [cart, isInitialLoad, isAuthenticated, user?.role]);
 
   const clampToAvailableStock = (item, desiredQuantity) => {
@@ -136,8 +143,26 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  const clearCart = () => {
+  const clearCart = async ({ persist = false } = {}) => {
+    if (cartSyncTimeout.current) {
+      clearTimeout(cartSyncTimeout.current);
+      cartSyncTimeout.current = null;
+    }
     setCart([]);
+    if (!persist || !isAuthenticated || user?.role !== "customer") return;
+
+    const sync = cartSyncInFlight.current.catch(() => {}).then(() =>
+      apiRequest("/auth/session/cart", {
+        method: "POST",
+        body: JSON.stringify({ cart: [] }),
+      }),
+    );
+    cartSyncInFlight.current = sync;
+    try {
+      await sync;
+    } catch (err) {
+      console.error("Failed to persist cleared cart", err);
+    }
   };
 
   const getCartTotal = () => {

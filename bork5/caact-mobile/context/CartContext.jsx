@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useUserContext } from "./UserContext";
 
 const CartContext = createContext(null);
@@ -11,6 +11,7 @@ export function CartProvider({ children }) {
   const { current, initialized } = useUserContext();
   const [cart, setCart] = useState([]);
   const [loadedKey, setLoadedKey] = useState(null);
+  const cartStorageWrite = useRef(Promise.resolve());
   const cartStorageKey = current?.role === "customer" && current?.id ? `coldair_cart_v2:${current.id}` : "";
   const hydrated = initialized && loadedKey === cartStorageKey;
 
@@ -44,7 +45,11 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     if (!hydrated || !cartStorageKey) return;
-    AsyncStorage.setItem(cartStorageKey, JSON.stringify(cart)).catch(() => {});
+    const write = cartStorageWrite.current.catch(() => {}).then(() =>
+      AsyncStorage.setItem(cartStorageKey, JSON.stringify(cart)),
+    );
+    cartStorageWrite.current = write;
+    write.catch(() => {});
   }, [cart, hydrated, cartStorageKey]);
 
   const addToCart = useCallback((product, quantity = 1) => {
@@ -78,7 +83,20 @@ export function CartProvider({ children }) {
     setCart((currentCart) => currentCart.filter((item) => String(item.id) !== String(productId)));
   }, []);
 
-  const clearCart = useCallback(() => setCart((previous) => previous.length ? [] : previous), []);
+  const clearCart = useCallback(async () => {
+    setCart((previous) => previous.length ? [] : previous);
+    if (cartStorageKey) {
+      try {
+        const write = cartStorageWrite.current.catch(() => {}).then(() =>
+          AsyncStorage.setItem(cartStorageKey, "[]"),
+        );
+        cartStorageWrite.current = write;
+        await write;
+      } catch (_error) {
+        // The state update still clears the current cart; the persistence effect retries it.
+      }
+    }
+  }, [cartStorageKey]);
 
   const replaceCart = useCallback((nextCart = []) => {
     const next = Array.isArray(nextCart) ? nextCart : [];

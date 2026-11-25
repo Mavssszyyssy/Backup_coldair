@@ -325,7 +325,7 @@ function Checkout({ addressId, buyNowProductId }) {
         : "Connecting to secure payment…",
     );
     const finishCheckout = async (orderId, online) => {
-      if (!isBuyNow) clearCart();
+      if (!isBuyNow) await clearCart();
       orderRequestRef.current = null;
       await clearCheckoutIdempotencyKey(storageKey);
       router.replace(`/customer/order-confirmation/${encodeURIComponent(orderId)}${online ? "?payment=returned" : ""}`);

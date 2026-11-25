@@ -538,7 +538,7 @@ function CheckoutForm({ buyNowItem }) {
         "";
       orderRequestRef.current = null;
       clearCheckoutIdempotencyKey(storageKey);
-      if (!isBuyNow) clearCart();
+      if (!isBuyNow) await clearCart({ persist: true });
       if (selectedPayment !== "cod") {
         if (!paymentUrl) {
           alert(t("The secure payment link is unavailable. Your order was saved, but payment has not started. Check My Orders before placing another order or contact support."));
@@ -562,7 +562,7 @@ function CheckoutForm({ buyNowItem }) {
       if (error?.data?.code === "ORDER_PAYMENT_RETRY_REQUIRED" && error.data.orderId) {
         orderRequestRef.current = null;
         clearCheckoutIdempotencyKey(storageKey);
-        if (!isBuyNow) clearCart();
+        if (!isBuyNow) await clearCart({ persist: true });
         navigate(`/order-confirmation/${encodeURIComponent(error.data.orderId)}?payment=returned`, { replace: true });
         return;
       }
